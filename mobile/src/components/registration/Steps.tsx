@@ -17,6 +17,7 @@ import {
 import { useTokens } from '../../context/ThemeContext';
 import AttendeeForm from '../AttendeeForm';
 import CustomFieldInput from '../CustomFieldInput';
+import { visibleFields } from '../../utils/formQuestions';
 import { SettingsGroup } from '../profile/SettingsGroup';
 import FormRow from '../profile/FormRow';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
@@ -265,7 +266,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
 
             {r.memberFields.length > 0 ? (
               <View style={styles.questions}>
-                {r.memberFields.map((f) => (
+                {visibleFields(r.memberFields, a.customFields).map((f) => (
                   <CustomFieldInput key={f.id} field={f} value={a.customFields?.[f.id]} onChange={(v) => r.changeCustomField(index, f.id, v)} />
                 ))}
               </View>
@@ -289,7 +290,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
       {r.teamFields.length > 0 ? (
         <View style={styles.person}>
           <Label>About your team</Label>
-          {r.teamFields.map((f) => (
+          {visibleFields(r.teamFields, r.teamFieldValues).map((f) => (
             <CustomFieldInput key={f.id} field={f} value={r.teamFieldValues[f.id]} onChange={(v) => r.changeTeamField(f.id, v)} />
           ))}
         </View>
@@ -297,7 +298,8 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
 
       {!r.canContinue ? (
         <Text style={[styles.hint, { color: tokens.textMuted }]}>
-          Fill in every required detail{r.isGroup ? ' for each person you add' : ''} to continue. Mobile numbers need 10 digits.
+          {r.detailsProblem ??
+            `Fill in every required detail${r.isGroup ? ' for each person you add' : ''} to continue. Mobile numbers need 10 digits.`}
         </Text>
       ) : null}
     </View>
@@ -367,7 +369,7 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
                     {invited ? 'You invite them after this' : `${a.email} · +91 ${a.mobile} · ${a.gender}`}
                   </Text>
                   {!invited
-                    ? r.memberFields.map((f) => {
+                    ? visibleFields(r.memberFields, a.customFields).filter((f) => f.field_type !== 'section').map((f) => {
                         const v = displayFieldValue(f, a.customFields?.[f.id]);
                         return v ? (
                           <Text key={f.id} style={[styles.meta, { color: tokens.textSecondary }]}>
@@ -387,9 +389,11 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
         <View style={styles.person}>
           <Label>About your team</Label>
           <Card style={{ gap: spacing[2] }}>
-            {r.teamFields.map((f) => (
-              <Line key={f.id} label={f.label} value={displayFieldValue(f, r.teamFieldValues[f.id]) || 'Not answered'} />
-            ))}
+            {visibleFields(r.teamFields, r.teamFieldValues)
+              .filter((f) => f.field_type !== 'section')
+              .map((f) => (
+                <Line key={f.id} label={f.label} value={displayFieldValue(f, r.teamFieldValues[f.id]) || 'Not answered'} />
+              ))}
           </Card>
         </View>
       ) : null}

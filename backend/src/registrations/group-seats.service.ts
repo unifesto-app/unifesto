@@ -15,6 +15,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { enforceFormAnswers } from './form-answers.policy';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
@@ -748,6 +749,24 @@ export class GroupSeatsService {
     await this.assertHybridAuth(seat.inviteEmail, claimerUserId);
     this.assertSeatClaimable(seat);
     await this.assertNotAlreadyInEvent(seat.registration.eventId, claimerUserId, seat.id);
+
+    // The claimer answers their own per-member questions now, so required
+    // ones are enforced (team-wide answers were given by the lead).
+    const claimant = {
+      customFields:
+        memberDetails?.customFields && typeof memberDetails.customFields === 'object'
+          ? (memberDetails.customFields as Record<string, unknown>)
+          : {},
+    };
+    await enforceFormAnswers(this.prisma, {
+      eventId: seat.registration.eventId,
+      ticketTypeId: seat.registration.ticketTypeId ?? null,
+      isGroup: true,
+      members: [claimant],
+      required: { team: false, members: 'all' },
+      uploaderIds: [claimerUserId],
+    });
+    if (memberDetails) memberDetails = { ...memberDetails, customFields: claimant.customFields };
 
     // Only an OPEN or INVITED seat can be won — this both keeps the one-winner
     // race semantics (a rotated token / already-CLAIMED loser gets a clean

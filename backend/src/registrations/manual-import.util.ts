@@ -143,7 +143,7 @@ export interface ImportedMember {
   email: string | null;
   mobile: string | null;
   /** This member's own custom-field answers, keyed by field id. */
-  customFields?: Record<string, string>;
+  customFields?: Record<string, unknown>;
 }
 
 /** A single parsed CSV data row, validated and shaped for registration. */
@@ -156,7 +156,7 @@ export interface ParsedImportRow {
   groupSize: number | null;
   /** Lead + members for a GROUP row; null for individual/RSVP. */
   groupMembers: ImportedMember[] | null;
-  formResponses: Record<string, string>;
+  formResponses: Record<string, unknown>;
   /** Set when the row is unusable; the service reports it as `errored`. */
   error?: string;
 }

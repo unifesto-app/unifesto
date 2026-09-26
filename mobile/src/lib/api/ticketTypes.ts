@@ -1,4 +1,5 @@
 import { call } from './manageEvent';
+import type { FormFieldConfig } from '../../utils/formQuestions';
 
 export type TicketKind = 'INDIVIDUAL' | 'GROUP' | 'RSVP';
 export type GroupPricingMode = 'PER_GROUP' | 'PER_PERSON';
@@ -132,7 +133,28 @@ export const SALE_STATUS_LABEL: Record<SaleStatus, { label: string; tone: 'neutr
 
 // ── Registration questions (per-ticket custom form) ─────────────────────────
 
-export type FormFieldType = 'TEXT' | 'TEXTAREA' | 'SELECT' | 'RADIO' | 'CHECKBOX' | 'NUMBER' | 'EMAIL' | 'PHONE';
+export type FormFieldType =
+  | 'TEXT'
+  | 'TEXTAREA'
+  | 'SELECT'
+  | 'RADIO'
+  | 'CHECKBOX'
+  | 'NUMBER'
+  | 'EMAIL'
+  | 'PHONE'
+  | 'DATE'
+  | 'URL'
+  | 'YES_NO'
+  | 'FILE'
+  | 'SECTION'
+  | 'STATE'
+  | 'RATING';
+
+/** Show only when an earlier choice question is answered with one of `anyOf`. */
+export interface FormShowIf {
+  fieldId: string;
+  anyOf: string[];
+}
 
 export interface TicketFormField {
   id: string;
@@ -144,6 +166,9 @@ export interface TicketFormField {
   order: number;
   /** Group tickets: asked once for the whole group instead of every member. */
   perGroup: boolean;
+  helpText?: string | null;
+  config?: FormFieldConfig | null;
+  showIf?: FormShowIf | null;
 }
 
 export interface FormFieldPayload {
@@ -154,6 +179,9 @@ export interface FormFieldPayload {
   isRequired: boolean;
   perGroup?: boolean;
   order?: number;
+  helpText?: string | null;
+  config?: FormFieldConfig | null;
+  showIf?: FormShowIf | null;
 }
 
 export const FIELD_TYPES: { key: FormFieldType; label: string }[] = [
@@ -165,7 +193,17 @@ export const FIELD_TYPES: { key: FormFieldType; label: string }[] = [
   { key: 'SELECT', label: 'Dropdown' },
   { key: 'RADIO', label: 'Single choice' },
   { key: 'CHECKBOX', label: 'Checkboxes' },
+  { key: 'URL', label: 'Link' },
+  { key: 'DATE', label: 'Date' },
+  { key: 'YES_NO', label: 'Yes / No tick' },
+  { key: 'STATE', label: 'State / UT' },
+  { key: 'RATING', label: 'Rating' },
+  { key: 'FILE', label: 'File upload' },
+  { key: 'SECTION', label: 'Section heading' },
 ];
+
+/** Types whose answer can decide whether a later question shows. */
+export const CHOICE_TYPES: FormFieldType[] = ['SELECT', 'RADIO', 'CHECKBOX', 'YES_NO', 'STATE'];
 
 /** Types that need the organiser to list the choices. */
 export const OPTION_TYPES: FormFieldType[] = ['SELECT', 'RADIO', 'CHECKBOX'];

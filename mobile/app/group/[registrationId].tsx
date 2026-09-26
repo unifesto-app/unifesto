@@ -18,6 +18,7 @@ import FormRow from '../../src/components/profile/FormRow';
 import { ATTENDEE_GENDER_OPTIONS, profileGenderToAttendeeOption } from '../../src/utils/profile';
 import AttendeeForm from '../../src/components/AttendeeForm';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
+import { displayAnswer, visibleFields } from '../../src/utils/formQuestions';
 import Skeleton from '../../src/components/Skeleton';
 import { ActionBar } from '../../src/components/event/EventOverlays';
 import { useManageGroup, type GroupRow } from '../../src/hooks/useManageGroup';
@@ -190,16 +191,17 @@ export default function ManageGroupRoute() {
                       <CardBackdrop shape={styles.card} />
                       <Text style={[styles.cardTitle, { color: tokens.text }]}>Additional information</Text>
                       {view
-                        ? g.customFields.map((field) => {
-                            const v = m.customFields?.[field.id];
-                            const shown = Array.isArray(v) ? v.join(', ') : v === true ? 'Yes' : v === false ? 'No' : v ? String(v) : 'Not answered';
+                        ? visibleFields(g.customFields, m.customFields)
+                            .filter((field) => field.field_type !== 'section')
+                            .map((field) => {
+                            const shown = displayAnswer(field, m.customFields?.[field.id]) || 'Not answered';
                             return (
                               <Text key={field.id} style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
                                 {field.label}: <Text style={{ color: tokens.text }}>{shown}</Text>
                               </Text>
                             );
                           })
-                        : g.customFields.map((field) => (
+                        : visibleFields(g.customFields, m.customFields).map((field) => (
                             <CustomFieldInput
                               key={field.id}
                               field={field}
