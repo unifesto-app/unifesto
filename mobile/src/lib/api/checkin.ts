@@ -61,9 +61,15 @@ export interface ScanResult {
 
 export interface AttendeeSearchResult {
   registrationId: string;
-  attendee: CheckinAttendee;
+  /** Group member (0-based) this row is; null for an individual ticket. */
+  memberIndex?: number | null;
+  attendee: Omit<CheckinAttendee, 'id'> & { id: string | null };
   ticketType: string;
   checkedInAtPoint: string | null;
+  /** Set on group member rows: whose group they're in. */
+  groupLeadName?: string | null;
+  /** False for a group seat nobody has claimed yet. */
+  claimable?: boolean;
 }
 
 /** One member of a scanned group, with their status at the current point. */
@@ -166,11 +172,17 @@ export async function submitGroupCheckin(
 /** Manually check a registration in at a point. POST /checkin/manual */
 export async function manualCheckin(
   registrationId: string,
-  checkinTypeId: string
+  checkinTypeId: string,
+  /** Group member to check in (null/undefined for an individual ticket). */
+  memberIndex?: number | null
 ): Promise<ScanResult> {
   const response = await makeAuthenticatedRequest('/checkin/manual', {
     method: 'POST',
-    body: JSON.stringify({ registrationId, checkinTypeId }),
+    body: JSON.stringify({
+      registrationId,
+      checkinTypeId,
+      ...(memberIndex != null ? { memberIndex } : {}),
+    }),
   });
   assertReached(response);
   if (!response?.ok) {
@@ -186,7 +198,8 @@ export async function searchAttendees(
   q: string,
   checkinTypeId?: string
 ): Promise<{ results: AttendeeSearchResult[] }> {
-  const params = new URLSearchParams({ q });
+  // members=1: each group member comes back as their own row.
+  const params = new URLSearchParams({ q, members: '1' });
   if (checkinTypeId) params.append('checkinTypeId', checkinTypeId);
   const response = await makeAuthenticatedRequest(
     `/checkin/event/${eventId}/search?${params.toString()}`
@@ -255,64 +268,32 @@ export interface RecentCheckin {
 }
 
 /**
- * The most recent check-ins for an event, newest first. Derived client-side
- * from the offline registrations endpoint (`GET /checkin/event/:id`), since
- * there's no dedicated recent-check-ins route. Authenticated (organiser only).
- *
- * An attendee can be checked in at several points, so we flatten each
- * registration's `checkinRecords` into one row per record — each carries its
- * own check-in point, time, and the staff member (by name) who recorded it.
- * Registrations that only have the legacy registration-level check-in (no
- * per-point record) fall back to that single entry.
+ * The most recent check-ins for an event, newest first: individuals and each
+ * group member by name. GET /checkin/event/:id/recent (fresh from the DB).
  */
 export async function getRecentCheckins(
   eventId: string,
-  limit = 5
+  limit = 5,
+  checkinTypeId?: string
 ): Promise<RecentCheckin[]> {
-  const response = await makeAuthenticatedRequest(`/checkin/event/${eventId}`);
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (checkinTypeId) params.append('checkinTypeId', checkinTypeId);
+  const response = await makeAuthenticatedRequest(`/checkin/event/${eventId}/recent?${params}`);
   if (!response?.ok) {
     const error = await response?.json().catch(() => null);
     throw new Error(error?.message || 'Failed to load recent check-ins');
   }
-  const data = await response.json();
-
-  const rows: RecentCheckin[] = [];
-  for (const r of data.registrations || []) {
-    const attendeeName = r.user?.fullName || r.user?.username || 'Attendee';
-    const ticketType = r.ticketType?.name;
-    const records = Array.isArray(r.checkinRecords) ? r.checkinRecords : [];
-
-    if (records.length > 0) {
-      for (const rec of records) {
-        if (!rec.checkedInAt) continue;
-        rows.push({
-          id: rec.id,
-          attendeeName,
-          checkedInAt: rec.checkedInAt,
-          checkedBy:
-            rec.checkedInByUser?.fullName || rec.checkedInByUser?.username || '',
-          checkinType: rec.checkinType?.name,
-          ticketType,
-        });
-      }
-    } else if (r.checkedInAt) {
-      rows.push({
-        id: r.id,
-        attendeeName,
-        checkedInAt: r.checkedInAt,
-        checkedBy:
-          r.checkedInByUser?.fullName || r.checkedInByUser?.username || '',
-        ticketType,
-      });
-    }
-  }
-
-  return rows
-    .sort(
-      (a, b) =>
-        new Date(b.checkedInAt).getTime() - new Date(a.checkedInAt).getTime()
-    )
-    .slice(0, limit);
+  const rows: any[] = await response.json();
+  return rows.map((r) => ({
+    id: r.id,
+    attendeeName: r.name || 'Attendee',
+    checkedInAt: r.checkedInAt,
+    checkedBy: r.checkedBy || '',
+    checkinType: r.checkinType?.name,
+    ticketType: r.groupLeadName && r.memberIndex !== 0
+      ? [r.ticketType, `${r.groupLeadName}'s group`].filter(Boolean).join(' · ')
+      : r.ticketType ?? undefined,
+  }));
 }
 
 // ── Offline scanning ────────────────────────────────────────────────────────

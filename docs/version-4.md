@@ -40,6 +40,7 @@ changes each mobile release depends on.
 | Version | Type | Theme | Target | Ships as | Built by | Status | Shipped |
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | in progress | – |
+| [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | planned | – |
 | [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
@@ -258,6 +259,69 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 - Android build: –
 - Backend deploy: 2026-09-26 18:00 IST (backend + space, 0.9)
 - OTA update: –
+
+---
+
+### 4.0.5 · Fix what failed in 4.0.0
+
+**Type:** patch · **Ships as:** store build only (iOS + Android), no OTA · **Branch:** `release/4.0.5`
+
+Collects every failure from the 4.0.0 build, upload, device QA and App Review, and ships the fixes as one new binary. Store build (not OTA) because some fixes touch native config, and a new binary is the only thing that reaches people who hit the failure on 4.0.0's first launch.
+
+**Runtime note:** 4.0.5 has its own fingerprint. OTAs from 4.1.0 onward must target the 4.0.5 runtime, so native freeze window A starts at 4.0.5 submit instead of 4.0.0, and force-update (0.5) moves to minimum 4.0.5.
+
+#### Plan
+
+| # | Item | Status |
+|---|---|---|
+| 5.1 | EAS builds 43/44/33/34 errored at "Configure expo-updates": local fingerprint ≠ EAS (node_modules files rewritten by local prebuild). Fixed with `mobile/fingerprint.config.js` | done in 4.0.0 · [#12](https://github.com/unifesto-app/unifesto/pull/12) |
+| 5.2 | iOS build 35 rejected on upload, ITMS-90683 (missing `NSMotionUsageDescription`, also Location Always + Face ID). Keys restored with honest text; build 36 uploaded | done in 4.0.0 · [#13](https://github.com/unifesto-app/unifesto/pull/13) |
+| 5.3 | Device QA failures from 4.0.0 (26 Sep), itemised below as 5.3a–5.3p | in progress |
+| 5.4 | App Review / Play review findings on 4.0.0 | planned: list pending |
+| 5.5 | Bump `version` to 4.0.5 in `mobile/app.config.js` + `mobile/package.json` | planned |
+| 5.6 | Pre-build: grep linked iOS APIs vs purpose strings; `npx expo-doctor`; clean-checkout fingerprint matches EAS | planned |
+| 5.7 | `eas build --profile production --platform all` → `eas submit` | planned |
+
+**5.3 · Issues found on 4.0.0 builds (iOS 36, Android 45)**
+
+Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** mobile native (store build only) · **W** web/space · **A** apex · **Y** you (console/config).
+
+| # | Issue | Root cause (found in code) | Fix | Layer | Status |
+|---|---|---|---|---|---|
+| 5.3a | Check-in: search shows only the team lead | `searchRegistrations` returns one row per registration with `attendee = lead`, even when a teammate matched; tapping it checks the whole registration in | Return one row per group member (seat) with `memberIndex`; member rows check in through `/checkin/group` for that one member | B + M | planned |
+| 5.3b | Check-in: duplicate check-ins | Manual check-in of a group writes only the registration-level record, so the QR scan roster still shows every member as not in and they get checked in again; scan + manual race on the same person | Group results never use the whole-registration path (5.3a); treat the unique-key race as "already checked in" instead of an error | B + M | planned |
+| 5.3c | Check-in: checked-in people missing from Recents | Recents read `GET /checkin/event/:id`, a Redis snapshot cached 1 h and **never invalidated on check-in**; group members aren't listed at all | New fresh `GET /checkin/event/:id/recent` (individual + member check-ins, per point); invalidate the snapshot on every check-in write | B + M | planned |
+| 5.3d | Group member doesn't get the WhatsApp "Join group" card on their ticket | `getRegistrationWhatsappGroup` only allows the registration owner (lead); a claimed-seat member gets 403 | Allow the seat's claimer; per-seat joined state (`group_seats.whatsapp_joined_at`) | B (+migration) | planned |
+| 5.3e | Registration: a field type doesn't work on mobile | Type mapping + inputs look right in code; need the exact type/screen | Reproduce, then fix | M | needs detail |
+| 5.3f | Space UTM tracking not working | Web space page opens the app with a bare `unifesto://space/…` (no `withStoredUtm`), so web-landed space campaigns are lost | Carry UTM through the space deep link (and every event link on the space page) | W | planned |
+| 5.3g | Views + UTM source not tracked (only registrations are) | There is no view tracking at all: only `EventRegistration.utm*` exists | Page-view ingest (event + space, web + app) with source/medium/campaign, deduped per visitor per day | B (+migration) + W + M | planned |
+| 5.3h | Page analytics for Space and Event | Doesn't exist | Views, unique visitors, sources, view→registration conversion; Space web + mobile Space tab | B + W + M | planned |
+| 5.3i | Short links for tracking links | Doesn't exist | `ShortLink` (code → event/space + utm), redirect route on `unifesto.app/l/:code`, click counts; UTM link builder + partner links create short links | B (+migration) + W + M | planned |
+| 5.3j | Home "Happening near you" scroll isn't smooth | – | Rework the rail (snap + deceleration, memoised items, image sizing) | M | planned |
+| 5.3k | Missing banner/logo shows a blue block | Fallback is a flat colour | Platform default image library (banners 4:3, logos 1:1) managed in a new Apex screen; apps pick one deterministically per event/space | B + A + W + M | planned |
+| 5.3l | Stack header needs a blurred background | Header is fully transparent | `expo-blur` (already installed) behind the shared stack header | M | planned |
+| 5.3m | Push notifications: delete | No delete exists | Scope to confirm | ? | needs detail |
+| 5.3n | Apex mobile Status page should use UptimeRobot | Status reads our own `/health` only | Backend proxies UptimeRobot API (monitors, uptime %, incidents); key in env | B + M + Y | planned |
+| 5.3o | Widgets show no data; more widgets wanted | Up next is fed only from the Home tab (`useHomeData` → `syncUpNextWidget`); needs a device check of the App Group / Android task handler | Debug on device, then add widgets | N | needs detail |
+| 5.3p | Android: event location shows an empty grid | Google Maps grid = key rejected. Key is set in EAS, so most likely the key's Android restriction lacks the **Play app-signing SHA-1** (Play re-signs builds) | Add the Play app-signing SHA-1 + `com.unifesto.app` to the key in Google Cloud; confirm Maps SDK for Android is enabled | Y | planned |
+
+#### Release checklist (4.0.5)
+
+- [ ] C · Every 5.3/5.4 item fixed on `release/4.0.5` (base `main`), tsc + bundles green in CI
+- [ ] C · Version bumped, pre-build checks (5.6) pass
+- [ ] Y · `eas build --profile production --platform all`, TestFlight / internal testing smoke of the failed items + section D
+- [ ] Y · `eas submit --profile production --platform all`
+- [ ] C · Record build numbers + fingerprint under Shipped; 4.1.0 OTA targets this runtime
+
+#### Log
+
+- **2026-09-26** · 4.0.5 planned: store build that fixes what failed in 4.0.0. Build-pipeline failures (5.1, 5.2) already fixed before 4.0.0 shipped.
+
+#### Shipped
+
+- iOS build: –
+- Android build: –
+- Runtime fingerprint: –
 
 ---
 

@@ -471,6 +471,7 @@ export class CheckinService {
         });
       }
     });
+    await this.cache.invalidateCheckinCache(registration.event.id);
 
     // Return the refreshed roster for this point (seat-aware, matching the
     // shape of buildGroupCheckinView).
@@ -555,30 +556,53 @@ export class CheckinService {
 
     const isFirstEver = !registration.checkedInAt;
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.eventCheckinRecord.create({
-        data: {
-          registrationId: registration.id,
-          checkinTypeId,
-          checkedInBy: userId,
-          checkedInAt: at,
-        },
-      });
-      if (isFirstEver) {
-        await tx.eventRegistration.update({
-          where: { id: registration.id },
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.eventCheckinRecord.create({
           data: {
-            checkedInAt: at,
+            registrationId: registration.id,
+            checkinTypeId,
             checkedInBy: userId,
-            status: RegistrationStatus.ATTENDED,
+            checkedInAt: at,
           },
         });
-        await tx.eventTicket.updateMany({
-          where: { registrationId: registration.id },
-          data: { status: TicketStatus.USED, checkedInAt: at },
+        if (isFirstEver) {
+          await tx.eventRegistration.update({
+            where: { id: registration.id },
+            data: {
+              checkedInAt: at,
+              checkedInBy: userId,
+              status: RegistrationStatus.ATTENDED,
+            },
+          });
+          await tx.eventTicket.updateMany({
+            where: { registrationId: registration.id },
+            data: { status: TicketStatus.USED, checkedInAt: at },
+          });
+        }
+      });
+    } catch (e) {
+      // Two devices (or a scan + a search tap) raced on the same person: the
+      // unique (registration, point) key let exactly one win. Report the
+      // winner's check-in instead of an error.
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const won = await this.prisma.eventCheckinRecord.findUnique({
+          where: { registrationId_checkinTypeId: { registrationId: registration.id, checkinTypeId } },
+          include: { checkedInByUser: { select: { fullName: true, username: true } } },
         });
+        return {
+          alreadyCheckedIn: true,
+          checkedInAt: won?.checkedInAt ?? at,
+          checkedInById: won?.checkedInBy ?? null,
+          checkedInByName: won?.checkedInByUser?.fullName || won?.checkedInByUser?.username || null,
+          attendee,
+          ticketType,
+          checkinType: checkinType.name,
+        };
       }
-    });
+      throw e;
+    }
+    await this.cache.invalidateCheckinCache(registration.event.id);
 
     this.logger.log(
       `Checked in registration ${registration.id} at point ${checkinType.name}`,
@@ -593,17 +617,66 @@ export class CheckinService {
     };
   }
 
-  /** Manual check-in of a known registration at a point (no QR). */
+  /**
+   * Manual check-in of a known registration at a point (no QR).
+   *
+   * A group is checked in one member at a time (`memberIndex`, default the
+   * lead), through the same per-member records a QR scan writes. Checking the
+   * whole registration in here used to leave every member "not in" on the scan
+   * roster, so the same people were checked in again at the door.
+   */
   async manualCheckin(
     userId: string,
     registrationId: string,
     checkinTypeId: string,
+    memberIndex?: number,
   ) {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
       include: this.regInclude,
     });
     if (!registration) throw new NotFoundException('Registration not found');
+
+    if (this.isGroupRegistration(registration)) {
+      const index = memberIndex ?? 0;
+      const view = await this.buildGroupCheckinView(userId, registration, checkinTypeId);
+      const member = view?.members.find((m) => m.index === index);
+      if (view && member) {
+        const res = await this.checkinGroupMembers(userId, registrationId, checkinTypeId, [index]);
+        const before = res.alreadyIn.find((a) => a.memberIndex === index);
+        const after = res.members.find((m) => m.index === index);
+        const attendee = {
+          id: index === 0 ? registration.user?.id ?? null : null,
+          fullName: member.name,
+          username: index === 0 ? registration.user?.username ?? null : null,
+          avatarUrl: index === 0 ? registration.user?.avatarUrl ?? null : null,
+        };
+        return before
+          ? {
+              alreadyCheckedIn: true,
+              checkedInAt: before.checkedInAt,
+              checkedInById: before.checkedInById,
+              checkedInByName: before.checkedInByName,
+              attendee,
+              ticketType: view.ticketType,
+              checkinType: res.checkinType,
+              memberIndex: index,
+            }
+          : {
+              success: true,
+              checkedInAt: after?.checkedInAtPoint ?? new Date().toISOString(),
+              attendee,
+              ticketType: view.ticketType,
+              checkinType: res.checkinType,
+              memberIndex: index,
+            };
+      }
+      if (memberIndex !== undefined) {
+        throw new BadRequestException('That group member was not found');
+      }
+      // No roster at all: fall through to the whole-registration check-in.
+    }
+
     return this.recordCheckin(userId, registration, checkinTypeId);
   }
 
@@ -1338,6 +1411,8 @@ export class CheckinService {
     eventId: string,
     query: string,
     checkinTypeId?: string,
+    /** One row per group member (4.0.5+ clients) instead of per registration. */
+    expandMembers = false,
   ) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -1411,6 +1486,10 @@ export class CheckinService {
       },
     });
 
+    if (expandMembers) {
+      return { results: await this.expandSearchMembers(registrations, q, checkinTypeId) };
+    }
+
     const results = registrations.map((r) => ({
       registrationId: r.id,
       attendee: r.user,
@@ -1421,6 +1500,250 @@ export class CheckinService {
     }));
 
     return { results };
+  }
+
+  /**
+   * Search results with each group member as their own row (`memberIndex`),
+   * so the door sees the teammate they searched for, not the lead, and checks
+   * in exactly that person. Members whose name, email or account matches the
+   * query are listed; when the group matched some other way (ticket code, the
+   * lead's phone) every member is listed. Individuals keep one row.
+   */
+  private async expandSearchMembers(
+    registrations: Array<{
+      id: string;
+      groupSize: number | null;
+      groupMembers: Prisma.JsonValue;
+      user: { id: string; fullName: string | null; username: string | null; avatarUrl: string | null };
+      ticketType: { name: string } | null;
+    }>,
+    q: string,
+    checkinTypeId?: string,
+  ) {
+    const groupIds = registrations.filter((r) => this.isGroupRegistration(r)).map((r) => r.id);
+    // Empty id lists just return no rows; no need to special-case them.
+    const [seats, memberCheckins, regCheckins] = await Promise.all([
+      this.prisma.groupSeat.findMany({
+            where: { registrationId: { in: groupIds } },
+            orderBy: { seatIndex: 'asc' },
+            select: {
+              registrationId: true,
+              seatIndex: true,
+              status: true,
+              memberDetails: true,
+              inviteEmail: true,
+              claimedBy: {
+                select: { id: true, fullName: true, username: true, avatarUrl: true },
+              },
+            },
+          }),
+      this.prisma.eventGroupMemberCheckin.findMany({
+        where: { registrationId: { in: checkinTypeId ? groupIds : [] }, checkinTypeId },
+        select: { registrationId: true, memberIndex: true, checkedInAt: true },
+      }),
+      this.prisma.eventCheckinRecord.findMany({
+        where: {
+          registrationId: { in: checkinTypeId ? registrations.map((r) => r.id) : [] },
+          checkinTypeId,
+        },
+        select: { registrationId: true, checkedInAt: true },
+      }),
+    ]);
+    const memberIn = new Map<string, Date>(
+      memberCheckins.map((m) => [`${m.registrationId}:${m.memberIndex}`, m.checkedInAt] as const),
+    );
+    const regIn = new Map<string, Date>(
+      regCheckins.map((r) => [r.registrationId, r.checkedInAt] as const),
+    );
+    const needle = q.toLowerCase();
+    const hit = (...vals: Array<string | null | undefined>) =>
+      vals.some((v) => !!v && v.toLowerCase().includes(needle));
+
+    type Row = {
+      registrationId: string;
+      memberIndex: number | null;
+      attendee: { id: string | null; fullName: string | null; username: string | null; avatarUrl: string | null };
+      ticketType: string;
+      checkedInAtPoint: Date | null;
+      groupLeadName: string | null;
+      /** False for a seat nobody has claimed yet: there's no one to let in. */
+      claimable: boolean;
+    };
+    const rows: Row[] = [];
+
+    for (const r of registrations) {
+      const ticketType = r.ticketType?.name || 'RSVP';
+      if (!this.isGroupRegistration(r)) {
+        rows.push({
+          registrationId: r.id,
+          memberIndex: null,
+          attendee: r.user,
+          ticketType,
+          checkedInAtPoint: regIn.get(r.id) ?? null,
+          groupLeadName: null,
+          claimable: true,
+        });
+        continue;
+      }
+
+      const leadName = r.user.fullName || r.user.username || null;
+      const regSeats = seats.filter((s) => s.registrationId === r.id);
+      const members: Array<Row & { matches: boolean }> = regSeats.length
+        ? regSeats.map((s) => {
+            const index = s.seatIndex - 1;
+            const who = this.seatIdentity(s);
+            const account = s.claimedBy ?? (index === 0 ? r.user : null);
+            return {
+              registrationId: r.id,
+              memberIndex: index,
+              attendee: {
+                id: account?.id ?? null,
+                fullName: who.name ?? account?.fullName ?? null,
+                username: account?.username ?? null,
+                avatarUrl: account?.avatarUrl ?? null,
+              },
+              ticketType,
+              checkedInAtPoint: memberIn.get(`${r.id}:${index}`) ?? null,
+              groupLeadName: leadName,
+              claimable: s.status === GroupSeatStatus.CLAIMED,
+              matches: hit(who.name, who.email, s.inviteEmail, account?.fullName, account?.username),
+            };
+          })
+        : (Array.isArray(r.groupMembers) ? (r.groupMembers as any[]) : []).map((m, index) => {
+            const who = this.memberIdentity(m);
+            const account = index === 0 ? r.user : null;
+            return {
+              registrationId: r.id,
+              memberIndex: index,
+              attendee: {
+                id: account?.id ?? null,
+                fullName: who.name ?? account?.fullName ?? null,
+                username: account?.username ?? null,
+                avatarUrl: account?.avatarUrl ?? null,
+              },
+              ticketType,
+              checkedInAtPoint: memberIn.get(`${r.id}:${index}`) ?? null,
+              groupLeadName: leadName,
+              claimable: true,
+              matches: hit(who.name, who.email, account?.fullName, account?.username),
+            };
+          });
+
+      if (members.length === 0) {
+        // No roster stored: the registration is the only thing to check in.
+        rows.push({
+          registrationId: r.id,
+          memberIndex: null,
+          attendee: r.user,
+          ticketType,
+          checkedInAtPoint: regIn.get(r.id) ?? null,
+          groupLeadName: null,
+          claimable: true,
+        });
+        continue;
+      }
+      const matched = members.filter((m) => m.matches);
+      for (const { matches: _m, ...row } of matched.length ? matched : members) rows.push(row);
+    }
+
+    return rows.slice(0, 30);
+  }
+
+  /**
+   * The latest check-ins at an event, newest first: individuals and each
+   * group member by their own name. Read fresh from the DB (the hub used to
+   * read an hour-old Redis snapshot, so new check-ins never showed up).
+   * A group checked in as a whole by an older client (a registration record
+   * with no member records) shows once, under the lead.
+   */
+  async getRecentCheckins(
+    userId: string,
+    eventId: string,
+    limit: number,
+    checkinTypeId?: string,
+  ) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, spaceId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!(await this.canManageCheckin(userId, event.spaceId, event.id))) {
+      throw new BadRequestException('Unauthorized');
+    }
+
+    const by = { select: { fullName: true, username: true } };
+    const reg = {
+      select: {
+        id: true,
+        user: { select: { fullName: true, username: true, avatarUrl: true } },
+        ticketType: { select: { name: true } },
+      },
+    };
+    const point = { select: { id: true, name: true } };
+    const [records, members] = await Promise.all([
+      this.prisma.eventCheckinRecord.findMany({
+        where: { registration: { eventId }, ...(checkinTypeId ? { checkinTypeId } : {}) },
+        orderBy: { checkedInAt: 'desc' },
+        take: limit * 2,
+        include: { registration: reg, checkinType: point, checkedInByUser: by },
+      }),
+      this.prisma.eventGroupMemberCheckin.findMany({
+        where: { registration: { eventId }, ...(checkinTypeId ? { checkinTypeId } : {}) },
+        orderBy: { checkedInAt: 'desc' },
+        take: limit,
+        include: {
+          registration: reg,
+          checkinType: point,
+          checkedInByUser: by,
+          groupSeat: {
+            select: { memberDetails: true, claimedBy: { select: { fullName: true, username: true } } },
+          },
+        },
+      }),
+    ]);
+
+    // A registration record that has member records at the same point is the
+    // group's summary row; the members themselves are listed instead.
+    const hasMembers = new Set(members.map((m) => `${m.registrationId}:${m.checkinTypeId}`));
+    const byName = (u?: { fullName: string | null; username: string | null } | null) =>
+      u?.fullName || u?.username || null;
+
+    const rows = [
+      ...records
+        .filter((r) => !hasMembers.has(`${r.registrationId}:${r.checkinTypeId}`))
+        .map((r) => ({
+          id: r.id,
+          registrationId: r.registrationId,
+          memberIndex: null as number | null,
+          name: byName(r.registration.user) ?? 'Attendee',
+          avatarUrl: r.registration.user?.avatarUrl ?? null,
+          ticketType: r.registration.ticketType?.name ?? null,
+          checkinType: r.checkinType,
+          checkedInAt: r.checkedInAt,
+          checkedBy: byName(r.checkedInByUser),
+          groupLeadName: null as string | null,
+        })),
+      ...members.map((m) => {
+        const lead = byName(m.registration.user);
+        const who = m.groupSeat ? this.seatIdentity(m.groupSeat).name : null;
+        return {
+          id: m.id,
+          registrationId: m.registrationId,
+          memberIndex: m.memberIndex as number | null,
+          name: who ?? (m.memberIndex === 0 ? lead : null) ?? `Member ${m.memberIndex + 1}`,
+          avatarUrl: m.memberIndex === 0 ? m.registration.user?.avatarUrl ?? null : null,
+          ticketType: m.registration.ticketType?.name ?? null,
+          checkinType: m.checkinType,
+          checkedInAt: m.checkedInAt,
+          checkedBy: byName(m.checkedInByUser),
+          groupLeadName: lead,
+        };
+      }),
+    ];
+
+    return rows
+      .sort((a, b) => b.checkedInAt.getTime() - a.checkedInAt.getTime())
+      .slice(0, limit);
   }
 
   /**

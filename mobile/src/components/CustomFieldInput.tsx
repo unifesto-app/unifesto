@@ -5,6 +5,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -136,15 +137,37 @@ export default function CustomFieldInput({ field, value, onChange, error }: Cust
         return tick();
 
       case 'radio':
-      case 'dropdown':
         return (
           <View style={styles.choices}>
             {field.options_json?.map((o) => choice(o.value, o.label, value === o.value, () => onChange(o.value)))}
           </View>
         );
 
+      // A real dropdown: a field that opens a sheet of the options. It used to
+      // render as the same list of rows as Single choice.
+      case 'dropdown':
+        return (
+          <OptionPicker
+            options={field.options_json ?? []}
+            title={field.label}
+            placeholder={field.placeholder || 'Choose one'}
+            value={value}
+            onChange={onChange}
+            hasError={!!error}
+          />
+        );
+
       case 'state':
-        return <StatePicker value={value} onChange={onChange} hasError={!!error} />;
+        return (
+          <OptionPicker
+            options={STATE_OPTIONS}
+            title="State or UT"
+            placeholder="Choose state or UT"
+            value={value}
+            onChange={onChange}
+            hasError={!!error}
+          />
+        );
 
       case 'rating': {
         const scale = c.scale === 10 ? 10 : 5;
@@ -295,65 +318,102 @@ function DateInput({ value, onChange, min, max, hasError }: { value: any; onChan
 }
 
 /** A searchable sheet of the 36 states and union territories. */
-function StatePicker({ value, onChange, hasError }: { value: any; onChange: (v: string) => void; hasError: boolean }) {
+const STATE_OPTIONS = INDIAN_STATES_AND_UTS.map((s) => ({ label: s, value: s }));
+/** Long lists get a search box; a handful of options don't need one. */
+const SEARCH_FROM = 8;
+
+type Option = { label: string; value: string };
+
+function OptionPicker({
+  options,
+  title,
+  placeholder,
+  value,
+  onChange,
+  hasError,
+}: {
+  options: Option[];
+  title: string;
+  placeholder: string;
+  value: any;
+  onChange: (v: string) => void;
+  hasError: boolean;
+}) {
   const tokens = useTokens();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
-  const list = useMemo(
-    () => INDIAN_STATES_AND_UTS.filter((s) => s.toLowerCase().includes(q.trim().toLowerCase())),
-    [q],
-  );
+  const searchable = options.length >= SEARCH_FROM;
+  const list = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return t ? options.filter((o) => o.label.toLowerCase().includes(t)) : options;
+  }, [q, options]);
+  const selected = options.find((o) => o.value === value);
+  const close = () => {
+    setOpen(false);
+    setQ('');
+  };
 
   return (
     <>
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
+        accessibilityLabel={`${title}: ${selected?.label ?? placeholder}`}
         style={({ pressed }) => [
           styles.input,
           styles.dateRow,
           { backgroundColor: hasError ? 'rgba(239,68,68,0.12)' : tokens.fill, opacity: pressed ? 0.85 : 1 },
         ]}
       >
-        <Text style={[styles.choiceText, { color: value ? tokens.text : tokens.textMuted }]}>{value || 'Choose state or UT'}</Text>
+        <Text style={[styles.choiceText, { color: selected ? tokens.text : tokens.textMuted }]} numberOfLines={1}>
+          {selected?.label ?? (value ? String(value) : placeholder)}
+        </Text>
         <CaretDown size={18} color={tokens.textMuted} />
       </Pressable>
-      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} animationType="slide" presentationStyle="pageSheet" onRequestClose={close}>
         <View style={[styles.sheet, { backgroundColor: tokens.bg }]}>
           <View style={styles.sheetHead}>
-            <Text style={[styles.sectionTitle, { color: tokens.text }]}>State or UT</Text>
-            <Pressable onPress={() => setOpen(false)} hitSlop={12} accessibilityLabel="Close">
+            <Text style={[styles.sectionTitle, { color: tokens.text, flex: 1 }]} numberOfLines={2}>
+              {title}
+            </Text>
+            <Pressable onPress={close} hitSlop={12} accessibilityLabel="Close">
               <X size={24} color={tokens.text} />
             </Pressable>
           </View>
-          <View style={[styles.input, styles.dateRow, { backgroundColor: tokens.fill, marginBottom: spacing[3] }]}>
-            <MagnifyingGlass size={18} color={tokens.textMuted} />
-            <TextInput
-              style={[styles.choiceText, { color: tokens.text, paddingVertical: 0 }]}
-              value={q}
-              onChangeText={setQ}
-              placeholder="Search"
-              placeholderTextColor={tokens.textMuted}
-              autoFocus
-            />
-          </View>
+          {searchable ? (
+            <View style={[styles.input, styles.dateRow, { backgroundColor: tokens.fill, marginBottom: spacing[3] }]}>
+              <MagnifyingGlass size={18} color={tokens.textMuted} />
+              <TextInput
+                style={[styles.choiceText, { color: tokens.text, paddingVertical: 0 }]}
+                value={q}
+                onChangeText={setQ}
+                placeholder="Search"
+                placeholderTextColor={tokens.textMuted}
+                autoFocus
+              />
+            </View>
+          ) : null}
           <FlatList
             data={list}
-            keyExtractor={(s) => s}
+            keyExtractor={(o) => o.value}
             keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => {
-                  onChange(item);
-                  setOpen(false);
-                  setQ('');
-                }}
-                style={({ pressed }) => [styles.sheetRow, pressed && { backgroundColor: tokens.pressed }]}
-              >
-                <Text style={[styles.choiceText, { color: item === value ? tokens.accent : tokens.text }]}>{item}</Text>
-                {item === value ? <CheckCircle size={22} color={tokens.accent} weight="fill" /> : null}
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const on = item.value === value;
+              return (
+                <Pressable
+                  onPress={() => {
+                    onChange(item.value);
+                    close();
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: on }}
+                  style={({ pressed }) => [styles.sheetRow, pressed && { backgroundColor: tokens.pressed }]}
+                >
+                  <Text style={[styles.choiceText, { color: on ? tokens.accent : tokens.text }]}>{item.label}</Text>
+                  {on ? <CheckCircle size={22} color={tokens.accent} weight="fill" /> : null}
+                </Pressable>
+              );
+            }}
           />
         </View>
       </Modal>
@@ -466,11 +526,17 @@ const styles = StyleSheet.create({
   ratingCell: { width: 44, height: 44, borderRadius: borderRadius.lg, alignItems: 'center', justifyContent: 'center' },
   section: { marginTop: spacing[2], marginBottom: spacing[4] },
   sectionTitle: { fontSize: typography.fontSize.lg, ...font('heading') },
-  sheet: { flex: 1, padding: spacing[4] },
-  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[4] },
+  // Android shows the sheet full screen, so clear the status bar there.
+  sheet: {
+    flex: 1,
+    paddingHorizontal: spacing[5],
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) + spacing[4] : spacing[6],
+    paddingBottom: spacing[8],
+  },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], marginBottom: spacing[5] },
   sheetRow: {
-    minHeight: 50,
-    paddingHorizontal: spacing[2],
+    minHeight: 52,
+    paddingHorizontal: spacing[4],
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],

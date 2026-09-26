@@ -1245,6 +1245,7 @@ export class RegistrationsService {
             id: true,
             seatIndex: true,
             whatsappInviteSentAt: true,
+            whatsappJoinedAt: true,
             memberDetails: true,
             claimedBy: {
               select: { mobileNumber: true, fullName: true, username: true },
@@ -1304,7 +1305,7 @@ export class RegistrationsService {
 
       // Group members (seats 2..N): tracked per seat.
       const memberSeats = reg.groupSeats.filter(
-        (s) => s.seatIndex !== 1 && !s.whatsappInviteSentAt,
+        (s) => s.seatIndex !== 1 && !s.whatsappInviteSentAt && !s.whatsappJoinedAt,
       );
       eligible += memberSeats.length;
       const memberResult = await this.sendInviteToGroupMemberSeats(memberSeats, {
@@ -1344,7 +1345,11 @@ export class RegistrationsService {
       },
     });
     if (!reg) throw new NotFoundException('Registration not found');
-    if (reg.userId !== userId) throw new ForbiddenException('Unauthorized');
+    // The lead owns the registration; a group member holds a claimed seat on
+    // it and gets the same invite on their ticket (they used to get a 403).
+    const seat =
+      reg.userId === userId ? null : await this.claimedSeatOf(userId, registrationId);
+    if (reg.userId !== userId && !seat) throw new ForbiddenException('Unauthorized');
 
     const { inviteUrl, isCommunity } = resolveRegistrationWhatsAppInvite({
       ticketTypeGroupUrl: reg.ticketType?.whatsappGroupUrl,
@@ -1356,14 +1361,23 @@ export class RegistrationsService {
       registrationId: reg.id,
       inviteUrl,
       isCommunity,
-      joined: reg.whatsappGroupJoinedAt != null,
+      joined: seat ? seat.whatsappJoinedAt != null : reg.whatsappGroupJoinedAt != null,
     };
+  }
+
+  /** The seat this user claimed on someone else's group registration, if any. */
+  private claimedSeatOf(userId: string, registrationId: string) {
+    return this.prisma.groupSeat.findFirst({
+      where: { registrationId, claimedByUserId: userId, status: GroupSeatStatus.CLAIMED },
+      select: { id: true, whatsappJoinedAt: true },
+    });
   }
 
   /**
    * Attendee self-marks (or un-marks) that they've joined the event's WhatsApp
    * group from their ticket. This is the only real "joined" signal we have, and
    * setting it suppresses any future curator blast for this registration.
+   * A group member marks their own seat instead.
    */
   async setWhatsappGroupJoined(
     userId: string,
@@ -1375,7 +1389,17 @@ export class RegistrationsService {
       select: { id: true, userId: true },
     });
     if (!reg) throw new NotFoundException('Registration not found');
-    if (reg.userId !== userId) throw new ForbiddenException('Unauthorized');
+
+    if (reg.userId !== userId) {
+      const seat = await this.claimedSeatOf(userId, registrationId);
+      if (!seat) throw new ForbiddenException('Unauthorized');
+      const updated = await this.prisma.groupSeat.update({
+        where: { id: seat.id },
+        data: { whatsappJoinedAt: joined ? new Date() : null },
+        select: { whatsappJoinedAt: true },
+      });
+      return { id: reg.id, whatsappGroupJoinedAt: updated.whatsappJoinedAt };
+    }
 
     const updated = await this.prisma.eventRegistration.update({
       where: { id: registrationId },
