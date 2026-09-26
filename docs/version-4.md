@@ -205,7 +205,7 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 
 **C. Store setup**
 - [x] Y · Apple portal: App Clip ID + App Group created. Prebuild verified 4 signed targets: `com.unifesto.app` (groups `group.com.unifesto.app` + `.onesignal`, appclip link), `.Clip` (parent app, appclips domains, group), `.widgets` (group), `.OneSignalNotificationServiceExtension` (group `.onesignal`)
-- [ ] Y · Play: service-account key for `eas submit` (`google-play-service-account.json` is missing locally; upload it to EAS instead: `eas credentials`)
+- [x] Y · Play: service-account key for `eas submit` at `mobile/google-play-service-account.json` (gitignored), `play-console-analytics@` granted Release to production + testing tracks
 - [x] C · EAS production env checked: API URL, Cognito, Google IDs, OneSignal, Maps key, `GOOGLE_SERVICES_JSON` present
 - [ ] Y · App Store privacy labels: camera, microphone, photos, location (when in use), notifications, contact info (email/phone/name), identifiers (push), usage/crash data (Crashlytics)
 - [ ] Y · Play Data safety form, same data types as above
