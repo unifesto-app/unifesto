@@ -20,6 +20,7 @@ import { ImageCropHost } from '../src/components/ui/ImageCropper';
 import { OfflineBanner } from '../src/components/ui/OfflineBanner';
 import ConsentManager from '../src/services/ConsentManager';
 import { checkForAppUpdate } from '../src/lib/appUpdate';
+import { startOtaUpdateChecks } from '../src/lib/otaUpdate';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { applyGlobalFont } from '../src/theme/globalFont';
 
@@ -215,6 +216,9 @@ export default function RootLayout() {
       checkForAppUpdate();
     }
   }, [appIsReady]);
+
+  // OTA JS updates: also check when returning to the foreground (see otaUpdate.ts).
+  useEffect(() => startOtaUpdateChecks(), []);
 
   // Don't render anything until app is ready
   if (!appIsReady) {

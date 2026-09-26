@@ -23,6 +23,9 @@ describe('ConfigValidationService', () => {
     process.env.REDIS_HOST = 'localhost';
     process.env.REDIS_PORT = '6379';
     process.env.REDIS_TLS = 'true';
+    process.env.RAZORPAY_KEY_ID = 'rzp_test_key';
+    process.env.RAZORPAY_KEY_SECRET = 'test-secret';
+    process.env.RAZORPAY_WEBHOOK_SECRET = 'test-webhook-secret';
     process.env.DATABASE_URL =
       'postgresql://user:pass@localhost:5432/db?sslmode=require';
   };
