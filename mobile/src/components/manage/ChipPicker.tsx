@@ -1,0 +1,46 @@
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTokens } from '../../context/ThemeContext';
+import { borderRadius, spacing } from '../../theme/spacing';
+import { typography } from '../../theme/typography';
+import { font } from '../../theme/fontHelpers';
+
+interface ChipPickerProps<V extends string> {
+  options: { value: V; label: string }[];
+  value: V | '';
+  onChange: (v: V | '') => void;
+  /** Tapping the selected chip clears it (optional fields like category). */
+  clearable?: boolean;
+}
+
+/** Wrapping row of single-select chips, for lists too long for SegmentedTabs. */
+export default function ChipPicker<V extends string>({ options, value, onChange, clearable }: ChipPickerProps<V>) {
+  const tokens = useTokens();
+  return (
+    <View style={styles.wrap}>
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(on && clearable ? '' : o.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: on }}
+            style={({ pressed }) => [
+              styles.chip,
+              { backgroundColor: on ? tokens.accent : tokens.elevated, transform: [{ scale: pressed ? 0.96 : 1 }] },
+            ]}
+          >
+            <Text style={[styles.label, { color: on ? tokens.accentFg : tokens.text }]}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
+  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
+  label: { fontSize: typography.fontSize.sm, ...font('medium') },
+});

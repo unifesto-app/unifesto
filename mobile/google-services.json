@@ -1,0 +1,51 @@
+{
+  "project_info": {
+    "project_number": "1013647520532",
+    "firebase_url": "https://unifesto-default-rtdb.firebaseio.com",
+    "project_id": "unifesto",
+    "storage_bucket": "unifesto.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1013647520532:android:3813bd5e0a434f645b4801",
+        "android_client_info": {
+          "package_name": "com.unifesto.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1013647520532-ds2o5c38tqfg2knrg365s9gp04mqtp3e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.unifesto.app",
+            "certificate_hash": "742031ed2bb171c373eb04fb156a809c0a7d4241"
+          }
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClyM3KtS4_0zbhBIUsiOMPk_cxhgGBYFc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1013647520532-fj6aod1fcemijvas2e8fgjgp7n7mdicj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1013647520532-gou7njeh7n4655u3g0iual4rh02bukqc.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.unifesto.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

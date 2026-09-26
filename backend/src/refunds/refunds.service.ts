@@ -1,0 +1,719 @@
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { EmailService } from '../email/email.service';
+import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import {
+  CreateRefundRequestDto,
+  CuratorReviewDto,
+  AdminDecisionDto,
+  AdminRefundDto,
+} from './dto';
+import {
+  RefundStatus,
+  RefundRequesterRole,
+  RefundMethod,
+  PaymentStatus,
+  RegistrationStatus,
+  TicketStatus,
+  EventStatus,
+  Prisma,
+} from '@prisma/client';
+import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import Razorpay from 'razorpay';
+
+/** Round to 2 decimal places (money). */
+function money(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+const OPEN_STATUSES: RefundStatus[] = [
+  RefundStatus.PENDING_CURATOR,
+  RefundStatus.PENDING_ADMIN,
+];
+
+@Injectable()
+export class RefundsService {
+  private readonly logger = new Logger(RefundsService.name);
+  private readonly razorpay: Razorpay;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly email: EmailService,
+    private readonly whatsapp: WhatsAppService,
+  ) {
+    // Refunds use standard Razorpay Checkout (payments.refund) — the same
+    // integration that collects ticket payments. This is unrelated to RazorpayX.
+    this.razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID!,
+      key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    });
+  }
+
+  // --- Money model -----------------------------------------------------------
+  // basePrice = totalAmount - processingFee   (ticket price; the only refundable part)
+  // Refunds are returned to the original payment method via Razorpay charge-back.
+  // The processing fee is never refunded.
+
+  private basePrice(reg: {
+    totalAmount: unknown;
+    processingFee: unknown;
+  }): number {
+    return money(Number(reg.totalAmount) - Number(reg.processingFee));
+  }
+
+  /** Ensure the user is an organiser/co-organiser of the event's space. */
+  private async assertOrganiser(userId: string, eventId: string): Promise<void> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { spaceId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    const roles = await this.prisma.userRole.findMany({
+      where: {
+        userId,
+        spaceId: event.spaceId,
+        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
+      },
+      select: { id: true },
+    });
+    if (roles.length === 0) {
+      throw new ForbiddenException('Not an organiser of this event');
+    }
+  }
+
+  // --- Notifications --------------------------------------------------------
+  // All notification helpers are best-effort: they swallow their own errors so a
+  // failed email/WhatsApp never blocks or reverses the refund decision itself.
+
+  private async userContact(
+    userId: string,
+  ): Promise<{ name: string; email: string | null; mobile: string | null }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        fullName: true,
+        username: true,
+        mobileNumber: true,
+        deletedAt: true,
+        identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
+      },
+    });
+    return {
+      name: user?.fullName || user?.username || 'there',
+      email: user?.identities?.[0]?.email ?? null,
+      // A closed account's number is a `deleted-…` placeholder; don't message it.
+      mobile: user && !user.deletedAt ? user.mobileNumber : null,
+    };
+  }
+
+  private emailHtml(heading: string, body: string): string {
+    return `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+        <h2 style="margin:0 0 12px">${heading}</h2>
+        ${body}
+        <p style="margin-top:24px;color:#6b7280;font-size:12px">Unifesto</p>
+      </div>`;
+  }
+
+  private notifyEmail(email: string | null, subject: string, html: string): void {
+    if (!email) return;
+    this.email
+      .sendRawEmail(email, subject, html)
+      .catch((err) => this.logger.error(`Refund email failed to ${email}`, err));
+  }
+
+  private notifyAdmin(subject: string, html: string): void {
+    const adminEmail = process.env.ADMIN_EMAIL || 'aws@unifesto.app';
+    this.notifyEmail(adminEmail, subject, html);
+  }
+
+  // --- Create ---------------------------------------------------------------
+
+  async createRequest(userId: string, dto: CreateRefundRequestDto) {
+    const registration = await this.prisma.eventRegistration.findUnique({
+      where: { id: dto.registrationId },
+      include: {
+        event: {
+          select: { id: true, spaceId: true, title: true, createdBy: true, status: true },
+        },
+      },
+    });
+    if (!registration) throw new NotFoundException('Registration not found');
+
+    // Determine who is raising the request.
+    let requesterRole: RefundRequesterRole;
+    let initialStatus: RefundStatus;
+    if (registration.userId === userId) {
+      requesterRole = RefundRequesterRole.ATTENDEE;
+      initialStatus = RefundStatus.PENDING_CURATOR;
+    } else {
+      // Organisers can raise on an attendee's behalf; this skips their own
+      // verification stage and goes straight to admin.
+      await this.assertOrganiser(userId, registration.eventId);
+      requesterRole = RefundRequesterRole.CURATOR;
+      initialStatus = RefundStatus.PENDING_ADMIN;
+    }
+
+    // Once the event has ended, attendees can no longer self-request a refund
+    // (mirrors the mobile gate). Organiser/admin-raised refunds are left open so
+    // post-event disputes and complaints can still be resolved.
+    if (
+      requesterRole === RefundRequesterRole.ATTENDEE &&
+      registration.event?.status === EventStatus.COMPLETED
+    ) {
+      throw new BadRequestException(
+        'This event has ended, so refunds can no longer be requested',
+      );
+    }
+
+    // Must be a paid registration with base left to refund.
+    if (
+      registration.paymentStatus !== PaymentStatus.PAID &&
+      registration.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new BadRequestException('Only paid registrations can be refunded');
+    }
+    // Free (or ₹0-after-discount) registrations are marked PAID but have no
+    // base to refund — say so rather than claiming they were already refunded.
+    const base = this.basePrice(registration);
+    if (base <= 0) {
+      throw new BadRequestException(
+        'This is a free registration, so there is nothing to refund',
+      );
+    }
+    const remaining = money(base - Number(registration.refundedAmount));
+    if (remaining <= 0) {
+      throw new BadRequestException('This registration is already fully refunded');
+    }
+
+    // One open request at a time per registration.
+    const existing = await this.prisma.refundRequest.findFirst({
+      where: { registrationId: dto.registrationId, status: { in: OPEN_STATUSES } },
+    });
+    if (existing) {
+      throw new ConflictException('A refund request is already open for this registration');
+    }
+
+    if (dto.requestedAmount != null) {
+      const amt = money(dto.requestedAmount);
+      if (amt <= 0) throw new BadRequestException('Requested amount must be positive');
+      if (amt > remaining) {
+        throw new BadRequestException(`Requested amount exceeds the refundable base of ₹${remaining}`);
+      }
+    }
+
+    const created = await this.prisma.refundRequest.create({
+      data: {
+        registrationId: dto.registrationId,
+        eventId: registration.eventId,
+        requestedById: userId,
+        requesterRole,
+        supportTicketId: dto.supportTicketId ?? null,
+        reason: dto.reason,
+        requestedAmount: dto.requestedAmount != null ? money(dto.requestedAmount) : null,
+        refundMethod: RefundMethod.BANK,
+        status: initialStatus,
+      },
+    });
+
+    const eventTitle = registration.event.title;
+    if (requesterRole === RefundRequesterRole.ATTENDEE) {
+      // Confirm to the attendee, and alert the organiser to verify.
+      const attendee = await this.userContact(registration.userId);
+      this.notifyEmail(
+        attendee.email,
+        `Refund request received — ${eventTitle}`,
+        this.emailHtml(
+          'We received your refund request',
+          `<p>Hi ${attendee.name}, your refund request for <strong>${eventTitle}</strong> has been sent to the organiser for review. We'll email you once there's an update.</p>`,
+        ),
+      );
+      const organiser = await this.userContact(registration.event.createdBy);
+      this.notifyEmail(
+        organiser.email,
+        `Refund request needs review — ${eventTitle}`,
+        this.emailHtml(
+          'A refund request needs your review',
+          `<p>An attendee requested a refund for <strong>${eventTitle}</strong>.</p><p>Reason: &ldquo;${dto.reason}&rdquo;</p><p>Review it in your dashboard to forward it to admin or reject it.</p>`,
+        ),
+      );
+    } else {
+      // Organiser-initiated goes straight to admin.
+      this.notifyAdmin(
+        `Refund request needs a decision — ${eventTitle}`,
+        this.emailHtml(
+          'A refund request needs an admin decision',
+          `<p>An organiser raised a refund for <strong>${eventTitle}</strong>.</p><p>Reason: &ldquo;${dto.reason}&rdquo;</p>`,
+        ),
+      );
+    }
+
+    return created;
+  }
+
+  // --- Organiser verification -----------------------------------------------
+
+  async curatorReview(userId: string, requestId: string, dto: CuratorReviewDto) {
+    const request = await this.prisma.refundRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        registration: { select: { userId: true } },
+        event: { select: { title: true } },
+      },
+    });
+    if (!request) throw new NotFoundException('Refund request not found');
+    if (request.status !== RefundStatus.PENDING_CURATOR) {
+      throw new BadRequestException(`Request is ${request.status}, not awaiting organiser review`);
+    }
+    await this.assertOrganiser(userId, request.eventId);
+
+    if (dto.action === 'REJECT' && !dto.note?.trim()) {
+      throw new BadRequestException('A reason is required to reject a refund request');
+    }
+
+    const updated = await this.prisma.refundRequest.update({
+      where: { id: requestId },
+      data: {
+        status: dto.action === 'FORWARD' ? RefundStatus.PENDING_ADMIN : RefundStatus.REJECTED,
+        curatorNote: dto.note?.trim() || null,
+        curatorActionBy: userId,
+        curatorActionAt: new Date(),
+      },
+    });
+
+    const eventTitle = request.event.title;
+    if (dto.action === 'FORWARD') {
+      this.notifyAdmin(
+        `Refund forwarded for decision — ${eventTitle}`,
+        this.emailHtml(
+          'A refund request needs an admin decision',
+          `<p>An organiser verified and forwarded a refund for <strong>${eventTitle}</strong>.</p>${
+            dto.note?.trim() ? `<p>Organiser note: &ldquo;${dto.note.trim()}&rdquo;</p>` : ''
+          }`,
+        ),
+      );
+    } else {
+      const payer = await this.userContact(request.registration.userId);
+      this.notifyEmail(
+        payer.email,
+        `Refund request declined — ${eventTitle}`,
+        this.emailHtml(
+          'Your refund request was declined',
+          `<p>Hi ${payer.name}, the organiser reviewed your refund request for <strong>${eventTitle}</strong> and was unable to approve it.</p>${
+            dto.note?.trim() ? `<p>Reason: &ldquo;${dto.note.trim()}&rdquo;</p>` : ''
+          }`,
+        ),
+      );
+      void this.whatsapp.sendRefundUpdate(payer.mobile ?? '', {
+        userName: payer.name,
+        eventTitle,
+        status: 'declined',
+      });
+    }
+
+    return updated;
+  }
+
+  // --- Admin decision -------------------------------------------------------
+
+  async adminDecide(adminId: string, requestId: string, dto: AdminDecisionDto) {
+    const request = await this.prisma.refundRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        registration: { include: { event: { select: { title: true } } } },
+      },
+    });
+    if (!request) throw new NotFoundException('Refund request not found');
+    if (request.status !== RefundStatus.PENDING_ADMIN) {
+      throw new BadRequestException(`Request is ${request.status}, not awaiting admin decision`);
+    }
+
+    if (dto.action === 'REJECT') {
+      const rejected = await this.prisma.refundRequest.update({
+        where: { id: requestId },
+        data: {
+          status: RefundStatus.REJECTED,
+          adminNote: dto.note?.trim() || null,
+          adminActionBy: adminId,
+          adminActionAt: new Date(),
+        },
+      });
+      const payer = await this.userContact(request.registration.userId);
+      this.notifyEmail(
+        payer.email,
+        `Refund request declined — ${request.registration.event.title}`,
+        this.emailHtml(
+          'Your refund request was declined',
+          `<p>Hi ${payer.name}, after review your refund request for <strong>${request.registration.event.title}</strong> could not be approved.</p>${
+            dto.note?.trim() ? `<p>Reason: &ldquo;${dto.note.trim()}&rdquo;</p>` : ''
+          }`,
+        ),
+      );
+      void this.whatsapp.sendRefundUpdate(payer.mobile ?? '', {
+        userName: payer.name,
+        eventTitle: request.registration.event.title,
+        status: 'declined',
+      });
+      return rejected;
+    }
+
+    // APPROVE → issue the refund via the shared settlement path.
+    return this.settleApprovedRefund(request, adminId, dto.approvedAmount, dto.note);
+  }
+
+  /**
+   * Move the money and record the outcome for an approved refund. Shared by the
+   * admin's two-stage decision (`adminDecide`) and the admin-initiated refund
+   * (`adminRefund`). Refunds the base only, cash-first, and cancels the
+   * registration once fully refunded. Assumes the caller has confirmed the
+   * request is in a state that may be approved.
+   */
+  private async settleApprovedRefund(
+    request: Prisma.RefundRequestGetPayload<{
+      include: { registration: { include: { event: { select: { title: true } } } } };
+    }>,
+    adminId: string,
+    approvedAmount: number | null | undefined,
+    note: string | null | undefined,
+  ) {
+    const requestId = request.id;
+    const reg = request.registration;
+    const base = this.basePrice(reg);
+    const alreadyRefunded = Number(reg.refundedAmount);
+    const maxRefundable = money(base - alreadyRefunded);
+    if (maxRefundable <= 0) {
+      throw new BadRequestException('This registration is already fully refunded');
+    }
+
+    const amount = approvedAmount != null ? money(approvedAmount) : maxRefundable;
+    if (amount <= 0) throw new BadRequestException('Refund amount must be positive');
+    if (amount > maxRefundable) {
+      throw new BadRequestException(`Maximum refundable base is ₹${maxRefundable}`);
+    }
+
+    // Refunds return the cash the attendee paid (base minus the non-refundable
+    // processing fee), clamped to whatever cash is still refundable across
+    // cumulative refunds.
+    const cashBaseTotal = money(Number(reg.razorpayAmount) - Number(reg.processingFee));
+    const cashRemaining = Math.max(0, money(cashBaseTotal - alreadyRefunded));
+    const cashPortion = money(Math.min(amount, cashRemaining));
+
+    // Return the cash portion via Razorpay charge-back to the original payment
+    // method. Done before persisting (external/irreversible-ish first).
+    let razorpayRefundId: string | null = null;
+    if (cashPortion > 0) {
+      if (!reg.paymentId) {
+        throw new BadRequestException('No payment id on registration; cannot issue a cash refund');
+      }
+      try {
+        const refund = await this.razorpay.payments.refund(reg.paymentId, {
+          amount: Math.round(cashPortion * 100),
+          notes: { registrationId: reg.id, refundRequestId: requestId },
+        } as any);
+        razorpayRefundId = (refund as any)?.id ?? null;
+      } catch (err: any) {
+        this.logger.error(`Razorpay refund failed for request ${requestId}`, err);
+        throw new BadRequestException(
+          err?.error?.description || 'Razorpay refund failed; nothing was charged back',
+        );
+      }
+    }
+
+    // Persist: registration totals + (if fully refunded) cancellation, and the request.
+    const newRefunded = money(alreadyRefunded + amount);
+    const fullyRefunded = newRefunded >= base;
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.eventRegistration.update({
+          where: { id: reg.id },
+          data: {
+            refundedAmount: newRefunded,
+            paymentStatus: fullyRefunded
+              ? PaymentStatus.REFUNDED
+              : PaymentStatus.PARTIALLY_REFUNDED,
+            ...(fullyRefunded
+              ? { status: RegistrationStatus.CANCELLED, cancelledAt: new Date() }
+              : {}),
+          },
+        });
+
+        if (fullyRefunded) {
+          // Release the seats and void tickets, mirroring a cancellation. A
+          // group occupies groupSize seats, so release that many (not 1).
+          const seats = reg.groupSize ?? reg.quantity;
+          await tx.event.update({
+            where: { id: reg.eventId },
+            data: { registeredCount: { decrement: seats } },
+          });
+          if (reg.ticketTypeId) {
+            await tx.eventTicketType.update({
+              where: { id: reg.ticketTypeId },
+              data: { soldCount: { decrement: seats } },
+            });
+          }
+          await tx.eventTicket.updateMany({
+            where: { registrationId: reg.id },
+            data: { status: TicketStatus.CANCELLED },
+          });
+        }
+
+        await tx.refundRequest.update({
+          where: { id: requestId },
+          data: {
+            status: RefundStatus.APPROVED,
+            adminNote: note?.trim() || null,
+            adminActionBy: adminId,
+            adminActionAt: new Date(),
+            approvedAmount: amount,
+            cashRefunded: cashPortion,
+            razorpayRefundId,
+          },
+        });
+      });
+    } catch (err) {
+      // Money already moved but DB write failed — surface loudly for manual repair.
+      this.logger.error(
+        `CRITICAL: refund ${requestId} settled (cash ₹${cashPortion}, razorpay ${razorpayRefundId}) but DB update failed`,
+        err,
+      );
+      throw err;
+    }
+
+    this.logger.log(
+      `Refund ${requestId} approved: ₹${amount} (cash ₹${cashPortion})${fullyRefunded ? ' — registration cancelled' : ''}`,
+    );
+
+    const eventTitle = request.registration.event.title;
+    const payer = await this.userContact(reg.userId);
+    const cashLine =
+      cashPortion > 0
+        ? `<p>₹${money(cashPortion)} will be refunded to your original payment method within 5–7 business days.</p>`
+        : '';
+    this.notifyEmail(
+      payer.email,
+      `Refund approved — ${eventTitle}`,
+      this.emailHtml(
+        'Your refund has been approved',
+        `<p>Hi ${payer.name}, your refund of <strong>${money(amount)}</strong> for <strong>${eventTitle}</strong> has been approved.</p>${cashLine}${
+          fullyRefunded ? '<p>Your registration has been cancelled.</p>' : ''
+        }<p style="color:#6b7280;font-size:12px">The booking processing fee is non-refundable.</p>`,
+      ),
+    );
+    void this.whatsapp.sendRefundUpdate(payer.mobile ?? '', {
+      userName: payer.name,
+      eventTitle,
+      status: 'approved',
+      detail: `₹${money(amount)}`,
+    });
+
+    return this.prisma.refundRequest.findUnique({ where: { id: requestId } });
+  }
+
+  // --- Admin-initiated refund -----------------------------------------------
+
+  /**
+   * Admin raises and settles a refund in one step, bypassing the
+   * attendee→organiser stages. Records the request with requesterRole ADMIN for
+   * the audit trail, then settles it immediately through the shared path. Base
+   * only, cash-first; the processing fee is never refunded.
+   */
+  async adminRefund(adminId: string, dto: AdminRefundDto) {
+    const registration = await this.prisma.eventRegistration.findUnique({
+      where: { id: dto.registrationId },
+      select: {
+        eventId: true,
+        paymentStatus: true,
+        totalAmount: true,
+        processingFee: true,
+        refundedAmount: true,
+      },
+    });
+    if (!registration) throw new NotFoundException('Registration not found');
+
+    if (
+      registration.paymentStatus !== PaymentStatus.PAID &&
+      registration.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED
+    ) {
+      throw new BadRequestException('Only paid registrations can be refunded');
+    }
+    const remaining = money(
+      this.basePrice(registration) - Number(registration.refundedAmount),
+    );
+    if (remaining <= 0) {
+      throw new BadRequestException('This registration is already fully refunded');
+    }
+    if (dto.approvedAmount != null) {
+      const amt = money(dto.approvedAmount);
+      if (amt <= 0) throw new BadRequestException('Refund amount must be positive');
+      if (amt > remaining) {
+        throw new BadRequestException(`Refund amount exceeds the refundable base of ₹${remaining}`);
+      }
+    }
+
+    // One open request at a time per registration — don't collide with an
+    // attendee/organiser request already in flight.
+    const existing = await this.prisma.refundRequest.findFirst({
+      where: { registrationId: dto.registrationId, status: { in: OPEN_STATUSES } },
+    });
+    if (existing) {
+      throw new ConflictException('A refund request is already open for this registration');
+    }
+
+    const request = await this.prisma.refundRequest.create({
+      data: {
+        registrationId: dto.registrationId,
+        eventId: registration.eventId,
+        requestedById: adminId,
+        requesterRole: RefundRequesterRole.ADMIN,
+        reason: dto.reason,
+        requestedAmount: dto.approvedAmount != null ? money(dto.approvedAmount) : null,
+        status: RefundStatus.PENDING_ADMIN,
+      },
+      include: { registration: { include: { event: { select: { title: true } } } } },
+    });
+
+    return this.settleApprovedRefund(request, adminId, dto.approvedAmount, dto.reason);
+  }
+
+  // --- Reads ----------------------------------------------------------------
+
+  async getMyRequests(userId: string, page = 1, limit = 20) {
+    return this.paginate({ requestedById: userId }, page, limit);
+  }
+
+  /**
+   * Requests a curator can act on: PENDING_CURATOR for their events.
+   *
+   * When `spaceId` is given (the space the operator is currently viewing), the
+   * queue is limited to that space's events only. The space is still
+   * intersected with the caller's own admin spaces, so passing another space's
+   * id can never surface refunds the caller isn't entitled to.
+   */
+  async getOrganiserRequests(
+    userId: string,
+    status?: RefundStatus,
+    page = 1,
+    limit = 20,
+    spaceId?: string,
+  ) {
+    const eventIds = await this.organiserEventIds(userId, spaceId);
+    if (eventIds.length === 0) {
+      return { requests: [], pagination: { page, limit, total: 0, totalPages: 0 } };
+    }
+    return this.paginate(
+      { eventId: { in: eventIds }, ...(status ? { status } : {}) },
+      page,
+      limit,
+    );
+  }
+
+  async getAllRequests(status?: RefundStatus, page = 1, limit = 20) {
+    return this.paginate(status ? { status } : {}, page, limit);
+  }
+
+  async getRequestById(userId: string, id: string) {
+    const request = await this.prisma.refundRequest.findUnique({
+      where: { id },
+      include: {
+        registration: {
+          include: {
+            user: { select: { id: true, fullName: true, username: true } },
+            ticketType: { select: { name: true } },
+          },
+        },
+        event: { select: { id: true, title: true, slug: true } },
+        requestedBy: { select: { id: true, fullName: true, username: true } },
+      },
+    });
+    if (!request) throw new NotFoundException('Refund request not found');
+
+    // Visible to the attendee/requester, an organiser of the event, or an admin.
+    const isOwner =
+      request.registration.userId === userId || request.requestedById === userId;
+    if (!isOwner) {
+      const isAdmin = await this.prisma.userRole.count({
+        where: { userId, role: { code: 'ADMIN' } },
+      });
+      if (!isAdmin) {
+        // Throws ForbiddenException if the user isn't an organiser of the event.
+        await this.assertOrganiser(userId, request.eventId);
+      }
+    }
+    return request;
+  }
+
+  private async organiserEventIds(
+    userId: string,
+    spaceId?: string,
+  ): Promise<string[]> {
+    const roles = await this.prisma.userRole.findMany({
+      where: {
+        userId,
+        spaceId: { not: null },
+        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
+      },
+      select: { spaceId: true },
+    });
+    let spaceIds = roles.map((r) => r.spaceId).filter((s): s is string => !!s);
+    // Narrow to the requested space, but only if the caller actually administers
+    // it — an unentitled spaceId collapses the set to empty rather than leaking.
+    if (spaceId) {
+      spaceIds = spaceIds.filter((s) => s === spaceId);
+    }
+    if (spaceIds.length === 0) return [];
+    const events = await this.prisma.event.findMany({
+      where: { spaceId: { in: spaceIds } },
+      select: { id: true },
+    });
+    return events.map((e) => e.id);
+  }
+
+  private async paginate(
+    where: Prisma.RefundRequestWhereInput,
+    page: number,
+    limit: number,
+  ) {
+    const [requests, total] = await Promise.all([
+      this.prisma.refundRequest.findMany({
+        where,
+        include: {
+          registration: {
+            select: {
+              id: true,
+              totalAmount: true,
+              processingFee: true,
+              refundedAmount: true,
+              paymentStatus: true,
+              user: { select: { id: true, fullName: true, username: true } },
+            },
+          },
+          event: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              space: { select: { id: true, name: true } },
+            },
+          },
+          requestedBy: { select: { id: true, fullName: true, username: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.refundRequest.count({ where }),
+    ]);
+    return {
+      requests,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+    };
+  }
+}

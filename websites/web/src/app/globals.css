@@ -1,0 +1,227 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ─── Unifesto Design Tokens ─────────────────────────────────────────── */
+:root {
+  /* Off-black canvas: reads as black on-device, but keeps depth and avoids
+     the flat, hollow feel of pure #000. Surfaces step up from here. */
+  --background: #050507;
+  --foreground: #ffffff;
+  --card: #0a0a0d;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0d;
+  --popover-foreground: #ffffff;
+  --primary: #3491ff;
+  --primary-bright: #0062ff;
+  --primary-foreground: #050507;
+  --secondary: #0a0a0d;
+  --secondary-foreground: #ffffff;
+  --muted: #0a0a0d;
+  --muted-foreground: #ffffff;
+  --accent: #3491ff;
+  --accent-foreground: #050507;
+  --destructive: #3491ff;
+  --border: rgba(52, 145, 255, 0.3);
+  --input: rgba(52, 145, 255, 0.2);
+  --ring: #3491ff;
+  --radius: 0.75rem;
+
+  /* Canvas token for opaque section surfaces (use `bg-canvas`). */
+  --canvas: #050507;
+
+  /* Legacy vars for backward compat */
+  --bg: #050507;
+  --panel: #0a0a0d;
+  --text: #ffffff;
+  --text-muted: #ffffff;
+}
+
+/* ─── Base Reset ─────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--canvas);
+  color: var(--foreground);
+  font-family: var(--font-agrandir), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Layered so Tailwind utilities (e.g. text-black on solid buttons) can
+   override it; unlayered, this reset beats every utility in the cascade. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+/* ─── Tailwind v4 Theme Mapping ──────────────────────────────────────── */
+@theme inline {
+  --font-sans: var(--font-agrandir);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-canvas: var(--canvas);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.75);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.5);
+  --radius-2xl: calc(var(--radius) * 2);
+  --radius-3xl: calc(var(--radius) * 3);
+}
+
+/* ─── Marquee Animation ──────────────────────────────────────────────── */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 22s linear infinite;
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+/* ─── Glow Pulse for CTA ─────────────────────────────────────────────── */
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(52, 145, 255, 0.4), 0 0 40px rgba(52, 145, 255, 0.15);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(0, 98, 255, 0.6), 0 0 60px rgba(0, 98, 255, 0.25);
+  }
+}
+
+/* ─── Float animation for hero ───────────────────────────────────────── */
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ─── Fade-in-up ─────────────────────────────────────────────────────── */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-delay-100 {
+  animation-delay: 0.1s;
+}
+
+.animate-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animate-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animate-delay-400 {
+  animation-delay: 0.4s;
+}
+
+.animate-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animate-delay-600 {
+  animation-delay: 0.6s;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ─── Agrandir Font Class ────────────────────────────────────────────── */
+/* Use font-agrandir in className; control weight with Tailwind font-*    */
+/* e.g. <h1 className="font-agrandir font-bold">                         */
+
+.font-agrandir {
+  font-family: var(--font-agrandir);
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────── */
+/* Respect users who ask for less motion: keep content visible, kill loops */
+@media (prefers-reduced-motion: reduce) {
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-in-up,
+  .animate-marquee {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

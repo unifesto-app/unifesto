@@ -1,0 +1,26 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "unifesto-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "websites/web", "run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "unifesto-apex",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "websites/apex", "run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "unifesto-space",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "websites/space", "run", "dev"],
+      "port": 3001,
+      "autoPort": true
+    }
+  ]
+}

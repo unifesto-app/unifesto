@@ -1,0 +1,61 @@
+# TLS is served from a Cloudflare Origin Certificate (mounted at
+# /etc/caddy/certs). Cloudflare proxies in front of the box — set the
+# Cloudflare SSL/TLS mode to "Full (strict)". No ACME/Let's Encrypt here.
+#
+# The origin cert must cover both `unifesto.app` and `*.unifesto.app`.
+
+(cf_origin) {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+}
+
+api.unifesto.app {
+	import cf_origin
+	# The backend runs multiple replicas (see docker-compose deploy.replicas).
+	# Resolve the `backend` service name against Docker's embedded DNS
+	# (127.0.0.11) on a refresh interval so Caddy sees every replica IP and
+	# round-robins across them, instead of pinning to one resolved address.
+	reverse_proxy {
+		dynamic a {
+			name backend
+			port 8080
+			refresh 10s
+			resolvers 127.0.0.11
+		}
+		lb_policy round_robin
+
+		# A failed dial (replica restarting / OOM-killed / not yet booted) is
+		# retried against another replica within this window instead of being
+		# surfaced to the client as a 502.
+		lb_try_duration 5s
+		lb_try_interval 250ms
+
+		# Passively eject a replica for 30s after it errors, and actively probe
+		# `GET /` so a wedged or recovering replica is only returned to rotation
+		# once it answers again. Together with the Docker healthcheck (which keeps
+		# unhealthy replicas out of DNS entirely) this stops traffic reaching a
+		# replica that can't serve it.
+		fail_duration 30s
+		health_uri /
+		health_interval 10s
+		health_timeout 5s
+		health_status 2xx
+	}
+}
+
+apex.unifesto.app {
+	import cf_origin
+	reverse_proxy apex:3000
+}
+
+# Operator console for space admins, curators and crew.
+space.unifesto.app {
+	import cf_origin
+	reverse_proxy space:3000
+}
+
+# Both hostnames serve `web`. The app's own middleware canonicalises
+# unifesto.app -> www.unifesto.app, so Caddy must NOT redirect here.
+unifesto.app, www.unifesto.app {
+	import cf_origin
+	reverse_proxy web:3000
+}

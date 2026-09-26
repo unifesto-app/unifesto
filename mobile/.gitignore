@@ -1,0 +1,60 @@
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# Native
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.ipa
+*.apk
+
+# EAS submit credentials
+google-play-service-account.json
+
+# Metro
+.metro-health-check*
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# TypeScript
+*.tsbuildinfo
+
+# Temporary files
+*.log
+*.tmp
+.cache/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Build
+build/
+android/
+ios/
+
+# Misc
+.expo-shared/
+.expo/

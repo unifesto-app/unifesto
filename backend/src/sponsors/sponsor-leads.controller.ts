@@ -1,0 +1,61 @@
+import {
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { User } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { SponsorsService } from './sponsors.service';
+
+/**
+ * Attendee-facing sponsor lead capture (P2). An attendee opts in to share their
+ * details with a specific sponsor at an event ("I'm interested"), can withdraw
+ * that consent, and can read which sponsors they've already opted into so the UI
+ * renders the right button state.
+ *
+ * Any authenticated user may call these; the service enforces that they hold a
+ * confirmed registration for the event and that the sponsor is collecting leads.
+ * Public sponsor *display* is not here — it rides along in the cached event
+ * detail (GET /events/:slug), so unauthenticated visitors see sponsors too.
+ */
+@ApiTags('Sponsor Leads')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('events/:eventId/sponsors')
+export class SponsorLeadsController {
+  constructor(private readonly sponsors: SponsorsService) {}
+
+  @Get('opt-ins')
+  @ApiOperation({ summary: "The sponsors the caller has opted into at this event" })
+  listMyOptIns(
+    @Param('eventId') eventId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.sponsors.listMyOptIns(user.id, eventId);
+  }
+
+  @Post(':eventSponsorId/opt-in')
+  @ApiOperation({ summary: 'Share my details with this sponsor' })
+  optIn(
+    @Param('eventId') eventId: string,
+    @Param('eventSponsorId') eventSponsorId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.sponsors.optIn(user.id, eventId, eventSponsorId);
+  }
+
+  @Delete(':eventSponsorId/opt-in')
+  @ApiOperation({ summary: 'Withdraw my details from this sponsor' })
+  withdrawOptIn(
+    @Param('eventId') eventId: string,
+    @Param('eventSponsorId') eventSponsorId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.sponsors.withdrawOptIn(user.id, eventId, eventSponsorId);
+  }
+}

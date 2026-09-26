@@ -1,0 +1,112 @@
+{
+  "name": "unifesto",
+  "version": "4.0.0",
+  "main": "./entry.js",
+  "scripts": {
+    "start": "expo start",
+    "start:expo-go": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "prebuild": "expo prebuild --clean",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "reset": "expo start --clear",
+    "reset:hard": "watchman watch-del-all && rm -rf node_modules/.cache && rm -rf .expo && expo start --dev-client --clear",
+    "version:set": "node scripts/version.js",
+    "version:patch": "node scripts/version.js patch",
+    "version:minor": "node scripts/version.js minor",
+    "version:major": "node scripts/version.js major"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react-native": "^1.0.16",
+    "@livekit/react-native": "^3.0.0",
+    "@livekit/react-native-expo-plugin": "^1.0.2",
+    "@livekit/react-native-webrtc": "^144.2.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "9.1.0",
+    "@react-native-firebase/analytics": "^26.4.0",
+    "@react-native-firebase/app": "^26.4.0",
+    "@react-native-firebase/crashlytics": "^26.4.0",
+    "@react-native-google-signin/google-signin": "^16.1.5",
+    "@react-native-masked-view/masked-view": "0.3.2",
+    "@react-native-menu/menu": "^2.0.0",
+    "@unifesto/unicon": "^1.0.13",
+    "expo": "~57.0.0",
+    "expo-apple-authentication": "~57.0.2",
+    "expo-application": "~57.0.3",
+    "expo-auth-session": "~57.0.12",
+    "expo-blur": "~57.0.3",
+    "expo-camera": "~57.0.5",
+    "expo-clipboard": "~57.0.2",
+    "expo-constants": "~57.0.19",
+    "expo-crypto": "~57.0.3",
+    "expo-dev-client": "~57.0.19",
+    "expo-device": "~57.0.2",
+    "expo-file-system": "~57.0.7",
+    "expo-font": "~57.0.4",
+    "expo-glass-effect": "~57.0.3",
+    "expo-image": "~57.0.5",
+    "expo-image-picker": "~57.0.19",
+    "expo-linear-gradient": "~57.0.2",
+    "expo-linking": "~57.0.10",
+    "expo-location": "~57.0.19",
+    "expo-navigation-bar": "~57.0.2",
+    "expo-notifications": "~57.0.20",
+    "expo-router": "~57.0.22",
+    "expo-secure-store": "~57.0.4",
+    "expo-sharing": "~57.0.21",
+    "expo-splash-screen": "~57.0.9",
+    "expo-status-bar": "~57.0.1",
+    "expo-store-review": "~57.0.3",
+    "expo-system-ui": "~57.0.4",
+    "expo-web-browser": "~57.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "livekit-client": "^2.22.3",
+    "lucide-react-native": "^1.47.0",
+    "onesignal-expo-plugin": "^2.7.1",
+    "phosphor-react-native": "^3.0.6",
+    "prop-types": "^15.8.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-image-colors": "^2.6.0",
+    "react-native-maps": "1.27.2",
+    "react-native-onesignal": "^5.5.14",
+    "react-native-qrcode-svg": "^6.3.26",
+    "react-native-razorpay": "^3.0.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-sfsymbols": "^1.2.2",
+    "react-native-svg": "15.15.4",
+    "react-native-view-shot": "5.1.0",
+    "react-native-webview": "13.16.1",
+    "react-native-worklets": "0.10.1",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.10",
+    "babel-preset-expo": "~57.0.0",
+    "expo-build-properties": "~57.0.21",
+    "typescript": "~6.0.3"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": [
+          "react-native-razorpay",
+          "react-native-sfsymbols"
+        ]
+      }
+    }
+  },
+  "private": true,
+  "overrides": {
+    "@livekit/react-native-expo-plugin": {
+      "@livekit/react-native": "$@livekit/react-native"
+    }
+  }
+}

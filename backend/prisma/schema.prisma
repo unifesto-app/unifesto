@@ -1,0 +1,4169 @@
+// Unifesto Authentication & User System
+// Prisma Schema - Single Source of Truth
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// =====================================================
+// ENUMS
+// =====================================================
+
+enum Provider {
+  GOOGLE
+  APPLE
+  EMAIL
+  PHONE
+
+  @@map("provider")
+}
+
+enum RoleScope {
+  PLATFORM
+  SPACE
+  EVENT
+
+  @@map("role_scope")
+}
+
+enum RoleCode {
+  ADMIN
+  // RETIRED (migration 20260811140000_retire_legacy_roles): ORGANISER /
+  // CO_ORGANISER were remapped to SPACE_ADMIN and VOLUNTEER to MEMBER/CREW; the
+  // `roles` rows and all assignments are gone. These three enum values are kept
+  // in place only because Postgres cannot drop an enum value without recreating
+  // the type — they are dead, and no code, role row, or assignment references
+  // them. Order is preserved to avoid enum drift.
+  ORGANISER
+  CO_ORGANISER
+  MEMBER
+  VOLUNTEER
+  // Event-scoped scorer for the competitive dashboard (hack.unifesto.app).
+  // Judges only ever see and write their own score cells for the events they
+  // are assigned to.
+  JUDGE
+  // Event-scoped reviewer for the competitive dashboard. Identical to JUDGE in
+  // every access rule (per-round panels, edit-until-close, curator-gated
+  // reveal) EXCEPT mentors submit no numeric scores — reviews/comments only.
+  MENTOR
+
+  // --- Spaces platform re-architecture (2026-08) ---
+  // Distinct codes so Role.code stays @unique and middleware can route people
+  // between apex (platform) and space.unifesto.app (space/event) by code alone.
+  SPACE_ADMIN // SPACE scope: runs a Space (plan/billing, members, money, creates events)
+  CURATOR // EVENT scope: owns one event end-to-end
+  CO_CURATOR // EVENT scope: helps run an event (no publish/cancel, no money)
+  CREW // EVENT scope: on-the-ground check-in / scanning only
+
+  @@map("role_code")
+}
+
+enum SpaceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+
+  @@map("space_status")
+}
+
+enum SpaceVisibility {
+  PUBLIC
+  PRIVATE
+
+  @@map("space_visibility")
+}
+
+enum SpaceType {
+  SUPER
+  REGULAR
+
+  @@map("space_type")
+}
+
+enum SubSpaceRequestType {
+  JOIN_SUPER // target already SUPER, just assign parentSpaceId
+  CONVERT_AND_JOIN // target is REGULAR, convert to SUPER then assign parentSpaceId
+  CONVERT_TO_SUPER // just convert a space from REGULAR to SUPER, no sub-space assignment
+  CONVERT_TO_REGULAR // convert a SUPER space back to REGULAR (only when it has no children)
+  REMOVE_CHILD // detach a child (subSpace) from its parent (targetSpace)
+  REMOVE_PARENT // detach this space (subSpace) from its parent (targetSpace)
+
+  @@map("sub_space_request_type")
+}
+
+enum OrgPlan {
+  STARTER
+  GROWTH
+  PRO
+  ENTERPRISE
+
+  @@map("org_plan")
+}
+
+enum BillingCycle {
+  MONTHLY
+  ANNUAL
+
+  @@map("billing_cycle")
+}
+
+// How an organiser is billed by the platform.
+enum BillingModel {
+  FREE // onboarded free — no platform fee, no subscription
+  REVENUE_SHARE // platform takes a % of event sales
+  SUBSCRIPTION // recurring plan fee (STARTER..ENTERPRISE)
+
+  @@map("billing_model")
+}
+
+enum EventType {
+  IN_PERSON
+  ONLINE
+  HYBRID
+
+  @@map("event_type")
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ONGOING
+  COMPLETED
+  CANCELLED
+
+  @@map("event_status")
+}
+
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+  SPACE_ONLY
+
+  @@map("event_visibility")
+}
+
+enum SupportTicketStatus {
+  OPEN // needs a staff reply
+  PENDING // waiting on the requester
+  RESOLVED // staff considers it done
+  CLOSED // archived / no further action
+
+  @@map("support_ticket_status")
+}
+
+enum SupportTicketPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+
+  @@map("support_ticket_priority")
+}
+
+enum SupportTicketCategory {
+  GENERAL
+  ACCOUNT
+  PAYMENTS
+  EVENTS
+  TICKETING
+  TECHNICAL
+  OTHER
+
+  @@map("support_ticket_category")
+}
+
+enum RegistrationType {
+  RSVP
+  TICKETED
+  MIXED
+
+  @@map("registration_type")
+}
+
+enum TicketKind {
+  RSVP // one-click, free registration
+  INDIVIDUAL // single attendee, free or paid
+  GROUP // multiple attendees under one registration
+
+  @@map("ticket_kind")
+}
+
+enum GroupPricingMode {
+  PER_GROUP // one flat price for the whole group
+  PER_PERSON // price multiplied by the number of people in the group
+
+  @@map("group_pricing_mode")
+}
+
+enum CouponDiscountType {
+  PERCENT // discountValue is a percentage (0-100) off the base ticket amount
+  FLAT // discountValue is a flat amount (in the ticket currency) off the base
+
+  @@map("coupon_discount_type")
+}
+
+/// Lifecycle of a single coupon application against one registration.
+///   RESERVED  = slot held while the buyer completes payment (counts toward the
+///               coupon's usage cap). Released if the payment is abandoned,
+///               fails, or the reservation TTL lapses.
+///   CONFIRMED = payment settled; the redemption is permanent.
+enum CouponRedemptionStatus {
+  RESERVED
+  CONFIRMED
+
+  @@map("coupon_redemption_status")
+}
+
+enum FormFieldType {
+  TEXT
+  TEXTAREA
+  SELECT
+  RADIO
+  CHECKBOX
+  NUMBER
+  EMAIL
+  PHONE
+
+  @@map("form_field_type")
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  PARTIALLY_REFUNDED
+  REFUNDED
+
+  @@map("payment_status")
+}
+
+enum RefundStatus {
+  PENDING_CURATOR
+  PENDING_ADMIN
+  APPROVED
+  REJECTED
+
+  @@map("refund_status")
+}
+
+/// How an approved refund's cash portion is returned. Refunds are always issued
+/// as a Razorpay charge-back to the original payment method (5–7 days).
+enum RefundMethod {
+  BANK
+
+  @@map("refund_method")
+}
+
+enum RefundRequesterRole {
+  ATTENDEE
+  CURATOR
+  ADMIN
+
+  @@map("refund_requester_role")
+}
+
+enum RegistrationStatus {
+  REGISTERED
+  CANCELLED
+  ATTENDED
+  NO_SHOW
+
+  @@map("registration_status")
+}
+
+/// Lifecycle of a waiting-list entry. Set only on registrations that entered
+/// via the waiting list; null on registrations that bought a seat directly.
+enum WaitlistStatus {
+  WAITING // queued, no seat held
+  OFFERED // organiser allowed them in; seat held until offerExpiresAt
+  CONVERTED // paid (or free) and now holds a real seat
+  EXPIRED // offer lapsed unpaid; seat released back to the pool
+  DECLINED // attendee turned the offer down; seat released
+
+  @@map("waitlist_status")
+}
+
+enum TicketStatus {
+  ACTIVE
+  USED
+  CANCELLED
+  REFUNDED
+
+  @@map("ticket_status")
+}
+
+/// Who a batch of certificates is issued to. Chosen per issuance, so a single
+/// event can hand a "participation" certificate to everyone who attended and a
+/// separate "winner" certificate to a hand-picked few.
+enum CertificateAudience {
+  /// Everyone with a check-in record / checkedInAt for the event.
+  CHECKED_IN
+  /// Every confirmed, non-waitlisted registrant, attendance aside.
+  CONFIRMED
+  /// A hand-picked list of registrations the organiser selects.
+  MANUAL
+
+  @@map("certificate_audience")
+}
+
+/// Lifecycle of an issued certificate. REVOKED certificates still resolve on
+/// the public verify page (so a shared link doesn't 404) but report as invalid.
+enum CertificateStatus {
+  ISSUED
+  REVOKED
+
+  @@map("certificate_status")
+}
+
+/// Lifecycle of a queued certificate-issuance batch.
+enum CertificateBatchStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+
+  @@map("certificate_batch_status")
+}
+
+/// How an event report was configured. DEFAULT bundles every section; CUSTOM
+/// carries the organiser-chosen subset. The type is stored (not just the
+/// section list) so the history can label a report at a glance.
+enum ReportType {
+  DEFAULT
+  CUSTOM
+
+  @@map("report_type")
+}
+
+/// Generation lifecycle of an event report. PENDING is the brief window between
+/// the row being created and the PDF being rendered + uploaded; READY once the
+/// file exists; FAILED (with `error`) when rendering threw.
+enum ReportStatus {
+  PENDING
+  READY
+  FAILED
+
+  @@map("report_status")
+}
+
+/// The sections a report can contain. A DEFAULT report includes all of them; a
+/// CUSTOM report includes the subset the organiser picked. Persisted per report
+/// so a re-download always reflects the sections the file was built with.
+enum ReportSection {
+  /// Event details + headline KPIs (registrations, attendance, revenue).
+  OVERVIEW
+  /// Per ticket-type breakdown: sold, revenue, seats remaining.
+  TICKETS
+  /// Attendee roster: name, email, ticket, status, checked-in.
+  ATTENDEES
+  /// Money in/out: collected, fees, refunds, net.
+  REVENUE
+  /// Check-in / attendance summary.
+  CHECKINS
+
+  @@map("report_section")
+}
+
+// =====================================================
+// USER MODEL
+// Core user entity - one person = one account
+// =====================================================
+
+model User {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Identity (Canonical)
+  mobileNumber   String  @unique @map("mobile_number") @db.VarChar(20)
+  mobileVerified Boolean @default(false) @map("mobile_verified")
+
+  // Profile
+  username  String? @unique @db.VarChar(50)
+  fullName  String? @map("full_name") @db.VarChar(255)
+  avatarUrl String? @map("avatar_url") @db.Text
+  bio       String? @db.Text
+  gender    String? @db.VarChar(30)
+
+  // Social Links
+  linkedinUrl  String? @map("linkedin_url") @db.Text
+  instagramUrl String? @map("instagram_url") @db.Text
+  githubUrl    String? @map("github_url") @db.Text
+  websiteUrl   String? @map("website_url") @db.Text
+
+  // Referral
+  referralCode String? @unique @map("referral_code") @db.VarChar(20)
+
+  // App client (self-reported by the mobile app on session start)
+  appVersion               String?   @map("app_version") @db.VarChar(20)
+  appPlatform              String?   @map("app_platform") @db.VarChar(10)
+  appVersionLastReportedAt DateTime? @map("app_version_last_reported_at") @db.Timestamptz(6)
+
+  // Last authenticated request from any client (mobile, web, space, apex).
+  // Stamped by JwtAuthGuard, throttled to one write per user per 5 minutes.
+  lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(6)
+
+  // Account deletion is a request with a 30-day grace period. The user can
+  // cancel any time before it's due; after that a daily job closes the account.
+  deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz(6)
+  // Set when the account is actually closed. PII is scrubbed and sign-ins
+  // removed, but the row stays so paid registrations, refunds and payouts keep
+  // their foreign keys. Auth rejects any user with this set.
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  identities                   UserIdentity[]
+  spaceRequests                SpaceRequest[]
+  roles                        UserRole[]                    @relation("UserRoles")
+  assignedRoles                UserRole[]                    @relation("AssignedBy")
+  createdSpaces                Space[]                       @relation("SpaceCreator")
+  discussions                  Discussion[]
+  discussionReplies            DiscussionReply[]
+  referredBy                   Referral?                     @relation("ReferredBy")
+  referralsMade                Referral[]                    @relation("ReferralsMade")
+  createdEvents                Event[]                       @relation("EventCreator")
+  contentReports               ContentReport[]               @relation("ContentReporter")
+  registrations                EventRegistration[]
+  emailCampaignsSent           EmailCampaign[]               @relation("EmailCampaignsSent")
+  emailTemplatesCreated        EmailTemplate[]               @relation("EmailTemplatesCreated")
+  adminDevices                 AdminDevice[]
+  pushDevices                  UserPushDevice[]
+  bankAccounts                 PayoutBankAccount[]
+  payoutsReceived              Payout[]                      @relation("PayoutUser")
+  refundRequests               RefundRequest[]               @relation("RefundRequestedBy")
+  spaceStatusRequests          SpaceStatusRequest[]          @relation("SpaceStatusRequestUser")
+  subSpaceRequests             SubSpaceRequest[]             @relation("SubSpaceRequestUser")
+  ownershipRequestsMade        SpaceOwnershipRequest[]       @relation("SpaceOwnershipRequester")
+  ownershipRequestsReceived    SpaceOwnershipRequest[]       @relation("SpaceOwnershipNewOwner")
+  whiteLabelRequests           WhiteLabelRequest[]           @relation("WhiteLabelRequester")
+  freeAttendeeAddRequests      FreeAttendeeAddRequest[]      @relation("FreeAttendeeAddRequester")
+  registrationTransferRequests RegistrationTransferRequest[] @relation("RegTransferRequester")
+  eventTransferRequests        EventOwnershipTransfer[]      @relation("EventTransferRequester")
+  subEventAttachRequests       SubEventAttachRequest[]       @relation("SubEventAttachRequester")
+  notificationSettings         NotificationSettings?
+  supportTicketsRaised         SupportTicket[]               @relation("SupportTicketRequester")
+  supportTicketsAssigned       SupportTicket[]               @relation("SupportTicketAssignee")
+  supportMessages              SupportMessage[]              @relation("SupportMessageAuthor")
+  checkinAccess                EventCheckinAccess[]          @relation("CheckinAccessUser")
+  checkinRecordsCreated        EventCheckinRecord[]          @relation("CheckedInBy")
+  groupMemberCheckinsCreated   EventGroupMemberCheckin[]     @relation("GroupMemberCheckedInBy")
+  claimedGroupSeats            GroupSeat[]                   @relation("GroupSeatClaimedBy")
+  registrationsCheckedIn       EventRegistration[]           @relation("RegistrationCheckedInBy")
+  favorites                    FavoriteEvent[]
+  createdSessions              Session[]                     @relation("SessionCreator")
+  sessionRegistrations         SessionRegistration[]
+  sessionCoHosts               SessionCoHost[]
+  certificatesReceived         Certificate[]                 @relation("CertificateRecipient")
+  // Sponsor portal: the sponsor entities this account may act on behalf of.
+  sponsorMemberships           SponsorUser[]                 @relation("SponsorUserAccount")
+  couponRedemptions            CouponRedemption[]
+  partnerLinks                 EventPartnerLink[]            @relation("PartnerLinkContact")
+
+  @@index([deletionRequestedAt])
+  @@map("users")
+}
+
+// =====================================================
+// NOTIFICATION SETTINGS MODEL
+// Per-user notification preferences
+// =====================================================
+
+model NotificationSettings {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // User Reference (one-to-one)
+  userId String @unique @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Preferences
+  pushEnabled     Boolean @default(true) @map("push_enabled")
+  emailEnabled    Boolean @default(true) @map("email_enabled")
+  eventReminders  Boolean @default(true) @map("event_reminders")
+  newEvents       Boolean @default(true) @map("new_events")
+  referralUpdates Boolean @default(true) @map("referral_updates")
+  promotions      Boolean @default(false) @map("promotions")
+
+  // Registration/space category switches
+  registrationUpdates Boolean @default(true) @map("registration_updates")
+  spaceUpdates        Boolean @default(true) @map("space_updates")
+
+  // Organiser-to-attendee announcements (added by notifications platform)
+  organiserAnnouncements Boolean @default(true) @map("organiser_announcements")
+
+  // Admin product/app announcements (opt-OUT: on by default, unlike promotions).
+  productUpdates Boolean @default(true) @map("product_updates")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("notification_settings")
+}
+
+// =====================================================
+// USER IDENTITY MODEL
+// Authentication methods linked to a single user
+// =====================================================
+
+model UserIdentity {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // User Reference
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Provider Information
+  provider       Provider
+  providerUserId String   @map("provider_user_id") @db.Text
+
+  // Email (may be null for phone provider)
+  email         String?  @db.VarChar(255)
+  emailVerified Boolean? @default(false) @map("email_verified")
+  isPrimary     Boolean  @default(false) @map("is_primary")
+
+  // Metadata
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Constraints
+  @@unique([provider, providerUserId], name: "unique_provider_user")
+  @@unique([provider, email], name: "unique_provider_email")
+  @@index([userId])
+  @@index([provider])
+  @@index([email])
+  @@map("user_identities")
+}
+
+// =====================================================
+// ROLE MODEL
+// Simple role definitions
+// =====================================================
+
+model Role {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  code  RoleCode  @unique
+  name  String    @db.VarChar(100)
+  scope RoleScope
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  userRoles UserRole[]
+
+  @@map("roles")
+}
+
+/// One editable capability grant: a single (role, action) pair that the role
+/// may perform DIRECTLY at its own scope. This is the DB-backed form of the
+/// compiled `CAPABILITIES` matrix (backend/src/auth/authorization/capabilities.ts),
+/// mirroring how `PlanConfig` made plan feature flags editable. Seeded from that
+/// matrix; edited by Platform Admin via the Apex IAM console.
+///
+/// Deliberately NOT keyed to the `Role` table by FK: rows are addressed by
+/// `RoleCode` so a grant survives even if a Role row is reseeded, and so the
+/// in-memory authorization cache never needs a join. `action` holds an `Action`
+/// value (e.g. "space:manage-billing") as text — the catalogue is a code enum,
+/// not a DB enum, so new actions ship without a schema change.
+///
+/// ADMIN never appears here: platform-admin power is an inheritance rule in
+/// AuthorizationService, not a matrix row, so no edit in this table can ever
+/// strip the platform superuser of access.
+model RoleCapability {
+  id     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code   RoleCode @map("role_code")
+  action String   @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([code, action])
+  @@index([code])
+  @@map("role_capabilities")
+}
+
+/// Per-space override of the capability matrix ("IAM for Spaces"). A Space Admin
+/// can tune what their event roles (Curator / Co-Curator / Crew) may do WITHIN
+/// their space, on top of the platform-global `RoleCapability` defaults.
+///
+/// Resolution mirrors the global fallback: if a (space, role) pair has ANY rows
+/// here, that set is authoritative for that role in that space; if it has none,
+/// the role inherits the global matrix. So a row's presence means "this space
+/// fully defines this role" — customising a role materialises its whole current
+/// action set, then edits from there.
+///
+/// Out of scope by policy (enforced in CapabilityConfigService, not the schema):
+/// SPACE_ADMIN is never overridable (a space can't lock its own admin out), and
+/// `event:manage-money` stays platform-controlled (separation of duty).
+model SpaceRoleCapability {
+  id      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId String   @map("space_id") @db.Uuid
+  space   Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  code    RoleCode @map("role_code")
+  action  String   @db.VarChar(64)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([spaceId, code, action])
+  @@index([spaceId])
+  @@map("space_role_capabilities")
+}
+
+// =====================================================
+// USER ROLE MODEL
+// Role assignments to users
+// =====================================================
+
+model SpaceRequest {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String          @map("user_id") @db.Uuid
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String          @db.VarChar(255)
+  description String?         @db.Text
+  type        SpaceType       @default(REGULAR)
+  visibility  SpaceVisibility @default(PUBLIC)
+  city        String?         @db.VarChar(100)
+  state       String?         @db.VarChar(100)
+  country     String?         @default("India") @db.VarChar(100)
+  tags        String[]
+  websiteUrl  String?         @map("website_url") @db.Text
+  status      String          @default("PENDING") @db.VarChar(20)
+  reviewNote  String?         @map("review_note") @db.Text
+  reviewedBy  String?         @map("reviewed_by") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([status])
+  @@map("space_requests")
+}
+
+model SpaceStatusRequest {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId         String    @map("space_id") @db.Uuid
+  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  requestedBy     String    @map("requested_by") @db.Uuid
+  user            User      @relation("SpaceStatusRequestUser", fields: [requestedBy], references: [id])
+  currentStatus   String    @map("current_status") @db.VarChar(20)
+  requestedStatus String    @map("requested_status") @db.VarChar(20)
+  reason          String    @db.Text
+  status          String    @default("PENDING") @db.VarChar(20)
+  reviewNote      String?   @map("review_note") @db.Text
+  reviewedBy      String?   @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([requestedBy])
+  @@index([status])
+  @@map("space_status_requests")
+}
+
+/// A space creator asking to hand ownership to another member, subject to
+/// admin approval.
+///
+/// Ownership is `Space.createdBy`, which the member-role editor deliberately
+/// refuses to touch (the creator must remain Organiser). Transferring it is
+/// therefore not a role change but its own reviewed action: it moves the
+/// space's billing subject and its last-resort administrator, so it goes
+/// through an admin the same way status and sub-space changes do.
+model SpaceOwnershipRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  /// The current creator giving ownership up.
+  requestedBy String @map("requested_by") @db.Uuid
+  requester   User   @relation("SpaceOwnershipRequester", fields: [requestedBy], references: [id])
+
+  /// The member being handed the space. Must already belong to it when the
+  /// request is made *and* when it is approved.
+  newOwnerId String @map("new_owner_id") @db.Uuid
+  newOwner   User   @relation("SpaceOwnershipNewOwner", fields: [newOwnerId], references: [id])
+
+  reason     String    @db.Text
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([requestedBy])
+  @@index([newOwnerId])
+  @@index([status])
+  @@map("space_ownership_requests")
+}
+
+/// An organiser's request to white-label a space or one of its events with
+/// their own logo + accent colour. Reviewed by an admin, exactly like status
+/// and ownership requests. `eventId` is null for a space-level request and set
+/// for an event-level one. On approval the proposed branding is copied onto the
+/// target Space/Event and its `whiteLabelEnabled` flag is flipped on. Rendering
+/// additionally requires the space's plan to include `hasRemoveBranding`, so a
+/// later downgrade silently disables branding without touching this row.
+model WhiteLabelRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  /// Null = space-level request; set = event-level request.
+  eventId String? @map("event_id") @db.Uuid
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  requestedBy String @map("requested_by") @db.Uuid
+  requester   User   @relation("WhiteLabelRequester", fields: [requestedBy], references: [id])
+
+  /// Proposed branding to apply on approval.
+  brandColor   String? @map("brand_color") @db.VarChar(9)
+  brandLogoUrl String? @map("brand_logo_url") @db.Text
+
+  reason     String    @db.Text
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([eventId])
+  @@index([requestedBy])
+  @@index([status])
+  @@map("white_label_requests")
+}
+
+/// An organiser's request to be allowed to add attendees FOR FREE on one event
+/// (i.e. comp a paid ticket instead of sending a payment link). Blocked by
+/// default so the platform fee is never silently waived; a Platform Admin
+/// approves (which flips the event's `allowFreeAttendeeAdd` on) or rejects.
+/// Mirrors WhiteLabelRequest.
+model FreeAttendeeAddRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  requestedBy String @map("requested_by") @db.Uuid
+  requester   User   @relation("FreeAttendeeAddRequester", fields: [requestedBy], references: [id])
+
+  reason     String    @db.Text
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([eventId])
+  @@index([requestedBy])
+  @@index([status])
+  @@map("free_attendee_add_requests")
+}
+
+/// An organiser's request to hand a registration to a different account.
+/// Organisers cannot transfer tickets themselves — they raise a request that an
+/// admin approves (which performs the transfer) or rejects. Admins can also
+/// transfer directly without a request. `targetEmail` is the account to receive
+/// the ticket; it is resolved to a user only at approval time.
+model RegistrationTransferRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  requestedBy String @map("requested_by") @db.Uuid
+  requester   User   @relation("RegTransferRequester", fields: [requestedBy], references: [id])
+
+  targetEmail String  @map("target_email") @db.VarChar(255)
+  reason      String? @db.Text
+
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([registrationId])
+  @@index([requestedBy])
+  @@index([status])
+  @@map("registration_transfer_requests")
+}
+
+model UserRole {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // User Reference
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Role Reference
+  roleId String @map("role_id") @db.Uuid
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Space context (null for platform roles)
+  spaceId String? @map("space_id") @db.Uuid
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Event context (set for event-scoped roles, e.g. VOLUNTEER)
+  eventId String? @map("event_id") @db.Uuid
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Audit
+  assignedBy     String? @map("assigned_by") @db.Uuid
+  assignedByUser User?   @relation("AssignedBy", fields: [assignedBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Constraints
+  @@unique([userId, roleId, spaceId, eventId], name: "unique_user_role_scope")
+  @@index([userId])
+  @@index([roleId])
+  @@index([spaceId])
+  @@index([eventId])
+  @@map("user_roles")
+}
+
+// =====================================================
+// SPACE MODEL
+// Community spaces (formerly organizations)
+// =====================================================
+
+model Space {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Basic Information
+  name        String  @db.VarChar(255)
+  slug        String  @unique @db.VarChar(100) // Like username, e.g., @tech-community
+  description String? @db.Text
+  websiteUrl  String? @map("website_url") @db.Text
+
+  // Images
+  logoUrl   String? @map("logo_url") @db.Text
+  bannerUrl String? @map("banner_url") @db.Text
+
+  // White-label branding (attendee-facing only). Rendered on public space/event
+  // pages ONLY when `whiteLabelEnabled` (admin-approved via WhiteLabelRequest)
+  // AND the space's plan still includes `hasRemoveBranding`.
+  whiteLabelEnabled Boolean @default(false) @map("white_label_enabled")
+  brandColor        String? @map("brand_color") @db.VarChar(9)
+  brandLogoUrl      String? @map("brand_logo_url") @db.Text
+  // Additional white-label surfaces, all gated by the same two checks above.
+  // Editable in space settings; they only take effect once white-label is
+  // approved and the plan still carries the perk.
+  //   faviconUrl   — the tab icon on public space/event pages.
+  //   emailFromName — display name on confirmation emails (address is unchanged;
+  //                   a custom sending DOMAIN is a separate, later feature).
+  //   emailReplyTo — Reply-To on those emails, so replies reach the organiser.
+  faviconUrl        String? @map("favicon_url") @db.Text
+  emailFromName     String? @map("email_from_name") @db.VarChar(100)
+  emailReplyTo      String? @map("email_reply_to") @db.VarChar(255)
+
+  // Location
+  city    String? @db.VarChar(100)
+  state   String? @db.VarChar(100)
+  country String? @db.VarChar(100)
+
+  // Configuration
+  tags       String[] // Array of tags
+  visibility SpaceVisibility @default(PUBLIC)
+
+  // Type & Hierarchy
+  type                 SpaceType @default(REGULAR) @map("type")
+  parentSpaceId        String?   @map("parent_space_id") @db.Uuid
+  parentSpace          Space?    @relation("SpaceHierarchy", fields: [parentSpaceId], references: [id])
+  childSpaces          Space[]   @relation("SpaceHierarchy")
+  parentRequestPending Boolean   @default(false) @map("parent_request_pending")
+  requestedParentId    String?   @map("requested_parent_id") @db.Uuid
+
+  // Plan
+  plan            OrgPlan   @default(STARTER)
+  planActivatedAt DateTime? @map("plan_activated_at") @db.Timestamptz(6)
+  planExpiresAt   DateTime? @map("plan_expires_at") @db.Timestamptz(6)
+
+  // Limits
+  coCuratorLimit Int @default(5) @map("co_organiser_limit") // Set by admin
+
+  // Status & Workflow
+  status          SpaceStatus @default(PENDING)
+  submittedAt     DateTime?   @map("submitted_at") @db.Timestamptz(6)
+  approvedAt      DateTime?   @map("approved_at") @db.Timestamptz(6)
+  rejectedAt      DateTime?   @map("rejected_at") @db.Timestamptz(6)
+  approvedBy      String?     @map("approved_by") @db.Uuid
+  rejectionReason String?     @map("rejection_reason") @db.Text
+
+  // Creator
+  createdBy String @map("created_by") @db.Uuid
+  creator   User   @relation("SpaceCreator", fields: [createdBy], references: [id])
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  userRoles                UserRole[]
+  discussions              Discussion[]
+  events                   Event[]
+  statusRequests           SpaceStatusRequest[]
+  ownershipRequests        SpaceOwnershipRequest[]
+  whiteLabelRequests       WhiteLabelRequest[]
+  freeAttendeeAddRequests  FreeAttendeeAddRequest[]
+  subSpaceRequests         SubSpaceRequest[]        @relation("SubSpaceRequests")
+  targetSpaceRequests      SubSpaceRequest[]        @relation("TargetSpaceRequests")
+  supportTickets           SupportTicket[]
+  coHostedEvents           EventCoHost[]
+  eventTransfersFrom       EventOwnershipTransfer[] @relation("EventTransferFromSpace")
+  eventTransfersTo         EventOwnershipTransfer[] @relation("EventTransferToSpace")
+  subEventAttachRequesting SubEventAttachRequest[]  @relation("SubEventAttachRequestingSpace")
+  subEventAttachOwning     SubEventAttachRequest[]  @relation("SubEventAttachOwnerSpace")
+  sessions                 Session[]
+  // Per-space billing (P0.2). One plan per Space.
+  subscription             OrgSubscription?
+  // Per-space capability overrides (IAM for Spaces).
+  roleCapabilities         SpaceRoleCapability[]
+  // Outbound email (campaigns + saved templates) owned by this space.
+  emailCampaigns           EmailCampaign[]          @relation("SpaceEmailCampaigns")
+  emailTemplates           EmailTemplate[]          @relation("SpaceEmailTemplates")
+  // Sponsors & lead generation: the reusable sponsor roster, the tier ladder
+  // sponsors are ranked in, and the organiser's own lead funnel.
+  sponsors                 Sponsor[]
+  sponsorTiers             SponsorTier[]
+  leads                    Lead[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([createdBy])
+  @@index([type])
+  @@index([parentSpaceId])
+  @@map("spaces")
+}
+
+model SubSpaceRequest {
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestType SubSpaceRequestType @map("request_type")
+
+  // The space being made a sub-space (null for CONVERT_TO_SUPER)
+  subSpaceId String? @map("sub_space_id") @db.Uuid
+  subSpace   Space?  @relation("SubSpaceRequests", fields: [subSpaceId], references: [id], onDelete: Cascade)
+
+  // The target parent space
+  targetSpaceId String @map("target_space_id") @db.Uuid
+  targetSpace   Space  @relation("TargetSpaceRequests", fields: [targetSpaceId], references: [id], onDelete: Cascade)
+
+  requestedBy String @map("requested_by") @db.Uuid
+  user        User   @relation("SubSpaceRequestUser", fields: [requestedBy], references: [id])
+
+  reason     String    @db.Text
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([subSpaceId])
+  @@index([targetSpaceId])
+  @@index([requestedBy])
+  @@index([status])
+  @@map("sub_space_requests")
+}
+
+// =====================================================
+// DISCUSSION MODEL
+// Forum discussions within spaces
+// =====================================================
+
+model Discussion {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Content
+  title   String @db.VarChar(500)
+  content String @db.Text
+
+  // Space context
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Author
+  authorId String @map("author_id") @db.Uuid
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Status
+  isPinned  Boolean @default(false) @map("is_pinned")
+  isLocked  Boolean @default(false) @map("is_locked")
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  // Engagement
+  viewCount  Int @default(0) @map("view_count")
+  replyCount Int @default(0) @map("reply_count")
+
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lastActivityAt DateTime @default(now()) @map("last_activity_at") @db.Timestamptz(6)
+
+  // Relations
+  replies DiscussionReply[]
+
+  @@index([spaceId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@index([lastActivityAt])
+  @@map("discussions")
+}
+
+// =====================================================
+// DISCUSSION REPLY MODEL
+// Replies to discussions
+// =====================================================
+
+model DiscussionReply {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Content
+  content String @db.Text
+
+  // Discussion context
+  discussionId String     @map("discussion_id") @db.Uuid
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+
+  // Author
+  authorId String @map("author_id") @db.Uuid
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Status
+  isDeleted Boolean @default(false) @map("is_deleted")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([discussionId])
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("discussion_replies")
+}
+
+// =====================================================
+// SUBSCRIPTION MODEL
+// Organization subscription plans
+// =====================================================
+
+model OrgSubscription {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Spaces platform re-architecture: the billing subject is the Space. Every
+  // subscription is keyed by `spaceId`. The P2.2 contract migration dropped the
+  // legacy per-user `userId` column.
+  spaceId String? @unique @map("space_id") @db.Uuid
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // How this organiser is billed by the platform.
+  billingModel        BillingModel @default(SUBSCRIPTION) @map("billing_model")
+  // For REVENUE_SHARE: platform's cut of event sales, e.g. 8.00 (%).
+  revenueSharePercent Decimal?     @map("revenue_share_percent") @db.Decimal(5, 2)
+
+  plan         OrgPlan      @default(STARTER)
+  billingCycle BillingCycle @default(MONTHLY) @map("billing_cycle")
+  amount       Decimal      @default(0) @db.Decimal(10, 2)
+  currency     String       @default("INR") @db.VarChar(3)
+  isActive     Boolean      @default(true) @map("is_active")
+
+  startedAt   DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  expiresAt   DateTime? @map("expires_at") @db.Timestamptz(6)
+  cancelledAt DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  razorpaySubId String?   @map("razorpay_sub_id") @db.VarChar(255)
+  lastPaymentAt DateTime? @map("last_payment_at") @db.Timestamptz(6)
+  nextPaymentAt DateTime? @map("next_payment_at") @db.Timestamptz(6)
+
+  eventsThisMonth Int      @default(0) @map("events_this_month")
+  usageResetAt    DateTime @default(now()) @map("usage_reset_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  history SubscriptionHistory[]
+
+  @@map("org_subscriptions")
+}
+
+model SubscriptionHistory {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  subscriptionId String          @map("subscription_id") @db.Uuid
+  subscription   OrgSubscription @relation(fields: [subscriptionId], references: [id])
+
+  fromPlan  OrgPlan  @map("from_plan")
+  toPlan    OrgPlan  @map("to_plan")
+  reason    String?  @db.VarChar(500)
+  changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+
+  @@map("subscription_history")
+}
+
+// Admin-editable definition of what each subscription plan includes.
+// One row per OrgPlan. Null numeric = unlimited. Drives both display and
+// enforcement (via the cached PlanConfigService).
+model PlanConfig {
+  plan OrgPlan @id
+
+  // Limits (null = unlimited)
+  spaces            Int?
+  eventsPerMonth    Int? @map("events_per_month")
+  attendeesPerEvent Int? @map("attendees_per_event")
+  ticketTypes       Int? @map("ticket_types")
+  coCurators        Int? @map("co_organisers")
+
+  // Feature flags
+  hasWaitlist        Boolean @default(false) @map("has_waitlist")
+  hasBulkExport      Boolean @default(false) @map("has_bulk_export")
+  hasAnalytics       Boolean @default(false) @map("has_analytics")
+  hasWhatsappBlast   Boolean @default(false) @map("has_whatsapp_blast")
+  hasRecurringEvents Boolean @default(false) @map("has_recurring_events")
+  hasRemoveBranding  Boolean @default(false) @map("has_remove_branding")
+  hasPrioritySupport Boolean @default(false) @map("has_priority_support")
+  // Gates the whole Sessions feature: creating, listing and hosting them.
+  hasSessions        Boolean @default(false) @map("has_sessions")
+  // Gates the competitive dashboard (hack.unifesto.app): whether an event may
+  // have a leaderboard at all. Per-event on/off lives on Leaderboard.enabled.
+  hasLeaderboard     Boolean @default(false) @map("has_leaderboard")
+  // Gates the certificate system: designing templates and issuing certificates.
+  // Public verification stays open to everyone regardless of plan.
+  hasCertificates    Boolean @default(false) @map("has_certificates")
+  // Gates the sponsors & lead-generation feature: the space sponsor roster,
+  // attaching sponsors to events, lead capture and the sponsor portal.
+  hasSponsors        Boolean @default(false) @map("has_sponsors")
+
+  // Fees & pricing
+  processingFeePercent Decimal @default(0) @map("processing_fee_percent") @db.Decimal(5, 2)
+  monthlyPrice         Int?    @map("monthly_price") // null = custom / contact sales
+  annualPrice          Int?    @map("annual_price")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("plan_configs")
+}
+
+// Admin-editable definition of the non-subscription billing models
+// (FREE and REVENUE_SHARE). Same limit/feature set as a plan, plus a default
+// platform cut for revenue-share. Drives what those organisers can do.
+model BillingModelConfig {
+  billingModel BillingModel @id @map("billing_model")
+
+  // For REVENUE_SHARE: the % prefilled when assigning this model.
+  defaultRevenueSharePercent Decimal? @map("default_revenue_share_percent") @db.Decimal(5, 2)
+
+  // Limits (null = unlimited)
+  spaces            Int?
+  eventsPerMonth    Int? @map("events_per_month")
+  attendeesPerEvent Int? @map("attendees_per_event")
+  ticketTypes       Int? @map("ticket_types")
+  coCurators        Int? @map("co_organisers")
+
+  // Feature flags
+  hasWaitlist        Boolean @default(false) @map("has_waitlist")
+  hasBulkExport      Boolean @default(false) @map("has_bulk_export")
+  hasAnalytics       Boolean @default(false) @map("has_analytics")
+  hasWhatsappBlast   Boolean @default(false) @map("has_whatsapp_blast")
+  hasRecurringEvents Boolean @default(false) @map("has_recurring_events")
+  hasRemoveBranding  Boolean @default(false) @map("has_remove_branding")
+  hasPrioritySupport Boolean @default(false) @map("has_priority_support")
+  // Gates the whole Sessions feature: creating, listing and hosting them.
+  hasSessions        Boolean @default(false) @map("has_sessions")
+  // Gates the competitive dashboard (hack.unifesto.app): whether an event may
+  // have a leaderboard at all. Per-event on/off lives on Leaderboard.enabled.
+  hasLeaderboard     Boolean @default(false) @map("has_leaderboard")
+  // Gates the certificate system: designing templates and issuing certificates.
+  hasCertificates    Boolean @default(false) @map("has_certificates")
+  // Gates the sponsors & lead-generation feature (see PlanConfig.hasSponsors).
+  hasSponsors        Boolean @default(false) @map("has_sponsors")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("billing_model_configs")
+}
+
+// =====================================================
+// EVENT MODELS
+// Event management system
+// =====================================================
+
+model Event {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  title         String  @db.VarChar(500)
+  slug          String  @unique @db.VarChar(200)
+  description   String? @db.Text
+  coverImageUrl String? @map("cover_image_url") @db.Text
+
+  type             EventType        @default(IN_PERSON)
+  registrationType RegistrationType @default(RSVP) @map("registration_type")
+
+  startDateTime DateTime @map("start_date_time") @db.Timestamptz(6)
+  endDateTime   DateTime @map("end_date_time") @db.Timestamptz(6)
+  timezone      String   @default("Asia/Kolkata") @db.VarChar(100)
+
+  // Venue (IN_PERSON or HYBRID)
+  venueName    String? @map("venue_name") @db.VarChar(255)
+  venueAddress String? @map("venue_address") @db.Text
+  city         String? @db.VarChar(100)
+  state        String? @db.VarChar(100)
+  country      String? @default("India") @db.VarChar(100)
+  latitude     Float?
+  longitude    Float?
+
+  // Online (ONLINE or HYBRID)
+  onlineUrl      String? @map("online_url") @db.Text
+  onlinePlatform String? @map("online_platform") @db.VarChar(100)
+
+  // Registration
+  capacity        Int?
+  registeredCount Int     @default(0) @map("registered_count")
+  waitlistEnabled Boolean @default(false) @map("waitlist_enabled")
+  waitlistCount   Int     @default(0) @map("waitlist_count")
+  isFree          Boolean @default(true) @map("is_free")
+
+  // Metadata
+  tags       String[]
+  category   String?         @db.VarChar(100)
+  visibility EventVisibility @default(PUBLIC)
+  status     EventStatus     @default(DRAFT)
+
+  // White-label branding (attendee-facing only). Rendered on the public event
+  // page ONLY when `whiteLabelEnabled` (admin-approved via WhiteLabelRequest)
+  // AND the space's plan still includes `hasRemoveBranding`. `brandLogoUrl`
+  // falls back to the space's logo when null.
+  whiteLabelEnabled Boolean @default(false) @map("white_label_enabled")
+  brandColor        String? @map("brand_color") @db.VarChar(9)
+  brandLogoUrl      String? @map("brand_logo_url") @db.Text
+
+  // Manual attendee add: comping a PAID ticket (adding for free, i.e. NOT sending
+  // a payment link) is blocked by default so the platform's processing fee is
+  // never silently waived. A Platform Admin flips this on per-event by approving
+  // a FreeAttendeeAddRequest; only then can an organiser uncheck "collect payment".
+  allowFreeAttendeeAdd Boolean @default(false) @map("allow_free_attendee_add")
+
+  // Recurring (event-calendar P2). Model A: an occurrence IS an Event row,
+  // materialized from an RRULE held on a *series-parent* Event.
+  //   - isRecurring = true marks a series-PARENT: a non-registerable template
+  //     that is hidden from every attendee/space listing. Its `recurringRule`
+  //     holds the RFC-5545 RRULE (e.g. "FREQ=WEEKLY;BYDAY=SA;COUNT=10").
+  //   - An OCCURRENCE has isRecurring = false and `seriesParentId` pointing at
+  //     its parent; it is a normal event with its own tickets/capacity/check-in.
+  isRecurring   Boolean @default(false) @map("is_recurring")
+  recurringRule String? @map("recurring_rule") @db.Text
+
+  // Series ↔ occurrence relation, kept deliberately separate from the
+  // parentEvent/EventHierarchy (festival sub-events) relation — an event may
+  // not be both a recurring series and a festival sub-event in v1. SetNull so
+  // deleting the parent template leaves its occurrences standing as ordinary
+  // events rather than cascading them away.
+  seriesParentId       String?   @map("series_parent_id") @db.Uuid
+  seriesParent         Event?    @relation("EventSeries", fields: [seriesParentId], references: [id], onDelete: SetNull)
+  seriesOccurrences    Event[]   @relation("EventSeries")
+  // An occurrence that was edited individually ("this occurrence" edit scope):
+  // whole-series regeneration must never overwrite it. Occurrences with any
+  // registration are frozen regardless of this flag (D4).
+  seriesDetached       Boolean   @default(false) @map("series_detached")
+  // Rolling-window high-water mark on the PARENT: the far edge of the range we
+  // have already materialized. The daily reconcile cron extends it forward.
+  seriesGeneratedUntil DateTime? @map("series_generated_until") @db.Timestamptz(6)
+
+  // Parent / sub-event hierarchy. A "big event" (parent) groups several
+  // sub-events under one umbrella — a festival with its hackathon, workshops
+  // and keynote. Registration stays per-event: the parent is a hub page that
+  // lists its sub-events, each keeping its own tickets, capacity and check-in.
+  //
+  // One level deep by design: a sub-event may not itself be a parent, and both
+  // ends must belong to the same space. `onDelete: SetNull` (not Cascade) so a
+  // sub-event outlives its parent — hard-deleting a parent leaves its children
+  // standing as ordinary events rather than dragging them down with it.
+  parentEventId String? @map("parent_event_id") @db.Uuid
+  parentEvent   Event?  @relation("EventHierarchy", fields: [parentEventId], references: [id], onDelete: SetNull)
+  childEvents   Event[] @relation("EventHierarchy")
+
+  // WhatsApp group / community. Organiser-supplied invite links (there is no
+  // WhatsApp API to auto-create these — the organiser makes the group/community
+  // by hand and pastes the `chat.whatsapp.com/<code>` link). We surface a
+  // "Join WhatsApp Group" button and push the link to attendees on registration.
+  //
+  // Mirrors the parent/child model: a big/parent event carries a *community*
+  // link (the umbrella), a sub-event or standalone event carries a *group* link.
+  // Both validated + canonicalised via common/whatsapp-links.ts before storage.
+  //
+  // LEGACY (retired 2026-09-20): `whatsappGroupUrl`/`whatsappCommunityUrl` used
+  // to double as BOTH the public "Join" button and the attendee invite source,
+  // which leaked the invite link on the public event payload (older mobile
+  // builds still read it). They are no longer surfaced publicly nor used for
+  // invites — kept only so historical data isn't destroyed. Do not read them.
+  whatsappGroupUrl     String? @map("whatsapp_group_url") @db.Text
+  whatsappCommunityUrl String? @map("whatsapp_community_url") @db.Text
+
+  // Private attendee invite group. Unlike the legacy fields above, this is NEVER
+  // returned on an unauthenticated path (stripped from `getEventBySlug`); it is
+  // surfaced only through JWT-guarded per-registration endpoints and pushed to
+  // attendees on registration/blast. A sub-event with no group of its own falls
+  // back to its parent big event's attendee group. Validated + canonicalised via
+  // common/whatsapp-links.ts (always a 'group').
+  whatsappAttendeeGroupUrl String? @map("whatsapp_attendee_group_url") @db.Text
+
+  // Space
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Creator
+  createdBy String @map("created_by") @db.Uuid
+  creator   User   @relation("EventCreator", fields: [createdBy], references: [id])
+
+  // Default payout destination for this event. When set, payouts for the event
+  // go here instead of the creator's primary account — this is how an organiser
+  // routes a particular event's earnings to a co-organiser's account. Nullable:
+  // unset falls back to the creator's verified primary. SetNull if the account
+  // is deleted. Eligibility (creator or a space co/organiser) is enforced in
+  // the service, not the DB.
+  payoutBankAccountId String?            @map("payout_bank_account_id") @db.Uuid
+  payoutBankAccount   PayoutBankAccount? @relation("EventPayoutAccount", fields: [payoutBankAccountId], references: [id], onDelete: SetNull)
+
+  // Status timestamps
+  publishedAt        DateTime? @map("published_at") @db.Timestamptz(6)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  // Soft delete. A non-null `deletedAt` hides the event everywhere an
+  // organiser or attendee could see it, without destroying anything: the
+  // registrations, tickets, payments and payouts hanging off it all survive
+  // and come back intact if it is restored.
+  //
+  // Distinct from CANCELLED, which is a public statement to attendees that the
+  // event is off. Hiding is private housekeeping and says nothing to anyone —
+  // which is why an event must be cancelled *before* it can be hidden.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  ticketTypes                    EventTicketType[]
+  registrations                  EventRegistration[]
+  agenda                         EventAgenda[]
+  speakers                       EventSpeaker[]
+  prizes                         EventPrize[]
+  contacts                       EventContact[]
+  faqs                           EventFaq[]
+  formFields                     EventFormField[]
+  payouts                        Payout[]
+  refundRequests                 RefundRequest[]
+  userRoles                      UserRole[]
+  checkinAccess                  EventCheckinAccess[]
+  checkinTypes                   EventCheckinType[]
+  coHosts                        EventCoHost[]
+  ownershipTransfers             EventOwnershipTransfer[]
+  subEventAttachRequestsAsParent SubEventAttachRequest[]  @relation("SubEventAttachParent")
+  subEventAttachRequestsAsChild  SubEventAttachRequest[]  @relation("SubEventAttachChild")
+  favoritedBy                    FavoriteEvent[]
+  leaderboard                    Leaderboard?
+  whiteLabelRequests             WhiteLabelRequest[]
+  freeAttendeeAddRequests        FreeAttendeeAddRequest[]
+  certificateTemplates           CertificateTemplate[]
+  certificates                   Certificate[]
+  reports                        EventReport[]
+  eventSponsors                  EventSponsor[]
+  leads                          Lead[]
+  coupons                        EventCoupon[]
+  partnerLinks                   EventPartnerLink[]
+
+  @@index([spaceId])
+  @@index([status])
+  @@index([startDateTime])
+  @@index([slug])
+  @@index([createdBy])
+  // Every listing filters `deletedAt: null`, so it belongs in the hot indexes.
+  @@index([deletedAt])
+  // Sub-event lookups (hub pages, management lists) filter by parent.
+  @@index([parentEventId])
+  // Series reconciliation lists occurrences by their parent.
+  @@index([seriesParentId])
+  @@index([payoutBankAccountId])
+  @@map("events")
+}
+
+/// A user's saved / favourited event. One row per (user, event).
+model FavoriteEvent {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, eventId])
+  @@index([userId])
+  @@index([eventId])
+  @@map("favorite_events")
+}
+
+model EventTicketType {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name          String  @db.VarChar(255)
+  description   String? @db.Text
+  price         Decimal @db.Decimal(10, 2)
+  currency      String  @default("INR") @db.VarChar(3)
+  // null = unlimited capacity. RSVP + individual tickets are typically null.
+  totalQuantity Int?    @map("total_quantity")
+  soldCount     Int     @default(0) @map("sold_count")
+
+  // Registration mechanism:
+  //   RSVP       → one-click, free, no form.
+  //   INDIVIDUAL → free/paid, one per person, optional custom form.
+  //   GROUP      → free/paid, priced per-group or per-person, min/max group size.
+  kind             TicketKind        @default(INDIVIDUAL)
+  groupPricingMode GroupPricingMode? @map("group_pricing_mode")
+  minGroupSize     Int?              @map("min_group_size")
+  maxGroupSize     Int?              @map("max_group_size")
+
+  saleStartsAt DateTime? @map("sale_starts_at") @db.Timestamptz(6)
+  saleEndsAt   DateTime? @map("sale_ends_at") @db.Timestamptz(6)
+  perUserLimit Int       @default(1) @map("per_user_limit")
+
+  // Waiting list. Only meaningful when totalQuantity is set — an unlimited
+  // ticket never sells out, so it can never queue anyone. When this ticket is
+  // full, registration attempts join the queue instead of failing.
+  // Offering a spot holds the seat for waitlistOfferTtlHours; if the attendee
+  // has not paid by then the offer expires and the seat returns to the pool.
+  waitlistEnabled       Boolean @default(false) @map("waitlist_enabled")
+  waitlistOfferTtlHours Int     @default(24) @map("waitlist_offer_ttl_hours")
+
+  isVisible Boolean @default(true) @map("is_visible")
+  isActive  Boolean @default(true) @map("is_active")
+  order     Int     @default(0)
+
+  // Per-ticket-type WhatsApp group invite link, so an organiser can run
+  // separate groups per tier (e.g. VIP vs General, speakers vs attendees).
+  // When set it takes precedence over the event's own group link for anyone on
+  // this ticket; when null the attendee falls back to the event group, then the
+  // (event/parent) community. Validated + canonicalised via common/whatsapp-links.ts.
+  whatsappGroupUrl String? @map("whatsapp_group_url") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  registrations EventRegistration[]
+  formFields    EventFormField[]
+
+  // Directional registration restrictions (organiser-configured). Holding a
+  // ticket that lists T among its `blocks` makes T unavailable to that user.
+  // `blocks` = rows where this ticket is the blocker; `blockedBy` = rows where
+  // this ticket is the one made unavailable. The reverse direction is
+  // independent: owning the blocked ticket does not prevent buying the blocker.
+  blocks    TicketTypeBlock[] @relation("TicketBlocker")
+  blockedBy TicketTypeBlock[] @relation("TicketBlocked")
+
+  @@index([eventId])
+  @@map("event_ticket_types")
+}
+
+/// A directional exclusion between two ticket types of the same event:
+/// a user who holds `blocker` cannot register for `blocked`.
+model TicketTypeBlock {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  blockerId String          @map("blocker_id") @db.Uuid
+  blocker   EventTicketType @relation("TicketBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+
+  blockedId String          @map("blocked_id") @db.Uuid
+  blocked   EventTicketType @relation("TicketBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+  @@map("ticket_type_blocks")
+}
+
+/// A discount code an organiser issues against one event. The discount reduces
+/// the base ticket amount only; the processing fee is recomputed on the reduced
+/// base, so a coupon never touches gateway economics, only what the organiser
+/// collects.
+///
+/// Usage cap is enforced as a HARD reservation: `usedCount` is atomically
+/// incremented when a buyer applies the code at checkout (holding a slot) and
+/// decremented if that attempt is abandoned, fails, or its reservation lapses.
+/// So `usedCount` == confirmed redemptions + slots currently held mid-checkout,
+/// and `usageLimit` is never exceeded even under concurrent checkouts.
+model EventCoupon {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Stored uppercased; unique per event (see @@unique below). Buyers type it at
+  // checkout case-insensitively.
+  code String @db.VarChar(64)
+
+  description String? @db.Text
+
+  discountType      CouponDiscountType @map("discount_type")
+  // PERCENT: 0-100. FLAT: an amount in the ticket currency.
+  discountValue     Decimal            @map("discount_value") @db.Decimal(10, 2)
+  // Percentage coupons only: cap the money taken off. null = uncapped.
+  maxDiscountAmount Decimal?           @map("max_discount_amount") @db.Decimal(10, 2)
+  // Minimum base ticket amount required for the code to apply. null = no floor.
+  minPurchaseAmount Decimal?           @map("min_purchase_amount") @db.Decimal(10, 2)
+
+  // Total redemptions allowed across all users. null = unlimited (no hard cap;
+  // reservation still tracks usedCount for reporting but never blocks).
+  usageLimit   Int? @map("usage_limit")
+  // Redemptions a single user may make. Enforced against their confirmed +
+  // reserved redemptions of this coupon.
+  perUserLimit Int  @default(1) @map("per_user_limit")
+  // Confirmed redemptions + slots held mid-checkout. Source of truth for the cap.
+  usedCount    Int  @default(0) @map("used_count")
+
+  startsAt  DateTime? @map("starts_at") @db.Timestamptz(6)
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  // Restrict the code to specific ticket types. Empty = applies to every ticket
+  // type of the event.
+  appliesToTicketTypeIds String[] @map("applies_to_ticket_type_ids") @db.Uuid
+
+  isActive Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  redemptions CouponRedemption[]
+
+  @@unique([eventId, code])
+  @@index([eventId])
+  @@map("event_coupons")
+}
+
+/// One application of a coupon to one registration. Holds the reservation
+/// lifecycle the coupon's `usedCount` counter cannot express on its own, and is
+/// the row the TTL sweep scans to release stale RESERVED slots.
+model CouponRedemption {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  couponId String      @map("coupon_id") @db.Uuid
+  coupon   EventCoupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  registrationId String            @unique @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Money actually taken off the base amount by this redemption.
+  discountAmount Decimal @map("discount_amount") @db.Decimal(10, 2)
+
+  status        CouponRedemptionStatus @default(RESERVED)
+  // While RESERVED, the deadline past which the sweep releases the held slot.
+  // Cleared to null on CONFIRMED.
+  reservedUntil DateTime?              @map("reserved_until") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([couponId])
+  @@index([userId])
+  // The TTL sweep scans RESERVED rows past their deadline.
+  @@index([status, reservedUntil])
+  @@map("coupon_redemptions")
+}
+
+model EventAgenda {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  title       String   @db.VarChar(500)
+  description String?  @db.Text
+  startTime   DateTime @map("start_time") @db.Timestamptz(6)
+  endTime     DateTime @map("end_time") @db.Timestamptz(6)
+  speakerName String?  @map("speaker_name") @db.VarChar(255)
+  order       Int      @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("event_agenda")
+}
+
+model EventSpeaker {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(255)
+  bio         String? @db.Text
+  avatarUrl   String? @map("avatar_url") @db.Text
+  designation String? @db.VarChar(255)
+  company     String? @db.VarChar(255)
+  linkedinUrl String? @map("linkedin_url") @db.Text
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("event_speakers")
+}
+
+// Prizes / Takeaways — what attendees win or walk away with (rank, reward,
+// swag, certificates, learning outcomes).
+model EventPrize {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  title       String  @db.VarChar(500)
+  description String? @db.Text
+  rank        String? @db.VarChar(100) // e.g. "1st Prize", "Runner-up", "Takeaway"
+  value       String? @db.VarChar(255) // e.g. "₹50,000", "Certificate + Swag"
+  order       Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("event_prizes")
+}
+
+// Contact — points of contact for the event (organiser desk, coordinators).
+model EventContact {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name  String  @db.VarChar(255)
+  role  String? @db.VarChar(255) // e.g. "Event Coordinator"
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(50)
+  order Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("event_contacts")
+}
+
+// FAQs — frequently asked questions shown on the public event page.
+model EventFaq {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  question String @db.Text
+  answer   String @db.Text
+  order    Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@map("event_faqs")
+}
+
+model EventFormField {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Custom form fields belong to a specific ticket type so each ticket/RSVP has
+  // its own form. Legacy rows may have this null (event-wide form).
+  ticketTypeId String?          @map("ticket_type_id") @db.Uuid
+  ticketType   EventTicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  label      String        @db.VarChar(255)
+  type       FormFieldType
+  options    String[]
+  isRequired Boolean       @default(false) @map("is_required")
+  order      Int           @default(0)
+
+  // Group tickets only: whether this question is asked ONCE for the whole team
+  // (true) or of EVERY member (false, the default). Ignored for individual/RSVP
+  // tickets, which have a single attendee. A per-group answer is stored on the
+  // registration (formResponses); a per-member answer on each groupMembers entry.
+  perGroup Boolean @default(false) @map("per_group")
+
+  @@index([eventId])
+  @@index([ticketTypeId])
+  @@map("event_form_fields")
+}
+
+// =====================================================
+// REGISTRATION & TICKETING MODELS
+// Event registration and ticket management
+// =====================================================
+
+model EventRegistration {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ticketTypeId String?          @map("ticket_type_id") @db.Uuid
+  // Deleting a ticket type detaches (does not delete) its registrations, so an
+  // organiser can remove an unused ticket type without a foreign-key error and
+  // without destroying attendee records.
+  ticketType   EventTicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: SetNull)
+
+  quantity Int @default(1)
+
+  // Group registrations: number of people and their captured details.
+  groupSize    Int?  @map("group_size")
+  groupMembers Json? @map("group_members")
+
+  // Payment
+  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
+  // Coupon applied to this registration, if any. Stored inline (like coinsUsed)
+  // so the row is self-describing for exports, refunds and the ledger. The
+  // reservation lifecycle lives on the linked CouponRedemption row.
+  couponId       String?       @map("coupon_id") @db.Uuid
+  couponDiscount Decimal       @default(0) @map("coupon_discount") @db.Decimal(10, 2)
+  coinsUsed      Int           @default(0) @map("coins_used")
+  coinValueINR   Decimal       @default(0) @map("coin_value_inr") @db.Decimal(10, 2)
+  // 1% loyalty cashback (in paise) credited to the attendee's wallet when this
+  // PAID registration completed. Recorded here so a cancellation reclaims the
+  // exact amount that was granted. 0 for free / RSVP registrations.
+  cashbackPaise  Int           @default(0) @map("cashback_paise")
+  razorpayAmount Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
+  processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
+  paymentId      String?       @map("payment_id") @db.VarChar(255)
+  orderId        String?       @map("order_id") @db.VarChar(255)
+  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
+
+  // Registration status.
+  //
+  // `isWaitlisted` means "not yet a confirmed attendee" — it stays true through
+  // WAITING and OFFERED and flips to false only on CONVERTED. Every existing
+  // query that filters `isWaitlisted: false` to mean "real attendee" (reminder
+  // emails, admin attendee counts, check-in) therefore stays correct without
+  // change: someone holding an unpaid offer is not yet an attendee.
+  //
+  // Seat consumption is tracked separately by ticketType.soldCount, which a
+  // WAITING row does not touch but an OFFERED row does — the offer holds the
+  // seat so it cannot be sold out from under the person being let in.
+  status       RegistrationStatus @default(REGISTERED)
+  isWaitlisted Boolean            @default(false) @map("is_waitlisted")
+
+  // Waiting list. All null on a registration that bought a seat directly.
+  // Queue order is `waitlistedAt` ascending — position is derived, never
+  // stored, because everyone behind a departure would need rewriting.
+  waitlistStatus         WaitlistStatus? @map("waitlist_status")
+  waitlistedAt           DateTime?       @map("waitlisted_at") @db.Timestamptz(6)
+  waitlistOfferedAt      DateTime?       @map("waitlist_offered_at") @db.Timestamptz(6)
+  waitlistOfferExpiresAt DateTime?       @map("waitlist_offer_expires_at") @db.Timestamptz(6)
+
+  // QR Code for check-in
+  qrCode String @unique @map("qr_code") @db.VarChar(100)
+
+  // Check-in
+  checkedInAt     DateTime? @map("checked_in_at") @db.Timestamptz(6)
+  checkedInBy     String?   @map("checked_in_by") @db.Uuid
+  checkedInByUser User?     @relation("RegistrationCheckedInBy", fields: [checkedInBy], references: [id])
+
+  // Form responses
+  formResponses Json? @map("form_responses")
+
+  // Sponsor lead-sharing consent. When true, the attendee agreed at registration
+  // to let this event's sponsors receive their contact details — so a booth scan
+  // or a sponsor's lead export may include them. Independent of a deliberate
+  // per-sponsor opt-in (which writes a SponsorLead directly with source OPT_IN);
+  // this is the blanket "share with all sponsors" switch, default off.
+  shareContactWithSponsors Boolean @default(false) @map("share_contact_with_sponsors")
+
+  registeredAt       DateTime  @default(now()) @map("registered_at") @db.Timestamptz(6)
+  /// Any change to the row. Offline scanners pull "what changed since" by this.
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  // Why the row is CANCELLED, when we know it: "Cancelled by attendee", a system
+  // reason from the reconcile/admin-resolve paths, or an admin note. Null on a
+  // live registration and cleared when an organiser restores one.
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  // Campaign attribution: the utm_* tags on the link that brought this attendee
+  // in (captured by the app from a shared event/space link). Null when the
+  // registration came from inside the app with no tagged link behind it.
+  utmSource   String? @map("utm_source") @db.VarChar(100)
+  utmMedium   String? @map("utm_medium") @db.VarChar(100)
+  utmCampaign String? @map("utm_campaign") @db.VarChar(100)
+
+  // WhatsApp group-invite delivery tracking, per attendee per event.
+  //
+  // `whatsappInviteSentAt` is stamped when the organiser's group/community link
+  // is pushed to this attendee — automatically on registration, or via a
+  // curator's manual blast. A null means "never sent", which is how a re-blast
+  // dedups (send-once).
+  //
+  // `whatsappGroupJoinedAt` is the attendee's own "I've joined" confirmation
+  // from their ticket. WhatsApp's Business API cannot tell us who actually
+  // joined a group via an invite link, so this self-mark is the only real join
+  // signal — when set, it suppresses any further sends even if a blast re-runs.
+  whatsappInviteSentAt  DateTime? @map("whatsapp_invite_sent_at") @db.Timestamptz(6)
+  whatsappGroupJoinedAt DateTime? @map("whatsapp_group_joined_at") @db.Timestamptz(6)
+
+  tickets             EventTicket[]
+  checkinRecords      EventCheckinRecord[]
+  groupMemberCheckins EventGroupMemberCheckin[]
+  groupSeats          GroupSeat[]
+  refundRequests      RefundRequest[]
+  transferRequests    RegistrationTransferRequest[]
+  certificates        Certificate[]
+  sponsorLeads        SponsorLead[]
+  couponRedemption    CouponRedemption?
+
+  // NOTE: "at most one ACTIVE registration per (event, user, ticket type)" is
+  // enforced by a PARTIAL unique index that exempts REFUNDED and CANCELLED
+  // rows, so a refunded/cancelled attendee can register again while their
+  // historical row (and its refund ledger) stays intact. Prisma's DSL can't
+  // express a filtered unique index, so it is created in raw SQL — see
+  // migration 20260815120000_registration_active_partial_unique. Keep this in
+  // sync with the pre-create cleanup in RegistrationsService.createPaymentOrder.
+  @@index([eventId])
+  @@index([eventId, updatedAt])
+  @@index([userId])
+  @@index([qrCode])
+  @@index([paymentStatus])
+  @@index([checkedInBy])
+  // Serves the organiser's queue view (per ticket type, in join order) and the
+  // expiry sweep, which scans OFFERED rows past their deadline.
+  @@index([ticketTypeId, waitlistStatus, waitlistedAt])
+  @@index([waitlistStatus, waitlistOfferExpiresAt])
+  @@map("event_registrations")
+}
+
+model EventTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  ticketCode    String       @unique @map("ticket_code") @db.VarChar(50)
+  qrCode        String       @unique @map("qr_code") @db.VarChar(100)
+  attendeeName  String?      @map("attendee_name") @db.VarChar(255)
+  attendeeEmail String?      @map("attendee_email") @db.VarChar(255)
+  status        TicketStatus @default(ACTIVE)
+  checkedInAt   DateTime?    @map("checked_in_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([registrationId])
+  @@map("event_tickets")
+}
+
+/// Grants a specific user permission to check in attendees for one event,
+/// in addition to the event's space organisers/co-organisers.
+model EventCheckinAccess {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation("CheckinAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Which check-in point this grant covers. Null = all points for the event.
+  checkinTypeId String?           @map("checkin_type_id") @db.Uuid
+  checkinType   EventCheckinType? @relation(fields: [checkinTypeId], references: [id], onDelete: Cascade)
+
+  grantedBy String @map("granted_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([eventId, userId, checkinTypeId])
+  @@index([eventId])
+  @@index([userId])
+  @@map("event_checkin_access")
+}
+
+/// A check-in point/station for an event (e.g. Entry, Lunch, Day 1, Session A).
+/// Attendees are checked in independently at each point.
+model EventCheckinType {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name  String @db.VarChar(100)
+  order Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  records             EventCheckinRecord[]
+  accessGrants        EventCheckinAccess[]
+  groupMemberCheckins EventGroupMemberCheckin[]
+
+  @@index([eventId])
+  @@map("event_checkin_types")
+}
+
+/// One check-in of a registration at a specific check-in point. Uniqueness
+/// ensures an attendee is only checked in once per point.
+model EventCheckinRecord {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  checkinTypeId String           @map("checkin_type_id") @db.Uuid
+  checkinType   EventCheckinType @relation(fields: [checkinTypeId], references: [id], onDelete: Cascade)
+
+  checkedInAt     DateTime @default(now()) @map("checked_in_at") @db.Timestamptz(6)
+  checkedInBy     String   @map("checked_in_by") @db.Uuid
+  checkedInByUser User     @relation("CheckedInBy", fields: [checkedInBy], references: [id])
+  /// When the server stored it. Differs from checkedInAt for offline scans,
+  /// which keep the device's scan time but arrive later.
+  recordedAt      DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  @@unique([registrationId, checkinTypeId])
+  @@index([checkinTypeId])
+  @@index([recordedAt])
+  @@index([checkedInBy])
+  @@map("event_checkin_records")
+}
+
+/// One check-in of a single GROUP member at a check-in point. A group shares
+/// one registration + QR, so members are identified by their index into the
+/// registration's `groupMembers` array. Uniqueness ensures a member is only
+/// checked in once per point. The registration-level EventCheckinRecord still
+/// tracks the group as a whole (ATTENDED once ≥1 member is in).
+model EventGroupMemberCheckin {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  memberIndex Int @map("member_index")
+
+  checkinTypeId String           @map("checkin_type_id") @db.Uuid
+  checkinType   EventCheckinType @relation(fields: [checkinTypeId], references: [id], onDelete: Cascade)
+
+  checkedInAt     DateTime   @default(now()) @map("checked_in_at") @db.Timestamptz(6)
+  checkedInBy     String     @map("checked_in_by") @db.Uuid
+  checkedInByUser User       @relation("GroupMemberCheckedInBy", fields: [checkedInBy], references: [id])
+  // Set once the group moves off the JSON blob onto GroupSeat rows; the legacy
+  // memberIndex is kept for display + backfill mapping.
+  groupSeatId     String?    @map("group_seat_id") @db.Uuid
+  groupSeat       GroupSeat? @relation(fields: [groupSeatId], references: [id], onDelete: SetNull)
+  /// When the server stored it (see EventCheckinRecord.recordedAt).
+  recordedAt      DateTime   @default(now()) @map("recorded_at") @db.Timestamptz(6)
+
+  @@unique([registrationId, memberIndex, checkinTypeId])
+  @@index([checkinTypeId])
+  @@index([registrationId])
+  @@index([recordedAt])
+  @@index([checkedInBy])
+  @@index([groupSeatId])
+  @@map("event_group_member_checkins")
+}
+
+/// One purchased seat in a group registration (fast-registration Part 2). The
+/// lead pays for N seats up front; each seat is then invited + claimed
+/// independently. Exactly N rows exist per group for all time — "revoke" moves
+/// a seat INVITED→OPEN (+ token rotation), never a terminal state, so
+/// count(seats) == paid N always holds and availability is touched only once at
+/// payment.
+model GroupSeat {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  seatIndex Int             @map("seat_index") // 1..N, stable for check-in
+  status    GroupSeatStatus @default(OPEN)
+
+  inviteEmail String? @map("invite_email") @db.VarChar(255) // delivery hint; null until invited
+  inviteToken String  @unique @map("invite_token") @db.VarChar(64) // 32-byte hex; rotated on revoke
+
+  claimedByUserId String? @map("claimed_by_user_id") @db.Uuid
+  claimedBy       User?   @relation("GroupSeatClaimedBy", fields: [claimedByUserId], references: [id])
+
+  memberDetails Json?     @map("member_details") // name/mobile/gender/customFields
+  claimedAt     DateTime? @map("claimed_at") @db.Timestamptz(6)
+
+  // Set once when the T-48h "still unclaimed" reminder is sent, so the cron
+  // never re-mails the same invite. Cleared on revoke/decline (token rotates).
+  reminderSentAt DateTime? @map("reminder_sent_at") @db.Timestamptz(6)
+
+  // When this seat's occupant was sent the WhatsApp group invite (null = never).
+  // Per-seat so each group member is invited once — the lead is tracked on the
+  // registration row instead (seat 1 is the lead; the member loop skips it).
+  whatsappInviteSentAt DateTime? @map("whatsapp_invite_sent_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  checkins EventGroupMemberCheckin[]
+
+  @@unique([registrationId, seatIndex])
+  @@index([inviteToken])
+  @@index([claimedByUserId])
+  @@map("group_seats")
+}
+
+enum GroupSeatStatus {
+  OPEN
+  INVITED
+  CLAIMED
+  // The lead / a curator retired this unfilled seat: it stops showing on the
+  // manage screen and no one can be invited/claim into it. Capacity stays held
+  // (no resale, no refund) — reversible back to OPEN via reopen.
+  RELEASED
+
+  @@map("group_seat_status")
+}
+
+/// A space invited to co-host an event. Organisers of a co-host space get the
+/// same event-management access as the owning space's organisers, and the
+/// event appears in the co-host space's own event list.
+model EventCoHost {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  invitedBy String @map("invited_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([eventId, spaceId])
+  @@index([eventId])
+  @@index([spaceId])
+  @@map("event_co_hosts")
+}
+
+/// A proposal to hand an event's ownership from its current space to one of its
+/// co-host spaces. Two-sided: the owning space's admin requests it, and a Space
+/// Admin of the target co-host must accept before `Event.spaceId` moves (the
+/// event's payouts and plan gating follow ownership, so the handover is
+/// deliberate). At most one PENDING row per event, enforced in the service. On
+/// accept the target's co-host row is removed (it becomes the owner) and the
+/// former owner is dropped entirely — it keeps no access unless re-invited.
+model EventOwnershipTransfer {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  /// The space currently owning the event (the initiator's side).
+  fromSpaceId String @map("from_space_id") @db.Uuid
+  fromSpace   Space  @relation("EventTransferFromSpace", fields: [fromSpaceId], references: [id], onDelete: Cascade)
+
+  /// The co-host space being offered ownership. Must be a co-host of the event
+  /// both when the request is made and when it is accepted.
+  toSpaceId String @map("to_space_id") @db.Uuid
+  toSpace   Space  @relation("EventTransferToSpace", fields: [toSpaceId], references: [id], onDelete: Cascade)
+
+  requestedBy String @map("requested_by") @db.Uuid
+  requester   User   @relation("EventTransferRequester", fields: [requestedBy], references: [id])
+
+  reason String? @db.Text
+
+  /// PENDING | ACCEPTED | DECLINED | CANCELLED
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@index([toSpaceId])
+  @@index([status])
+  @@map("event_ownership_transfers")
+}
+
+/// A proposal from a space that owns a parent "big event" to nest another
+/// space's event under it as a sub-event. Cross-space nesting requires a
+/// co-host link between the two spaces, but because the child belongs to a
+/// different space, that space's Space Admin must approve before the child's
+/// `parentEventId` is set — a space can't pull someone else's event onto its
+/// public hub unilaterally. Same-space attaches never use this flow (they stay
+/// instant). At most one PENDING row per child event, enforced in the service.
+/// On accept the actual attach is performed (all the sub-event invariants —
+/// depth cap, cycles, co-host link — are re-checked at that moment).
+model SubEventAttachRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  /// The parent "big event" the child would be nested under. Owned by the
+  /// requesting space.
+  parentEventId String @map("parent_event_id") @db.Uuid
+  parentEvent   Event  @relation("SubEventAttachParent", fields: [parentEventId], references: [id], onDelete: Cascade)
+
+  /// The event to nest as a sub-event. Owned by `ownerSpace`, which must approve.
+  childEventId String @map("child_event_id") @db.Uuid
+  childEvent   Event  @relation("SubEventAttachChild", fields: [childEventId], references: [id], onDelete: Cascade)
+
+  /// The space that owns the parent and is asking to nest the child (initiator).
+  requestingSpaceId String @map("requesting_space_id") @db.Uuid
+  requestingSpace   Space  @relation("SubEventAttachRequestingSpace", fields: [requestingSpaceId], references: [id], onDelete: Cascade)
+
+  /// The space that owns the child event and must approve the nesting.
+  ownerSpaceId String @map("owner_space_id") @db.Uuid
+  ownerSpace   Space  @relation("SubEventAttachOwnerSpace", fields: [ownerSpaceId], references: [id], onDelete: Cascade)
+
+  requestedBy String @map("requested_by") @db.Uuid
+  requester   User   @relation("SubEventAttachRequester", fields: [requestedBy], references: [id])
+
+  reason String? @db.Text
+
+  /// PENDING | ACCEPTED | DECLINED | CANCELLED
+  status     String    @default("PENDING") @db.VarChar(20)
+  reviewNote String?   @map("review_note") @db.Text
+  reviewedBy String?   @map("reviewed_by") @db.Uuid
+  reviewedAt DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([childEventId])
+  @@index([parentEventId])
+  @@index([ownerSpaceId])
+  @@index([status])
+  @@map("sub_event_attach_requests")
+}
+
+/// Singleton row of platform-wide settings (id is always "global").
+model PlatformConfig {
+  id String @id @default("global")
+
+  // App-wide processing fee applied to every paid registration, set by admins.
+  // Overrides any per-plan processing fee.
+  processingFeePercent Decimal @default(0) @map("processing_fee_percent") @db.Decimal(5, 2)
+
+  // How many days after an event ends organisers may still take post-event
+  // actions on it — issuing certificates and importing/adding attendees. Once
+  // this window closes those actions are refused. Admin-editable; the default
+  // (7) is the product rule this feature shipped with.
+  postEventActionWindowDays Int @default(7) @map("post_event_action_window_days")
+
+  // Mobile app version policy, edited by admins. Drives the in-app "update
+  // available" prompt: the app compares its installed build against `latest`
+  // (optional prompt) and `minimum` (forced update below it). Store URLs are
+  // where "Update" sends the user.
+  iosLatestVersion      String @default("2.0.1") @map("ios_latest_version")
+  iosMinimumVersion     String @default("0.0.0") @map("ios_minimum_version")
+  iosStoreUrl           String @default("https://apps.apple.com/in/app/unifesto-discover-events/id6767165496") @map("ios_store_url")
+  androidLatestVersion  String @default("2.0.1") @map("android_latest_version")
+  androidMinimumVersion String @default("0.0.0") @map("android_minimum_version")
+  androidStoreUrl       String @default("https://play.google.com/store/apps/details?id=com.unifesto.app") @map("android_store_url")
+
+  // WhatsApp numbers (E.164, e.g. "+919848945690") that receive the "Unifesto
+  // Stats" daily/weekly/milestone broadcast. Admin-editable from Apex; read
+  // fresh at send time so every replica sees edits immediately.
+  statsRecipients String[] @default([]) @map("stats_recipients")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_config")
+}
+
+// =====================================================
+// REFERRAL MODEL
+// User referral system
+// =====================================================
+
+model Referral {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  referrerId String @map("referrer_id") @db.Uuid
+  referrer   User   @relation("ReferralsMade", fields: [referrerId], references: [id])
+
+  referredId String @unique @map("referred_id") @db.Uuid
+  referred   User   @relation("ReferredBy", fields: [referredId], references: [id])
+
+  coinsAwarded Int       @default(0) @map("coins_awarded")
+  awardedAt    DateTime? @map("awarded_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([referrerId])
+  @@map("referrals")
+}
+
+// =====================================================
+// EMAIL CAMPAIGN MODELS
+// Admin custom email campaigns and tracking
+// =====================================================
+
+enum EmailTargetType {
+  SINGLE_USER
+  SPACE_MEMBERS
+  EVENT_REGISTRANTS
+  ALL_USERS
+  ORGANISERS_ONLY
+  WAITLIST
+  SEGMENT
+
+  @@map("email_target_type")
+}
+
+enum EmailCampaignStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+  SCHEDULED
+  CANCELLED
+
+  @@map("email_campaign_status")
+}
+
+enum EmailLogStatus {
+  SENT
+  FAILED
+  BOUNCED
+
+  @@map("email_log_status")
+}
+
+enum EmailTemplateScope {
+  GLOBAL // platform library, usable by every space as a starting point
+  SPACE // owned by one space, private to it
+
+  @@map("email_template_scope")
+}
+
+/// A reusable, saved email body. GLOBAL templates are authored by platform
+/// admins and are read-only starting points for spaces; SPACE templates are
+/// owned and editable by the space that created them. `body` is HTML and may
+/// contain `{{merge}}` variables declared in `variables`.
+model EmailTemplate {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  scope   EmailTemplateScope @default(SPACE)
+  spaceId String?            @map("space_id") @db.Uuid // null ⇒ GLOBAL
+  space   Space?             @relation("SpaceEmailTemplates", fields: [spaceId], references: [id], onDelete: Cascade)
+
+  name    String @db.VarChar(255)
+  subject String @db.VarChar(500)
+  body    String @db.Text // HTML content
+
+  // Declared merge variables, e.g. ["firstName","eventName"]. Advisory — used by
+  // the composer's variable helper; substitution is best-effort at send time.
+  variables Json? @map("variables")
+
+  createdBy     String @map("created_by") @db.Uuid
+  createdByUser User   @relation("EmailTemplatesCreated", fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([scope])
+  @@map("email_templates")
+}
+
+model EmailCampaign {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  subject String @db.VarChar(500)
+  body    String @db.Text // HTML content
+
+  // A/B subject testing. When `subjectB` is set, recipients are split by
+  // `abSplitPct` (percentage that receive the A subject; the rest get B).
+  subjectB   String? @map("subject_b") @db.VarChar(500)
+  abSplitPct Int?    @map("ab_split_pct") // 0-100, percentage assigned variant A
+
+  // Space scope. null ⇒ platform campaign (apex). Set ⇒ owned by one space;
+  // recipient resolution is constrained to that space.
+  spaceId String? @map("space_id") @db.Uuid
+  space   Space?  @relation("SpaceEmailCampaigns", fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // Template this campaign was composed from (advisory; body is snapshotted).
+  templateId String? @map("template_id") @db.Uuid
+
+  // Admin who sent
+  sentBy     String @map("sent_by") @db.Uuid
+  sentByUser User   @relation("EmailCampaignsSent", fields: [sentBy], references: [id])
+
+  // Target configuration
+  targetType EmailTargetType @map("target_type")
+  targetId   String?         @map("target_id") @db.Uuid // spaceId, eventId, userId
+
+  // Segment filters (JSON for flexibility)
+  segmentFilters Json? @map("segment_filters")
+
+  // Tracking
+  totalSent   Int                 @default(0) @map("total_sent")
+  failedCount Int                 @default(0) @map("failed_count")
+  openCount   Int                 @default(0) @map("open_count") // unique opens
+  clickCount  Int                 @default(0) @map("click_count") // unique clickers
+  status      EmailCampaignStatus @default(PENDING)
+
+  // Scheduling
+  scheduledAt DateTime? @map("scheduled_at") @db.Timestamptz(6)
+  sentAt      DateTime? @map("sent_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  logs EmailCampaignLog[]
+
+  @@index([sentBy])
+  @@index([targetType])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([spaceId])
+  @@map("email_campaigns")
+}
+
+model EmailCampaignLog {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  campaignId String        @map("campaign_id") @db.Uuid
+  campaign   EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  recipientEmail String  @map("recipient_email") @db.VarChar(255)
+  userId         String? @map("user_id") @db.Uuid
+
+  status       EmailLogStatus
+  errorMessage String?        @map("error_message") @db.Text
+  sesMessageId String?        @map("ses_message_id") @db.VarChar(255)
+
+  // A/B variant this recipient received ("A" | "B"), null for single-subject.
+  variant String? @db.VarChar(1)
+
+  // Engagement tracking (open pixel + click redirect).
+  openedAt       DateTime? @map("opened_at") @db.Timestamptz(6) // first open
+  firstClickedAt DateTime? @map("first_clicked_at") @db.Timestamptz(6)
+  openCount      Int       @default(0) @map("open_count")
+  clickCount     Int       @default(0) @map("click_count")
+
+  sentAt DateTime @default(now()) @map("sent_at") @db.Timestamptz(6)
+
+  @@index([campaignId])
+  @@index([userId])
+  @@index([status])
+  @@map("email_campaign_logs")
+}
+
+// =====================================================
+
+model AdminDevice {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @db.Uuid
+  fcmToken  String   @unique
+  platform  String   @default("ios") @db.VarChar(10)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_devices")
+}
+
+model EventCategory {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  iconUrl     String?  @map("icon_url") @db.Text
+  bannerUrl   String?  @map("banner_url") @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("event_categories")
+}
+
+// =====================================================
+// PAYOUT SYSTEM
+// Organiser bank accounts and settlement records
+// =====================================================
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+
+  @@map("payout_status")
+}
+
+enum BankAccountStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+
+  @@map("bank_account_status")
+}
+
+/// How an organiser is paid out. A payout method is EITHER a full bank account
+/// (holder name + number + IFSC + bank) OR a UPI handle (upiId + payee name) —
+/// the two are stored side by side but only one set of fields is filled per row.
+/// `accountHolderName` doubles as the UPI payee name, and `mobileNumber` (the
+/// number linked to the account/UPI) is captured for both.
+enum PayoutMethodType {
+  BANK
+  UPI
+
+  @@map("payout_method_type")
+}
+
+model PayoutBankAccount {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // BANK or UPI. Determines which of the field groups below is populated.
+  methodType PayoutMethodType @default(BANK) @map("method_type")
+
+  // Holder name for a bank account, or the payee name for a UPI handle. Always set.
+  accountHolderName String  @map("account_holder_name") @db.VarChar(255)
+  // Mobile number linked to the account / UPI. Captured for both types.
+  mobileNumber      String? @map("mobile_number") @db.VarChar(20)
+
+  // Bank fields — populated when methodType = BANK.
+  accountNumber String? @map("account_number") @db.VarChar(50)
+  ifscCode      String? @map("ifsc_code") @db.VarChar(20)
+  bankName      String? @map("bank_name") @db.VarChar(255)
+  accountType   String  @default("savings") @map("account_type") @db.VarChar(20)
+
+  // UPI field — populated when methodType = UPI.
+  upiId String? @map("upi_id") @db.VarChar(100)
+
+  status          BankAccountStatus @default(PENDING)
+  verifiedAt      DateTime?         @map("verified_at") @db.Timestamptz(6)
+  verifiedBy      String?           @map("verified_by") @db.Uuid
+  rejectionReason String?           @map("rejection_reason") @db.Text
+
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payouts             Payout[]
+  // Events that route their payout to this account by default (may be a
+  // co-organiser's account). SetNull if the account is removed.
+  eventPayoutDefaults Event[]  @relation("EventPayoutAccount")
+
+  @@index([userId])
+  @@index([status])
+  @@map("organiser_bank_accounts")
+}
+
+model Payout {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id])
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation("PayoutUser", fields: [userId], references: [id])
+
+  bankAccountId String            @map("bank_account_id") @db.Uuid
+  bankAccount   PayoutBankAccount @relation(fields: [bankAccountId], references: [id])
+
+  grossRevenue       Decimal @map("gross_revenue") @db.Decimal(12, 2)
+  platformFeePercent Decimal @map("platform_fee_percent") @db.Decimal(5, 2)
+  platformFee        Decimal @map("platform_fee") @db.Decimal(12, 2)
+  netAmount          Decimal @map("net_amount") @db.Decimal(12, 2)
+
+  scheduledAt DateTime @map("scheduled_at") @db.Timestamptz(6)
+
+  status        PayoutStatus @default(PENDING)
+  processedAt   DateTime?    @map("processed_at") @db.Timestamptz(6)
+  completedAt   DateTime?    @map("completed_at") @db.Timestamptz(6)
+  failedAt      DateTime?    @map("failed_at") @db.Timestamptz(6)
+  failureReason String?      @map("failure_reason") @db.Text
+
+  utr String? @db.VarChar(50)
+
+  createdBy String? @map("created_by") @db.Uuid
+  notes     String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@map("payouts")
+}
+
+/// A refund request for a paid registration. Two-stage approval: an attendee
+/// raises it (PENDING_CURATOR) → the organiser forwards or rejects → an admin
+/// approves (issuing the refund) or rejects. Organisers may also raise a request
+/// directly, which starts at PENDING_ADMIN. Only the base amount (ticket price)
+/// is ever refundable — the processing fee is retained. Partial refunds allowed.
+model RefundRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  requestedById String              @map("requested_by_id") @db.Uuid
+  requestedBy   User                @relation("RefundRequestedBy", fields: [requestedById], references: [id])
+  requesterRole RefundRequesterRole @map("requester_role")
+
+  supportTicketId String?        @map("support_ticket_id") @db.Uuid
+  supportTicket   SupportTicket? @relation(fields: [supportTicketId], references: [id], onDelete: SetNull)
+
+  reason          String   @db.Text
+  requestedAmount Decimal? @map("requested_amount") @db.Decimal(10, 2)
+
+  // Where the attendee wants the cash portion returned (default: bank).
+  refundMethod RefundMethod @default(BANK) @map("refund_method")
+
+  status RefundStatus @default(PENDING_CURATOR)
+
+  // Organiser verification stage
+  curatorNote     String?   @map("organiser_note") @db.Text
+  curatorActionBy String?   @map("organiser_action_by") @db.Uuid
+  curatorActionAt DateTime? @map("organiser_action_at") @db.Timestamptz(6)
+
+  // Admin decision stage
+  adminNote     String?   @map("admin_note") @db.Text
+  adminActionBy String?   @map("admin_action_by") @db.Uuid
+  adminActionAt DateTime? @map("admin_action_at") @db.Timestamptz(6)
+
+  // Settlement — populated when APPROVED
+  approvedAmount   Decimal? @map("approved_amount") @db.Decimal(10, 2)
+  cashRefunded     Decimal  @default(0) @map("cash_refunded") @db.Decimal(10, 2)
+  coinsRefunded    Int      @default(0) @map("coins_refunded")
+  razorpayRefundId String?  @map("razorpay_refund_id") @db.VarChar(100)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([registrationId])
+  @@index([eventId])
+  @@index([status])
+  @@map("refund_requests")
+}
+
+// =====================================================
+// API REQUEST LOG (admin observability)
+// =====================================================
+
+// One row per HTTP request handled by the API. Written async by a global
+// interceptor; surfaced in the admin "Logs" section. Retained ~14 days.
+model ApiLog {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  method     String @db.VarChar(10)
+  path       String @db.Text
+  statusCode Int    @map("status_code")
+  durationMs Int    @map("duration_ms")
+
+  userId       String? @map("user_id") @db.Uuid
+  ipAddress    String? @map("ip_address") @db.VarChar(64)
+  userAgent    String? @map("user_agent") @db.Text
+  errorMessage String? @map("error_message") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@index([statusCode])
+  @@index([method])
+  @@index([userId])
+  @@map("api_logs")
+}
+
+// =====================================================
+// STATUS PAGE (uptime history + incidents)
+// =====================================================
+
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+
+  @@map("incident_status")
+}
+
+enum IncidentImpact {
+  NONE // maintenance / informational
+  MINOR
+  MAJOR
+  CRITICAL
+
+  @@map("incident_impact")
+}
+
+// A single health probe result for one service, sampled on a schedule.
+// Aggregated into daily uptime for the 90-day status bars.
+model HealthCheck {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  service   String   @db.VarChar(50) // api | database | redis | storage
+  up        Boolean
+  latencyMs Int?     @map("latency_ms")
+  checkedAt DateTime @default(now()) @map("checked_at") @db.Timestamptz(6)
+
+  @@index([service, checkedAt])
+  @@map("health_checks")
+}
+
+model Incident {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  title  String         @db.VarChar(300)
+  body   String?        @db.Text
+  status IncidentStatus @default(INVESTIGATING)
+  impact IncidentImpact @default(MINOR)
+
+  affectedServices String[] @map("affected_services")
+
+  startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([startedAt])
+  @@map("incidents")
+}
+
+// =====================================================
+// SUPPORT (ticket-based helpdesk)
+// =====================================================
+
+model SupportTicket {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Human-friendly reference, e.g. #1042
+  ticketNumber Int    @unique @default(autoincrement()) @map("ticket_number")
+
+  // Content
+  subject  String                @db.VarChar(300)
+  category SupportTicketCategory @default(GENERAL)
+  priority SupportTicketPriority @default(NORMAL)
+  status   SupportTicketStatus   @default(OPEN)
+
+  // Who raised it
+  requesterId  String  @map("requester_id") @db.Uuid
+  requester    User    @relation("SupportTicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  // Optional reply-to captured at creation (mobile attendees, unverified email)
+  contactEmail String? @map("contact_email") @db.VarChar(255)
+
+  // Optional space context (tickets raised from an organiser space)
+  spaceId String? @map("space_id") @db.Uuid
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+
+  // Staff assignment
+  assignedToId String? @map("assigned_to_id") @db.Uuid
+  assignedTo   User?   @relation("SupportTicketAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Lifecycle
+  resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz(6)
+  closedAt      DateTime? @map("closed_at") @db.Timestamptz(6)
+  lastMessageAt DateTime  @default(now()) @map("last_message_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  messages       SupportMessage[]
+  refundRequests RefundRequest[]
+
+  @@index([requesterId])
+  @@index([spaceId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([lastMessageAt])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  ticketId String        @map("ticket_id") @db.Uuid
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId String @map("author_id") @db.Uuid
+  author   User   @relation("SupportMessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  // True when written by a platform admin (staff reply) vs the requester.
+  isStaffReply Boolean @default(false) @map("is_staff_reply")
+
+  body String @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([ticketId, createdAt])
+  @@index([authorId])
+  @@map("support_messages")
+}
+
+// =====================================================
+// SESSIONS
+// Lightweight, online-only gatherings owned by a Space (Meet/Zoom/Teams).
+// Deliberately separate from Event: no tickets, QR, forms, or groups — just a
+// title, a time, a meeting link, and (optionally) a single price. Offline
+// gatherings stay under Event.
+// =====================================================
+
+enum SessionPlatform {
+  GOOGLE_MEET
+  ZOOM
+  MS_TEAMS
+  OTHER
+  UNIFESTO_LIVE // hosted in-app via 100ms; join is a per-user token, not a URL
+
+  @@map("session_platform")
+}
+
+enum SessionStatus {
+  DRAFT // not yet visible to attendees
+  PUBLISHED // open for registration
+  CANCELLED // organiser cancelled; paid attendees auto-refunded
+  COMPLETED // ended
+
+  @@map("session_status")
+}
+
+enum SessionVisibility {
+  PUBLIC // surfaced in discovery
+  UNLISTED // reachable only via direct link
+
+  @@map("session_visibility")
+}
+
+model Session {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  title         String  @db.VarChar(500)
+  slug          String  @unique @db.VarChar(200)
+  description   String? @db.Text
+  coverImageUrl String? @map("cover_image_url") @db.Text
+
+  // Where it happens. For external platforms the meeting link is gated: never
+  // returned to non-registered users (enforced in the service layer, not here).
+  // For UNIFESTO_LIVE there is no shareable URL at all — meetingUrl is null and
+  // the room is joined with a per-user LiveKit token minted at join() time (the
+  // room name is derived from the session id, so nothing is stored here).
+  platform      SessionPlatform @default(GOOGLE_MEET)
+  meetingUrl    String?         @map("meeting_url") @db.Text
+  platformOther String?         @map("platform_other") @db.VarChar(100)
+
+  // When it happens. Stored as start + duration rather than start + end so the
+  // "join window" (link goes hot shortly before start) is a pure function of
+  // startDateTime.
+  startDateTime   DateTime @map("start_date_time") @db.Timestamptz(6)
+  durationMinutes Int      @default(60) @map("duration_minutes")
+  timezone        String   @default("Asia/Kolkata") @db.VarChar(100)
+
+  // Registration. null capacity = unlimited. price 0 (the default) = free, in
+  // which case registration completes without a Razorpay round-trip.
+  capacity        Int?
+  registeredCount Int     @default(0) @map("registered_count")
+  price           Decimal @default(0) @db.Decimal(10, 2)
+  currency        String  @default("INR") @db.VarChar(3)
+
+  status     SessionStatus     @default(DRAFT)
+  visibility SessionVisibility @default(PUBLIC)
+
+  // For UNIFESTO_LIVE: true = interactive (attendees may publish mic/cam),
+  // false = broadcast/webinar (only the host publishes). Ignored for external.
+  interactive Boolean @default(true)
+
+  // Populated after the session ends (optional). recordingEgressId tracks an
+  // in-flight LiveKit Egress so it can be stopped and correlated on completion.
+  recordingUrl      String? @map("recording_url") @db.Text
+  recordingEgressId String? @map("recording_egress_id") @db.Text
+
+  // Cancellation (organiser-initiated). See cancellation-policy in the service.
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  // Soft delete — see the matching fields on Event. Hides the session without
+  // touching its registrations, payments or recording.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  deletedBy String?   @map("deleted_by") @db.Uuid
+
+  createdBy String @map("created_by") @db.Uuid
+  creator   User   @relation("SessionCreator", fields: [createdBy], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  registrations SessionRegistration[]
+  coHosts       SessionCoHost[]
+
+  @@index([spaceId])
+  @@index([slug])
+  @@index([status])
+  @@index([startDateTime])
+  @@index([createdBy])
+  @@index([deletedAt])
+  @@map("sessions")
+}
+
+/// Per-session co-hosts: users the organiser invites to host a single session
+/// (e.g. a guest speaker) without making them a space-level co-organiser. They
+/// receive a host token when they join, and cannot register as attendees.
+model SessionCoHost {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  sessionId String  @map("session_id") @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+  @@map("session_co_hosts")
+}
+
+model SessionRegistration {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  sessionId String  @map("session_id") @db.Uuid
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Payment. Mirrors the money columns on EventRegistration but without coins —
+  // sessions are Razorpay-only in v1. razorpayAmount == totalAmount for now.
+  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
+  razorpayAmount Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
+  processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
+  paymentId      String?       @map("payment_id") @db.VarChar(255)
+  orderId        String?       @map("order_id") @db.VarChar(255)
+  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
+
+  status RegistrationStatus @default(REGISTERED)
+
+  // Attendance: stamped the first time the attendee follows the join redirect.
+  // The online analogue of a QR check-in (measures intent-to-join, not presence).
+  joinedAt DateTime? @map("joined_at") @db.Timestamptz(6)
+
+  registeredAt DateTime  @default(now()) @map("registered_at") @db.Timestamptz(6)
+  cancelledAt  DateTime? @map("cancelled_at") @db.Timestamptz(6)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([paymentStatus])
+  @@map("session_registrations")
+}
+
+// =====================================================
+// LEADERBOARD / COMPETITIVE DASHBOARD MODELS
+// Powers hack.unifesto.app. Exactly one Leaderboard per event, in one of two
+// modes:
+//   RUBRIC – judges score entrants against weighted criteria; an entrant's
+//            final score is the weighted-criteria total, averaged across the
+//            judges who scored them.
+//   METRIC – organisers enter raw values for metric fields; entrants are
+//            ranked by the single field flagged `isPrimary`.
+// Availability is gated by PlanConfig.hasLeaderboard; the per-event on/off
+// switch is Leaderboard.enabled.
+//
+// Cross-aggregate links (entrant → user/registration, score → judge) are
+// stored as bare UUID columns without a Prisma relation, mirroring the
+// existing `reviewed_by` / soft-reference convention. Referential integrity
+// is enforced with real FKs *within* the leaderboard aggregate only.
+// =====================================================
+
+enum LeaderboardMode {
+  RUBRIC
+  METRIC
+
+  @@map("leaderboard_mode")
+}
+
+enum LeaderboardEntrantKind {
+  TEAM
+  INDIVIDUAL
+
+  @@map("leaderboard_entrant_kind")
+}
+
+enum LeaderboardVisibility {
+  PUBLIC // anyone with the link, unauthenticated
+  PARTICIPANTS_ONLY // authenticated users registered for the event
+
+  @@map("leaderboard_visibility")
+}
+
+enum LeaderboardStatus {
+  DRAFT // organiser-only; not shown on the public board
+  LIVE // visible per `visibility`; ranks update in real time
+  FROZEN // visible, but score changes stop reflecting (pre-reveal suspense)
+  FINAL // results revealed and locked
+
+  @@map("leaderboard_status")
+}
+
+enum LeaderboardTieBreak {
+  EARLIEST_SUBMISSION // equal totals ordered by who reached the score first
+  PRIMARY_METRIC // broken by `tieBreakMetricId`, then earliest submission
+
+  @@map("leaderboard_tie_break")
+}
+
+enum LeaderboardRoundStatus {
+  PENDING // not started; not scoreable, hidden from panelists
+  ACTIVE // open for scoring/reviews; panelists may read + write their own cells
+  CLOSED // scoring done; server-side read-lock — panelists can no longer read
+
+  @@map("leaderboard_round_status")
+}
+
+enum LeaderboardEntrantRoundStatus {
+  PENDING // undecided in this round (the default the bracket shows)
+  ADVANCED // curator advanced this entrant to the next round
+  ELIMINATED // curator eliminated this entrant in this round
+
+  @@map("leaderboard_entrant_round_status")
+}
+
+enum LeaderboardPanelistKind {
+  JUDGE // scores + per-criterion comments + overall review
+  MENTOR // reviews only — never a numeric score
+
+  @@map("leaderboard_panelist_kind")
+}
+
+model Leaderboard {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // One board per event.
+  eventId String @unique @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  mode        LeaderboardMode
+  entrantKind LeaderboardEntrantKind @default(TEAM) @map("entrant_kind")
+  visibility  LeaderboardVisibility  @default(PARTICIPANTS_ONLY)
+  status      LeaderboardStatus      @default(DRAFT)
+
+  // Per-event on/off, independent of the plan-level capability gate.
+  enabled Boolean @default(false)
+
+  // Curator toggle that opens written feedback to participants (their OWN team
+  // only). Marks are NEVER shown to participants regardless of this flag.
+  revealReviews Boolean @default(false) @map("reveal_reviews")
+
+  title       String? @db.VarChar(200)
+  description String? @db.Text
+
+  // How equal `totalScore`s are ordered.
+  tieBreak         LeaderboardTieBreak @default(EARLIEST_SUBMISSION) @map("tie_break")
+  // Used only when tieBreak = PRIMARY_METRIC. Soft reference to a metric.
+  tieBreakMetricId String?             @map("tie_break_metric_id") @db.Uuid
+
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  metrics   LeaderboardMetric[]
+  entrants  LeaderboardEntrant[]
+  rounds    LeaderboardRound[]
+  panelists LeaderboardPanelist[]
+  awards    LeaderboardAward[]
+
+  @@map("leaderboards")
+}
+
+model LeaderboardMetric {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  // Criteria may differ per round. null = board-level (applies to all rounds).
+  // Kept null-able so a board with one implicit round needs no round wiring.
+  roundId String?           @map("round_id") @db.Uuid
+  round   LeaderboardRound? @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  key   String @db.VarChar(80) // stable slug, unique within a board
+  label String @db.VarChar(160)
+
+  // RUBRIC: relative weight in the weighted average. METRIC: ignored.
+  weight Decimal @default(1) @db.Decimal(6, 3)
+
+  // Allowed range for a single score cell.
+  minValue Decimal @default(0) @map("min_value") @db.Decimal(12, 3)
+  maxValue Decimal @default(100) @map("max_value") @db.Decimal(12, 3)
+
+  // METRIC mode: the one field entrants are ranked by (enforce exactly one
+  // per board in application logic).
+  isPrimary Boolean @default(false) @map("is_primary")
+
+  displayOrder Int @default(0) @map("display_order")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  scores LeaderboardScore[]
+
+  @@unique([leaderboardId, key])
+  @@index([leaderboardId])
+  @@index([roundId])
+  @@map("leaderboard_metrics")
+}
+
+model LeaderboardEntrant {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  name String @db.VarChar(200)
+
+  // Optional soft links (no DB FK). A team can map to a paid group ticket, or
+  // an individual to their account — but neither is required, so teams may
+  // form after registration or outside ticketing entirely.
+  registrationId String? @map("registration_id") @db.Uuid
+  userId         String? @map("user_id") @db.Uuid
+
+  // Free-form roster / project metadata (member names, repo link, table #, …).
+  meta Json?
+
+  // Denormalised cache recomputed on each score write, for O(1) board reads.
+  totalScore Decimal @default(0) @map("total_score") @db.Decimal(14, 4)
+  rank       Int?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  scores         LeaderboardScore[]
+  entrantRounds  LeaderboardEntrantRound[]
+  judgments      LeaderboardJudgment[]
+  panelistScopes LeaderboardPanelist[]
+  awards         LeaderboardAward[]
+
+  @@index([leaderboardId])
+  @@index([registrationId])
+  @@map("leaderboard_entrants")
+}
+
+model LeaderboardScore {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  metricId String            @map("metric_id") @db.Uuid
+  metric   LeaderboardMetric @relation(fields: [metricId], references: [id], onDelete: Cascade)
+
+  // The round this cell belongs to. Every score is round-scoped; a board with
+  // no explicit rounds carries an implicit "Round 1" materialised on create, so
+  // this is always a real round.
+  roundId String           @map("round_id") @db.Uuid
+  round   LeaderboardRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  // RUBRIC: the judge who owns this cell. METRIC: null (organiser-entered).
+  // NOTE: the @@unique below does NOT constrain the METRIC case, because
+  // Postgres treats NULLs as distinct in unique indexes. A partial unique
+  // index `(entrant_id, metric_id) WHERE judge_user_id IS NULL` is added by
+  // hand in the migration to guarantee one organiser row per cell.
+  judgeUserId String? @map("judge_user_id") @db.Uuid
+
+  value Decimal @db.Decimal(12, 3)
+
+  // Optional per-criterion note the judge leaves alongside the numeric cell.
+  comment String? @db.Text
+
+  updatedBy String?  @map("updated_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // One cell per (entrant, metric, judge, round). METRIC cells have
+  // judgeUserId = null; Postgres treats NULLs as distinct here, so a partial
+  // unique index `(entrant, metric, round) WHERE judge_user_id IS NULL` is added
+  // by hand in the migration to guarantee one organiser row per cell per round.
+  @@unique([entrantId, metricId, judgeUserId, roundId], map: "leaderboard_scores_cell_round_uniq")
+  @@index([entrantId])
+  @@index([metricId])
+  @@index([judgeUserId])
+  @@index([roundId])
+  @@map("leaderboard_scores")
+}
+
+/// A named stage of a competition (Screening → Semis → Finals). Rounds are
+/// optional and multi-round; a board with no explicit rounds carries one
+/// implicit "Round 1" the service materialises on board create, so scoring code
+/// always has a `roundId` to key on. Scores are INDEPENDENT per round; final
+/// ranking is the last round's ranking.
+model LeaderboardRound {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  name  String @db.VarChar(160)
+  order Int
+
+  status LeaderboardRoundStatus @default(PENDING)
+
+  startAt DateTime? @map("start_at") @db.Timestamptz(6)
+  endAt   DateTime? @map("end_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  metrics       LeaderboardMetric[]
+  scores        LeaderboardScore[]
+  entrantRounds LeaderboardEntrantRound[]
+  panelists     LeaderboardPanelist[]
+  judgments     LeaderboardJudgment[]
+
+  @@unique([leaderboardId, order])
+  @@index([leaderboardId])
+  @@map("leaderboard_rounds")
+}
+
+/// One entrant's standing in one round — the SINGLE source of truth for the
+/// attendee-facing bracket. The participant path reads only `status` (and never
+/// the score tables), so a mark cannot leak through it. `roundScore`/`rank` are
+/// denormalised per-round aggregates for O(1) reads.
+model LeaderboardEntrantRound {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  roundId String           @map("round_id") @db.Uuid
+  round   LeaderboardRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  status LeaderboardEntrantRoundStatus @default(PENDING)
+
+  roundScore Decimal? @map("round_score") @db.Decimal(14, 4)
+  rank       Int?
+
+  // The curator who last set ADVANCED / ELIMINATED (soft ref to a user).
+  decidedBy String?   @map("decided_by") @db.Uuid
+  decidedAt DateTime? @map("decided_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([entrantId, roundId])
+  @@index([roundId])
+  @@map("leaderboard_entrant_rounds")
+}
+
+/// A judge/mentor's panel assignment — scopes WHICH rounds/entrants they act on.
+/// This is leaderboard-internal and separate from the event-scoped `UserRole`
+/// (which grants app access + shows the mobile "Judging" section). A null
+/// `roundId`/`entrantId` means "all rounds / all entrants in scope".
+/// `userId` is a soft reference (no FK), matching the aggregate convention.
+model LeaderboardPanelist {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  userId String                  @map("user_id") @db.Uuid
+  kind   LeaderboardPanelistKind
+
+  roundId String?           @map("round_id") @db.Uuid
+  round   LeaderboardRound? @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  entrantId String?             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant? @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([leaderboardId, userId, roundId, entrantId], map: "leaderboard_panelists_scope_uniq")
+  @@index([leaderboardId])
+  @@index([userId])
+  @@map("leaderboard_panelists")
+}
+
+/// The review record for one (panelist, entrant, round): the overall written
+/// review plus `submittedAt`, which is the SINGLE source of truth for "has this
+/// judge/mentor reviewed them?" on the curator dashboard. Per-criterion comments
+/// ride on `LeaderboardScore.comment`; mentors (who leave no scores) carry their
+/// comments here in future via a separate path, but v1 keeps comments on scores.
+/// `panelistUserId` is a soft reference (no FK).
+model LeaderboardJudgment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  roundId String           @map("round_id") @db.Uuid
+  round   LeaderboardRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  panelistUserId String                  @map("panelist_user_id") @db.Uuid
+  kind           LeaderboardPanelistKind
+
+  overallReview String? @map("overall_review") @db.Text
+
+  // Set on submit → "reviewed" is `submittedAt != null`.
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([entrantId, roundId, panelistUserId])
+  @@index([roundId])
+  @@index([panelistUserId])
+  @@map("leaderboard_judgments")
+}
+
+/// A named award (Winner, Runner-up, Best Design, People's Choice…) declared by
+/// a Curator / Space Admin only. Each award has its own `published` flag so
+/// winners can be revealed one at a time. Mode-agnostic.
+model LeaderboardAward {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  title String @db.VarChar(160)
+  order Int    @default(0)
+
+  published Boolean @default(false)
+
+  declaredBy String?   @map("declared_by") @db.Uuid
+  declaredAt DateTime? @map("declared_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([leaderboardId, title])
+  @@index([leaderboardId])
+  @@index([entrantId])
+  @@map("leaderboard_awards")
+}
+
+// =====================================================
+// CERTIFICATE MODELS
+// Organiser-designed certificate templates + issued,
+// publicly-verifiable certificates for attendees.
+// =====================================================
+
+/// A reusable certificate layout for one event: an uploaded background image
+/// plus a set of positioned text fields. `fields` stores placement DATA, not
+/// code, so organisers reposition text without a deploy. The background is
+/// designed against a fixed canvas (`canvasWidth` x `canvasHeight`, in px); at
+/// render time every field's coordinates are interpreted in that same space and
+/// scaled to the output.
+model CertificateTemplate {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name String @db.VarChar(150)
+
+  // Uploaded design the text is composited over. Should already contain all
+  // static artwork (logos, borders, signatures). Aspect ratio is free but
+  // landscape A4 (e.g. 2000x1414) is the sensible default.
+  backgroundUrl String @map("background_url") @db.Text
+
+  // The canvas the `fields` coordinates are authored against. Kept explicit so
+  // the renderer never has to guess the design's intended dimensions.
+  canvasWidth  Int @map("canvas_width")
+  canvasHeight Int @map("canvas_height")
+
+  // Array of CertificateField placements. Each element:
+  //   {
+  //     key: "recipientName" | "eventTitle" | "issueDate"
+  //          | "certificateNumber" | "custom",
+  //     label?: string,            // for a "custom" field, the static text
+  //     x: number, y: number,      // top-left of the text box, in canvas px
+  //     fontSize: number,          // in canvas px
+  //     color: string,             // hex, e.g. "#1a1a1a"
+  //     align: "left" | "center" | "right",
+  //     bold?: boolean,
+  //     italic?: boolean,
+  //     maxWidth?: number          // wrap/shrink box width in canvas px
+  //   }
+  fields Json
+
+  createdBy String @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  certificates Certificate[]
+
+  @@index([eventId])
+  @@map("certificate_templates")
+}
+
+/// One issued certificate for one recipient. Immutable once created except for
+/// revocation. `recipientName` is snapshotted so a later profile rename never
+/// rewrites history. `verificationCode` is the public, unguessable handle used
+/// by the verify page; `certificateNumber` is the human-readable serial shown
+/// on the certificate itself.
+model Certificate {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  templateId String              @map("template_id") @db.Uuid
+  template   CertificateTemplate @relation(fields: [templateId], references: [id])
+
+  // The recipient's account, when known. Null is allowed for a manually issued
+  // certificate to someone without a Unifesto account (e.g. an external judge).
+  userId String? @map("user_id") @db.Uuid
+  user   User?   @relation("CertificateRecipient", fields: [userId], references: [id], onDelete: SetNull)
+
+  // The registration this certificate was earned through, when applicable.
+  // SetNull so cancelling/removing a registration never destroys the record of
+  // a certificate that was legitimately earned.
+  registrationId String?            @map("registration_id") @db.Uuid
+  registration   EventRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+
+  // For a GROUP registration (one row, many people in `groupMembers`), this is
+  // the member's index into that array — so every teammate gets their own
+  // certificate off the one shared registration. Null / 0 for an individual.
+  memberIndex Int? @map("member_index")
+
+  // Snapshots — frozen at issue time, never re-derived. `recipientName` comes
+  // from the registration's form responses / group-member data, NOT the
+  // account (many accounts have no name set).
+  recipientName  String  @map("recipient_name") @db.VarChar(255)
+  recipientEmail String? @map("recipient_email") @db.VarChar(255)
+
+  // How this recipient qualified (drives nothing at render; kept for audit).
+  audience CertificateAudience
+
+  certificateNumber String @unique @map("certificate_number") @db.VarChar(100)
+  verificationCode  String @unique @map("verification_code") @db.VarChar(64)
+
+  // Rendered artifacts in S3. Null only in the brief window between row creation
+  // and the render finishing; a fully issued certificate has both.
+  pdfUrl   String? @map("pdf_url") @db.Text
+  imageUrl String? @map("image_url") @db.Text
+
+  status CertificateStatus @default(ISSUED)
+
+  issuedBy String   @map("issued_by") @db.Uuid
+  issuedAt DateTime @default(now()) @map("issued_at") @db.Timestamptz(6)
+
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason") @db.Text
+
+  // When the recipient was last emailed a link to this certificate. Null means
+  // never delivered (no email on file, or a send that failed) — so this doubles
+  // as the "needs a resend" signal. Re-stamped on each successful send.
+  emailedAt DateTime? @map("emailed_at") @db.Timestamptz(6)
+
+  // Dedup key is (template, registration, memberIndex) — a group's members
+  // share one registration + one account (the lead's), so keying on userId
+  // would collapse a whole team into a single certificate. Enforced in the
+  // issue() flow; the DB keeps a supporting index rather than a unique that
+  // NULLs would silently weaken.
+  @@index([templateId])
+  @@index([eventId])
+  @@index([userId])
+  @@index([verificationCode])
+  @@index([status])
+  @@map("certificates")
+}
+
+/// One queued certificate-issuance run. Issuance renders a PDF + PNG per
+/// recipient with @napi-rs/canvas (Skia), whose buffers live in NATIVE memory
+/// outside the V8 heap — a large batch done inline in the request pushed replica
+/// RSS past its cap and got OOM-killed. So issuance is enqueued onto a BullMQ
+/// queue and processed by a concurrency-bounded worker; this row is the batch's
+/// durable record, letting the organiser poll progress and surviving a restart
+/// (the job re-runs and is idempotent). `registrationIds` is only set for the
+/// MANUAL audience. Counts mirror the summary the worker produces.
+model CertificateBatch {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // Plain scalars (no FK relations) so this history survives event/template
+  // deletion and needs no back-relations on those large models.
+  eventId    String @map("event_id") @db.Uuid
+  templateId String @map("template_id") @db.Uuid
+
+  audience CertificateAudience
+
+  // Hand-picked registrations for the MANUAL audience; empty otherwise.
+  registrationIds String[] @map("registration_ids") @db.Uuid
+
+  status CertificateBatchStatus @default(QUEUED)
+
+  total       Int @default(0)
+  issued      Int @default(0)
+  reactivated Int @default(0)
+  skipped     Int @default(0)
+  failed      Int @default(0)
+
+  error String? @db.Text
+
+  requestedBy String    @map("requested_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt  DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@index([status])
+  @@map("certificate_batches")
+}
+
+/// One generated event report. A report is a snapshot: `stats` and the rendered
+/// PDF freeze the numbers at generation time, so re-downloading an old report
+/// never silently changes as new registrations arrive. Generate again for fresh
+/// figures. Organiser-only, gated by the space plan's `hasAnalytics`.
+model EventReport {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  type   ReportType   @default(DEFAULT)
+  status ReportStatus @default(PENDING)
+
+  // Shown in the history list; defaults to "<Event title> — <date>".
+  title String @db.VarChar(200)
+
+  // Sections baked into this report. DEFAULT reports carry every section; CUSTOM
+  // reports carry the organiser's chosen subset. Stored per report so a
+  // re-download reflects the file as built, independent of today's defaults.
+  sections ReportSection[]
+
+  // Optional reporting window applied to time-bounded sections (registrations,
+  // check-ins). Null bounds mean "the event's whole lifetime".
+  dateFrom DateTime? @map("date_from") @db.Timestamptz(6)
+  dateTo   DateTime? @map("date_to") @db.Timestamptz(6)
+
+  // Snapshot of the headline KPIs at generation time so the history list can
+  // show figures without reopening the PDF. Shape mirrors ReportOverview.
+  stats Json?
+
+  // The generated PDF in S3. Null until `status` flips to READY.
+  fileUrl  String? @map("file_url") @db.Text
+  fileName String? @map("file_name") @db.VarChar(255)
+
+  // Why a FAILED generation failed (surfaced to the organiser, never silent).
+  error String? @db.Text
+
+  generatedBy String @map("generated_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([eventId])
+  @@index([status])
+  @@map("event_reports")
+}
+
+// =====================================================
+// SPONSORS & LEAD GENERATION
+// A reusable, space-level sponsor roster that attaches to any number of events
+// (with per-event overrides), plus two lead streams: attendee -> sponsor
+// (SponsorLead) and the organiser's own funnel (Lead). Gated by
+// PlanConfig.hasSponsors. Sponsor people sign in through the space app's sponsor
+// portal; their access is carried by SponsorUser, not the space/event role
+// matrix (sponsor access is scoped to a Sponsor entity, which the matrix cannot
+// express — the same reason JUDGE is scoped to its events, not the matrix).
+// =====================================================
+
+enum SponsorUserStatus {
+  /// Invited to the portal; has not accepted / first-logged-in yet.
+  INVITED
+  /// Active portal member.
+  ACTIVE
+  /// Access revoked; row kept for audit.
+  REVOKED
+
+  @@map("sponsor_user_status")
+}
+
+enum SponsorLeadSource {
+  /// Attendee deliberately tapped "I'm interested" on this sponsor.
+  OPT_IN
+  /// Sponsor/crew scanned the attendee's ticket QR at a booth (scan = consent).
+  BOOTH_SCAN
+  /// Captured by a sponsor by hand (walk-up, business card).
+  MANUAL
+  /// Imported in bulk by the organiser.
+  IMPORT
+
+  @@map("sponsor_lead_source")
+}
+
+enum LeadSource {
+  /// "Notify me" / "Interested" on an event before registering.
+  EVENT_INTEREST
+  /// Inquiry form on the public space page.
+  SPACE_INQUIRY
+  /// Manually added by the organiser.
+  MANUAL
+  /// Imported in bulk.
+  IMPORT
+
+  @@map("lead_source")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  ARCHIVED
+
+  @@map("lead_status")
+}
+
+/// A rung on a space's sponsorship ladder (Platinum, Gold, ...). Sponsors are
+/// grouped and ordered by their tier's `rank` on public pages. Space-level so a
+/// space defines its ladder once and reuses it across events.
+model SponsorTier {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  name  String  @db.VarChar(100)
+  /// Display order across tiers; 0 is the most prominent (e.g. Platinum) tier.
+  rank  Int     @default(0)
+  /// Optional accent colour (hex) for the tier badge on public pages.
+  color String? @db.VarChar(9)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  eventSponsors EventSponsor[]
+
+  @@index([spaceId])
+  @@map("sponsor_tiers")
+}
+
+/// A sponsor in a space's reusable roster. Entered once, attached to many events
+/// via EventSponsor. Deleting a space cascades its sponsors away.
+model Sponsor {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  name        String  @db.VarChar(255)
+  logoUrl     String? @map("logo_url") @db.Text
+  websiteUrl  String? @map("website_url") @db.Text
+  description String? @db.Text
+
+  // Default point of contact for the sponsor.
+  contactName  String? @map("contact_name") @db.VarChar(255)
+  contactEmail String? @map("contact_email") @db.VarChar(255)
+  contactPhone String? @map("contact_phone") @db.VarChar(50)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  eventSponsors EventSponsor[]
+  sponsorUsers  SponsorUser[]
+
+  @@index([spaceId])
+  @@map("sponsors")
+}
+
+/// Attaches a roster Sponsor to one Event, carrying per-event overrides: the
+/// tier it sits in *for this event*, its placement, whether it captures leads
+/// here, and optional logo/description overrides (null = inherit the Sponsor's).
+model EventSponsor {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  sponsorId String  @map("sponsor_id") @db.Uuid
+  sponsor   Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  // Per-event tier. SetNull so removing a tier from the ladder leaves the
+  // sponsor attached (untiered) rather than detaching it from the event.
+  tierId String?      @map("tier_id") @db.Uuid
+  tier   SponsorTier? @relation(fields: [tierId], references: [id], onDelete: SetNull)
+
+  /// Placement within the tier; lower shows first.
+  order Int @default(0)
+
+  /// Whether attendees can generate leads for this sponsor at this event
+  /// (opt-in button + booth scan). Off by default: sponsorship *display* is
+  /// separate from lead *capture*, which the organiser turns on deliberately.
+  leadCaptureEnabled Boolean @default(false) @map("lead_capture_enabled")
+
+  // Per-event overrides. Null = fall back to the roster Sponsor's own value.
+  overrideLogoUrl     String? @map("override_logo_url") @db.Text
+  overrideDescription String? @map("override_description") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  leads SponsorLead[]
+
+  // A sponsor attaches to a given event at most once.
+  @@unique([eventId, sponsorId])
+  @@index([eventId])
+  @@index([sponsorId])
+  @@index([tierId])
+  @@map("event_sponsors")
+}
+
+/// Links a User account to a Sponsor for portal access — the source of truth for
+/// "which people can act as this sponsor".
+model SponsorUser {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  sponsorId String  @map("sponsor_id") @db.Uuid
+  sponsor   Sponsor @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation("SponsorUserAccount", fields: [userId], references: [id], onDelete: Cascade)
+
+  status SponsorUserStatus @default(INVITED)
+
+  // The email the invite was sent to (may precede the account existing).
+  invitedEmail String? @map("invited_email") @db.VarChar(255)
+  invitedBy    String? @map("invited_by") @db.Uuid
+
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  acceptedAt DateTime? @map("accepted_at") @db.Timestamptz(6)
+
+  @@unique([sponsorId, userId])
+  @@index([sponsorId])
+  @@index([userId])
+  @@map("sponsor_users")
+}
+
+/// A lead captured *for a sponsor* at an event: an attendee who opted in, was
+/// scanned at the booth, or was added by hand. Contact fields are snapshotted so
+/// the lead survives the attendee editing/deleting their profile, and so
+/// booth/manual capture works without an account.
+model SponsorLead {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventSponsorId String       @map("event_sponsor_id") @db.Uuid
+  eventSponsor   EventSponsor @relation(fields: [eventSponsorId], references: [id], onDelete: Cascade)
+
+  // The attendee behind the lead, when known. SetNull keeps the snapshot lead
+  // if the registration is deleted.
+  registrationId String?            @map("registration_id") @db.Uuid
+  registration   EventRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+
+  // Contact snapshot.
+  name  String? @db.VarChar(255)
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(50)
+
+  source SponsorLeadSource @default(OPT_IN)
+  note   String?           @db.Text
+
+  // Who captured it (crew/sponsor user id) for booth/manual sources.
+  capturedBy String? @map("captured_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // One opt-in/scan per (sponsor-at-event, attendee). Manual leads without a
+  // registration are exempt: Postgres does not enforce a unique tuple that
+  // contains a NULL, so multiple registration-less leads coexist.
+  @@unique([eventSponsorId, registrationId])
+  @@index([eventSponsorId])
+  @@index([registrationId])
+  @@map("sponsor_leads")
+}
+
+/// The organiser's own lead funnel — people who signalled interest but have not
+/// (or not yet) registered: "Notify me" on an event, an inquiry on the space
+/// page, a manual add or import. Space-owned; optionally tied to an event.
+model Lead {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // The event the interest was about, when the lead came from an event surface.
+  // SetNull so deleting the event keeps the lead in the space funnel.
+  eventId String? @map("event_id") @db.Uuid
+  event   Event?  @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  name    String? @db.VarChar(255)
+  email   String? @db.VarChar(255)
+  phone   String? @db.VarChar(50)
+  message String? @db.Text
+
+  source LeadSource @default(EVENT_INTEREST)
+  status LeadStatus @default(NEW)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([eventId])
+  @@index([status])
+  @@map("leads")
+}
+
+// =====================================================
+// CAREERS
+// Public job postings for the marketing site (web). Applications are handled
+// off-platform via email (mailto), so no applicant records are stored.
+// =====================================================
+
+enum CareerStatus {
+  /// Visible on the public careers page.
+  OPEN
+  /// Kept but hidden from the public (filled / paused).
+  CLOSED
+  /// Work-in-progress, never public.
+  DRAFT
+
+  @@map("career_status")
+}
+
+model Career {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  title           String @db.VarChar(255)
+  department      String @db.VarChar(120)
+  location        String @db.VarChar(160)
+  /// Employment type, e.g. Full-time / Part-time / Contract / Internship.
+  type            String @db.VarChar(60)
+  experienceLevel String @map("experience_level") @db.VarChar(80)
+
+  description      String   @db.Text
+  requirements     String[]
+  responsibilities String[]
+  benefits         String[]
+
+  salaryRange String? @map("salary_range") @db.VarChar(120)
+
+  status CareerStatus @default(DRAFT)
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  applications CareerApplication[]
+
+  @@index([status])
+  @@map("careers")
+}
+
+/// Applicant-tracking status for one submitted application.
+enum ApplicationStatus {
+  NEW
+  REVIEWING
+  SHORTLISTED
+  REJECTED
+  HIRED
+
+  @@map("application_status")
+}
+
+/// An in-platform job application submitted through the public careers page,
+/// including an uploaded resume. Cascade-deleted with its role.
+model CareerApplication {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  careerId String @map("career_id") @db.Uuid
+  career   Career @relation(fields: [careerId], references: [id], onDelete: Cascade)
+
+  fullName String  @map("full_name") @db.VarChar(255)
+  email    String  @db.VarChar(255)
+  phone    String? @db.VarChar(40)
+
+  /// S3 URL of the uploaded resume (unguessable key).
+  resumeUrl   String  @map("resume_url") @db.Text
+  coverLetter String? @map("cover_letter") @db.Text
+
+  linkedinUrl  String? @map("linkedin_url") @db.Text
+  portfolioUrl String? @map("portfolio_url") @db.Text
+
+  status ApplicationStatus @default(NEW)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([careerId])
+  @@index([status])
+  @@map("career_applications")
+}
+
+// =====================================================
+// BLOG
+// Marketing blog for the public site (web). Authored by admins in apex.
+// Content is Markdown, rendered on the web.
+// =====================================================
+
+enum BlogStatus {
+  /// Work-in-progress, never public.
+  DRAFT
+  /// Live on the public blog.
+  PUBLISHED
+
+  @@map("blog_status")
+}
+
+model BlogPost {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  slug    String @unique @db.VarChar(220)
+  title   String @db.VarChar(255)
+  excerpt String @db.Text
+  /// Article body, in Markdown.
+  content String @db.Text
+
+  category      String  @db.VarChar(80)
+  author        String  @db.VarChar(120)
+  coverImageUrl String? @map("cover_image_url") @db.Text
+  /// Estimated read time in minutes.
+  readMinutes   Int?    @map("read_minutes")
+
+  featured Boolean    @default(false)
+  status   BlogStatus @default(DRAFT)
+
+  publishedAt DateTime? @map("published_at") @db.Timestamptz(6)
+  createdBy   String?   @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([slug])
+  @@index([category])
+  @@map("blog_posts")
+}
+
+// =====================================================
+// Push notifications platform (OneSignal)
+// =====================================================
+
+enum PushScope {
+  PLATFORM // admin broadcast to a user segment
+  EVENT // organiser announcement to an event's attendees
+
+  @@map("push_scope")
+}
+
+enum PushCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+  CANCELLED
+
+  @@map("push_campaign_status")
+}
+
+enum PushLogStatus {
+  SENT
+  FAILED
+  SKIPPED_PREF // recipient opted out of the category (or push globally)
+  SKIPPED_MUTE // legacy: chat mute (chat removed); kept for historic rows
+
+  @@map("push_log_status")
+}
+
+model PushCampaign {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  scope   PushScope
+  eventId String?   @map("event_id") @db.Uuid // set for organiser/event-scoped
+
+  // Admin or organiser who created it (plain uuid, mirrors AdminDevice — no FK back-ref).
+  createdById String @map("created_by_id") @db.Uuid
+
+  title String @db.VarChar(255)
+  body  String @db.Text
+  data  Json? // deepLink etc.
+
+  // Which NotificationCategory this broadcast sends under — drives pref opt-out.
+  // Admin-selectable ('promotions' opt-in vs 'productUpdates' opt-out); EVENT
+  // scope always sends as 'organiserAnnouncements' regardless of this value.
+  category String @default("promotions") @map("category") @db.VarChar(64)
+
+  // all | eventId | tag | pref-filter — mirrors EmailCampaign.segmentFilters.
+  targetSegment Json @map("target_segment")
+
+  status      PushCampaignStatus @default(DRAFT)
+  scheduledAt DateTime?          @map("scheduled_at") @db.Timestamptz(6)
+  sentAt      DateTime?          @map("sent_at") @db.Timestamptz(6)
+
+  sentCount   Int @default(0) @map("sent_count")
+  failedCount Int @default(0) @map("failed_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  logs PushLog[]
+
+  @@index([status])
+  @@index([scope])
+  @@index([eventId])
+  @@index([createdById])
+  @@map("push_campaigns")
+}
+
+model PushLog {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  campaignId String?       @map("campaign_id") @db.Uuid // null for transactional
+  campaign   PushCampaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  userId   String @map("user_id") @db.Uuid
+  category String @db.VarChar(64)
+
+  status      PushLogStatus
+  oneSignalId String?       @map("one_signal_id") @db.VarChar(255)
+  error       String?       @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Idempotency for campaign fan-out: one row per (campaign, user).
+  @@unique([campaignId, userId])
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@map("push_logs")
+}
+
+// One row per app install that can receive push. `subscriptionId` is OneSignal's
+// push subscription id (the device id); it moves to whichever user last signed
+// in on that device. `linkedAt` = server confirmed OneSignal external_id = userId.
+model UserPushDevice {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subscriptionId String  @unique @map("subscription_id") @db.VarChar(64)
+  oneSignalId    String? @map("one_signal_id") @db.VarChar(64)
+  platform       String  @db.VarChar(10)
+  deviceModel    String? @map("device_model") @db.VarChar(120)
+  appVersion     String? @map("app_version") @db.VarChar(20)
+  optedIn        Boolean @default(false) @map("opted_in")
+
+  linkedAt   DateTime? @map("linked_at") @db.Timestamptz(6)
+  linkError  String?   @map("link_error") @db.Text
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("user_push_devices")
+}
+
+// =====================================================
+// WHATSAPP INBOX
+// Two-way conversations on the WhatsApp Business (Cloud API) number.
+//
+// Inbound messages arrive via the Meta webhook (WhatsAppController) and are
+// persisted here so platform admins can read and reply to them from Apex.
+// Outbound rows are the admin's free-form replies (sent inside Meta's 24h
+// customer-service window) plus, optionally, delivery-status updates.
+// =====================================================
+
+enum WhatsappMessageDirection {
+  INBOUND // from the customer to our number
+  OUTBOUND // an admin reply from Apex
+
+  @@map("whatsapp_message_direction")
+}
+
+model WhatsappConversation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  // The customer's WhatsApp id (Meta's `wa_id`) — digits only, e.g. 919876543210.
+  // One conversation per number; the number is the natural key.
+  waId String @unique @map("wa_id") @db.VarChar(20)
+
+  // Display name Meta supplies with inbound messages (contacts[].profile.name).
+  profileName String? @map("profile_name") @db.VarChar(255)
+
+  // If the number matches a known account we link it (best-effort, nullable).
+  userId String? @map("user_id") @db.Uuid
+
+  // Timestamp of the most recent INBOUND message. Drives the 24h customer-service
+  // window inside which free-form (non-template) replies are permitted.
+  lastInboundAt DateTime? @map("last_inbound_at") @db.Timestamptz(6)
+
+  // Most recent message either direction — the inbox sort key.
+  lastMessageAt DateTime @default(now()) @map("last_message_at") @db.Timestamptz(6)
+
+  // Unread inbound count for the inbox badge; reset to 0 when an admin opens it.
+  unreadCount Int @default(0) @map("unread_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  messages WhatsappMessage[]
+
+  @@index([lastMessageAt])
+  @@index([userId])
+  @@map("whatsapp_conversations")
+}
+
+model WhatsappMessage {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  conversationId String               @map("conversation_id") @db.Uuid
+  conversation   WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  direction WhatsappMessageDirection
+
+  // Meta's message id (`wamid...`). Unique so webhook retries can't duplicate a
+  // row. Null only for records we somehow persist before the API returns an id.
+  waMessageId String? @unique @map("wa_message_id") @db.VarChar(128)
+
+  // Message kind from Meta ('text', 'image', 'document', 'audio', ...). Outbound
+  // replies are always 'text'.
+  type String @default("text") @db.VarChar(32)
+
+  // Text body (or caption). Null for media with no caption.
+  body String? @db.Text
+
+  // For non-text inbound, a short note about the attachment (kind / mime).
+  mediaNote String? @map("media_note") @db.Text
+
+  // For image/sticker inbound, the S3 URL the bytes were copied to (Meta's own
+  // media URL is short-lived and needs the access token, so it can't be embedded
+  // directly). Null until the copy succeeds; render falls back to mediaNote.
+  mediaUrl String? @map("media_url") @db.Text
+
+  // OUTBOUND only: the admin who sent the reply (plain uuid, mirrors
+  // PushCampaign.createdById — no FK back-ref onto the large User model).
+  sentById String? @map("sent_by_id") @db.Uuid
+
+  // OUTBOUND delivery lifecycle from status webhooks: 'sent' | 'delivered' |
+  // 'read' | 'failed'. Null for inbound.
+  status String? @db.VarChar(32)
+
+  // Populated when a send/delivery fails (Meta error title or our own reason).
+  errorText String? @map("error_text") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([conversationId, createdAt])
+  @@map("whatsapp_messages")
+}
+
+/// What a content report points at. Polymorphic (no FK): the target is looked
+/// up by type + id, and a report outlives a deleted target for the audit trail.
+enum ContentReportTarget {
+  EVENT
+  SPACE
+  REGISTRATION // "Report an issue" on a ticket
+
+  @@map("content_report_target")
+}
+
+enum ContentReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+
+  @@map("content_report_status")
+}
+
+/// A user's report about an event, a space, or one of their tickets. Reviewed
+/// by platform admins. One open report per reporter + target (re-reporting
+/// updates it rather than stacking duplicates).
+model ContentReport {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  reporterId String @map("reporter_id") @db.Uuid
+  reporter   User   @relation("ContentReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  targetType ContentReportTarget @map("target_type")
+  targetId   String              @map("target_id") @db.Uuid
+
+  /// Machine key from the per-type reason list (validated in the service).
+  reason  String  @db.VarChar(40)
+  details String? @db.Text
+
+  status         ContentReportStatus @default(OPEN)
+  resolutionNote String?             @map("resolution_note") @db.Text
+  resolvedById   String?             @map("resolved_by_id") @db.Uuid
+  resolvedAt     DateTime?           @map("resolved_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([targetType, targetId])
+  @@index([status, createdAt])
+  @@index([reporterId])
+  @@map("content_reports")
+}
+
+/// A partner (club, community, sponsor) a curator hands a tracking link to.
+/// Registrations tagged utm_source=<source>&utm_medium=partner are credited to
+/// it. `partnerUser` is the partner's contact on Unifesto: they see this
+/// partner's registration counts for this event in the app, never attendee
+/// details or revenue. Revoking hides the stats from them; the tracking link
+/// keeps attributing (the tags live on the registrations).
+model EventPartnerLink {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name   String @db.VarChar(80)
+  // Slugified name, used as utm_source. Unique per event.
+  source String @db.VarChar(60)
+
+  partnerUserId String @map("partner_user_id") @db.Uuid
+  partnerUser   User   @relation("PartnerLinkContact", fields: [partnerUserId], references: [id], onDelete: Cascade)
+
+  createdById String?   @map("created_by_id") @db.Uuid
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([eventId, source])
+  @@index([partnerUserId])
+  @@map("event_partner_links")
+}

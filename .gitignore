@@ -1,0 +1,43 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Expo / React Native ───────────────────────────────────
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.orig.*
+
+# Stray `expo prebuild` output if run from the repo root by mistake
+/ios/
+/android/
+/app.json
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# ── Metro / Babel caches ──────────────────────────────────
+.metro-health-check*
+.haste_cache/
+
+# ── Env & secrets ─────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Editor / OS ───────────────────────────────────────────
+.DS_Store
+*.pem
+npm-debug.*
+yarn-error.*
+.idea/
+
+# ── Testing / coverage ────────────────────────────────────
+coverage/
+
+# ── TypeScript build info ─────────────────────────────────
+*.tsbuildinfo

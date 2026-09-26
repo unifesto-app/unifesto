@@ -1,0 +1,506 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Pulse,
+  ArrowsClockwise,
+  CheckCircle,
+  WarningCircle,
+  XCircle,
+  Plus,
+  Megaphone,
+  Question,
+} from "@phosphor-icons/react";
+import { useSession } from "@/lib/context/SessionContext";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils/cn";
+import {
+  getStatusSummary,
+  createIncident,
+  updateIncident,
+  INCIDENT_STATUS_LABEL,
+  INCIDENT_IMPACT_LABEL,
+  type StatusSummary,
+  type StatusServiceEntry,
+  type DayStatus,
+  type Incident,
+  type IncidentImpact,
+  type IncidentStatus,
+} from "@/lib/api/status-api";
+
+const REFRESH_MS = 30_000;
+const IMPACTS: IncidentImpact[] = ["MINOR", "MAJOR", "CRITICAL", "NONE"];
+const STATUSES: IncidentStatus[] = [
+  "INVESTIGATING",
+  "IDENTIFIED",
+  "MONITORING",
+  "RESOLVED",
+];
+
+function dayColor(status: DayStatus): string {
+  switch (status) {
+    case "up":
+      return "bg-success";
+    case "down":
+      return "bg-destructive";
+    case "partial":
+      return "bg-warning";
+    default:
+      return "bg-muted";
+  }
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/**
+ * Public-status-page style board for admins: overall banner, per-service 90-day
+ * uptime bars, and incidents. Backed by `/admin/status`.
+ */
+export default function StatusPage() {
+  const { role } = useSession();
+  const isAdmin = role === "platform_admin";
+
+  const [summary, setSummary] = useState<StatusSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const load = useCallback(async () => {
+    const { data, error } = await getStatusSummary();
+    setLoading(false);
+    if (error) {
+      setError(error.message || "Could not load status.");
+      return;
+    }
+    setError("");
+    setSummary(data);
+  }, []);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    load();
+    timer.current = setInterval(load, REFRESH_MS);
+    return () => {
+      if (timer.current) clearInterval(timer.current);
+    };
+  }, [isAdmin, load]);
+
+  if (!isAdmin) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Status" />
+        <EmptyState
+          icon={Pulse}
+          title="Admins only"
+          description="Platform status is visible to platform staff."
+        />
+      </div>
+    );
+  }
+
+  // No summary yet means we don't know, not that everything is fine.
+  const overall = summary?.overall ?? "unknown";
+  const banner =
+    overall === "operational"
+      ? { text: "All systems operational", tone: "up" as const }
+      : overall === "degraded"
+        ? { text: "Some systems degraded", tone: "degraded" as const }
+        : overall === "major_outage"
+          ? { text: "Major outage", tone: "down" as const }
+          : { text: "Status unknown", tone: "unknown" as const };
+  const bannerCls =
+    banner.tone === "up"
+      ? { soft: "bg-success-soft", text: "text-success", Icon: CheckCircle }
+      : banner.tone === "degraded"
+        ? { soft: "bg-warning-soft", text: "text-warning", Icon: WarningCircle }
+        : banner.tone === "down"
+          ? { soft: "bg-destructive-soft", text: "text-destructive", Icon: XCircle }
+          : { soft: "bg-muted", text: "text-muted-foreground", Icon: Question };
+  const bannerSub = !summary
+    ? ""
+    : summary.stale
+      ? summary.lastSampleAt
+        ? `No health check since ${new Date(summary.lastSampleAt).toLocaleString()}. The sampler or its database may be down.`
+        : "No health checks recorded yet."
+      : `Updated ${new Date(summary.updatedAt).toLocaleTimeString()} · auto-refreshing`;
+  const openCount =
+    summary?.incidents.filter((i) => i.status !== "RESOLVED").length ?? 0;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Status"
+        subtitle="Live service health & uptime for Unifesto"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setReporting(true)}>
+              <Megaphone className="h-4 w-4" /> Report incident
+            </Button>
+            <Button variant="ghost" size="sm" onClick={load}>
+              <ArrowsClockwise className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
+
+      {error && <ErrorNotice message={error} />}
+
+      {reporting && (
+        <IncidentForm
+          services={summary?.services ?? []}
+          onClose={() => setReporting(false)}
+          onSaved={() => {
+            setReporting(false);
+            load();
+          }}
+        />
+      )}
+
+      {loading && !summary ? (
+        <>
+          <Skeleton className="h-24 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
+        </>
+      ) : (
+        <>
+          {/* Overall banner */}
+          <Card className={cn("border-0", bannerCls.soft)}>
+            <CardContent className="flex items-center gap-4 p-6">
+              <span className="grid h-12 w-12 place-items-center rounded-full bg-card">
+                <bannerCls.Icon
+                  className={cn("h-7 w-7", bannerCls.text)}
+                  weight="fill"
+                />
+              </span>
+              <div className="flex-1">
+                <p className={cn("text-lg font-semibold", bannerCls.text)}>
+                  {banner.text}
+                </p>
+                <p className="text-sm text-muted-foreground">{bannerSub}</p>
+                {openCount > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {openCount} open incident{openCount === 1 ? "" : "s"}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Services with 90-day uptime bars */}
+          <Card>
+            <CardContent className="divide-y divide-border p-0">
+              {(summary?.services ?? []).map((s) => (
+                <ServiceRow key={s.key} service={s} />
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Past incidents */}
+          <div>
+            <h2 className="mb-3 text-base font-semibold text-foreground">
+              Incidents
+            </h2>
+            {summary && summary.incidents.length > 0 ? (
+              <div className="space-y-3">
+                {summary.incidents.map((inc) => (
+                  <IncidentCard key={inc.id} incident={inc} onChanged={load} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="py-8">
+                  <EmptyState
+                    icon={CheckCircle}
+                    tone="positive"
+                    title="No incidents reported"
+                    description="When something goes wrong, incident updates will appear here."
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------- service row ----------------------------- */
+
+function ServiceRow({ service }: { service: StatusServiceEntry }) {
+  const up = service.currentStatus === "up";
+  const down = service.currentStatus === "down";
+  const statusText = up ? "Operational" : down ? "Down" : "No data";
+  const statusColor = up
+    ? "text-success"
+    : down
+      ? "text-destructive"
+      : "text-muted-foreground";
+
+  return (
+    <div className="px-6 py-4">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">{service.name}</span>
+          {service.latencyMs != null && up && (
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {service.latencyMs}ms
+            </span>
+          )}
+        </div>
+        <span className={cn("text-sm font-medium", statusColor)}>
+          {statusText}
+        </span>
+      </div>
+
+      {/* 90-day bar */}
+      <div className="flex h-8 items-stretch gap-[2px] overflow-hidden">
+        {service.days.map((d) => (
+          <div
+            key={d.date}
+            title={`${d.date}: ${
+              d.uptime == null ? "no data" : `${d.uptime}% uptime`
+            }`}
+            className={cn("flex-1 rounded-[2px]", dayColor(d.status))}
+          />
+        ))}
+      </div>
+      <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
+        <span>90 days ago</span>
+        <span>
+          {service.uptimePercent == null
+            ? "Collecting data…"
+            : `${service.uptimePercent}% uptime`}
+        </span>
+        <span>Today</span>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------- incidents ------------------------------- */
+
+function impactVariant(
+  impact: IncidentImpact
+): "neutral" | "warning" | "destructive" | "brand" {
+  switch (impact) {
+    case "CRITICAL":
+      return "destructive";
+    case "MAJOR":
+      return "warning";
+    case "MINOR":
+      return "neutral";
+    default:
+      return "brand";
+  }
+}
+
+function IncidentCard({
+  incident,
+  onChanged,
+}: {
+  incident: Incident;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const resolved = incident.status === "RESOLVED";
+
+  const advance = async (status: IncidentStatus) => {
+    setBusy(true);
+    await updateIncident(incident.id, { status });
+    setBusy(false);
+    onChanged();
+  };
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={impactVariant(incident.impact)}>
+            {INCIDENT_IMPACT_LABEL[incident.impact]}
+          </Badge>
+          <Badge variant={resolved ? "success" : "warning"}>
+            {INCIDENT_STATUS_LABEL[incident.status]}
+          </Badge>
+          {incident.createdBy === null && (
+            <Badge variant="neutral">Auto-detected</Badge>
+          )}
+          <p className="font-medium text-foreground">{incident.title}</p>
+        </div>
+        {incident.body && (
+          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+            {incident.body}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <span>Started {fmtDate(incident.startedAt)}</span>
+          {incident.resolvedAt && (
+            <span>Resolved {fmtDate(incident.resolvedAt)}</span>
+          )}
+          {incident.affectedServices.length > 0 && (
+            <span>Affected: {incident.affectedServices.join(", ")}</span>
+          )}
+        </div>
+        {!resolved && (
+          <div className="flex flex-wrap gap-2 pt-1">
+            {STATUSES.filter((st) => st !== incident.status).map((st) => (
+              <Button
+                key={st}
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => advance(st)}
+              >
+                {INCIDENT_STATUS_LABEL[st]}
+              </Button>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function IncidentForm({
+  services,
+  onClose,
+  onSaved,
+}: {
+  services: StatusServiceEntry[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [impact, setImpact] = useState<IncidentImpact>("MINOR");
+  const [affected, setAffected] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const toggle = (key: string) =>
+    setAffected((p) =>
+      p.includes(key) ? p.filter((k) => k !== key) : [...p, key]
+    );
+
+  const submit = async () => {
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    const { error } = await createIncident({
+      title: title.trim(),
+      body: body.trim() || undefined,
+      impact,
+      affectedServices: affected,
+    });
+    setSaving(false);
+    if (error) {
+      setError(error.message || "Could not report the incident.");
+      return;
+    }
+    onSaved();
+  };
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-6">
+        <div className="flex items-center gap-2">
+          <Megaphone className="h-5 w-5 text-primary" weight="duotone" />
+          <p className="font-medium text-foreground">Report an incident</p>
+        </div>
+        {error && <ErrorNotice message={error} />}
+        <div className="space-y-1.5">
+          <Label htmlFor="inc-title">Title</Label>
+          <Input
+            id="inc-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="What's happening?"
+            maxLength={300}
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Impact</Label>
+            <Select
+              value={impact}
+              onValueChange={(v) => setImpact(v as IncidentImpact)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {IMPACTS.map((i) => (
+                  <SelectItem key={i} value={i}>
+                    {INCIDENT_IMPACT_LABEL[i]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Affected services</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {services.map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggle(s.key)}
+                  className={cn(
+                    "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                    affected.includes(s.key)
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="inc-body">Details (optional)</Label>
+          <Textarea
+            id="inc-body"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="What's affected and what are you doing about it?"
+            rows={3}
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={!title.trim() || saving}>
+            <Plus className="h-4 w-4" />
+            {saving ? "Reporting…" : "Report incident"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

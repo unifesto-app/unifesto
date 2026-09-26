@@ -1,0 +1,111 @@
+import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { AppModule } from './app.module';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import helmet from 'helmet';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { LogsService } from './logs/logs.service';
+import { createRequestLogger } from './logs/logging.middleware';
+import { isAllowedOrigin } from './common/cors';
+import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
+
+async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    // Preserve the raw request body so webhook signatures (e.g. WhatsApp/Meta,
+    // LiveKit) can be verified against the exact bytes that were signed.
+    rawBody: true,
+  });
+
+  // LiveKit posts webhooks as `application/webhook+json`; teach the JSON parser
+  // to accept that content type so the raw body is captured for signing checks.
+  app.useBodyParser('json', {
+    type: ['application/json', 'application/webhook+json'],
+  });
+
+  // Remove the X-Powered-By header (avoids advertising the Express stack)
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
+
+  // The API runs behind Caddy (reverse_proxy -> backend:8080). Trust exactly
+  // ONE proxy hop so Express reads the real client IP from X-Forwarded-For
+  // instead of reporting Caddy's container address for every request. Without
+  // this, all traffic collapses to a single IP and the rate limiter throttles
+  // the entire user base as if it were one client. `1` (not `true`) means only
+  // the first hop is trusted, so clients cannot spoof X-Forwarded-For.
+  app.set('trust proxy', 1);
+
+  // Security headers: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    }),
+  );
+
+  // Enable CORS for all Unifesto subdomains
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      // Only allow *.unifesto.app subdomains, the apex domain, and localhost for dev.
+      // Credentialed requests must never be allowed from an arbitrary reflected origin.
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`Blocked CORS request from disallowed origin: ${origin}`);
+        callback(new Error('Not allowed by CORS'), false);
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
+    maxAge: 86400, // 24 hours
+  });
+
+  // Record every request to the api_logs table (admin "Logs" section).
+  app.use(createRequestLogger(app.get(LogsService)));
+
+  // Catch-all exception filter: logs stack traces and returns clean JSON.
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
+  // Enable validation pipes globally
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // Strip properties that don't have decorators
+      forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
+      transform: true, // Automatically transform payloads to DTO instances
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  // Route Socket.IO broadcasts (leaderboard) through Redis pub/sub so
+  // they reach clients on every backend replica. Falls back to the in-memory
+  // adapter (single-replica-only realtime) if Redis is unavailable.
+  const redisIoAdapter = new RedisIoAdapter(app);
+  redisIoAdapter.connectToRedis();
+  app.useWebSocketAdapter(redisIoAdapter);
+
+  // Fire OnModuleDestroy on SIGTERM/SIGINT so long-lived infra (the BullMQ
+  // certificate worker, Redis clients) closes gracefully on container stop.
+  app.enableShutdownHooks();
+
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  logger.log(`Application is running on: http://localhost:${port}`);
+  logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+}
+bootstrap();

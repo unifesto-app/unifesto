@@ -1,0 +1,149 @@
+name: unifesto
+
+# Full stack behind Caddy, which terminates HTTPS with a Cloudflare Origin
+# Certificate (./certs, server-only) and routes each hostname to its
+# container. The mobile app is intentionally not containerised (it ships
+# via Expo/EAS).
+#
+#   api.unifesto.app    -> backend:8080 (3 replicas)
+#   apex.unifesto.app   -> apex:3000
+#   space.unifesto.app  -> space:3000
+#   unifesto.app / www  -> web:3000
+#
+# Runtime secrets come from each app's own env file (backend/.env,
+# websites/apex/.env, websites/space/.env, websites/web/.env.local).
+# Build-time NEXT_PUBLIC_* values are inlined into the client bundles, so
+# they're passed as build args interpolated from ./.env (copy
+# .env.example -> .env).
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - apex
+      - space
+      - web
+
+  # One-shot: apply DB migrations exactly once before the API replicas start,
+  # so the replicas don't race to run `prisma migrate deploy` concurrently on
+  # boot. Runs, migrates, exits. `restart: "no"` — it is not a long-lived svc.
+  backend-migrate:
+    build: ./backend
+    image: unifesto-backend:latest
+    restart: "no"
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    entrypoint: ["npx", "prisma", "migrate", "deploy"]
+
+  backend:
+    build: ./backend
+    image: unifesto-backend:latest
+    restart: unless-stopped
+    # NOTE: we mount .env instead of using `env_file:` — the app (NestJS
+    # ConfigModule) and `prisma.config.ts` load it with the tolerant dotenv
+    # parser. Compose's env_file parser rejects the multi-line PRIVATE KEY.
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    environment:
+      # Migrations already ran in the backend-migrate one-shot; replicas must
+      # not each try to migrate on boot.
+      RUN_MIGRATIONS: "false"
+      # Cap the V8 heap so a memory-heavy path (node-canvas certificate/PDF
+      # rendering) can't balloon a replica and OOM the shared 4 GB host.
+      NODE_OPTIONS: "--max-old-space-size=512"
+    expose:
+      - "8080"
+    # Health-gate the replica so Docker's embedded DNS (which Caddy's `dynamic a`
+    # resolves) only advertises replicas that have finished booting and are still
+    # answering — a replica that is starting, wedged, or OOM-restarting is left
+    # out of rotation instead of receiving traffic it can't serve. `node -e` is
+    # used because the slim image ships no curl/wget. `start_period` covers Nest
+    # boot (Prisma + Redis connect); a 5xx or connect error counts as unhealthy.
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:8080/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      backend-migrate:
+        condition: service_completed_successfully
+    # Host is t3.large (2 vCPU / 8 GB) shared with Caddy + 4 Next.js apps.
+    # Three API replicas fit the 8 GB comfortably (3 x 1G cap = 3 GB) and give
+    # more concurrency headroom than the 2 vCPUs alone; the extra replica
+    # absorbs bursts and the CPU-blocking cert/PDF paths. The app is stateless
+    # (JWT, Redis-backed throttler + Socket.IO Redis adapter, external Postgres),
+    # so it scales horizontally. Keep (replicas x Prisma connection_limit) under
+    # Postgres max_connections — currently 3 x 10 = 30.
+    #
+    # Memory cap is 1G (raised from 700M): certificate/PDF rendering uses
+    # @napi-rs/canvas (Skia), whose buffers live in NATIVE memory OUTSIDE the V8
+    # heap, so `--max-old-space-size` does not bound them. A large issuance batch
+    # was pushing RSS past 700M and getting OOM-killed (the "connection refused"
+    # gaps in the Caddy log). The durable fix is to move issuance onto a
+    # background queue + bound render concurrency; this headroom is the interim.
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 1G
+
+  apex:
+    build:
+      context: ./websites/apex
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    image: unifesto-apex:latest
+    restart: unless-stopped
+    env_file: ./websites/apex/.env
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+
+  space:
+    build:
+      context: ./websites/space
+      args:
+        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+    image: unifesto-space:latest
+    restart: unless-stopped
+    env_file: ./websites/space/.env
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+
+  web:
+    build:
+      context: ./websites/web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    image: unifesto-web:latest
+    restart: unless-stopped
+    env_file: ./websites/web/.env.local
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-06T00:00:00.000Z",
+  "title": "Design System: Unifesto (Mobile)",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Unifesto Blue",
+        "canonical": "#3491ff",
+        "tonalRamp": ["#001a4d", "#002d80", "#0043b3", "#0062ff", "#3491ff", "#5ba7ff", "#8ec4ff", "#cfe4ff"]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "True Black",
+        "canonical": "#000000",
+        "tonalRamp": ["#000000", "#0a0a0a", "#141414", "#1a1a1a", "#2a2a2a", "#3f3f46", "#64748b", "#94a3b8"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#ffffff"]
+      },
+      "success": {
+        "role": "secondary",
+        "displayName": "Success",
+        "canonical": "#10b981",
+        "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"]
+      },
+      "error": {
+        "role": "tertiary",
+        "displayName": "Error",
+        "canonical": "#ef4444",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero titles, screen headers, event names (Agrandir-Bold)." },
+      "headline": { "displayName": "Headline", "purpose": "Section headers and card titles (Agrandir-Bold)." },
+      "title": { "displayName": "Title", "purpose": "List item titles and sheet headers." },
+      "body": { "displayName": "Body", "purpose": "Descriptions, chat, reading content." },
+      "label": { "displayName": "Label", "purpose": "Tab labels, captions, timestamps, metadata." }
+    },
+    "shadows": [
+      { "name": "elevated-surface", "value": "0 0 0 1px #1a1a1a", "purpose": "Tonal card/sheet edge on black (#0a0a0a fill + hairline border)." },
+      { "name": "blue-glow", "value": "0 8px 16px rgba(52, 145, 255, 0.2)", "purpose": "Under primary CTAs and live/selected elements only." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.4, 0, 0.2, 1)", "purpose": "Default easing for transitions." },
+      { "name": "press-feedback", "value": "scale 0.97 / opacity 0.85", "purpose": "Native touch press feedback on buttons and cards." }
+    ],
+    "breakpoints": [
+      { "name": "compact", "value": "360px" },
+      { "name": "regular", "value": "390px" },
+      { "name": "large", "value": "430px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Gradient Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one hero action per screen — blue gradient with glow, black text.",
+      "html": "<button class=\"ds-btn-gradient\">Get ticket</button>",
+      "css": ".ds-btn-gradient { font-family: 'Agrandir-Bold', Agrandir, system-ui, sans-serif; font-size: 1rem; color: #000000; background: linear-gradient(135deg, #3491ff, #0062ff); border: none; border-radius: 9999px; padding: 14px 24px; min-height: 44px; cursor: pointer; box-shadow: 0 8px 16px rgba(52,145,255,0.2); transition: transform 150ms cubic-bezier(0.4,0,0.2,1), opacity 150ms; } .ds-btn-gradient:active { transform: scale(0.97); opacity: 0.85; } .ds-btn-gradient:focus-visible { outline: none; box-shadow: 0 0 0 2px #000000, 0 0 0 4px #3491ff; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Elevated-black secondary action with hairline border.",
+      "html": "<button class=\"ds-btn-secondary\">Share</button>",
+      "css": ".ds-btn-secondary { font-family: Agrandir, system-ui, sans-serif; font-size: 1rem; color: #ffffff; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 9999px; padding: 14px 24px; min-height: 44px; cursor: pointer; transition: transform 150ms, background 150ms; } .ds-btn-secondary:active { transform: scale(0.97); background: #141414; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px #000000, 0 0 0 4px #3491ff; }"
+    },
+    {
+      "name": "Event Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Image-led event card on the black canvas.",
+      "html": "<div class=\"ds-event-card\"><div class=\"ds-event-poster\"></div><div class=\"ds-event-body\"><span class=\"ds-event-title\">Spring Hackathon</span><span class=\"ds-event-meta\">Sat, 12 Mar · 6:00 PM · Main Quad</span><span class=\"ds-badge-live\">● LIVE</span></div></div>",
+      "css": ".ds-event-card { display: flex; flex-direction: column; width: 280px; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 16px; overflow: hidden; } .ds-event-poster { height: 140px; background: linear-gradient(135deg, #0062ff, #001a4d); } .ds-event-body { display: flex; flex-direction: column; gap: 6px; padding: 16px; } .ds-event-title { font-family: 'Agrandir-Bold', Agrandir, system-ui, sans-serif; font-size: 1.125rem; color: #ffffff; } .ds-event-meta { font-family: Agrandir, system-ui, sans-serif; font-size: 0.875rem; color: #94a3b8; } .ds-badge-live { font-family: Agrandir, system-ui, sans-serif; font-size: 0.6875rem; letter-spacing: 0.5px; color: #3491ff; margin-top: 4px; }"
+    },
+    {
+      "name": "Search Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Dark elevated field, thumb-sized, blue focus.",
+      "html": "<div class=\"ds-input\"><svg class=\"ds-input-icon\" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#64748b\" stroke-width=\"2\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"/></svg><input class=\"ds-input-field\" type=\"text\" placeholder=\"Search events\" /></div>",
+      "css": ".ds-input { display: inline-flex; align-items: center; gap: 8px; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 12px; padding: 12px 16px; width: 280px; min-height: 44px; } .ds-input:focus-within { border-color: #3491ff; } .ds-input-icon { flex: 0 0 auto; } .ds-input-field { flex: 1; background: transparent; border: none; outline: none; font-family: Agrandir, system-ui, sans-serif; font-size: 1rem; color: #ffffff; } .ds-input-field::placeholder { color: #64748b; }"
+    },
+    {
+      "name": "Ticket / QR",
+      "kind": "custom",
+      "refersTo": "card",
+      "description": "Signature sacred surface — high-contrast QR, offline-resilient, instantly scannable.",
+      "html": "<div class=\"ds-ticket\"><div class=\"ds-ticket-head\"><span class=\"ds-ticket-title\">Spring Hackathon</span><span class=\"ds-ticket-status\">CHECKED IN</span></div><div class=\"ds-ticket-qr\"><svg width=\"120\" height=\"120\" viewBox=\"0 0 120 120\"><rect width=\"120\" height=\"120\" fill=\"#ffffff\"/><g fill=\"#000000\"><rect x=\"12\" y=\"12\" width=\"28\" height=\"28\"/><rect x=\"80\" y=\"12\" width=\"28\" height=\"28\"/><rect x=\"12\" y=\"80\" width=\"28\" height=\"28\"/><rect x=\"52\" y=\"52\" width=\"12\" height=\"12\"/><rect x=\"72\" y=\"64\" width=\"12\" height=\"12\"/><rect x=\"52\" y=\"84\" width=\"12\" height=\"12\"/></g></svg></div><span class=\"ds-ticket-meta\">Order #UF-2048 · Gate A</span></div>",
+      "css": ".ds-ticket { display: flex; flex-direction: column; align-items: center; gap: 12px; width: 260px; background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 20px; padding: 24px; } .ds-ticket-head { display: flex; align-items: center; justify-content: space-between; width: 100%; } .ds-ticket-title { font-family: 'Agrandir-Bold', Agrandir, system-ui, sans-serif; font-size: 1.125rem; color: #ffffff; } .ds-ticket-status { font-family: Agrandir, system-ui, sans-serif; font-size: 0.6875rem; letter-spacing: 0.5px; color: #10b981; } .ds-ticket-qr { background: #ffffff; padding: 12px; border-radius: 12px; } .ds-ticket-meta { font-family: Agrandir, system-ui, sans-serif; font-size: 0.875rem; color: #94a3b8; }"
+    },
+    {
+      "name": "Bottom Tab Bar",
+      "kind": "nav",
+      "refersTo": "button-secondary",
+      "description": "Thumb-reachable bottom navigation with blue active tab.",
+      "html": "<nav class=\"ds-tabbar\"><a class=\"ds-tab ds-tab-active\" href=\"#\"><span class=\"ds-tab-dot\"></span>Home</a><a class=\"ds-tab\" href=\"#\">Tickets</a><a class=\"ds-tab\" href=\"#\">Wallet</a><a class=\"ds-tab\" href=\"#\">Profile</a></nav>",
+      "css": ".ds-tabbar { display: flex; justify-content: space-around; align-items: center; width: 320px; background: #0a0a0a; border-top: 1px solid #1a1a1a; padding: 8px 0; } .ds-tab { display: flex; flex-direction: column; align-items: center; gap: 4px; font-family: Agrandir, system-ui, sans-serif; font-size: 0.6875rem; letter-spacing: 0.5px; color: #94a3b8; text-decoration: none; padding: 6px 12px; } .ds-tab-dot { width: 5px; height: 5px; border-radius: 9999px; background: transparent; } .ds-tab-active { color: #3491ff; } .ds-tab-active .ds-tab-dot { background: #3491ff; box-shadow: 0 0 8px rgba(52,145,255,0.6); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Neon on Black",
+    "overview": "The Unifesto app is a student's pocket to the whole fest circuit — discover events, hold tickets and QR codes, top up a wallet, refer friends, chat, and pay. It lives on a true-black canvas that reads as premium and AI-native, letting the Unifesto blue gradient glow like neon. Where the dashboards work in daylight, the app performs at night: high-contrast white type, a single electric accent, OLED-friendly black. This is a native app, not a website in a shell — one-handed, fast, gesture-driven. Content leads with imagery floating on the black; blue is spent carefully. It is deliberately not a generic college app, not a cluttered Eventbrite feed, and not a corporate ticketing utility. The ticket is sacred: legible, resilient, and instantly scannable at a gate on a bad connection.",
+    "keyCharacteristics": [
+      "True-black #000000 OLED canvas; high-contrast white type",
+      "Unifesto blue gradient as the one glowing accent",
+      "Mobile-first, one-handed, native gestures and large touch targets",
+      "Image-led content floating on black; blue spent sparingly",
+      "Resilient by design — the ticket/QR works even on poor connectivity"
+    ],
+    "rules": [
+      { "name": "The One Point of Light Rule", "body": "On a black screen the blue accent is precious. Spend it on the primary action, the live indicator, and selection — not decoration. Its glow only works if it's rare.", "section": "colors" },
+      { "name": "The Contrast-on-Black Rule", "body": "Every text and icon meets WCAG AA against #000000. Muted grays are for secondary content only; nothing critical relies on low-contrast gray.", "section": "colors" },
+      { "name": "The One Type Voice Rule", "body": "Agrandir does the whole hierarchy through weight and size. Sweet Apricot stays in the logo.", "section": "typography" },
+      { "name": "The Tonal-Depth Rule", "body": "On black, elevation is a lighter shade of black plus a hairline border — not a heavy drop shadow. The only real glow belongs to the blue accent.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the canvas true black #000000 — premium, OLED-friendly, and the whole point.",
+      "Do spend the blue accent sparingly: primary action, live indicator, selection.",
+      "Do meet WCAG AA contrast against black for every text and icon.",
+      "Do design one-handed: large touch targets, thumb-reachable actions, native gestures.",
+      "Do lead with imagery floating on the black.",
+      "Do make the ticket/QR resilient — legible offline, cached, instantly scannable; treat it as sacred."
+    ],
+    "donts": [
+      "Don't ship a generic college app or a cluttered Eventbrite-style feed.",
+      "Don't feel like a ported website — use native motion and gestures.",
+      "Don't overuse blue; if the whole screen glows, nothing does.",
+      "Don't rely on low-contrast gray for anything critical.",
+      "Don't add a second type family beyond Agrandir (Sweet Apricot stays in the logo).",
+      "Don't put the ticket/QR behind a required network call or a spinner it can get stuck on."
+    ]
+  }
+}

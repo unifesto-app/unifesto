@@ -1,0 +1,221 @@
+/**
+ * Judge / mentor scoring API client (Phase 3 of the hackathon-dashboard merge).
+ *
+ * Panelists (JUDGE / MENTOR) score and review entrants from mobile. The privacy
+ * model is enforced server-side, not here: a panelist only ever receives their
+ * OWN cells/review, and once a round is CLOSED the read endpoint 403s. This
+ * client mirrors that — it never assembles another panelist's data and it treats
+ * a closed round as a locked, read-only state rather than an error to retry.
+ *
+ * Curator management of the board lives in the space (web) app; mobile is the
+ * scoring surface only.
+ */
+
+import { makeAuthenticatedRequest } from './helpers';
+import { call } from './manageEvent';
+
+export type PanelistKind = 'JUDGE' | 'MENTOR';
+export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';
+
+/** One event where the signed-in user is a judge/mentor (the "Judging" list). */
+export interface JudgingEvent {
+  boardId: string;
+  boardTitle: string | null;
+  kind: PanelistKind;
+  totalRounds: number;
+  activeRounds: number;
+  eventId: string;
+  title: string;
+  slug: string;
+  startDateTime: string;
+  endDateTime: string;
+  coverImageUrl: string | null;
+  venueName: string | null;
+  city: string | null;
+  space: { id: string; name: string } | null;
+}
+
+export interface JudgingMetric {
+  id: string;
+  key: string;
+  label: string;
+  /** null = applies to every round; otherwise scoped to one round. */
+  roundId: string | null;
+  minValue: number;
+  maxValue: number;
+  weight: number;
+}
+
+/** An entrant in scope for one round, with this panelist's own review state. */
+export interface AssignmentEntrant {
+  id: string;
+  name: string;
+  meta: Record<string, unknown> | null;
+  /** Whether THIS panelist has already submitted their review for this round. */
+  reviewed: boolean;
+}
+
+export interface AssignmentRound {
+  id: string;
+  name: string;
+  order: number;
+  status: RoundStatus;
+  /** Empty when the round is CLOSED (server read-locks it) or none are in scope. */
+  entrants: AssignmentEntrant[];
+}
+
+export interface MyAssignments {
+  boardId: string;
+  eventId: string;
+  title: string | null;
+  kind: PanelistKind;
+  metrics: JudgingMetric[];
+  rounds: AssignmentRound[];
+}
+
+/** This panelist's own scores + review for one entrant/round. */
+export interface MyJudgment {
+  entrantId: string;
+  roundId: string;
+  kind: PanelistKind;
+  scores: { metricId: string; value: number; comment: string | null }[];
+  overallReview: string | null;
+  submittedAt: string | null;
+}
+
+export interface ScoreCell {
+  metricId: string;
+  value: number;
+  comment?: string;
+}
+
+export interface SubmitJudgmentPayload {
+  roundId: string;
+  /** JUDGE only — mentors must omit scores or the server rejects the request. */
+  scores?: ScoreCell[];
+  overallReview?: string;
+  /** true = mark complete (sets submittedAt); false/undefined = save draft. */
+  submit?: boolean;
+}
+
+/** Every event where the current user is on a panel. Empty on any failure. */
+export async function getMyJudgingEvents(): Promise<JudgingEvent[]> {
+  const response = await makeAuthenticatedRequest('/leaderboard/my-judging-events');
+  if (!response?.ok) return [];
+  try {
+    const data = await response.json();
+    return Array.isArray(data?.events) ? (data.events as JudgingEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * This panelist's rounds + entrants for one event. Returns null when they hold
+ * no assignment on the event (also the server's response) or on any failure.
+ */
+export async function getMyAssignments(eventId: string): Promise<MyAssignments | null> {
+  const response = await makeAuthenticatedRequest(
+    `/events/${eventId}/leaderboard/my-assignments`,
+  );
+  if (!response?.ok) return null;
+  try {
+    const data = await response.json();
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export type JudgmentResult =
+  | { ok: true; data: MyJudgment }
+  | { ok: false; locked: boolean; message: string };
+
+/**
+ * This panelist's own cells + review for an entrant/round. A 403 means the round
+ * is closed (or they're off the panel) — surfaced as `locked` so the screen can
+ * show a read-only "this round is closed" state instead of an error toast.
+ */
+export async function getMyJudgment(
+  entrantId: string,
+  roundId: string,
+): Promise<JudgmentResult> {
+  const response = await makeAuthenticatedRequest(
+    `/leaderboard/entrants/${entrantId}/judgment/${roundId}`,
+  );
+  if (!response) {
+    return { ok: false, locked: false, message: 'You need to be signed in.' };
+  }
+  if (response.ok) {
+    try {
+      return { ok: true, data: (await response.json()) as MyJudgment };
+    } catch {
+      return { ok: false, locked: false, message: 'Could not read your scores.' };
+    }
+  }
+  const locked = response.status === 403;
+  let message = locked
+    ? 'This round is closed — your scores are locked.'
+    : 'Could not load this entrant. Please try again.';
+  try {
+    const body = await response.json();
+    if (body?.message) message = String(body.message);
+  } catch {
+    /* keep default */
+  }
+  return { ok: false, locked, message };
+}
+
+/** Save or submit this panelist's judgment. Surfaces the backend's reason on 4xx. */
+export async function submitJudgment(
+  entrantId: string,
+  payload: SubmitJudgmentPayload,
+): Promise<{ ok: boolean; message?: string }> {
+  const response = await makeAuthenticatedRequest(
+    `/leaderboard/entrants/${entrantId}/judgment`,
+    { method: 'POST', body: JSON.stringify(payload) },
+  );
+  if (!response) return { ok: false, message: 'You need to be signed in.' };
+  if (response.ok) return { ok: true };
+  let message = 'Could not save. Please try again.';
+  try {
+    const body = await response.json();
+    if (body?.message) message = String(body.message);
+  } catch {
+    /* keep default */
+  }
+  return { ok: false, message };
+}
+
+// ── Participant view (Phase 4) ──────────────────────────────────────────────
+// What a team sees: per-round advance/eliminate, the bracket, published awards,
+// and — only once the organiser reveals it — the panel's written feedback about
+// their own team. The server never sends marks on this path.
+
+export type EntrantRoundStatus = 'PENDING' | 'ADVANCED' | 'ELIMINATED';
+
+export interface ParticipantRound {
+  id: string;
+  name: string;
+  order: number;
+  status: RoundStatus;
+  entrants: { id: string; name: string; isMine: boolean; status: EntrantRoundStatus }[];
+}
+
+export interface ParticipantView {
+  eventId: string;
+  title: string | null;
+  mode: 'RUBRIC' | 'METRIC';
+  revealReviews: boolean;
+  myEntrantIds: string[];
+  rounds: ParticipantRound[];
+  awards: { id: string; title: string; entrantId: string; entrantName: string | null; isMine: boolean }[];
+  feedback: { roundId: string; entrantId: string; overallReview: string | null }[];
+}
+
+/**
+ * GET /leaderboards/:eventId/participant. `data: null` = no competition to show
+ * (no board, disabled, or still a draft).
+ */
+export const getParticipantView = (eventId: string) =>
+  call<ParticipantView | null>(`/leaderboards/${eventId}/participant`);
