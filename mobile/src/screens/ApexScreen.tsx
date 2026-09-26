@@ -12,6 +12,8 @@ import {
   ChartLineUp,
   DeviceMobile,
   EnvelopeSimple,
+  Flag,
+  Lifebuoy,
   Globe,
   HandCoins,
   LinkBreak,
@@ -44,6 +46,7 @@ import {
   type PlatformStatus,
 } from '../lib/api/apex';
 import { getAllBankAccounts } from '../lib/api/apexMoney';
+import { getTicketStats, listContentReports } from '../lib/api/apexSupport';
 import { pendingCounts, type QueueKind } from '../lib/apexQueues';
 import { overallLabel } from './apex/PlatformStatusScreen';
 import { inrShort } from '../utils/money';
@@ -63,9 +66,11 @@ interface Counts {
   payouts: number | null;
   unread: number | null;
   bankAccounts: number | null;
+  support: number | null;
+  reports: number | null;
 }
 
-const NO_COUNTS: Counts = { queues: {}, refunds: null, payouts: null, unread: null, bankAccounts: null };
+const NO_COUNTS: Counts = { queues: {}, refunds: null, payouts: null, unread: null, bankAccounts: null, support: null, reports: null };
 
 /**
  * Platform-admin tab: Apex's headline numbers, every queue that needs a
@@ -86,7 +91,7 @@ export default function ApexScreen() {
 
   const load = useCallback(async () => {
     // Everything in parallel; a failing badge just stays blank.
-    const [overview, queues, refunds, payouts, wa, sys, banks] = await Promise.all([
+    const [overview, queues, refunds, payouts, wa, sys, banks, support, reports] = await Promise.all([
       getPlatformOverview(),
       pendingCounts(),
       getAdminRefunds('PENDING_ADMIN'),
@@ -94,6 +99,8 @@ export default function ApexScreen() {
       getWhatsappStats(),
       getPlatformStatus(),
       getAllBankAccounts({ status: 'PENDING', limit: 1 }),
+      getTicketStats(),
+      listContentReports({ status: 'OPEN' }),
     ]);
     if (overview.ok) {
       setData(overview.data);
@@ -107,6 +114,8 @@ export default function ApexScreen() {
       payouts: payouts.ok ? payouts.data.pagination?.total ?? payouts.data.payouts.length : null,
       unread: wa.ok ? wa.data.unread : null,
       bankAccounts: banks.ok ? banks.data.pagination.total : null,
+      support: support.ok ? support.data.open : null,
+      reports: reports.ok ? reports.data.length : null,
     });
     setStatus(sys.ok ? sys.data : null);
   }, []);
@@ -192,6 +201,7 @@ export default function ApexScreen() {
 
         <SettingsGroup title="Needs review">
           <SettingsRow icon={glyph(Tray)} label="Requests" trailing={badge(waiting)} onPress={() => router.push('/apex/requests')} />
+          <SettingsRow icon={glyph(Flag)} label="Reported content" trailing={badge(counts.reports)} onPress={() => router.push('/apex/reports')} />
         </SettingsGroup>
 
         <SettingsGroup title="Money & ops">
@@ -211,6 +221,7 @@ export default function ApexScreen() {
             trailing={badge(counts.unread)}
             onPress={() => router.push('/apex/whatsapp')}
           />
+          <SettingsRow icon={glyph(Lifebuoy)} label="Support" trailing={badge(counts.support)} onPress={() => router.push('/apex/support')} />
         </SettingsGroup>
 
         <SettingsGroup title="Communication">
