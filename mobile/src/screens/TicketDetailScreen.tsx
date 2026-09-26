@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -117,7 +118,19 @@ export default function TicketDetailScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={t.refreshing}
+            onRefresh={t.refresh}
+            tintColor={tokens.accent}
+            colors={[tokens.accent]}
+            progressViewOffset={topSpacing}
+          />
+        }
+      >
         {/* ── The pass ── */}
         <View style={[styles.pass]}>
           <CardBackdrop shape={styles.pass} />

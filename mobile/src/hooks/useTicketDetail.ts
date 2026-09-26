@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking } from 'react-native';
-import { getEventBySlug } from '../lib/api/events';
+import { getEventBySlug, getMyRegistrationsForEvent } from '../lib/api/events';
 import { getRegistrationCheckins, type RegistrationCheckinRecord } from '../lib/api/checkin';
 import { markTicketsStale } from '../lib/ticketsRefresh';
 import {
@@ -77,6 +77,11 @@ export function useTicketDetail(ticketParam: unknown) {
   const [waSaving, setWaSaving] = useState(false);
   const [cancelledNow, setCancelledNow] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  // Pull-to-refresh: bumping the key re-runs every fetch below; the live
+  // status replaces the (possibly stale) snapshot the list passed in.
+  const [reloadKey, setReloadKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<{ status: string; checkedInAt: string | null } | null>(null);
 
   // One event fetch fills whatever the snapshot is missing.
   useEffect(() => {
@@ -97,10 +102,27 @@ export function useTicketDetail(ticketParam: unknown) {
 
   useEffect(() => {
     if (!registrationId) return;
-    getRegistrationCheckins(registrationId).then(setCheckins).catch(() => {});
-    getMyGroupMembers(registrationId).then(setRoster).catch(() => {});
-    getRegistrationWhatsappGroup(registrationId).then(setWaGroup).catch(() => {});
-  }, [registrationId]);
+    const jobs = [
+      getRegistrationCheckins(registrationId).then(setCheckins),
+      getMyGroupMembers(registrationId).then(setRoster),
+      getRegistrationWhatsappGroup(registrationId).then(setWaGroup),
+    ];
+    if (reloadKey > 0 && eventId) {
+      jobs.push(
+        getMyRegistrationsForEvent(eventId).then((regs: any[]) => {
+          const mine = regs.find((r) => r.id === registrationId);
+          if (mine) setLiveStatus({ status: String(mine.status), checkedInAt: mine.checkedInAt ?? null });
+        }),
+      );
+    }
+    void Promise.allSettled(jobs).then(() => setRefreshing(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registrationId, reloadKey]);
+
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    setReloadKey((k) => k + 1);
+  }, []);
 
   useEffect(() => {
     if (!eventId) return;
@@ -113,16 +135,16 @@ export function useTicketDetail(ticketParam: unknown) {
         : s.kind === 'in' ? 'Advanced' : s.kind === 'out' ? 'Out' : 'Awaiting results';
       setCompetition({ status });
     });
-  }, [eventId]);
+  }, [eventId, reloadKey]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const raw = cancelledNow
     ? 'CANCELLED'
-    : String(ticket?.registrationStatus ?? ticket?.status ?? 'REGISTERED').toUpperCase();
+    : String(liveStatus?.status ?? ticket?.registrationStatus ?? ticket?.status ?? 'REGISTERED').toUpperCase();
   const status: TicketStatus =
     raw === 'CANCELLED'
       ? 'cancelled'
-      : raw === 'ATTENDED' || raw === 'CHECKED_IN' || ticket?.checkedInAt
+      : raw === 'ATTENDED' || raw === 'CHECKED_IN' || liveStatus?.checkedInAt || ticket?.checkedInAt
         ? 'checkedIn'
         : 'registered';
 
@@ -253,5 +275,7 @@ export function useTicketDetail(ticketParam: unknown) {
     toggleJoinedWhatsapp,
     openWhatsapp,
     confirmCancel,
+    refreshing,
+    refresh,
   };
 }

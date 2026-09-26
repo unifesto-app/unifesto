@@ -45,6 +45,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
   const [subSpaces, setSubSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
   const [membershipBusy, setMembershipBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!idOrSlug) {
@@ -73,8 +74,14 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
       setSpace(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [idOrSlug, token]);
+
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    void load();
+  }, [load]);
 
   useEffect(() => {
     setLoading(true);
@@ -187,6 +194,8 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     user,
     space,
     loading,
+    refreshing,
+    refresh,
     brandColor,
     memberCount,
     isMember,
