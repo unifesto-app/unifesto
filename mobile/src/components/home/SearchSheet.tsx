@@ -114,8 +114,13 @@ export default function SearchSheet({
   const Chip = ({ label, icon, onPress }: { label: string; icon?: React.ReactNode; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.chip, { backgroundColor: tokens.surface, borderColor: tokens.border, opacity: pressed ? 0.7 : 1 }]}
+      style={({ pressed }) => [
+        styles.chip,
+        LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: tokens.surface, borderColor: tokens.border },
+        { transform: [{ scale: pressed ? 0.96 : 1 }] },
+      ]}
     >
+      <GlassFill interactive />
       {icon}
       <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>{label}</Text>
     </Pressable>

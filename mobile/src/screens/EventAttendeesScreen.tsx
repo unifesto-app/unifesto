@@ -25,11 +25,12 @@ const TABS: { key: AttendeeFilter; label: string }[] = [
 
 /** Searchable, paged attendee list for one event (operator view). */
 export default function EventAttendeesScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  // `ticket` + `ticketName` deep-link from a ticket's page to just its holders.
+  const { eventId, ticket, ticketName } = useLocalSearchParams<{ eventId: string; ticket?: string; ticketName?: string }>();
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  const a = useEventAttendees(eventId);
+  const a = useEventAttendees(eventId, ticket);
 
   useAnalyticsScreenTracking('EventAttendees');
 
@@ -61,6 +62,7 @@ export default function EventAttendeesScreen() {
       {!a.loading && !a.error ? (
         <Text style={[styles.count, { color: tokens.textMuted }]}>
           {a.total.toLocaleString('en-IN')} {a.total === 1 ? 'booking' : 'bookings'}
+          {ticket ? ` on ${ticketName || 'this ticket'}` : ''}
         </Text>
       ) : null}
     </View>

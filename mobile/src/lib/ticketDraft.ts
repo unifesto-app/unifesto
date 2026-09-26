@@ -1,4 +1,4 @@
-import type { GroupPricingMode, ManagedTicketType, TicketKind, TicketTypePayload } from './api/ticketTypes';
+import { isOffSale, type GroupPricingMode, type ManagedTicketType, type TicketKind, type TicketTypePayload } from './api/ticketTypes';
 
 /** Editable form state. Numbers stay strings so half-typed input survives. */
 export interface TicketDraft {
@@ -14,6 +14,14 @@ export interface TicketDraft {
   groupPricingMode: GroupPricingMode;
   minGroupSize: string;
   maxGroupSize: string;
+  /** null = no bound. */
+  saleStartsAt: Date | null;
+  saleEndsAt: Date | null;
+  /** Listed and buyable (isVisible && isActive). */
+  onSale: boolean;
+  whatsappGroupUrl: string;
+  /** Ticket types that holders of this one can't register for. */
+  blocks: string[];
 }
 
 export function emptyDraft(kind: TicketKind): TicketDraft {
@@ -29,6 +37,11 @@ export function emptyDraft(kind: TicketKind): TicketDraft {
     groupPricingMode: 'PER_GROUP',
     minGroupSize: '2',
     maxGroupSize: '5',
+    saleStartsAt: null,
+    saleEndsAt: null,
+    onSale: true,
+    whatsappGroupUrl: '',
+    blocks: [],
   };
 }
 
@@ -45,6 +58,11 @@ export function toDraft(t: ManagedTicketType): TicketDraft {
     groupPricingMode: t.groupPricingMode ?? 'PER_GROUP',
     minGroupSize: String(t.minGroupSize ?? 2),
     maxGroupSize: String(t.maxGroupSize ?? 5),
+    saleStartsAt: t.saleStartsAt ? new Date(t.saleStartsAt) : null,
+    saleEndsAt: t.saleEndsAt ? new Date(t.saleEndsAt) : null,
+    onSale: !isOffSale(t),
+    whatsappGroupUrl: t.whatsappGroupUrl ?? '',
+    blocks: (t.blocks ?? []).map((b) => b.blockedId).sort(),
   };
 }
 
@@ -72,6 +90,9 @@ export function validateDraft(d: TicketDraft, original?: ManagedTicketType): str
     if (min < 1) return 'Smallest group must be at least 1.';
     if (max < min) return 'Largest group must be at least the smallest group.';
   }
+  if (d.saleStartsAt && d.saleEndsAt && d.saleEndsAt <= d.saleStartsAt) return 'Sales must close after they open.';
+  const wa = d.whatsappGroupUrl.trim();
+  if (wa && !/^https:\/\/chat\.whatsapp\.com\//i.test(wa)) return 'WhatsApp link should start with https://chat.whatsapp.com/';
   return null;
 }
 
@@ -82,11 +103,22 @@ export function validateDraft(d: TicketDraft, original?: ManagedTicketType): str
  */
 export function draftToPayload(d: TicketDraft, isEdit: boolean): TicketTypePayload {
   const capacity = d.capacity.trim() ? Number(d.capacity) : undefined;
+  // On edit, empty values are sent so clearing a date/link/restriction sticks;
+  // on create they're left out.
+  const wa = d.whatsappGroupUrl.trim();
+  const common: Partial<TicketTypePayload> = {
+    saleStartsAt: d.saleStartsAt ? d.saleStartsAt.toISOString() : isEdit ? null : undefined,
+    saleEndsAt: d.saleEndsAt ? d.saleEndsAt.toISOString() : isEdit ? null : undefined,
+    ...(isEdit || !d.onSale ? { isVisible: d.onSale, isActive: d.onSale } : {}),
+    ...(isEdit || wa ? { whatsappGroupUrl: wa } : {}),
+    ...(isEdit || d.blocks.length ? { blocksTicketTypeIds: d.blocks } : {}),
+  };
   if (d.kind === 'RSVP') {
-    return { name: d.name.trim(), description: d.description.trim() || undefined, kind: 'RSVP', price: 0, totalQuantity: capacity };
+    return { ...common, name: d.name.trim(), description: d.description.trim() || undefined, kind: 'RSVP', price: 0, totalQuantity: capacity };
   }
   const waitlist = Boolean(capacity && d.waitlistEnabled);
   return {
+    ...common,
     name: d.name.trim(),
     description: d.description.trim() || undefined,
     kind: d.kind,

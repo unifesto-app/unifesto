@@ -10,6 +10,7 @@ import { getMyPartnerLinks, type MyPartnerLink } from '../lib/api/tracking';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 const GUTTER = spacing[6];
 const THUMB_W = 88;
@@ -79,10 +80,11 @@ export default function PartnerLinksScreen() {
         <Pressable
           key={l.id}
           onPress={() => router.push(`/partner/${l.id}`)}
-          style={({ pressed }) => [styles.row, { backgroundColor: pressed ? tokens.pressed : tokens.elevated }]}
+          style={({ pressed }) => [styles.row, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
           accessibilityRole="button"
           accessibilityLabel={`${l.event.title}, ${l.registrations} registrations`}
         >
+          <CardBackdrop shape={styles.row} />
           {l.event.coverImageUrl ? (
             <Image source={{ uri: l.event.coverImageUrl }} style={styles.thumb} />
           ) : (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   MagnifyingGlass,
@@ -22,7 +22,11 @@ import {
 } from "@/lib/api/registrations-api";
 import { getSpaceUsage } from "@/lib/api/subscriptions-api";
 import { ExportMenu } from "@/components/shared/ExportMenu";
-import type { Event } from "@/lib/api/events-api";
+import {
+  getManageTicketTypes,
+  type Event,
+  type EventTicketType,
+} from "@/lib/api/events-api";
 import type {
   Registration,
   RegistrationStatus,
@@ -58,15 +62,22 @@ export default function EventRegistrationsPage() {
   const params = useParams();
   const router = useRouter();
   const eventId = params.eventId as string;
+  const searchParams = useSearchParams();
 
   const [event, setEvent] = useState<Event | null>(null);
+  // Operator ticket list (incl. hidden tiers) for the filter; the public event
+  // payload drops hidden tickets, whose holders still need to be findable.
+  const [ticketTypes, setTicketTypes] = useState<EventTicketType[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<RegistrationStatus | "all">("all");
   const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | "all">("all");
-  const [ticketFilter, setTicketFilter] = useState<string>("all");
+  // `?ticket=<id>` deep-links from a ticket page straight to its holders.
+  const [ticketFilter, setTicketFilter] = useState<string>(
+    () => searchParams.get("ticket") ?? "all"
+  );
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -77,9 +88,13 @@ export default function EventRegistrationsPage() {
   const [canExport, setCanExport] = useState<boolean | undefined>(undefined);
 
   const loadEvent = useCallback(async () => {
-    const { data } = await getEventById(eventId);
+    const [{ data }, { data: tiers }] = await Promise.all([
+      getEventById(eventId),
+      getManageTicketTypes(eventId),
+    ]);
     if (!data) return;
     setEvent(data);
+    setTicketTypes(tiers ?? data.ticketTypes ?? []);
     // Gate the Export control on the space's effective plan, using the same
     // flag the backend enforces with (getEffectiveLimits → hasBulkExport).
     const { data: usage } = await getSpaceUsage(data.spaceId);
@@ -291,14 +306,14 @@ export default function EventRegistrationsPage() {
             <SelectItem value="REFUNDED">Refunded</SelectItem>
           </SelectContent>
         </Select>
-        {event?.ticketTypes && event.ticketTypes.length > 0 && (
+        {ticketTypes.length > 0 && (
           <Select value={ticketFilter} onValueChange={setTicketFilter}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All ticket types</SelectItem>
-              {event.ticketTypes.map((tt) => (
+              {ticketTypes.map((tt) => (
                 <SelectItem key={tt.id} value={tt.id}>
                   {tt.name}
                 </SelectItem>

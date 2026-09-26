@@ -25,6 +25,7 @@ import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { CardBackdrop } from './ui/CardSurface';
 
 /** Event fields the share card needs — resolved by the caller from whatever
  *  shape it has (event detail, ticket, etc.). */
@@ -245,10 +246,11 @@ function FormatSwitch({ value, onChange }: { value: ShareFormatKey; onChange: (k
   const pill = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
     <View
-      style={[modalStyles.switch, { backgroundColor: tokens.elevated }]}
+      style={modalStyles.switch}
       onLayout={(e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width)}
       accessibilityRole="tablist"
     >
+      <CardBackdrop shape={modalStyles.switch} />
       {segW > 0 ? <Animated.View style={[modalStyles.switchPill, { width: segW, backgroundColor: tokens.text }, pill]} /> : null}
       {SHARE_FORMATS.map((f) => {
         const active = f.key === value;

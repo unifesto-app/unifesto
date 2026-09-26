@@ -23,6 +23,7 @@ import {
 import { spacing, borderRadius, font } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
 
 /**
@@ -60,7 +61,7 @@ function validateForSubmit(
 
 export default function JudgingEntrantScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, tokens } = useTheme();
   const topSpacing = useTopSpacing();
   const { eventId, entrantId, roundId, roundName, entrantName } = useLocalSearchParams<{
     eventId: string;
@@ -214,7 +215,6 @@ export default function JudgingEntrantScreen() {
       marginTop: spacing[2],
     },
     metricCard: {
-      backgroundColor: colors.card,
       borderRadius: borderRadius.xl,
       padding: spacing[4],
       marginBottom: spacing[3],
@@ -238,7 +238,7 @@ export default function JudgingEntrantScreen() {
       fontSize: 20,
       fontFamily: getFontFamily('bold'),
       color: colors.text,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: tokens.fill,
       borderRadius: borderRadius.lg,
       paddingVertical: spacing[2],
       borderWidth: 1,
@@ -255,22 +255,20 @@ export default function JudgingEntrantScreen() {
       fontSize: 14,
       fontFamily: getFontFamily('normal'),
       color: colors.text,
-      backgroundColor: colors.backgroundSecondary,
+      backgroundColor: tokens.fill,
       borderRadius: borderRadius.lg,
       padding: spacing[3],
       minHeight: 44,
       textAlignVertical: 'top',
     },
+    reviewWrap: { borderRadius: borderRadius.xl, marginBottom: spacing[5] },
     reviewInput: {
       fontSize: 15,
       fontFamily: getFontFamily('normal'),
       color: colors.text,
-      backgroundColor: colors.card,
-      borderRadius: borderRadius.xl,
       padding: spacing[4],
       minHeight: 120,
       textAlignVertical: 'top',
-      marginBottom: spacing[5],
     },
     actions: { gap: spacing[3] },
     center: {
@@ -347,6 +345,7 @@ export default function JudgingEntrantScreen() {
             <Text style={styles.sectionLabel}>Criteria</Text>
             {metrics.map((m) => (
               <View key={m.id} style={styles.metricCard}>
+                <CardBackdrop shape={styles.metricCard} />
                 <View style={styles.metricTopRow}>
                   <Text style={styles.metricLabel}>{m.label}</Text>
                   <TextInput
@@ -380,19 +379,22 @@ export default function JudgingEntrantScreen() {
         <Text style={styles.sectionLabel}>
           {isMentor ? 'Feedback' : 'Overall review'}
         </Text>
-        <TextInput
-          style={styles.reviewInput}
-          placeholder={
-            isMentor
-              ? 'Share guidance and feedback for this team'
-              : 'Summarise your assessment (shared with the team only if the organiser reveals it)'
-          }
-          placeholderTextColor={colors.textMuted}
-          value={overallReview}
-          onChangeText={setOverallReview}
-          multiline
-          maxLength={5000}
-        />
+        <View style={styles.reviewWrap}>
+          <CardBackdrop shape={styles.reviewWrap} />
+          <TextInput
+            style={styles.reviewInput}
+            placeholder={
+              isMentor
+                ? 'Share guidance and feedback for this team'
+                : 'Summarise your assessment (shared with the team only if the organiser reveals it)'
+            }
+            placeholderTextColor={colors.textMuted}
+            value={overallReview}
+            onChangeText={setOverallReview}
+            multiline
+            maxLength={5000}
+          />
+        </View>
 
         <View style={styles.actions}>
           <GradientButton

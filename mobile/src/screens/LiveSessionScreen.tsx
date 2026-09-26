@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   Modal,
   TextInput,
@@ -27,6 +28,7 @@ import {
 } from '@livekit/react-native';
 import { Track } from 'livekit-client';
 import { useTheme } from '../context/ThemeContext';
+import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { joinSession } from '../lib/api/sessions';
 
 /**
@@ -196,36 +198,20 @@ function RoomView({
       <View style={styles.controls}>
         {canPublish && (
           <>
-            <TouchableOpacity
-              style={styles.ctrl}
-              onPress={() =>
-                localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)
-              }
-            >
-              <Ionicons
-                name={isMicrophoneEnabled ? 'mic' : 'mic-off'}
-                size={24}
-                color="#fff"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.ctrl}
+            <CallControl
+              icon={isMicrophoneEnabled ? 'mic' : 'mic-off'}
+              label={isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone'}
+              onPress={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
+            />
+            <CallControl
+              icon={isCameraEnabled ? 'videocam' : 'videocam-off'}
+              label={isCameraEnabled ? 'Turn camera off' : 'Turn camera on'}
               onPress={() => localParticipant.setCameraEnabled(!isCameraEnabled)}
-            >
-              <Ionicons
-                name={isCameraEnabled ? 'videocam' : 'videocam-off'}
-                size={24}
-                color="#fff"
-              />
-            </TouchableOpacity>
+            />
           </>
         )}
-        <TouchableOpacity style={styles.ctrl} onPress={() => setChatOpen(true)}>
-          <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.ctrl, styles.leaveCtrl]} onPress={onLeave}>
-          <Ionicons name="call" size={24} color="#fff" />
-        </TouchableOpacity>
+        <CallControl icon="chatbubble-ellipses" label="Open chat" onPress={() => setChatOpen(true)} />
+        <CallControl icon="call" label="Leave session" onPress={onLeave} danger />
       </View>
 
       <ChatPanel visible={chatOpen} onClose={() => setChatOpen(false)} />
@@ -301,6 +287,40 @@ function ChatPanel({
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+// The call canvas is always dark, so the glass carries a fixed dark tint whatever the app theme.
+const CONTROL_TINT = 'rgba(42, 42, 42, 0.55)';
+
+/** Round call control: Liquid Glass on iOS 26+, flat dark disc elsewhere; Leave stays solid red. */
+function CallControl({
+  icon,
+  label,
+  onPress,
+  danger = false,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}) {
+  const glass = LIQUID_GLASS && !danger;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      // Scale, not opacity: opacity breaks Liquid Glass.
+      style={({ pressed }) => [
+        styles.ctrl,
+        danger ? styles.leaveCtrl : glass ? { backgroundColor: 'transparent' } : null,
+        { transform: [{ scale: pressed ? 0.94 : 1 }] },
+      ]}
+    >
+      {glass ? <GlassFill radius={28} tint={CONTROL_TINT} interactive /> : null}
+      <Ionicons name={icon} size={24} color="#fff" />
+    </Pressable>
   );
 }
 

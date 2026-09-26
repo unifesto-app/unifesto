@@ -23,4 +23,12 @@ try {
   // `debug` not resolvable — nothing to silence.
 }
 
+// Android home-screen widgets render in a headless JS task that can start with
+// the app closed, so the handler must be registered before the router loads.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+if (require('react-native').Platform.OS === 'android') {
+  const { registerWidgetTaskHandler } = require('react-native-android-widget');
+  registerWidgetTaskHandler(require('./src/widgets/android/widgetTaskHandler').widgetTaskHandler);
+}
+
 require('expo-router/entry');

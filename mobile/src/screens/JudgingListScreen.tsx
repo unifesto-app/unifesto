@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -16,6 +16,7 @@ import { getMyJudgingEvents, JudgingEvent } from '../lib/api/leaderboard';
 import { spacing, borderRadius, font } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 function formatDate(iso: string): string {
   try {
@@ -73,7 +74,6 @@ export default function JudgingListScreen() {
       color: colors.primary,
     },
     card: {
-      backgroundColor: colors.card,
       borderRadius: borderRadius['2xl'],
       marginBottom: spacing[3],
       overflow: 'hidden',
@@ -247,10 +247,10 @@ export default function JudgingListScreen() {
         </View>
 
         {events.map((ev) => (
-          <TouchableOpacity
+          <Pressable
             key={ev.boardId}
-            style={styles.card}
-            activeOpacity={0.85}
+            // Scale, not opacity: opacity breaks Liquid Glass.
+            style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
             onPress={() =>
               router.push({
                 pathname: `/judging/${ev.eventId}`,
@@ -258,6 +258,7 @@ export default function JudgingListScreen() {
               })
             }
           >
+            <CardBackdrop shape={styles.card} />
             <View style={styles.cardContent}>
               <View style={styles.cardTop}>
                 <View style={styles.iconChip}>
@@ -306,7 +307,7 @@ export default function JudgingListScreen() {
                 </View>
               </View>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
     </ScrollView>

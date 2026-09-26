@@ -1,5 +1,5 @@
-import React from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from 'phosphor-react-native';
@@ -37,6 +37,7 @@ export default function TicketTypesScreen({ mode }: { mode: 'tickets' | 'rsvps' 
   const t = useEventTicketTypes(eventId);
   const copy = COPY[mode];
   const list = mode === 'tickets' ? t.tickets : t.rsvps;
+  const [reordering, setReordering] = useState(false);
 
   useAnalyticsScreenTracking(mode === 'tickets' ? 'ManageTickets' : 'ManageRsvps');
 
@@ -55,7 +56,14 @@ export default function TicketTypesScreen({ mode }: { mode: 'tickets' | 'rsvps' 
         <RefreshControl refreshing={t.refreshing} onRefresh={t.refresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
       }
     >
-      <Text style={[styles.intro, { color: tokens.textMuted }]}>{copy.intro}</Text>
+      <View style={styles.introRow}>
+        <Text style={[styles.intro, { color: tokens.textMuted }]}>{copy.intro}</Text>
+        {list.length > 1 ? (
+          <Pressable onPress={() => setReordering((r) => !r)} hitSlop={10} accessibilityRole="button">
+            <Text style={[styles.action, { color: tokens.accent }]}>{reordering ? 'Done' : 'Reorder'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
       <View style={styles.list}>
         {t.loading ? (
@@ -65,7 +73,16 @@ export default function TicketTypesScreen({ mode }: { mode: 'tickets' | 'rsvps' 
         ) : list.length === 0 ? (
           <Text style={[styles.empty, { color: tokens.textMuted }]}>{copy.empty}</Text>
         ) : (
-          list.map((ticket) => <TicketTypeRow key={ticket.id} ticket={ticket} onPress={() => open(ticket.id)} />)
+          list.map((ticket, i) => (
+            <TicketTypeRow
+              key={ticket.id}
+              ticket={ticket}
+              reordering={reordering}
+              onPress={() => open(ticket.id)}
+              onMoveUp={i > 0 ? () => void t.move(list, ticket.id, -1) : undefined}
+              onMoveDown={i < list.length - 1 ? () => void t.move(list, ticket.id, 1) : undefined}
+            />
+          ))
         )}
       </View>
 
@@ -83,7 +100,9 @@ export default function TicketTypesScreen({ mode }: { mode: 'tickets' | 'rsvps' 
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  introRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] },
+  intro: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  action: { fontSize: typography.fontSize.sm, ...font('semibold') },
   list: { marginTop: spacing[5], gap: spacing[3] },
   empty: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
 });

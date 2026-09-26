@@ -4,6 +4,7 @@ import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { CardBackdrop } from '../ui/CardSurface';
 
 interface ChipPickerProps<V extends string> {
   options: { value: V; label: string }[];
@@ -28,9 +29,10 @@ export default function ChipPicker<V extends string>({ options, value, onChange,
             accessibilityState={{ selected: on }}
             style={({ pressed }) => [
               styles.chip,
-              { backgroundColor: on ? tokens.accent : tokens.elevated, transform: [{ scale: pressed ? 0.96 : 1 }] },
+              { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
             ]}
           >
+            {!on ? <CardBackdrop shape={styles.chip} /> : null}
             <Text style={[styles.label, { color: on ? tokens.accentFg : tokens.text }]}>{o.label}</Text>
           </Pressable>
         );

@@ -29,6 +29,7 @@ import { attendeeName } from '../utils/checkinFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 
 // Ignore repeat reads of the same code within this window (ms): the camera
 // fires many times per second while a QR stays in frame.
@@ -37,7 +38,11 @@ const RESCAN_COOLDOWN = 2500;
 const SHOW_MS = { success: 2200, already: 3500, error: 4000 } as const;
 
 // The camera overlay is dark in both themes, so this screen uses fixed colours.
-const GLASS = 'rgba(0, 0, 0, 0.5)';
+// Camera-overlay controls: clear Liquid Glass with a dark tint (white text stays
+// legible over any frame); a flat dark wash where Liquid Glass isn't available.
+const CAMERA_TINT = 'rgba(0, 0, 0, 0.3)';
+const GLASS = LIQUID_GLASS ? 'transparent' : 'rgba(0, 0, 0, 0.5)';
+const CameraGlass = () => <GlassFill variant="clear" tint={CAMERA_TINT} />;
 const WHITE = '#ffffff';
 const WHITE_DIM = 'rgba(255, 255, 255, 0.7)';
 
@@ -383,6 +388,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
           <PointChips points={points} value={pointId} onChange={setPointId} onCamera inset={spacing[5]} />
         ) : (
           <View style={[styles.pill, { alignSelf: 'flex-start', marginLeft: spacing[5] }]}>
+            <CameraGlass />
             <MapPin size={14} color={WHITE} weight="fill" />
             <Text style={styles.pillText}>{activePoint?.name}</Text>
           </View>
@@ -420,6 +426,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
               { backgroundColor: torch ? WHITE : GLASS, transform: [{ scale: pressed ? 0.95 : 1 }] },
             ]}
           >
+            {!torch ? <CameraGlass /> : null}
             <Flashlight size={22} color={torch ? '#000000' : WHITE} weight={torch ? 'fill' : 'regular'} />
           </Pressable>
           <Pressable
@@ -429,6 +436,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
             accessibilityRole="button"
             style={({ pressed }) => [styles.tool, styles.toolWide, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
           >
+            <CameraGlass />
             <MagnifyingGlass size={20} color={WHITE} weight="bold" />
             <Text style={styles.toolText}>Search by name</Text>
           </Pressable>

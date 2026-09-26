@@ -2,13 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, UsersThree, User, CheckCircle } from "@phosphor-icons/react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  UsersThree,
+  User,
+  CheckCircle,
+  ArrowRight,
+} from "@phosphor-icons/react";
 import {
   getEventById,
+  getManageTicketTypes,
   updateTicketType,
-  type EventTicketType,
+  type ManagedTicketType,
   type Event,
 } from "@/lib/api/events-api";
+import {
+  SALE_STATUS_META,
+  isOffSale,
+  ticketSaleStatus,
+} from "@/components/events/ticket-status";
+import { Input } from "@/components/ui/input";
 import {
   type Draft,
   toDraft,
@@ -38,6 +52,11 @@ export default function TicketDetailPage() {
   const ticketId = params.ticketId as string;
 
   const [event, setEvent] = useState<Event | null>(null);
+  // Operator list incl. hidden tiers — the public event payload omits those,
+  // so a hidden ticket would otherwise read as "not found" here.
+  const [allTickets, setAllTickets] = useState<ManagedTicketType[]>([]);
+  const [waLink, setWaLink] = useState("");
+  const [savingMeta, setSavingMeta] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -52,13 +71,21 @@ export default function TicketDetailPage() {
   const ticketsHref = `/dashboard/events/${eventId}/tickets`;
 
   const load = useCallback(async () => {
-    const { data, error } = await getEventById(eventId);
-    if (error) {
-      setError(error.message);
+    const [ev, tiers] = await Promise.all([
+      getEventById(eventId),
+      getManageTicketTypes(eventId),
+    ]);
+    const err = ev.error ?? tiers.error;
+    if (err) {
+      setError(err.message);
     } else {
-      setEvent(data);
-      const t = data?.ticketTypes?.find((x) => x.id === ticketId);
-      if (t) setDraft(toDraft(t));
+      setEvent(ev.data);
+      setAllTickets(tiers.data ?? []);
+      const t = tiers.data?.find((x) => x.id === ticketId);
+      if (t) {
+        setDraft(toDraft(t));
+        setWaLink(t.whatsappGroupUrl ?? "");
+      }
     }
     setLoading(false);
   }, [eventId, ticketId]);
@@ -67,9 +94,9 @@ export default function TicketDetailPage() {
     void load();
   }, [load]);
 
-  const ticket = useMemo<EventTicketType | undefined>(
-    () => event?.ticketTypes?.find((t) => t.id === ticketId),
-    [event, ticketId]
+  const ticket = useMemo<ManagedTicketType | undefined>(
+    () => allTickets.find((t) => t.id === ticketId),
+    [allTickets, ticketId]
   );
 
   const formFields = useMemo(
@@ -79,9 +106,24 @@ export default function TicketDetailPage() {
 
   // Other ticket types on this event — the candidates this ticket can block.
   const otherTickets = useMemo(
-    () => (event?.ticketTypes ?? []).filter((t) => t.id !== ticketId),
-    [event, ticketId]
+    () => allTickets.filter((t) => t.id !== ticketId),
+    [allTickets, ticketId]
   );
+
+  // Small single-field saves (availability, WhatsApp link) share one path.
+  const patchTicket = async (
+    payload: Parameters<typeof updateTicketType>[2]
+  ) => {
+    setSavingMeta(true);
+    setError("");
+    const { error } = await updateTicketType(eventId, ticketId, payload);
+    setSavingMeta(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    await load();
+  };
 
   // Re-seed the local block selection whenever the ticket (re)loads.
   useEffect(() => {
@@ -186,6 +228,9 @@ export default function TicketDetailPage() {
   }
 
   const isGroup = ticket.kind === "GROUP";
+  const status = SALE_STATUS_META[ticketSaleStatus(ticket)];
+  const offSale = isOffSale(ticket);
+  const { stats } = ticket;
 
   return (
     <div className="space-y-6">
@@ -214,7 +259,47 @@ export default function TicketDetailPage() {
           {Number(ticket.price) === 0 && (
             <Badge variant="success">Free</Badge>
           )}
+          <Badge variant={status.variant}>{status.label}</Badge>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <MiniStat
+          label="Seats taken"
+          value={
+            ticket.totalQuantity != null
+              ? `${ticket.soldCount} / ${ticket.totalQuantity}`
+              : `${ticket.soldCount}`
+          }
+        />
+        <MiniStat label="Checked in" value={`${stats.checkedIn} / ${stats.registrations}`} />
+        <MiniStat
+          label="Waiting list"
+          value={`${stats.waitlistWaiting} waiting · ${stats.waitlistOffered} offered`}
+        />
+        {stats.revenue != null && (
+          <MiniStat
+            label="Net revenue"
+            value={`₹${stats.revenue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
+          />
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/dashboard/events/${eventId}/attendees?ticket=${ticketId}`}>
+            View attendees
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
+        {ticket.waitlistEnabled && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/dashboard/events/${eventId}/waitlist`}>
+              Manage waiting list
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
       </div>
 
       {error && <ErrorNotice message={error} />}
@@ -224,6 +309,30 @@ export default function TicketDetailPage() {
           Ticket details saved
         </div>
       )}
+
+      {/* Availability */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Availability</CardTitle>
+          <CardDescription>
+            {offSale
+              ? "Hidden from the event page and can't be bought. Existing holders keep their tickets."
+              : "Listed on the event page and open for registration within its sales window."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            size="sm"
+            variant={offSale ? "default" : "outline"}
+            disabled={savingMeta}
+            onClick={() =>
+              patchTicket({ isVisible: offSale, isActive: offSale })
+            }
+          >
+            {offSale ? "Put on sale" : "Hide ticket"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Ticket details */}
       <TicketForm
@@ -256,6 +365,33 @@ export default function TicketDetailPage() {
             isGroup={isGroup}
             onChanged={load}
           />
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp group */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">WhatsApp group</CardTitle>
+          <CardDescription>
+            Holders of this ticket get this group link instead of the event&apos;s.
+            Leave empty to fall back to the event group.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            placeholder="https://chat.whatsapp.com/…"
+            value={waLink}
+            onChange={(e) => setWaLink(e.target.value)}
+          />
+          <Button
+            size="sm"
+            disabled={
+              savingMeta || waLink.trim() === (ticket.whatsappGroupUrl ?? "")
+            }
+            onClick={() => patchTicket({ whatsappGroupUrl: waLink.trim() })}
+          >
+            Save link
+          </Button>
         </CardContent>
       </Card>
 
@@ -306,5 +442,16 @@ export default function TicketDetailPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <Card>
+      <CardContent className="py-3">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="mt-0.5 text-sm font-semibold text-foreground">{value}</p>
+      </CardContent>
+    </Card>
   );
 }

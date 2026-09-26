@@ -15,6 +15,7 @@ import { listSessions, type Session } from '../lib/api/sessions';
 import { getUserSpaces, Space, getAllSpaces, getSpaceEvents } from '../lib/api/spaces';
 import { getFavorites } from '../lib/api/favorites';
 import { getMyMemberTickets } from '../lib/api/registrations';
+import { syncUpNextWidget } from '../widgets/sync';
 
 // The featured partner space whose events get their own home rail.
 export const BEYOND_SPACE_NAME = 'Beyond by Unifesto';
@@ -121,6 +122,8 @@ export function useHomeData() {
     if (!user) {
       setUpcomingTickets([]);
       setIsLoadingTickets(false);
+      // Signed out: the home-screen widget must not keep showing tickets.
+      void syncUpNextWidget(null);
       return;
     }
     try {
@@ -156,7 +159,9 @@ export function useHomeData() {
         .filter((event: any) => event && event.startDateTime && new Date(event.startDateTime) >= now)
         .sort((a: any, b: any) => +new Date(a.startDateTime) - +new Date(b.startDateTime));
       setUpcomingTickets(upcoming.slice(0, 5));
+      void syncUpNextWidget(upcoming.slice(0, 5));
     } catch {
+      // Leave the widget on its last good snapshot rather than blanking it offline.
       setUpcomingTickets([]);
     } finally {
       setIsLoadingTickets(false);

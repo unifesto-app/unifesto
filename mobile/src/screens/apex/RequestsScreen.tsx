@@ -11,6 +11,7 @@ import { ApexRow } from '../../components/apex/ApexRow';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 
 const GUTTER = spacing[6];
 
@@ -106,9 +107,10 @@ export default function RequestsScreen() {
                   accessibilityState={{ selected: on }}
                   style={({ pressed }) => [
                     styles.chip,
-                    { backgroundColor: on ? tokens.accent : tokens.elevated, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                    { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
                   ]}
                 >
+                  {!on ? <CardBackdrop shape={styles.chip} /> : null}
                   <Text style={[styles.chipLabel, { color: on ? tokens.accentFg : tokens.text }]}>
                     {c.label}
                     {!loading && c.count > 0 ? <Text style={{ color: on ? tokens.accentFg : tokens.textMuted }}>{`  ${c.count}`}</Text> : null}

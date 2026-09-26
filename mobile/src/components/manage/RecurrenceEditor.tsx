@@ -9,6 +9,7 @@ import DateTimeRow from './DateTimeRow';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { CardBackdrop } from '../ui/CardSurface';
 
 const FREQS: { key: RecurrenceFreq; label: string }[] = [
   { key: 'DAILY', label: 'Daily' },
@@ -83,8 +84,12 @@ export default function RecurrenceEditor({ value: s, onChange, start }: Props) {
                     onPress={() => toggleDay(d)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: on }}
-                    style={[styles.day, { backgroundColor: on ? tokens.accent : tokens.elevated }]}
+                    style={({ pressed }) => [
+                      styles.day,
+                      { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.94 : 1 }] },
+                    ]}
                   >
+                    {!on ? <CardBackdrop shape={styles.day} /> : null}
                     <Text style={[styles.dayText, { color: on ? tokens.accentFg : tokens.text }]}>{label.slice(0, 2)}</Text>
                   </Pressable>
                 );

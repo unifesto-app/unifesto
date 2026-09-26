@@ -281,7 +281,7 @@ export default function ManageGroupRoute() {
               <Text style={[styles.small, { color: tokens.textMuted, marginTop: 4 }]}>
                 They get a link to claim this seat as their own ticket and fill in their own details.
               </Text>
-              <View style={[styles.inputRow, { backgroundColor: tokens.surface }]}>
+              <View style={[styles.inputRow, { backgroundColor: tokens.fill }]}>
                 <EnvelopeSimple size={20} color={tokens.textMuted} />
                 <TextInput
                   style={[styles.input, { color: tokens.text }]}

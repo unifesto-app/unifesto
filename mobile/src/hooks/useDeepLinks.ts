@@ -6,6 +6,7 @@ import {
   extractPushDeepLink,
   consumePendingDeepLink,
 } from '../services/deepLinkRouter';
+import { takeClipResumePath } from '../services/clipHandoff';
 
 /**
  * Wires the app's deep-link entry points once, near the navigation root.
@@ -15,6 +16,8 @@ import {
  *   both foreground and cold-start push (no separate getInitialURL needed).
  * - After the user authenticates, replay any link that was queued behind the
  *   auth gate (see `deepLinkRouter.handleUnauthenticatedLink`).
+ * - First start after installing from the App Clip → reopen the event the clip
+ *   was showing (see `services/clipHandoff`). iOS only; a no-op elsewhere.
  *
  * OS-level universal/scheme links are intentionally NOT handled here — expo-router
  * already routes those through its own Linking listener; adding a second one would
@@ -36,6 +39,15 @@ export function useDeepLinks(): void {
     // OneSignalService owns the underlying listener for the app's lifetime; it is
     // registered at the root and never needs teardown.
   }, []);
+
+  // Once auth has settled, so the auth gate in routeToDeepLink sees real state.
+  const clipChecked = useRef(false);
+  useEffect(() => {
+    if (isLoading || clipChecked.current) return;
+    clipChecked.current = true;
+    const path = takeClipResumePath();
+    if (path) routeToDeepLink(path, { isAuthenticated: authRef.current });
+  }, [isLoading]);
 
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;

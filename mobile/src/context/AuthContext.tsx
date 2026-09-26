@@ -7,6 +7,7 @@ import { maybeReportAppVersion } from '../lib/appVersionReport';
 import { syncPushDevice, unregisterPushDevice } from '../lib/pushDeviceReport';
 import { cancelAccountDeletion } from '../lib/api/profile';
 import { AppAlert } from '../components/ui/AppAlert';
+import { syncUpNextWidget } from '../widgets/sync';
 
 interface User {
   id: string;
@@ -303,6 +304,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await clearToken();
     setToken(null);
     setUser(null);
+    // Wipe tickets off the home-screen widget; the Home tab may never remount to do it.
+    await syncUpNextWidget(null);
     await setCrashlyticsUserId(getCrashlytics(), '');
   };
 

@@ -508,6 +508,29 @@ export class CreateTicketTypeDto {
   @IsOptional()
   @IsString()
   whatsappGroupUrl?: string;
+
+  @ApiPropertyOptional({
+    default: true,
+    description: 'Listed on the event page. Hidden tickets cannot be bought.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isVisible?: boolean;
+
+  @ApiPropertyOptional({ default: true, description: 'Open for registration.' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class ReorderTicketTypesDto {
+  @ApiProperty({
+    type: [String],
+    description: 'Every ticket type id of the event, in the new display order.',
+  })
+  @IsArray()
+  @IsUUID('all', { each: true })
+  ids: string[];
 }
 
 export class UpdateTicketTypeDto {

@@ -17,6 +17,9 @@ import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNext
 import InviteCards from '../../src/components/home/InviteCards';
 import { useMyInvites } from '../../src/hooks/useMyInvites';
 import PromptCard from '../../src/components/home/PromptCard';
+import SpacePanel from '../../src/components/home/SpacePanel';
+import ApexPanel from '../../src/components/home/ApexPanel';
+import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import PosterCard, { PosterCardSkeleton } from '../../src/components/home/PosterCard';
 import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import { CircleRow, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
@@ -33,6 +36,8 @@ export default function HomeTab() {
   // Group-seat invites waiting for me (refetched on focus).
   const myInvites = useMyInvites();
   const search = useHomeSearch();
+  // Shortcuts into the Space / Apex tabs, shown only to people who have them.
+  const workspace = useWorkspaceCards();
   const { user, profile } = data;
 
   const firstName = user
@@ -101,6 +106,7 @@ export default function HomeTab() {
             refreshing={data.refreshing}
             onRefresh={() => {
               void myInvites.refresh();
+              workspace.refresh();
               data.onRefresh();
             }}
             tintColor={tokens.accent}
@@ -142,6 +148,45 @@ export default function HomeTab() {
               onSeeAllTickets={() => router.navigate('/tickets')}
             />
           </View>
+        ) : null}
+
+        {workspace.showSpace ? (
+          <Section title="My space" onSeeAll={() => router.navigate('/space')}>
+            <SpacePanel
+              liveCheckins={workspace.liveCheckins}
+              upcoming={workspace.upcoming}
+              loadingUpcoming={workspace.loadingUpcoming}
+              hosting={workspace.hostedSpaceIds.length > 0}
+              judging={workspace.judging}
+              sponsorships={workspace.sponsorships}
+              onScan={(e) =>
+                router.push({
+                  pathname: `/checkin/${e.id}`,
+                  params: { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' },
+                })
+              }
+              onOpenEvent={(e) => router.push(`/manage/event/${e.id}`)}
+              onCreateEvent={() =>
+                // One space: straight into the form. Several: let me pick on the Space tab.
+                workspace.hostedSpaceIds.length === 1
+                  ? router.push(`/manage/space/${workspace.hostedSpaceIds[0]}/new-event`)
+                  : router.navigate('/space')
+              }
+              onOpenJudging={(j) => router.push({ pathname: `/judging/${j.eventId}`, params: { title: j.title } })}
+              onOpenSponsor={(sp) => router.push(`/sponsoring/${sp.sponsorId}`)}
+            />
+          </Section>
+        ) : null}
+
+        {workspace.showApex ? (
+          <Section title="Apex" onSeeAll={() => router.navigate('/apex')}>
+            <ApexPanel
+              overview={workspace.overview}
+              needs={workspace.needs}
+              loading={workspace.loadingApex}
+              onOpenNeed={(n) => router.push(n.to)}
+            />
+          </Section>
         ) : null}
 
         {prompt ? (

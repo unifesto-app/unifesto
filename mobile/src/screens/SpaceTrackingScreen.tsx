@@ -11,6 +11,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 const GUTTER = spacing[6];
 const ICON = 28;
@@ -84,7 +85,8 @@ export default function SpaceTrackingScreen() {
 
       {data ? (
         <>
-          <View style={[styles.hero, { backgroundColor: tokens.elevated }]}>
+          <View style={styles.hero}>
+            <CardBackdrop shape={styles.hero} />
             <Text style={[styles.big, { color: tokens.text }]}>
               {total ? Math.round((data.tagged / total) * 100) : 0}%
             </Text>

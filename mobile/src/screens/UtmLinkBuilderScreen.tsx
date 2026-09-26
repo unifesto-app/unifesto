@@ -14,6 +14,7 @@ import { withUtm } from '../services/utm';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 const GUTTER = spacing[6];
 
@@ -106,7 +107,8 @@ export default function UtmLinkBuilderScreen() {
           <FieldRow label="Campaign" value={campaign} onChangeText={setCampaign} placeholder="e.g. early-bird" autoCapitalize="none" autoCorrect={false} />
         </SettingsGroup>
 
-        <View style={[styles.preview, { backgroundColor: tokens.elevated }]}>
+        <View style={styles.preview}>
+          <CardBackdrop shape={styles.preview} />
           <Text style={[styles.previewLabel, { color: tokens.textMuted }]}>Your link</Text>
           <Text style={[styles.previewUrl, { color: link ? tokens.text : tokens.textMuted }]} selectable>
             {link || 'Add a source to build the link.'}

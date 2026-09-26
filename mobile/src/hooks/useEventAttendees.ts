@@ -9,7 +9,7 @@ const SEARCH_DEBOUNCE_MS = 300;
  * request carries a generation number, so a slow response for an old query can
  * never overwrite the rows for what the user is typing now.
  */
-export function useEventAttendees(eventId: string | undefined) {
+export function useEventAttendees(eventId: string | undefined, ticketTypeId?: string) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [filter, setFilter] = useState<AttendeeFilter>('attending');
@@ -32,7 +32,7 @@ export function useEventAttendees(eventId: string | undefined) {
     async (nextPage: number) => {
       if (!eventId) return;
       const gen = nextPage === 1 ? ++generation.current : generation.current;
-      const res = await getAttendees(eventId, { page: nextPage, search: debounced, filter, limit: PAGE_SIZE });
+      const res = await getAttendees(eventId, { page: nextPage, search: debounced, filter, limit: PAGE_SIZE, ticketTypeId });
       if (gen !== generation.current) return;
       if (!res.ok) {
         setDenied(res.denied);
@@ -44,7 +44,7 @@ export function useEventAttendees(eventId: string | undefined) {
       setPage(nextPage);
       setRows((prev) => (nextPage === 1 ? res.data.registrations : [...prev, ...res.data.registrations]));
     },
-    [eventId, debounced, filter],
+    [eventId, debounced, filter, ticketTypeId],
   );
 
   useEffect(() => {

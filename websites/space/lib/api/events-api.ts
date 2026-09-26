@@ -601,6 +601,38 @@ export async function updateTicketType(
  * Delete a ticket type.
  * Backed by `DELETE /events/:id/ticket-types/:typeId`.
  */
+/** Per-tier numbers from the operator ticket view. */
+export interface TicketTypeStats {
+  /** Confirmed, non-cancelled, non-waitlisted registrations. */
+  registrations: number;
+  checkedIn: number;
+  waitlistWaiting: number;
+  waitlistOffered: number;
+  /** Net of the processing fee; null when the viewer can't see money. */
+  revenue: number | null;
+}
+
+export type ManagedTicketType = EventTicketType & { stats: TicketTypeStats };
+
+/** Every ticket type incl. hidden/paused, with stats. Operators only. */
+export async function getManageTicketTypes(
+  eventId: string
+): Promise<{ data: ManagedTicketType[] | null; error: ApiError | null }> {
+  return apiCall<ManagedTicketType[]>(
+    backendClient.get(`/events/${eventId}/ticket-types/manage`)
+  );
+}
+
+/** Persist display order: pass every ticket type id, in the new order. */
+export async function reorderTicketTypes(
+  eventId: string,
+  ids: string[]
+): Promise<{ data: { ok: boolean } | null; error: ApiError | null }> {
+  return apiCall<{ ok: boolean }>(
+    backendClient.patch(`/events/${eventId}/ticket-types/reorder`, { ids })
+  );
+}
+
 export async function deleteTicketType(
   eventId: string,
   typeId: string

@@ -69,6 +69,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
     },
+    // Safari's App Clip card: opens the native event preview (mobile/targets/clip)
+    // without installing the full app. Uses the OG image above as the card art.
+    // Hand-written rather than Next's `itunes` field, which can't express the
+    // app-clip keys and would emit a second, conflicting apple-itunes-app tag.
+    other: {
+      "apple-itunes-app": `app-id=6767165496, app-clip-bundle-id=com.unifesto.app.Clip, app-clip-display=card, app-argument=https://unifesto.app${canonical}`,
+    },
   };
 }
 

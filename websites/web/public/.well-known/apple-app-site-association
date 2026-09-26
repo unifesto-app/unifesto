@@ -12,6 +12,11 @@
       }
     ]
   },
+  "appclips": {
+    "apps": [
+      "9AH3Z5C5DH.com.unifesto.app.Clip"
+    ]
+  },
   "webcredentials": {
     "apps": [
       "9AH3Z5C5DH.com.unifesto.app"

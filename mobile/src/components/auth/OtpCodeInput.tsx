@@ -11,6 +11,7 @@ import { useTokens } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 interface OtpCodeInputProps {
   value: string;
@@ -71,11 +72,12 @@ export default function OtpCodeInput({
                 styles.cell,
                 {
                   borderColor,
-                  backgroundColor: char ? tokens.elevated : tokens.surface,
+                  backgroundColor: LIQUID_GLASS ? undefined : char ? tokens.elevated : tokens.surface,
                   borderWidth: isActive || error ? 1.5 : 1,
                 },
               ]}
             >
+              <GlassFill radius={borderRadius.lg} />
               {char ? (
                 <Animated.Text style={[styles.digit, { color: tokens.text }]}>{char}</Animated.Text>
               ) : isActive ? (

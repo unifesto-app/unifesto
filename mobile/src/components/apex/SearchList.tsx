@@ -8,6 +8,7 @@ import type { Result } from '../../lib/api/apex';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { CardBackdrop } from '../ui/CardSurface';
 
 const GUTTER = spacing[6];
 
@@ -93,7 +94,8 @@ export default function SearchList<T>({ placeholder, fetchPage, keyOf, renderIte
       keyboardDismissMode="on-drag"
       ListHeaderComponent={
         <View style={{ paddingTop: topSpacing }}>
-          <View style={[styles.search, { backgroundColor: tokens.elevated }]}>
+          <View style={styles.search}>
+            <CardBackdrop shape={styles.search} />
             <MagnifyingGlass size={18} color={tokens.textMuted} />
             <TextInput
               value={search}

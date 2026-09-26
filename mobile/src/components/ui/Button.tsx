@@ -5,19 +5,22 @@ import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import type { Tokens } from '../../theme/tokens';
 import { Text } from './Text';
+import { CardBackdrop } from './CardSurface';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 /**
  * What a variant looks like, in token terms. `gradient` set → the fill is the
- * brand LinearGradient (ignores `background`).
+ * brand LinearGradient (ignores `background`). `glass` set → the fill is the
+ * app's card surface (Liquid Glass / Android veil / solid `elevated`).
  */
 export interface ButtonColors {
   background: string;
   foreground: string;
   border?: string;
   gradient?: readonly [string, string];
+  glass?: boolean;
 }
 
 /** `#rrggbb` + alpha (0–1) → `#rrggbbaa`. Non-hex colours pass through unchanged. */
@@ -28,7 +31,7 @@ const tint = (hex: string, alpha: number) =>
  * Map a variant to its colours. No outlines anywhere (borderless-cards rule):
  * weight comes from fill alone, so the hierarchy reads primary > secondary > ghost.
  *   primary   — brand gradient, the one main action on a screen
- *   secondary — elevated fill, neutral text: alternatives like "Try again"
+ *   secondary — glass surface, neutral text: alternatives like "Try again"
  *   ghost     — no fill, accent text: low-emphasis actions like "Not now"
  *   danger    — soft red fill, red text: destructive actions, loud without
  *               competing with the primary button
@@ -36,7 +39,7 @@ const tint = (hex: string, alpha: number) =>
 export function resolveButtonColors(variant: ButtonVariant, tokens: Tokens): ButtonColors {
   switch (variant) {
     case 'secondary':
-      return { background: tokens.elevated, foreground: tokens.text };
+      return { background: tokens.elevated, foreground: tokens.text, glass: true };
     case 'ghost':
       return { background: 'transparent', foreground: tokens.accent };
     case 'danger':
@@ -111,20 +114,26 @@ export function Button({
           borderRadius: borderRadius.full,
           overflow: 'hidden',
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          backgroundColor: c.gradient ? c.gradient[0] : c.background, // Android fallback under gradient
+          // Android fallback under gradient; glass paints its own fill
+          backgroundColor: c.glass ? undefined : c.gradient ? c.gradient[0] : c.background,
           borderWidth: c.border ? 1 : 0,
           borderColor: c.border,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
         },
+        // Opacity on a glass ancestor breaks Liquid Glass: glass dims its content
+        // and presses with a scale instead.
+        c.glass
+          ? { transform: [{ scale: pressed ? 0.97 : 1 }] }
+          : { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 },
         style,
       ]}
     >
+      {c.glass ? <CardBackdrop shape={{ borderRadius: borderRadius.full }} /> : null}
       {c.gradient ? (
         <LinearGradient colors={c.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={inner}>
           {content}
         </LinearGradient>
       ) : (
-        <View style={inner}>{content}</View>
+        <View style={[inner, c.glass && disabled && { opacity: 0.5 }]}>{content}</View>
       )}
     </Pressable>
   );
