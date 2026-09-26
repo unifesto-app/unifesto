@@ -49,9 +49,9 @@ module.exports = () => {
       appStoreUrl: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-        NSCameraUsageDescription: "We need camera access to let you take photos for your profile picture and join live sessions.",
+        NSCameraUsageDescription: "Unifesto uses the camera to scan ticket QR codes at event check-in and sponsor booths, take profile and event photos, and show your video in live sessions.",
         NSMicrophoneUsageDescription: "We need microphone access so you can speak in live sessions.",
-        NSPhotoLibraryUsageDescription: "Unifesto needs access to your photo library to select photos for your profile picture.",
+        NSPhotoLibraryUsageDescription: "Unifesto uses your photo library so you can choose a profile photo, event covers, space logos and banners, and images for registration questions.",
         NSPhotoLibraryAddUsageDescription: "Unifesto needs permission to save event tickets and QR codes to your photo library.",
         NSUserNotificationsUsageDescription: "We need permission to send you notifications about event updates, ticket confirmations, and important announcements.",
         NSLocationWhenInUseUsageDescription: "Unifesto uses your location to help you discover nearby events and provide location-based event recommendations. Your location data is only used while you're using the app and is never shared with third parties.",
@@ -171,7 +171,8 @@ module.exports = () => {
       "expo-font",
       "expo-web-browser",
       "expo-image",
-      "expo-secure-store",
+      // Tokens only, no biometric unlock: drop the default Face ID prompt.
+      ["expo-secure-store", { faceIDPermission: false }],
       "expo-sharing",
       "@react-native-community/datetimepicker",
       "expo-splash-screen",
@@ -182,7 +183,12 @@ module.exports = () => {
       [
         "expo-location",
         {
-          locationWhenInUsePermission: "Unifesto uses your location to help you discover nearby events and communities. Your location is only used while you're using the app and is never shared with third parties."
+          locationWhenInUsePermission: "Unifesto uses your location to help you discover nearby events and communities. Your location is only used while you're using the app and is never shared with third parties.",
+          // Foreground only: no background location or motion is used, and the
+          // plugin would otherwise add generic placeholder prompts for both.
+          locationAlwaysAndWhenInUsePermission: false,
+          locationAlwaysPermission: false,
+          motionUsagePermission: false
         }
       ],
       // Undoes onesignal-expo-plugin's aliased Xcode sections (see the file) or
@@ -206,7 +212,8 @@ module.exports = () => {
       [
         "expo-camera",
         {
-          cameraPermission: "Unifesto uses the camera to scan attendee ticket QR codes when you check people in at events."
+          cameraPermission: "Unifesto uses the camera to scan ticket QR codes at event check-in and sponsor booths, take profile and event photos, and show your video in live sessions.",
+          microphonePermission: "Unifesto uses the microphone so you can speak in live sessions."
         }
       ],
       "@livekit/react-native-expo-plugin",
