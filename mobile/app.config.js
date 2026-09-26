@@ -12,6 +12,20 @@ module.exports = () => {
     name: "Unifesto",
     slug: "unifesto",
     version: "4.0.0",
+    // OTA updates (EAS Update). "fingerprint" hashes the native layer, so an
+    // update only reaches binaries built from the same native code: adding a
+    // native module forces a store build instead of crashing old installs.
+    // Publish with `npm run update:production` so the env (and therefore the
+    // fingerprint) matches the EAS build.
+    runtimeVersion: {
+      policy: "fingerprint"
+    },
+    updates: {
+      url: "https://u.expo.dev/63cae7f2-fb5a-4891-a98f-0ffc04e6c3ad",
+      // Never block launch on the network: a downloaded update is applied on
+      // the next cold start (see src/lib/otaUpdate.ts).
+      fallbackToCacheTimeout: 0
+    },
     orientation: "default",
     // Light / Dark / System is chosen in-app (ThemeContext); "automatic" lets
     // iOS report the real system scheme so the System option can follow it.
