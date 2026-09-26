@@ -171,8 +171,10 @@ module.exports = () => {
       "expo-font",
       "expo-web-browser",
       "expo-image",
-      // Tokens only, no biometric unlock: drop the default Face ID prompt.
-      ["expo-secure-store", { faceIDPermission: false }],
+      // Tokens only, no biometric unlock, so this prompt is never shown. The key
+      // must still exist: App Store processing rejects binaries that link the
+      // API without a purpose string (ITMS-90683), so it's honest, not generic.
+      ["expo-secure-store", { faceIDPermission: "Unifesto doesn't use Face ID. Your sign-in is stored securely on this device." }],
       "expo-sharing",
       "@react-native-community/datetimepicker",
       "expo-splash-screen",
@@ -184,11 +186,14 @@ module.exports = () => {
         "expo-location",
         {
           locationWhenInUsePermission: "Unifesto uses your location to help you discover nearby events and communities. Your location is only used while you're using the app and is never shared with third parties.",
-          // Foreground only: no background location or motion is used, and the
-          // plugin would otherwise add generic placeholder prompts for both.
-          locationAlwaysAndWhenInUsePermission: false,
-          locationAlwaysPermission: false,
-          motionUsagePermission: false
+          // Foreground only: background location and motion are never requested,
+          // so these prompts are never shown. The keys must still exist because
+          // expo-location links those APIs and App Store processing rejects
+          // binaries without them (ITMS-90683). Honest text, not the generic
+          // "Allow $(PRODUCT_NAME)..." defaults.
+          locationAlwaysAndWhenInUsePermission: "Unifesto only uses your location while you're using the app, to show events in your city.",
+          locationAlwaysPermission: "Unifesto only uses your location while you're using the app, to show events in your city.",
+          motionUsagePermission: "Unifesto doesn't use motion or fitness data. This is only declared by a location component the app includes."
         }
       ],
       // Undoes onesignal-expo-plugin's aliased Xcode sections (see the file) or
