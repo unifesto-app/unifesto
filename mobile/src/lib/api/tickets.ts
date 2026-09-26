@@ -5,6 +5,10 @@
 
 import { makeAuthenticatedRequest, makePublicRequest } from './helpers';
 import { API_URL } from '../constants';
+import type { FileAnswer, FormFieldConfig } from '../../utils/formQuestions';
+import { postMultipart } from './upload';
+import { Linking } from 'react-native';
+import { AppAlert } from '../../components/ui/AppAlert';
 
 /**
  * App-wide processing fee percentage (admin-set), applied to paid tickets.
@@ -46,7 +50,11 @@ export type FieldType =
   | 'url' 
   | 'country' 
   | 'id_proof_type' 
-  | 'id_proof_upload';
+  | 'id_proof_upload'
+  | 'yes_no'
+  | 'state'
+  | 'rating'
+  | 'section';
 
 export interface Ticket {
   id: string;
@@ -91,6 +99,10 @@ export interface CustomField {
   per_group?: boolean;
   validation_rules?: Record<string, any>;
   options_json?: Array<{ label: string; value: string }>;
+  /** Answer limits (lengths, range, dates, picks, rating scale, files). */
+  config?: FormFieldConfig;
+  /** Show only when an earlier choice question's answer is one of `any_of`. */
+  show_if?: { field_id: string; any_of: string[] } | null;
   applies_to_ticket_ids?: string[];
   display_order: number;
   created_at: string;
@@ -216,6 +228,13 @@ const FIELD_TYPE_MAP: Record<string, FieldType> = {
   SELECT: 'dropdown',
   RADIO: 'radio',
   CHECKBOX: 'checkbox',
+  DATE: 'date',
+  URL: 'url',
+  YES_NO: 'yes_no',
+  FILE: 'file',
+  SECTION: 'section',
+  STATE: 'state',
+  RATING: 'rating',
 };
 
 /**
@@ -237,9 +256,17 @@ export async function getEventCustomFields(eventId: string): Promise<{ fields: C
       id: f.id,
       event_id: eventId,
       label: f.label,
-      field_type: FIELD_TYPE_MAP[f.type] ?? 'text',
+      // Organisers build CHECKBOX as "Checkboxes" (pick any of the options), so
+      // with options it's a multi-select; only an option-less one is a yes/no tick.
+      field_type:
+        f.type === 'CHECKBOX' && f.options?.length
+          ? 'multi_select'
+          : FIELD_TYPE_MAP[f.type] ?? 'text',
       is_required: !!f.isRequired,
       per_group: !!f.perGroup,
+      help_text: f.helpText || undefined,
+      config: f.config ?? undefined,
+      show_if: f.showIf ? { field_id: f.showIf.fieldId, any_of: f.showIf.anyOf ?? [] } : null,
       options_json: (f.options || []).map((o: string) => ({
         label: o,
         value: o,
@@ -363,5 +390,46 @@ export function calculateTicketPrice(ticket: Ticket, quantity: number): number {
   } else {
     // per_group pricing
     return ticket.price;
+  }
+}
+
+/**
+ * Upload a file answer for a FILE question. The backend stores it privately
+ * and returns the answer object to send with the registration. Uses the
+ * native uploader (see `postMultipart`), since fetch + FormData fails on iOS.
+ * Backed by `POST /events/:id/form-fields/:fieldId/upload`.
+ */
+export async function uploadFormFieldFile(
+  eventId: string,
+  fieldId: string,
+  file: { uri: string; name: string; mimeType?: string | null },
+): Promise<FileAnswer> {
+  const res = await postMultipart<FileAnswer>(`/events/${eventId}/form-fields/${fieldId}/upload`, {
+    field: 'file',
+    uri: file.uri,
+    name: file.name,
+    type: file.mimeType || 'application/octet-stream',
+  });
+  if (!res.ok) throw new Error(res.message || "Couldn't upload the file.");
+  // Keep the name the person picked; the stored key is random.
+  return { ...res.data, name: file.name || res.data.name };
+}
+
+/** A 5-minute link to an uploaded answer file (uploader or attendee managers). */
+export async function getFormUploadUrl(eventId: string, key: string): Promise<string> {
+  const response = await makeAuthenticatedRequest(
+    `/events/${eventId}/form-uploads/url?key=${encodeURIComponent(key)}`,
+  );
+  const data = await response?.json().catch(() => null);
+  if (!response?.ok || !data?.url) throw new Error(data?.message || "Couldn't open the file.");
+  return data.url;
+}
+
+/** Open an attendee's uploaded file in the browser through a short-lived link. */
+export async function openFormUpload(eventId: string, key: string): Promise<void> {
+  try {
+    await Linking.openURL(await getFormUploadUrl(eventId, key));
+  } catch (e) {
+    AppAlert.alert("Couldn't open the file", e instanceof Error ? e.message : undefined);
   }
 }

@@ -130,6 +130,8 @@ function makeDb(seed: Seat[] = []) {
         return IDENTITIES.find((i) => i.userId === where?.userId && i.email.toLowerCase() === want) ?? null;
       },
     },
+    // No custom questions on this ticket: the answer policy passes through.
+    eventFormField: { findMany: async () => [] },
     eventTicket: {
       create: async ({ data }: any) => ({
         ticketCode: data.ticketCode,

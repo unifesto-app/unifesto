@@ -15,6 +15,8 @@ import {
   type FreeAddRequestStatus,
 } from "@/lib/api/free-add-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { QuestionInputs } from "@/components/events/question-inputs";
+import { formatAnswer } from "@/lib/form-questions";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,35 +49,6 @@ function SummaryRow({ label, value }: { label: string; value?: string | null }) 
     <div className="flex justify-between gap-4 py-1 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <span className="text-right font-medium">{value}</span>
-    </div>
-  );
-}
-
-/** A block of custom-field inputs bound to one values object (keyed by id). */
-function CustomFieldInputs({
-  fields,
-  values,
-  onChange,
-}: {
-  fields: EventFormField[];
-  values: Record<string, string>;
-  onChange: (fieldId: string, value: string) => void;
-}) {
-  if (fields.length === 0) return null;
-  return (
-    <div className="space-y-3">
-      {fields.map((f) => (
-        <div key={f.id} className="space-y-2">
-          <Label>
-            {f.label}
-            {f.isRequired && <span className="text-destructive"> *</span>}
-          </Label>
-          <Input
-            value={values[f.id] ?? ""}
-            onChange={(e) => onChange(f.id, e.target.value)}
-          />
-        </div>
-      ))}
     </div>
   );
 }
@@ -166,9 +139,9 @@ function SingleAddForm({
   );
   const [members, setMembers] = useState<ManualGroupMember[]>([]);
   // Lead's per-member answers (or the sole attendee's, for individual tickets).
-  const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   // Team-wide (per-group) answers, asked once — group tickets only.
-  const [teamValues, setTeamValues] = useState<Record<string, string>>({});
+  const [teamValues, setTeamValues] = useState<Record<string, unknown>>({});
   // Collecting payment is the default and cannot be turned off unless a Platform
   // Admin has approved free adds for this event.
   const allowFree = !!event.allowFreeAttendeeAdd;
@@ -262,7 +235,7 @@ function SingleAddForm({
     });
   };
 
-  const setMemberField = (i: number, fieldId: string, value: string) => {
+  const setMemberField = (i: number, fieldId: string, value: unknown) => {
     setMembers((prev) => {
       const next = [...prev];
       const base: ManualGroupMember = next[i] ?? { name: "" };
@@ -401,7 +374,7 @@ function SingleAddForm({
               <SummaryRow label="Phone" value={mobile} />
               <SummaryRow label="Gender" value={gender} />
               {perMemberFields.map((f) => (
-                <SummaryRow key={f.id} label={f.label} value={formValues[f.id]} />
+                <SummaryRow key={f.id} label={f.label} value={formatAnswer(formValues[f.id])} />
               ))}
             </div>
 
@@ -411,7 +384,7 @@ function SingleAddForm({
                   Team details
                 </p>
                 {teamFields.map((f) => (
-                  <SummaryRow key={f.id} label={f.label} value={teamValues[f.id]} />
+                  <SummaryRow key={f.id} label={f.label} value={formatAnswer(teamValues[f.id])} />
                 ))}
               </div>
             )}
@@ -427,7 +400,7 @@ function SingleAddForm({
                   <SummaryRow label="Phone" value={m.mobile} />
                   <SummaryRow label="Gender" value={m.gender} />
                   {Object.entries(m.customFields ?? {}).map(([id, val]) => (
-                    <SummaryRow key={id} label={fieldLabel(id)} value={val} />
+                    <SummaryRow key={id} label={fieldLabel(id)} value={formatAnswer(val)} />
                   ))}
                 </div>
               ))}
@@ -552,7 +525,8 @@ function SingleAddForm({
       {isGroup && teamFields.length > 0 && (
         <div className="space-y-3 rounded-md border p-3">
           <Label className="text-muted-foreground">Team details</Label>
-          <CustomFieldInputs
+          <QuestionInputs
+            eventId={event.id}
             fields={teamFields}
             values={teamValues}
             onChange={(id, val) =>
@@ -570,7 +544,8 @@ function SingleAddForm({
               {name.trim() || "Lead"}&rsquo;s details
             </Label>
           )}
-          <CustomFieldInputs
+          <QuestionInputs
+            eventId={event.id}
             fields={perMemberFields}
             values={formValues}
             onChange={(id, val) =>
@@ -623,7 +598,8 @@ function SingleAddForm({
                     </SelectContent>
                   </Select>
                 </div>
-                <CustomFieldInputs
+                <QuestionInputs
+            eventId={event.id}
                   fields={perMemberFields}
                   values={members[i]?.customFields ?? {}}
                   onChange={(id, val) => setMemberField(i, id, val)}

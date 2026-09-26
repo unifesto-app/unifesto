@@ -9,7 +9,11 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 
 /**
@@ -205,5 +209,85 @@ export class StorageService implements OnModuleInit {
         `Failed to upload file: ${error.message || 'S3 error'}`,
       );
     }
+  }
+
+  /**
+   * Store a file that must never be public (attendee uploads). Keys live under
+   * `private/`, which the bucket policy must keep out of public GetObject; the
+   * file is only ever reached through {@link signedGetUrl}.
+   */
+  async uploadPrivate(
+    buffer: Buffer,
+    key: string,
+    contentType: string,
+  ): Promise<void> {
+    if (!key.startsWith('private/')) {
+      throw new ConflictException('Private uploads must use a private/ key');
+    }
+    try {
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+          CacheControl: 'private, no-store',
+        }),
+      );
+    } catch (error) {
+      this.logger.error(
+        `S3 private upload failed for key=${key}: ${error.message}`,
+      );
+      throw new ConflictException('Failed to upload file');
+    }
+  }
+
+  /** A short-lived link to download one object, saved as `filename`. */
+  signedGetUrl(
+    key: string,
+    expiresInSeconds: number,
+    filename?: string,
+  ): Promise<string> {
+    const safe = filename?.replace(/["\\\r\n]/g, '').slice(0, 150);
+    return getSignedUrl(
+      this.s3Client,
+      new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        ...(safe
+          ? { ResponseContentDisposition: `inline; filename="${safe}"` }
+          : {}),
+      }),
+      { expiresIn: expiresInSeconds },
+    );
+  }
+
+  /** Delete every object under `prefix`. Returns how many were deleted. */
+  async deletePrefix(prefix: string): Promise<number> {
+    let deleted = 0;
+    let token: string | undefined;
+    do {
+      const page = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucketName,
+          Prefix: prefix,
+          ContinuationToken: token,
+        }),
+      );
+      const keys = (page.Contents ?? [])
+        .map((o) => ({ Key: o.Key! }))
+        .filter((o) => o.Key);
+      if (keys.length) {
+        await this.s3Client.send(
+          new DeleteObjectsCommand({
+            Bucket: this.bucketName,
+            Delete: { Objects: keys, Quiet: true },
+          }),
+        );
+        deleted += keys.length;
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
+    return deleted;
   }
 }

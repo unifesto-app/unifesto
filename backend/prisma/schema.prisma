@@ -233,6 +233,13 @@ enum FormFieldType {
   NUMBER
   EMAIL
   PHONE
+  DATE
+  URL
+  YES_NO
+  FILE
+  SECTION
+  STATE
+  RATING
 
   @@map("form_field_type")
 }
@@ -1362,6 +1369,10 @@ model Event {
   deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
   deletedBy String?   @map("deleted_by") @db.Uuid
 
+  // Set when the daily job deleted this event's registration-question file
+  // uploads (180 days after it ended). Null = files may still exist.
+  formUploadsPurgedAt DateTime? @map("form_uploads_purged_at") @db.Timestamptz(6)
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -1716,6 +1727,15 @@ model EventFormField {
   // tickets, which have a single attendee. A per-group answer is stored on the
   // registration (formResponses); a per-member answer on each groupMembers entry.
   perGroup Boolean @default(false) @map("per_group")
+
+  // Shown under the label (instructions, examples). A SECTION's note.
+  helpText String? @map("help_text") @db.VarChar(500)
+  // Per-type answer limits, see registrations/form-answers.util.ts
+  // (FormFieldConfig): lengths, number/date range, picks, rating scale, files.
+  config Json?
+  // Show only when an earlier choice question's answer is one of `anyOf`:
+  // { fieldId, anyOf: string[] }. Null = always shown.
+  showIf Json? @map("show_if")
 
   @@index([eventId])
   @@index([ticketTypeId])

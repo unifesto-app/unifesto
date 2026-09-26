@@ -11,7 +11,8 @@ import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type A
 import { attendeeBadge } from '../components/manage/AttendeeRow';
 import SeatRow from '../components/manage/SeatRow';
 import { displayFieldValue } from '../hooks/useEventRegistration';
-import { getEventCustomFields, type CustomField } from '../lib/api/tickets';
+import { getEventCustomFields, openFormUpload, type CustomField } from '../lib/api/tickets';
+import { displayAnswer, isFileAnswer } from '../utils/formQuestions';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -161,7 +162,12 @@ export default function AttendeeDetailScreen() {
   const answers = Object.entries(reg.formResponses ?? {})
     .map(([id, v]) => {
       const f = fields.find((x) => x.id === id);
-      return { id, label: f?.label ?? 'Answer', value: f ? displayFieldValue(f, v) : v == null ? '' : String(v) };
+      return {
+        id,
+        label: f?.label ?? 'Answer',
+        value: f ? displayFieldValue(f, v) : displayAnswer(undefined, v),
+        file: isFileAnswer(v) ? v : null,
+      };
     })
     .filter((a) => a.value !== '');
   // Money moved → it has to leave through a refund, not a plain cancel.
@@ -229,9 +235,19 @@ export default function AttendeeDetailScreen() {
           {answers.map((a) => (
             <View key={a.id} style={styles.answer}>
               <Text style={[styles.answerLabel, { color: tokens.textMuted }]}>{a.label}</Text>
-              <Text style={[styles.answerValue, { color: tokens.text }]} selectable>
-                {a.value}
-              </Text>
+              {a.file ? (
+                <Text
+                  style={[styles.answerValue, { color: tokens.accent }]}
+                  onPress={() => void openFormUpload(eventId, a.file!.key)}
+                  accessibilityRole="link"
+                >
+                  {a.value}
+                </Text>
+              ) : (
+                <Text style={[styles.answerValue, { color: tokens.text }]} selectable>
+                  {a.value}
+                </Text>
+              )}
             </View>
           ))}
         </SettingsGroup>

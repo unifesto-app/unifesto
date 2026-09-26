@@ -390,7 +390,7 @@ export interface ManualGroupMember {
   mobile?: string;
   gender?: string;
   /** This member's own custom-field answers, keyed by field id. */
-  customFields?: Record<string, string>;
+  customFields?: Record<string, unknown>;
 }
 
 export interface ManualAddPayload {

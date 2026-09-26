@@ -12,10 +12,20 @@ import {
   createFormField,
   deleteFormField,
   updateFormField,
+  CHOICE_TYPES,
   FIELD_TYPES,
   OPTION_TYPES,
   type FormFieldType,
+  type TicketFormField,
 } from '../lib/api/ticketTypes';
+import {
+  FILE_DEFAULT_KINDS,
+  FILE_DEFAULT_MAX_MB,
+  FILE_MAX_MB_CAP,
+  INDIAN_STATES_AND_UTS,
+  type FileKind,
+  type FormFieldConfig,
+} from '../utils/formQuestions';
 import { FieldRow, SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
@@ -33,9 +43,88 @@ interface QuestionDraft {
   options: string;
   isRequired: boolean;
   perGroup: boolean;
+  helpText: string;
+  /** Min / max for the type's limit pair, as typed. */
+  lo: string;
+  hi: string;
+  scale: 5 | 10;
+  fileKinds: FileKind[];
+  maxSizeMb: string;
+  /** Show-if: the earlier question it depends on ('' = always shown). */
+  showIfField: string;
+  showIfAnyOf: string[];
 }
 
-const EMPTY: QuestionDraft = { label: '', type: 'TEXT', options: '', isRequired: false, perGroup: false };
+const EMPTY: QuestionDraft = {
+  label: '',
+  type: 'TEXT',
+  options: '',
+  isRequired: false,
+  perGroup: false,
+  helpText: '',
+  lo: '',
+  hi: '',
+  scale: 5,
+  fileKinds: [...FILE_DEFAULT_KINDS],
+  maxSizeMb: String(FILE_DEFAULT_MAX_MB),
+  showIfField: '',
+  showIfAnyOf: [],
+};
+
+/** Which limit pair each type uses, and how to caption it. */
+const LIMITS: Partial<Record<FormFieldType, { lo: keyof FormFieldConfig; hi: keyof FormFieldConfig; label: string; date?: boolean }>> = {
+  TEXT: { lo: 'minLength', hi: 'maxLength', label: 'Length in characters' },
+  TEXTAREA: { lo: 'minLength', hi: 'maxLength', label: 'Length in characters' },
+  NUMBER: { lo: 'min', hi: 'max', label: 'Allowed range' },
+  DATE: { lo: 'minDate', hi: 'maxDate', label: 'Allowed dates (YYYY-MM-DD)', date: true },
+  CHECKBOX: { lo: 'minPicks', hi: 'maxPicks', label: 'How many can be picked' },
+};
+
+const FILE_KIND_LABELS: { key: FileKind; label: string }[] = [
+  { key: 'pdf', label: 'PDF' },
+  { key: 'image', label: 'Images' },
+  { key: 'doc', label: 'Word documents' },
+];
+
+/** The answers a choice question offers, for show-if. */
+const choicesOf = (f: TicketFormField): string[] =>
+  f.type === 'STATE' ? INDIAN_STATES_AND_UTS : f.type === 'YES_NO' ? ['Yes', 'No'] : f.options ?? [];
+
+function draftFrom(f: TicketFormField): QuestionDraft {
+  const c = f.config ?? {};
+  const lim = LIMITS[f.type];
+  return {
+    ...EMPTY,
+    label: f.label,
+    type: f.type,
+    options: (f.options ?? []).join('\n'),
+    isRequired: f.isRequired,
+    perGroup: f.perGroup,
+    helpText: f.helpText ?? '',
+    lo: lim && c[lim.lo] !== undefined ? String(c[lim.lo]) : '',
+    hi: lim && c[lim.hi] !== undefined ? String(c[lim.hi]) : '',
+    scale: c.scale === 10 ? 10 : 5,
+    fileKinds: c.fileKinds?.length ? c.fileKinds : [...FILE_DEFAULT_KINDS],
+    maxSizeMb: String(c.maxSizeMb ?? FILE_DEFAULT_MAX_MB),
+    showIfField: f.showIf?.fieldId ?? '',
+    showIfAnyOf: f.showIf?.anyOf ?? [],
+  };
+}
+
+function configFrom(d: QuestionDraft): FormFieldConfig | null {
+  const c: Record<string, unknown> = {};
+  const lim = LIMITS[d.type];
+  if (lim) {
+    if (d.lo.trim()) c[lim.lo] = lim.date ? d.lo.trim() : Number(d.lo);
+    if (d.hi.trim()) c[lim.hi] = lim.date ? d.hi.trim() : Number(d.hi);
+  }
+  if (d.type === 'RATING') c.scale = d.scale;
+  if (d.type === 'FILE') {
+    c.fileKinds = d.fileKinds;
+    c.maxSizeMb = Number(d.maxSizeMb) || FILE_DEFAULT_MAX_MB;
+  }
+  return Object.keys(c).length ? (c as FormFieldConfig) : null;
+}
 
 /**
  * Add or edit one registration question on a ticket. `fieldId === 'new'`
@@ -67,15 +156,7 @@ export default function TicketQuestionScreen() {
   useAnalyticsScreenTracking('TicketQuestion');
 
   useEffect(() => {
-    if (!isNew && original && !draft) {
-      setDraft({
-        label: original.label,
-        type: original.type,
-        options: (original.options ?? []).join('\n'),
-        isRequired: original.isRequired,
-        perGroup: original.perGroup,
-      });
-    }
+    if (!isNew && original && !draft) setDraft(draftFrom(original));
   }, [isNew, original, draft]);
 
   const set = (patch: Partial<QuestionDraft>) => {
@@ -84,6 +165,20 @@ export default function TicketQuestionScreen() {
   };
 
   const needsOptions = draft ? OPTION_TYPES.includes(draft.type) : false;
+  const isSection = draft?.type === 'SECTION';
+  const lim = draft ? LIMITS[draft.type] : undefined;
+  // Show-if may depend on an earlier choice question asked the same way.
+  const myOrder = original?.order ?? siblings.length;
+  const parents = draft
+    ? siblings.filter(
+        (f) =>
+          f.id !== original?.id &&
+          CHOICE_TYPES.includes(f.type) &&
+          f.order < myOrder &&
+          (!isGroup || f.perGroup === draft.perGroup),
+      )
+    : [];
+  const parent = draft?.showIfField ? siblings.find((f) => f.id === draft.showIfField) : undefined;
 
   const save = async () => {
     if (!draft || !eventId || !ticketId) return;
@@ -91,14 +186,19 @@ export default function TicketQuestionScreen() {
       .split('\n')
       .map((o) => o.trim())
       .filter(Boolean);
-    if (!draft.label.trim()) return setError('Write the question.');
+    if (!draft.label.trim()) return setError(isSection ? 'Write the heading.' : 'Write the question.');
     if (needsOptions && options.length < 1) return setError('Add at least one choice, one per line.');
+    if (draft.type === 'FILE' && draft.fileKinds.length === 0) return setError('Allow at least one file type.');
+    if (draft.showIfField && draft.showIfAnyOf.length === 0) return setError('Pick at least one answer that shows this question.');
     const body = {
       label: draft.label.trim(),
       type: draft.type,
       options: needsOptions ? options : [],
-      isRequired: draft.isRequired,
+      isRequired: isSection ? false : draft.isRequired,
       perGroup: isGroup ? draft.perGroup : false,
+      helpText: draft.helpText.trim() || null,
+      config: configFrom(draft),
+      showIf: draft.showIfField && !isSection ? { fieldId: draft.showIfField, anyOf: draft.showIfAnyOf } : null,
     };
     setSaving(true);
     const res = isNew
@@ -155,14 +255,22 @@ export default function TicketQuestionScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        <SettingsGroup title="Question" plain>
+        <SettingsGroup title={isSection ? 'Heading' : 'Question'} plain>
           <FieldRow
             stacked
-            label="What to ask"
+            label={isSection ? 'Heading text' : 'What to ask'}
             value={draft.label}
             onChangeText={(v) => set({ label: v })}
-            placeholder="e.g. T-shirt size"
+            placeholder={isSection ? 'e.g. Travel details' : 'e.g. T-shirt size'}
             maxLength={255}
+          />
+          <FieldRow
+            stacked
+            label={isSection ? 'Note under the heading (optional)' : 'Help text (optional)'}
+            value={draft.helpText}
+            onChangeText={(v) => set({ helpText: v })}
+            placeholder={isSection ? 'e.g. Only if you travel from outside the city' : 'e.g. Link to your GitHub'}
+            maxLength={500}
           />
         </SettingsGroup>
 
@@ -172,10 +280,16 @@ export default function TicketQuestionScreen() {
               key={f.key}
               label={f.label}
               trailing={draft.type === f.key ? <Check size={20} color={tokens.accent} weight="bold" /> : <View />}
-              onPress={() => set({ type: f.key })}
+              // Limits don't carry across types.
+              onPress={() => set({ type: f.key, lo: '', hi: '' })}
             />
           ))}
         </SettingsGroup>
+        {original ? (
+          <Text style={[styles.muted, { color: tokens.textMuted, marginTop: -spacing[3], marginBottom: spacing[4] }]}>
+            The type can't change once people have registered on this ticket.
+          </Text>
+        ) : null}
 
         {needsOptions ? (
           <>
@@ -192,17 +306,116 @@ export default function TicketQuestionScreen() {
           </>
         ) : null}
 
-        <SettingsGroup plain>
-          <SwitchRow label="Required" value={draft.isRequired} onValueChange={(v) => set({ isRequired: v })} />
-          {isGroup ? (
-            <SwitchRow
-              label="Ask once per group"
-              hint={draft.perGroup ? 'Only the person booking answers.' : 'Every member answers.'}
-              value={draft.perGroup}
-              onValueChange={(v) => set({ perGroup: v })}
+        {lim ? (
+          <SettingsGroup title="Limits (optional)" plain>
+            <FieldRow
+              label={`Min · ${lim.label.toLowerCase()}`}
+              value={draft.lo}
+              onChangeText={(v) => set({ lo: v })}
+              placeholder={lim.date ? 'YYYY-MM-DD' : 'None'}
+              keyboardType={lim.date ? 'numbers-and-punctuation' : 'numeric'}
             />
-          ) : null}
-        </SettingsGroup>
+            <FieldRow
+              label={`Max · ${lim.label.toLowerCase()}`}
+              value={draft.hi}
+              onChangeText={(v) => set({ hi: v })}
+              placeholder={lim.date ? 'YYYY-MM-DD' : 'None'}
+              keyboardType={lim.date ? 'numbers-and-punctuation' : 'numeric'}
+            />
+          </SettingsGroup>
+        ) : null}
+
+        {draft.type === 'RATING' ? (
+          <SettingsGroup title="Scale" plain>
+            {([5, 10] as const).map((n) => (
+              <SettingsRow
+                key={n}
+                label={`1 to ${n}`}
+                trailing={draft.scale === n ? <Check size={20} color={tokens.accent} weight="bold" /> : <View />}
+                onPress={() => set({ scale: n })}
+              />
+            ))}
+          </SettingsGroup>
+        ) : null}
+
+        {draft.type === 'FILE' ? (
+          <>
+            <SettingsGroup title="Allowed files" plain>
+              {FILE_KIND_LABELS.map((k) => (
+                <SwitchRow
+                  key={k.key}
+                  label={k.label}
+                  value={draft.fileKinds.includes(k.key)}
+                  onValueChange={(on) =>
+                    set({ fileKinds: on ? [...draft.fileKinds, k.key] : draft.fileKinds.filter((x) => x !== k.key) })
+                  }
+                />
+              ))}
+              <FieldRow
+                label={`Max size in MB (up to ${FILE_MAX_MB_CAP})`}
+                value={draft.maxSizeMb}
+                onChangeText={(v) => set({ maxSizeMb: v })}
+                keyboardType="numeric"
+              />
+            </SettingsGroup>
+            <Text style={[styles.muted, { color: tokens.textMuted, marginTop: -spacing[3], marginBottom: spacing[4] }]}>
+              Files are private: only the attendee and people who manage attendees can open them. They're deleted 180 days after the event.
+            </Text>
+          </>
+        ) : null}
+
+        {!isSection && (parents.length > 0 || draft.showIfField) ? (
+          <SettingsGroup title="Show this question" plain>
+            <SettingsRow
+              label="Always"
+              trailing={!draft.showIfField ? <Check size={20} color={tokens.accent} weight="bold" /> : <View />}
+              onPress={() => set({ showIfField: '', showIfAnyOf: [] })}
+            />
+            {parents.map((p) => (
+              <SettingsRow
+                key={p.id}
+                label={`Depending on "${p.label}"`}
+                trailing={draft.showIfField === p.id ? <Check size={20} color={tokens.accent} weight="bold" /> : <View />}
+                onPress={() => set({ showIfField: p.id, showIfAnyOf: [] })}
+              />
+            ))}
+          </SettingsGroup>
+        ) : null}
+
+        {parent ? (
+          <SettingsGroup title="Show when the answer is any of" plain>
+            {choicesOf(parent).map((opt) => (
+              <SwitchRow
+                key={opt}
+                label={opt}
+                value={draft.showIfAnyOf.includes(opt)}
+                onValueChange={(on) =>
+                  set({ showIfAnyOf: on ? [...draft.showIfAnyOf, opt] : draft.showIfAnyOf.filter((x) => x !== opt) })
+                }
+              />
+            ))}
+          </SettingsGroup>
+        ) : null}
+
+        {!isSection ? (
+          <SettingsGroup plain>
+            <SwitchRow
+              label="Required"
+              hint={draft.type === 'YES_NO' ? 'Must be ticked, e.g. agreeing to the rules.' : undefined}
+              value={draft.isRequired}
+              onValueChange={(v) => set({ isRequired: v })}
+            />
+            {isGroup ? (
+              <SwitchRow
+                label="Ask once per group"
+                hint={draft.perGroup ? 'Only the person booking answers.' : 'Every member answers.'}
+                value={draft.perGroup}
+                // A condition must be asked the same way, so switching clears it.
+                onValueChange={(v) => set({ perGroup: v, showIfField: '', showIfAnyOf: [] })}
+              />
+            ) : null}
+          </SettingsGroup>
+        ) : null}
 
         {original ? (
           <Button

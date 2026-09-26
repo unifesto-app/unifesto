@@ -74,6 +74,11 @@ import {
   UpdateTicketTypeDto,
 } from './dto';
 import slugify from 'slugify';
+import {
+  checkFieldDefinition,
+  sanitizeConfig,
+  showIfOf,
+} from '../registrations/form-answers.util';
 
 /**
  * Sub-event statuses a public hub lists. Live and finished sub-events stay on
@@ -3373,20 +3378,58 @@ export class EventsService {
       }
     }
 
+    const options = (dto.options || []).map((o) => o.trim()).filter(Boolean);
+    const config = sanitizeConfig(dto.type, dto.config);
+    const showIf = showIfOf({ showIf: dto.showIf });
+    await this.assertValidFormField(eventId, dto.ticketTypeId ?? null, {
+      type: dto.type,
+      options,
+      perGroup: dto.perGroup || false,
+      order: dto.order || 0,
+      config,
+      showIf: dto.showIf ?? null,
+    });
+
     const field = await this.prisma.eventFormField.create({
       data: {
         eventId,
         ticketTypeId: dto.ticketTypeId ?? null,
         label: dto.label,
         type: dto.type,
-        options: dto.options || [],
-        isRequired: dto.isRequired || false,
+        options,
+        // A section heading is never answered.
+        isRequired: dto.type === 'SECTION' ? false : dto.isRequired || false,
         perGroup: dto.perGroup || false,
         order: dto.order || 0,
+        helpText: dto.helpText?.trim() || null,
+        config: (config as Prisma.InputJsonObject | null) ?? Prisma.DbNull,
+        showIf: showIf
+          ? { fieldId: showIf.fieldId, anyOf: showIf.anyOf }
+          : Prisma.DbNull,
       },
     });
     await this.cache.invalidateEventCache(event.slug);
     return field;
+  }
+
+  /**
+   * Reject a question definition that breaks the form rules (options, limits,
+   * show-if). Siblings are the other questions on the same ticket form.
+   */
+  private async assertValidFormField(
+    eventId: string,
+    ticketTypeId: string | null,
+    def: Parameters<typeof checkFieldDefinition>[0],
+  ) {
+    const siblings = await this.prisma.eventFormField.findMany({
+      where: {
+        eventId,
+        ticketTypeId,
+        ...(def.id ? { id: { not: def.id } } : {}),
+      },
+    });
+    const error = checkFieldDefinition(def, siblings);
+    if (error) throw new BadRequestException(error);
   }
 
   async updateFormField(
@@ -3413,15 +3456,58 @@ export class EventsService {
       throw new NotFoundException('Form field not found');
     }
 
+    // Old answers would stop matching a new type, so the type is fixed once
+    // anyone has registered on this ticket (or event, for an event-wide form).
+    if (dto.type && dto.type !== field.type) {
+      const answered = await this.prisma.eventRegistration.count({
+        where: {
+          eventId,
+          ...(field.ticketTypeId ? { ticketTypeId: field.ticketTypeId } : {}),
+        },
+      });
+      if (answered > 0) {
+        throw new BadRequestException(
+          "People have already registered, so this question's type can't change. Add a new question instead.",
+        );
+      }
+    }
+
+    const type = dto.type ?? field.type;
+    const options =
+      dto.options !== undefined
+        ? dto.options.map((o) => o.trim()).filter(Boolean)
+        : field.options;
+    const config = sanitizeConfig(
+      type,
+      dto.config !== undefined ? dto.config : field.config,
+    );
+    const rawShowIf = dto.showIf !== undefined ? dto.showIf : field.showIf;
+    const showIf = showIfOf({ showIf: rawShowIf });
+    await this.assertValidFormField(eventId, field.ticketTypeId, {
+      id: field.id,
+      type,
+      options,
+      perGroup: dto.perGroup ?? field.perGroup,
+      order: dto.order ?? field.order,
+      config,
+      showIf: rawShowIf ?? null,
+    });
+
     const updated = await this.prisma.eventFormField.update({
       where: { id: fieldId },
       data: {
         label: dto.label,
         type: dto.type,
-        options: dto.options,
-        isRequired: dto.isRequired,
+        options,
+        isRequired: type === 'SECTION' ? false : dto.isRequired,
         perGroup: dto.perGroup,
         order: dto.order,
+        helpText:
+          dto.helpText === undefined ? undefined : dto.helpText?.trim() || null,
+        config: (config as Prisma.InputJsonObject | null) ?? Prisma.DbNull,
+        showIf: showIf
+          ? { fieldId: showIf.fieldId, anyOf: showIf.anyOf }
+          : Prisma.DbNull,
       },
     });
     await this.cache.invalidateEventCache(event.slug);
@@ -3447,9 +3533,15 @@ export class EventsService {
       throw new NotFoundException('Form field not found');
     }
 
-    const deleted = await this.prisma.eventFormField.delete({
-      where: { id: fieldId },
-    });
+    // Questions shown only "if this one is X" would otherwise hang on a
+    // condition that can never be met; they become always shown.
+    const [deleted] = await this.prisma.$transaction([
+      this.prisma.eventFormField.delete({ where: { id: fieldId } }),
+      this.prisma.eventFormField.updateMany({
+        where: { eventId, showIf: { path: ['fieldId'], equals: fieldId } },
+        data: { showIf: Prisma.DbNull },
+      }),
+    ]);
     await this.cache.invalidateEventCache(event.slug);
     return deleted;
   }

@@ -652,7 +652,17 @@ export type FormFieldType =
   | "CHECKBOX"
   | "NUMBER"
   | "EMAIL"
-  | "PHONE";
+  | "PHONE"
+  | "DATE"
+  | "URL"
+  | "YES_NO"
+  | "FILE"
+  | "SECTION"
+  | "STATE"
+  | "RATING";
+
+/** Answer limits per type; see lib/form-questions.ts (FormFieldConfig). */
+export type FormFieldConfigPayload = import("@/lib/form-questions").FormFieldConfig;
 
 export interface EventFormField {
   id: string;
@@ -665,6 +675,18 @@ export interface EventFormField {
   /** Group tickets only: ask once for the team (true) vs every member (false). */
   perGroup: boolean;
   order: number;
+  /** Shown under the question (a SECTION's note). */
+  helpText?: string | null;
+  config?: FormFieldConfigPayload | null;
+  /** Show only when an earlier choice question is answered with one of `anyOf`. */
+  showIf?: { fieldId: string; anyOf: string[] } | null;
+}
+
+/** Fields the editor may set on a question (create and update). */
+interface FormFieldExtras {
+  helpText?: string | null;
+  config?: FormFieldConfigPayload | null;
+  showIf?: { fieldId: string; anyOf: string[] } | null;
 }
 
 /** Add a custom form field. Backed by `POST /events/:id/form-fields`. */
@@ -680,7 +702,7 @@ export async function createFormField(
     /** Group tickets only: ask once for the team instead of every member. */
     perGroup?: boolean;
     order?: number;
-  }
+  } & FormFieldExtras
 ): Promise<{ data: EventFormField | null; error: ApiError | null }> {
   return apiCall<EventFormField>(
     backendClient.post(`/events/${eventId}/form-fields`, payload)
@@ -698,7 +720,7 @@ export async function updateFormField(
     isRequired?: boolean;
     perGroup?: boolean;
     order?: number;
-  }
+  } & FormFieldExtras
 ): Promise<{ data: EventFormField | null; error: ApiError | null }> {
   return apiCall<EventFormField>(
     backendClient.patch(`/events/${eventId}/form-fields/${fieldId}`, payload)
@@ -1246,5 +1268,40 @@ export async function cancelSubEventAttach(
     backendClient.delete(
       `/events/${eventId}/sub-events/requests/${requestId}`
     )
+  );
+}
+
+/**
+ * Upload a file answer for a FILE question. Stored privately; the returned
+ * object is the answer to send with the registration.
+ * Backed by `POST /events/:id/form-fields/:fieldId/upload`.
+ */
+export async function uploadFormFieldFile(
+  eventId: string,
+  fieldId: string,
+  file: File
+): Promise<{
+  data: import("@/lib/form-questions").FileAnswer | null;
+  error: ApiError | null;
+}> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiCall(
+    backendClient.post(`/events/${eventId}/form-fields/${fieldId}/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+}
+
+/**
+ * A 5-minute link to an attendee's uploaded file.
+ * Backed by `GET /events/:id/form-uploads/url`.
+ */
+export async function getFormUploadUrl(
+  eventId: string,
+  key: string
+): Promise<{ data: { url: string } | null; error: ApiError | null }> {
+  return apiCall<{ url: string }>(
+    backendClient.get(`/events/${eventId}/form-uploads/url`, { params: { key } })
   );
 }

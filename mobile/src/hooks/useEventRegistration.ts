@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { verifyPayment, createRegistration, isWaitlistJoin, validateCoupon, type CouponQuote } from '../lib/api/registrations';
 import { getEventById, getEventBySlug, getMyRegistrationsForEvent, type Event } from '../lib/api/events';
 import { attributionFor } from '../services/utm';
+import { displayAnswer, firstFormProblem } from '../utils/formQuestions';
 import {
   getEventCustomFields,
   getFieldsForTicket,
@@ -54,11 +55,6 @@ export const symbolFor = (currency?: string) => (currency ? CURRENCY_SYMBOLS[cur
 
 const blankAttendee = (): AttendeeInfo => ({ name: '', email: '', mobile: '', gender: '', customFields: {} });
 
-const isRequiredFieldFilled = (field: CustomField, value: any): boolean => {
-  if (field.field_type === 'checkbox') return value === true;
-  if (field.field_type === 'multi_select') return Array.isArray(value) && value.length > 0;
-  return value !== undefined && value !== null && value !== '';
-};
 
 /**
  * Split a ticket's applicable fields into the per-member set (asked of
@@ -72,12 +68,8 @@ export const splitFields = (fields: CustomField[], isGroup: boolean) =>
 
 /** Human value for a custom-field answer on the review step. */
 export function displayFieldValue(field: CustomField, value: any): string {
-  if (field.field_type === 'checkbox') return value ? 'Yes' : 'No';
-  if (field.field_type === 'multi_select' && Array.isArray(value)) return value.join(', ');
-  if (field.field_type === 'dropdown' || field.field_type === 'radio') {
-    return field.options_json?.find((o) => o.value === value)?.label || value || '';
-  }
-  return value == null ? '' : String(value);
+  if (field.field_type === 'checkbox' && !Array.isArray(value)) return value ? 'Yes' : 'No';
+  return displayAnswer(field, value);
 }
 
 /**
@@ -380,22 +372,35 @@ export function useEventRegistration() {
   const applicableFields = selectedTicket ? getFieldsForTicket(customFields, selectedTicket.id) : [];
   const { perMember: memberFields, team: teamFields } = splitFields(applicableFields, !!isGroup);
 
-  const attendeesValid = (() => {
-    if (!selectedTicket) return false;
-    const teamValid = teamFields
-      .filter((f) => f.is_required)
-      .every((f) => isRequiredFieldFilled(f, teamFieldValues[f.id]));
-    if (!teamValid) return false;
-    return attendees.every((a, index) => {
-      if (invitedIndices.has(index)) return true; // invitee fills their own later
+  // The first thing stopping Continue, in words (null = good to go). Question
+  // answers follow the same rules the backend enforces, incl. show-if.
+  const detailsProblem = ((): string | null => {
+    if (!selectedTicket) return 'Pick a ticket first.';
+    const teamProblem = firstFormProblem(teamFields, teamFieldValues);
+    if (teamProblem) return teamProblem;
+    for (let index = 0; index < attendees.length; index++) {
+      if (invitedIndices.has(index)) continue; // invitee fills their own later
+      const a = attendees[index];
       const basicValid =
         a.name.trim() !== '' &&
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email.trim()) &&
         /^[0-9]{10}$/.test(a.mobile) &&
         a.gender !== '';
+      if (!basicValid) return null;
+      const p = firstFormProblem(memberFields, a.customFields);
+      if (p) return attendees.length > 1 && index > 0 ? `Person ${index + 1}: ${p}` : p;
+    }
+    return null;
+  })();
+  const attendeesValid = (() => {
+    if (!selectedTicket || detailsProblem) return false;
+    return attendees.every((a, index) => {
+      if (invitedIndices.has(index)) return true;
       return (
-        basicValid &&
-        memberFields.filter((f) => f.is_required).every((f) => isRequiredFieldFilled(f, a.customFields?.[f.id]))
+        a.name.trim() !== '' &&
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email.trim()) &&
+        /^[0-9]{10}$/.test(a.mobile) &&
+        a.gender !== ''
       );
     });
   })();
@@ -675,6 +680,7 @@ export function useEventRegistration() {
     next,
     back,
     canContinue,
+    detailsProblem,
     confirmLeave,
     // ticket
     selectedTicket,
