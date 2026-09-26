@@ -16,6 +16,7 @@ import {
 } from '../lib/api/attendeeAdd';
 import { ATTENDEE_GENDER_OPTIONS } from '../utils/profile';
 import CustomFieldInput from '../components/CustomFieldInput';
+import { firstFormProblem, visibleFields } from '../utils/formQuestions';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
 import SaveBar from '../components/manage/SaveBar';
@@ -50,12 +51,10 @@ function checkPerson(p: Person, who: string, fields: CustomField[]): string {
   if (!EMAIL.test(p.email.trim())) return `${pre}a valid email is required.`;
   if (!PHONE.test(p.mobile.trim())) return `${pre}a 10-digit phone number is required.`;
   if (!p.gender) return `${pre}gender is required.`;
-  for (const f of fields) {
-    const v = p.customFields[f.id];
-    if (f.is_required && (v === undefined || v === '' || v === false || (Array.isArray(v) && v.length === 0)))
-      return `${pre}${f.label} is required.`;
-  }
-  return '';
+  // Answer policy: a curator may not know every answer, so required ones
+  // aren't forced, but what is entered must be valid (the backend agrees).
+  const problem = firstFormProblem(fields, p.customFields, { enforceRequired: false });
+  return problem ? `${pre}${problem}` : '';
 }
 
 /**
@@ -154,7 +153,8 @@ export default function AddAttendeeScreen() {
       if (size > MAX_TYPED) return `For groups over ${MAX_TYPED}, use Import from CSV.`;
       if (size < minSize || size > maxSize)
         return Number.isFinite(maxSize) ? `Group size must be ${minSize} to ${maxSize}.` : `Group size must be at least ${minSize}.`;
-      for (const f of teamFields) if (f.is_required && (team[f.id] === undefined || team[f.id] === '')) return `${f.label} is required.`;
+      const teamProblem = firstFormProblem(teamFields, team, { enforceRequired: false });
+      if (teamProblem) return teamProblem;
       for (let i = 0; i < extra; i++) {
         const p = checkPerson(members[i] ?? blank(), `Member ${i + 2}`, perMember);
         if (p) return p;
@@ -283,7 +283,7 @@ export default function AddAttendeeScreen() {
       <View style={styles.block}>
         <ChipPicker options={GENDERS} value={p.gender} onChange={(g) => onChange({ gender: g })} />
       </View>
-      {perMember.map((f) => (
+      {visibleFields(perMember, p.customFields).map((f) => (
         <View key={f.id} style={styles.block}>
           <CustomFieldInput
             field={f}
@@ -326,7 +326,7 @@ export default function AddAttendeeScreen() {
         {isGroup && teamFields.length > 0 ? (
           <>
             <Text style={[styles.heading, { color: tokens.text }]}>About the team</Text>
-            {teamFields.map((f) => (
+            {visibleFields(teamFields, team).map((f) => (
               <View key={f.id} style={styles.block}>
                 <CustomFieldInput field={f} value={team[f.id]} onChange={(v) => setTeam((t) => ({ ...t, [f.id]: v }))} />
               </View>

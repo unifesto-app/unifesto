@@ -15,6 +15,8 @@ import {
   MaxLength,
   ValidateNested,
   Matches,
+  ValidateIf,
+  IsObject,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 import {
@@ -992,6 +994,35 @@ export class CreateFormFieldDto {
   @IsInt()
   @Min(0)
   order?: number;
+
+  @ApiPropertyOptional({
+    example: 'Add your GitHub or portfolio',
+    description: 'Shown under the question. For a SECTION, the note under its heading.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MaxLength(500)
+  helpText?: string | null;
+
+  @ApiPropertyOptional({
+    example: { maxLength: 200 },
+    description:
+      'Answer limits: minLength/maxLength, min/max, minDate/maxDate (YYYY-MM-DD), minPicks/maxPicks, scale (5|10), fileKinds (pdf|image|doc), maxSizeMb (1-10).',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsObject()
+  config?: Record<string, unknown> | null;
+
+  @ApiPropertyOptional({
+    example: { fieldId: 'earlier-question-uuid', anyOf: ['Yes'] },
+    description: 'Show only when an earlier choice question is answered with one of `anyOf`. null clears it.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsObject()
+  showIf?: { fieldId: string; anyOf: string[] } | null;
 }
 
 export class UpdateFormFieldDto {
@@ -1030,6 +1061,35 @@ export class UpdateFormFieldDto {
   @IsInt()
   @Min(0)
   order?: number;
+
+  @ApiPropertyOptional({
+    example: 'Add your GitHub or portfolio',
+    description: 'Shown under the question. For a SECTION, the note under its heading.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsString()
+  @MaxLength(500)
+  helpText?: string | null;
+
+  @ApiPropertyOptional({
+    example: { maxLength: 200 },
+    description:
+      'Answer limits: minLength/maxLength, min/max, minDate/maxDate (YYYY-MM-DD), minPicks/maxPicks, scale (5|10), fileKinds (pdf|image|doc), maxSizeMb (1-10).',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsObject()
+  config?: Record<string, unknown> | null;
+
+  @ApiPropertyOptional({
+    example: { fieldId: 'earlier-question-uuid', anyOf: ['Yes'] },
+    description: 'Show only when an earlier choice question is answered with one of `anyOf`. null clears it.',
+  })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsObject()
+  showIf?: { fieldId: string; anyOf: string[] } | null;
 }
 
 export class EventFilterDto {

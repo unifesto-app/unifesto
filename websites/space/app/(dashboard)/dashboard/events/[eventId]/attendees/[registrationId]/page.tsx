@@ -33,6 +33,8 @@ import type {
 } from "@/lib/api/registrations-api";
 import { getEventById } from "@/lib/api/events-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { AnswerValue } from "@/components/events/answer-value";
+import { formatAnswer } from "@/lib/form-questions";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -124,12 +126,8 @@ const FIELD_ALIASES: Record<"name" | "email" | "mobile" | "gender", string[]> = 
   gender: ["gender", "sex"],
 };
 
-function stringifyValue(v: unknown): string {
-  if (v === null || v === undefined) return "";
-  if (Array.isArray(v)) return v.join(", ");
-  if (typeof v === "object") return JSON.stringify(v);
-  return String(v);
-}
+/** Yes/No as words, picks joined, a file by its name. */
+const stringifyValue = formatAnswer;
 
 /** Merge a member's top-level fields with its nested customFields into one map. */
 function flattenMember(m: unknown): Record<string, unknown> {
@@ -215,7 +213,7 @@ interface GroupMemberView {
   mobile: string | null;
   gender: string | null;
   /** Per-member extra fields (team-wide ones are hoisted out — see below). */
-  extras: { key: string; label: string; value: string }[];
+  extras: { key: string; label: string; value: string; raw: unknown }[];
 }
 
 /**
@@ -246,7 +244,7 @@ function buildGroupView(
     );
     const extras = Object.entries(flat)
       .filter(([k, v]) => !usedKeys.has(k) && stringifyValue(v).trim() !== "")
-      .map(([k, v]) => ({ key: k, label: labels[k] ?? k, value: stringifyValue(v) }));
+      .map(([k, v]) => ({ key: k, label: labels[k] ?? k, value: stringifyValue(v), raw: v }));
     return {
       index,
       name: nameF?.value ?? null,
@@ -864,7 +862,9 @@ export default function AttendeeDetailPage() {
                               <span className="text-[11px] text-muted-foreground">
                                 {e.label}
                               </span>
-                              <span className="text-sm">{e.value}</span>
+                              <span className="text-sm">
+                                <AnswerValue eventId={eventId} value={e.raw} />
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -962,7 +962,9 @@ export default function AttendeeDetailPage() {
                                 <span className="text-[11px] text-muted-foreground">
                                   {e.label}
                                 </span>
-                                <span className="text-sm">{e.value}</span>
+                                <span className="text-sm">
+                                <AnswerValue eventId={eventId} value={e.raw} />
+                              </span>
                               </div>
                             ))}
                           </div>
@@ -1000,9 +1002,7 @@ export default function AttendeeDetailPage() {
               <CardContent className="divide-y">
                 {formEntries.map(([key, value]) => (
                   <Field key={key} label={fieldLabels[key] ?? key}>
-                    {typeof value === "object"
-                      ? JSON.stringify(value)
-                      : String(value)}
+                    <AnswerValue eventId={eventId} value={value} />
                   </Field>
                 ))}
               </CardContent>

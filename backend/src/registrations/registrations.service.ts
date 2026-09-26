@@ -6,6 +6,8 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
+import { enforceFormAnswers } from './form-answers.policy';
+import { checkAnswers, formatAnswer, type FormFieldLike } from './form-answers.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
@@ -38,6 +40,7 @@ import {
   BillingModel,
   OrgPlan,
   EventVisibility,
+  FormFieldType,
 } from '@prisma/client';
 import { canAccessSpaceOnlyEvent } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
@@ -297,6 +300,19 @@ export class RegistrationsService {
     // Organiser-configured restriction: reject if the user already holds a
     // ticket that blocks the requested one.
     await this.assertTicketNotBlocked(userId, eventId, dto.ticketTypeId);
+
+    // Answer policy: typed, within limits, required where visible (the lead's
+    // own answers now; other members answer when they claim their seat).
+    const formTicket = event.ticketTypes.find((t) => t.id === dto.ticketTypeId);
+    dto.formResponses = await enforceFormAnswers(this.prisma, {
+      eventId,
+      ticketTypeId: dto.ticketTypeId,
+      isGroup: formTicket?.kind === 'GROUP',
+      formResponses: dto.formResponses,
+      members: dto.groupMembers,
+      required: { team: true, members: 'first' },
+      uploaderIds: [userId],
+    });
 
     // A user can hold at most one registration per distinct ticket type on an
     // event. Once they hold a given type, that type is no longer available to
@@ -1607,6 +1623,17 @@ export class RegistrationsService {
 
     const roster = this.parseRosterUpdate(members, reg.groupSize as number);
 
+    // Types and limits apply to what the lead types for teammates; required
+    // answers aren't forced, since members may complete their own on claim.
+    await enforceFormAnswers(this.prisma, {
+      eventId: reg.eventId,
+      ticketTypeId: reg.ticketTypeId,
+      isGroup: true,
+      members: roster,
+      required: { team: false, members: 'none' },
+      uploaderIds: [userId],
+    });
+
     // Write the roster onto GroupSeat rows — the single source of truth. Each
     // filled entry lands on its seat (OPEN → CLAIMED, lead-filled = null claimer);
     // seats a member already claimed, or that have an invite in flight, are left
@@ -1977,19 +2004,60 @@ export class RegistrationsService {
     kind: string;
     minGroupSize: number | null;
     maxGroupSize: number | null;
-    formFields: { id: string; label: string; isRequired: boolean; perGroup: boolean }[];
+    formFields: {
+      id: string;
+      label: string;
+      type: FormFieldType;
+      isRequired: boolean;
+      perGroup: boolean;
+      showIf: Prisma.JsonValue;
+    }[];
   }): ImportTicketShape {
     return {
       kind: ticketType.kind as ImportTicketShape['kind'],
       minGroupSize: ticketType.minGroupSize,
       maxGroupSize: ticketType.maxGroupSize,
-      formFields: ticketType.formFields.map((f) => ({
-        id: f.id,
-        label: f.label,
-        required: f.isRequired,
-        perGroup: f.perGroup,
-      })),
+      // Headings have no answer and files can't come from a spreadsheet, so
+      // neither gets a column. A conditional question is never forced: whether
+      // it applies depends on another answer in the same row.
+      formFields: ticketType.formFields
+        .filter((f) => f.type !== 'SECTION' && f.type !== 'FILE')
+        .map((f) => ({
+          id: f.id,
+          label: f.label,
+          required: f.isRequired && !f.showIf,
+          perGroup: f.perGroup,
+        })),
     };
+  }
+
+  /**
+   * Run the answer policy over parsed CSV rows: each row's answers are typed
+   * and limit-checked (required is the importer's job, above). A bad answer
+   * marks just that row as errored instead of failing the whole file.
+   */
+  private checkImportAnswers(
+    eventId: string,
+    ticketType: { kind: string; formFields: FormFieldLike[] },
+    rows: ParsedImportRow[],
+  ) {
+    const isGroup = ticketType.kind === 'GROUP';
+    const fields = ticketType.formFields;
+    const teamFields = isGroup ? fields.filter((f) => f.perGroup) : fields;
+    const memberFields = isGroup ? fields.filter((f) => !f.perGroup) : [];
+    const opts = { eventId, enforceRequired: false, uploaderIds: [] };
+    for (const row of rows) {
+      if (row.error) continue;
+      const team = checkAnswers(teamFields, row.formResponses, opts);
+      const errors = [...team.errors];
+      row.formResponses = team.answers;
+      for (const m of row.groupMembers ?? []) {
+        const r = checkAnswers(memberFields, m.customFields, opts);
+        errors.push(...r.errors);
+        m.customFields = r.answers;
+      }
+      if (errors.length) row.error = errors.slice(0, 2).join(' ');
+    }
   }
 
   /**
@@ -2267,6 +2335,7 @@ export class RegistrationsService {
     const shape = this.toImportShape(ticketType);
     const { rows: parsed, fileError } = parseImportRows(shape, parseCsv(csvText));
     if (fileError) throw new BadRequestException(fileError);
+    this.checkImportAnswers(eventId, ticketType, parsed);
     if (parsed.length === 0) {
       throw new BadRequestException('No attendee rows found in the file.');
     }
@@ -2393,6 +2462,7 @@ export class RegistrationsService {
     const shape = this.toImportShape(ticketType);
     const { rows: parsed, fileError } = parseImportRows(shape, parseCsv(csvText));
     if (fileError) throw new BadRequestException(fileError);
+    this.checkImportAnswers(eventId, ticketType, parsed);
     if (parsed.length === 0) {
       throw new BadRequestException('No attendee rows found in the file.');
     }
@@ -2478,6 +2548,8 @@ export class RegistrationsService {
       collectPayment?: boolean;
       sendTicketEmail?: boolean;
     },
+    /** The curator adding them; their uploads may be referenced by answers. */
+    actorId?: string,
   ) {
     const { event, ticketType } = await this.loadEventTicketForManage(
       eventId,
@@ -2543,9 +2615,20 @@ export class RegistrationsService {
     // For an individual, gender rides in the registration-level responses (the
     // same `gender` key the attendee detail view reads). For a group it lives on
     // each member above, so the registration bag stays the team-wide answers.
+    // Answer policy: types and limits apply, but a curator adding someone may
+    // not know every answer, so required questions aren't forced here.
+    const checkedResponses = await enforceFormAnswers(this.prisma, {
+      eventId,
+      ticketTypeId: dto.ticketTypeId,
+      isGroup,
+      formResponses: dto.formResponses,
+      members: groupMembers ?? undefined,
+      required: { team: false, members: 'none' },
+      uploaderIds: actorId ? [actorId] : [],
+    });
     const formResponses = isGroup
-      ? (dto.formResponses ?? {})
-      : { ...(dto.formResponses ?? {}), gender: dto.gender };
+      ? checkedResponses
+      : { ...checkedResponses, gender: dto.gender };
 
     const price = Number(ticketType.price);
     const wantsPayment = Boolean(dto.collectPayment) && price > 0;
@@ -2940,18 +3023,16 @@ export class RegistrationsService {
     // Attendees export: full attendee data plus the custom form responses.
     // Responses are keyed by form-field id, so we resolve the id → label map to
     // give each custom field its own labelled column.
+    // Section headings are never answered, so they get no column.
     const formFields = await this.prisma.eventFormField.findMany({
-      where: { eventId },
+      where: { eventId, type: { not: 'SECTION' } },
       orderBy: { order: 'asc' },
       select: { id: true, label: true },
     });
 
-    const formatResponse = (value: unknown): string => {
-      if (value === null || value === undefined) return '';
-      if (Array.isArray(value)) return value.join('; ');
-      if (typeof value === 'object') return JSON.stringify(value);
-      return String(value);
-    };
+    // Yes/No as words, picks joined, a file by its name (files themselves
+    // are opened from the attendee page with a short-lived link).
+    const formatResponse = (value: unknown): string => formatAnswer(value);
 
     // Group members can be stored either as `{ name, email, mobile, gender,
     // customFields }` or as a flat form-response map keyed by form-field id.
@@ -3778,6 +3859,18 @@ export class RegistrationsService {
     // Organiser-configured restriction: reject if the user already holds a
     // ticket that blocks the requested one.
     await this.assertTicketNotBlocked(userId, eventId, dto.ticketTypeId);
+
+    // Answer policy, same as free registration (see registerForEvent).
+    const formTicket = event.ticketTypes.find((t) => t.id === dto.ticketTypeId);
+    dto.formResponses = await enforceFormAnswers(this.prisma, {
+      eventId,
+      ticketTypeId: dto.ticketTypeId,
+      isGroup: formTicket?.kind === 'GROUP',
+      formResponses: dto.formResponses,
+      members: dto.groupMembers,
+      required: { team: true, members: 'first' },
+      uploaderIds: [userId],
+    });
 
     // At most one ACTIVE registration may exist per (event, user, ticket type)
     // — enforced by the partial unique index (migration

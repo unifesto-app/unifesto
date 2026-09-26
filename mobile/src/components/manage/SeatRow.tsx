@@ -3,6 +3,8 @@ import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'r
 import { CaretDown, CaretRight } from 'phosphor-react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { displayFieldValue } from '../../hooks/useEventRegistration';
+import { displayAnswer, isFileAnswer } from '../../utils/formQuestions';
+import { openFormUpload } from '../../lib/api/tickets';
 import type { GroupSeatRow } from '../../lib/api/manageEvent';
 import type { CustomField } from '../../lib/api/tickets';
 import type { Tokens } from '../../theme/tokens';
@@ -50,7 +52,13 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
   const answers = Object.entries(seat.memberDetails?.customFields ?? {})
     .map(([id, v]) => {
       const f = fields.find((x) => x.id === id);
-      return { id, label: f?.label ?? 'Answer', value: f ? displayFieldValue(f, v) : v == null ? '' : String(v) };
+      return {
+        id,
+        label: f?.label ?? 'Answer',
+        value: f ? displayFieldValue(f, v) : displayAnswer(undefined, v),
+        // A file answer opens through a short-lived link.
+        open: f && isFileAnswer(v) ? () => void openFormUpload(f.event_id, v.key) : undefined,
+      };
     })
     .filter((a) => a.value !== '');
   const hasDetail = !!(p.email || p.mobile || p.gender || answers.length || seat.claimedAt);
@@ -94,7 +102,7 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
           {line('Phone', p.mobile, p.mobile ? () => Linking.openURL(`tel:${p.mobile}`) : undefined)}
           {line('Gender', p.gender)}
           {line('Filled on', day(seat.claimedAt))}
-          {answers.map((a) => line(a.label, a.value))}
+          {answers.map((a) => line(a.label, a.value, a.open))}
         </View>
       ) : null}
 

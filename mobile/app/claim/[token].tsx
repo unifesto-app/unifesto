@@ -17,6 +17,7 @@ import { getCurrentUser, getUserIdentities } from '../../src/lib/api/auth';
 import { getClaimInfo, claimSeat, declineSeat } from '../../src/lib/api/registrations';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../../src/lib/api/tickets';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
+import { firstFormProblem, visibleFields } from '../../src/utils/formQuestions';
 import { normalizeMobile, profileGenderToAttendeeOption, ATTENDEE_GENDER_OPTIONS, isCustomGender } from '../../src/utils/profile';
 import { borderRadius, spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
@@ -36,11 +37,6 @@ interface ClaimInfo {
   alreadyRegistered?: boolean;
 }
 
-const answered = (field: CustomField, value: any): boolean => {
-  if (field.field_type === 'checkbox') return value === true;
-  if (field.field_type === 'multi_select') return Array.isArray(value) && value.length > 0;
-  return value !== undefined && value !== null && value !== '';
-};
 
 type Phase = 'loading' | 'signedOut' | 'ready' | 'already' | 'claimed' | 'declined' | 'error';
 
@@ -142,7 +138,9 @@ export default function ClaimSeatRoute() {
   }, [phase, error, token]);
 
   const mobileValid = /^[0-9]{10}$/.test(mobile.trim());
-  const questionsDone = fields.every((f) => !f.is_required || answered(f, answers[f.id]));
+  // Same rules the backend enforces on claim (required, formats, show-if).
+  const questionProblem = firstFormProblem(fields, answers);
+  const questionsDone = !questionProblem;
   const canClaim = !!name.trim() && mobileValid && !!gender && questionsDone;
   const anyLocked = locked.name || locked.mobile || locked.gender || !!email;
 
@@ -398,7 +396,7 @@ export default function ClaimSeatRoute() {
           {fields.length > 0 ? (
             <>
               <Text style={[styles.section, { color: tokens.textMuted }]}>A few questions from the organiser</Text>
-              {fields.map((f) => (
+              {visibleFields(fields, answers).map((f) => (
                 <CustomFieldInput
                   key={f.id}
                   field={f}

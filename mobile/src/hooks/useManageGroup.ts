@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {} from 'react-native';
 import { profileGenderToAttendeeOption } from '../utils/profile';
+import { firstFormProblem } from '../utils/formQuestions';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
 import {
   getRegistrationSeats,
@@ -231,11 +232,6 @@ export function useManageGroup(registrationId: string) {
       prev.map((m, i) => (i === index ? { ...m, customFields: { ...(m.customFields ?? {}), [fieldId]: value } } : m)),
     );
 
-  const isCustomFieldFilled = (field: CustomField, value: any): boolean => {
-    if (field.field_type === 'checkbox') return value === true;
-    if (field.field_type === 'multi_select') return Array.isArray(value) && value.length > 0;
-    return value !== undefined && value !== null && value !== '';
-  };
 
   const saveRoster = async () => {
     const toCheck = editIndex === null ? draft.map((_, i) => i) : [editIndex];
@@ -246,9 +242,11 @@ export function useManageGroup(registrationId: string) {
         setRosterError(`Please complete member ${i + 1}: name, a valid email and a 10-digit mobile.`);
         return;
       }
-      const missing = customFields.find((f) => f.is_required && !isCustomFieldFilled(f, m.customFields?.[f.id]));
-      if (missing) {
-        setRosterError(`Please complete member ${i + 1}: "${missing.label}" is required.`);
+      // Answer policy: what the lead types for a teammate must be valid, but
+      // required answers aren't forced (the member can add them on claim).
+      const problem = firstFormProblem(customFields, m.customFields, { enforceRequired: false });
+      if (problem) {
+        setRosterError(`Member ${i + 1}: ${problem}`);
         return;
       }
     }

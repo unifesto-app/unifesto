@@ -417,10 +417,11 @@ export class RegistrationsController {
   @ApiOperation({ summary: 'Manually add one attendee (comp or send a payment link)' })
   @ApiResponse({ status: 201 })
   async manualAddAttendee(
+    @Request() req,
     @Param('id') eventId: string,
     @Body() dto: ManualAddAttendeeDto,
   ) {
-    return this.registrationsService.manualAddAttendee(eventId, dto);
+    return this.registrationsService.manualAddAttendee(eventId, dto, req.user.id);
   }
 
   /**

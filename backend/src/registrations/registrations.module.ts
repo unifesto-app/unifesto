@@ -11,6 +11,9 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { CacheModule } from '../cache/cache.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { CouponsModule } from '../coupons/coupons.module';
+import { StorageModule } from '../storage/storage.module';
+import { FormUploadsService } from './form-uploads.service';
+import { FormUploadsController } from './form-uploads.controller';
 
 @Module({
   imports: [
@@ -21,9 +24,10 @@ import { CouponsModule } from '../coupons/coupons.module';
     CacheModule,
     PaymentsModule,
     CouponsModule,
+    StorageModule,
   ],
-  controllers: [RegistrationsController, GroupSeatsController],
-  providers: [RegistrationsService, WaitlistService, GroupSeatsService],
+  controllers: [RegistrationsController, GroupSeatsController, FormUploadsController],
+  providers: [RegistrationsService, WaitlistService, GroupSeatsService, FormUploadsService],
   exports: [RegistrationsService, WaitlistService, GroupSeatsService],
 })
 export class RegistrationsModule {}
