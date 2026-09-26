@@ -53,18 +53,37 @@ export class OneSignalService {
     externalId: string,
   ): Promise<{ ok: boolean; error?: string }> {
     if (!this.isConfigured()) return { ok: false, error: 'not_configured' };
-    try {
-      await axios.patch(
+    const headers = {
+      'Content-Type': 'application/json; charset=utf-8',
+      Authorization: `Key ${this.restApiKey}`,
+    };
+    const transfer = () =>
+      axios.patch(
         `https://api.onesignal.com/apps/${this.appId}/subscriptions/${encodeURIComponent(subscriptionId)}/owner`,
         { identity: { external_id: externalId } },
-        {
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            Authorization: `Key ${this.restApiKey}`,
-          },
-          timeout: 10_000,
-        },
+        { headers, timeout: 10_000 },
       );
+    try {
+      try {
+        await transfer();
+      } catch (err: any) {
+        // A transfer needs the target user to exist in OneSignal already. A new
+        // account (the SDK's login never ran, or ran after this) has no
+        // OneSignal user yet: 404 "Target user does not exist". Create it with
+        // this external id, then transfer again.
+        if (err?.response?.status !== 404) throw err;
+        await axios
+          .post(
+            `https://api.onesignal.com/apps/${this.appId}/users`,
+            { identity: { external_id: externalId } },
+            { headers, timeout: 10_000 },
+          )
+          .catch((e: any) => {
+            // 409: created meanwhile (e.g. by the SDK) — fine, just transfer.
+            if (e?.response?.status !== 409) throw e;
+          });
+        await transfer();
+      }
       return { ok: true };
     } catch (err: any) {
       const status = err?.response?.status;

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { AppState } from 'react-native';
 import { getCrashlytics, setUserId as setCrashlyticsUserId } from '@react-native-firebase/crashlytics';
 import { getToken, saveToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest } from '../lib/api/helpers';
 import OneSignalService from '../services/OneSignalService';
@@ -59,11 +60,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Once a session is active, report the installed app version so staff can see
   // which build each account runs (Apex → Users). Best-effort and self-gated;
-  // covers both fresh login and a restored session on startup.
+  // covers both fresh login and a restored session on startup. Also retried on
+  // every return to the foreground: on a fresh sign-up the first call can race
+  // the token save and fail, and the report used to wait for a cold start. The
+  // 24h gate keeps this to about one write a day.
   useEffect(() => {
-    if (user?.id) {
-      void maybeReportAppVersion(user.id);
-    }
+    if (!user?.id) return;
+    const userId = user.id;
+    void maybeReportAppVersion(userId);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void maybeReportAppVersion(userId);
+    });
+    return () => sub.remove();
   }, [user?.id]);
 
   // Link this install's OneSignal push subscription (device id) to the user on
