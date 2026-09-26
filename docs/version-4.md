@@ -209,7 +209,8 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 - [x] C · EAS production env checked: API URL, Cognito, Google IDs, OneSignal, Maps key, `GOOGLE_SERVICES_JSON` present
 - [x] Y · App Store privacy labels published (answers in `docs/store/4.0.0.md`)
 - [ ] Y · Play Data safety form, same data types as above
-- [ ] Y · Screenshots of the redesign (6.9", 6.5", iPad, Android phone)
+- [x] Y · App Store listing done: description, keywords, What's New, Promotional Text, review sign-in + notes, iPhone 6.9" + iPad 13" screenshots
+- [ ] Y · Play listing: Data safety, descriptions, phone screenshots
 - [x] C · Store copy in `docs/store/4.0.0.md`: What's New, description, keywords, review notes, privacy + data safety (#9)
 - [x] C · iOS permission prompts made accurate, placeholder prompts removed; paid online sessions hidden from iOS checkout (3.1.1) (#9)
 
