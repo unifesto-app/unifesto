@@ -45,6 +45,16 @@ export class ManualCheckinDto {
   @ApiProperty({ example: 'checkin-type-uuid' })
   @IsUUID()
   checkinTypeId: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Group registrations: the member (0-based, seat - 1) to check in. ' +
+      'Omitted on a group means the lead (member 0).',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  memberIndex?: number;
 }
 
 export class BulkCheckinDto {

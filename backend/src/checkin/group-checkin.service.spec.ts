@@ -50,7 +50,7 @@ describe('CheckinService.checkinGroupMembers — seat-driven', () => {
       eventTicket: { updateMany: jest.fn().mockResolvedValue({}) },
       $transaction: async (fn: any) => fn(prisma),
     };
-    const svc = new CheckinService(prisma as any, {} as any, {} as any);
+    const svc = new CheckinService(prisma as any, {} as any, { invalidateCheckinCache: jest.fn() } as any);
     return { svc, prisma, createMany, regUpdate };
   };
 

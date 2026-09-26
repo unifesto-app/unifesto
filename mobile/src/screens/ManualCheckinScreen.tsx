@@ -39,6 +39,8 @@ export default function ManualCheckinScreen() {
   const [results, setResults] = useState<AttendeeSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // A group's members share a registration, so rows are keyed per member.
+  const rowKey = (r: AttendeeSearchResult) => `${r.registrationId}:${r.memberIndex ?? ''}`;
   const seq = useRef(0);
 
   // Default to the first point once they're known (a route param wins).
@@ -76,13 +78,19 @@ export default function ManualCheckinScreen() {
   const checkIn = useCallback(
     async (r: AttendeeSearchResult) => {
       if (busyId || !pointId) return;
-      setBusyId(r.registrationId);
+      if (r.claimable === false) {
+        AppAlert.alert('Seat not claimed yet', 'Nobody has claimed this seat, so there is no one to check in.');
+        return;
+      }
+      const key = rowKey(r);
+      const member = r.memberIndex ?? null;
+      setBusyId(key);
 
       const queue = async () => {
         const entry = store ? findEntry(store, r.registrationId) : undefined;
         if (!entry) throw new Error("You're offline and this person isn't on the saved guest list.");
         if (entry.blockedReason) throw new Error(entry.blockedReason);
-        await enqueueCheckin(store!, entry, pointId);
+        await enqueueCheckin(store!, entry, pointId, member != null ? [member] : undefined);
         Vibration.vibrate(30);
       };
 
@@ -91,13 +99,19 @@ export default function ManualCheckinScreen() {
           await queue();
           return;
         }
-        const res = await manualCheckin(r.registrationId, pointId);
-        if (store) recordLiveCheckin(store, { registrationId: r.registrationId }, pointId, res.checkedInAt);
+        const res = await manualCheckin(r.registrationId, pointId, member);
+        if (store) {
+          recordLiveCheckin(
+            store,
+            { registrationId: r.registrationId },
+            pointId,
+            member != null ? null : res.checkedInAt,
+            member != null ? [member] : undefined,
+          );
+        }
         setResults((prev) =>
           prev.map((x) =>
-            x.registrationId === r.registrationId
-              ? { ...x, checkedInAtPoint: res.checkedInAt ?? new Date().toISOString() }
-              : x,
+            rowKey(x) === key ? { ...x, checkedInAtPoint: res.checkedInAt ?? new Date().toISOString() } : x,
           ),
         );
         Vibration.vibrate(30);
@@ -179,15 +193,21 @@ export default function ManualCheckinScreen() {
         <View style={styles.card}>
           <CardBackdrop shape={styles.card} />
           {results.map((item, i) => (
-            <View key={item.registrationId}>
+            <View key={rowKey(item)}>
               <PersonRow
                 name={attendeeName(item.attendee)}
                 avatarUrl={item.attendee.avatarUrl}
-                sub={[item.ticketType, item.attendee.username && item.attendee.fullName ? `@${item.attendee.username}` : null]
+                sub={[
+                  item.ticketType,
+                  item.groupLeadName && item.memberIndex !== 0 ? `${item.groupLeadName}'s group` : null,
+                  item.memberIndex === 0 ? 'Group lead' : null,
+                  item.claimable === false ? 'Seat not claimed' : null,
+                  item.attendee.username && item.attendee.fullName ? `@${item.attendee.username}` : null,
+                ]
                   .filter(Boolean)
                   .join(' · ')}
                 action={{
-                  state: item.checkedInAtPoint ? 'done' : busyId === item.registrationId ? 'busy' : 'idle',
+                  state: item.checkedInAtPoint ? 'done' : busyId === rowKey(item) ? 'busy' : 'idle',
                   onPress: () => void checkIn(item),
                 }}
               />

@@ -2050,6 +2050,9 @@ model GroupSeat {
   // Per-seat so each group member is invited once — the lead is tracked on the
   // registration row instead (seat 1 is the lead; the member loop skips it).
   whatsappInviteSentAt DateTime? @map("whatsapp_invite_sent_at") @db.Timestamptz(6)
+  // When this seat's claimer said "I've joined" the WhatsApp group from their
+  // ticket (the lead's own flag is on the registration row).
+  whatsappJoinedAt DateTime? @map("whatsapp_joined_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

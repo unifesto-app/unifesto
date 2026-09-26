@@ -415,19 +415,40 @@ export function offlineSearch(s: EventStore, query: string, pointId: string): At
   if (!s.roster) return [];
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  return s.roster.entries
-    .filter(
-      (e) =>
-        !e.blockedReason &&
-        (e.name?.toLowerCase().includes(q) || e.codes.some((c) => c.toLowerCase().startsWith(q))),
-    )
-    .slice(0, 30)
-    .map((e) => ({
-      registrationId: e.registrationId,
-      attendee: { id: e.registrationId, fullName: e.name, username: null, avatarUrl: null },
-      ticketType: e.ticketType,
-      checkedInAtPoint: checkedInAt(s, e, pointId),
-    }));
+  const rows: AttendeeSearchResult[] = [];
+  for (const e of s.roster.entries) {
+    if (e.blockedReason) continue;
+    const members = e.group?.members ?? [];
+    const byCode = e.codes.some((c) => c.toLowerCase().startsWith(q));
+    if (members.length > 0) {
+      // Same as online: each member is their own row, matched by name; a
+      // ticket-code or lead-name match lists the whole group.
+      const hits = members.filter((m) => m.name?.toLowerCase().includes(q));
+      const leadHit = !!e.name?.toLowerCase().includes(q);
+      const list = hits.length ? hits : byCode || leadHit ? members : [];
+      for (const m of list) {
+        rows.push({
+          registrationId: e.registrationId,
+          memberIndex: m.index,
+          attendee: { id: null, fullName: m.name ?? (m.index === 0 ? e.name : null), username: null, avatarUrl: null },
+          ticketType: e.ticketType,
+          checkedInAtPoint: m.checkins[pointId] ?? null,
+          groupLeadName: e.name,
+          claimable: m.claimable,
+        });
+      }
+    } else if (byCode || e.name?.toLowerCase().includes(q)) {
+      rows.push({
+        registrationId: e.registrationId,
+        memberIndex: null,
+        attendee: { id: e.registrationId, fullName: e.name, username: null, avatarUrl: null },
+        ticketType: e.ticketType,
+        checkedInAtPoint: checkedInAt(s, e, pointId),
+      });
+    }
+    if (rows.length >= 30) break;
+  }
+  return rows.slice(0, 30);
 }
 
 export function findEntry(s: EventStore, registrationId: string): OfflineRosterEntry | undefined {

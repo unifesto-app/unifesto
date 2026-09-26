@@ -22,7 +22,7 @@ export function useCheckinHub(eventId: string, pointId: string) {
     setError('');
     const [s, r] = await Promise.allSettled([
       getCheckinStats(eventId, pointId || undefined),
-      getRecentCheckins(eventId, RECENT_LIMIT),
+      getRecentCheckins(eventId, RECENT_LIMIT, pointId || undefined),
     ]);
     if (mine !== seq.current) return; // a newer point / refresh won
     if (s.status === 'fulfilled') setStats(s.value);

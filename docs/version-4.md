@@ -40,7 +40,7 @@ changes each mobile release depends on.
 | Version | Type | Theme | Target | Ships as | Built by | Status | Shipped |
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | in progress | – |
-| [4.0.5](#405--traffic-and-short-links) | patch | Page views + tracked short links (W10 first slice) | **Tue 29 Sep** | store build | you | in progress | – |
+| [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | in progress | – |
 | [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
@@ -262,42 +262,79 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 
 ---
 
-### 4.0.5 · Traffic and short links
+### 4.0.5 · Fix what failed in 4.0.0
 
-**Type:** patch · **Ships as:** store build (you) + backend deploy · **Branch:** `claude/repository-fixes-cd9ed8`
+**Type:** patch · **Ships as:** store build only (iOS + Android), no OTA · **Branch:** `claude/repository-fixes-cd9ed8` ([#14](https://github.com/unifesto-app/unifesto/pull/14))
 
-Why: first slice of W10 (backlinks + tracking), pulled forward. Curators see how many people viewed a page next to how many registered, and get tracked short links. Mobile and backend only: nothing in Apex web, Space web or the public site.
+Collects every failure from the 4.0.0 build, upload, device QA and App Review, and ships the fixes as one new binary. Store build (not OTA) because some fixes touch native config, and a new binary is the only thing that reaches people who hit the failure on 4.0.0's first launch.
+
+**Runtime note:** 4.0.5 has its own fingerprint. OTAs from 4.1.0 onward must target the 4.0.5 runtime, so native freeze window A starts at 4.0.5 submit instead of 4.0.0, and force-update (0.5) moves to minimum 4.0.5.
 
 #### Plan
 
-| Item | Status |
-|---|---|
-| Backend traffic module: `page_views`, `short_links`, `short_link_clicks` (migration `20260929120000_traffic`, additive) | done |
-| Page-view beacon `POST /traffic/views` from event + space detail (anonymous install id, consent-gated, 30-min dedupe) | done |
-| Traffic on Event and Space Tracking screens (views, visitors, registrations, registered per visitor, 30-day bars) | done |
-| Short links `api.unifesto.app/l/<code>` for events, spaces and (Apex) any unifesto.app page; per-link stats (clicks, visitors, referrers, devices, registrations) | done |
-| Apex › Platform › Traffic in the app | done |
-| Fix: push device "Link failed: 404 Target user does not exist" (create the OneSignal user, retry the transfer) | done |
-| Fix: "App version: Not reported yet" after social sign-up (report once the real token exists, retry on resume) | done |
-| Website: space page keeps utm tags when handing off to the app; AASA adds `/claim/*` and `/l/*` | moved → web (out of scope for this release) |
-| Device QA on iOS + Android build | planned |
-| Backend deploy: read the migration, drift check, `./deploy.sh backend` **before** the app build goes out | planned |
-| Short links on `unifesto.app/l/<code>` instead of the API host (Caddy route or web redirect) | moved → W10 |
+| # | Item | Status |
+|---|---|---|
+| 5.1 | EAS builds 43/44/33/34 errored at "Configure expo-updates": local fingerprint ≠ EAS (node_modules files rewritten by local prebuild). Fixed with `mobile/fingerprint.config.js` | done in 4.0.0 · [#12](https://github.com/unifesto-app/unifesto/pull/12) |
+| 5.2 | iOS build 35 rejected on upload, ITMS-90683 (missing `NSMotionUsageDescription`, also Location Always + Face ID). Keys restored with honest text; build 36 uploaded | done in 4.0.0 · [#13](https://github.com/unifesto-app/unifesto/pull/13) |
+| 5.3 | Device QA failures from 4.0.0 (26 Sep), itemised below as 5.3a–5.3p | in progress: a–d, g–j, l done |
+| 5.4 | App Review / Play review findings on 4.0.0 | planned: list pending |
+| 5.5 | Bump `version` to 4.0.5 in `mobile/app.config.js` + `mobile/package.json` | done |
+| 5.6 | Pre-build: grep linked iOS APIs vs purpose strings; `npx expo-doctor`; clean-checkout fingerprint matches EAS | planned |
+| 5.7 | `eas build --profile production --platform all` → `eas submit` | planned |
 
-Config (optional, defaults shown): `SHORT_LINK_BASE_URL=https://api.unifesto.app`, `TRAFFIC_HASH_SECRET` (falls back to `JWT_SECRET`).
+**5.3 · Issues found on 4.0.0 builds (iOS 36, Android 45)**
 
-Privacy: page views carry a random per-install id, no account id; clicks store an HMAC of IP + user agent, never the IP. Both fit the published labels (Product Interaction, not linked, analytics, consent-gated).
+Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** mobile native (store build only) · **W** web/space · **A** apex · **Y** you (console/config).
+
+| # | Issue | Root cause (found in code) | Fix | Layer | Status |
+|---|---|---|---|---|---|
+| 5.3a | Check-in: search shows only the team lead | `searchRegistrations` returns one row per registration with `attendee = lead`, even when a teammate matched; tapping it checks the whole registration in | Return one row per group member (seat) with `memberIndex`; member rows check in through `/checkin/group` for that one member | B + M | done |
+| 5.3b | Check-in: duplicate check-ins | Manual check-in of a group writes only the registration-level record, so the QR scan roster still shows every member as not in and they get checked in again; scan + manual race on the same person | Group results never use the whole-registration path (5.3a); treat the unique-key race as "already checked in" instead of an error | B + M | done |
+| 5.3c | Check-in: checked-in people missing from Recents | Recents read `GET /checkin/event/:id`, a Redis snapshot cached 1 h and **never invalidated on check-in**; group members aren't listed at all | New fresh `GET /checkin/event/:id/recent` (individual + member check-ins, per point); invalidate the snapshot on every check-in write | B + M | done |
+| 5.3d | Group member doesn't get the WhatsApp "Join group" card on their ticket | `getRegistrationWhatsappGroup` only allows the registration owner (lead); a claimed-seat member gets 403 | Allow the seat's claimer; per-seat joined state (`group_seats.whatsapp_joined_at`) | B (+migration) | done |
+| 5.3e | Registration: a field type doesn't work on mobile | Type mapping + inputs look right in code; need the exact type/screen | Reproduce, then fix | M | needs detail |
+| 5.3f | Space UTM tracking not working | Web space page opens the app with a bare `unifesto://space/…` (no `withStoredUtm`), so web-landed space campaigns are lost | Carry UTM through the space deep link (and every event link on the space page) | W | moved → web: mobile + backend only for now; fix kept on `backup/4.0.5-old-session` |
+| 5.3g | Views + UTM source not tracked (only registrations are) | There is no view tracking at all: only `EventRegistration.utm*` exists | Page-view ingest (event + space, web + app) with source/medium/campaign, deduped per visitor per day | B (+migration) + W + M | done (app + backend; web views dropped: mobile + backend only) |
+| 5.3h | Page analytics for Space and Event | Doesn't exist | Views, unique visitors, sources, view→registration conversion; Space web + mobile Space tab | B + W + M | done in the mobile app (event + space Tracking, Apex › Traffic); no Space web |
+| 5.3i | Short links for tracking links | Doesn't exist | `ShortLink` (code → event/space + utm), redirect route on `unifesto.app/l/:code`, click counts; UTM link builder + partner links create short links | B (+migration) + W + M | done on `api.unifesto.app/l/:code`; `unifesto.app/l/*` host, AASA `/l/*` and web builder moved → W10 |
+| 5.3j | Home "Happening near you" scroll isn't smooth | – | Rework the rail (snap + deceleration, memoised items, image sizing) | M | done |
+| 5.3k | Missing banner/logo shows a blue block | Fallback is a flat colour | Platform default image library (banners 4:3, logos 1:1) managed in a new Apex screen; apps pick one deterministically per event/space | B + A + W + M | planned |
+| 5.3l | Stack header needs a blurred background | Header is fully transparent | `expo-blur` (already installed) behind the shared stack header | M | done |
+| 5.3m | Push notifications: delete | No delete exists | Scope to confirm | ? | needs detail |
+| 5.3n | Apex mobile Status page should use UptimeRobot | Status reads our own `/health` only | Backend proxies UptimeRobot API (monitors, uptime %, incidents); key in env | B + M + Y | planned |
+| 5.3o | Widgets show no data; more widgets wanted | Up next is fed only from the Home tab (`useHomeData` → `syncUpNextWidget`); needs a device check of the App Group / Android task handler | Debug on device, then add widgets | N | needs detail |
+| 5.3p | Android: event location shows an empty grid | Google Maps grid = key rejected. Key is set in EAS, so most likely the key's Android restriction lacks the **Play app-signing SHA-1** (Play re-signs builds) | Add the Play app-signing SHA-1 + `com.unifesto.app` to the key in Google Cloud; confirm Maps SDK for Android is enabled | Y | planned |
+| 5.3q | Push device "Link failed: 404 Target user does not exist" in Apex | Transfer to an external id with no OneSignal user yet (new account, device never ran `login()`) | Create the OneSignal user, retry the transfer once | B | done |
+| 5.3r | "App version: Not reported yet" after social sign-up | Report fired while only a temp token existed, never retried until a cold start | Wait for the access token; retry on foreground resume (24h gate kept) | M | done |
+| 5.3s | Pull-to-refresh on event, space and ticket detail | – | Refresh control on the three detail screens | M | done |
+
+**Traffic and short links (5.3g–i) in detail**
+
+- Backend: `page_views`, `short_links`, `short_link_clicks` (migration `20260929120000_traffic`, additive). `POST /traffic/views` (anonymous install id, consent-gated in the app, 30-min dedupe); `events/:id/traffic`, `spaces/:id/traffic`, `admin/traffic`; short links for events (`event:edit`), spaces (`space:manage-settings`) and any unifesto.app page (`platform:manage`), redirect at `/l/:code` with `utm_medium=short_link&utm_campaign=<code>` so registrations credit through the existing utm capture.
+- Config (optional, defaults shown): `SHORT_LINK_BASE_URL=https://api.unifesto.app`, `TRAFFIC_HASH_SECRET` (falls back to `JWT_SECRET`).
+- Privacy: views carry a random per-install id, no account id; clicks store an HMAC of IP + user agent, never the IP. Both fit the published labels (Product Interaction, not linked, analytics, consent-gated).
+
+**Migrations in this release** (both additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929120000_traffic`.
+
+#### Release checklist (4.0.5)
+
+- [ ] C · Every 5.3/5.4 item fixed on the release branch (base `main`), tsc + bundles green in CI
+- [ ] C · Version bumped, pre-build checks (5.6) pass
+- [ ] Y · `eas build --profile production --platform all`, TestFlight / internal testing smoke of the failed items + section D
+- [ ] Y · `eas submit --profile production --platform all`
+- [ ] C · Record build numbers + fingerprint under Shipped; 4.1.0 OTA targets this runtime
 
 #### Log
 
-- **2026-09-29** · Backend traffic module + tests, verified against a local Postgres copy of the schema · `0879d8c`
-- **2026-09-29** · Mobile: beacon, Tracking traffic cards, Short links + stats, Apex Traffic, version 4.0.5 · `77291af`
-- **2026-09-29** · Backend: OneSignal link creates missing users before transferring · `4429621`
-- **2026-09-29** · Mobile: app version report waits for the access token, retries on resume · `08483af`
+- **2026-09-26** · 4.0.5 planned: store build that fixes what failed in 4.0.0. Build-pipeline failures (5.1, 5.2) already fixed before 4.0.0 shipped.
+- **2026-09-26** · 5.3a–d check-in per member, recents, WhatsApp card for members (+ migration); 5.3s pull-to-refresh; 5.3j/l header blur + rail. Committed on the other machine; recovered from `backup/4.0.5-old-session` and cherry-picked
+- **2026-09-29** · Work lost when the other machine ran out of credits, rebuilt: backend traffic module + tests (verified against a local Postgres copy of the schema), mobile beacon / Tracking traffic / Short links / Apex Traffic, 5.3q OneSignal link, 5.3r app version, rail end-snap fix, version 4.0.5 · PR [#14](https://github.com/unifesto-app/unifesto/pull/14)
 
 #### Shipped
 
-- iOS build: – · Android build: – · Backend deploy: – · OTA update: –
+- iOS build: –
+- Android build: –
+- Runtime fingerprint: –
 
 ---
 

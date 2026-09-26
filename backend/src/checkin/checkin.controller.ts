@@ -66,6 +66,7 @@ export class CheckinController {
       req.user.id,
       dto.registrationId,
       dto.checkinTypeId,
+      dto.memberIndex,
     );
   }
 
@@ -82,11 +83,30 @@ export class CheckinController {
     @Param('id') id: string,
     @Query('q') q: string,
     @Query('checkinTypeId') checkinTypeId?: string,
+    // 4.0.5+ clients: one row per group member instead of per registration.
+    @Query('members') members?: string,
   ) {
     return this.checkinService.searchRegistrations(
       req.user.id,
       id,
       q ?? '',
+      checkinTypeId,
+      members === '1' || members === 'true',
+    );
+  }
+
+  @Get('event/:id/recent')
+  @ApiOperation({ summary: 'Latest check-ins (people and group members), fresh from the DB' })
+  async getRecentCheckins(
+    @Request() req,
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('checkinTypeId') checkinTypeId?: string,
+  ) {
+    return this.checkinService.getRecentCheckins(
+      req.user.id,
+      id,
+      Math.min(Math.max(parseInt(limit ?? '', 10) || 10, 1), 50),
       checkinTypeId,
     );
   }
