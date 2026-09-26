@@ -128,7 +128,7 @@ Why major: first store build since the SDK 57 upgrade and the full mobile redesi
 | 0.3 | Drift check + deploy pending backend work (Node 22, npm audit fixes, ticket-type manage/reorder endpoints, sponsor logo, organiser cancel, migrations `user_last_seen_at` + `platform_config_stats_recipients`) | in progress: local checks pass, server drift check + deploy not run |
 | 0.4 | Device QA of everything "not on device": SDK 57 + iOS 27 scene delegate, Liquid Glass, nav, Home/Tickets/Profile, Space tab, Apex tab, offline check-in, widget, App Clip, OneSignal init fix | planned |
 | 0.5 | Force-update old builds: raise `minimumVersion` to 4.0.0 in the app-version config (`mobile/src/lib/appUpdate.ts` already enforces it) once 4.0.0 is live in both stores | planned |
-| 0.6 | App Store reviewer demo login (email OTP only today): fixed-OTP allowlisted demo account on the server | planned |
+| 0.6 | App Store reviewer demo login (email OTP only today): fixed-OTP allowlisted demo account on the server | done (already live: `test-user@unifesto.app`) |
 | 0.7 | Store prep: privacy labels (camera, location, notifications), new screenshots, `GOOGLE_MAPS_ANDROID_API_KEY` in EAS env, Apple portal: `com.unifesto.app.Clip` + App Group `group.com.unifesto.app` | planned |
 | 0.8 | `eas build --profile production --platform all` → `eas submit` | planned |
 | 0.9 | Registration questions: 7 new types, answer limits, conditional questions, server-side answer policy, private file uploads (details below) | done locally: needs migrate deploy, S3 bucket-policy check, rebuild backend + space, ships in the 4.0.0 store build |
@@ -185,6 +185,55 @@ Every question also gets **help text** (`helpText`), **answer limits** (`config`
 - Space web: question editor (all types, help text, limits, show if), add-attendee form renders every type, attendee detail shows Yes/No, rating, and a "View file" link. (Apex's copy of the ticket editor isn't routed anywhere since Apex went platform-only, so it was left alone.)
 - Mobile: question editor (`TicketQuestionScreen`), registration / claim / manage group / curator add render every type with show-if, limits and help text; file picking via `expo-document-picker` (**native module → store build**, fits 4.0.0).
 
+#### Release checklist (4.0.0)
+
+Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row.
+
+**A. Code ready**
+- [x] C · Untracked native/widget sources committed (`modules/clip-handoff/ios`, `src/widgets/{ios,android}`) and `.gitignore` narrowed to `/ios/` `/android/`
+- [x] C · CI status checks added and green on GitHub (backend tsc + tests + migration scan, mobile tsc + clean-checkout Android/iOS bundle, web/space/apex tsc)
+- [ ] Y · Turn on branch protection for `main`: require the **CI passed** check (Settings → Branches)
+- [x] C · 0.9 registration questions verified (backend 269/269, tsc everywhere) and committed · [#6](https://github.com/unifesto-app/unifesto/pull/6); merge after #5
+- [x] C · Expo patch bumps (10 packages) · in #6, Android + iOS bundles pass
+- [ ] C · `release/4.0.0` rebased on `main`; `npx expo-doctor` clean
+
+**B. Backend ready**
+- [ ] Y · S3 bucket policy: deny anonymous `GetObject` on `private/*` (statement in the 0.9 notes)
+- [ ] C · Drift check, then `./deploy.sh backend space` (migration `20260926160000_form_field_more_types`)
+- [x] C · Reviewer demo login (0.6): already live (`test-user@unifesto.app`, code in App Review notes). W1 follow-up: move the code to env, stop logging received OTPs
+- [ ] C · Smoke test after deploy: `/health`, OTP login, event page, registration with a new question type
+
+**C. Store setup**
+- [ ] Y · Apple portal: App ID `com.unifesto.app.Clip` + App Group `group.com.unifesto.app` on the app, widget and clip IDs (or cut App Clip, below)
+- [ ] Y · Play: service-account key for `eas submit` (`google-play-service-account.json` is missing locally; upload it to EAS instead: `eas credentials`)
+- [x] C · EAS production env checked: API URL, Cognito, Google IDs, OneSignal, Maps key, `GOOGLE_SERVICES_JSON` present
+- [ ] Y · App Store privacy labels: camera, microphone, photos, location (when in use), notifications, contact info (email/phone/name), identifiers (push), usage/crash data (Crashlytics)
+- [ ] Y · Play Data safety form, same data types as above
+- [ ] Y · Screenshots of the redesign (6.9", 6.5", iPad, Android phone)
+- [ ] C · "What's new" text + App Review notes (demo login, where features are, why each permission)
+
+**D. Device QA (0.4)**, one iPhone (iOS 26+) + one Android
+- [ ] Y · Login (email OTP, Google), logout, offline session restore
+- [ ] Y · Home, event detail (map), register free + paid (Razorpay test), ticket + QR, group invite/claim
+- [ ] Y · Registration questions: every new type, show-if, file upload
+- [ ] Y · Space tab: manage event, tickets, attendees, check-in scanner (online + offline queue)
+- [ ] Y · Apex tab (admin), judging, sponsor booth scan
+- [ ] Y · Push arrives (OneSignal external id linked), deep links open the right screen
+- [ ] Y · Widget shows "Up next"; App Clip opens an event (or cut)
+- [ ] Y · Light/dark, small phone, iPad layout
+
+**Cut line (decide by 27 Sep noon):** if App Clip or widget fails QA or the Apple portal isn't ready, remove its plugin from `app.config.js` and move it to 4.5.0.
+
+**E. Build + submit (you)**
+- [ ] Y · `eas build --profile production --platform all`
+- [ ] Y · Install the production builds via TestFlight / internal testing; 10-minute smoke of section D
+- [ ] Y · `eas submit --profile production --platform all`
+- [ ] C · Record build numbers + runtime fingerprint under Shipped; publish nothing OTA until the fingerprint is recorded
+
+**F. After approval**
+- [ ] C · Raise minimum version to 4.0.0 when live on **both** stores (0.5)
+- [ ] C · First OTA (4.1.0) at 20% rollout, check Crashlytics, then 100%
+
 #### Log
 
 - **2026-09-26** · Release plan written.
@@ -194,6 +243,7 @@ Every question also gets **help text** (`helpText`), **answer limits** (`config`
 - **2026-09-26** · Fixed config-validation spec (missing Razorpay env in fixture); backend 251/251 tests pass · `e830e00` · #3
 - **2026-09-26** · 0.3 drift check blocked (SSH to prod needs permission); new migrations reviewed, both additive.
 - **2026-09-26** · 0.9a Checkboxes fix on mobile (`CHECKBOX` with options → multi-select). 0.9 planned: new question types + answer/file policy.
+- **2026-09-26** · Found untracked build-breaking files (clip-handoff native module, widget sources) hidden by a bare `ios/` gitignore; fixed. Added CI status checks + release checklist.
 - **2026-09-26** · Decisions D1–D7 made (see Decisions). Scale moves to EKS; PM system built in Apex; books in Zoho Books.
 - **2026-09-26** · v4 scope set for 10 Oct: 7 releases (2 store builds: 4.0.0, 4.5.0) + workstreams W1–W10.
 - **2026-09-26** · Release train set: 4.0.0 on 27 Sep (store), 4.1.0 on 29 Sep (OTA), 4.2.0 on 1 Oct (OTA). Native freeze after 4.0.0 submit.
