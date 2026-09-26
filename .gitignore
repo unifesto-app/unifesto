@@ -41,3 +41,6 @@ coverage/
 
 # ── TypeScript build info ─────────────────────────────────
 *.tsbuildinfo
+
+# ── Company documents & brand assets (never commit) ───────
+/_company/
