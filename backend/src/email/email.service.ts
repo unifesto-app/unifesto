@@ -453,7 +453,9 @@ interface BankAccountRejectedData {
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly resend: Resend;
+  // Null when RESEND_API_KEY is unset: Resend 6 throws on a missing key, which
+  // would crash the whole app at boot instead of just disabling email.
+  private readonly resend: Resend | null;
   private readonly sesClient: SESClient;
   private readonly fromTransactional: string;
   private readonly fromBulk: string;
@@ -467,7 +469,7 @@ export class EmailService {
     if (!resendApiKey) {
       this.logger.warn('RESEND_API_KEY not configured. Transactional emails will not work.');
     }
-    this.resend = new Resend(resendApiKey);
+    this.resend = resendApiKey ? new Resend(resendApiKey) : null;
     const transactionalAddress = this.configService.get<string>(
       'EMAIL_FROM_TRANSACTIONAL',
       'no-reply@notify.unifesto.app',
@@ -528,6 +530,11 @@ export class EmailService {
     attachments?: Array<{ filename: string; content: Buffer }>,
     sender?: { fromName?: string | null; replyTo?: string | null },
   ): Promise<string | null> {
+    if (!this.resend) {
+      this.logger.warn(`Email to ${to} not sent: RESEND_API_KEY not configured`);
+      return null;
+    }
+
     try {
       // White-label: swap the display name in front of the same verified
       // sending address, and route replies to the organiser. Address/domain are
