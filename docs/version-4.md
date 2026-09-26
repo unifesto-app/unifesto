@@ -198,14 +198,14 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 - [ ] C · `release/4.0.0` rebased on `main`; `npx expo-doctor` clean
 
 **B. Backend ready**
-- [ ] Y · S3 bucket policy: deny anonymous `GetObject` on `private/*` (statement in the 0.9 notes)
-- [ ] C · Drift check, then `./deploy.sh backend space` (migration `20260926160000_form_field_more_types`)
+- [x] Y · S3 bucket policy: deny anonymous `GetObject` on `private/*` (applied 26 Sep; anonymous read of a `private/` test object returns 403)
+- [x] C · Drift check, then `./deploy.sh backend space` (migration `20260926160000_form_field_more_types` applied, 104 migrations)
 - [x] C · Reviewer demo login (0.6): already live (`test-user@unifesto.app`, code in App Review notes). W1 follow-up: move the code to env, stop logging received OTPs
-- [ ] C · Smoke test after deploy: `/health`, OTP login, event page, registration with a new question type
+- [x] C · Smoke test after deploy: 3 backend replicas healthy, `/health` all green (db, redis, storage), space 200, upload route live (401 anonymous). Registration with new question types = device QA (D)
 
 **C. Store setup**
-- [ ] Y · Apple portal: App ID `com.unifesto.app.Clip` + App Group `group.com.unifesto.app` on the app, widget and clip IDs (or cut App Clip, below)
-- [ ] Y · Play: service-account key for `eas submit` (`google-play-service-account.json` is missing locally; upload it to EAS instead: `eas credentials`)
+- [x] Y · Apple portal: App Clip ID + App Group created. Prebuild verified 4 signed targets: `com.unifesto.app` (groups `group.com.unifesto.app` + `.onesignal`, appclip link), `.Clip` (parent app, appclips domains, group), `.widgets` (group), `.OneSignalNotificationServiceExtension` (group `.onesignal`)
+- [x] Y · Play: service-account key for `eas submit` at `mobile/google-play-service-account.json` (gitignored), `play-console-analytics@` granted Release to production + testing tracks
 - [x] C · EAS production env checked: API URL, Cognito, Google IDs, OneSignal, Maps key, `GOOGLE_SERVICES_JSON` present
 - [ ] Y · App Store privacy labels: camera, microphone, photos, location (when in use), notifications, contact info (email/phone/name), identifiers (push), usage/crash data (Crashlytics)
 - [ ] Y · Play Data safety form, same data types as above
@@ -243,6 +243,7 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 - **2026-09-26** · Fixed config-validation spec (missing Razorpay env in fixture); backend 251/251 tests pass · `e830e00` · #3
 - **2026-09-26** · 0.3 drift check blocked (SSH to prod needs permission); new migrations reviewed, both additive.
 - **2026-09-26** · 0.9a Checkboxes fix on mobile (`CHECKBOX` with options → multi-select). 0.9 planned: new question types + answer/file policy.
+- **2026-09-26** · Backend + space deployed with 0.9 (registration questions) after the S3 `private/*` deny rule; migration `20260926160000` applied. 4.0.0 server side complete · [#7](https://github.com/unifesto-app/unifesto/pull/7)
 - **2026-09-26** · Found untracked build-breaking files (clip-handoff native module, widget sources) hidden by a bare `ios/` gitignore; fixed. Added CI status checks + release checklist.
 - **2026-09-26** · Decisions D1–D7 made (see Decisions). Scale moves to EKS; PM system built in Apex; books in Zoho Books.
 - **2026-09-26** · v4 scope set for 10 Oct: 7 releases (2 store builds: 4.0.0, 4.5.0) + workstreams W1–W10.
@@ -253,7 +254,7 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 
 - iOS build: –
 - Android build: –
-- Backend deploy: –
+- Backend deploy: 2026-09-26 18:00 IST (backend + space, 0.9)
 - OTA update: –
 
 ---
