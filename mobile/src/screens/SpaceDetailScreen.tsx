@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -153,7 +154,19 @@ export default function SpaceDetailScreen() {
           pointerEvents="none"
         />
       ) : null}
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 150 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={s.refreshing}
+            onRefresh={s.refresh}
+            tintColor={tokens.accent}
+            colors={[tokens.accent]}
+            progressViewOffset={topSpacing}
+          />
+        }
+      >
         <View style={{ paddingHorizontal: GUTTER }}>
           {/* Banner (4:3) with the 1:1 logo overlapping its lower edge */}
           <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: tokens.elevated }]}>

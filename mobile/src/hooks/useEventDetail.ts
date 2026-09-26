@@ -58,24 +58,29 @@ export function useEventDetail(eventId: string | undefined) {
   const [notifyBusy, setNotifyBusy] = useState(false);
   const [notifyDone, setNotifyDone] = useState(false);
 
-  const loadEvent = useCallback(async () => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  /** `silent`: a pull-to-refresh keeps the page on screen while it reloads. */
+  const loadEvent = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!eventId) {
       setLoading(false);
       return;
     }
     try {
-      // Reset everything when eventId changes so stale data never flashes.
-      setLoading(true);
-      setEvent(null);
-      setTickets([]);
-      setAgenda([]);
-      setSpeakers([]);
-      setPrizes([]);
-      setContacts([]);
-      setFaqs([]);
-      setOwnedTicketTypeIds(new Set());
-      setSponsorOptIns(new Set());
-      setSponsorPending(new Set());
+      if (!silent) {
+        // Reset everything when eventId changes so stale data never flashes.
+        setLoading(true);
+        setEvent(null);
+        setTickets([]);
+        setAgenda([]);
+        setSpeakers([]);
+        setPrizes([]);
+        setContacts([]);
+        setFaqs([]);
+        setOwnedTicketTypeIds(new Set());
+        setSponsorOptIns(new Set());
+        setSponsorPending(new Set());
+      }
 
       const eventData = await getEventBySlug(eventId).catch(() => getEventById(eventId));
       if (!eventData) {
@@ -119,11 +124,18 @@ export function useEventDetail(eventId: string | undefined) {
       }
     } catch (error) {
       if (__DEV__) console.error('Error loading event:', error);
-      setEvent(null);
+      // A failed refresh keeps what's on screen.
+      if (!silent) setEvent(null);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [eventId, user]);
+
+  const refresh = useCallback(() => {
+    setRefreshing(true);
+    void loadEvent({ silent: true });
+  }, [loadEvent]);
 
   useEffect(() => {
     loadEvent();
@@ -355,6 +367,8 @@ export function useEventDetail(eventId: string | undefined) {
     event,
     tickets,
     loading,
+    refreshing,
+    refresh,
     agenda,
     speakers,
     prizes,

@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -214,6 +215,15 @@ export default function EventDetailScreen() {
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 150 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={d.refreshing}
+            onRefresh={d.refresh}
+            tintColor={tokens.accent}
+            colors={[tokens.accent]}
+            progressViewOffset={topSpacing}
+          />
+        }
       >
         <View style={{ paddingHorizontal: GUTTER }}>
           {/* Banner (4:3), kept clean: date lives in the facts card below */}
