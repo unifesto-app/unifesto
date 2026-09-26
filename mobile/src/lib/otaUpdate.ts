@@ -1,6 +1,5 @@
 import { AppState, AppStateStatus } from 'react-native';
 import * as Updates from 'expo-updates';
-import { AppAlert } from '../components/ui/AppAlert';
 
 /**
  * Over-the-air (EAS Update) JS updates. The native side already checks once on
@@ -13,6 +12,8 @@ import { AppAlert } from '../components/ui/AppAlert';
 
 /** Don't hit the update server more than once per this window. */
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
+/** Background time after which a downloaded update is applied without asking. */
+const SILENT_RELOAD_AFTER_MS = 30 * 60 * 1000;
 
 let lastCheckAt = 0;
 let backgroundedAt: number | null = null;
@@ -22,27 +23,18 @@ function reloadNow() {
   Updates.reloadAsync().catch(() => {});
 }
 
-function promptReload() {
-  AppAlert.alert(
-    'Update ready',
-    'A new version of Unifesto has been downloaded. Restart to use it.',
-    [
-      { text: 'Later', style: 'cancel' },
-      { text: 'Restart', onPress: reloadNow },
-    ],
-    { cancelable: true },
-  );
-}
-
 /**
  * Decide what to do once an update has finished downloading while the app is
- * running. Doing nothing is valid: expo-updates applies it on the next cold start.
+ * running (policy D1 in docs/version-4.md). Doing nothing is valid: expo-updates
+ * applies it on the next cold start.
  *
  * @param backgroundedMs how long the app was in the background before this
  *   foreground check (0 when unknown).
  */
 function handleDownloadedUpdate(backgroundedMs: number): void {
-  // TODO(user): choose the policy. Available: reloadNow(), promptReload(), or return.
+  // Away long enough that nobody is mid-task (checkout, door scanning):
+  // swap in the new JS silently. Otherwise leave it for the next cold start.
+  if (backgroundedMs >= SILENT_RELOAD_AFTER_MS) reloadNow();
 }
 
 async function checkAndFetch(backgroundedMs: number) {

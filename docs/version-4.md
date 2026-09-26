@@ -1,0 +1,554 @@
+# Unifesto version 4
+
+The living plan and log for every 4.x release: major, minor and patch.
+One file for the whole major version. **Plan** says what we intend to ship;
+**Log** says what actually happened. Both get updated as work lands.
+
+Covers the mobile app (App Store / Play Store) and the backend + websites
+changes each mobile release depends on.
+
+## How to use this file
+
+- **New release:** add a section under [Releases](#releases), newest first, using the template at the bottom.
+- **Planning:** write items under the release's `Plan` with a status. Never delete a planned item; mark it `dropped` or `moved → 4.x.y` so the history stays honest.
+- **Doing:** when something lands, tick it and add a line to that release's `Log`: date, what, and the PR/commit.
+- **Shipping:** fill in `Shipped` (store build number, OTA update id, backend deploy time).
+
+### Version rules
+
+| Bump | When | Ships as |
+|---|---|---|
+| **Major** (5.0.0) | Breaking change: removed features, a forced update for everyone, a new app architecture | Store build |
+| **Minor** (4.1.0) | New features or new screens | Store build if native code changed, otherwise OTA |
+| **Patch** (4.0.1) | Fixes and copy/UI polish, no new features | OTA when JS-only, store build if native |
+
+- The version lives in `mobile/app.config.js` (`version`). Build numbers are auto-incremented by EAS (`appVersionSource: remote`).
+- OTA uses `runtimeVersion: fingerprint`. A JS update only reaches binaries with the same native code, so a release that adds a native module **must** go out as a store build.
+- Publish OTA with `npm run update:production` (from `mobile/`), never a bare `eas update`.
+- Backend: run the drift check and read every new migration before each `./deploy.sh` (it runs `migrate deploy` and copies local `backend/.env` over the server's).
+
+### Status legend
+
+`planned` · `in progress` · `done` · `blocked` · `dropped` · `moved → x.y.z`
+
+---
+
+## Releases
+
+**Goal: everything below done by Sat 10 Oct 2026.** App releases every 2 days. Web and backend work ships with them through `deploy.sh`, or on its own when there's no app part.
+
+| Version | Type | Theme | Target | Ships as | Built by | Status | Shipped |
+|---|---|---|---|---|---|---|---|
+| [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | in progress | – |
+| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
+| [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
+| [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
+| [4.4.0](#440--event-feedback-and-user-iam) | minor | Event feedback system, user-level IAM | **Mon 5 Oct** | OTA | OTA | planned | – |
+| [4.5.0](#450--notifications-store-build) | minor | Notification system (rich push, actions, in-app inbox, unified preferences) | **Wed 7 Oct** | **store build** | **you** | planned | – |
+| [4.6.0](#460--legal-content-and-v4-sign-off) | minor | New legal docs + re-acceptance, content, tracked links, v4 polish | **Fri 9 Oct** | OTA (4.5.0 runtime) | OTA | planned | – |
+| 4.x.y | patch | Urgent fixes | any day | OTA | OTA | as needed | – |
+| [4.7.0](#470--web-to-mobile-parity) | minor | Web to mobile parity | after 10 Oct | – | – | planned | – |
+
+**Sat 10 Oct: v4 sign-off.** Every item in this file is `done`, `dropped` or `moved → 4.7.0+` with a reason.
+
+### How releases ship
+
+| Kind | Ships as | Who | When |
+|---|---|---|---|
+| Patch (4.x.y) | OTA only | `npm run update:production` | any day, same-day fixes |
+| Minor, JS-only | OTA | `npm run update:production` | on its train date |
+| Minor with native changes | store build | **you**: `eas build --profile production --platform all` → `eas submit` | 4.5.0 only in v4 |
+| Major | store build | **you** | 4.0.0 only in v4 (the next major is 5.0.0) |
+
+**Train rules**
+1. **Native freeze windows.** Between store builds, don't touch native modules, config plugins or native parts of `app.config.js`. Window A: 27 Sep → 5 Oct (4.0.0 runtime). Window B: 7 Oct → 10 Oct (4.5.0 runtime). All native work for 4.5.0 lands on 5–6 Oct only. Before every OTA, run `eas fingerprint:compare` against that runtime's build. If it differs, the change waits for the next store build.
+2. **Cut scope, never the date.** Anything not QA'd by ship day is `moved →` to the next release.
+3. **2-day cycle.** Day 1: build. Day 2 morning: device QA, drift check, backend/web deploy. Day 2 evening: OTA publish (or store submit).
+4. **OTA before approval is fine.** It's stored against the fingerprint, and phones pick it up the first time they open the approved build.
+5. **Runtime handover at 4.5.0.** 4.6.0 is published for the 4.5.0 runtime only. When 4.5.0 is live on both stores, raise the minimum version to 4.5.0 so nobody stays on the 4.0.0 runtime and misses 4.6.0.
+6. **Staged OTA rollout** (from 4.1.0): publish at 20%, watch Crashlytics for 2 h, then 100%. The rollback runbook is in the OTA workstream (W3).
+
+### Day-by-day
+
+| Day | Date | App release | Platform workstreams |
+|---|---|---|---|
+| Sat | 26 Sep | 4.0.0 prep: 0.3, 0.6, 0.7, 0.9, start QA 0.4 | Decide D1–D7 below |
+| Sun | **27 Sep** | **4.0.0 submitted** (you) | W1 backend review starts |
+| Mon | 28 Sep | 4.1.0 build | W1 · W8 PM MVP starts · W2 EKS design + k6 scripts |
+| Tue | **29 Sep** | **4.1.0 OTA** · raise min version to 4.0.0 once live | W1 · W2 baseline load test on current prod-shaped copy · W8 |
+| Wed | 30 Sep | 4.2.0 build | W1 findings list · W2 EKS cluster + networking (Terraform) · W8 PM MVP |
+| Thu | **1 Oct** | **4.2.0 OTA** | W1 fixes · W2 manifests/Helm + autoscaling · W6 legal drafting starts · W8 |
+| Fri | 2 Oct | 4.3.0 build | W1 fixes · W2 staging on EKS · W4 notification orchestrator (backend) · W6 · W8 |
+| Sat | **3 Oct** | **4.3.0 OTA** | W2 · W4 · W6 · W7 content system · **W8 PM MVP live** |
+| Sun | 4 Oct | 4.4.0 build | W4 delivery logs + preferences · W6 drafts done · W7 · W9 finance |
+| Mon | **5 Oct** | **4.4.0 OTA** · **native window for 4.5.0 opens** | W2 load tests on EKS staging · W6 to lawyer · W7 · W8 · W9 · W10 tracked links |
+| Tue | 6 Oct | 4.5.0 native work + QA | W2 tuning · W4 · W6 lawyer review · W8 · W9 · W10 |
+| Wed | **7 Oct** | **4.5.0 submitted** (you) · native freeze B | W6 lawyer review · W9 · W10 |
+| Thu | 8 Oct | 4.6.0 build | **W2 2K sign-off + production cutover to EKS** · W6 final text · W7 legal docs in CMS · W10 |
+| Fri | **9 Oct** | **4.6.0 OTA** · raise min version to 4.5.0 once live | W6 publish + re-acceptance on · **W8 all modules live** · all workstreams close |
+| Sat | **10 Oct** | Patch day (4.6.x) | **v4 sign-off**: update this file, write 4.7.0+ backlog |
+
+### Decisions
+
+Decided 2026-09-26.
+
+| # | Decision | Answer | Effect on plan |
+|---|---|---|---|
+| D1 | OTA reload policy | **Reload silently if the app was away 30 min+, otherwise apply on next cold start** | Implemented in `otaUpdate.ts` for the 4.0.0 build |
+| D2 | Support routing | **Organiser first**: event questions go to the space inbox, organiser can escalate; Unifesto handles account/payment/app issues and sees everything | Organiser inbox is core to 4.2.0 |
+| D3 | Project management system | **Build inside Apex**: MVP (tasks, projects, deadlines calendar) by 3 Oct, remaining modules by 9 Oct | W8 rescheduled 28 Sep → 9 Oct |
+| D4 | Company books | **Zoho Books**; Apex syncs platform revenue monthly through its API | W9 |
+| D5 | Backlink system | **Both**: our tracked short links + external backlinks from Google Search Console | W10 |
+| D6 | Legal review | **Own lawyer** reviews 6–8 Oct. Company details received (see W6) | W6 |
+| D7 | Scale approach | **Move to autoscaling on Kubernetes (EKS) + ALB**; prove 2K on a **temporary staging copy** of the new stack before cutting production over. Claude writes Terraform + Helm in PRs; **you run `terraform apply`** | W2 rewritten, sign-off moves to 8 Oct |
+
+### Risks
+
+- **EKS by 8 Oct is the tightest item.** Cluster, networking, manifests, autoscaling, secrets and observability, then a production cutover, in about 9 days. Fallback if staging isn't green by 6 Oct: keep production on the current host, scale it up vertically for 10 Oct, and cut over to EKS right after sign-off. The cutover is done at a quiet hour with DNS TTL lowered a day before, and the old host stays up for instant rollback.
+- **Scope.** 14 workstreams in 14 days next to a store launch. If something has to give, cut in this order: W8 modules beyond the MVP, W9 revenue analytics, W10 external monitoring, 4.7.0 parity. Must-haves for 10 Oct: support, sponsor/partner, hackathon, feedback, notifications, 2K scale, legal.
+- **Two store reviews** (27 Sep, 7 Oct). A rejection costs about a day. 4.5.0 is submitted 3 days before sign-off for that reason.
+- **Legal needs a human lawyer.** Claude can draft against the DPDP Act 2023, the IT Rules 2021, the Consumer Protection (E-Commerce) Rules 2020, Razorpay and store policies, but the drafts aren't legal advice and must be reviewed before publishing.
+- **Load testing prod is off-limits.** W2 runs against a staging copy only.
+- **Force updates** must wait until the new build is live on both stores.
+
+---
+
+### 4.0.0 · Stabilize and ship
+
+**Type:** major · **Ships as:** store build (iOS + Android) + backend deploy · **Branch:** `release/4.0.0`
+
+Why major: first store build since the SDK 57 upgrade and the full mobile redesign. It adds OTA, and old builds must be forced to update (they still call the removed `/wallet` endpoint).
+
+#### Plan
+
+| # | Item | Status |
+|---|---|---|
+| 0.1 | Commit outstanding work, cut `release/4.0.0` | done |
+| 0.2 | Add `expo-updates` (fingerprint runtime, channels, foreground check) | done (reload policy open, see below) |
+| 0.3 | Drift check + deploy pending backend work (Node 22, npm audit fixes, ticket-type manage/reorder endpoints, sponsor logo, organiser cancel, migrations `user_last_seen_at` + `platform_config_stats_recipients`) | in progress: local checks pass, server drift check + deploy not run |
+| 0.4 | Device QA of everything "not on device": SDK 57 + iOS 27 scene delegate, Liquid Glass, nav, Home/Tickets/Profile, Space tab, Apex tab, offline check-in, widget, App Clip, OneSignal init fix | planned |
+| 0.5 | Force-update old builds: raise `minimumVersion` to 4.0.0 in the app-version config (`mobile/src/lib/appUpdate.ts` already enforces it) once 4.0.0 is live in both stores | planned |
+| 0.6 | App Store reviewer demo login (email OTP only today): fixed-OTP allowlisted demo account on the server | planned |
+| 0.7 | Store prep: privacy labels (camera, location, notifications), new screenshots, `GOOGLE_MAPS_ANDROID_API_KEY` in EAS env, Apple portal: `com.unifesto.app.Clip` + App Group `group.com.unifesto.app` | planned |
+| 0.8 | `eas build --profile production --platform all` → `eas submit` | planned |
+| 0.9 | Registration questions: 7 new types, answer limits, conditional questions, server-side answer policy, private file uploads (details below) | done locally: needs migrate deploy, S3 bucket-policy check, rebuild backend + space, ships in the 4.0.0 store build |
+| 0.9a | Fix: "Checkboxes" questions rendered as a single tick on mobile (answers saved `true`, options never shown) | done |
+
+**Cut line (27 Sep):** if not QA'd by Sunday, drop from the build rather than slip: App Clip (Apple portal setup), Up next widget. Everything else is required.
+
+**Open decisions**
+- OTA reload policy: `handleDownloadedUpdate()` in `mobile/src/lib/otaUpdate.ts` is a `TODO(user)`. Options are next launch (current no-op), prompt, or reload-now; a middle ground is to reload only if the app was backgrounded more than about 30 minutes.
+
+**0.9 · Registration questions**
+
+New question types (enum `FormFieldType`, migration `20260926160000_form_field_more_types`):
+
+| Type | Organiser sees | Attendee answers with | Stored as |
+|---|---|---|---|
+| `YES_NO` | Yes / No tick | one tick (consent, "need accommodation?") | `true` / `false` |
+| `URL` | Link | a web link | `https://…` string |
+| `DATE` | Date | native date picker | `YYYY-MM-DD` |
+| `FILE` | File upload | PDF / image / doc from the phone | `{ key, name, size, mime }` |
+| `SECTION` | Section heading | nothing (a heading + note that splits a long form) | never stored |
+| `STATE` | State / UT | pick from the 36 Indian states and UTs | the name, e.g. `Telangana` |
+| `RATING` | Rating | 1 to 5 (or 1 to 10) | integer |
+
+Every question also gets **help text** (`helpText`), **answer limits** (`config`) and an optional **show-if condition** (`showIf`).
+
+- Limits: text min/max length · number min/max · date earliest/latest · checkboxes min/max picks · rating scale 5 or 10 · file types (PDF, image, doc) and max size (1 to 10 MB, default 5).
+- Show if: "show this only when question X is one of A, B". X must be a choice question (Dropdown, Single choice, Checkboxes, Yes/No, State/UT) that comes **earlier** on the same ticket. If X is hidden, anything that depends on it is hidden too.
+
+**Answer policy (backend is the source of truth, `registrations/form-answers.util.ts`)**
+- The server checks every answer on self-registration, RSVP, checkout, waitlist, seat claim, group roster edits and curator manual add. Before this, it saved whatever the client sent.
+- Required: enforced only for questions that are visible. Attendee paths enforce it. Curator manual add and a lead editing teammates check answer types but **don't** force required answers, because the person adding may not know them.
+- Hidden answers (show-if false) and `SECTION` answers are dropped before saving, so exports never show stale answers.
+- Keys that aren't question ids (e.g. `gender`, legacy keys) pass through untouched.
+- Choice answers must be one of the options. Legacy `true` on a "Checkboxes" question is still accepted until 0.5 forces old builds to update.
+- Changing a question's **type** is blocked once anyone has registered on that ticket, because old answers would stop matching. Label, options, limits and required can still change, and a removed option keeps old answers as they are.
+
+**File policy**
+- Upload: `POST /events/:id/form-fields/:fieldId/upload` (signed in, throttled). Only for a `FILE` question, and only while the event takes registrations or when the uploader can manage attendees. The server checks the file's real type against the question's allowed types, not just its name.
+- Stored **privately** under `private/form-uploads/{eventId}/{fieldId}/{userId}/{uuid}.{ext}` and never exposed as a public URL. An answer's file key must be one the registering person uploaded for that question.
+- Viewing: `GET /events/:id/form-uploads/url?key=` returns a signed link valid for 5 minutes, only to the uploader or someone with `event:manage-attendees` (Crew can't open files).
+- Retention: a daily job deletes an event's uploaded files **180 days after it ends** and stamps `events.form_uploads_purged_at`. Unused uploads (checkout abandoned) go at the same time.
+- **Deploy step:** the S3 bucket policy must not allow public `GetObject` on `private/*`. Check this before turning uploads on.
+
+**To ship 0.9**
+1. Drift check, then `migrate deploy` (`20260926160000_form_field_more_types`: additive enum values + 3 nullable columns + 1 nullable column on `events`).
+2. S3: confirm the bucket policy excludes `private/*` from public reads (keys are unguessable UUIDs, but they must not be public).
+3. Rebuild backend + space. Old app builds keep working: they ignore unknown types (shown as text) and legacy `true` on Checkboxes is still accepted.
+4. Mobile needs the store build (new native module `expo-document-picker`), which 4.0.0 already is.
+5. QA on device: every type in registration, claim, manage group and curator add; show-if hiding; required Yes/No; file upload + open from attendee detail; CSV import skips sections/files.
+
+**Surfaces**
+- Backend: schema + migration, DTO validation of `config` / `showIf`, answer validator (+ specs), upload + signed URL + purge job, exports and CSV import aware of new types (sections skipped, files by name, Yes/No).
+- Space web: question editor (all types, help text, limits, show if), add-attendee form renders every type, attendee detail shows Yes/No, rating, and a "View file" link. (Apex's copy of the ticket editor isn't routed anywhere since Apex went platform-only, so it was left alone.)
+- Mobile: question editor (`TicketQuestionScreen`), registration / claim / manage group / curator add render every type with show-if, limits and help text; file picking via `expo-document-picker` (**native module → store build**, fits 4.0.0).
+
+#### Log
+
+- **2026-09-26** · Release plan written.
+- **2026-09-26** · Ticket management (hidden tiers, reorder, sale window, questions, restrictions), Up next widget, iOS App Clip, Home workspace panels, ImageCropper · [#2](https://github.com/unifesto-app/unifesto/pull/2) (merged)
+- **2026-09-26** · `release/4.0.0` cut.
+- **2026-09-26** · EAS Update with fingerprint runtime, `update:*` scripts, foreground check · `e004c5d` · [#3](https://github.com/unifesto-app/unifesto/pull/3) (merged)
+- **2026-09-26** · Fixed config-validation spec (missing Razorpay env in fixture); backend 251/251 tests pass · `e830e00` · #3
+- **2026-09-26** · 0.3 drift check blocked (SSH to prod needs permission); new migrations reviewed, both additive.
+- **2026-09-26** · 0.9a Checkboxes fix on mobile (`CHECKBOX` with options → multi-select). 0.9 planned: new question types + answer/file policy.
+- **2026-09-26** · Decisions D1–D7 made (see Decisions). Scale moves to EKS; PM system built in Apex; books in Zoho Books.
+- **2026-09-26** · v4 scope set for 10 Oct: 7 releases (2 store builds: 4.0.0, 4.5.0) + workstreams W1–W10.
+- **2026-09-26** · Release train set: 4.0.0 on 27 Sep (store), 4.1.0 on 29 Sep (OTA), 4.2.0 on 1 Oct (OTA). Native freeze after 4.0.0 submit.
+- **2026-09-26** · 0.9 built (not committed): backend answer validator + policy on all 6 save paths, question-definition checks, type-lock after registrations, private uploads + 5-min view links + 180-day purge job, exports/CSV aware; space editor + inputs + file links; mobile editor + all inputs (date picker, state sheet, rating, file picker) + show-if everywhere. Backend 269/269 tests (18 new), tsc clean in backend/space/mobile, iOS bundle exports. Not yet seen on device or in a browser.
+
+#### Shipped
+
+- iOS build: –
+- Android build: –
+- Backend deploy: –
+- OTA update: –
+
+---
+
+### 4.1.0 · Hackathon event day
+
+**Type:** minor · **Target:** Tue 29 Sep · **Ships as:** OTA (4.0.0 runtime) + backend/web/space deploy
+
+Already built: backend (rounds, panels, judgments, awards), space curator console (7 tabs), mobile judge/mentor scoring, mobile participant view + push. The `hack` app has been removed.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Mobile curator console for event day: open/close rounds, advance/eliminate, judging progress tracker, publish awards (setup stays on web) | planned |
+| Public web winners / bracket page (hackathon plan phase 5) | planned |
+| OTA: 20% staged rollout for this release (reload policy already in 4.0.0) | planned |
+| Sponsor/partner quick win: fix curators seeing Sponsors nav on web but getting 403 | planned (from 4.3.0) |
+| Sponsor/partner quick win: mobile `partnering` section in `spaceSections.ts` (partners find their stats in the Space tab) | planned (from 4.3.0) |
+| Force-update old builds (4.0.0 step 0.5), once 4.0.0 is live in both stores | planned |
+| Project submissions (repo, demo, deck) for entrants | moved → 4.3.0 |
+
+#### Log
+
+_Nothing yet._
+
+---
+
+### 4.2.0 · Support system complete
+
+**Type:** minor · **Target:** Thu 1 Oct · **Ships as:** OTA (`expo-document-picker` + `expo-image-picker` already ship in 4.0.0, so attachments are JS-only) + backend/apex/space deploy
+
+Today: `SupportTicket` / `SupportMessage` exist, and there are space tickets on mobile plus Apex inboxes on web and mobile. But `support.service.ts` sends **no** notification, attendees only get mailto/WhatsApp, and there are no attachments, event context or unread state.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Push + email on new ticket, reply and status change (both directions) | planned |
+| Attachments via `StorageService` | planned |
+| Optional `eventId` / `registrationId` context on tickets | planned |
+| Unread state (per-side `lastReadAt`) + badges | planned |
+| Mobile attendee: "Get help" from ticket detail (pre-filled), "My requests" under Profile → Support | planned |
+| Canned replies (Apex-managed), first-response + resolution time, SLA timer by priority | planned (back in scope) |
+| Organiser inbox in space web + mobile Space tab; organiser can escalate to Unifesto (D2: organiser first) | planned |
+| Auto-close RESOLVED tickets after 7 days without a reply; satisfaction rating on close | planned |
+| Web help: `unifesto.app/help` contact form creates a ticket (signed-in) | planned |
+| Routing (D2): organiser first; account, payment and app issues go straight to Unifesto | decided |
+
+#### Log
+
+_Nothing yet._
+
+---
+
+### 4.3.0 · Sponsor, partner and hackathon complete
+
+**Type:** minor · **Target:** Sat 3 Oct · **Ships as:** OTA + backend/space/web deploy
+
+Today: the sponsor portal is at `space.unifesto.app/sponsor` and in the mobile Space tab (`sponsoring`), but sponsors can only be invited if they already have an account. Partners have mobile `/partner` stats only (reached from Profile), no web portal, and are only linked if their account already exists.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Shared collaborator invite: email → find-or-create → invite email → claim on first OTP login (INVITED → ACTIVE) | planned |
+| Space web `/partner` route group, modelled on `/sponsor` | planned |
+| Space landing sends sponsor-only / partner-only users to their portal instead of `no-access` | planned |
+| Sponsor portal: lead notes + status, CSV export, per-event booth stats | planned |
+| Partner: payout-free stats per link, share kit (tracked link + QR), multiple links per partner | planned |
+| Mobile: `partnering` section in `spaceSections.ts` | moved → 4.1.0 |
+| Fix: curators see Sponsors nav on web but get 403 (capability is space-scoped) | moved → 4.1.0 |
+| Hackathon: project submissions (title, repo, demo, deck, team) per entrant, submission deadline per round, judges see submissions while scoring | planned (from 4.1.0) |
+| Hackathon: certificates for winners/participants from awards (reuses certificate system) | planned |
+
+#### Log
+
+_Nothing yet._
+
+---
+
+### 4.4.0 · Event feedback and user IAM
+
+**Type:** minor · **Target:** Mon 5 Oct · **Ships as:** OTA + backend/space/apex deploy
+
+Event feedback doesn't exist yet (no model or module).
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Feedback model: per-event form (overall 1–5, NPS 0–10, organiser questions reusing the 0.9 question types), one response per attendee | planned |
+| Trigger: push + email to checked-in attendees 2 h after event end, one reminder at 48 h, closes at 7 days | planned |
+| Mobile: feedback screen from push + ticket detail; web fallback link in email | planned |
+| Space web + mobile Space tab: results (averages, NPS, distribution, comments), CSV export | planned |
+| Public event page: average rating once N≥5 responses (opt-in per space) | planned |
+| User IAM: per-user capability overrides (grant/deny on top of role), suspend/ban with reason + expiry, force logout (revoke refresh tokens) | planned |
+| User IAM: audit log for every permission, role and status change (who, what, when), shown in Apex user detail | planned |
+| User IAM: Apex + mobile Apex user detail controls | planned |
+| OTA: in-app "What's new" sheet after an update applies | planned |
+
+#### Log
+
+_Nothing yet._
+
+---
+
+### 4.5.0 · Notifications (store build)
+
+**Type:** minor · **Target:** Wed 7 Oct · **Ships as:** **store build, built and submitted by you** · Native work only on 5–6 Oct
+
+The backend orchestrator (W4) lands first. This release carries the native parts.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| iOS Notification Service Extension: images in push | planned |
+| Push action buttons (e.g. "View ticket", "Reply") via notification categories | planned |
+| In-app notification inbox (bell on Home), read/unread, backed by the delivery log | planned |
+| Unified preferences screen: category × channel (push / email / WhatsApp) grid, quiet hours | planned |
+| Anything native moved out of 4.0.0 (widget / App Clip if cut) | planned if cut |
+| After approval on both stores: raise minimum version to 4.5.0 | planned |
+
+#### Log
+
+_Nothing yet._
+
+---
+
+### 4.6.0 · Legal, content and v4 sign-off
+
+**Type:** minor · **Target:** Fri 9 Oct · **Ships as:** OTA (4.5.0 runtime only) + web/apex deploy
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Re-acceptance of the new Terms/Privacy on next launch (versioned; blocks until accepted), same on web and space | planned |
+| Legal links in app point to the new versioned documents | planned |
+| Tracked-link surfaces in the Space tab (create/share/QR + clicks), from W10 | planned |
+| v4 polish + bug bash from the 4.x patch backlog | planned |
+
+#### Log
+
+_Nothing yet._
+
+---
+
+### 4.7.0 · Web to mobile parity
+
+**Type:** minor · **Target:** after 10 Oct (not in the 10 Oct list)
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Space certificates + reports | planned |
+| Space sessions | planned |
+| Space email campaigns | planned |
+| Space IAM | planned |
+| Event editing still web-only: recurrence, sub-events, Places venue search, ticket sale dates, custom forms | planned |
+
+Stays on web on purpose: plans, subscriptions, logs, blog, careers, admin event create.
+
+#### Log
+
+_Nothing yet._
+
+---
+
+## Platform workstreams
+
+Work that isn't an app release. It ships through `deploy.sh` (drift check first) or lives outside the codebase. Each workstream has an owner-facing done-when line and its own log.
+
+### W1 · Backend system review · 27 Sep → 2 Oct
+
+| Item | Status |
+|---|---|
+| Security: round 4 of the endpoint guard audit (all routes vs `@Can`/guards), input validation, rate limits per route, secrets in env only | planned |
+| Correctness: money paths (payments, refunds, payouts, reconciliation) re-read end to end; idempotency on webhooks | planned |
+| Reliability: error handling and silent catches, cron jobs safe with 3 replicas (single-runner locks), graceful shutdown | planned |
+| Data: missing indexes (from slow-query log), N+1 queries, unbounded `findMany`, migrations history sanity | planned |
+| Observability: structured logs, request ids, error alerting to the team, `/health` depth | planned |
+| Code health: dead modules (referral, wallet leftovers), test gaps on critical services | planned |
+
+**Done when:** findings list with severity is in this file, every high/critical is fixed and deployed, the rest scheduled.
+
+### W2 · 2K+ concurrent users on autoscaling (EKS) · 28 Sep → 8 Oct
+
+Today: 1 EC2 host (8 GB), 3 API replicas × 1 GB behind Caddy, RDS Postgres, Redis. It has never been load-tested. Decision D7: move to Kubernetes (EKS) + ALB with autoscaling.
+
+| Item | Status |
+|---|---|
+| Infrastructure as code (Terraform): VPC/subnets, EKS cluster, managed node groups + Karpenter, ALB via AWS Load Balancer Controller, ECR | planned |
+| Workloads: Helm charts for backend, web, space, apex; `backend-migrate` as a pre-deploy Job (runs once, like the compose one-shot) | planned |
+| Autoscaling: HPA on CPU + requests per pod, warm minimum for event-launch spikes, Karpenter for nodes | planned |
+| Config: secrets from AWS Secrets Manager (External Secrets), no `.env` rsync; replaces the `deploy.sh` .env overwrite risk | planned |
+| Routing: ALB ingress + ACM certs for api/space/apex/unifesto.app (replaces Caddy), health checks on `/health` | planned |
+| Cron safety: jobs run once cluster-wide (leader lock or K8s CronJobs), not once per pod | planned |
+| Database: PgBouncer (or RDS Proxy) so pods × connections stay under RDS max; slow-query fixes | planned |
+| Caching: Redis for hot public reads (event page, lists), CloudFront for images and static assets | planned |
+| Queue heavy work (emails, push fan-out, PDF/cert rendering) off the request path | planned |
+| CI/CD: build → ECR → Helm upgrade, replacing `deploy.sh` | planned |
+| Observability: CloudWatch Container Insights or Prometheus/Grafana, alerts on p95, 5xx, pod restarts, DB connections | planned |
+| k6 scripts for the real peaks: browse + event page, OTP login, registration + checkout, check-in scanning, live leaderboard | planned |
+| Baseline on a prod-shaped copy of today's setup (29 Sep), then full test on the EKS staging copy (5–7 Oct), torn down after | planned |
+| Production cutover: lower DNS TTL a day before, quiet-hour switch, old host kept for rollback for 48 h | planned |
+
+**Done when:** 2,000 concurrent virtual users on the peak mix at p95 < 500 ms and < 0.5% errors on the EKS staging copy, autoscaling observed up and back down, and production running on the same setup.
+
+### W3 · OTA system complete · 27 Sep → 5 Oct
+
+| Item | Status |
+|---|---|
+| expo-updates + fingerprint runtime + channels + foreground check | done (0.2) |
+| Reload policy (D1): reload silently if away 30 min+, else next cold start | done (in the 4.0.0 build) |
+| Staged rollouts (`--rollout-percentage`), promote to 100% after 2 h | planned (4.1.0) |
+| Rollback runbook: `eas update:republish` previous group, or roll back to embedded | planned |
+| Fingerprint check before publish (script in `mobile/`, fails if it differs from the store build) | planned |
+| Update id + runtime shown in Profile → About and sent with support tickets / Crashlytics | planned |
+| In-app "What's new" | planned (4.4.0) |
+
+**Done when:** every OTA in v4 went through staged rollout and the runbook was tested once on the preview channel.
+
+### W4 · Email + WhatsApp + push notification system · 2 Oct → 7 Oct
+
+| Item | Status |
+|---|---|
+| One `notify(user, event, data)` orchestrator: picks channels from user preferences + category, falls back (push → WhatsApp → email) by criticality | planned |
+| Template registry: one template per event per channel, versioned, previewable in Apex | planned |
+| Delivery log per message (queued / sent / delivered / opened / failed + provider id), retries with backoff, dedup keys | planned |
+| Preferences: category × channel, quiet hours (IST), transactional vs marketing split (marketing needs opt-in) | planned |
+| Provider webhooks: SES bounces/complaints → suppress, WhatsApp status callbacks, OneSignal delivery | planned |
+| Apex: per-user message history, failure dashboard | planned |
+| Native parts (rich push, actions, inbox UI) | planned (4.5.0) |
+
+**Done when:** every existing send path goes through the orchestrator and shows up in the delivery log.
+
+### W5 · IAM for users · 2 Oct → 5 Oct
+
+Backend and Apex side of 4.4.0: per-user overrides in `can()` (user deny > user grant > role), suspension enforcement in `JwtAuthGuard`, token revocation, audit log table.
+
+**Done when:** a suspended user is locked out within one request on every client, and every change is in the audit log.
+
+### W6 · Legal rewrite · 1 Oct → 9 Oct
+
+Today: `unifesto.app/terms`, `/privacy`, `/refund` exist as static pages.
+
+| Document | Status |
+|---|---|
+| Terms of Service (attendees) | planned |
+| Organiser / Space Agreement (fees, payouts, responsibilities, content) | planned |
+| Privacy Policy (DPDP Act 2023: notice, consent, rights, grievance officer, retention, processors) | planned |
+| Refund & Cancellation Policy (matches the real two-stage refund flow, base amount only) | planned |
+| Acceptable Use / Community Guidelines (ties to content reports) | planned |
+| Sponsor & Partner terms (lead data use, consent) | planned |
+| Cookie Policy (web) | planned |
+| Grievance redressal page (IT Rules 2021) | planned |
+| Versioned legal documents: stored with version + effective date, change log, acceptance recorded per user | planned |
+
+Flow: drafts by 4 Oct → your lawyer 5–8 Oct (D6).
+
+Company details for every document:
+- **Legal name:** Unifesto Private Limited
+- **Registered address:** C/O Malla Reddy Education, Sy. No. 640/P and 641/P, Quthbullapur Mandal, Hyderabad, Telangana 500100, India
+- **Grievance officer:** Vinay Buddolla · vinay@unifesto.app · +91 93460 95136 → publish 9 Oct with re-acceptance (4.6.0).
+
+**Done when:** a lawyer has signed off on every document and they're live with acceptance tracking.
+
+### W7 · Content system (blogs, careers, pages) · 3 Oct → 8 Oct
+
+Today: blog (Markdown, DRAFT/PUBLISHED, Apex CRUD) and careers (mailto applications, no records).
+
+| Item | Status |
+|---|---|
+| Blog: authors, tags/categories, scheduled publish, cover + OG image, reading time, related posts | planned |
+| SEO: sitemap.xml (events, spaces, blog, careers), JSON-LD (Article, Event, JobPosting), RSS, canonical URLs | planned |
+| Careers: application form with resume upload (private storage), applicant records + status pipeline in Apex, email to applicant | planned |
+| Pages: legal documents (W6) and help articles managed in Apex, versioned | planned |
+
+### W8 · Unifesto project management system (in Apex) · 28 Sep → 9 Oct
+
+Decision D3: built inside Apex (web + mobile Apex tab), platform-ADMIN only at first. Covers everything in the company, not only code.
+
+| Item | Status |
+|---|---|
+| **MVP (by 3 Oct):** projects, tasks (owner, due date, priority, status, labels, comments, attachments), board + list views, "My work", deadlines calendar | planned |
+| Releases module mirroring this file (release → items → status), linked to tasks | planned |
+| Partnerships / CRM: organisations, contacts, pipeline stages, next action + date, linked to spaces and sponsors on the platform | planned |
+| Finance: expenses and bills tracking, compliance calendar (GST, TDS, ROC filings), links to Zoho Books entries (W9) | planned |
+| Legal: contracts register (party, type, start/end, renewal reminder, file), filings and deadlines | planned |
+| Hiring: roles → candidates pipeline (shares careers applications from W7) | planned |
+| Content calendar: blog, social, newsletters, linked to blog posts | planned |
+| Reminders: push/email for due and overdue tasks (through W4), Monday weekly digest | planned |
+| Access: Apex-only for now; per-module permissions through user IAM (W5) later | planned |
+
+**Done when:** all modules live in Apex by 9 Oct and this plan's open items are tracked there.
+
+### W9 · Finance tracking & management · 4 Oct → 9 Oct
+
+Platform money is already tracked (payments, refunds, payouts, reconciliation, financials). Missing: tax and company views.
+
+| Item | Status |
+|---|---|
+| Platform ledger: every fee, refund, payout and gateway charge as ledger entries; monthly close report | planned |
+| GST: tax invoices for platform fees to organisers, GSTR-ready monthly export; TDS/TCS check with CA | planned |
+| Revenue analytics in Apex: GMV, net revenue, take rate, per space/month, cohort | planned |
+| Company books in **Zoho Books** (D4): expenses, vendor bills, GST filings; Apex pushes monthly platform revenue through the Zoho API; runway/burn summary pulled back into Apex | planned |
+
+### W10 · Backlinks + tracking · 5 Oct → 9 Oct
+
+Today: UTM capture + partner links exist (registration sources). No short links or referrer tracking on web.
+
+| Item | Status |
+|---|---|
+| Scope (D5): both, our tracked links and external backlinks | decided |
+| Tracked short links `unifesto.app/l/<code>` for any URL (event, space, blog, page) with owner, campaign, QR | planned |
+| Click tracking: clicks, unique visitors, referrer, device, country, conversions (registration) | planned |
+| Web referrer capture on every landing (who links to us), rolled up by domain | planned |
+| External backlink monitoring: Google Search Console API import (linking sites, top pages), weekly | planned |
+| Apex dashboard + space dashboard for their own links | planned |
+
+---
+
+## Release template
+
+```markdown
+### 4.x.y · Title
+
+**Type:** major | minor | patch · **Ships as:** store build | OTA | backend only · **Branch:** release/4.x.y
+
+Why: one or two lines.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| … | planned |
+
+#### Log
+
+- **YYYY-MM-DD** · what happened · PR / commit
+
+#### Shipped
+
+- iOS build: – · Android build: – · Backend deploy: – · OTA update: –
+```
