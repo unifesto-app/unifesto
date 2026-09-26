@@ -54,6 +54,14 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
+    # Dummy values only: some services build Razorpay/S3 clients in their
+    # constructors from process.env. Locally these come from backend/.env.
+    env:
+      RAZORPAY_KEY_ID: rzp_test_ci
+      RAZORPAY_KEY_SECRET: ci-not-a-secret
+      RAZORPAY_WEBHOOK_SECRET: ci-not-a-secret
+      AWS_REGION: ap-south-1
+      S3_BUCKET_NAME: ci-bucket
     defaults:
       run:
         working-directory: backend
