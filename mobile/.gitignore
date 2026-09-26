@@ -52,8 +52,10 @@ coverage/
 
 # Build
 build/
-android/
-ios/
+# Top-level prebuild output only: a bare ios/ or android/ also matched
+# modules/*/ios, so local Expo modules' native code was never committed.
+/android/
+/ios/
 
 # Misc
 .expo-shared/
