@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { API_URL } from '../constants';
 import { getToken, refreshAccessToken } from './helpers';
 import type { Result } from './manageEvent';
@@ -10,18 +11,22 @@ export interface UploadFile {
 }
 
 /**
- * POST a multipart form: one file plus plain text fields. Goes around
- * makeAuthenticatedRequest on purpose: that helper forces a JSON
- * Content-Type, and multipart needs React Native to write its own header with
- * the boundary. Retries once after a silent token refresh, like the helper.
+ * POST a multipart form: one file plus plain text fields. Uses the native
+ * uploader (expo-file-system `uploadAsync`) rather than fetch + FormData: on
+ * iOS the RN `{ uri, name, type }` FormData file never left the device
+ * ("No connection" with nothing in api_logs), while Android's okhttp coped.
+ * Retries once after a silent token refresh, like makeAuthenticatedRequest.
  */
 export async function postMultipart<T>(path: string, file: UploadFile, fields: Record<string, string> = {}): Promise<Result<T>> {
-  const send = (token: string) => {
-    const body = new FormData();
-    for (const [k, v] of Object.entries(fields)) body.append(k, v);
-    body.append(file.field, { uri: file.uri, name: file.name, type: file.type } as unknown as Blob);
-    return fetch(`${API_URL}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body });
-  };
+  const send = (token: string) =>
+    FileSystem.uploadAsync(`${API_URL}${path}`, file.uri, {
+      httpMethod: 'POST',
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: file.field,
+      mimeType: file.type,
+      parameters: fields,
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
   try {
     const token = await getToken();
@@ -31,12 +36,21 @@ export async function postMultipart<T>(path: string, file: UploadFile, fields: R
       const fresh = await refreshAccessToken();
       if (fresh) res = await send(fresh);
     }
-    const json = await res.json().catch(() => null);
-    if (res.ok) return { ok: true, data: json as T };
-    const message: string = (Array.isArray(json?.message) ? json.message[0] : json?.message) || 'Upload failed';
+    let json: any = null;
+    try {
+      json = JSON.parse(res.body);
+    } catch {
+      // non-JSON body (proxy error page)
+    }
+    if (res.status >= 200 && res.status < 300) return { ok: true, data: json as T };
+    const message: string =
+      (Array.isArray(json?.message) ? json.message[0] : json?.message) ||
+      (res.status === 413 ? 'Image is too large' : `Upload failed (${res.status})`);
     return { ok: false, denied: res.status === 403, message };
-  } catch {
-    return { ok: false, denied: false, message: 'No connection' };
+  } catch (e) {
+    if (__DEV__) console.warn('[upload] failed', path, e);
+    const detail = e instanceof Error && e.message ? e.message : 'No connection';
+    return { ok: false, denied: false, message: detail };
   }
 }
 

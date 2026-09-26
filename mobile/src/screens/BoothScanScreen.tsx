@@ -13,13 +13,18 @@ import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanRes
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 
 // Same rhythm as the door scanner: ignore the same QR for a moment, and keep
 // problems on screen longer than successes.
 const RESCAN_COOLDOWN = 2500;
 const SHOW_MS = { success: 2200, already: 3000, error: 4000 } as const;
 
-const GLASS = 'rgba(0, 0, 0, 0.5)';
+// Camera-overlay controls: clear Liquid Glass with a dark tint (white text stays
+// legible over any frame); a flat dark wash where Liquid Glass isn't available.
+const CAMERA_TINT = 'rgba(0, 0, 0, 0.3)';
+const GLASS = LIQUID_GLASS ? 'transparent' : 'rgba(0, 0, 0, 0.5)';
+const CameraGlass = () => <GlassFill variant="clear" tint={CAMERA_TINT} />;
 const WHITE = '#ffffff';
 const WHITE_DIM = 'rgba(255, 255, 255, 0.7)';
 
@@ -141,6 +146,7 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
 
       <View style={[styles.top, { top: topSpacing }]}>
         <View style={styles.pill}>
+          <CameraGlass />
           <UsersThree size={14} color={WHITE} weight="fill" />
           <Text style={styles.pillText}>
             {captured ? `${captured} new lead${captured === 1 ? '' : 's'} this session` : 'Scan attendee tickets'}
@@ -167,9 +173,11 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
             accessibilityLabel="Flashlight"
             style={({ pressed }) => [styles.tool, { backgroundColor: torch ? WHITE : GLASS, transform: [{ scale: pressed ? 0.95 : 1 }] }]}
           >
+            {!torch ? <CameraGlass /> : null}
             <Flashlight size={22} color={torch ? '#000000' : WHITE} weight={torch ? 'fill' : 'regular'} />
           </Pressable>
           <View style={[styles.tool, styles.toolWide]}>
+            <CameraGlass />
             <Text style={styles.toolText} numberOfLines={2}>
               Scanning a ticket shares that attendee's contact with you.
             </Text>

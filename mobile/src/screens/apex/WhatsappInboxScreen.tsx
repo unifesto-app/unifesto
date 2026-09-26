@@ -27,6 +27,7 @@ import { ApexRow, whenShort } from "../../components/apex/ApexRow";
 import { borderRadius, spacing } from "../../theme/spacing";
 import { typography } from "../../theme/typography";
 import { font } from "../../theme/fontHelpers";
+import { CardBackdrop } from "../../components/ui/CardSurface";
 
 const GUTTER = spacing[6];
 
@@ -107,7 +108,8 @@ export default function WhatsappInboxScreen() {
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <View style={{ paddingTop: topSpacing }}>
-            <View style={[styles.search, { backgroundColor: tokens.elevated }]}>
+            <View style={styles.search}>
+              <CardBackdrop shape={styles.search} />
               <MagnifyingGlass size={18} color={tokens.textMuted} />
               <TextInput
                 value={search}

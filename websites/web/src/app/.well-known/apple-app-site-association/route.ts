@@ -42,6 +42,11 @@ export async function GET() {
         }
       ]
     },
+    // App Clip (mobile/targets/clip). Lets unifesto.app links, Safari's App
+    // Clip card and QR / App Clip Codes open the native event preview.
+    appclips: {
+      apps: ['9AH3Z5C5DH.com.unifesto.app.Clip'],
+    },
     webcredentials: {
       apps: [
         '9AH3Z5C5DH.com.unifesto.app'

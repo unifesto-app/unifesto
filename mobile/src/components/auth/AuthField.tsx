@@ -4,6 +4,7 @@ import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 interface AuthFieldProps extends TextInputProps {
   label: string;
@@ -30,10 +31,12 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
           {
             borderColor,
             borderWidth: focused || error ? 1.5 : 1,
-            backgroundColor: focused ? tokens.elevated : tokens.surface,
+            // Liquid Glass paints the fill; the border still carries focus / error.
+            backgroundColor: LIQUID_GLASS ? undefined : focused ? tokens.elevated : tokens.surface,
           },
         ]}
       >
+        <GlassFill radius={borderRadius.lg} />
         {prefix ? (
           <View style={[styles.prefix, { borderRightColor: tokens.border }]}>
             <Text style={[styles.prefixText, { color: tokens.text }]}>{prefix}</Text>

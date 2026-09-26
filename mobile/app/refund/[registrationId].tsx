@@ -200,7 +200,7 @@ export default function RefundRoute() {
                   </View>
 
                   {latest.status === 'APPROVED' ? (
-                    <View style={[styles.amountBox, { backgroundColor: tokens.surface }]}>
+                    <View style={[styles.amountBox, { backgroundColor: tokens.fill }]}>
                       <Text style={[styles.amountLabel, { color: tokens.textSecondary }]}>Amount refunded</Text>
                       <Text style={[styles.amount, { color: tokens.success }]}>
                         ₹{toNumber(latest.approvedAmount ?? latest.cashRefunded).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -262,7 +262,7 @@ export default function RefundRoute() {
                   selectionColor={tokens.accent}
                   multiline
                   editable={!submitting}
-                  style={[styles.input, { backgroundColor: tokens.surface, color: tokens.text }]}
+                  style={[styles.input, { backgroundColor: tokens.fill, color: tokens.text }]}
                 />
 
                 <View style={styles.note}>

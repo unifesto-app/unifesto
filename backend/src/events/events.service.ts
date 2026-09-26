@@ -2918,6 +2918,14 @@ export class EventsService {
 
     this.validateWaitlistConfig(dto.waitlistEnabled, dto.totalQuantity ?? null);
 
+    // Append after existing tiers unless the caller picked a slot, so a new
+    // ticket never jumps above ones the organiser already ordered.
+    const last = await this.prisma.eventTicketType.aggregate({
+      where: { eventId },
+      _max: { order: true },
+    });
+    const nextOrder = dto.order ?? (last._max.order ?? -1) + 1;
+
     const ticketType = await this.prisma.eventTicketType.create({
       data: {
         eventId,
@@ -2932,7 +2940,9 @@ export class EventsService {
         saleStartsAt: dto.saleStartsAt ? new Date(dto.saleStartsAt) : null,
         saleEndsAt: dto.saleEndsAt ? new Date(dto.saleEndsAt) : null,
         perUserLimit: dto.perUserLimit || 1,
-        order: dto.order || 0,
+        order: nextOrder,
+        isVisible: dto.isVisible,
+        isActive: dto.isActive,
         waitlistEnabled: dto.waitlistEnabled ?? false,
         waitlistOfferTtlHours: dto.waitlistOfferTtlHours ?? 24,
         whatsappGroupUrl: this.resolveTicketWhatsAppGroup(dto.whatsappGroupUrl),
@@ -3157,6 +3167,126 @@ export class EventsService {
     });
     await this.cache.invalidateEventCache(event.slug);
     return deleted;
+  }
+
+  /**
+   * Operator view of an event's ticket types: every tier including hidden and
+   * paused ones (the public event payload filters those out, so an operator
+   * reading it could never switch a hidden ticket back on), plus per-tier
+   * stats. `revenue` is null for callers without the event's money capability.
+   */
+  async getManageTicketTypes(userId: string, eventId: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, spaceId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!(await this.canManageEvent(userId, event.spaceId, event.id))) {
+      throw new ForbiddenException('You cannot manage this event');
+    }
+
+    const [types, canSeeMoney, attending, checkedIn, waitlist, paid] =
+      await Promise.all([
+        this.prisma.eventTicketType.findMany({
+          where: { eventId },
+          orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+          include: {
+            blockedBy: { select: { blockerId: true } },
+            blocks: { select: { blockedId: true } },
+          },
+        }),
+        this.authz.can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId }),
+        this.prisma.eventRegistration.groupBy({
+          by: ['ticketTypeId'],
+          where: { eventId, ...COUNTS_AS_ATTENDING },
+          _count: { _all: true },
+        }),
+        this.prisma.eventRegistration.groupBy({
+          by: ['ticketTypeId'],
+          where: { eventId, ...COUNTS_AS_ATTENDING, checkedInAt: { not: null } },
+          _count: { _all: true },
+        }),
+        this.prisma.eventRegistration.groupBy({
+          by: ['ticketTypeId', 'waitlistStatus'],
+          where: {
+            eventId,
+            isWaitlisted: true,
+            status: { not: RegistrationStatus.CANCELLED },
+            waitlistStatus: { in: ['WAITING', 'OFFERED'] },
+          },
+          _count: { _all: true },
+        }),
+        // Same "current gross" definition as the financials page: PAID rows,
+        // ticket amount net of the platform processing fee.
+        this.prisma.eventRegistration.groupBy({
+          by: ['ticketTypeId'],
+          where: { eventId, paymentStatus: PaymentStatus.PAID },
+          _sum: { totalAmount: true, processingFee: true },
+        }),
+      ]);
+
+    const countBy = (rows: { ticketTypeId: string | null; _count: { _all: number } }[]) =>
+      new Map(rows.map((r) => [r.ticketTypeId, r._count._all]));
+    const attendingBy = countBy(attending);
+    const checkedInBy = countBy(checkedIn);
+
+    return types.map((t) => {
+      const wl = waitlist.filter((w) => w.ticketTypeId === t.id);
+      const rev = paid.find((p) => p.ticketTypeId === t.id);
+      return {
+        ...t,
+        stats: {
+          registrations: attendingBy.get(t.id) ?? 0,
+          checkedIn: checkedInBy.get(t.id) ?? 0,
+          waitlistWaiting:
+            wl.find((w) => w.waitlistStatus === 'WAITING')?._count._all ?? 0,
+          waitlistOffered:
+            wl.find((w) => w.waitlistStatus === 'OFFERED')?._count._all ?? 0,
+          revenue: canSeeMoney
+            ? Number(rev?._sum.totalAmount ?? 0) -
+              Number(rev?._sum.processingFee ?? 0)
+            : null,
+        },
+      };
+    });
+  }
+
+  /**
+   * Persist a new display order. `ids` must be exactly this event's ticket
+   * types; position in the array becomes `order`.
+   */
+  async reorderTicketTypes(userId: string, eventId: string, ids: string[]) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, spaceId: true, slug: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!(await this.canManageEvent(userId, event.spaceId, event.id))) {
+      throw new ForbiddenException('You cannot manage this event');
+    }
+
+    const existing = await this.prisma.eventTicketType.findMany({
+      where: { eventId },
+      select: { id: true },
+    });
+    const known = new Set(existing.map((t) => t.id));
+    if (
+      ids.length !== known.size ||
+      new Set(ids).size !== ids.length ||
+      ids.some((id) => !known.has(id))
+    ) {
+      throw new BadRequestException(
+        'Send every ticket type of this event exactly once.',
+      );
+    }
+
+    await this.prisma.$transaction(
+      ids.map((id, order) =>
+        this.prisma.eventTicketType.update({ where: { id }, data: { order } }),
+      ),
+    );
+    await this.cache.invalidateEventCache(event.slug);
+    return { ok: true };
   }
 
   async createAgenda(userId: string, eventId: string, dto: CreateAgendaDto) {

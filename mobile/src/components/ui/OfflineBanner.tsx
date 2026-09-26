@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
+import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, WifiSlash } from 'phosphor-react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useIsOffline } from '../../lib/offline/connectivity';
 import { Text } from './Text';
+import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 
 const BACK_ONLINE_MS = 2_000;
 
@@ -40,12 +41,17 @@ export function OfflineBanner() {
     <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 6 }]}>
       <Animated.View
         key={offline ? 'offline' : 'online'}
-        entering={FadeInUp.duration(220)}
-        exiting={FadeOutUp.duration(180)}
-        style={[styles.pill, { backgroundColor: tokens.elevated }]}
+        // Slides, never fades: opacity < 1 on the pill breaks Liquid Glass.
+        entering={SlideInUp.duration(220)}
+        exiting={SlideOutUp.duration(180)}
+        style={styles.pill}
         accessibilityRole="alert"
         accessibilityLiveRegion="polite"
       >
+        {/* Floats over any screen, so always glass, with a solid base on Android. */}
+        <CardSurfaceProvider kind="glass">
+          <CardBackdrop shape={styles.pill} opaque />
+        </CardSurfaceProvider>
         {offline ? (
           <WifiSlash size={18} color={tokens.warning} weight="bold" />
         ) : (

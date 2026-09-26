@@ -7,6 +7,7 @@ import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { SheetBackdrop } from '../ui/CardSurface';
 
 // Emails are designed for a white canvas; scale to the phone like a mail app.
 const wrap = (html: string) =>
@@ -19,7 +20,8 @@ export default function HtmlPreviewSheet({ html, title, onClose }: { html: strin
   return (
     <Modal visible={html !== null} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
       <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: tokens.overlay }]} onPress={onClose} accessibilityLabel="Close" />
-      <View style={[styles.sheet, { backgroundColor: tokens.surface, top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
+      <View style={[styles.sheet, { top: insets.top + spacing[10], paddingBottom: insets.bottom }]}>
+        <SheetBackdrop radius={borderRadius.xl} />
         <View style={styles.head}>
           <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
             {title}

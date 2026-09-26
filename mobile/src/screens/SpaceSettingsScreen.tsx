@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { pickImageAtAspect } from '../utils/pickImage';
 import { Buildings, ImageSquare } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
@@ -138,15 +139,13 @@ export default function SpaceSettingsScreen() {
       AppAlert.alert('Photos access needed', 'Allow photo library access to choose an image.');
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: kind === 'logo' ? [1, 1] : [4, 3],
-      quality: 0.85,
+    const uri = await pickImageAtAspect(kind === 'logo' ? [1, 1] : [4, 3]).catch((e: Error) => {
+      AppAlert.alert("Couldn't use that photo", e.message);
+      return null;
     });
-    if (res.canceled || !res.assets[0]) return;
+    if (!uri) return;
     setUploading(kind);
-    const up = kind === 'logo' ? await uploadSpaceLogo(spaceId!, res.assets[0].uri) : await uploadSpaceBanner(spaceId!, res.assets[0].uri);
+    const up = kind === 'logo' ? await uploadSpaceLogo(spaceId!, uri) : await uploadSpaceBanner(spaceId!, uri);
     setUploading(null);
     if (!up.ok) {
       AppAlert.alert("Couldn't upload", up.message);

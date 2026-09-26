@@ -20,6 +20,7 @@ import {
 import { spacing, borderRadius, font } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 /** Colour + label for a round's lifecycle state. */
 function roundBadge(status: RoundStatus, colors: any): { label: string; color: string } {
@@ -90,7 +91,6 @@ export default function JudgingEventScreen() {
     },
     badgeText: { fontSize: 11, fontFamily: getFontFamily('bold'), letterSpacing: 0.4 },
     card: {
-      backgroundColor: colors.card,
       borderRadius: borderRadius['2xl'],
       overflow: 'hidden',
     },
@@ -208,6 +208,7 @@ export default function JudgingEventScreen() {
         </View>
 
         <View style={styles.card}>
+          <CardBackdrop shape={styles.card} />
           {isClosed ? (
             <View style={styles.lockedNote}>
               <Lock size={20} color={colors.textMuted} weight="duotone" />

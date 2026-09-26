@@ -31,6 +31,7 @@ import { AppAlert } from '../../components/ui/AppAlert';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { CardBackdrop } from '../../components/ui/CardSurface';
 
 // While the thread is open, check for new messages this often.
 const POLL_MS = 10_000;
@@ -132,15 +133,18 @@ export default function WhatsappThreadScreen() {
       {convo ? (
         windowOpen ? (
           <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), borderTopColor: tokens.border }]}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Reply on WhatsApp"
-              placeholderTextColor={tokens.textMuted}
-              multiline
-              maxLength={MAX_REPLY}
-              style={[styles.input, { color: tokens.text, backgroundColor: tokens.elevated }]}
-            />
+            <View style={styles.inputWrap}>
+              <CardBackdrop shape={styles.inputWrap} />
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Reply on WhatsApp"
+                placeholderTextColor={tokens.textMuted}
+                multiline
+                maxLength={MAX_REPLY}
+                style={[styles.input, { color: tokens.text }]}
+              />
+            </View>
             <Pressable
               onPress={() => void send()}
               disabled={!draft.trim() || sending}
@@ -169,7 +173,8 @@ function Bubble({ message }: { message: WhatsappMessage }) {
   const tick = mine ? (failed ? 'Not sent' : message.status ? message.status.charAt(0).toUpperCase() + message.status.slice(1) : '') : '';
   return (
     <View style={[styles.bubbleWrap, mine ? styles.right : styles.left]}>
-      <View style={[styles.bubble, { backgroundColor: mine ? tokens.accent : tokens.elevated }]}>
+      <View style={[styles.bubble, mine && { backgroundColor: tokens.accent }]}>
+        {!mine ? <CardBackdrop shape={styles.bubble} /> : null}
         {message.mediaUrl ? <Image source={{ uri: message.mediaUrl }} style={styles.media} contentFit="cover" /> : null}
         {text ? <Text style={[styles.body, { color: mine ? '#fff' : tokens.text }]}>{text}</Text> : null}
       </View>
@@ -200,11 +205,10 @@ const styles = StyleSheet.create({
     paddingTop: spacing[2],
     borderTopWidth: StyleSheet.hairlineWidth,
   },
+  inputWrap: { flex: 1, borderRadius: borderRadius.xl },
   input: {
-    flex: 1,
     minHeight: 40,
     maxHeight: 140,
-    borderRadius: borderRadius.xl,
     paddingHorizontal: spacing[4],
     paddingTop: 10,
     paddingBottom: 10,

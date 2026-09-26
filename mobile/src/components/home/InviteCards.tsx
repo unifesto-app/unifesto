@@ -10,6 +10,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
 import { GUTTER } from './Section';
+import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 const TINT = 'rgba(52,145,255,0.14)';
 
@@ -40,8 +41,12 @@ export default function InviteCards({
             onPress={() => onOpen(inv.token)}
             accessibilityRole="button"
             accessibilityLabel={`Seat invite for ${inv.event.title}`}
-            style={({ pressed }) => [styles.card, { backgroundColor: TINT, opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [
+              styles.card,
+              { backgroundColor: LIQUID_GLASS ? undefined : TINT, transform: [{ scale: pressed ? 0.98 : 1 }] },
+            ]}
           >
+            <GlassFill radius={borderRadius.xl} tint={TINT} interactive />
             <View style={[styles.cover, { backgroundColor: tokens.elevated }]}>
               {inv.event.coverImageUrl ? (
                 <Image source={{ uri: inv.event.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />

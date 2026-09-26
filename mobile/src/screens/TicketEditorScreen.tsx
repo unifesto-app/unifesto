@@ -4,14 +4,25 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Trash } from 'phosphor-react-native';
+import { Plus, Trash } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventTicketTypes } from '../hooks/useEventTicketTypes';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
-import { createTicketType, deleteTicketType, updateTicketType, type TicketKind } from '../lib/api/ticketTypes';
+import {
+  createTicketType,
+  deleteTicketType,
+  updateTicketType,
+  saleStatus,
+  SALE_STATUS_LABEL,
+  FIELD_TYPES,
+  DEFAULT_FIELDS,
+  type TicketKind,
+} from '../lib/api/ticketTypes';
 import { draftToPayload, emptyDraft, toDraft, validateDraft, type TicketDraft } from '../lib/ticketDraft';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
+import DateTimeRow from '../components/manage/DateTimeRow';
+import { Badge } from '../components/ui/Badge';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
@@ -32,13 +43,19 @@ const PRICING_TABS: { key: 'PER_GROUP' | 'PER_PERSON'; label: string }[] = [
   { key: 'PER_PERSON', label: 'Per person' },
 ];
 
-const saleDate = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true }) : undefined;
+const inDays = (n: number) => {
+  const d = new Date(Date.now() + n * 24 * 3600 * 1000);
+  d.setMinutes(0, 0, 0);
+  return d;
+};
+
+const inr = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
 /**
  * Create or edit one ticket type. `ticketId === 'new'` creates, with `kind`
- * from the route (RSVP or INDIVIDUAL). RSVPs only get name, description and
- * capacity; tickets add price, per-person limit, group sizing and waiting list.
+ * from the route (RSVP or INDIVIDUAL). Every kind gets availability, sale
+ * window, restrictions and a WhatsApp group; tickets add price, per-person
+ * limit, group sizing, waiting list and their own registration questions.
  * Save lives in a bar pinned above the keyboard, like Edit profile.
  */
 export default function TicketEditorScreen() {
@@ -104,11 +121,23 @@ export default function TicketEditorScreen() {
       setError(res.denied ? `You can't edit ${noun}s for this event.` : res.message);
       return;
     }
+    // A new ticket opens straight into edit mode, where its questions live.
+    if (isNew && !isRsvp && res.data?.id) {
+      router.replace(`/manage/event/${eventId}/ticket/${res.data.id}`);
+      return;
+    }
+    if (!isNew) {
+      initial.current = JSON.stringify(draft);
+      await types.reload();
+    }
     router.back();
   };
 
   const confirmDelete = () =>
-    AppAlert.alert(`Delete this ${noun}?`, 'People can no longer choose it. This cannot be undone.', [
+    AppAlert.alert(
+      `Delete this ${noun}?`,
+      `People can no longer choose it. This cannot be undone. To stop sales but keep it, turn off "On sale" instead.`,
+      [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -146,6 +175,15 @@ export default function TicketEditorScreen() {
   const summary = original
     ? [`${booked.toLocaleString('en-IN')} booked`, left !== null ? `${left.toLocaleString('en-IN')} left` : 'Unlimited'].join('  ·  ')
     : null;
+  const status = original ? SALE_STATUS_LABEL[saleStatus(original)] : null;
+  const stats = original?.stats;
+  const questions = original ? types.fieldsFor(original.id) : [];
+  const others = types.all.filter((t) => t.id !== ticketId);
+  const openQuestion = (fieldId: string) =>
+    router.push({
+      pathname: `/manage/event/${eventId}/ticket-question`,
+      params: { ticketId: ticketId!, fieldId, group: isGroup ? '1' : '0' },
+    });
 
   const priceLabel = isGroup
     ? `Price per ${draft.groupPricingMode === 'PER_PERSON' ? 'person' : 'group'} (${symbol})`
@@ -160,10 +198,40 @@ export default function TicketEditorScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        {summary ? <Text style={[styles.summary, { color: tokens.textSecondary }]}>{summary}</Text> : null}
+        {summary ? (
+          <View style={styles.summaryRow}>
+            {status ? <Badge label={status.label} tone={status.tone} /> : null}
+            <Text style={[styles.summary, { color: tokens.textSecondary }]}>{summary}</Text>
+          </View>
+        ) : null}
+
+        {original && stats ? (
+          <View>
+            <SettingsGroup title="At a glance" plain>
+              <SettingsRow label="Checked in" value={`${stats.checkedIn.toLocaleString('en-IN')} of ${stats.registrations.toLocaleString('en-IN')}`} />
+              {original.waitlistEnabled || stats.waitlistWaiting + stats.waitlistOffered > 0 ? (
+                <SettingsRow
+                  label="Waiting list"
+                  value={`${stats.waitlistWaiting} waiting · ${stats.waitlistOffered} offered`}
+                  onPress={() => router.push(`/manage/event/${eventId}/waitlist`)}
+                />
+              ) : null}
+              {stats.revenue != null && !isRsvp ? <SettingsRow label="Net revenue" value={inr(stats.revenue)} /> : null}
+              <SettingsRow
+                label="View attendees"
+                onPress={() =>
+                  router.push({
+                    pathname: `/manage/event/${eventId}/attendees`,
+                    params: { ticket: original.id, ticketName: original.name },
+                  })
+                }
+              />
+            </SettingsGroup>
+          </View>
+        ) : null}
 
         {!isRsvp ? (
-          <View style={summary ? { marginTop: spacing[6] } : undefined}>
+          <View style={original ? { marginTop: spacing[8] } : undefined}>
             <BlockTitle>Type</BlockTitle>
             <View style={{ opacity: kindLocked ? 0.5 : 1, pointerEvents: kindLocked ? 'none' : 'auto' }}>
               <SegmentedTabs tabs={KIND_TABS} value={isGroup ? 'GROUP' : 'INDIVIDUAL'} onChange={(k) => set({ kind: k })} />
@@ -241,18 +309,107 @@ export default function TicketEditorScreen() {
           </SettingsGroup>
         ) : null}
 
-        {!isRsvp && original && (original.saleStartsAt || original.saleEndsAt) ? (
-          <SettingsGroup title="Sale window" plain>
-            {original.saleStartsAt ? <SettingsRow label="Opens" value={saleDate(original.saleStartsAt)} /> : null}
-            {original.saleEndsAt ? <SettingsRow label="Closes" value={saleDate(original.saleEndsAt)} /> : null}
-          </SettingsGroup>
-        ) : null}
+        <SettingsGroup title="Availability" plain>
+          <SwitchRow
+            label="On sale"
+            hint={draft.onSale ? 'Listed on the event page.' : "Hidden from the event page and can't be booked. Holders keep theirs."}
+            value={draft.onSale}
+            onValueChange={(v) => set({ onSale: v })}
+          />
+          <SwitchRow
+            label="Opens later"
+            value={!!draft.saleStartsAt}
+            onValueChange={(on) => set({ saleStartsAt: on ? inDays(1) : null })}
+          />
+          {draft.saleStartsAt ? (
+            <DateTimeRow label="Opens" value={draft.saleStartsAt} onChange={(d) => set({ saleStartsAt: d })} />
+          ) : null}
+          <SwitchRow
+            label="Closes at a set time"
+            value={!!draft.saleEndsAt}
+            onValueChange={(on) => set({ saleEndsAt: on ? inDays(7) : null })}
+          />
+          {draft.saleEndsAt ? (
+            <DateTimeRow
+              label="Closes"
+              value={draft.saleEndsAt}
+              minimumDate={draft.saleStartsAt ?? undefined}
+              onChange={(d) => set({ saleEndsAt: d })}
+            />
+          ) : null}
+        </SettingsGroup>
 
         {!isRsvp ? (
-          <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[4] }]}>
-            Sale dates and registration questions are edited in Unifesto Space on the web.
-          </Text>
+          <>
+            <SettingsGroup
+              title="Registration questions"
+              plain
+              action={original ? { label: 'Add', onPress: () => openQuestion('new') } : undefined}
+            >
+              <SettingsRow label="Always asked" value={DEFAULT_FIELDS.join(', ')} />
+              {questions.map((q) => (
+                <SettingsRow
+                  key={q.id}
+                  label={q.label}
+                  value={[
+                    FIELD_TYPES.find((f) => f.key === q.type)?.label ?? q.type,
+                    q.isRequired ? 'Required' : null,
+                    isGroup && q.perGroup ? 'Once per group' : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  onPress={() => openQuestion(q.id)}
+                />
+              ))}
+              {original ? (
+                <SettingsRow
+                  icon={<Plus size={18} color={tokens.accent} weight="bold" />}
+                  label="Add a question"
+                  onPress={() => openQuestion('new')}
+                />
+              ) : null}
+            </SettingsGroup>
+            {!original ? (
+              <Text style={[styles.note, { color: tokens.textMuted }]}>Create the ticket first, then add its questions.</Text>
+            ) : null}
+          </>
         ) : null}
+
+        {others.length > 0 ? (
+          <>
+            <SettingsGroup title="Restrictions" plain>
+              {others.map((t) => (
+                <SwitchRow
+                  key={t.id}
+                  label={`Blocks ${t.name}`}
+                  value={draft.blocks.includes(t.id)}
+                  onValueChange={(on) =>
+                    set({ blocks: (on ? [...draft.blocks, t.id] : draft.blocks.filter((x) => x !== t.id)).sort() })
+                  }
+                />
+              ))}
+            </SettingsGroup>
+            <Text style={[styles.note, { color: tokens.textMuted }]}>
+              Holders of this {noun} can't book the ones switched on. It only works one way.
+            </Text>
+          </>
+        ) : null}
+
+        <SettingsGroup title="WhatsApp group" plain>
+          <FieldRow
+            stacked
+            label="Group invite link"
+            value={draft.whatsappGroupUrl}
+            onChangeText={(v) => set({ whatsappGroupUrl: v })}
+            placeholder="https://chat.whatsapp.com/…"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+          />
+        </SettingsGroup>
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          People on this {noun} get this group instead of the event's. Leave empty to use the event group.
+        </Text>
 
         {original ? (
           <Button
@@ -293,6 +450,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   muted: { fontSize: typography.fontSize.sm, ...font() },
   summary: { fontSize: typography.fontSize.sm, marginLeft: spacing[1], ...font('medium') },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   note: { marginTop: spacing[2], marginLeft: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
   error: { marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },

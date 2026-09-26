@@ -6,6 +6,7 @@ import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { SheetBackdrop } from '../ui/CardSurface';
 
 export interface PickerItem {
   id: string;
@@ -88,9 +89,10 @@ export default function EntityPickerRow({ label, value, placeholder = 'Choose', 
 
       <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: tokens.overlay }]} onPress={close} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { backgroundColor: tokens.surface, paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
+          <SheetBackdrop radius={borderRadius.xl} />
           <Text style={[styles.title, { color: tokens.text }]}>{label}</Text>
-          <View style={[styles.search, { backgroundColor: tokens.elevated }]}>
+          <View style={[styles.search, { backgroundColor: tokens.fill }]}>
             <MagnifyingGlass size={18} color={tokens.textMuted} weight="bold" />
             <TextInput
               value={query}

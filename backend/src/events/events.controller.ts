@@ -52,6 +52,7 @@ import {
   UpdatePrizeDto,
   UpdateSpeakerDto,
   UpdateTicketTypeDto,
+  ReorderTicketTypesDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
@@ -278,6 +279,32 @@ export class EventsController {
     @Body() dto: CreateTicketTypeDto,
   ) {
     return this.eventsService.createTicketType(req.user.id, id, dto);
+  }
+
+  // Static sub-paths first so they are not captured by ':typeId'.
+  @Get(':id/ticket-types/manage')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary:
+      'All ticket types incl. hidden/paused, with per-tier stats (operators only)',
+  })
+  @ApiResponse({ status: 200 })
+  async getManageTicketTypes(@Request() req, @Param('id') id: string) {
+    return this.eventsService.getManageTicketTypes(req.user.id, id);
+  }
+
+  @Patch(':id/ticket-types/reorder')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Set ticket type display order' })
+  @ApiResponse({ status: 200 })
+  async reorderTicketTypes(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: ReorderTicketTypesDto,
+  ) {
+    return this.eventsService.reorderTicketTypes(req.user.id, id, dto.ids);
   }
 
   @Patch(':id/ticket-types/:typeId')

@@ -19,6 +19,8 @@
     "version:major": "node scripts/version.js major"
   },
   "dependencies": {
+    "@bacons/apple-targets": "^5.0.0",
+    "@expo/ui": "~57.0.20",
     "@expo/vector-icons": "^15.0.2",
     "@hugeicons/core-free-icons": "^4.3.5",
     "@hugeicons/react-native": "^1.0.16",
@@ -49,6 +51,7 @@
     "expo-font": "~57.0.4",
     "expo-glass-effect": "~57.0.3",
     "expo-image": "~57.0.5",
+    "expo-image-manipulator": "~57.0.20",
     "expo-image-picker": "~57.0.19",
     "expo-linear-gradient": "~57.0.2",
     "expo-linking": "~57.0.10",
@@ -63,6 +66,7 @@
     "expo-store-review": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "expo-web-browser": "~57.0.3",
+    "expo-widgets": "~57.0.21",
     "jsonwebtoken": "^9.0.3",
     "livekit-client": "^2.22.3",
     "lucide-react-native": "^1.47.0",
@@ -72,6 +76,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
+    "react-native-android-widget": "^0.22.1",
     "react-native-image-colors": "^2.6.0",
     "react-native-maps": "1.27.2",
     "react-native-onesignal": "^5.5.14",

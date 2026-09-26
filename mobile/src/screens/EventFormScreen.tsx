@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { pickImageAtAspect } from '../utils/pickImage';
 import { ImageSquare } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -129,8 +130,11 @@ export default function EventFormScreen() {
       AppAlert.alert('Photos access needed', 'Allow photo library access to choose a cover.');
       return;
     }
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.85 });
-    if (!res.canceled && res.assets[0]) setCoverUri(res.assets[0].uri);
+    const uri = await pickImageAtAspect([4, 3]).catch((e: Error) => {
+      AppAlert.alert("Couldn't use that photo", e.message);
+      return null;
+    });
+    if (uri) setCoverUri(uri);
   };
 
   const dirty = creating || !!coverUri || (draft !== null && JSON.stringify(draft) !== initial.current);

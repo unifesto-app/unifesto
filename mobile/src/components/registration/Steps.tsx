@@ -165,9 +165,13 @@ function TicketCard({ s, selected, onPress }: { s: TicketState; selected: boolea
       accessibilityLabel={`${t.name}, ${t.price === 0 ? 'free' : money(s.symbol, t.price)}`}
       style={({ pressed }) => [
         styles.ticket,
-        { backgroundColor: selected ? TINT : tokens.elevated, opacity: !s.selectable ? 0.5 : pressed ? 0.85 : 1 },
+        // Unavailable tickets dim with opacity, which Liquid Glass can't take: they stay solid.
+        !s.selectable
+          ? { backgroundColor: tokens.elevated, opacity: 0.5 }
+          : { backgroundColor: selected ? TINT : undefined, transform: [{ scale: pressed ? 0.98 : 1 }] },
       ]}
     >
+      {s.selectable && !selected ? <CardBackdrop shape={styles.ticket} /> : null}
       <View style={styles.ticketTop}>
         <Text style={[styles.ticketName, { color: tokens.text }]}>{t.name}</Text>
         <View style={styles.priceCol}>
@@ -437,7 +441,8 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
           </Pressable>
         </View>
       ) : (
-        <View style={[styles.coupon, { backgroundColor: tokens.elevated }]}>
+        <View style={styles.coupon}>
+          <CardBackdrop shape={styles.coupon} />
           <TextInput
             value={r.couponInput}
             onChangeText={(v) => r.setCouponInput(v.toUpperCase())}

@@ -152,7 +152,7 @@ export default function TicketDetailScreen() {
             </View>
 
             {t.ticketTypeName ? (
-              <View style={[styles.typeRow, { backgroundColor: tokens.surface }]}>
+              <View style={[styles.typeRow, { backgroundColor: tokens.fill }]}>
                 <TicketIcon size={18} color={tokens.textSecondary} />
                 <Text style={[styles.typeName, { color: tokens.text }]} numberOfLines={1}>{t.ticketTypeName}</Text>
                 {price ? <Text style={[styles.typePrice, { color: accent }]}>{price}</Text> : null}

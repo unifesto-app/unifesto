@@ -5,6 +5,7 @@ const withFirebaseDisableAutoInit = require('./plugins/withFirebaseDisableAutoIn
 const withRemoveOrientationRestrictions = require('./plugins/withRemoveOrientationRestrictions');
 const withRemoveSplashScreen = require('./plugins/withRemoveSplashScreen');
 const withSceneDelegate = require('./plugins/withSceneDelegate');
+const withPodDeploymentTarget = require('./plugins/withPodDeploymentTarget');
 
 module.exports = () => {
   const config = {
@@ -50,8 +51,12 @@ module.exports = () => {
         "applinks:unifesto.app",
         "applinks:www.unifesto.app"
       ],
-      appClip: {
-        bundleIdentifier: "com.unifesto.app.Clip"
+      // Pairs the app with its App Clip (targets/clip, com.unifesto.app.Clip).
+      // The clip's own entitlements live in targets/clip/expo-target.config.js.
+      entitlements: {
+        "com.apple.developer.associated-appclip-app-identifiers": [
+          "$(AppIdentifierPrefix)com.unifesto.app.Clip"
+        ]
       },
       usesAppleSignIn: true
     },
@@ -147,6 +152,8 @@ module.exports = () => {
     },
     plugins: [
       "expo-router",
+      // Native targets under targets/ (the App Clip in targets/clip).
+      "@bacons/apple-targets",
       "expo-font",
       "expo-web-browser",
       "expo-image",
@@ -164,6 +171,10 @@ module.exports = () => {
           locationWhenInUsePermission: "Unifesto uses your location to help you discover nearby events and communities. Your location is only used while you're using the app and is never shared with third parties."
         }
       ],
+      // Undoes onesignal-expo-plugin's aliased Xcode sections (see the file) or
+      // @bacons/apple-targets can't parse the project. Must be listed BEFORE
+      // OneSignal: Xcode mods run in reverse plugin order, so this runs after it.
+      "./plugins/withXcodeDependencyProxyFix",
       [
         "onesignal-expo-plugin",
         {
@@ -188,6 +199,46 @@ module.exports = () => {
       // Native venue maps. iOS uses Apple Maps (no key). Android uses Google
       // Maps and needs GOOGLE_MAPS_ANDROID_API_KEY at build time; without it
       // the app falls back to the embedded web map (see VenueMap).
+      // "Up next" home-screen widget. iOS: WidgetKit extension built from
+      // src/widgets/ios (expo-widgets). Android: AppWidget rendered by
+      // react-native-android-widget from src/widgets/android. Both read what
+      // the Home tab syncs (src/widgets/sync.ts). Needs a native rebuild.
+      [
+        "expo-widgets",
+        {
+          bundleIdentifier: "com.unifesto.app.widgets",
+          groupIdentifier: "group.com.unifesto.app",
+          widgets: [
+            {
+              name: "UpNext",
+              displayName: "Up next",
+              description: "Your next event, counting down.",
+              ios: {
+                supportedFamilies: ["systemSmall", "systemMedium", "accessoryRectangular", "accessoryInline"]
+              }
+            }
+          ]
+        }
+      ],
+      [
+        "react-native-android-widget",
+        {
+          widgets: [
+            {
+              name: "UpNext",
+              label: "Up next",
+              description: "Your next event, counting down.",
+              minWidth: "180dp",
+              minHeight: "110dp",
+              targetCellWidth: 3,
+              targetCellHeight: 2,
+              resizeMode: "horizontal|vertical",
+              // Android's floor is 30 min; keeps "Starts in 2h" roughly honest with the app closed.
+              updatePeriodMillis: 1800000
+            }
+          ]
+        }
+      ],
       [
         "react-native-maps",
         {
@@ -213,5 +264,7 @@ module.exports = () => {
   modifiedConfig = withRemoveOrientationRestrictions(modifiedConfig);
   modifiedConfig = withRemoveSplashScreen(modifiedConfig);
   modifiedConfig = withSceneDelegate(modifiedConfig);
+  // Xcode 27 rejects pods targeting < iOS 15; lift them to the app minimum.
+  modifiedConfig = withPodDeploymentTarget(modifiedConfig);
   return modifiedConfig;
 };

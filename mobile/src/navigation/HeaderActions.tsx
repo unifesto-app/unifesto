@@ -18,6 +18,7 @@ import { useTokens } from '../context/ThemeContext';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';
 
 /**
  * Right-side header actions, shared by every pushed screen so spacing is the
@@ -102,7 +103,7 @@ export function HeaderMenu({
   );
 }
 
-/** Android: a dark dropdown anchored under the ⋯ button. */
+/** Android: a glass dropdown (solid base + veil) anchored under the ⋯ button. */
 function AndroidMenu({
   title,
   items,
@@ -158,10 +159,13 @@ function AndroidMenu({
           <Animated.View
             style={[
               styles.menu,
-              { top: anchor.top, right: anchor.right, backgroundColor: tokens.elevated, transformOrigin: 'top right' },
+              { top: anchor.top, right: anchor.right, transformOrigin: 'top right' },
               cardStyle,
             ]}
           >
+            <CardSurfaceProvider kind="glass">
+              <CardBackdrop shape={styles.menu} opaque />
+            </CardSurfaceProvider>
             {title ? (
               <Text style={[styles.menuTitle, { color: tokens.textMuted }]} numberOfLines={1}>
                 {title}

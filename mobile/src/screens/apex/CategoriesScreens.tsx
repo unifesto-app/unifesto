@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { pickImageAtAspect } from '../../utils/pickImage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowDown, ArrowUp, Camera, Plus, Tag, TextAa, TextAlignLeft } from 'phosphor-react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
@@ -209,10 +210,13 @@ export function CategoryEditScreen() {
       AppAlert.alert('Permission required', 'Allow photo library access to add a banner.');
       return;
     }
-    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.85 });
-    if (picked.canceled || !picked.assets[0]) return;
+    const uri = await pickImageAtAspect([4, 3]).catch((e: Error) => {
+      AppAlert.alert("Couldn't use that photo", e.message);
+      return null;
+    });
+    if (!uri) return;
     setUploading(true);
-    const res = await uploadCategoryBanner(picked.assets[0].uri);
+    const res = await uploadCategoryBanner(uri);
     setUploading(false);
     if (res.ok) setBannerUrl(res.data.url);
     else AppAlert.alert('Banner not uploaded', res.message);
