@@ -8,7 +8,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } fr
 import { CalendarBlank, CaretRight, CheckCircle, Clock, Ticket, UsersThree, VideoCamera, XCircle } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { useSessionRegistration } from '../hooks/useSessionRegistration';
+import { isPaidSessionBlocked, PAID_SESSION_IOS_NOTE, useSessionRegistration } from '../hooks/useSessionRegistration';
 import useTopSpacing from '../hooks/useTopSpacing';
 import Skeleton from '../components/Skeleton';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -186,6 +186,8 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
   const live = !isCancelled && Date.now() >= startMs && Date.now() < startMs + (session.durationMinutes || 60) * 60000;
   const spotsLeft = session.capacity != null ? Math.max(0, session.capacity - session.registeredCount) : null;
   const description = session.description?.trim();
+  // iOS can't sell paid online sessions (App Store 3.1.1); see useSessionRegistration.
+  const purchaseBlocked = !registered && !isCancelled && !isCompleted && isPaidSessionBlocked(session);
 
   // Bottom bar: what's the one thing to do here?
   const bar = isCancelled
@@ -198,7 +200,7 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
         ? { label: live ? 'Join now' : 'Join session', onPress: handleJoin, neutral: false }
         : !user
           ? { label: 'Sign in to register', onPress: handleRegister, neutral: false }
-          : spotsLeft === 0
+          : spotsLeft === 0 || purchaseBlocked
             ? null
             : { label: price > 0 ? 'Register' : 'Register free', onPress: handleRegister, neutral: false };
 
@@ -248,6 +250,10 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
               {isCompleted ? 'You attended this session' : "You're registered. Join opens shortly before the start."}
             </Text>
           </View>
+        ) : null}
+
+        {purchaseBlocked ? (
+          <Text style={[styles.blockedNote, { color: tokens.textMuted }]}>{PAID_SESSION_IOS_NOTE}</Text>
         ) : null}
 
         {isCancelled ? (
@@ -343,6 +349,7 @@ const styles = StyleSheet.create({
   hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
   hostText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font() },
   registered: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
+  blockedNote: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...font('medium') },
   registeredText: { flex: 1, fontSize: typography.fontSize.sm, ...font('semibold') },
   cancelled: { flexDirection: 'row', gap: spacing[3], padding: spacing[4], borderRadius: borderRadius.xl, marginTop: spacing[5] },
   cancelledTitle: { fontSize: typography.fontSize.base, marginBottom: 2, ...font('semibold') },
