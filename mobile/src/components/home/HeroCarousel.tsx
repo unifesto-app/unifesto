@@ -80,8 +80,9 @@ function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
         showsHorizontalScrollIndicator={false}
         snapToInterval={snap}
         snapToAlignment="start"
+        // A flick can travel several cards and still land on one; stopping
+        // dead at every card (disableIntervalMomentum) felt like stutter.
         decelerationRate="fast"
-        disableIntervalMomentum
         onScroll={onScroll}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingLeft: GUTTER, paddingRight: endPad, gap: GAP }}
@@ -170,11 +171,12 @@ export default React.memo(HeroCarousel);
 
 function Dot({ index, scrollX, snap }: { index: number; scrollX: SharedValue<number>; snap: number }) {
   const tokens = useTokens();
-  // The focused dot stretches into a pill and lights up in accent.
+  // The focused dot stretches into a pill and lights up in accent. Scaled with
+  // a transform, not width, so swiping never triggers a layout pass.
   const animated = useAnimatedStyle(() => {
     const d = Math.abs(scrollX.value / snap - index);
     const t = interpolate(d, [0, 1], [1, 0], Extrapolation.CLAMP);
-    return { width: 6 + t * 14, opacity: 0.25 + t * 0.75 };
+    return { opacity: 0.25 + t * 0.75, transform: [{ scaleX: 0.3 + t * 0.7 }] };
   });
   return <Animated.View style={[styles.dot, { backgroundColor: tokens.accent }, animated]} />;
 }
@@ -189,8 +191,8 @@ const styles = StyleSheet.create({
     ...font('heading'),
   },
   meta: { marginTop: 3, fontSize: typography.fontSize.sm, ...font('medium') },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: spacing[4] },
-  dot: { height: 6, borderRadius: 3 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 1, marginTop: spacing[4] },
+  dot: { width: 20, height: 6, borderRadius: 3 },
   empty: {
     borderRadius: borderRadius['2xl'],
     paddingVertical: spacing[10],
