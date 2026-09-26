@@ -207,10 +207,11 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 - [x] Y · Apple portal: App Clip ID + App Group created. Prebuild verified 4 signed targets: `com.unifesto.app` (groups `group.com.unifesto.app` + `.onesignal`, appclip link), `.Clip` (parent app, appclips domains, group), `.widgets` (group), `.OneSignalNotificationServiceExtension` (group `.onesignal`)
 - [x] Y · Play: service-account key for `eas submit` at `mobile/google-play-service-account.json` (gitignored), `play-console-analytics@` granted Release to production + testing tracks
 - [x] C · EAS production env checked: API URL, Cognito, Google IDs, OneSignal, Maps key, `GOOGLE_SERVICES_JSON` present
-- [ ] Y · App Store privacy labels: camera, microphone, photos, location (when in use), notifications, contact info (email/phone/name), identifiers (push), usage/crash data (Crashlytics)
+- [x] Y · App Store privacy labels published (answers in `docs/store/4.0.0.md`)
 - [ ] Y · Play Data safety form, same data types as above
 - [ ] Y · Screenshots of the redesign (6.9", 6.5", iPad, Android phone)
-- [ ] C · "What's new" text + App Review notes (demo login, where features are, why each permission)
+- [x] C · Store copy in `docs/store/4.0.0.md`: What's New, description, keywords, review notes, privacy + data safety (#9)
+- [x] C · iOS permission prompts made accurate, placeholder prompts removed; paid online sessions hidden from iOS checkout (3.1.1) (#9)
 
 **D. Device QA (0.4)**, one iPhone (iOS 26+) + one Android
 - [ ] Y · Login (email OTP, Google), logout, offline session restore
