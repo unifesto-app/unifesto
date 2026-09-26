@@ -60,6 +60,7 @@ const legalLinks = [
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Refund Policy", href: "/refund" },
   { label: "Terms & Conditions", href: "/terms" },
+  { label: "Delete Account", href: "/delete-account" },
 ];
 
 function LinkColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
