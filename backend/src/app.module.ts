@@ -49,6 +49,7 @@ import { EmailCampaignsModule } from './email-campaigns/email-campaigns.module';
 import { SponsorsModule } from './sponsors/sponsors.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { PartnerLinksModule } from './partner-links/partner-links.module';
+import { StaysModule } from './stays/stays.module';
 
 @Module({
   imports: [
@@ -153,6 +154,7 @@ import { PartnerLinksModule } from './partner-links/partner-links.module';
     SponsorsModule,
     CouponsModule,
     PartnerLinksModule,
+    StaysModule,
     IamModule,
   ],
   controllers: [AppController],

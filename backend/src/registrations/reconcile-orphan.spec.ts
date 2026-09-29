@@ -82,6 +82,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
       {} as any, // groupSeats
       {} as any, // redis
       {} as any, // coupons
+      {} as any, // stayBookings
     );
     return { svc, prisma, payments };
   };
