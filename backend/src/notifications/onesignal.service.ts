@@ -18,6 +18,12 @@ export interface OneSignalSendParams {
   data?: Record<string, unknown>;
 }
 
+/** OneSignal's 404 for a transfer to an external id that has no user yet. */
+export function isMissingTargetUser(err: any): boolean {
+  if (err?.response?.status !== 404) return false;
+  return /target user does not exist/i.test(JSON.stringify(err?.response?.data ?? ''));
+}
+
 export interface OneSignalSendResult {
   /** OneSignal notification id when accepted, null on failure. */
   id: string | null;
@@ -42,11 +48,43 @@ export class OneSignalService {
     return !!this.appId && !!this.restApiKey;
   }
 
+  private get headers() {
+    return {
+      'Content-Type': 'application/json; charset=utf-8',
+      Authorization: `Key ${this.restApiKey}`,
+    };
+  }
+
+  private transferSubscription(subscriptionId: string, externalId: string) {
+    return axios.patch(
+      `https://api.onesignal.com/apps/${this.appId}/subscriptions/${encodeURIComponent(subscriptionId)}/owner`,
+      { identity: { external_id: externalId } },
+      { headers: this.headers, timeout: 10_000 },
+    );
+  }
+
+  /** Create a OneSignal user for `externalId`. A 409 (it already exists) is fine. */
+  private async createUser(externalId: string): Promise<void> {
+    try {
+      await axios.post(
+        `https://api.onesignal.com/apps/${this.appId}/users`,
+        { identity: { external_id: externalId } },
+        { headers: this.headers, timeout: 10_000 },
+      );
+    } catch (err: any) {
+      if (err?.response?.status !== 409) throw err;
+    }
+  }
+
   /**
    * Server-side identity link: make `externalId` the owner of this push
    * subscription (OneSignal "transfer subscription"). Same effect as the SDK's
    * `OneSignal.login(userId)`, but doesn't depend on the client getting it right.
-   * Best-effort: returns an error string instead of throwing.
+   *
+   * The transfer needs an existing OneSignal user with that external id. A new
+   * account whose device never ran `login()` has none, and OneSignal answers
+   * 404 "Target user does not exist"; then the user is created and the
+   * transfer retried once. Best-effort: returns an error string instead of throwing.
    */
   async linkSubscriptionToExternalId(
     subscriptionId: string,
@@ -54,17 +92,13 @@ export class OneSignalService {
   ): Promise<{ ok: boolean; error?: string }> {
     if (!this.isConfigured()) return { ok: false, error: 'not_configured' };
     try {
-      await axios.patch(
-        `https://api.onesignal.com/apps/${this.appId}/subscriptions/${encodeURIComponent(subscriptionId)}/owner`,
-        { identity: { external_id: externalId } },
-        {
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            Authorization: `Key ${this.restApiKey}`,
-          },
-          timeout: 10_000,
-        },
-      );
+      try {
+        await this.transferSubscription(subscriptionId, externalId);
+      } catch (err: any) {
+        if (!isMissingTargetUser(err)) throw err;
+        await this.createUser(externalId);
+        await this.transferSubscription(subscriptionId, externalId);
+      }
       return { ok: true };
     } catch (err: any) {
       const status = err?.response?.status;
