@@ -313,11 +313,11 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 
 **Traffic and short links (5.3g–i) in detail**
 
-- Backend: `page_views`, `short_links`, `short_link_clicks` (migration `20260929120000_traffic`, additive). `POST /traffic/views` (anonymous install id, consent-gated in the app, 30-min dedupe); `events/:id/traffic`, `spaces/:id/traffic`, `admin/traffic`; short links for events (`event:edit`), spaces (`space:manage-settings`) and any unifesto.app page (`platform:manage`), redirect at `/l/:code` with `utm_medium=short_link&utm_campaign=<code>` so registrations credit through the existing utm capture.
+- Backend: `page_views`, `short_links`, `short_link_clicks` (migration `20260929121000_traffic`, additive). `POST /traffic/views` (anonymous install id, consent-gated in the app, 30-min dedupe); `events/:id/traffic`, `spaces/:id/traffic`, `admin/traffic`; short links for events (`event:edit`), spaces (`space:manage-settings`) and any unifesto.app page (`platform:manage`), redirect at `/l/:code` with `utm_medium=short_link&utm_campaign=<code>` so registrations credit through the existing utm capture.
 - Config (optional, defaults shown): `SHORT_LINK_BASE_URL=https://api.unifesto.app`, `TRAFFIC_HASH_SECRET` (falls back to `JWT_SECRET`).
 - Privacy: views carry a random per-install id, no account id; clicks store an HMAC of IP + user agent, never the IP. Both fit the published labels (Product Interaction, not linked, analytics, consent-gated).
 
-**Migrations in this release** (all additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929120000_traffic`, `20260929130000_event_attendee_controls`, `20260929140000_support_ticket_client_info`, `20260929150000_default_images`.
+**Migrations in this release** (all additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929121000_traffic`, `20260929130000_event_attendee_controls`, `20260929140000_support_ticket_client_info`, `20260929150000_default_images`.
 
 **New backend env (optional):** `UPTIMEROBOT_API_KEY` (read-only key, for Apex › Status), `SHORT_LINK_BASE_URL`, `TRAFFIC_HASH_SECRET`.
 
