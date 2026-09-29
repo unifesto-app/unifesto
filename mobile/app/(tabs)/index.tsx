@@ -45,7 +45,11 @@ export default function HomeTab() {
     : null;
 
   // ── Navigation ──────────────────────────────────────────────────────────
-  const openEvent = (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`);
+  // Stable, so the memoised hero carousel doesn't re-render on every Home update.
+  const openEvent = React.useCallback(
+    (e: Pick<Event, 'id' | 'slug'>) => router.push(`/event/${e.slug || e.id}`),
+    [router],
+  );
   const openSession = (s: Session) => router.push(`/session/${s.slug}`);
   const openSpace = (s: { id: string }) => router.push(`/space/${s.id}`);
   const openCategory = (name: string) => router.push({ pathname: '/events', params: { category: name } });

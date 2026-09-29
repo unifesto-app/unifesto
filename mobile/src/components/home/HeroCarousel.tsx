@@ -36,12 +36,17 @@ interface HeroCarouselProps {
  * size while its neighbours shrink and dim as you swipe. All driven by one
  * shared scroll value on the UI thread, so it stays smooth on low-end phones.
  */
-export default function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
+function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
   const tokens = useTokens();
   const { width: screenW } = useWindowDimensions();
   const cardW = Math.round(screenW * CARD_RATIO);
   const coverH = Math.round((cardW * 3) / 4);
   const snap = cardW + GAP;
+  // Room after the last card so it can scroll to the same resting spot as the
+  // others. With only the gutter there, content ran out ~a quarter card short
+  // of the last snap point: the final swipe bounced off the end and the last
+  // card never came fully into focus (dimmed, shrunk, its dot never lit).
+  const endPad = Math.max(GUTTER, screenW - cardW - GUTTER);
   const scrollX = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler((e) => {
     scrollX.value = e.contentOffset.x;
@@ -74,11 +79,12 @@ export default function HeroCarousel({ events, loading, onPressEvent }: HeroCaro
         horizontal
         showsHorizontalScrollIndicator={false}
         snapToInterval={snap}
+        snapToAlignment="start"
         decelerationRate="fast"
         disableIntervalMomentum
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingHorizontal: GUTTER, gap: GAP }}
+        contentContainerStyle={{ paddingLeft: GUTTER, paddingRight: endPad, gap: GAP }}
       >
         {slides.map((event, i) => (
           <Slide
@@ -89,7 +95,7 @@ export default function HeroCarousel({ events, loading, onPressEvent }: HeroCaro
             snap={snap}
             cardW={cardW}
             coverH={coverH}
-            onPress={() => onPressEvent(event)}
+            onPressEvent={onPressEvent}
           />
         ))}
       </Animated.ScrollView>
@@ -112,10 +118,12 @@ interface SlideProps {
   snap: number;
   cardW: number;
   coverH: number;
-  onPress: () => void;
+  onPressEvent: (event: Event) => void;
 }
 
-function Slide({ event, index, scrollX, snap, cardW, coverH, onPress }: SlideProps) {
+// Memoised so a Home refresh (tickets, invites, workspace) doesn't re-render
+// every slide mid-swipe; the swipe itself never re-renders (UI-thread styles).
+const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, coverH, onPressEvent }: SlideProps) {
   const tokens = useTokens();
   const place = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : null);
 
@@ -130,10 +138,18 @@ function Slide({ event, index, scrollX, snap, cardW, coverH, onPress }: SlidePro
 
   return (
     <Animated.View style={[{ width: cardW }, animated]}>
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={event.title}>
+      <Pressable onPress={() => onPressEvent(event)} accessibilityRole="button" accessibilityLabel={event.title}>
         <View style={[styles.cover, { height: coverH, backgroundColor: tokens.elevated }]}>
           {event.coverImageUrl ? (
-            <Image source={{ uri: event.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <Image
+              source={{ uri: event.coverImageUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              // Fade in instead of popping in while the card is sliding.
+              transition={180}
+              cachePolicy="memory-disk"
+              recyclingKey={event.id}
+            />
           ) : (
             <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}
@@ -148,7 +164,9 @@ function Slide({ event, index, scrollX, snap, cardW, coverH, onPress }: SlidePro
       </Pressable>
     </Animated.View>
   );
-}
+});
+
+export default React.memo(HeroCarousel);
 
 function Dot({ index, scrollX, snap }: { index: number; scrollX: SharedValue<number>; snap: number }) {
   const tokens = useTokens();

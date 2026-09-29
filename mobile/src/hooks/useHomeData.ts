@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { onReconnect } from '../lib/offline/connectivity';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
@@ -366,8 +366,10 @@ export function useHomeData() {
   // ── Derived sections ──────────────────────────────────────────────────────
   // Nearby city events lead the hero; curated popular picks backfill so it's
   // never empty. Sub-events roll up to their super event.
-  const heroEvents = rollUpToSuperEvents(
-    buildPopularEvents(detectedCity ? nearbyEvents : [], popularEvents, []),
+  // Memoised: a fresh array every render would re-render the whole carousel.
+  const heroEvents = useMemo(
+    () => rollUpToSuperEvents(buildPopularEvents(detectedCity ? nearbyEvents : [], popularEvents, [])),
+    [detectedCity, nearbyEvents, popularEvents],
   );
   const isLoadingHero = isLoadingEvents || locationStatus === 'loading' || (detectedCity ? isLoadingNearby : false);
 
