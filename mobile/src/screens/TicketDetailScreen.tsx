@@ -17,6 +17,7 @@ import {
   UsersThree,
   WhatsappLogo,
   XCircle,
+  PencilSimple,
 } from 'phosphor-react-native';
 import AttendingShareModal from '../components/AttendingShareModal';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -234,6 +235,20 @@ export default function TicketDetailScreen() {
                 icon={<UsersThree size={24} color={accent} />}
                 label="Manage group"
                 onPress={() => router.push(`/group/${t.registrationId}` as never)}
+              />
+            ) : null}
+            {t.canEditDetails ? (
+              <SettingsRow
+                icon={<PencilSimple size={24} color={accent} />}
+                label="Edit my details"
+                value={
+                  t.editDetailsUntil
+                    ? `until ${new Date(t.editDetailsUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                    : undefined
+                }
+                onPress={() =>
+                  router.push({ pathname: '/edit-details', params: { registrationId: t.registrationId!, title: t.title } } as never)
+                }
               />
             ) : null}
             {t.competition && t.eventId ? (

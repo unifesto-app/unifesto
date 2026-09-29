@@ -3,6 +3,8 @@ import {} from 'react-native';
 import { profileGenderToAttendeeOption } from '../utils/profile';
 import { firstFormProblem } from '../utils/formQuestions';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
+import { getEventById } from '../lib/api/events';
+import { replaceMemberAsLead } from '../lib/api/attendeeControls';
 import {
   getRegistrationSeats,
   inviteSeats,
@@ -24,7 +26,7 @@ import { AppAlert } from '../components/ui/AppAlert';
  * A registration is normally one model; seats win when present.
  */
 export type GroupRow =
-  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; onEdit: () => void; editable: boolean }
+  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; onEdit: () => void; editable: boolean; onReplace?: () => void }
   | { key: string; kind: 'invited'; isLead: boolean; label: string; email: string | null; onRevoke: () => void; onRelease: () => void }
   | { key: string; kind: 'open'; isLead: boolean; label: string; onInvite: () => void; onRelease?: () => void }
   | { key: string; kind: 'released'; isLead: boolean; label: string; onReopen: () => void };
@@ -70,6 +72,10 @@ export function useManageGroup(registrationId: string) {
   const [composerOpen, setComposerOpen] = useState(false);
   // Which seat the composer invites into (1-based); null = next open seat.
   const [composerSeat, setComposerSeat] = useState<number | null>(null);
+  // Set while the composer is inviting someone to take over a filled seat.
+  const [replacing, setReplacing] = useState<{ seatIndex: number; name: string } | null>(null);
+  // The organiser lets leads replace members (Event settings › Allow team changes).
+  const [teamChanges, setTeamChanges] = useState(false);
 
   // ── Roster (shared-ticket member details) ──
   const [roster, setRoster] = useState<MyGroupRoster | null>(null);
@@ -101,6 +107,9 @@ export function useManageGroup(registrationId: string) {
     if (rosterRes.status === 'fulfilled' && rosterRes.value) {
       const r = rosterRes.value;
       setRoster(r);
+      getEventById(r.eventId)
+        .then((e: any) => setTeamChanges(!!e?.allowTeamChanges && e?.status !== 'COMPLETED' && e?.status !== 'CANCELLED'))
+        .catch(() => setTeamChanges(false));
       try {
         const { fields } = await getEventCustomFields(r.eventId);
         const applicable = r.ticketTypeId ? getFieldsForTicket(fields, r.ticketTypeId) : fields;
@@ -123,6 +132,7 @@ export function useManageGroup(registrationId: string) {
   const openComposer = (seatIndex: number | null = null) => {
     setEmail('');
     setComposerSeat(seatIndex);
+    setReplacing(null);
     setComposerOpen(true);
   };
 
@@ -135,7 +145,13 @@ export function useManageGroup(registrationId: string) {
     }
     setInviting(true);
     try {
-      await inviteSeats(registrationId, [{ email: value, ...(composerSeat != null ? { seatIndex: composerSeat } : {}) }]);
+      if (replacing) {
+        const res = await replaceMemberAsLead(registrationId, replacing.seatIndex, value);
+        if (!res.ok) throw new Error(res.message);
+        setReplacing(null);
+      } else {
+        await inviteSeats(registrationId, [{ email: value, ...(composerSeat != null ? { seatIndex: composerSeat } : {}) }]);
+      }
       setEmail('');
       setComposerOpen(false);
       await load();
@@ -150,6 +166,32 @@ export function useManageGroup(registrationId: string) {
     const md = s.memberDetails || {};
     const lines = [md.name, md.email, md.mobile].filter(Boolean).join('\n');
     AppAlert.alert(`Seat ${s.seatIndex}`, lines || 'This seat has been claimed.', [{ text: 'Close' }]);
+  };
+
+  /** Take a filled seat back from its member: hand it to someone new, or just free it. */
+  const replace = (seatIndex: number, name: string) => {
+    const freeSeat = async () => {
+      const res = await replaceMemberAsLead(registrationId, seatIndex);
+      if (!res.ok) AppAlert.alert('Could not remove', res.message);
+      await load();
+    };
+    AppAlert.alert(
+      `Replace ${name}?`,
+      "They lose this seat and their ticket stops working. They're told by email.",
+      [
+        {
+          text: 'Invite someone else',
+          onPress: () => {
+            setEmail('');
+            setComposerSeat(seatIndex);
+            setReplacing({ seatIndex, name });
+            setComposerOpen(true);
+          },
+        },
+        { text: 'Just free the seat', style: 'destructive', onPress: () => void freeSeat() },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+    );
   };
 
   const revoke = (seatIndex: number) => {
@@ -295,6 +337,7 @@ export function useManageGroup(registrationId: string) {
                 name: md.name || label,
                 sub: md.email ?? null,
                 editable: canEdit,
+                ...(teamChanges && !isLead ? { onReplace: () => replace(s.seatIndex, md.name || label) } : {}),
                 onEdit: !roster
                   ? () => showClaimDetails(s)
                   : () => startEditing(i, !canEdit || (i > 0 && s.claimedByUserId) ? 'view' : 'edit'),
@@ -326,7 +369,12 @@ export function useManageGroup(registrationId: string) {
     totalCount: activeRows.length,
     // invite composer (seats)
     composerOpen,
-    setComposerOpen,
+    setComposerOpen: (open: boolean) => {
+      setComposerOpen(open);
+      if (!open) setReplacing(null);
+    },
+    /** Who the composer's invite replaces, when it's replacing someone. */
+    replacing,
     email,
     setEmail,
     inviting,

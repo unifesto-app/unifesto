@@ -17,7 +17,9 @@ import {
   setEventPayoutAccount,
 } from '../lib/api/eventAdmin';
 import { describeAccount, getEligibleAccounts, type EligibleAccount } from '../lib/api/finance';
-import { FieldRow } from '../components/manage/FormFields';
+import { setAttendeeControls } from '../lib/api/attendeeControls';
+import { FieldRow, SwitchRow } from '../components/manage/FormFields';
+import DateTimeRow from '../components/manage/DateTimeRow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -147,6 +149,10 @@ export default function EventSettingsScreen() {
       },
     ]);
 
+  // Attendee controls save as soon as they change; the reload shows the server's view.
+  const setControls = (key: string, body: Parameters<typeof setAttendeeControls>[1]) =>
+    void run(key, () => setAttendeeControls(eventId!, body));
+
   const saveAccount = async () => {
     const ok = await run('account', () => setEventPayoutAccount(eventId!, selected || null));
     if (ok) setSavedAccount(selected);
@@ -219,6 +225,55 @@ export default function EventSettingsScreen() {
             onPress={publish}
             style={{ marginTop: spacing[6] }}
           />
+        ) : null}
+
+        {!isCompleted && !isCancelled ? (
+          <>
+            <SettingsGroup title="Attendees" plain>
+              <SwitchRow
+                label="Allow team changes"
+                hint="Team leads can replace a member of their group. You can always replace members from Attendees."
+                value={!!event.allowTeamChanges}
+                disabled={busy === 'teamChanges'}
+                onValueChange={(v) => setControls('teamChanges', { allowTeamChanges: v })}
+              />
+              <SwitchRow
+                label="Attendees can edit their details"
+                hint="People can change their registration answers from their ticket. Group leads edit the team's, members their own."
+                value={!!event.attendeeEditsEnabled}
+                disabled={busy === 'edits'}
+                onValueChange={(v) => setControls('edits', { attendeeEditsEnabled: v })}
+              />
+              {event.attendeeEditsEnabled ? (
+                <SwitchRow
+                  label="Close edits at a set time"
+                  value={!!event.attendeeEditsUntil}
+                  disabled={busy === 'deadline'}
+                  onValueChange={(v) =>
+                    setControls('deadline', {
+                      // Default to the day before the event starts, never in the past.
+                      attendeeEditsUntil: v
+                        ? new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString()
+                        : null,
+                    })
+                  }
+                />
+              ) : null}
+              {event.attendeeEditsEnabled && event.attendeeEditsUntil ? (
+                <DateTimeRow
+                  label="Edits close"
+                  value={new Date(event.attendeeEditsUntil)}
+                  minimumDate={new Date()}
+                  onChange={(d) => setControls('deadline', { attendeeEditsUntil: d.toISOString() })}
+                />
+              ) : null}
+            </SettingsGroup>
+            <Text style={[styles.note, { color: tokens.textMuted }]}>
+              {event.attendeeEditsEnabled && event.attendeeEditsUntil && new Date(event.attendeeEditsUntil).getTime() <= Date.now()
+                ? 'The edit deadline has passed, so details are locked. Move the deadline or turn it off to reopen.'
+                : 'You can always edit any attendee’s details from Attendees, whatever these say.'}
+            </Text>
+          </>
         ) : null}
 
         {/* Where this event's earnings are paid. Blank = the creator's primary account. */}

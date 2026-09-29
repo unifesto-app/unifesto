@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from '
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, Phone, Receipt, User, XCircle } from 'phosphor-react-native';
+import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, Phone, Receipt, User, XCircle } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
@@ -14,6 +14,8 @@ import { displayFieldValue } from '../hooks/useEventRegistration';
 import { getEventCustomFields, openFormUpload, type CustomField } from '../lib/api/tickets';
 import { displayAnswer, isFileAnswer } from '../utils/formQuestions';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { FieldRow } from '../components/manage/FormFields';
+import { replaceMemberAsCurator } from '../lib/api/attendeeControls';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
@@ -47,6 +49,9 @@ export default function AttendeeDetailScreen() {
   const topSpacing = useTopSpacing();
   const [seatBusy, setSeatBusy] = useState<number | null>(null);
   const [fields, setFields] = useState<CustomField[]>([]);
+  // Replacing a member: which seat, and who (optionally) takes it over.
+  const [replacing, setReplacing] = useState<{ seatIndex: number; name: string } | null>(null);
+  const [replaceEmail, setReplaceEmail] = useState('');
 
   // Question labels, so answers read "College: IIT" instead of a field id.
   useEffect(() => {
@@ -108,6 +113,24 @@ export default function AttendeeDetailScreen() {
 
   const openAction = (kind: 'cancel' | 'refund' | 'transfer') =>
     router.push({ pathname: `/manage/event/${eventId}/attendee-action`, params: { registrationId, kind } });
+
+  const doReplace = async (email?: string) => {
+    if (!replacing) return;
+    if (email && !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
+      AppAlert.alert('Check the email', 'That doesn’t look like an email address.');
+      return;
+    }
+    setSeatBusy(replacing.seatIndex);
+    const res = await replaceMemberAsCurator(eventId!, registrationId!, replacing.seatIndex, email);
+    setSeatBusy(null);
+    if (!res.ok) {
+      AppAlert.alert("Couldn't replace", res.message);
+      return;
+    }
+    setReplacing(null);
+    setReplaceEmail('');
+    await load();
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -257,13 +280,16 @@ export default function AttendeeDetailScreen() {
         <SettingsGroup title={`Group seats · ${seats.filter((x) => x.status === 'CLAIMED').length} of ${seats.length} filled`} plain>
           {seats.map((s) => {
             // Unfilled seats can be retired; retired ones reopened. Frozen once cancelled.
+            // Filled member seats (not the lead's) can be handed to someone else.
             const action = cancelled
               ? undefined
               : s.status === 'OPEN' || s.status === 'INVITED'
                 ? ('release' as const)
                 : s.status === 'RELEASED'
                   ? ('reopen' as const)
-                  : undefined;
+                  : s.status === 'CLAIMED' && s.seatIndex !== 1
+                    ? ('replace' as const)
+                    : undefined;
             return (
               <SeatRow
                 key={s.seatIndex}
@@ -271,15 +297,57 @@ export default function AttendeeDetailScreen() {
                 fields={fields}
                 action={action}
                 busy={seatBusy === s.seatIndex}
-                onAction={() => seatAction(s.seatIndex, action === 'release')}
+                onAction={() =>
+                  action === 'replace'
+                    ? (setReplaceEmail(''), setReplacing({ seatIndex: s.seatIndex, name: s.memberDetails?.name || `Seat ${s.seatIndex}` }))
+                    : seatAction(s.seatIndex, action === 'release')
+                }
               />
             );
           })}
         </SettingsGroup>
       ) : null}
 
+      {replacing ? (
+        <>
+          <SettingsGroup
+            title={`Replace ${replacing.name}`}
+            action={{ label: 'Cancel', onPress: () => setReplacing(null) }}
+            plain
+          >
+            <FieldRow
+              label="New person"
+              value={replaceEmail}
+              onChangeText={setReplaceEmail}
+              placeholder="Their email (optional)"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoFocus
+            />
+          </SettingsGroup>
+          <Text style={[styles.muted, { color: tokens.textMuted, marginTop: spacing[2], marginHorizontal: spacing[1] }]}>
+            {replacing.name} loses the seat and their ticket stops working; they're told by email. With an email, the new person gets
+            a link to claim it; without one the seat is left open for the lead to fill. Not possible once they've checked in.
+          </Text>
+          <Button
+            label={replaceEmail.trim() ? 'Replace and invite' : 'Remove and leave seat open'}
+            variant="danger"
+            fullWidth
+            loading={seatBusy === replacing.seatIndex}
+            onPress={() => void doReplace(replaceEmail.trim().toLowerCase() || undefined)}
+            style={{ marginTop: spacing[4], marginBottom: spacing[4] }}
+          />
+        </>
+      ) : null}
+
       {!cancelled ? (
         <SettingsGroup title="Actions">
+          <SettingsRow
+            icon={<PencilSimple size={ICON} color={tokens.accent} weight="fill" />}
+            label="Edit details"
+            onPress={() => router.push({ pathname: '/edit-details', params: { registrationId: registrationId!, eventId: eventId!, title: name } })}
+          />
           <SettingsRow
             icon={<ArrowsLeftRight size={ICON} color={tokens.accent} weight="fill" />}
             label="Transfer to someone else"

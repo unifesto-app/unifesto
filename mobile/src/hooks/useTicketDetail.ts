@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking } from 'react-native';
 import { getEventBySlug, getMyRegistrationsForEvent } from '../lib/api/events';
+import { getMyDetails, type MyDetails } from '../lib/api/attendeeControls';
 import { getRegistrationCheckins, type RegistrationCheckinRecord } from '../lib/api/checkin';
 import { markTicketsStale } from '../lib/ticketsRefresh';
 import {
@@ -74,6 +75,8 @@ export function useTicketDetail(ticketParam: unknown) {
   const [checkins, setCheckins] = useState<RegistrationCheckinRecord[]>([]);
   const [roster, setRoster] = useState<MyGroupRoster | null>(null);
   const [waGroup, setWaGroup] = useState<TicketWhatsappGroup | null>(null);
+  // Whether the organiser currently lets this person change their registration details.
+  const [details, setDetails] = useState<MyDetails | null>(null);
   const [waSaving, setWaSaving] = useState(false);
   const [cancelledNow, setCancelledNow] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -106,6 +109,7 @@ export function useTicketDetail(ticketParam: unknown) {
       getRegistrationCheckins(registrationId).then(setCheckins),
       getMyGroupMembers(registrationId).then(setRoster),
       getRegistrationWhatsappGroup(registrationId).then(setWaGroup),
+      getMyDetails(registrationId).then((res) => setDetails(res.ok ? res.data : null)),
     ];
     if (reloadKey > 0 && eventId) {
       jobs.push(
@@ -167,6 +171,8 @@ export function useTicketDetail(ticketParam: unknown) {
   const cancelled = status === 'cancelled';
   const canManageGroup = !!roster?.editable && !!registrationId && !isGroupMember && !eventCompleted;
   const canRefund = !!registrationId && !cancelled && !isFree && !isGroupMember;
+  const canEditDetails = !!details?.editable && !cancelled;
+  const editDetailsUntil = details?.editsUntil ?? null;
   const canCancelFree = !!registrationId && !cancelled && isFree && !eventCompleted && !isGroupMember;
 
   // Single registration-level check-in, used only if the history is empty.
@@ -268,6 +274,8 @@ export function useTicketDetail(ticketParam: unknown) {
     waGroup,
     waSaving,
     canManageGroup,
+    canEditDetails,
+    editDetailsUntil,
     canRefund,
     canCancelFree,
     cancelling,

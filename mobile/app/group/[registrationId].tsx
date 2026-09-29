@@ -275,13 +275,17 @@ export default function ManageGroupRoute() {
             <View style={[styles.card, { marginTop: spacing[4] }]}>
               <CardBackdrop shape={styles.card} />
               <View style={styles.cardHead}>
-                <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>Invite by email</Text>
+                <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>
+                  {g.replacing ? `Replace ${g.replacing.name}` : 'Invite by email'}
+                </Text>
                 <Pressable onPress={() => g.setComposerOpen(false)} hitSlop={10}>
                   <Text style={[styles.link, { color: tokens.textSecondary }]}>Cancel</Text>
                 </Pressable>
               </View>
               <Text style={[styles.small, { color: tokens.textMuted, marginTop: 4 }]}>
-                They get a link to claim this seat as their own ticket and fill in their own details.
+                {g.replacing
+                  ? `${g.replacing.name} loses this seat and is told by email. The new person gets a link to claim it.`
+                  : 'They get a link to claim this seat as their own ticket and fill in their own details.'}
               </Text>
               <View style={[styles.inputRow, { backgroundColor: tokens.fill }]}>
                 <EnvelopeSimple size={20} color={tokens.textMuted} />
@@ -308,7 +312,7 @@ export default function ManageGroupRoute() {
                   { backgroundColor: tokens.accent, opacity: g.inviting || !g.email.trim() ? 0.5 : pressed ? 0.85 : 1 },
                 ]}
               >
-                {g.inviting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.sendText}>Send invite</Text>}
+                {g.inviting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.sendText}>{g.replacing ? 'Replace and invite' : 'Send invite'}</Text>}
               </Pressable>
             </View>
           ) : null}
@@ -345,6 +349,7 @@ function Row({ row }: { row: GroupRow }) {
           </View>
           {row.sub ? <Text style={[styles.small, { color: tokens.textMuted }]} numberOfLines={1}>{row.sub}</Text> : null}
         </View>
+        {row.onReplace ? <TextAction label="Replace" onPress={row.onReplace} danger /> : null}
         <Text style={[styles.action, { color: tokens.textSecondary }]}>{row.editable ? 'Edit' : 'Details'}</Text>
         <CaretRight size={14} color={tokens.textMuted} />
       </Pressable>
