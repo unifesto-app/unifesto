@@ -26,6 +26,7 @@ import {
   type FileKind,
   type FormFieldConfig,
 } from '../utils/formQuestions';
+import { createStayQuestion, deleteStayQuestion, getTeamStay, updateStayQuestion, type StayQuestion } from '../lib/api/stays';
 import { FieldRow, SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
@@ -126,15 +127,34 @@ function configFrom(d: QuestionDraft): FormFieldConfig | null {
   return Object.keys(c).length ? (c as FormFieldConfig) : null;
 }
 
+/** A Unifesto Stay question in the ticket-question shape this editor works on. */
+const fromStayQuestion = (q: StayQuestion): TicketFormField => ({
+  id: q.id,
+  ticketTypeId: null,
+  label: q.label,
+  type: q.type,
+  options: q.options,
+  isRequired: q.isRequired,
+  order: q.order,
+  perGroup: false,
+  helpText: q.helpText,
+  config: q.config,
+  showIf: q.showIf,
+});
+
 /**
  * Add or edit one registration question on a ticket. `fieldId === 'new'`
  * creates it at the end of the ticket's form. `group === '1'` offers the
  * "ask once per group" choice, which only means something on group tickets.
+ *
+ * With `stayId` instead of `ticketId` it edits a Unifesto Stay's booking
+ * question: same types, limits and show-if rules, asked once per booking.
  */
 export default function TicketQuestionScreen() {
-  const { eventId, ticketId, fieldId, group } = useLocalSearchParams<{
+  const { eventId, ticketId, stayId, fieldId, group } = useLocalSearchParams<{
     eventId: string;
-    ticketId: string;
+    ticketId?: string;
+    stayId?: string;
     fieldId: string;
     group?: string;
   }>();
@@ -142,10 +162,21 @@ export default function TicketQuestionScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
-  const types = useEventTicketTypes(eventId);
+  const types = useEventTicketTypes(stayId ? undefined : eventId);
+  const [stayQuestions, setStayQuestions] = useState<TicketFormField[] | null>(null);
   const isNew = fieldId === 'new';
-  const isGroup = group === '1';
-  const siblings = useMemo(() => (ticketId ? types.fieldsFor(ticketId) : []), [types, ticketId]);
+  const isGroup = !stayId && group === '1';
+
+  useEffect(() => {
+    if (!stayId || !eventId) return;
+    void getTeamStay(eventId, stayId).then((r) => setStayQuestions(r.ok ? r.data.questions.map(fromStayQuestion) : []));
+  }, [eventId, stayId]);
+
+  const siblings = useMemo(
+    () => (stayId ? stayQuestions ?? [] : ticketId ? types.fieldsFor(ticketId) : []),
+    [stayId, stayQuestions, types, ticketId],
+  );
+  const siblingsLoading = stayId ? stayQuestions === null : types.loading;
   const original = useMemo(() => (isNew ? undefined : siblings.find((f) => f.id === fieldId)), [isNew, siblings, fieldId]);
 
   const [draft, setDraft] = useState<QuestionDraft | null>(isNew ? EMPTY : null);
@@ -181,7 +212,7 @@ export default function TicketQuestionScreen() {
   const parent = draft?.showIfField ? siblings.find((f) => f.id === draft.showIfField) : undefined;
 
   const save = async () => {
-    if (!draft || !eventId || !ticketId) return;
+    if (!draft || !eventId || !(ticketId || stayId)) return;
     const options = draft.options
       .split('\n')
       .map((o) => o.trim())
@@ -201,26 +232,34 @@ export default function TicketQuestionScreen() {
       showIf: draft.showIfField && !isSection ? { fieldId: draft.showIfField, anyOf: draft.showIfAnyOf } : null,
     };
     setSaving(true);
-    const res = isNew
-      ? await createFormField(eventId, { ...body, ticketTypeId: ticketId, order: siblings.length })
-      : await updateFormField(eventId, fieldId!, body);
+    let res: { ok: true } | { ok: false; denied: boolean; message: string };
+    if (stayId) {
+      const { perGroup: _perGroup, ...stayBody } = body;
+      res = isNew
+        ? await createStayQuestion(eventId, stayId, { ...stayBody, order: siblings.length })
+        : await updateStayQuestion(eventId, stayId, fieldId!, stayBody);
+    } else {
+      res = isNew
+        ? await createFormField(eventId, { ...body, ticketTypeId: ticketId!, order: siblings.length })
+        : await updateFormField(eventId, fieldId!, body);
+    }
     setSaving(false);
     if (!res.ok) {
-      setError(res.denied ? "You can't edit this ticket's questions." : res.message);
+      setError(res.denied ? `You can't edit this ${stayId ? 'stay' : "ticket"}'s questions.` : res.message);
       return;
     }
     router.back();
   };
 
   const confirmDelete = () =>
-    AppAlert.alert('Delete this question?', 'Answers people already gave stay on their registrations.', [
+    AppAlert.alert('Delete this question?', `Answers people already gave stay on their ${stayId ? 'bookings' : 'registrations'}.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
           setDeleting(true);
-          const res = await deleteFormField(eventId!, fieldId!);
+          const res = stayId ? await deleteStayQuestion(eventId!, stayId, fieldId!) : await deleteFormField(eventId!, fieldId!);
           setDeleting(false);
           if (!res.ok) {
             AppAlert.alert("Couldn't delete", res.message);
@@ -237,7 +276,7 @@ export default function TicketQuestionScreen() {
     return (
       <View style={[styles.center, { backgroundColor: tokens.bg }]}>
         <Stack.Screen options={{ title }} />
-        {types.loading ? (
+        {siblingsLoading ? (
           <ActivityIndicator color={tokens.accent} />
         ) : (
           <Text style={[styles.muted, { color: tokens.textMuted }]}>This question no longer exists.</Text>

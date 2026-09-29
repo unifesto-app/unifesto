@@ -27,7 +27,8 @@ export const FORM_UPLOAD_RETENTION_DAYS = 180;
 /** How long a "view file" link works. */
 const VIEW_LINK_SECONDS = 5 * 60;
 
-const EXT: Record<string, string> = {
+/** File extension stored for each accepted type (Stay uploads reuse it). */
+export const UPLOAD_EXT: Record<string, string> = {
   'application/pdf': 'pdf',
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -144,11 +145,11 @@ export class FormUploadsService {
       throw new BadRequestException(`This question accepts: ${names}.`);
     }
 
-    const key = `${formUploadPrefix(eventId, fieldId, userId)}${crypto.randomUUID()}.${EXT[mime]}`;
+    const key = `${formUploadPrefix(eventId, fieldId, userId)}${crypto.randomUUID()}.${UPLOAD_EXT[mime]}`;
     await this.storage.uploadPrivate(file.buffer, key, mime);
     return {
       key,
-      name: (file.originalname || `file.${EXT[mime]}`).slice(0, 200),
+      name: (file.originalname || `file.${UPLOAD_EXT[mime]}`).slice(0, 200),
       size: file.size,
       mime,
     };
@@ -206,7 +207,11 @@ export class FormUploadsService {
       where: {
         endDateTime: { lt: cutoff },
         formUploadsPurgedAt: null,
-        formFields: { some: { type: 'FILE' } },
+        // Stay bookings keep guests' photo IDs under the same prefix.
+        OR: [
+          { formFields: { some: { type: 'FILE' } } },
+          { stayBookings: { some: {} } },
+        ],
       },
       select: { id: true },
       take: 200,

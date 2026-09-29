@@ -448,7 +448,8 @@ function FileInput({ field, value, onChange, hasError }: { field: CustomField; v
     }
     setBusy(true);
     try {
-      onChange(await uploadFormFieldFile(field.event_id, field.id, { uri: a.uri, name: a.name, mimeType: a.mimeType }));
+      const file = { uri: a.uri, name: a.name, mimeType: a.mimeType };
+      onChange(await (field.upload ? field.upload(file) : uploadFormFieldFile(field.event_id, field.id, file)));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't upload the file.");
     } finally {

@@ -477,6 +477,7 @@ model User {
   sponsorMemberships           SponsorUser[]                 @relation("SponsorUserAccount")
   couponRedemptions            CouponRedemption[]
   partnerLinks                 EventPartnerLink[]            @relation("PartnerLinkContact")
+  stayBookings                 StayBooking[]                 @relation("StayBooker")
 
   @@index([deletionRequestedAt])
   @@map("users")
@@ -1419,6 +1420,8 @@ model Event {
   partnerLinks                   EventPartnerLink[]
   pageViews                      PageView[]
   shortLinks                     ShortLink[]
+  stays                          Stay[]
+  stayBookings                   StayBooking[]
 
   @@index([spaceId])
   @@index([status])
@@ -1747,10 +1750,10 @@ model EventFormField {
   helpText String? @map("help_text") @db.VarChar(500)
   // Per-type answer limits, see registrations/form-answers.util.ts
   // (FormFieldConfig): lengths, number/date range, picks, rating scale, files.
-  config Json?
+  config   Json?
   // Show only when an earlier choice question's answer is one of `anyOf`:
   // { fieldId, anyOf: string[] }. Null = always shown.
-  showIf Json? @map("show_if")
+  showIf   Json?   @map("show_if")
 
   @@index([eventId])
   @@index([ticketTypeId])
@@ -1883,6 +1886,7 @@ model EventRegistration {
   certificates        Certificate[]
   sponsorLeads        SponsorLead[]
   couponRedemption    CouponRedemption?
+  stayBookings        StayBooking[]
 
   // NOTE: "at most one ACTIVE registration per (event, user, ticket type)" is
   // enforced by a PARTIAL unique index that exempts REFUNDED and CANCELLED
@@ -2062,7 +2066,7 @@ model GroupSeat {
   whatsappInviteSentAt DateTime? @map("whatsapp_invite_sent_at") @db.Timestamptz(6)
   // When this seat's claimer said "I've joined" the WhatsApp group from their
   // ticket (the lead's own flag is on the registration row).
-  whatsappJoinedAt DateTime? @map("whatsapp_joined_at") @db.Timestamptz(6)
+  whatsappJoinedAt     DateTime? @map("whatsapp_joined_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -4233,9 +4237,9 @@ model PageView {
   spaceId String        @map("space_id") @db.Uuid
   space   Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
-  visitorId String @map("visitor_id") @db.VarChar(64)
+  visitorId String  @map("visitor_id") @db.VarChar(64)
   // ios | android | web
-  platform  String @db.VarChar(16)
+  platform  String  @db.VarChar(16)
   // utm tags of the link that opened the page, when there was one.
   source    String? @db.VarChar(100)
   medium    String? @db.VarChar(100)
@@ -4322,4 +4326,276 @@ model DefaultImage {
 
   @@index([kind, createdAt])
   @@map("default_images")
+}
+
+// =====================================================
+// UNIFESTO STAY — accommodation attached to an event
+// =====================================================
+// The event team lists where attendees can stay (a Stay = one property) and
+// what can be booked there (StayOption = a pool of beds: "Boys dorm bed",
+// "Twin room bed"). A registered attendee requests beds for a range of nights;
+// the team approves, the attendee pays if the option is paid online, and a
+// Stay Pass (QR) is issued that the team scans at check-in.
+//
+// Capacity is counted per bed per night: an option with 40 beds can hold 40
+// guests on any one night. A booking of 3 guests from the 10th to the 12th
+// holds 3 beds on the nights of the 10th and 11th (check-out day is free).
+
+enum StayPropertyType {
+  HOSTEL
+  HOTEL
+  DORMITORY
+  GUEST_HOUSE
+  HOMESTAY
+  OTHER
+
+  @@map("stay_property_type")
+}
+
+/// Who an option is for. ANY = mixed / not restricted.
+enum StayGender {
+  ANY
+  MALE
+  FEMALE
+
+  @@map("stay_gender")
+}
+
+/// How the guest pays for an option. FREE when the price is 0.
+///   PAY_AT_PROPERTY: the team collects offline and marks the booking paid.
+///   ONLINE:          paid in the app through Razorpay after approval; counts
+///                    towards the event's payout like ticket money.
+enum StayPaymentMode {
+  FREE
+  PAY_AT_PROPERTY
+  ONLINE
+
+  @@map("stay_payment_mode")
+}
+
+enum StayPricing {
+  PER_NIGHT // price x guests x nights
+  PER_STAY // price x guests, whatever the nights
+
+  @@map("stay_pricing")
+}
+
+/// Booking lifecycle.
+///   PENDING -> (team approves) -> AWAITING_PAYMENT (ONLINE only) -> CONFIRMED
+///   PENDING -> (team approves, not ONLINE) -> CONFIRMED
+///   CONFIRMED -> CHECKED_IN -> CHECKED_OUT
+///   PENDING -> REJECTED;  any open state -> CANCELLED
+///   AWAITING_PAYMENT past paymentDueAt -> EXPIRED (beds released)
+/// Beds are held from AWAITING_PAYMENT onwards (HOLDS_BEDS in the service); a
+/// PENDING request holds nothing, so approval re-checks availability.
+enum StayBookingStatus {
+  PENDING
+  AWAITING_PAYMENT
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  REJECTED
+  CANCELLED
+  EXPIRED
+
+  @@map("stay_booking_status")
+}
+
+/// One property the event team offers.
+model Stay {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name          String           @db.VarChar(200)
+  propertyType  StayPropertyType @default(HOSTEL) @map("property_type")
+  description   String?          @db.Text
+  coverImageUrl String?          @map("cover_image_url") @db.Text
+  address       String?          @db.Text
+  city          String?          @db.VarChar(100)
+  mapUrl        String?          @map("map_url") @db.Text
+  amenities     String[]
+  houseRules    String?          @map("house_rules") @db.Text
+  contactName   String?          @map("contact_name") @db.VarChar(120)
+  contactPhone  String?          @map("contact_phone") @db.VarChar(20)
+
+  // Bookable window: guests may check in from `checkInFrom` and must be out by
+  // `checkOutUntil` (calendar dates).
+  checkInFrom   DateTime @map("check_in_from") @db.Date
+  checkOutUntil DateTime @map("check_out_until") @db.Date
+  // Shown on the pass, e.g. "12:00 PM" / "10:00 AM".
+  checkInTime   String?  @map("check_in_time") @db.VarChar(20)
+  checkOutTime  String?  @map("check_out_time") @db.VarChar(20)
+
+  // Every guest must upload a photo ID with the request.
+  requireIdProof     Boolean @default(true) @map("require_id_proof")
+  // ONLINE options: how long an approved guest has to pay before the beds are
+  // released back.
+  paymentWindowHours Int     @default(48) @map("payment_window_hours")
+  // Hidden from attendees until the team publishes it.
+  isPublished        Boolean @default(false) @map("is_published")
+  order              Int     @default(0)
+
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  options   StayOption[]
+  questions StayQuestion[]
+  bookings  StayBooking[]
+
+  @@index([eventId])
+  @@map("stays")
+}
+
+/// What can be booked at a Stay: a pool of beds with one price.
+model StayOption {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  stayId String @map("stay_id") @db.Uuid
+  stay   Stay   @relation(fields: [stayId], references: [id], onDelete: Cascade)
+
+  name        String          @db.VarChar(120)
+  description String?         @db.Text
+  gender      StayGender      @default(ANY)
+  totalBeds   Int             @map("total_beds")
+  price       Decimal         @default(0) @db.Decimal(10, 2)
+  pricing     StayPricing     @default(PER_NIGHT)
+  paymentMode StayPaymentMode @default(FREE) @map("payment_mode")
+  // Largest group one request may book (the booker counts as one).
+  maxGuests   Int             @default(1) @map("max_guests")
+  isActive    Boolean         @default(true) @map("is_active")
+  order       Int             @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  bookings StayBooking[]
+
+  @@index([stayId])
+  @@map("stay_options")
+}
+
+/// A custom question the team asks on every booking request at a Stay. Same
+/// shape and rules as EventFormField (registrations/form-answers.util.ts), so
+/// answers are validated by the same code. Asked once per booking.
+model StayQuestion {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  stayId String @map("stay_id") @db.Uuid
+  stay   Stay   @relation(fields: [stayId], references: [id], onDelete: Cascade)
+
+  label      String        @db.VarChar(255)
+  type       FormFieldType
+  options    String[]
+  isRequired Boolean       @default(false) @map("is_required")
+  order      Int           @default(0)
+  helpText   String?       @map("help_text") @db.VarChar(500)
+  config     Json?
+  showIf     Json?         @map("show_if")
+
+  @@index([stayId])
+  @@map("stay_questions")
+}
+
+model StayBooking {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  stayId   String     @map("stay_id") @db.Uuid
+  stay     Stay       @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  // An option with bookings can't be deleted (switch it off instead).
+  optionId String     @map("option_id") @db.Uuid
+  option   StayOption @relation(fields: [optionId], references: [id], onDelete: Restrict)
+  // Denormalised from the stay so payouts and lists filter by event directly.
+  eventId  String     @map("event_id") @db.Uuid
+  event    Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation("StayBooker", fields: [userId], references: [id], onDelete: Cascade)
+
+  // The event registration that made the booker eligible.
+  registrationId String?            @map("registration_id") @db.Uuid
+  registration   EventRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+
+  status StayBookingStatus @default(PENDING)
+
+  checkInDate  DateTime @map("check_in_date") @db.Date
+  checkOutDate DateTime @map("check_out_date") @db.Date
+  nights       Int
+  // Number of guests = beds held.
+  guestCount   Int      @map("guest_count")
+
+  arrivalAt      DateTime? @map("arrival_at") @db.Timestamptz(6)
+  emergencyName  String?   @map("emergency_name") @db.VarChar(120)
+  emergencyPhone String?   @map("emergency_phone") @db.VarChar(20)
+  note           String?   @db.Text
+  // Answers to the stay's custom questions, keyed by StayQuestion id.
+  answers        Json?
+
+  // Money, snapshotted at request time. `totalAmount` is what the guest pays
+  // = baseAmount + processingFee (the fee applies to ONLINE only).
+  paymentMode    StayPaymentMode @map("payment_mode")
+  baseAmount     Decimal         @default(0) @map("base_amount") @db.Decimal(10, 2)
+  processingFee  Decimal         @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  totalAmount    Decimal         @default(0) @map("total_amount") @db.Decimal(10, 2)
+  // Null for FREE. PENDING until paid (online, or marked paid at the property).
+  paymentStatus  PaymentStatus?  @map("payment_status")
+  paymentId      String?         @map("payment_id") @db.VarChar(255)
+  orderId        String?         @map("order_id") @db.VarChar(255)
+  paidAt         DateTime?       @map("paid_at") @db.Timestamptz(6)
+  refundedAmount Decimal         @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  paymentDueAt   DateTime?       @map("payment_due_at") @db.Timestamptz(6)
+
+  reviewedById    String?   @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  rejectionReason String?   @map("rejection_reason") @db.Text
+  // Room / bed the team assigned, free text ("Block B, Room 204").
+  allocation      String?   @db.VarChar(200)
+  // Only the team sees this.
+  staffNote       String?   @map("staff_note") @db.Text
+
+  // The Stay Pass. Generated with the request, shown once CONFIRMED.
+  passCode      String    @unique @map("pass_code") @db.VarChar(20)
+  checkedInAt   DateTime? @map("checked_in_at") @db.Timestamptz(6)
+  checkedInById String?   @map("checked_in_by_id") @db.Uuid
+  checkedOutAt  DateTime? @map("checked_out_at") @db.Timestamptz(6)
+
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelledById      String?   @map("cancelled_by_id") @db.Uuid
+  cancellationReason String?   @map("cancellation_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  guests StayGuest[]
+
+  @@index([eventId, status])
+  @@index([stayId])
+  @@index([optionId, status])
+  @@index([userId])
+  @@index([registrationId])
+  @@index([orderId])
+  @@index([status, paymentDueAt])
+  @@map("stay_bookings")
+}
+
+/// One person on a booking. The booker is the first guest.
+model StayGuest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  bookingId String      @map("booking_id") @db.Uuid
+  booking   StayBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  name     String  @db.VarChar(120)
+  phone    String? @db.VarChar(20)
+  email    String? @db.VarChar(255)
+  // MALE | FEMALE | OTHER
+  gender   String  @db.VarChar(10)
+  isBooker Boolean @default(false) @map("is_booker")
+  // Photo ID: a FileAnswer ({ key, name, size, mime }) in private storage.
+  idProof  Json?   @map("id_proof")
+  order    Int     @default(0)
+
+  @@index([bookingId])
+  @@map("stay_guests")
 }

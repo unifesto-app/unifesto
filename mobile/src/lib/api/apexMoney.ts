@@ -214,7 +214,7 @@ export interface ReconPaymentRow {
   method: string | null;
   contact: string | null;
   createdAt: string | null;
-  platform: { source: 'EVENT' | 'SESSION'; registrationId: string; title: string; paymentStatus: string; amount: number } | null;
+  platform: { source: 'EVENT' | 'SESSION' | 'STAY'; registrationId: string; title: string; paymentStatus: string; amount: number } | null;
   status: ReconPaymentStatus;
   amountMismatch: boolean;
   reconcileRegistrationId: string | null;
