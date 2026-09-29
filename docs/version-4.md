@@ -307,6 +307,9 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 | 5.3q | Push device "Link failed: 404 Target user does not exist" in Apex | Transfer to an external id with no OneSignal user yet (new account, device never ran `login()`) | Create the OneSignal user, retry the transfer once | B | done |
 | 5.3r | "App version: Not reported yet" after social sign-up | Report fired while only a temp token existed, never retried until a cold start | Wait for the access token; retry on foreground resume (24h gate kept) | M | done |
 | 5.3s | Pull-to-refresh on event, space and ticket detail | – | Refresh control on the three detail screens | M | done |
+| 5.3t | New: replace a team member | – | Curators turn on "Allow team changes" (Event settings › Attendees); the lead then replaces a filled member seat (invite someone else or free it). Curators can always replace from Attendees. Old ticket deleted, both told by email; not the lead's seat or a checked-in member | B (+migration) + M | done |
+| 5.3u | New: allow / stop attendees editing their details | – | Event settings › Attendees: switch + optional "Edits close" deadline. Solo edits their answers, lead the team's + own, member their own; curators edit anyone any time (Attendees › Edit details) | B (+migration) + M | done |
+| 5.3v | New: OTA system complete (W3) | – | Preflight vs recorded store fingerprints, 20% staged rollout, promote / revert / rollback scripts, runbook, Profile › About, build info on Crashlytics and support tickets, in-app What's new | B (+migration) + M | done |
 
 **Traffic and short links (5.3g–i) in detail**
 
@@ -314,7 +317,11 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - Config (optional, defaults shown): `SHORT_LINK_BASE_URL=https://api.unifesto.app`, `TRAFFIC_HASH_SECRET` (falls back to `JWT_SECRET`).
 - Privacy: views carry a random per-install id, no account id; clicks store an HMAC of IP + user agent, never the IP. Both fit the published labels (Product Interaction, not linked, analytics, consent-gated).
 
-**Migrations in this release** (both additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929120000_traffic`.
+**Migrations in this release** (all additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929120000_traffic`, `20260929130000_event_attendee_controls`, `20260929140000_support_ticket_client_info`, `20260929150000_default_images`.
+
+**New backend env (optional):** `UPTIMEROBOT_API_KEY` (read-only key, for Apex › Status), `SHORT_LINK_BASE_URL`, `TRAFFIC_HASH_SECRET`.
+
+**After the store build is live:** `npm run ota:record` in `mobile/` and commit `runtime-fingerprints.json`, or no OTA for 4.0.5 can pass the preflight.
 
 #### Release checklist (4.0.5)
 
@@ -330,6 +337,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-09-26** · 5.3a–d check-in per member, recents, WhatsApp card for members (+ migration); 5.3s pull-to-refresh; 5.3j/l header blur + rail. Committed on the other machine; recovered from `backup/4.0.5-old-session` and cherry-picked
 - **2026-09-29** · Work lost when the other machine ran out of credits, rebuilt: backend traffic module + tests (verified against a local Postgres copy of the schema), mobile beacon / Tracking traffic / Short links / Apex Traffic, 5.3q OneSignal link, 5.3r app version, rail end-snap fix, version 4.0.5 · PR [#14](https://github.com/unifesto-app/unifesto/pull/14)
 - **2026-09-29** · 5.3l header backdrop redone after QA ("can't see it on many screens"): drawn by the app on both platforms (real blur on iOS, raised tint on Android instead of a page-colour wash) with a bottom hairline
+- **2026-09-29** · 5.3t team member replacement, 5.3u attendee detail edits (verified against a local Postgres copy), 5.3v OTA system, 5.3k default images, 5.3m push history delete, 5.3n UptimeRobot, 5.3o widgets + Countdown
 
 #### Shipped
 
