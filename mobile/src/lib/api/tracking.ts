@@ -132,3 +132,88 @@ export function sourceLabel(s: { source: string | null; medium: string | null })
   const name = s.source.charAt(0).toUpperCase() + s.source.slice(1);
   return s.medium === 'partner' ? `${name} (partner)` : name;
 }
+
+// ── Page analytics + short links (4.0.5) ─────────────────────────────────────
+
+export interface PageSourceRow {
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  /** Visitor-days that arrived with these tags. */
+  visitors: number;
+  views: number;
+  registrations: number;
+}
+
+export interface ShortLink {
+  id: string;
+  code: string;
+  target: 'EVENT' | 'SPACE';
+  label: string;
+  utmSource: string;
+  utmMedium: string | null;
+  utmCampaign: string | null;
+  clicks: number;
+  lastClickedAt: string | null;
+  createdAt: string;
+  event: { id: string; slug: string; title: string } | null;
+  shortUrl: string;
+  destinationUrl: string | null;
+}
+
+export interface PageAnalytics {
+  range: { days: number; from: string; to: string };
+  totals: {
+    views: number;
+    visitors: number;
+    uniqueVisitors: number;
+    registrations: number;
+    /** Registrations per 100 visitor-days; null with no visitors. */
+    conversionRate: number | null;
+  };
+  daily: { day: string; views: number; visitors: number; registrations: number }[];
+  sources: PageSourceRow[];
+  platforms: { platform: string; visitors: number }[];
+  referrers: { referrer: string; visitors: number }[];
+  shortLinks: ShortLink[];
+}
+
+export interface SpacePageAnalytics extends PageAnalytics {
+  spacePage: { visitors: number; views: number };
+  topEvents: {
+    id: string;
+    title: string;
+    slug: string;
+    startDateTime: string;
+    visitors: number;
+    views: number;
+    registrations: number;
+    conversionRate: number | null;
+  }[];
+}
+
+/** GET /events/:id/page-analytics */
+export const getEventPageAnalytics = (eventId: string, days = 30) =>
+  call<PageAnalytics>(`/events/${eventId}/page-analytics?days=${days}`);
+
+/** GET /spaces/:id/page-analytics — the space page plus all of its events. */
+export const getSpacePageAnalytics = (spaceId: string, days = 30) =>
+  call<SpacePageAnalytics>(`/spaces/${spaceId}/page-analytics?days=${days}`);
+
+export interface NewShortLink {
+  label: string;
+  utmSource: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+}
+
+export type ShortLinkScope = { eventId: string } | { spaceId: string };
+
+const linksPath = (scope: ShortLinkScope) =>
+  'eventId' in scope ? `/events/${scope.eventId}/short-links` : `/spaces/${scope.spaceId}/short-links`;
+
+export const createShortLink = (scope: ShortLinkScope, link: NewShortLink) =>
+  call<ShortLink>(linksPath(scope), { method: 'POST', body: JSON.stringify(link) });
+
+export const deleteShortLink = (scope: ShortLinkScope, linkId: string) =>
+  call<{ success: boolean }>(`${linksPath(scope)}/${linkId}`, { method: 'DELETE' });

@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../context/AuthContext';
 import { shareLink } from '../lib/share';
 import { withUtm } from '../services/utm';
+import { trackPageView } from '../services/pageViews';
 import type { Event } from '../lib/api/events';
 import {
   getSpaceById,
@@ -47,7 +48,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
   const [membershipBusy, setMembershipBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
     if (!idOrSlug) {
       setLoading(false);
       return;
@@ -58,6 +59,8 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
         : await getSpaceBySlug(idOrSlug, token || undefined);
       setSpace(data);
       if (!data) return;
+      // Page analytics: one view per open (a pull-to-refresh isn't a new view).
+      if (!silent) void trackPageView('space', data.slug || data.id);
 
       const parentId = data.parentSpaceId || data.parent_org_id;
       const [eventsRes, parentRes, subsRes] = await Promise.all([
@@ -80,7 +83,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
 
   const refresh = useCallback(() => {
     setRefreshing(true);
-    void load();
+    void load({ silent: true });
   }, [load]);
 
   useEffect(() => {

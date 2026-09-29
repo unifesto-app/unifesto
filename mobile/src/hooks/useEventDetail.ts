@@ -6,6 +6,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../context/AuthContext';
 import { shareLink } from '../lib/share';
 import { withUtm } from '../services/utm';
+import { trackPageView } from '../services/pageViews';
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from '../lib/calendar';
 import {
   getEventById,
@@ -87,6 +88,8 @@ export function useEventDetail(eventId: string | undefined) {
         return;
       }
       setEvent(eventData);
+      // Page analytics: one view per open (a pull-to-refresh isn't a new view).
+      if (!silent) void trackPageView('event', eventData.slug || eventData.id);
 
       if (eventData.ticketTypes && eventData.ticketTypes.length > 0) {
         setTickets(

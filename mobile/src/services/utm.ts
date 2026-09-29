@@ -146,3 +146,16 @@ export async function attributionFor(event: {
   if (!utm) return {};
   return { utmSource: utm.source, utmMedium: utm.medium, utmCampaign: utm.campaign };
 }
+
+/**
+ * The tagged link that opened this exact event/space page, if one was opened
+ * in the last 7 days: page views carry it so a view is credited like the
+ * registration that may follow.
+ */
+export async function touchFor(target: UtmTouch['target']): Promise<Utm | null> {
+  const now = Date.now();
+  const t = (await readTouches())
+    .filter((x) => now - x.at <= ATTRIBUTION_WINDOW_MS && sameTarget(x.target, target))
+    .sort((a, b) => b.at - a.at)[0];
+  return t ? { source: t.source, medium: t.medium, campaign: t.campaign } : null;
+}

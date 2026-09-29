@@ -10,6 +10,7 @@ import { submitSpaceInquiry } from "@/lib/api/leads";
 import EventCard from "@/components/EventCard";
 import { brandGradient } from "@/lib/styles";
 import { openAppOrStore } from "@/lib/appLinks";
+import { withStoredUtm } from "@/lib/utm";
 import { getSpaceBySlug, getSpaceById, getSpaceEvents, getSubSpaces, type Space } from "@/lib/api/spaces";
 import type { SpaceMember } from "@/lib/api/spaces";
 import type { Event } from "@/lib/api/events";
@@ -286,7 +287,8 @@ export default function SpaceDetailClient({ params }: Props) {
             href={spaceDeepLink}
             onClick={(e) => {
               e.preventDefault();
-              openAppOrStore(spaceDeepLink);
+              // Carry the landing's utm_* into the app, or space campaigns are lost.
+              openAppOrStore(withStoredUtm(spaceDeepLink));
             }}
             className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_24px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
             style={{ background: brandColor ?? brandGradient }}
