@@ -329,6 +329,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-09-26** · 4.0.5 planned: store build that fixes what failed in 4.0.0. Build-pipeline failures (5.1, 5.2) already fixed before 4.0.0 shipped.
 - **2026-09-26** · 5.3a–d check-in per member, recents, WhatsApp card for members (+ migration); 5.3s pull-to-refresh; 5.3j/l header blur + rail. Committed on the other machine; recovered from `backup/4.0.5-old-session` and cherry-picked
 - **2026-09-29** · Work lost when the other machine ran out of credits, rebuilt: backend traffic module + tests (verified against a local Postgres copy of the schema), mobile beacon / Tracking traffic / Short links / Apex Traffic, 5.3q OneSignal link, 5.3r app version, rail end-snap fix, version 4.0.5 · PR [#14](https://github.com/unifesto-app/unifesto/pull/14)
+- **2026-09-29** · 5.3l header backdrop redone after QA ("can't see it on many screens"): drawn by the app on both platforms (real blur on iOS, raised tint on Android instead of a page-colour wash) with a bottom hairline
 
 #### Shipped
 
