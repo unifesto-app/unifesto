@@ -55,6 +55,34 @@ async function checkAndFetch(backgroundedMs: number) {
   }
 }
 
+export type ManualCheckResult = 'disabled' | 'none' | 'downloaded' | 'error';
+
+/**
+ * "Check for updates" from Profile › About: skips the 30-minute throttle and
+ * reports what happened, so the screen can offer a restart. Never throws.
+ */
+export async function checkForOtaNow(): Promise<ManualCheckResult> {
+  if (__DEV__ || !Updates.isEnabled) return 'disabled';
+  if (checking) return 'none';
+  checking = true;
+  lastCheckAt = Date.now();
+  try {
+    const check = await Updates.checkForUpdateAsync();
+    if (!check.isAvailable) return 'none';
+    const result = await Updates.fetchUpdateAsync();
+    return result.isNew ? 'downloaded' : 'none';
+  } catch {
+    return 'error';
+  } finally {
+    checking = false;
+  }
+}
+
+/** Apply a downloaded update now (the app restarts into it). */
+export function restartIntoUpdate(): void {
+  reloadNow();
+}
+
 /** Start foreground checks. Returns an unsubscribe for effect cleanup. */
 export function startOtaUpdateChecks(): () => void {
   const sub = AppState.addEventListener('change', (state: AppStateStatus) => {

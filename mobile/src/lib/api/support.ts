@@ -7,6 +7,7 @@
  */
 
 import { makeAuthenticatedRequest } from './helpers';
+import { buildInfo, type BuildInfo } from '../appBuild';
 
 export type SupportTicketStatus = 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
 export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
@@ -57,6 +58,8 @@ export interface CreateTicketInput {
   category?: SupportTicketCategory;
   priority?: SupportTicketPriority;
   contactEmail?: string;
+  /** The app build this was raised from; filled in by createTicket. */
+  clientInfo?: BuildInfo;
   /** Raise it on behalf of a space (operator support). */
   spaceId?: string;
 }
@@ -85,7 +88,8 @@ export async function createTicket(
   try {
     const res = await makeAuthenticatedRequest('/support/tickets', {
       method: 'POST',
-      body: JSON.stringify(input),
+      // Every ticket says which build + OTA update it came from.
+      body: JSON.stringify({ clientInfo: buildInfo(), ...input }),
     });
     if (!res?.ok) return null;
     return (await res.json()) as SupportTicket;

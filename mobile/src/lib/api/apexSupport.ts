@@ -34,6 +34,8 @@ export interface AdminTicket {
   priority: SupportTicketPriority;
   status: SupportTicketStatus;
   contactEmail: string | null;
+  /** The app build it was raised from (tickets from 4.0.5 on). */
+  clientInfo?: Partial<import('../appBuild').BuildInfo> | null;
   lastMessageAt: string;
   createdAt: string;
   requesterId: string;

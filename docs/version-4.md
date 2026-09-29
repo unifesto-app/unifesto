@@ -552,11 +552,11 @@ Today: 1 EC2 host (8 GB), 3 API replicas × 1 GB behind Caddy, RDS Postgres, Red
 |---|---|
 | expo-updates + fingerprint runtime + channels + foreground check | done (0.2) |
 | Reload policy (D1): reload silently if away 30 min+, else next cold start | done (in the 4.0.0 build) |
-| Staged rollouts (`--rollout-percentage`), promote to 100% after 2 h | planned (4.1.0) |
-| Rollback runbook: `eas update:republish` previous group, or roll back to embedded | planned |
-| Fingerprint check before publish (script in `mobile/`, fails if it differs from the store build) | planned |
-| Update id + runtime shown in Profile → About and sent with support tickets / Crashlytics | planned |
-| In-app "What's new" | planned (4.4.0) |
+| Staged rollouts (`--rollout-percentage`), promote to 100% after 2 h | done: `npm run update:production` publishes at 20%, `update:promote` / `update:revert-rollout` (4.0.5) |
+| Rollback runbook: `eas update:republish` previous group, or roll back to embedded | done: `mobile/docs/OTA.md`, `npm run update:rollback`; test once on preview still to do |
+| Fingerprint check before publish (script in `mobile/`, fails if it differs from the store build) | done: `ota:preflight` vs `runtime-fingerprints.json` (record each store build with `ota:record`) |
+| Update id + runtime shown in Profile → About and sent with support tickets / Crashlytics | done (4.0.5): Profile › About, `support_tickets.client_info`, Crashlytics attributes |
+| In-app "What's new" | done (4.0.5): `src/lib/whatsNew.ts`, shown once after an update, not on fresh installs |
 
 **Done when:** every OTA in v4 went through staged rollout and the runbook was tested once on the preview channel.
 

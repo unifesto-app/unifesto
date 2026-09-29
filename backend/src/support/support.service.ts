@@ -43,6 +43,18 @@ interface ListParams {
   limit?: number;
 }
 
+/** Keep only short string/boolean facts about the app build (it's shown to staff as-is). */
+const CLIENT_INFO_KEYS = ['platform', 'version', 'build', 'runtimeVersion', 'channel', 'updateId', 'updateCreatedAt', 'emergencyLaunch'];
+function cleanClientInfo(info: Record<string, unknown>): Prisma.InputJsonObject {
+  const out: Record<string, string | boolean> = {};
+  for (const key of CLIENT_INFO_KEYS) {
+    const v = info[key];
+    if (typeof v === 'boolean') out[key] = v;
+    else if (typeof v === 'string' && v.length > 0) out[key] = v.slice(0, 100);
+  }
+  return out;
+}
+
 @Injectable()
 export class SupportService {
   private readonly logger = new Logger(SupportService.name);
@@ -80,6 +92,7 @@ export class SupportService {
         requesterId,
         spaceId: dto.spaceId ?? null,
         contactEmail: dto.contactEmail ?? null,
+        ...(dto.clientInfo ? { clientInfo: cleanClientInfo(dto.clientInfo) } : {}),
         messages: {
           create: {
             authorId: requesterId,

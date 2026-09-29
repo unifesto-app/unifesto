@@ -7,6 +7,7 @@ import {
   IsEmail,
   MaxLength,
   MinLength,
+  IsObject,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -45,6 +46,13 @@ export class CreateTicketDto {
   @IsOptional()
   @IsUUID()
   spaceId?: string;
+
+  @ApiPropertyOptional({
+    description: 'The app build it was raised from (version, build, runtime, update id, platform)',
+  })
+  @IsOptional()
+  @IsObject()
+  clientInfo?: Record<string, unknown>;
 
   @ApiPropertyOptional({ example: 'me@example.com' })
   @IsOptional()

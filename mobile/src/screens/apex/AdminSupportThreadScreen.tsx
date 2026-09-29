@@ -1,4 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
+import { buildLabel, type BuildInfo } from '../../lib/appBuild';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -134,6 +135,12 @@ export default function AdminSupportThreadScreen() {
           />
           {email ? <SettingsRow label="Email" value={email} /> : null}
           {ticket.requester?.mobileNumber ? <SettingsRow label="Phone" value={ticket.requester.mobileNumber} /> : null}
+          {ticket.clientInfo?.version ? (
+            <SettingsRow
+              label="App"
+              value={`${buildLabel(ticket.clientInfo as BuildInfo)}${ticket.clientInfo.platform ? ` · ${ticket.clientInfo.platform}` : ''}`}
+            />
+          ) : null}
           {ticket.space ? (
             <SettingsRow label="Space" value={ticket.space.name} onPress={() => router.push(`/apex/spaces/${ticket.space!.id}`)} />
           ) : null}

@@ -21,6 +21,8 @@ import { OfflineBanner } from '../src/components/ui/OfflineBanner';
 import ConsentManager from '../src/services/ConsentManager';
 import { checkForAppUpdate } from '../src/lib/appUpdate';
 import { startOtaUpdateChecks } from '../src/lib/otaUpdate';
+import { tagCrashReports } from '../src/lib/appBuild';
+import { showWhatsNewIfNeeded } from '../src/lib/whatsNew';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { applyGlobalFont } from '../src/theme/globalFont';
 
@@ -212,9 +214,13 @@ export default function RootLayout() {
   // Fire-and-forget: checkForAppUpdate swallows its own failures so a bad
   // network never keeps the user out of the app.
   useEffect(() => {
-    if (appIsReady) {
-      checkForAppUpdate();
-    }
+    if (!appIsReady) return;
+    checkForAppUpdate();
+    // Crash reports carry the exact build + OTA update that was running.
+    tagCrashReports();
+    // After the store-update check has had its say, show release notes once.
+    const t = setTimeout(() => void showWhatsNewIfNeeded(), 2500);
+    return () => clearTimeout(t);
   }, [appIsReady]);
 
   // OTA JS updates: also check when returning to the foreground (see otaUpdate.ts).

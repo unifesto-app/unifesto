@@ -11,7 +11,7 @@ import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import * as AuthAPI from '../lib/api/auth';
 import { getMyPartnerLinks } from '../lib/api/tracking';
 import { openStoreReview } from '../utils/storeReview';
-import { checkForAppUpdate } from '../lib/appUpdate';
+import { buildLabel } from '../lib/appBuild';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import BrandGlow from '../components/ui/BrandGlow';
@@ -206,9 +206,9 @@ export default function ProfileScreen() {
           <SettingsRow icon={unicon('support')} label="Contact support" onPress={() => router.push('/support')} />
           <SettingsRow
             icon={unicon('update')}
-            label="Check for updates"
+            label="About and updates"
             value={version ? `v${version}` : undefined}
-            onPress={() => checkForAppUpdate({ manual: true })}
+            onPress={() => router.push('/about')}
           />
           <SettingsRow icon={unicon('rate')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
           <SettingsRow icon={unicon('instagram')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
@@ -232,7 +232,11 @@ export default function ProfileScreen() {
 
         <View style={styles.footer}>
           <UnifestoAppWordmark width={112} height={34} />
-          {version ? <Text style={[styles.version, { color: tokens.textMuted }]}>Version {version}</Text> : null}
+          {version ? (
+            <Text style={[styles.version, { color: tokens.textMuted }]} onPress={() => router.push('/about')}>
+              Version {buildLabel()}
+            </Text>
+          ) : null}
         </View>
       </ScrollView>
     </View>

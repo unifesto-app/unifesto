@@ -2723,6 +2723,8 @@ model SupportTicket {
   requester    User    @relation("SupportTicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   // Optional reply-to captured at creation (mobile attendees, unverified email)
   contactEmail String? @map("contact_email") @db.VarChar(255)
+  // App build it was raised from: version, build, runtime, OTA update id, platform.
+  clientInfo   Json?   @map("client_info")
 
   // Optional space context (tickets raised from an organiser space)
   spaceId String? @map("space_id") @db.Uuid
