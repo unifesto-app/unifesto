@@ -93,6 +93,9 @@ export async function maybeReportAppVersion(userId: string): Promise<void> {
   const installedVersion = Application.nativeApplicationVersion;
   if (!installedVersion) return;
 
+  // Sign-in and a foreground resume can fire together; one report is enough.
+  if (inFlight) return;
+  inFlight = true;
   try {
     const lastReported = await readLastReport();
 
@@ -116,5 +119,9 @@ export async function maybeReportAppVersion(userId: string): Promise<void> {
     // Best-effort telemetry — a bad gate or storage failure must never bubble
     // into the auth flow that calls this.
     if (__DEV__) console.warn('[appVersionReport] skipped:', error);
+  } finally {
+    inFlight = false;
   }
 }
+
+let inFlight = false;

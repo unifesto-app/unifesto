@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getCrashlytics, setUserId as setCrashlyticsUserId } from '@react-native-firebase/crashlytics';
 import { getToken, saveToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest } from '../lib/api/helpers';
@@ -58,13 +59,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Once a session is active, report the installed app version so staff can see
-  // which build each account runs (Apex → Users). Best-effort and self-gated;
-  // covers both fresh login and a restored session on startup.
+  // which build each account runs (Apex → Users). Best-effort and self-gated
+  // (version change or 24h), so it's cheap to re-run: also when the token lands
+  // (at sign-up the user can be set before the token is saved, and that first
+  // report fails) and on every return to the foreground, so a failed report is
+  // retried without waiting for a cold start.
   useEffect(() => {
-    if (user?.id) {
-      void maybeReportAppVersion(user.id);
-    }
-  }, [user?.id]);
+    if (!user?.id || !token) return;
+    const userId = user.id;
+    void maybeReportAppVersion(userId);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void maybeReportAppVersion(userId);
+    });
+    return () => sub.remove();
+  }, [user?.id, token]);
 
   // Link this install's OneSignal push subscription (device id) to the user on
   // the backend, now and whenever the subscription changes (id issued late on
