@@ -14,6 +14,7 @@ import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
+  Bed,
   CalendarBlank,
   CaretRight,
   Globe,
@@ -44,6 +45,7 @@ import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActio
 import VenueMap from '../components/event/VenueMap';
 import BannerRim from '../components/ui/BannerRim';
 import { useEventDetail } from '../hooks/useEventDetail';
+import { useEventStays } from '../hooks/useEventStays';
 import { useBannerPalette } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
@@ -93,6 +95,8 @@ export default function EventDetailScreen() {
   const { event } = d;
   const [descExpanded, setDescExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Unifesto Stay: shown to signed-in viewers when the event offers stays.
+  const stay = useEventStays(event?.id, !!d.user && !!event && event.type !== 'ONLINE');
 
   const accent = tokens.accent;
   // Page background: light → dark shades of the banner's most frequent colour.
@@ -291,6 +295,14 @@ export default function EventDetailScreen() {
             ) : (
               <SettingsRow icon={<Ticket size={24} color={accent} weight="duotone" />} label={priceLine} />
             )}
+            {stay && event.status !== 'CANCELLED' ? (
+              <SettingsRow
+                icon={<Bed size={24} color={accent} weight="duotone" />}
+                label={stay.label}
+                value={stay.value}
+                onPress={() => router.push(stay.href as never)}
+              />
+            ) : null}
           </SettingsGroup>
 
           {/* Attendee actions */}

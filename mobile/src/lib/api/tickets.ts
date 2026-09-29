@@ -107,6 +107,8 @@ export interface CustomField {
   display_order: number;
   created_at: string;
   updated_at: string;
+  /** Where a FILE answer uploads; defaults to the event's registration form upload. */
+  upload?: (file: { uri: string; name: string; mimeType?: string | null }) => Promise<FileAnswer>;
 }
 
 /**
@@ -219,7 +221,7 @@ export async function getEventTickets(eventId: string): Promise<{ tickets: Ticke
  * Returns all custom fields for the event
  */
 /** Map a backend FormFieldType (UPPERCASE) to this app's FieldType. */
-const FIELD_TYPE_MAP: Record<string, FieldType> = {
+export const FIELD_TYPE_MAP: Record<string, FieldType> = {
   TEXT: 'text',
   TEXTAREA: 'textarea',
   EMAIL: 'email',

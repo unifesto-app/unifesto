@@ -64,6 +64,7 @@ describe('ReconciliationService.getOrphanedPayments', () => {
       }),
     },
     sessionRegistration: { findMany: jest.fn(async () => []) },
+    stayBooking: { findMany: jest.fn(async () => []) },
   };
 
   const build = () => new ReconciliationService(prisma as any, payments as any);

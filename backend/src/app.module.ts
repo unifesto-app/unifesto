@@ -51,6 +51,7 @@ import { CouponsModule } from './coupons/coupons.module';
 import { PartnerLinksModule } from './partner-links/partner-links.module';
 import { TrafficModule } from './traffic/traffic.module';
 import { DefaultImagesModule } from './default-images/default-images.module';
+import { StaysModule } from './stays/stays.module';
 
 @Module({
   imports: [
@@ -157,6 +158,7 @@ import { DefaultImagesModule } from './default-images/default-images.module';
     PartnerLinksModule,
     TrafficModule,
     DefaultImagesModule,
+    StaysModule,
     IamModule,
   ],
   controllers: [AppController],
