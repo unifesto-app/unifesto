@@ -507,6 +507,133 @@ export class GroupSeatsService {
     return { seatIndex, status: GroupSeatStatus.OPEN };
   }
 
+  // ── Replace a member (4.0.5) ────────────────────────────────────────────────
+
+  /**
+   * Take a filled seat back from its member and, if `newEmail` is given, invite
+   * someone new into it. The lead may do this only while the event has
+   * `allowTeamChanges` on; curators always may (their `@Can` guard authorises).
+   *
+   * The old member's per-seat ticket is deleted, not just cancelled: a scan
+   * resolves any of the group's QR codes to the whole group without looking at
+   * ticket status, so a lingering row would still get them to the roster. A
+   * member who has already checked in can't be replaced (their attendance is
+   * on record), and neither can seat 1, the lead's own.
+   */
+  async replaceMember(
+    registrationId: string,
+    seatIndex: number,
+    opts: { by: 'lead'; leadUserId: string; newEmail?: string } | { by: 'curator'; eventId: string; newEmail?: string },
+  ) {
+    const reg = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        eventId: true,
+        event: {
+          select: { id: true, title: true, slug: true, status: true, endDateTime: true, allowTeamChanges: true },
+        },
+      },
+    });
+    if (!reg) throw new NotFoundException('Registration not found');
+    if (opts.by === 'lead') {
+      if (reg.userId !== opts.leadUserId) {
+        throw new ForbiddenException('Only the group lead can replace members');
+      }
+      if (!reg.event.allowTeamChanges) {
+        throw new ForbiddenException("The organiser hasn't turned on team changes for this event");
+      }
+    } else if (reg.eventId !== opts.eventId) {
+      throw new NotFoundException('Registration not found');
+    }
+    if (reg.status === RegistrationStatus.CANCELLED) {
+      throw new BadRequestException('This registration is cancelled');
+    }
+    if (
+      reg.event.status === EventStatus.COMPLETED ||
+      reg.event.status === EventStatus.CANCELLED ||
+      reg.event.endDateTime.getTime() < Date.now()
+    ) {
+      throw new BadRequestException('This event has ended, so the team can no longer change');
+    }
+    if (seatIndex === 1) {
+      throw new BadRequestException("The lead's own seat can't be replaced");
+    }
+
+    const seat = await this.prisma.groupSeat.findUnique({
+      where: { registrationId_seatIndex: { registrationId, seatIndex } },
+    });
+    if (!seat || seat.status !== GroupSeatStatus.CLAIMED) {
+      throw new BadRequestException('Only a filled seat can be replaced. Invite someone to an open seat instead.');
+    }
+    const checkedIn = await this.prisma.eventGroupMemberCheckin.count({
+      where: { registrationId, OR: [{ groupSeatId: seat.id }, { memberIndex: seatIndex - 1 }] },
+    });
+    if (checkedIn > 0) {
+      throw new BadRequestException('This member has already checked in, so they can no longer be replaced');
+    }
+
+    const email = opts.newEmail?.trim().toLowerCase() || undefined;
+    const oldDetails =
+      seat.memberDetails && typeof seat.memberDetails === 'object' && !Array.isArray(seat.memberDetails)
+        ? (seat.memberDetails as Record<string, unknown>)
+        : {};
+    const oldEmail =
+      (typeof oldDetails.email === 'string' && oldDetails.email.trim().toLowerCase()) ||
+      (seat.claimedByUserId ? (await this.primaryEmail(seat.claimedByUserId, null))?.toLowerCase() : null) ||
+      null;
+    if (email && oldEmail && email === oldEmail) {
+      throw new BadRequestException('That is the same person already in this seat');
+    }
+
+    const newToken = GroupSeatsService.newToken();
+    await this.prisma.$transaction(async (tx) => {
+      // Guarded on the seat still being the one we read, so a concurrent change wins cleanly.
+      const reset = await tx.groupSeat.updateMany({
+        where: { id: seat.id, status: GroupSeatStatus.CLAIMED, claimedByUserId: seat.claimedByUserId },
+        data: {
+          status: email ? GroupSeatStatus.INVITED : GroupSeatStatus.OPEN,
+          inviteEmail: email ?? null,
+          inviteToken: newToken,
+          claimedByUserId: null,
+          claimedAt: null,
+          memberDetails: Prisma.DbNull,
+          reminderSentAt: null,
+          whatsappInviteSentAt: null,
+          whatsappJoinedAt: null,
+        },
+      });
+      if (reset.count !== 1) throw new BadRequestException('This seat just changed. Refresh and try again.');
+      if (oldEmail) {
+        await tx.eventTicket.deleteMany({
+          where: { registrationId, attendeeEmail: { equals: oldEmail, mode: 'insensitive' } },
+        });
+      }
+    });
+
+    this.logger.log(`Seat ${seatIndex} of registration ${registrationId} replaced by ${opts.by}`);
+
+    // Best-effort notices: the member who lost the seat, and the new invitee.
+    if (oldEmail) {
+      this.email
+        .sendRawEmail(
+          oldEmail,
+          `Your seat for ${reg.event.title} was given to someone else`,
+          `<p>Your team's seat for <strong>${reg.event.title}</strong> has been given to someone else, so your ticket is no longer valid. If you think this is a mistake, contact your team lead.</p>`,
+        )
+        .catch((err) => this.logger.error(`Replacement notice failed to ${oldEmail}`, err));
+    }
+    if (email) {
+      this.email
+        .sendRawEmail(email, `You're invited to ${reg.event.title}`, this.inviteHtml(reg.event.title, this.claimUrl(newToken)))
+        .catch((err) => this.logger.error(`Invite email failed to ${email}`, err));
+    }
+
+    return { seatIndex, status: email ? GroupSeatStatus.INVITED : GroupSeatStatus.OPEN, inviteEmail: email ?? null };
+  }
+
   // ── Member-facing: claim / decline ──────────────────────────────────────────
 
   private async seatByTokenOrThrow(token: string) {

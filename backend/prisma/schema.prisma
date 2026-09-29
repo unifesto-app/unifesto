@@ -1339,6 +1339,16 @@ model Event {
   // common/whatsapp-links.ts (always a 'group').
   whatsappAttendeeGroupUrl String? @map("whatsapp_attendee_group_url") @db.Text
 
+  // Attendee controls (curator / space admin, Event settings in the app).
+  // Team leads may replace a claimed member of their group while this is on;
+  // curators can always replace from Manage › Attendees.
+  allowTeamChanges     Boolean   @default(false) @map("allow_team_changes")
+  // Attendees may edit their own registration answers (solo: theirs; group:
+  // the lead the team's, each member their own) while this is on and before
+  // `attendeeEditsUntil` (null = no deadline). Curators can always edit.
+  attendeeEditsEnabled Boolean   @default(false) @map("attendee_edits_enabled")
+  attendeeEditsUntil   DateTime? @map("attendee_edits_until") @db.Timestamptz(6)
+
   // Space
   spaceId String @map("space_id") @db.Uuid
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
