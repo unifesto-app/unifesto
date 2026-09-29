@@ -1750,10 +1750,10 @@ model EventFormField {
   helpText String? @map("help_text") @db.VarChar(500)
   // Per-type answer limits, see registrations/form-answers.util.ts
   // (FormFieldConfig): lengths, number/date range, picks, rating scale, files.
-  config Json?
+  config   Json?
   // Show only when an earlier choice question's answer is one of `anyOf`:
   // { fieldId, anyOf: string[] }. Null = always shown.
-  showIf Json? @map("show_if")
+  showIf   Json?   @map("show_if")
 
   @@index([eventId])
   @@index([ticketTypeId])
@@ -2066,7 +2066,7 @@ model GroupSeat {
   whatsappInviteSentAt DateTime? @map("whatsapp_invite_sent_at") @db.Timestamptz(6)
   // When this seat's claimer said "I've joined" the WhatsApp group from their
   // ticket (the lead's own flag is on the registration row).
-  whatsappJoinedAt DateTime? @map("whatsapp_joined_at") @db.Timestamptz(6)
+  whatsappJoinedAt     DateTime? @map("whatsapp_joined_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -4237,9 +4237,9 @@ model PageView {
   spaceId String        @map("space_id") @db.Uuid
   space   Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
-  visitorId String @map("visitor_id") @db.VarChar(64)
+  visitorId String  @map("visitor_id") @db.VarChar(64)
   // ios | android | web
-  platform  String @db.VarChar(16)
+  platform  String  @db.VarChar(16)
   // utm tags of the link that opened the page, when there was one.
   source    String? @db.VarChar(100)
   medium    String? @db.VarChar(100)
