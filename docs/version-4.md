@@ -40,6 +40,7 @@ changes each mobile release depends on.
 | Version | Type | Theme | Target | Ships as | Built by | Status | Shipped |
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | in progress | – |
+| [4.0.5](#405--traffic-and-short-links) | patch | Page views + tracked short links (W10 first slice) | **Tue 29 Sep** | store build | you | in progress | – |
 | [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
@@ -258,6 +259,40 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 - Android build: –
 - Backend deploy: 2026-09-26 18:00 IST (backend + space, 0.9)
 - OTA update: –
+
+---
+
+### 4.0.5 · Traffic and short links
+
+**Type:** patch · **Ships as:** store build (you) + backend deploy · **Branch:** `claude/repository-fixes-cd9ed8`
+
+Why: first slice of W10 (backlinks + tracking), pulled forward. Curators see how many people viewed a page next to how many registered, and get tracked short links. Mobile and backend only: nothing in Apex web, Space web or the public site.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Backend traffic module: `page_views`, `short_links`, `short_link_clicks` (migration `20260929120000_traffic`, additive) | done |
+| Page-view beacon `POST /traffic/views` from event + space detail (anonymous install id, consent-gated, 30-min dedupe) | done |
+| Traffic on Event and Space Tracking screens (views, visitors, registrations, registered per visitor, 30-day bars) | done |
+| Short links `api.unifesto.app/l/<code>` for events, spaces and (Apex) any unifesto.app page; per-link stats (clicks, visitors, referrers, devices, registrations) | done |
+| Apex › Platform › Traffic in the app | done |
+| Device QA on iOS + Android build | planned |
+| Backend deploy: read the migration, drift check, `./deploy.sh backend` **before** the app build goes out | planned |
+| Short links on `unifesto.app/l/<code>` instead of the API host (Caddy route or web redirect) | moved → W10 |
+
+Config (optional, defaults shown): `SHORT_LINK_BASE_URL=https://api.unifesto.app`, `TRAFFIC_HASH_SECRET` (falls back to `JWT_SECRET`).
+
+Privacy: page views carry a random per-install id, no account id; clicks store an HMAC of IP + user agent, never the IP. Both fit the published labels (Product Interaction, not linked, analytics, consent-gated).
+
+#### Log
+
+- **2026-09-29** · Backend traffic module + tests, verified against a local Postgres copy of the schema · `0879d8c`
+- **2026-09-29** · Mobile: beacon, Tracking traffic cards, Short links + stats, Apex Traffic, version 4.0.5 · `77291af`
+
+#### Shipped
+
+- iOS build: – · Android build: – · Backend deploy: – · OTA update: –
 
 ---
 
@@ -574,11 +609,11 @@ Today: UTM capture + partner links exist (registration sources). No short links 
 | Item | Status |
 |---|---|
 | Scope (D5): both, our tracked links and external backlinks | decided |
-| Tracked short links `unifesto.app/l/<code>` for any URL (event, space, blog, page) with owner, campaign, QR | planned |
-| Click tracking: clicks, unique visitors, referrer, device, country, conversions (registration) | planned |
+| Tracked short links `unifesto.app/l/<code>` for any URL (event, space, blog, page) with owner, campaign, QR | in progress: live on `api.unifesto.app/l/<code>` in 4.0.5; apex-domain host and QR to do |
+| Click tracking: clicks, unique visitors, referrer, device, country, conversions (registration) | in progress: all but country in 4.0.5 |
 | Web referrer capture on every landing (who links to us), rolled up by domain | planned |
 | External backlink monitoring: Google Search Console API import (linking sites, top pages), weekly | planned |
-| Apex dashboard + space dashboard for their own links | planned |
+| Apex dashboard + space dashboard for their own links | in progress: in the mobile app (Space › Tracking, Apex › Traffic) in 4.0.5 |
 
 ---
 
