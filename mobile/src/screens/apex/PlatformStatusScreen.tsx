@@ -5,7 +5,7 @@ import { useFocusEffect } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
-import { getPlatformStatus, type PlatformStatus, type StatusIncident } from '../../lib/api/apex';
+import { getExternalStatus, getPlatformStatus, type ExternalMonitor, type ExternalStatus, type PlatformStatus, type StatusIncident } from '../../lib/api/apex';
 import { titleCase } from '../../lib/apexQueues';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import UptimeBars from '../../components/apex/UptimeBars';
@@ -110,18 +110,55 @@ function IncidentItem({ incident }: { incident: StatusIncident }) {
   );
 }
 
+const EXTERNAL_LABEL: Record<ExternalMonitor['status'], string> = {
+  up: 'Up',
+  down: 'Down',
+  degraded: 'Seems down',
+  paused: 'Paused',
+  unknown: 'Not checked yet',
+};
+
+const pct = (n: number | null) => (n === null ? '–' : `${n >= 99.995 ? '100' : n.toFixed(2)}%`);
+const duration = (sec: number) => (sec >= 3600 ? `${Math.round(sec / 360) / 10} h` : sec >= 60 ? `${Math.round(sec / 60)} min` : `${sec} s`);
+
+/** One UptimeRobot monitor: state, uptime over 1/7/30 days, response time, last downtime. */
+function MonitorItem({ monitor: m }: { monitor: ExternalMonitor }) {
+  const tokens = useTokens();
+  const color =
+    m.status === 'up' ? tokens.success : m.status === 'down' ? tokens.danger : m.status === 'degraded' ? tokens.warning : tokens.textMuted;
+  return (
+    <View style={styles.incident}>
+      <View style={styles.serviceHead}>
+        <View style={[styles.dot, { backgroundColor: color }]} />
+        <Text style={[styles.serviceName, { color: tokens.text }]} numberOfLines={1}>{m.name}</Text>
+        <Text style={[styles.word, { color }]}>{EXTERNAL_LABEL[m.status]}</Text>
+      </View>
+      <Text style={[styles.small, { color: tokens.textMuted }]}>
+        {`24 h ${pct(m.uptime.day)} · 7 d ${pct(m.uptime.week)} · 30 d ${pct(m.uptime.month)}${m.responseMs !== null ? ` · ${m.responseMs} ms` : ''}`}
+      </Text>
+      {m.lastDown ? (
+        <Text style={[styles.small, { color: tokens.textMuted }]}>
+          {`Last down ${dayLabel(new Date(m.lastDown.at))}, ${time(m.lastDown.at)} for ${duration(m.lastDown.durationSec)}${m.lastDown.reason ? ` (${m.lastDown.reason})` : ''}`}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 /** Public-status-page style board: overall banner, 90-day uptime bars, incidents by day. */
 export default function PlatformStatusScreen() {
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<PlatformStatus | null>(null);
+  const [external, setExternal] = useState<ExternalStatus | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   useAnalyticsScreenTracking('ApexStatus');
 
   const load = useCallback(async () => {
-    const res = await getPlatformStatus();
+    const [res, ext] = await Promise.all([getPlatformStatus(), getExternalStatus()]);
+    if (ext.ok) setExternal(ext.data);
     if (res.ok) {
       setData(res.data);
       setError('');
@@ -206,6 +243,38 @@ export default function PlatformStatusScreen() {
         ))}
       </View>
       <Text style={[styles.hint, { color: tokens.textMuted }]}>Drag across a bar strip to see a single day.</Text>
+
+      {external ? (
+        <>
+          <Text style={[styles.section, { color: tokens.textMuted }]}>External monitoring (UptimeRobot)</Text>
+          {!external.configured ? (
+            <Text style={[styles.body, { color: tokens.textMuted, marginHorizontal: spacing[1] }]}>
+              Not connected. Add a read-only UptimeRobot API key as UPTIMEROBOT_API_KEY in the backend's .env and deploy.
+            </Text>
+          ) : (
+            <>
+              {external.monitors.length > 0 ? (
+                <View style={styles.card}>
+                  <CardBackdrop />
+                  {external.monitors.map((m, n) => (
+                    <View key={m.id}>
+                      {n > 0 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
+                      <MonitorItem monitor={m} />
+                    </View>
+                  ))}
+                </View>
+              ) : !external.error ? (
+                <Text style={[styles.body, { color: tokens.textMuted, marginHorizontal: spacing[1] }]}>No monitors set up in UptimeRobot yet.</Text>
+              ) : null}
+              {external.error ? <Text style={[styles.hint, { color: tokens.warning }]}>{external.error}</Text> : null}
+              <Text style={[styles.hint, { color: tokens.textMuted }]}>
+                Checked from outside our servers, so it still sees an outage that stops our own checks.
+                {external.fetchedAt ? ` As of ${time(external.fetchedAt)}.` : ''}
+              </Text>
+            </>
+          )}
+        </>
+      ) : null}
 
       <Text style={[styles.section, { color: tokens.textMuted }]}>Past incidents</Text>
       {history.map(({ date, items }) => (

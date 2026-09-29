@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { StatusService } from './status.service';
 import { StatusController } from './status.controller';
 import { HealthController } from './health.controller';
+import { UptimeRobotService } from './uptime-robot.service';
 import { AdminModule } from '../admin/admin.module';
 import { AuthModule } from '../auth/auth.module';
 
@@ -13,7 +14,7 @@ import { AuthModule } from '../auth/auth.module';
 @Module({
   imports: [AdminModule, AuthModule],
   controllers: [StatusController, HealthController],
-  providers: [StatusService],
+  providers: [StatusService, UptimeRobotService],
   exports: [StatusService],
 })
 export class StatusModule {}

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StatusService } from './status.service';
+import { UptimeRobotService } from './uptime-robot.service';
 import { CreateIncidentDto, UpdateIncidentDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -23,12 +24,21 @@ import { RoleCode } from '@prisma/client';
 @Roles(RoleCode.ADMIN)
 @Controller('admin/status')
 export class StatusController {
-  constructor(private readonly statusService: StatusService) {}
+  constructor(
+    private readonly statusService: StatusService,
+    private readonly uptimeRobot: UptimeRobotService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Uptime history + incidents (admin)' })
   getSummary() {
     return this.statusService.getSummary();
+  }
+
+  @Get('external')
+  @ApiOperation({ summary: 'External monitors from UptimeRobot (admin)' })
+  getExternal() {
+    return this.uptimeRobot.getStatus();
   }
 
   @Get('incidents')

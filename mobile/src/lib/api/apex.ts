@@ -531,6 +531,26 @@ export interface PlatformStatus {
 
 export const getPlatformStatus = () => call<PlatformStatus>('/admin/status');
 
+/** UptimeRobot's outside view (read-only key on the server; cached a minute). */
+export interface ExternalMonitor {
+  id: number;
+  name: string;
+  url: string | null;
+  status: 'up' | 'down' | 'degraded' | 'paused' | 'unknown';
+  uptime: { day: number | null; week: number | null; month: number | null };
+  responseMs: number | null;
+  lastDown: { at: string; durationSec: number; reason: string | null } | null;
+}
+
+export interface ExternalStatus {
+  configured: boolean;
+  fetchedAt: string | null;
+  error: string | null;
+  monitors: ExternalMonitor[];
+}
+
+export const getExternalStatus = () => call<ExternalStatus>('/admin/status/external');
+
 // ── Platform config: IAM ─────────────────────────────────────────────────────
 
 export type RoleScope = 'PLATFORM' | 'SPACE' | 'EVENT';
