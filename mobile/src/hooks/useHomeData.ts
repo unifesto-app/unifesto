@@ -4,7 +4,6 @@ import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
 import { getProfile, Profile } from '../lib/api/profile';
 import {
-  getMyRegisteredEvents,
   Event,
   getEvents,
   getCategories,
@@ -14,7 +13,7 @@ import {
 import { listSessions, type Session } from '../lib/api/sessions';
 import { getUserSpaces, Space, getAllSpaces, getSpaceEvents } from '../lib/api/spaces';
 import { getFavorites } from '../lib/api/favorites';
-import { getMyMemberTickets } from '../lib/api/registrations';
+import { fetchUpcomingTickets } from '../lib/upcomingTickets';
 import { syncUpNextWidget } from '../widgets/sync';
 
 // The featured partner space whose events get their own home rail.
@@ -128,38 +127,10 @@ export function useHomeData() {
     }
     try {
       setIsLoadingTickets(true);
-      // My own registrations plus seats I claimed in someone else's group
-      // (those carry my own seat QR), same as the Tickets tab.
-      const [response, memberRes] = await Promise.all([
-        getMyRegisteredEvents(1, 5),
-        getMyMemberTickets().catch(() => ({ data: [] })),
-      ]);
-      const own = response?.data || response?.events || [];
-      const member = (memberRes?.data || []).map((r: any) => ({ ...r, isGroupMember: true }));
-      const seen = new Set<string>();
-      const registrations = [...own, ...member].filter((r: any) => {
-        if (!r?.id || seen.has(r.id)) return false;
-        seen.add(r.id);
-        return true;
-      });
-      const now = new Date();
-      const upcoming = registrations
-        .map((reg: any) =>
-          reg.event
-            ? {
-                ...reg.event,
-                qrCode: reg.qrCode,
-                registrationId: reg.id,
-                ticketType: reg.ticketType,
-                ticketCode: reg.tickets?.[0]?.ticketCode,
-                ...(reg.isGroupMember ? { isGroupMember: true, leadName: reg.leadName ?? null } : {}),
-              }
-            : reg,
-        )
-        .filter((event: any) => event && event.startDateTime && new Date(event.startDateTime) >= now)
-        .sort((a: any, b: any) => +new Date(a.startDateTime) - +new Date(b.startDateTime));
-      setUpcomingTickets(upcoming.slice(0, 5));
-      void syncUpNextWidget(upcoming.slice(0, 5));
+      // Shared with the widget refresh; events stay until they end (see upcomingTickets.ts).
+      const upcoming = await fetchUpcomingTickets(5);
+      setUpcomingTickets(upcoming);
+      void syncUpNextWidget(upcoming);
     } catch {
       // Leave the widget on its last good snapshot rather than blanking it offline.
       setUpcomingTickets([]);

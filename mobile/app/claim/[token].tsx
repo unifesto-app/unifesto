@@ -23,6 +23,7 @@ import { borderRadius, spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { font } from '../../src/theme/fontHelpers';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
+import { markTicketsStale } from '../../src/lib/ticketsRefresh';
 
 const GUTTER = spacing[6];
 
@@ -155,6 +156,7 @@ export default function ClaimSeatRoute() {
         ...(fields.length ? { customFields: answers } : {}),
       });
       setPhase('claimed');
+      markTicketsStale(); // their new ticket shows in Tickets and the widgets
     } catch (e: any) {
       AppAlert.alert("Couldn't claim the seat", e?.message || 'Please try again.');
     } finally {

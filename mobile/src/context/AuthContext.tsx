@@ -9,6 +9,7 @@ import { syncPushDevice, unregisterPushDevice } from '../lib/pushDeviceReport';
 import { cancelAccountDeletion } from '../lib/api/profile';
 import { AppAlert } from '../components/ui/AppAlert';
 import { syncUpNextWidget } from '../widgets/sync';
+import { refreshWidgets } from '../widgets/refresh';
 
 interface User {
   id: string;
@@ -68,8 +69,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user?.id || !token) return;
     const userId = user.id;
     void maybeReportAppVersion(userId);
+    // The widgets get fresh tickets even if Home is never opened (throttled).
+    void refreshWidgets({ force: true });
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void maybeReportAppVersion(userId);
+      if (state !== 'active') return;
+      void maybeReportAppVersion(userId);
+      void refreshWidgets();
     });
     return () => sub.remove();
   }, [user?.id, token]);

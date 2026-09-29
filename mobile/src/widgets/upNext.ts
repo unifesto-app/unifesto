@@ -81,10 +81,13 @@ export function pickUpNext(
   tickets: UpNextTicket[],
   now: number,
 ): { ticket: UpNextTicket; isLive: boolean; moreCount: number } | null {
-  // TODO(you): decide when an event stops being "Up next". See the notes in chat.
-  const next = tickets.find((t) => t.startsAt > now);
+  // An event stays "Up next" until it ends: while it's on it shows as live.
+  // (It used to drop off at its start, so on event day the widget went blank.)
+  const current = tickets.filter((t) => t.endsAt > now);
+  const live = current.find((t) => t.startsAt <= now);
+  const next = live ?? current.find((t) => t.startsAt > now);
   if (!next) return null;
-  return { ticket: next, isLive: false, moreCount: tickets.filter((t) => t.startsAt > now).length - 1 };
+  return { ticket: next, isLive: !!live, moreCount: current.length - 1 };
 }
 
 export function propsAt(snapshot: Pick<UpNextSnapshot, 'signedIn' | 'tickets'>, now: number): UpNextWidgetProps {
@@ -115,4 +118,58 @@ export function timelineMoments(tickets: UpNextTicket[], now: number): number[] 
   }
   // WidgetKit caps how many entries it honours; a handful covers the next few events.
   return [...moments].sort((a, b) => a - b).slice(0, 12);
+}
+
+// ── Countdown widget ─────────────────────────────────────────────────────────
+
+export const COUNTDOWN_WIDGET_NAME = 'Countdown';
+
+/** Props for one frame of the "Countdown" widget: big days-to-go for the next event. */
+export type CountdownWidgetProps =
+  | { state: 'signedOut' }
+  | { state: 'empty' }
+  | {
+      state: 'ticket';
+      title: string;
+      startsAt: number;
+      isLive: boolean;
+      /** Calendar days from today to the event day (0 = today), in the phone's timezone. */
+      daysLeft: number;
+      url: string;
+    };
+
+const startOfDay = (ms: number) => {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+};
+
+/** Calendar days between two moments, by local midnight (DST-safe). */
+export function calendarDaysBetween(from: number, to: number): number {
+  return Math.round((startOfDay(to) - startOfDay(from)) / 86_400_000);
+}
+
+export function countdownPropsAt(snapshot: Pick<UpNextSnapshot, 'signedIn' | 'tickets'>, now: number): CountdownWidgetProps {
+  if (!snapshot.signedIn) return { state: 'signedOut' };
+  const pick = pickUpNext(snapshot.tickets, now);
+  if (!pick) return { state: 'empty' };
+  return {
+    state: 'ticket',
+    title: pick.ticket.title,
+    startsAt: pick.ticket.startsAt,
+    isLive: pick.isLive,
+    daysLeft: Math.max(0, calendarDaysBetween(now, pick.ticket.startsAt)),
+    url: ticketDeepLink(pick.ticket.id),
+  };
+}
+
+/** Countdown frames: the Up next moments plus each coming local midnight, when the day count drops. */
+export function countdownMoments(tickets: UpNextTicket[], now: number): number[] {
+  const moments = new Set(timelineMoments(tickets, now));
+  let midnight = startOfDay(now);
+  for (let i = 0; i < 7; i++) {
+    midnight = startOfDay(midnight + 36 * 3_600_000); // next local midnight, even across DST
+    moments.add(midnight);
+  }
+  return [...moments].sort((a, b) => a - b).slice(0, 16);
 }

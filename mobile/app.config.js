@@ -225,7 +225,7 @@ module.exports = () => {
       // Native venue maps. iOS uses Apple Maps (no key). Android uses Google
       // Maps and needs GOOGLE_MAPS_ANDROID_API_KEY at build time; without it
       // the app falls back to the embedded web map (see VenueMap).
-      // "Up next" home-screen widget. iOS: WidgetKit extension built from
+      // "Up next" and "Countdown" home-screen widgets. iOS: WidgetKit extension built from
       // src/widgets/ios (expo-widgets). Android: AppWidget rendered by
       // react-native-android-widget from src/widgets/android. Both read what
       // the Home tab syncs (src/widgets/sync.ts). Needs a native rebuild.
@@ -241,6 +241,14 @@ module.exports = () => {
               description: "Your next event, counting down.",
               ios: {
                 supportedFamilies: ["systemSmall", "systemMedium", "accessoryRectangular", "accessoryInline"]
+              }
+            },
+            {
+              name: "Countdown",
+              displayName: "Countdown",
+              description: "Days to go until your next event.",
+              ios: {
+                supportedFamilies: ["systemSmall", "accessoryCircular", "accessoryRectangular"]
               }
             }
           ]
@@ -260,6 +268,17 @@ module.exports = () => {
               targetCellHeight: 2,
               resizeMode: "horizontal|vertical",
               // Android's floor is 30 min; keeps "Starts in 2h" roughly honest with the app closed.
+              updatePeriodMillis: 1800000
+            },
+            {
+              name: "Countdown",
+              label: "Countdown",
+              description: "Days to go until your next event.",
+              minWidth: "110dp",
+              minHeight: "110dp",
+              targetCellWidth: 2,
+              targetCellHeight: 2,
+              resizeMode: "horizontal|vertical",
               updatePeriodMillis: 1800000
             }
           ]

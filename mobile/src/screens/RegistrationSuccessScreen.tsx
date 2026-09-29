@@ -19,6 +19,7 @@ import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import { markTicketsStale } from '../lib/ticketsRefresh';
 
 const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback);
 
@@ -39,6 +40,11 @@ export default function RegistrationSuccessScreen() {
   const [event, setEvent] = useState<any>(null);
   const [registration, setRegistration] = useState<any>(null);
   const [loaded, setLoaded] = useState(!eventId);
+
+  // A new ticket: the Tickets list and the home-screen widgets pick it up.
+  useEffect(() => {
+    markTicketsStale();
+  }, []);
 
   useEffect(() => {
     if (!eventId) return;

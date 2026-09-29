@@ -1,3 +1,5 @@
+import { refreshWidgets } from '../widgets/refresh';
+
 /**
  * One-shot "my tickets changed" signal between screens.
  *
@@ -9,6 +11,8 @@ let stale = false;
 
 export function markTicketsStale(): void {
   stale = true;
+  // The home-screen widgets show the same tickets: refresh them now too.
+  void refreshWidgets({ force: true });
 }
 
 /** Returns whether the list is stale, and clears the flag. */

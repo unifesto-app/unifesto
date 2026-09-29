@@ -3,8 +3,11 @@ import { Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo';
 import type { UpcomingTicket } from '../hooks/useHomeData';
 import {
+  COUNTDOWN_WIDGET_NAME,
   UP_NEXT_STORAGE_KEY,
   UP_NEXT_WIDGET_NAME,
+  countdownMoments,
+  countdownPropsAt,
   propsAt,
   timelineMoments,
   toUpNextTicket,
@@ -57,12 +60,21 @@ async function pushToWidget(snapshot: UpNextSnapshot) {
     UpNextWidget.updateTimeline(
       timelineMoments(snapshot.tickets, now).map((t) => ({ date: new Date(t), props: propsAt(snapshot, t) })),
     );
+    const CountdownWidget = require('./ios/CountdownWidget').default as typeof import('./ios/CountdownWidget').default;
+    CountdownWidget.updateTimeline(
+      countdownMoments(snapshot.tickets, now).map((t) => ({ date: new Date(t), props: countdownPropsAt(snapshot, t) })),
+    );
   } else if (Platform.OS === 'android') {
     const { requestWidgetUpdate } = require('react-native-android-widget') as typeof import('react-native-android-widget');
     const { renderUpNextWidget } = require('./android/UpNextWidget') as typeof import('./android/UpNextWidget');
     await requestWidgetUpdate({
       widgetName: UP_NEXT_WIDGET_NAME,
       renderWidget: () => renderUpNextWidget(propsAt(snapshot, now), new Date(now)),
+    });
+    const { renderCountdownWidget } = require('./android/CountdownWidget') as typeof import('./android/CountdownWidget');
+    await requestWidgetUpdate({
+      widgetName: COUNTDOWN_WIDGET_NAME,
+      renderWidget: () => renderCountdownWidget(countdownPropsAt(snapshot, now), new Date(now)),
     });
   }
 }

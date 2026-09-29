@@ -1,7 +1,8 @@
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 import { readUpNextSnapshot } from '../sync';
-import { UP_NEXT_WIDGET_NAME, propsAt } from '../upNext';
+import { COUNTDOWN_WIDGET_NAME, UP_NEXT_WIDGET_NAME, countdownPropsAt, propsAt } from '../upNext';
 import { renderUpNextWidget } from './UpNextWidget';
+import { renderCountdownWidget } from './CountdownWidget';
 
 /**
  * Headless JS entry Android calls when a widget is added, resized or hits its
@@ -9,14 +10,19 @@ import { renderUpNextWidget } from './UpNextWidget';
  * app last saved; it never calls the API.
  */
 export async function widgetTaskHandler({ widgetInfo, widgetAction, renderWidget }: WidgetTaskHandlerProps) {
-  if (widgetInfo.widgetName !== UP_NEXT_WIDGET_NAME) return;
+  const name = widgetInfo.widgetName;
+  if (name !== UP_NEXT_WIDGET_NAME && name !== COUNTDOWN_WIDGET_NAME) return;
   switch (widgetAction) {
     case 'WIDGET_ADDED':
     case 'WIDGET_UPDATE':
     case 'WIDGET_RESIZED': {
       const snapshot = await readUpNextSnapshot();
       const now = new Date();
-      renderWidget(renderUpNextWidget(propsAt(snapshot, now.getTime()), now));
+      renderWidget(
+        name === COUNTDOWN_WIDGET_NAME
+          ? renderCountdownWidget(countdownPropsAt(snapshot, now.getTime()), now)
+          : renderUpNextWidget(propsAt(snapshot, now.getTime()), now),
+      );
       break;
     }
     default:
