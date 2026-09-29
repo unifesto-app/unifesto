@@ -5,6 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../context/AuthContext';
 import { shareLink } from '../lib/share';
 import { withUtm } from '../services/utm';
+import { trackPageView } from '../services/pageViews';
 import type { Event } from '../lib/api/events';
 import {
   getSpaceById,
@@ -80,6 +81,13 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     setLoading(true);
     load();
   }, [load]);
+
+  // One page view per space opened (trackPageView drops refresh repeats).
+  const viewedId = space?.id;
+  const viewedSlug = space?.slug;
+  useEffect(() => {
+    if (viewedId) void trackPageView('space', viewedId, viewedSlug);
+  }, [viewedId, viewedSlug]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const isMember = !!space?.userRole;

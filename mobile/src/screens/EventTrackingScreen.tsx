@@ -3,12 +3,14 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, WhatsappLogo } from 'phosphor-react-native';
+import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, Scissors, WhatsappLogo } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from '../lib/api/tracking';
+import { conversion, getTraffic, scopeParams, type TrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
 import { AppAlert } from '../components/ui/AppAlert';
 import { withUtm } from '../services/utm';
 import { eventUrl } from '../hooks/useEventDetail';
@@ -38,6 +40,7 @@ export default function EventTrackingScreen() {
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
   const [sources, setSources] = useState<RegistrationSources | null>(null);
+  const [traffic, setTraffic] = useState<TrafficStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +49,11 @@ export default function EventTrackingScreen() {
 
   const load = useCallback(async () => {
     if (!eventId) return;
-    const res = await getRegistrationSources(eventId);
+    const [res, views] = await Promise.all([
+      getRegistrationSources(eventId),
+      getTraffic({ kind: 'event', id: eventId }),
+    ]);
+    if (views.ok) setTraffic(views.data);
     if (res.ok) {
       setSources(res.data);
       setError('');
@@ -100,6 +107,22 @@ export default function EventTrackingScreen() {
       {title ? <Text style={[styles.event, { color: tokens.text }]} numberOfLines={2}>{title}</Text> : null}
       {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
 
+      {traffic ? (
+        <>
+          <TrafficSummary
+            stats={[
+              { label: 'Page views', value: fmt(traffic.views) },
+              { label: 'Visitors', value: fmt(traffic.visitors) },
+              { label: 'Registrations', value: fmt(traffic.registrations) },
+              { label: 'Registered per visitor', value: conversion(traffic.registrations, traffic.visitors) },
+            ]}
+            daily={traffic.daily.map((d) => d.views)}
+            caption={`Views of the event page in the app, last ${traffic.days} days`}
+          />
+          <View style={{ height: spacing[8] }} />
+        </>
+      ) : null}
+
       <SettingsGroup title="Where registrations came from" plain>
         {total === 0 ? (
           <SettingsRow label="No confirmed registrations yet" />
@@ -127,6 +150,16 @@ export default function EventTrackingScreen() {
 
       <View style={{ marginTop: spacing[8] }}>
         <SettingsGroup title="Tracking links">
+          <SettingsRow
+            icon={icon(Scissors)}
+            label="Short links"
+            onPress={() =>
+              router.push({
+                pathname: '/short-links',
+                params: { ...scopeParams({ kind: 'event', id: eventId! }), title: title ?? '' },
+              })
+            }
+          />
           {CHANNELS.map((c) => (
             <SettingsRow
               key={c.source}

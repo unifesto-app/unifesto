@@ -9,6 +9,7 @@ import {
   BellRinging,
   Buildings,
   CalendarBlank,
+  ChartBar,
   ChartLineUp,
   DeviceMobile,
   EnvelopeSimple,
@@ -244,6 +245,7 @@ export default function ApexScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Platform">
+          <SettingsRow icon={glyph(ChartBar)} label="Traffic" onPress={() => router.push('/apex/traffic')} />
           <SettingsRow
             icon={<Pulse size={ICON} color={sys?.color ?? tokens.accent} weight="fill" />}
             label="Status"

@@ -11,7 +11,7 @@ module.exports = () => {
   const config = {
     name: "Unifesto",
     slug: "unifesto",
-    version: "4.0.0",
+    version: "4.0.5",
     // OTA updates (EAS Update). "fingerprint" hashes the native layer, so an
     // update only reaches binaries built from the same native code: adding a
     // native module forces a store build instead of crashing old installs.

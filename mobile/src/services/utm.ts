@@ -136,6 +136,21 @@ export function pickAttribution(
   return best ? { source: best.source, medium: best.medium, campaign: best.campaign } : null;
 }
 
+/**
+ * The tagged link that just opened this event/space page (within `maxAgeMs`),
+ * if any. Used to credit a page view to the link that brought the visitor.
+ */
+export async function recentTouch(
+  target: { kind: 'event' | 'space'; keys: (string | null | undefined)[] },
+  maxAgeMs: number,
+): Promise<Utm | null> {
+  const now = Date.now();
+  const hit = (await readTouches()).find(
+    (t) => t.target.kind === target.kind && now - t.at <= maxAgeMs && target.keys.includes(t.target.slug),
+  );
+  return hit ? { source: hit.source, medium: hit.medium, campaign: hit.campaign } : null;
+}
+
 /** The utm fields to send with a registration for this event (empty when none apply). */
 export async function attributionFor(event: {
   id?: string;

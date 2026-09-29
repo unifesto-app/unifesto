@@ -20,6 +20,7 @@ import { registerEventInterest } from '../lib/api/leads';
 import { getProfile } from '../lib/api/profile';
 import { Ticket, formatEventPrice } from '../lib/api/tickets';
 import { AppAlert } from '../components/ui/AppAlert';
+import { trackPageView } from '../services/pageViews';
 
 export const eventUrl = (e: Pick<Event, 'slug' | 'id'>) => `https://www.unifesto.app/event/${e.slug || e.id}`;
 
@@ -127,6 +128,13 @@ export function useEventDetail(eventId: string | undefined) {
   useEffect(() => {
     loadEvent();
   }, [loadEvent]);
+
+  // One page view per event opened (trackPageView drops refresh repeats).
+  const viewedId = event?.id;
+  const viewedSlug = event?.slug;
+  useEffect(() => {
+    if (viewedId) void trackPageView('event', viewedId, viewedSlug);
+  }, [viewedId, viewedSlug]);
 
   // Re-check registrations on focus (e.g. back from the registration flow).
   useFocusEffect(
