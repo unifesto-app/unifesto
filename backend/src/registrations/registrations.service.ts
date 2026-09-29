@@ -16,6 +16,7 @@ import { RedisService } from '../redis/redis.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PaymentsService } from '../payments/payments.service';
+import { StayBookingsService } from '../stays/stay-bookings.service';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
 import { resolveSpaceSurfaces } from '../white-label/branding.util';
 import { buildExportFile, type ExportFormat } from './export.util';
@@ -84,6 +85,7 @@ export class RegistrationsService {
     private readonly groupSeats: GroupSeatsService,
     private readonly redis: RedisService,
     private readonly coupons: CouponsService,
+    private readonly stayBookings: StayBookingsService,
   ) {}
 
   private generateQRCode(): string {
@@ -4794,6 +4796,11 @@ export class RegistrationsService {
       );
 
       if (!registrationId) {
+        // A Unifesto Stay payment rides the same account-wide webhook; its
+        // order notes carry `stayBookingId` instead of `registrationId`.
+        if (await this.stayBookings.completeFromWebhook(orderId, paymentId, paymentData.notes)) {
+          return { received: true };
+        }
         // Money was captured at Razorpay but we can't tie it to a registration.
         // Distinguish a session capture (a different, client-verify-only flow —
         // this account-wide webhook still receives them) from a true orphan, so

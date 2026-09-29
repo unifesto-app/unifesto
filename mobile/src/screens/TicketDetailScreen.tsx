@@ -7,6 +7,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowCounterClockwise,
+  Bed,
   CalendarBlank,
   CheckCircle,
   Export,
@@ -21,6 +22,7 @@ import AttendingShareModal from '../components/AttendingShareModal';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
+import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { useTokens } from '../context/ThemeContext';
@@ -52,6 +54,7 @@ export default function TicketDetailScreen() {
   const t = useTicketDetail(params.ticket);
   const [reportOpen, setReportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
 
   const accent = t.brandColor || tokens.accent;
   const cancelled = t.status === 'cancelled';
@@ -229,6 +232,14 @@ export default function TicketDetailScreen() {
                 label="Competition"
                 value={t.competition.status}
                 onPress={() => router.push(`/competition/${t.eventId}` as never)}
+              />
+            ) : null}
+            {stay ? (
+              <SettingsRow
+                icon={<Bed size={24} color={accent} />}
+                label={stay.label}
+                value={stay.value}
+                onPress={() => router.push(stay.href as never)}
               />
             ) : null}
             {t.eventSlug ? (

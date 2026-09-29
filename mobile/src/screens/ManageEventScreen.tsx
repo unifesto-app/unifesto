@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
+  Bed,
   CalendarBlank,
   CalendarDots,
   ChartBar,
@@ -32,6 +33,7 @@ import {
 } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useManageEvent } from '../hooks/useManageEvent';
+import { getTeamStays } from '../lib/api/stays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import ManageStats from '../components/manage/ManageStats';
@@ -68,6 +70,14 @@ export default function ManageEventScreen() {
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
   const h = useManageEvent(eventId);
+  // Crew don't get the Stay hub; they get the property desk (scan a Stay Pass,
+  // take payment, check in) when the event has a published stay.
+  const deskOnly = h.access.canScan && !h.access.hosts;
+  const [hasStays, setHasStays] = useState(false);
+  useEffect(() => {
+    if (!eventId || !deskOnly) return;
+    void getTeamStays(eventId).then((r) => setHasStays(r.ok && r.data.stays.some((s) => s.isPublished)));
+  }, [eventId, deskOnly]);
 
   useAnalyticsScreenTracking('ManageEvent');
 
@@ -210,6 +220,19 @@ export default function ManageEventScreen() {
               onPress={() =>
                 router.push({ pathname: `/manage/event/${e.id}/transactions`, params: { slug: e.slug, spaceId: e.spaceId } })
               }
+            />
+          ) : null}
+          {h.access.hosts && !e.isRecurring ? (
+            <SettingsRow
+              icon={icon(Bed)}
+              label="Unifesto Stay"
+              onPress={() => router.push(`/manage/event/${e.id}/stays`)}
+            />
+          ) : deskOnly && hasStays ? (
+            <SettingsRow
+              icon={icon(Bed)}
+              label="Scan Stay Pass"
+              onPress={() => router.push({ pathname: `/manage/event/${e.id}/stay-scan`, params: { desk: '1' } })}
             />
           ) : null}
           {h.access.hosts ? (
