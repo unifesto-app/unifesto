@@ -10,6 +10,7 @@ import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
+import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
 
 const CARD_W = 148;
 const AVATAR = 64;
@@ -46,8 +47,9 @@ interface SpaceCardProps {
  */
 export function SpaceCard({ space, onPress, width = CARD_W, context }: SpaceCardProps) {
   const tokens = useTokens();
-  const banner = spaceBanner(space);
-  const logo = spaceLogo(space);
+  const defaults = useDefaultImages();
+  const banner = coverOr(defaults, space.id, spaceBanner(space));
+  const logo = logoOr(defaults, space.id, spaceLogo(space));
   const members = spaceMembers(space);
   const events = space._count?.events ?? space.event_count ?? null;
   const bannerH = Math.round((width * 3) / 4);
@@ -120,6 +122,7 @@ export function SpaceCardSkeleton({ width = CARD_W }: { width?: number }) {
 /** Story-style row of circular logos for the spaces you belong to. */
 export function CircleRow({ spaces, loading, onPress }: { spaces: Space[]; loading: boolean; onPress: (space: Space) => void }) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.circleRow}>
       {loading
@@ -130,7 +133,7 @@ export function CircleRow({ spaces, loading, onPress }: { spaces: Space[]; loadi
             </View>
           ))
         : spaces.map((space) => {
-            const logo = spaceLogo(space);
+            const logo = logoOr(defaults, space.id, spaceLogo(space));
             return (
               <Pressable
                 key={space.id}

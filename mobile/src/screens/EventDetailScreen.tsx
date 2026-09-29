@@ -55,6 +55,7 @@ import { font } from '../theme/fontHelpers';
 import { AppAlert } from '../components/ui/AppAlert';
 import { CardBackdrop, CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import type { SubEvent } from '../lib/api/events';
+import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 const dayLabel = (d: Date) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -78,6 +79,7 @@ function orderSubEvents(subs: SubEvent[]): SubEvent[] {
 
 export default function EventDetailScreen() {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
@@ -228,8 +230,8 @@ export default function EventDetailScreen() {
         <View style={{ paddingHorizontal: GUTTER }}>
           {/* Banner (4:3), kept clean: date lives in the facts card below */}
           <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: tokens.elevated }]}>
-            {event.coverImageUrl ? (
-              <Image source={{ uri: event.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {coverOr(defaults, event.id, event.coverImageUrl) ? (
+              <Image source={{ uri: coverOr(defaults, event.id, event.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
               <LinearGradient colors={[accent, tokens.accentStrong]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}
@@ -257,8 +259,8 @@ export default function EventDetailScreen() {
           {hosts && event.space ? (
             <Pressable onPress={() => router.push(`/space/${event.spaceId}`)} style={styles.host} accessibilityRole="link">
               {/* Space logos are 1:1. */}
-              {event.space.logoUrl ? (
-                <Image source={{ uri: event.space.logoUrl }} style={[styles.hostLogo, { backgroundColor: tokens.elevated }]} />
+              {logoOr(defaults, event.spaceId, event.space.logoUrl) ? (
+                <Image source={{ uri: logoOr(defaults, event.spaceId, event.space.logoUrl) ?? undefined }} style={[styles.hostLogo, { backgroundColor: tokens.elevated }]} />
               ) : (
                 <View style={[styles.hostLogo, styles.center, { backgroundColor: tokens.elevated }]}>
                   <Text style={{ color: tokens.textSecondary, ...font('heading') }}>{event.space.name.charAt(0).toUpperCase()}</Text>

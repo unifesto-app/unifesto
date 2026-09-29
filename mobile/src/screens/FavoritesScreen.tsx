@@ -19,6 +19,7 @@ import { relativeWhen, shortPrice } from '../utils/eventFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { coverOr, useDefaultImages } from '../lib/defaultImages';
 
 const GUTTER = spacing[6];
 // Event banners are 4:3.
@@ -28,6 +29,7 @@ const THUMB_H = 72;
 export default function FavoritesScreen() {
   const router = useRouter();
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const { isAuthenticated } = useAuth();
   const { favoriteIds, refresh } = useFavorites();
   const topSpacing = useTopSpacing();
@@ -141,8 +143,8 @@ export default function FavoritesScreen() {
           style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
         >
           <View style={[styles.thumb, { backgroundColor: tokens.elevated }, isPast && { opacity: 0.55 }]}>
-            {item.coverImageUrl ? (
-              <Image source={{ uri: item.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {coverOr(defaults, item.id, item.coverImageUrl) ? (
+              <Image source={{ uri: coverOr(defaults, item.id, item.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
               <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}

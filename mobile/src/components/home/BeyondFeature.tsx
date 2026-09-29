@@ -12,6 +12,7 @@ import { GUTTER } from './Section';
 import Skeleton from '../Skeleton';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import { logoOr, useDefaultImages } from '../../lib/defaultImages';
 
 // Space banner is 4:3 and the logo 1:1; both kept thumbnail-sized so the
 // feature reads as one compact row, not another full-width block.
@@ -22,8 +23,9 @@ const LOGO = 34;
 /** Featured partner row ("Beyond by Unifesto"), accent-tinted to stand apart. */
 export default function BeyondFeature({ space, onPress }: { space: Space; onPress: () => void }) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const banner = spaceBanner(space);
-  const logo = spaceLogo(space);
+  const logo = logoOr(defaults, space.id, spaceLogo(space));
   const events = space.event_count || space._count?.events || 0;
   const meta = [`${spaceMembers(space)} members`, `${events} events`].join(' · ');
 

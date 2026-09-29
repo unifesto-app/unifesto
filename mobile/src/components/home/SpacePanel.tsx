@@ -15,6 +15,7 @@ import type { HostedEvent } from '../../hooks/useWorkspaceCards';
 import type { CheckinEvent } from '../../lib/api/checkin';
 import type { JudgingEvent } from '../../lib/api/leaderboard';
 import type { PortalSponsor } from '../../lib/api/sponsorPortal';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 interface SpacePanelProps {
   liveCheckins: CheckinEvent[];
@@ -136,6 +137,7 @@ export default function SpacePanel(p: SpacePanelProps) {
 
 function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => void }) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const going = e.attendees?.total ?? e._count?.registrations ?? 0;
   const fill = e.capacity ? Math.min(1, going / e.capacity) : null;
   return (
@@ -145,8 +147,8 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
       accessibilityLabel={`${e.title}, ${going} going`}
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
     >
-      {e.coverImageUrl ? (
-        <Image source={{ uri: e.coverImageUrl }} style={styles.thumb} contentFit="cover" />
+      {coverOr(defaults, e.id, e.coverImageUrl) ? (
+        <Image source={{ uri: coverOr(defaults, e.id, e.coverImageUrl) ?? undefined }} style={styles.thumb} contentFit="cover" />
       ) : (
         <View style={[styles.thumb, { backgroundColor: tokens.fill }]} />
       )}

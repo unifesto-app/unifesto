@@ -17,6 +17,7 @@ import {
   Lifebuoy,
   Globe,
   HandCoins,
+  ImageSquare,
   LinkBreak,
   Megaphone,
   Pulse,
@@ -241,6 +242,7 @@ export default function ApexScreen() {
         <SettingsGroup title="Platform config">
           <SettingsRow icon={glyph(ShieldCheck)} label="IAM" onPress={() => router.push('/apex/iam')} />
           <SettingsRow icon={glyph(Tag)} label="Categories" onPress={() => router.push('/apex/categories')} />
+          <SettingsRow icon={glyph(ImageSquare)} label="Default images" onPress={() => router.push('/apex/default-images')} />
           <SettingsRow icon={glyph(DeviceMobile)} label="App version" onPress={() => router.push('/apex/app-version')} />
         </SettingsGroup>
 

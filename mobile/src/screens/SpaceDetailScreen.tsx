@@ -26,6 +26,7 @@ import { font } from '../theme/fontHelpers';
 import { AppAlert } from '../components/ui/AppAlert';
 import BannerRim from '../components/ui/BannerRim';
 import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
+import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 
 const LOGO = 76;
 
@@ -36,6 +37,7 @@ const LOGO = 76;
  */
 export default function SpaceDetailScreen() {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
@@ -108,8 +110,8 @@ export default function SpaceDetailScreen() {
     );
   }
 
-  const banner = spaceBanner(space);
-  const logo = spaceLogo(space);
+  const banner = coverOr(defaults, space.id, spaceBanner(space));
+  const logo = logoOr(defaults, space.id, spaceLogo(space));
   const place = [space.city, space.state].filter(Boolean).join(', ');
   const meta = [place || null, space.visibility === 'PRIVATE' ? 'Private space' : 'Public space'].filter(Boolean).join(' · ');
   const eventCount = s.upcoming.length + s.past.length;

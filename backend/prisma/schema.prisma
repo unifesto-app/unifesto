@@ -4299,3 +4299,27 @@ model ShortLinkClick {
   @@index([shortLinkId, createdAt])
   @@map("short_link_clicks")
 }
+
+// =====================================================
+// DEFAULT IMAGES
+// Stand-in banners and logos for events / spaces without their own
+// =====================================================
+
+enum DefaultImageKind {
+  BANNER
+  LOGO
+}
+
+/// A stand-in image managed in Apex. Apps show one for an event without a
+/// cover (BANNER, 4:3) or a space without a logo (LOGO, 1:1), picked by a
+/// stable hash of the event/space id so the same page always gets the same one.
+model DefaultImage {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind        DefaultImageKind
+  url         String           @db.Text
+  createdById String?          @map("created_by_id") @db.Uuid
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([kind, createdAt])
+  @@map("default_images")
+}

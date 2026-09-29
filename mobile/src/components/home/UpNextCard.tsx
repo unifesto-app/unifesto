@@ -12,6 +12,7 @@ import Skeleton from '../Skeleton';
 import { GUTTER } from './Section';
 import { countdownLabel, relativeWhen } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 interface UpNextCardProps {
   ticket: UpcomingTicket;
@@ -26,6 +27,7 @@ interface UpNextCardProps {
  */
 export default function UpNextCard({ ticket, moreCount, onOpenTicket, onSeeAllTickets }: UpNextCardProps) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const venue = ticket.venueName || ticket.city || (ticket.type === 'ONLINE' ? 'Online' : 'Venue TBA');
 
   return (
@@ -51,8 +53,8 @@ export default function UpNextCard({ ticket, moreCount, onOpenTicket, onSeeAllTi
         <CardBackdrop shape={styles.card} />
         <View style={styles.main}>
           <View style={[styles.thumb, { backgroundColor: tokens.surface }]}>
-            {ticket.coverImageUrl ? (
-              <Image source={{ uri: ticket.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {coverOr(defaults, ticket.id, ticket.coverImageUrl) ? (
+              <Image source={{ uri: coverOr(defaults, ticket.id, ticket.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
               <LinearGradient colors={tokens.accentGradient} style={StyleSheet.absoluteFill} />
             )}

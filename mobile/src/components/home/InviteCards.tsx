@@ -11,6 +11,7 @@ import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
 import { GUTTER } from './Section';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 const TINT = 'rgba(52,145,255,0.14)';
 
@@ -29,6 +30,7 @@ export default function InviteCards({
   onDismiss: (token: string) => void;
 }) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   if (invites.length === 0) return null;
 
   return (
@@ -48,8 +50,8 @@ export default function InviteCards({
           >
             <GlassFill radius={borderRadius.xl} tint={TINT} interactive />
             <View style={[styles.cover, { backgroundColor: tokens.elevated }]}>
-              {inv.event.coverImageUrl ? (
-                <Image source={{ uri: inv.event.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              {coverOr(defaults, (inv.event as { id?: string }).id, inv.event.coverImageUrl) ? (
+                <Image source={{ uri: coverOr(defaults, (inv.event as { id?: string }).id, inv.event.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
               ) : (
                 <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
               )}

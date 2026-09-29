@@ -11,6 +11,7 @@ import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
 import { countdownLabel, dateChip, formatTime } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 // Event banners are 4:3.
 const THUMB_W = 84;
@@ -38,6 +39,7 @@ function statusOf(ticket: MyTicket): Status {
  */
 export default function TicketCard({ ticket, onPress }: { ticket: MyTicket; onPress: () => void }) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const status = statusOf(ticket);
   const live = status.kind === 'countdown';
   const chip = dateChip(ticket.startDateTime);
@@ -67,8 +69,8 @@ export default function TicketCard({ ticket, onPress }: { ticket: MyTicket; onPr
       <CardBackdrop shape={styles.card} />
       <View style={[styles.main, !live && { opacity: 0.62 }]}>
         <View style={[styles.thumb, { backgroundColor: tokens.surface }]}>
-          {ticket.coverImageUrl ? (
-            <Image source={{ uri: ticket.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          {coverOr(defaults, ticket.id, ticket.coverImageUrl) ? (
+            <Image source={{ uri: coverOr(defaults, ticket.id, ticket.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
             <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}

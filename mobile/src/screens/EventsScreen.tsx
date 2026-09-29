@@ -25,6 +25,7 @@ import type { Event } from '../lib/api/events';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { coverOr, useDefaultImages } from '../lib/defaultImages';
 
 const GUTTER = spacing[6];
 // Event banners are 4:3; thumbs keep the ratio.
@@ -34,6 +35,7 @@ const THUMB_H = 84;
 /** Browse all published events: search, category chips, paged list. */
 export default function EventsScreen() {
   const { tokens, isDark } = useTheme();
+  const defaults = useDefaultImages();
   const router = useRouter();
   const topSpacing = useTopSpacing(8);
   const params = useLocalSearchParams<{ category?: string; search?: string }>();
@@ -124,8 +126,8 @@ export default function EventsScreen() {
         style={({ pressed }) => [styles.row, { opacity: pressed ? 0.75 : 1 }]}
       >
         <View style={[styles.thumb, { backgroundColor: tokens.elevated }]}>
-          {item.coverImageUrl ? (
-            <Image source={{ uri: item.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          {coverOr(defaults, item.id, item.coverImageUrl) ? (
+            <Image source={{ uri: coverOr(defaults, item.id, item.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
             <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}

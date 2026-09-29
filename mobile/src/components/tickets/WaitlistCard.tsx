@@ -11,6 +11,7 @@ import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
 import { relativeWhen } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 /** "6 hours left", "40 minutes left", or a past-deadline note. */
 function timeLeft(iso: string | null): string {
@@ -37,6 +38,7 @@ interface WaitlistCardProps {
  */
 export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCardProps) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const offered = entry.waitlistStatus === 'OFFERED' && !!entry.offer;
   const offer = entry.offer;
   const place = entry.event.venueName || entry.event.city;
@@ -55,8 +57,8 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
 
       <View style={styles.row}>
         <View style={[styles.thumb, { backgroundColor: tokens.surface }]}>
-          {entry.event.coverImageUrl ? (
-            <Image source={{ uri: entry.event.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          {coverOr(defaults, entry.event.id, entry.event.coverImageUrl) ? (
+            <Image source={{ uri: coverOr(defaults, entry.event.id, entry.event.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
             <LinearGradient colors={tokens.accentGradient} style={StyleSheet.absoluteFill} />
           )}

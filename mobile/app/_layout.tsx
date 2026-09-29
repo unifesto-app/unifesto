@@ -23,6 +23,7 @@ import { checkForAppUpdate } from '../src/lib/appUpdate';
 import { startOtaUpdateChecks } from '../src/lib/otaUpdate';
 import { tagCrashReports } from '../src/lib/appBuild';
 import { showWhatsNewIfNeeded } from '../src/lib/whatsNew';
+import { loadDefaultImages } from '../src/lib/defaultImages';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { applyGlobalFont } from '../src/theme/globalFont';
 
@@ -218,6 +219,8 @@ export default function RootLayout() {
     checkForAppUpdate();
     // Crash reports carry the exact build + OTA update that was running.
     tagCrashReports();
+    // Stand-in banners/logos for events and spaces without their own.
+    void loadDefaultImages();
     // After the store-update check has had its say, show release notes once.
     const t = setTimeout(() => void showWhatsNewIfNeeded(), 2500);
     return () => clearTimeout(t);

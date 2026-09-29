@@ -19,6 +19,7 @@ import { font } from '../../theme/fontHelpers';
 import { GUTTER } from './Section';
 import { relativeWhen, shortPrice } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 const GAP = spacing[3];
 const MAX_SLIDES = 8;
@@ -126,6 +127,7 @@ interface SlideProps {
 // every slide mid-swipe; the swipe itself never re-renders (UI-thread styles).
 const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, coverH, onPressEvent }: SlideProps) {
   const tokens = useTokens();
+  const defaults = useDefaultImages();
   const place = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : null);
 
   // Distance from focus in "cards": 0 = centred, 1 = one card away.
@@ -141,9 +143,9 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
     <Animated.View style={[{ width: cardW }, animated]}>
       <Pressable onPress={() => onPressEvent(event)} accessibilityRole="button" accessibilityLabel={event.title}>
         <View style={[styles.cover, { height: coverH, backgroundColor: tokens.elevated }]}>
-          {event.coverImageUrl ? (
+          {coverOr(defaults, event.id, event.coverImageUrl) ? (
             <Image
-              source={{ uri: event.coverImageUrl }}
+              source={{ uri: coverOr(defaults, event.id, event.coverImageUrl) ?? undefined }}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               // Fade in instead of popping in while the card is sliding.
