@@ -277,6 +277,9 @@ Why: first slice of W10 (backlinks + tracking), pulled forward. Curators see how
 | Traffic on Event and Space Tracking screens (views, visitors, registrations, registered per visitor, 30-day bars) | done |
 | Short links `api.unifesto.app/l/<code>` for events, spaces and (Apex) any unifesto.app page; per-link stats (clicks, visitors, referrers, devices, registrations) | done |
 | Apex › Platform › Traffic in the app | done |
+| Fix: push device "Link failed: 404 Target user does not exist" (create the OneSignal user, retry the transfer) | done |
+| Fix: "App version: Not reported yet" after social sign-up (report once the real token exists, retry on resume) | done |
+| Website: space page keeps utm tags when handing off to the app; AASA adds `/claim/*` and `/l/*` | moved → web (out of scope for this release) |
 | Device QA on iOS + Android build | planned |
 | Backend deploy: read the migration, drift check, `./deploy.sh backend` **before** the app build goes out | planned |
 | Short links on `unifesto.app/l/<code>` instead of the API host (Caddy route or web redirect) | moved → W10 |
@@ -289,6 +292,8 @@ Privacy: page views carry a random per-install id, no account id; clicks store a
 
 - **2026-09-29** · Backend traffic module + tests, verified against a local Postgres copy of the schema · `0879d8c`
 - **2026-09-29** · Mobile: beacon, Tracking traffic cards, Short links + stats, Apex Traffic, version 4.0.5 · `77291af`
+- **2026-09-29** · Backend: OneSignal link creates missing users before transferring · `4429621`
+- **2026-09-29** · Mobile: app version report waits for the access token, retries on resume · `08483af`
 
 #### Shipped
 
