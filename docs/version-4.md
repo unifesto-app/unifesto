@@ -300,7 +300,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 | 5.3j | Home "Happening near you" scroll isn't smooth | – | Rework the rail (snap + deceleration, memoised items, image sizing) | M | done |
 | 5.3k | Missing banner/logo shows a blue block | Fallback is a flat colour | Platform default image library (banners 4:3, logos 1:1) managed in a new Apex screen; apps pick one deterministically per event/space | B + A + W + M | done in the app + backend: Apex › Default images; web and Space web not changed (mobile + backend only) |
 | 5.3l | Stack header needs a blurred background | Header is fully transparent | `expo-blur` (already installed) behind the shared stack header | M | done |
-| 5.3m | Push notifications: delete | No delete exists | Scope to confirm | ? | needs detail |
+| 5.3m | Push notifications: delete | No delete exists | Delete broadcasts from Apex push history (decided: Apex history, not the user inbox) | B + M | done |
 | 5.3n | Apex mobile Status page should use UptimeRobot | Status reads our own `/health` only | Backend proxies UptimeRobot API (monitors, uptime %, incidents); key in env | B + M + Y | planned |
 | 5.3o | Widgets show no data; more widgets wanted | Up next is fed only from the Home tab (`useHomeData` → `syncUpNextWidget`); needs a device check of the App Group / Android task handler | Debug on device, then add widgets | N | needs detail |
 | 5.3p | Android: event location shows an empty grid | Google Maps grid = key rejected. Key is set in EAS, so most likely the key's Android restriction lacks the **Play app-signing SHA-1** (Play re-signs builds) | Add the Play app-signing SHA-1 + `com.unifesto.app` to the key in Google Cloud; confirm Maps SDK for Android is enabled | Y | planned |

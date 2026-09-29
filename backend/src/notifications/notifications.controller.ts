@@ -56,6 +56,12 @@ export class AdminPushController {
   cancel(@Param('id', ParseUUIDPipe) id: string) {
     return this.campaigns.cancel(id);
   }
+
+  /** Remove a broadcast (and its delivery logs) from the history. */
+  @Delete(':id')
+  remove(@Param('id', ParseUUIDPipe) id: string) {
+    return this.campaigns.remove(id);
+  }
 }
 
 /** Organiser-to-attendee announcements (scoped to events they manage). */

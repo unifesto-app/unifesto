@@ -64,6 +64,8 @@ export const listPushCampaigns = (page = 1, limit = 20) =>
 export const createPushBroadcast = (body: CreatePushBroadcast) => call<PushCampaign>('/admin/push/campaigns', post(body));
 export const sendPushCampaign = (id: string) => call<{ status: string }>(`/admin/push/campaigns/${id}/send`, post());
 export const cancelPushCampaign = (id: string) => call<{ status: string }>(`/admin/push/campaigns/${id}/cancel`, post());
+/** Remove from the history (not while sending). Can't unsend what phones already got. */
+export const deletePushCampaign = (id: string) => call<{ success: boolean }>(`/admin/push/campaigns/${id}`, { method: 'DELETE' });
 
 // ── Email campaigns (/admin/email) ───────────────────────────────────────────
 

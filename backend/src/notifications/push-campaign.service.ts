@@ -106,6 +106,24 @@ export class PushCampaignService {
     return { status: 'cancelled' };
   }
 
+  /**
+   * Remove a campaign from the history, with its per-user delivery logs
+   * (push_logs cascade). Anything but one mid-send: a pending campaign is
+   * simply never sent. What phones already received can't be recalled.
+   */
+  async remove(id: string): Promise<{ success: true }> {
+    const res = await this.prisma.pushCampaign.deleteMany({
+      where: { id, status: { not: PushCampaignStatus.SENDING } },
+    });
+    if (res.count !== 1) {
+      const exists = await this.prisma.pushCampaign.count({ where: { id } });
+      throw exists
+        ? new BadRequestException('This broadcast is sending right now; delete it once it finishes')
+        : new NotFoundException('Campaign not found');
+    }
+    return { success: true };
+  }
+
   async list(page = 1, limit = 20, status?: string[]) {
     const where: Prisma.PushCampaignWhereInput = status?.length
       ? { status: { in: status as PushCampaignStatus[] } }

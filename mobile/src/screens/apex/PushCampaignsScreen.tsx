@@ -14,6 +14,7 @@ import { AppAlert } from '../../components/ui/AppAlert';
 import { campaignStatus } from '../../components/apex/campaignStatus';
 import {
   cancelPushCampaign,
+  deletePushCampaign,
   listPushCampaigns,
   sendPushCampaign,
   type PushCampaign,
@@ -37,7 +38,7 @@ export function pushTargetLabel(c: PushCampaign): string {
   return `${n} ${n === 1 ? 'person' : 'people'}`;
 }
 
-/** Push broadcasts: history with delivery counts, send-now / cancel for pending ones. */
+/** Push broadcasts: history with delivery counts, send-now / cancel for pending ones, delete for any not mid-send. */
 export default function PushCampaignsScreen() {
   const router = useRouter();
   const tokens = useTokens();
@@ -61,10 +62,27 @@ export default function PushCampaignsScreen() {
     void reload();
   };
 
+  const confirmDelete = (c: PushCampaign) =>
+    AppAlert.alert(
+      'Delete this broadcast?',
+      c.status === 'SENT' || c.status === 'FAILED'
+        ? 'It leaves the history with its delivery counts. People who already got it keep the notification.'
+        : 'It leaves the history and is never sent.',
+      [
+        { text: 'Keep', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => void act(() => deletePushCampaign(c.id), 'Not deleted') },
+      ],
+    );
+
   const openActions = (c: PushCampaign) =>
     AppAlert.alert(c.title, c.body, [
-      { text: 'Send now', onPress: () => void act(() => sendPushCampaign(c.id), 'Not sent') },
-      { text: 'Cancel broadcast', style: 'destructive', onPress: () => void act(() => cancelPushCampaign(c.id), 'Not cancelled') },
+      ...(ACTIONABLE.includes(c.status)
+        ? [
+            { text: 'Send now', onPress: () => void act(() => sendPushCampaign(c.id), 'Not sent') },
+            { text: 'Cancel broadcast', style: 'destructive' as const, onPress: () => void act(() => cancelPushCampaign(c.id), 'Not cancelled') },
+          ]
+        : []),
+      { text: 'Delete', style: 'destructive', onPress: () => confirmDelete(c) },
       { text: 'Close', style: 'cancel' },
     ]);
 
@@ -119,7 +137,8 @@ export default function PushCampaignsScreen() {
               meta={[pushTargetLabel(item), delivery, when].filter(Boolean).join(' · ')}
               value={s.label}
               valueColor={s.color}
-              onPress={ACTIONABLE.includes(item.status) ? () => openActions(item) : undefined}
+              // Everything but a broadcast mid-send can be acted on (at least deleted).
+              onPress={item.status !== 'SENDING' ? () => openActions(item) : undefined}
             />
           );
         }}
