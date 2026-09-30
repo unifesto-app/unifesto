@@ -310,6 +310,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 | 5.3t | New: replace a team member | – | Curators turn on "Allow team changes" (Event settings › Attendees); the lead then replaces a filled member seat (invite someone else or free it). Curators can always replace from Attendees. Old ticket deleted, both told by email; not the lead's seat or a checked-in member | B (+migration) + M | done |
 | 5.3u | New: allow / stop attendees editing their details | – | Event settings › Attendees: switch + optional "Edits close" deadline. Solo edits their answers, lead the team's + own, member their own; curators edit anyone any time (Attendees › Edit details) | B (+migration) + M | done |
 | 5.3v | New: OTA system complete (W3) | – | Preflight vs recorded store fingerprints, 20% staged rollout, promote / revert / rollback scripts, runbook, Profile › About, build info on Crashlytics and support tickets, in-app What's new | B (+migration) + M | done |
+| 5.3w | Home "Up next" shows completed tickets; no way to delete finished tickets | Up next kept a ticket until its scheduled end and never saw the event status (not sent), so an event marked Completed/Cancelled stayed; it also scanned only the 5 newest registrations | Send event status; Up next and Tickets drop completed/cancelled events; scan 20 registrations. Delete a finished ticket from my list (long-press in Tickets, or the ticket's menu): hides it for me only, registration kept | B (+migration) + M | done |
 
 **Traffic and short links (5.3g–i) in detail**
 
@@ -317,7 +318,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - Config (optional, defaults shown): `SHORT_LINK_BASE_URL=https://api.unifesto.app`, `TRAFFIC_HASH_SECRET` (falls back to `JWT_SECRET`).
 - Privacy: views carry a random per-install id, no account id; clicks store an HMAC of IP + user agent, never the IP. Both fit the published labels (Product Interaction, not linked, analytics, consent-gated).
 
-**Migrations in this release** (all additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929121000_traffic`, `20260929130000_event_attendee_controls`, `20260929140000_support_ticket_client_info`, `20260929150000_default_images`.
+**Migrations in this release** (all additive; run by `./deploy.sh backend` before the API restarts): `20260927100000_group_seat_whatsapp_joined`, `20260929121000_traffic`, `20260929130000_event_attendee_controls`, `20260929140000_support_ticket_client_info`, `20260929150000_default_images`, `20260930120000_hidden_tickets`.
 
 **New backend env (optional):** `UPTIMEROBOT_API_KEY` (read-only key, for Apex › Status), `SHORT_LINK_BASE_URL`, `TRAFFIC_HASH_SECRET`.
 
@@ -338,6 +339,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-09-29** · Work lost when the other machine ran out of credits, rebuilt: backend traffic module + tests (verified against a local Postgres copy of the schema), mobile beacon / Tracking traffic / Short links / Apex Traffic, 5.3q OneSignal link, 5.3r app version, rail end-snap fix, version 4.0.5 · PR [#14](https://github.com/unifesto-app/unifesto/pull/14)
 - **2026-09-29** · 5.3l header backdrop redone after QA ("can't see it on many screens"): drawn by the app on both platforms (real blur on iOS, raised tint on Android instead of a page-colour wash) with a bottom hairline
 - **2026-09-29** · 5.3t team member replacement, 5.3u attendee detail edits (verified against a local Postgres copy), 5.3v OTA system, 5.3k default images, 5.3m push history delete, 5.3n UptimeRobot, 5.3o widgets + Countdown
+- **2026-09-30** · 5.3w Up next no longer shows completed tickets; finished tickets can be deleted from my list (+ migration)
 
 #### Shipped
 

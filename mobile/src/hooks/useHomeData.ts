@@ -25,6 +25,9 @@ export type LocationStatus = 'idle' | 'loading' | 'granted' | 'denied';
 export type UpcomingTicket = Event & {
   qrCode?: string;
   registrationId?: string;
+  registrationStatus?: string;
+  /** The event's own status (COMPLETED / CANCELLED means it's over). */
+  eventStatus?: string;
   ticketType?: unknown;
   ticketCode?: string;
   /** A seat I claimed in someone else's group (read-only ticket). */

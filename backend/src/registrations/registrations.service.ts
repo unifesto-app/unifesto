@@ -3681,6 +3681,8 @@ export class RegistrationsService {
         ? {
             userId,
             status: RegistrationStatus.CANCELLED,
+            // Tickets I deleted from my list stay out of it.
+            hiddenBy: { none: { userId } },
             // Only rows that were ever a real ticket — not abandoned checkouts.
             paymentStatus: {
               in: [
@@ -3698,6 +3700,7 @@ export class RegistrationsService {
               in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED],
             },
             status: { not: RegistrationStatus.CANCELLED },
+            hiddenBy: { none: { userId } },
             event: NOT_DELETED,
           };
 
@@ -3719,6 +3722,8 @@ export class RegistrationsService {
               venueName: true,
               city: true,
               type: true,
+              // COMPLETED / CANCELLED drops it out of "Up next" even before its end time.
+              status: true,
               // Organiser branding for the "I'm attending" share card.
               space: { select: { id: true, name: true, slug: true, logoUrl: true } },
             },
@@ -3793,7 +3798,8 @@ export class RegistrationsService {
     if (ids.length === 0) return { data: [] };
 
     const registrations = await this.prisma.eventRegistration.findMany({
-      where: { id: { in: ids } },
+      // Shared tickets I deleted from my list stay out of it.
+      where: { id: { in: ids }, hiddenBy: { none: { userId } } },
       orderBy: { registeredAt: 'desc' },
       include: {
         event: {
@@ -3807,6 +3813,7 @@ export class RegistrationsService {
             venueName: true,
             city: true,
             type: true,
+            status: true,
             // Organiser branding for the "I'm attending" share card.
             space: { select: { id: true, name: true, slug: true, logoUrl: true } },
           },
@@ -3834,6 +3841,58 @@ export class RegistrationsService {
         return mine ? { ...base, qrCode: mine.qrCode, tickets: [mine] } : base;
       }),
     };
+  }
+
+  /**
+   * Deletes a finished ticket from the caller's own ticket list: their own
+   * registration or a group ticket they hold a seat on. Only their view
+   * changes — the registration, payment and check-ins stay for the organiser
+   * and the rest of the group. Allowed once the event is over (ended,
+   * completed or cancelled) or the ticket is cancelled, so a live pass can't
+   * vanish before the door. Idempotent.
+   */
+  async hideMyTicket(userId: string, registrationId: string) {
+    const already = await this.prisma.hiddenTicket.findUnique({
+      where: { userId_registrationId: { userId, registrationId } },
+      select: { id: true },
+    });
+    if (already) return { success: true };
+
+    const registration = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        event: { select: { status: true, endDateTime: true } },
+      },
+    });
+    const mine =
+      !!registration &&
+      (registration.userId === userId ||
+        (await this.getMyMemberTickets(userId)).data.some((r) => r.id === registrationId));
+    // Same 404 for "not yours" so ids can't be probed.
+    if (!registration || !mine) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    const over =
+      registration.status === RegistrationStatus.CANCELLED ||
+      registration.event.status === EventStatus.COMPLETED ||
+      registration.event.status === EventStatus.CANCELLED ||
+      registration.event.endDateTime.getTime() <= Date.now();
+    if (!over) {
+      throw new BadRequestException(
+        'You can delete a ticket once its event is over.',
+      );
+    }
+
+    await this.prisma.hiddenTicket.upsert({
+      where: { userId_registrationId: { userId, registrationId } },
+      create: { userId, registrationId },
+      update: {},
+    });
+    return { success: true };
   }
 
   // =====================================================

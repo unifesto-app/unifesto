@@ -8,6 +8,7 @@ import {
   Delete,
   Query,
   ParseIntPipe,
+  ParseUUIDPipe,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -650,6 +651,19 @@ export class RegistrationsController {
       +limit,
       scope === 'cancelled' ? 'cancelled' : 'active',
     );
+  }
+
+  /** Deletes a finished ticket from my own list (the registration stays). */
+  @Delete('users/me/registrations/:id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete a finished ticket from my ticket list' })
+  @ApiResponse({ status: 200 })
+  async hideMyTicket(
+    @Request() req,
+    @Param('id', ParseUUIDPipe) registrationId: string,
+  ) {
+    return this.registrationsService.hideMyTicket(req.user.id, registrationId);
   }
 
   @Get('users/me/member-tickets')

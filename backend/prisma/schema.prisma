@@ -467,6 +467,7 @@ model User {
   checkinRecordsCreated        EventCheckinRecord[]          @relation("CheckedInBy")
   groupMemberCheckinsCreated   EventGroupMemberCheckin[]     @relation("GroupMemberCheckedInBy")
   claimedGroupSeats            GroupSeat[]                   @relation("GroupSeatClaimedBy")
+  hiddenTickets                HiddenTicket[]
   registrationsCheckedIn       EventRegistration[]           @relation("RegistrationCheckedInBy")
   favorites                    FavoriteEvent[]
   createdSessions              Session[]                     @relation("SessionCreator")
@@ -1887,6 +1888,7 @@ model EventRegistration {
   sponsorLeads        SponsorLead[]
   couponRedemption    CouponRedemption?
   stayBookings        StayBooking[]
+  hiddenBy            HiddenTicket[]
 
   // NOTE: "at most one ACTIVE registration per (event, user, ticket type)" is
   // enforced by a PARTIAL unique index that exempts REFUNDED and CANCELLED
@@ -1906,6 +1908,25 @@ model EventRegistration {
   @@index([ticketTypeId, waitlistStatus, waitlistedAt])
   @@index([waitlistStatus, waitlistOfferExpiresAt])
   @@map("event_registrations")
+}
+
+/// A finished ticket someone deleted from their own ticket list. Only their
+/// view changes: the registration, its payment and check-ins stay intact for
+/// the organiser, and the rest of a group still sees a shared ticket.
+model HiddenTicket {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  hiddenAt DateTime @default(now()) @map("hidden_at") @db.Timestamptz(6)
+
+  @@unique([userId, registrationId])
+  @@index([registrationId])
+  @@map("hidden_tickets")
 }
 
 model EventTicket {

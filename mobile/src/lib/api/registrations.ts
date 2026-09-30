@@ -242,6 +242,23 @@ export const cancelMyRegistration = async (registrationId: string, reason?: stri
   return response.json();
 };
 
+/**
+ * Deletes a finished ticket (event over, or ticket cancelled) from my own
+ * list. The registration itself stays for the organiser and the group.
+ */
+export const deleteMyTicket = async (registrationId: string) => {
+  const response = await makeAuthenticatedRequest(`/users/me/registrations/${registrationId}`, {
+    method: 'DELETE',
+  });
+
+  if (!response?.ok) {
+    const error = await response?.json().catch(() => null);
+    const msg = Array.isArray(error?.message) ? error.message[0] : error?.message;
+    throw new Error(msg || 'Could not delete this ticket');
+  }
+  return response.json();
+};
+
 export const getMyRegistrations = async (page = 1, limit = 20) => {
   const response = await makeAuthenticatedRequest(`/users/me/registrations?page=${page}&limit=${limit}`);
   if (!response?.ok) return null;
