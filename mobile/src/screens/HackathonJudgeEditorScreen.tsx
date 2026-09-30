@@ -62,7 +62,7 @@ const toDraft = (j: Judge): Draft => ({
  * link for online judging), and whether they're on a break.
  */
 export default function HackathonJudgeEditorScreen() {
-  const { eventId, judgeId } = useLocalSearchParams<{ eventId: string; judgeId: string }>();
+  const { eventId, judgeId, kind: kindParam } = useLocalSearchParams<{ eventId: string; judgeId: string; kind?: string }>();
   const isNew = !judgeId || judgeId === 'new';
   const router = useRouter();
   const tokens = useTokens();
@@ -93,7 +93,9 @@ export default function HackathonJudgeEditorScreen() {
     });
   }, [isNew, eventId, judgeId]);
 
-  const title = isNew ? 'Add a judge' : judge?.name || judge?.contact || 'Judge';
+  const mentor = isNew ? kindParam === 'MENTOR' : judge?.kind === 'MENTOR';
+  const role = mentor ? 'mentor' : 'judge';
+  const title = isNew ? `Add a ${role}` : judge?.name || judge?.contact || (mentor ? 'Mentor' : 'Judge');
   if (!draft) {
     return (
       <View style={[styles.center, { backgroundColor: tokens.bg }]}>
@@ -129,6 +131,7 @@ export default function HackathonJudgeEditorScreen() {
         ...fields,
         ...(draft.by === 'mobile' ? { mobile: contact } : { email: contact }),
         name: draft.name.trim() || undefined,
+        kind: mentor ? 'MENTOR' : 'JUDGE',
       });
       setSaving(false);
       if (!res.ok) return setError(res.message);
@@ -141,7 +144,7 @@ export default function HackathonJudgeEditorScreen() {
   };
 
   const remove = () =>
-    AppAlert.alert(`Remove ${judge?.name || 'this judge'}?`, 'They stop judging this hackathon. Marks they already gave are kept.', [
+    AppAlert.alert(`Remove ${judge?.name || `this ${role}`}?`, mentor ? 'They stop mentoring at this hackathon. Feedback they gave is kept.' : 'They stop judging this hackathon. Marks they already gave are kept.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -215,7 +218,7 @@ export default function HackathonJudgeEditorScreen() {
         )}
 
         <View style={{ marginTop: spacing[6] }}>
-          <BlockTitle>Themes they judge</BlockTitle>
+          <BlockTitle>{mentor ? 'Themes they mentor' : 'Themes they judge'}</BlockTitle>
           {themes.length ? (
             <MultiChips options={themes.map((t) => ({ value: t.id, label: t.name }))} value={draft.themeIds} onChange={(v) => set({ themeIds: v })} />
           ) : null}
@@ -255,11 +258,14 @@ export default function HackathonJudgeEditorScreen() {
             keyboardType="url"
           />
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>A called team sees the room, or a Join call button when there’s a link.</Text>
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          A called team sees the room, or a Join call button when there’s a link.
+          {mentor ? ' Mentors only take mentoring rounds.' : ' Judges only take judged rounds.'}
+        </Text>
 
         {!isNew ? (
           <Button
-            label="Remove judge"
+            label={`Remove ${role}`}
             variant="danger"
             size="lg"
             fullWidth
@@ -271,7 +277,7 @@ export default function HackathonJudgeEditorScreen() {
           />
         ) : null}
       </ScrollView>
-      <SaveBar visible={dirty} label={isNew ? 'Add judge' : 'Save judge'} onPress={save} loading={saving} disabled={removing} error={error} />
+      <SaveBar visible={dirty} label={isNew ? `Add ${role}` : `Save ${role}`} onPress={save} loading={saving} disabled={removing} error={error} />
     </KeyboardAvoidingView>
   );
 }

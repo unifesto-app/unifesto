@@ -154,7 +154,7 @@ export default function HackathonQueuesScreen() {
   const queueGroup = (q: MonitorQueue) => (
     <SettingsGroup
       key={`${q.kind}:${q.id}`}
-      title={`${q.name}${q.location ? ` · ${q.location}` : ''}`}
+      title={`${q.name}${q.role === 'MENTOR' ? ' (mentor)' : ''}${q.location ? ` · ${q.location}` : ''}`}
       action={{ label: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) }}
     >
       {!q.isAvailable ? <SettingsRow icon={<Coffee size={ICON} color={tokens.textMuted} weight="fill" />} label="On a break" /> : null}

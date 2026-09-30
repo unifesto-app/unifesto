@@ -106,7 +106,10 @@ describe('LeaderboardService (privacy rules)', () => {
   });
 
   describe('HACKATHON GATE: a team is judged only after it locks its problem statement', () => {
-    const judge = { findMany: jest.fn().mockResolvedValue([{ kind: 'JUDGE', roundId: null, entrantId: null }]) };
+    const judge = {
+      findMany: jest.fn().mockResolvedValue([{ kind: 'JUDGE', roundId: null, entrantId: null }]),
+      count: jest.fn().mockResolvedValue(1), // a judge row covers this round
+    };
     const hackTeam = (over: Record<string, unknown>) => ({
       findUnique: jest.fn().mockResolvedValue({
         id: ENTRANT,
@@ -158,7 +161,10 @@ describe('LeaderboardService (privacy rules)', () => {
   });
 
   describe('HACKATHON MARKS: during the slot, then 5 minutes to change them', () => {
-    const judge = { findMany: jest.fn().mockResolvedValue([{ kind: 'JUDGE', roundId: null, entrantId: null }]) };
+    const judge = {
+      findMany: jest.fn().mockResolvedValue([{ kind: 'JUDGE', roundId: null, entrantId: null }]),
+      count: jest.fn().mockResolvedValue(1), // a judge row covers this round
+    };
     const METRIC = { id: 'm1', label: 'Innovation', roundId: ROUND, minValue: 0, maxValue: 10 };
     const hackTeam = () => ({
       findUnique: jest.fn().mockResolvedValue({

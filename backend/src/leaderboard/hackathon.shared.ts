@@ -314,13 +314,30 @@ export function judgmentLocked(j: { submittedAt: Date | null; reopenedAt: Date |
   return !!until && now.getTime() >= until.getTime();
 }
 
-/** Completed evaluations a team needs in a round: one, or N for MULTI. */
-export function evaluationsRequired(round: { judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number }): number {
+export type RoundKind = 'EVALUATION' | 'MENTORING';
+
+/**
+ * Completed sessions a team needs (or may have) in a round: one, N for MULTI,
+ * and for a MENTORING round the number of mentor sessions it allows.
+ */
+export function evaluationsRequired(round: {
+  kind?: RoundKind;
+  judgingMode: 'SINGLE' | 'PANEL' | 'MULTI';
+  requiredEvaluations: number;
+}): number {
+  if (round.kind === 'MENTORING') return Math.max(1, round.requiredEvaluations);
   return round.judgingMode === 'MULTI' ? Math.max(1, round.requiredEvaluations) : 1;
 }
 
 /** Settings that can't stand together; null when fine. */
-export function roundConfigError(r: { judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number }): string | null {
+export function roundConfigError(r: { kind?: RoundKind; judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number }): string | null {
+  if (r.kind === 'MENTORING') {
+    if (r.judgingMode === 'PANEL') return 'Mentoring rounds use mentors one at a time, not panels.';
+    if (r.requiredEvaluations < 1 || r.requiredEvaluations > REQUIRED_EVALUATIONS_MAX) {
+      return `A team can have between 1 and ${REQUIRED_EVALUATIONS_MAX} mentor sessions.`;
+    }
+    return null;
+  }
   if (r.judgingMode === 'MULTI' && (r.requiredEvaluations < 2 || r.requiredEvaluations > REQUIRED_EVALUATIONS_MAX)) {
     return `With several judges, each team needs between 2 and ${REQUIRED_EVALUATIONS_MAX} evaluations.`;
   }
@@ -428,8 +445,11 @@ export const submittedKey = (roundId: string, entrantId: string, judgeUserId: st
  * The round a PER_ROUND hackathon is ranked on: the latest round that has
  * been opened (a round still waiting to start has no marks yet), else the last.
  */
-export function finalRoundId(rounds: { id: string; order: number; status: 'PENDING' | 'ACTIVE' | 'CLOSED' }[]): string | null {
-  const sorted = [...rounds].sort((a, b) => a.order - b.order);
+export function finalRoundId(
+  rounds: { id: string; order: number; status: 'PENDING' | 'ACTIVE' | 'CLOSED'; kind?: RoundKind }[],
+): string | null {
+  // Mentoring rounds have no marks, so they never decide the ranking.
+  const sorted = rounds.filter((r) => r.kind !== 'MENTORING').sort((a, b) => a.order - b.order);
   const started = sorted.filter((r) => r.status !== 'PENDING');
   return (started[started.length - 1] ?? sorted[sorted.length - 1])?.id ?? null;
 }
@@ -491,4 +511,58 @@ export function csvCell(v: unknown): string {
 /** A CSV document (CRLF, with a BOM so Excel reads names in any script). */
 export function toCsv(rows: unknown[][]): string {
   return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+}
+
+// ── Project links (Phase 5) ──────────────────────────────────────────────────
+
+export const SUBMISSION_LINKS_MAX = 10;
+export const SUBMISSION_LABEL_MAX = 60;
+export const SUBMISSION_NOTES_MAX = 2000;
+
+export interface SubmissionLink {
+  label: string;
+  url: string;
+}
+
+/**
+ * Clean a team's project links: http(s) only, at most 10, blank rows dropped,
+ * duplicates dropped, and a missing label taken from the site ("github.com").
+ * Returns an error message instead when a link can't be used.
+ */
+export function cleanLinks(raw: { label?: string | null; url?: string | null }[]): { links: SubmissionLink[] } | { error: string } {
+  const out: SubmissionLink[] = [];
+  const seen = new Set<string>();
+  for (const r of raw) {
+    const url = (r.url ?? '').trim();
+    const label = (r.label ?? '').replace(/\s+/g, ' ').trim();
+    if (!url && !label) continue;
+    if (!url) return { error: `Add the link for "${label}".` };
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return { error: `"${url.slice(0, 60)}" isn't a link. Links start with https://` };
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return { error: 'Links start with https://' };
+    if (url.length > 2000) return { error: 'That link is too long.' };
+    if (seen.has(parsed.href)) continue;
+    seen.add(parsed.href);
+    out.push({ label: (label || parsed.hostname.replace(/^www\./, '')).slice(0, SUBMISSION_LABEL_MAX), url: parsed.href });
+  }
+  if (out.length > SUBMISSION_LINKS_MAX) return { error: `Add at most ${SUBMISSION_LINKS_MAX} links.` };
+  return { links: out };
+}
+
+/** Whether teams can still change their links for a round. */
+export function submissionOpen(round: { status: 'PENDING' | 'ACTIVE' | 'CLOSED'; submissionsCloseAt: Date | null }, now: Date): boolean {
+  if (round.status === 'CLOSED') return false;
+  return !round.submissionsCloseAt || now.getTime() < round.submissionsCloseAt.getTime();
+}
+
+/** Stored links, tolerating anything unexpected in the JSON column. */
+export function readLinks(json: unknown): SubmissionLink[] {
+  if (!Array.isArray(json)) return [];
+  return json
+    .filter((l): l is SubmissionLink => !!l && typeof l === 'object' && typeof (l as SubmissionLink).url === 'string')
+    .map((l) => ({ label: typeof l.label === 'string' ? l.label : l.url, url: l.url }));
 }

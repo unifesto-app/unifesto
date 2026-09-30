@@ -13,6 +13,7 @@ import type {
   CompetitionUpdateEvent,
   HackathonUpdateEvent,
   HackathonJudgeUpdateEvent,
+  HackathonAnnouncementEvent,
 } from '../notifications.events';
 
 /**
@@ -145,6 +146,8 @@ export function hackathonJudgePushCopy(e: HackathonJudgeUpdateEvent): { title: s
   switch (e.kind) {
     case 'JUDGE_ADDED':
       return { title: `You're judging ${e.eventTitle}`, body: 'Your judge console is in the app, under Judging.' };
+    case 'MENTOR_ADDED':
+      return { title: `You're mentoring at ${e.eventTitle}`, body: 'Your mentor console is in the app, under Judging.' };
     case 'ROUND_OPENED':
       return { title: `${e.roundName ?? 'A round'} is open`, body: `Teams at ${e.eventTitle} can join your queue now.` };
     case 'ROUND_CLOSED':
@@ -152,7 +155,7 @@ export function hackathonJudgePushCopy(e: HackathonJudgeUpdateEvent): { title: s
     case 'QUEUE_JOINED':
       return { title: `${team} joined your queue`, body: 'Call them from your judge console when you’re ready.' };
     case 'TIME_UP':
-      return { title: `Time's up: ${team}`, body: 'Submit your marks to call the next team.' };
+      return { title: `Time's up: ${team}`, body: 'Submit your marks or feedback to call the next team.' };
     case 'MARKS_REOPENED':
       return { title: `Your marks for ${team} are open again`, body: 'The organisers reopened them for 5 minutes.' };
     case 'WINNERS_ANNOUNCED':
@@ -278,6 +281,20 @@ export class TransactionalNotificationHandler {
       ...hackathonPushCopy(e),
       deepLink: hackathonDeepLink(e),
       data: { type: 'hackathon', kind: e.kind, eventId: e.eventId },
+      inbox: { type: 'hackathon', eventId: e.eventId },
+    });
+  }
+
+  /** Curator announcements: push + in-app, opening the hackathon updates feed. */
+  @OnEvent(NotificationEvents.HackathonAnnouncement, { async: true })
+  async onHackathonAnnouncement(e: HackathonAnnouncementEvent): Promise<void> {
+    if (!e.userIds?.length) return;
+    await this.notifications.send(e.userIds, {
+      category: 'registrationUpdates',
+      title: `${e.eventTitle}: ${e.title}`,
+      body: e.body,
+      deepLink: `unifesto://hackathon/${e.eventId}/updates`,
+      data: { type: 'hackathon', kind: 'ANNOUNCEMENT', eventId: e.eventId },
       inbox: { type: 'hackathon', eventId: e.eventId },
     });
   }

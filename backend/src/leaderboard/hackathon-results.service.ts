@@ -22,6 +22,7 @@ import {
   evaluationTotal,
   finalRoundId,
   judgmentLocked,
+  readLinks,
   takesPart,
   teamStage,
   toCsv,
@@ -65,7 +66,7 @@ export class HackathonResultsService {
     await this.leaderboard.assertCanManage(userId, eventId);
     const board = await this.teams.getBoardOrThrow(eventId);
     await this.teams.syncCancellations(board.id);
-    const [settings, rounds, metrics, entrants, judgments, scores, canDeclare] = await Promise.all([
+    const [settings, rounds, metrics, entrants, judgments, scores, canDeclare, submissions] = await Promise.all([
       this.prisma.leaderboard.findUniqueOrThrow({ where: { id: board.id }, select: { scoringMode: true, revealReviews: true } }),
       this.prisma.leaderboardRound.findMany({ where: { leaderboardId: board.id }, orderBy: { order: 'asc' } }),
       this.prisma.leaderboardMetric.findMany({
@@ -96,6 +97,10 @@ export class HackathonResultsService {
         select: { entrantId: true, roundId: true, judgeUserId: true, metricId: true, value: true, comment: true },
       }),
       this.leaderboard.canDeclareWinners(userId, eventId),
+      this.prisma.hackathonSubmission.findMany({
+        where: { entrant: { leaderboardId: board.id } },
+        select: { entrantId: true, roundId: true, links: true, notes: true },
+      }),
     ]);
     const judgeIds = [...new Set(judgments.map((j) => j.panelistUserId))];
     const users = await this.prisma.user.findMany({
@@ -138,9 +143,12 @@ export class HackathonResultsService {
               review: j.overallReview,
             };
           });
-        const score = evaluations.length
-          ? Math.round((evaluations.reduce((s, x) => s + x.total, 0) / evaluations.length) * 1e4) / 1e4
-          : null;
+        // Mentoring sessions are feedback only: no score, no rank.
+        const score =
+          r.kind !== 'MENTORING' && evaluations.length
+            ? Math.round((evaluations.reduce((s, x) => s + x.total, 0) / evaluations.length) * 1e4) / 1e4
+            : null;
+        const submission = submissions.find((x) => x.entrantId === e.id && x.roundId === r.id);
         return {
           roundId: r.id,
           takesPart: takesPart(rounds, standing, r.id).in,
@@ -148,6 +156,8 @@ export class HackathonResultsService {
           score,
           rank: null as number | null,
           evaluations,
+          links: readLinks(submission?.links),
+          linksNotes: submission?.notes ?? null,
         };
       });
       return { e, standing, perRound };
@@ -193,6 +203,7 @@ export class HackathonResultsService {
           name: r.name,
           order: r.order,
           status: r.status,
+          kind: r.kind,
           judgingMode: r.judgingMode,
           eliminationEnabled: r.eliminationEnabled,
           countsTowardTotal: r.countsTowardTotal,
@@ -249,11 +260,16 @@ export class HackathonResultsService {
 
     const header: string[] = ['Team ID', 'Team name', 'Status', 'Room', 'PS code', 'Problem statement', 'Theme', 'PS changed after evaluation'];
     for (const r of results.rounds) {
+      if (r.kind === 'MENTORING') {
+        header.push(`${r.name} mentor sessions`, `${r.name} links`);
+        continue;
+      }
       header.push(`${r.name} score`, `${r.name} rank`, `${r.name} decision`, `${r.name} evaluations`);
       for (const [, name] of roundJudges.get(r.id)!) {
         for (const c of r.criteria) header.push(`${r.name} · ${name} · ${c.label}`);
         header.push(`${r.name} · ${name} · total`);
       }
+      header.push(`${r.name} links`);
     }
     header.push(cumulative ? 'Cumulative total' : 'Final score', 'Overall rank', 'Awards');
 
@@ -272,12 +288,18 @@ export class HackathonResultsService {
       ];
       for (const r of results.rounds) {
         const p = t.rounds.find((x) => x.roundId === r.id)!;
+        const links = p.links.map((l) => l.url).join(' ');
+        if (r.kind === 'MENTORING') {
+          row.push(p.evaluations.length || '', links);
+          continue;
+        }
         row.push(p.score ?? '', p.rank ?? '', p.takesPart ? DECISION[p.standing] : '', p.evaluations.length || '');
         for (const [judgeId] of roundJudges.get(r.id)!) {
           const ev = p.evaluations.find((x) => x.judgeUserId === judgeId);
           for (const c of r.criteria) row.push(ev?.marks.find((m) => m.metricId === c.id)?.value ?? '');
           row.push(ev?.total ?? '');
         }
+        row.push(links);
       }
       row.push(t.total ?? '', t.rank ?? '', t.awards.map((a) => (a.published ? a.title : `${a.title} (not published)`)).join('; '));
       return row;

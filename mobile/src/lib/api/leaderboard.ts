@@ -94,7 +94,10 @@ export interface MyJudgment {
     members: string[];
     room: { name: string; location: string | null } | null;
     statement: { source: 'LIST' | 'OWN'; code: string | null; title: string; description: string; themeLabel: string | null } | null;
-    round: { name: string; slotMinutes: number; judgingMode: string } | null;
+    round: { name: string; slotMinutes: number; judgingMode: string; kind?: 'EVALUATION' | 'MENTORING' } | null;
+    /** The team's project links for this round. */
+    links?: { label: string; url: string }[];
+    linksNotes?: string | null;
     slot: {
       requestId: string;
       status: string;

@@ -58,6 +58,7 @@ import {
   effectiveStatus,
   finalRoundId,
   judgmentLocked,
+  readLinks,
   submittedKey,
 } from './hackathon.shared';
 import { TEAM_STATEMENT_SELECT, statementView } from './hackathon.views';
@@ -743,12 +744,28 @@ export class LeaderboardService {
       throw new ForbiddenException('You are not on the panel for this entrant/round.');
     }
 
+    if (board.isHackathon) {
+      // The round decides the role: judges mark evaluation rounds, mentors give
+      // feedback in mentoring rounds.
+      const needed = round.kind === 'MENTORING' ? LeaderboardPanelistKind.MENTOR : LeaderboardPanelistKind.JUDGE;
+      const covering = await this.prisma.leaderboardPanelist.count({
+        where: {
+          leaderboardId: board.id,
+          userId,
+          kind: needed,
+          AND: [{ OR: [{ roundId: null }, { roundId: round.id }] }, { OR: [{ entrantId: null }, { entrantId }] }],
+        },
+      });
+      if (!covering) {
+        throw new ForbiddenException(
+          needed === LeaderboardPanelistKind.MENTOR ? 'Only mentors give feedback in a mentoring round.' : 'Only judges give marks in this round.',
+        );
+      }
+      return this.submitHackathonJudgment(userId, { id: entrantId, leaderboardId: board.id }, board, round, needed, dto);
+    }
     const hasScores = (dto.scores?.length ?? 0) > 0;
     if (hasScores && kind === LeaderboardPanelistKind.MENTOR) {
       throw new ForbiddenException('Mentors submit reviews only, not scores.');
-    }
-    if (board.isHackathon) {
-      return this.submitHackathonJudgment(userId, { id: entrantId, leaderboardId: board.id }, board, round, kind, dto);
     }
     if (hasScores) this.validateScoreCells(board.metrics, dto.scores!);
 
@@ -825,17 +842,22 @@ export class LeaderboardService {
     kind: LeaderboardPanelistKind,
     dto: SubmitJudgmentDto,
   ) {
-    if (kind !== LeaderboardPanelistKind.JUDGE) {
-      throw new ForbiddenException('Only judges give marks in this hackathon.');
+    const mentor = kind === LeaderboardPanelistKind.MENTOR;
+    if (mentor && (dto.scores?.length ?? 0) > 0) {
+      throw new ForbiddenException('Mentors give written feedback, not marks.');
     }
-    const metrics = board.metrics.filter((m) => m.roundId === null || m.roundId === round.id);
+    const metrics = mentor ? [] : board.metrics.filter((m) => m.roundId === null || m.roundId === round.id);
     const cells = dto.scores ?? [];
     const inRound = new Set(metrics.map((m) => m.id));
     for (const c of cells) {
       if (!inRound.has(c.metricId)) throw new BadRequestException('That criterion isn’t part of this round.');
     }
     this.validateScoreCells(metrics, cells);
-    if (dto.submit) {
+    if (dto.submit && mentor) {
+      if (dto.overallReview !== undefined && !dto.overallReview.trim()) {
+        throw new BadRequestException('Write your feedback before submitting.');
+      }
+    } else if (dto.submit) {
       if (!metrics.length) throw new BadRequestException("The organisers haven't set this round's criteria yet.");
       const given = new Set(cells.map((c) => c.metricId));
       const missing = metrics.find((m) => !given.has(m.id));
@@ -847,8 +869,12 @@ export class LeaderboardService {
       const key = { entrantId: entrant.id, roundId: round.id, panelistUserId: userId };
       const existing = await tx.leaderboardJudgment.findUnique({
         where: { entrantId_roundId_panelistUserId: key },
-        select: { submittedAt: true, reopenedAt: true, requestId: true },
+        select: { submittedAt: true, reopenedAt: true, requestId: true, overallReview: true },
       });
+      // A mentor's session is their feedback: there must be some to submit.
+      if (mentor && dto.submit && !(dto.overallReview ?? existing?.overallReview ?? '').trim()) {
+        throw new BadRequestException('Write your feedback before submitting.');
+      }
       let slot: { id: string; panelId: string | null } | null = null;
       if (existing?.submittedAt) {
         if (judgmentLocked(existing, now)) {
@@ -1758,7 +1784,7 @@ export class LeaderboardService {
     return {
       entrantId,
       roundId: round.id,
-      kind,
+      kind: board.isHackathon ? (round.kind === 'MENTORING' ? LeaderboardPanelistKind.MENTOR : LeaderboardPanelistKind.JUDGE) : kind,
       scores: scores.map((s) => ({
         metricId: s.metricId,
         value: Number(s.value),
@@ -1779,7 +1805,7 @@ export class LeaderboardService {
    * plus their running slot with it, if any.
    */
   private async judgeTeamContext(leaderboardId: string, roundId: string, entrantId: string, userId: string, now: Date) {
-    const [team, slot, round] = await Promise.all([
+    const [team, slot, round, submission] = await Promise.all([
       this.prisma.leaderboardEntrant.findUnique({
         where: { id: entrantId },
         select: {
@@ -1802,7 +1828,11 @@ export class LeaderboardService {
       }),
       this.prisma.leaderboardRound.findUnique({
         where: { id: roundId },
-        select: { name: true, slotMinutes: true, judgingMode: true },
+        select: { name: true, slotMinutes: true, judgingMode: true, kind: true },
+      }),
+      this.prisma.hackathonSubmission.findUnique({
+        where: { entrantId_roundId: { entrantId, roundId } },
+        select: { links: true, notes: true },
       }),
     ]);
     if (!team) return null;
@@ -1814,6 +1844,9 @@ export class LeaderboardService {
       room: team.room,
       statement: statementView(team),
       round,
+      // The team's project links for this round.
+      links: readLinks(submission?.links),
+      linksNotes: submission?.notes ?? null,
       slot: slot
         ? {
             requestId: slot.id,

@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { LockOpen, WarningCircle } from 'phosphor-react-native';
+import { LinkSimple, LockOpen, WarningCircle } from 'phosphor-react-native';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -105,9 +105,14 @@ export default function HackathonResultTeamScreen() {
       {rounds.map((r) => {
         const p = team.rounds.find((x) => x.roundId === r.id)!;
         if (!p.takesPart && !p.evaluations.length) return null;
+        const mentoring = r.kind === 'MENTORING';
         const title = [
           r.name,
-          p.score != null ? `${formatScore(p.score)} of ${formatScore(r.maxScore)}` : 'not evaluated',
+          mentoring
+            ? `${p.evaluations.length} mentor session${p.evaluations.length === 1 ? '' : 's'}`
+            : p.score != null
+              ? `${formatScore(p.score)} of ${formatScore(r.maxScore)}`
+              : 'not evaluated',
           p.rank != null ? `#${p.rank}` : null,
           r.eliminationEnabled ? standingLabel(p.standing) : null,
         ]
@@ -116,15 +121,29 @@ export default function HackathonResultTeamScreen() {
         return (
           <View key={r.id}>
             <Text style={[styles.section, { color: tokens.textMuted }]}>{title}</Text>
+            {p.links.length ? (
+              <SettingsGroup plain>
+                {p.links.map((l) => (
+                  <SettingsRow
+                    key={l.url}
+                    icon={<LinkSimple size={22} color={tokens.accent} weight="bold" />}
+                    label={l.label}
+                    external
+                    onPress={() => void Linking.openURL(l.url)}
+                  />
+                ))}
+              </SettingsGroup>
+            ) : null}
+            {p.linksNotes ? <Text style={[styles.note, { color: tokens.textMuted }]}>{p.linksNotes}</Text> : null}
             {p.evaluations.length === 0 ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>No submitted marks yet.</Text>
+              <Text style={[styles.note, { color: tokens.textMuted }]}>{mentoring ? 'No mentor feedback yet.' : 'No submitted marks yet.'}</Text>
             ) : null}
             {p.evaluations.map((ev) => (
               <View key={ev.judgmentId} style={styles.card}>
                 <CardBackdrop shape={styles.card} />
                 <View style={styles.cardHead}>
                   <Text style={[styles.judge, { color: tokens.text }]}>{ev.judgeName}</Text>
-                  <Text style={[styles.judge, { color: tokens.accent }]}>{formatScore(ev.total)}</Text>
+                  {!mentoring ? <Text style={[styles.judge, { color: tokens.accent }]}>{formatScore(ev.total)}</Text> : null}
                 </View>
                 {r.criteria.map((c) => {
                   const m = ev.marks.find((x) => x.metricId === c.id);

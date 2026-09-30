@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Broadcast, Buildings, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
+import { Broadcast, Buildings, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -244,13 +244,21 @@ export default function HackathonManageScreen() {
             />
             <SettingsRow
               icon={icon(Gavel)}
-              label="Judges and panels"
+              label="Judges, mentors and panels"
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/judges`)}
             />
             <SettingsRow
               icon={icon(Broadcast)}
               label="Live queues"
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/queues`)}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup title="Announcements">
+            <SettingsRow
+              icon={icon(Megaphone)}
+              label="Send an announcement"
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/announce`)}
             />
           </SettingsGroup>
 

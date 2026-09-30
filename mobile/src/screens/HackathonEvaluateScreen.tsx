@@ -214,13 +214,27 @@ export default function HackathonEvaluateScreen() {
         <SettingsGroup title="Rounds">
           {data.rounds.map((r) => {
             const blocked = roundBlockedCopy(r, !!req);
-            const progress = r.required > 1 ? `${r.completed} of ${r.required} evaluations` : r.completed ? 'Evaluated' : undefined;
+            const mentoring = r.kind === 'MENTORING';
+            const progress =
+              r.required > 1
+                ? `${r.completed} of ${r.required} ${mentoring ? 'sessions' : 'evaluations'}`
+                : r.completed
+                  ? mentoring
+                    ? 'Session done'
+                    : 'Evaluated'
+                  : undefined;
             return (
               <SettingsRow
                 key={r.id}
                 icon={r.completed >= r.required ? <CheckCircle size={ICON} color={tokens.success} weight="fill" /> : icon(Gavel)}
                 label={r.name}
-                value={r.canRequest ? 'Pick a judge' : progress ?? (r.status === 'ACTIVE' ? 'Open' : r.status === 'CLOSED' ? 'Closed' : 'Not open')}
+                value={
+                  r.canRequest
+                    ? mentoring
+                      ? 'Pick a mentor'
+                      : 'Pick a judge'
+                    : progress ?? (r.status === 'ACTIVE' ? 'Open' : r.status === 'CLOSED' ? 'Closed' : 'Not open')
+                }
                 onPress={r.canRequest ? () => void openPicker(r) : blocked ? () => AppAlert.alert(r.name, blocked) : undefined}
               />
             );
@@ -235,11 +249,13 @@ export default function HackathonEvaluateScreen() {
       {picking ? (
         <>
           <SettingsGroup
-            title={picking.round.judgingMode === 'PANEL' ? `Pick a panel · ${picking.round.name}` : `Pick a judge · ${picking.round.name}`}
+            title={`${picking.round.kind === 'MENTORING' ? 'Pick a mentor' : picking.round.judgingMode === 'PANEL' ? 'Pick a panel' : 'Pick a judge'} · ${picking.round.name}`}
             action={{ label: 'Cancel', onPress: () => setPicking(null) }}
           >
             {picking.list === null ? <SettingsRow label="Loading…" /> : null}
-            {picking.list?.length === 0 ? <SettingsRow label="Nobody is judging your team in this round yet" /> : null}
+            {picking.list?.length === 0 ? (
+              <SettingsRow label={picking.round.kind === 'MENTORING' ? 'No mentors in this round yet' : 'Nobody is judging your team in this round yet'} />
+            ) : null}
             {picking.list?.map((e) => {
               const off = !e.isAvailable || e.alreadyEvaluated;
               return (
@@ -249,7 +265,9 @@ export default function HackathonEvaluateScreen() {
                   label={e.location ? `${e.name} · ${e.location}` : e.name}
                   value={
                     e.alreadyEvaluated
-                      ? 'Already evaluated you'
+                      ? picking.round.kind === 'MENTORING'
+                        ? 'Already had a session'
+                        : 'Already evaluated you'
                       : !e.isAvailable
                         ? 'On a break'
                         : e.waiting || e.busy
@@ -262,7 +280,9 @@ export default function HackathonEvaluateScreen() {
             })}
           </SettingsGroup>
           <Text style={[styles.note, { color: tokens.textMuted }]}>
-            {picking.round.judgingMode === 'MULTI'
+            {picking.round.kind === 'MENTORING'
+              ? 'Mentors give written feedback, no marks. Each session is with a different mentor.'
+              : picking.round.judgingMode === 'MULTI'
               ? 'This round needs evaluations from different judges. Join one queue at a time.'
               : `Each slot is ${picking.round.slotMinutes} minutes. Wait times are a rough guide.`}
           </Text>

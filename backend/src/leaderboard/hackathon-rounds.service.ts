@@ -38,12 +38,14 @@ export interface RoundContext {
   rounds: (RoundRef & {
     name: string;
     status: LeaderboardRoundStatus;
+    kind: 'EVALUATION' | 'MENTORING';
     judgingMode: 'SINGLE' | 'PANEL' | 'MULTI';
     requiredEvaluations: number;
     slotMinutes: number;
     callGraceMinutes: number;
     countsTowardTotal: boolean;
     endAt: Date | null;
+    submissionsCloseAt: Date | null;
   })[];
   /** Teams in the hackathon: not cancelled, statement locked. */
   teams: { id: string; teamCode: string | null; teamSeq: number | null; name: string; themeId: string | null }[];
@@ -168,7 +170,11 @@ export class HackathonRoundsService {
         select: { entrantId: true, status: true },
       }),
       this.prisma.leaderboardPanelist.findMany({
-        where: { leaderboardId: board.id, kind: LeaderboardPanelistKind.JUDGE, OR: [{ roundId: null }, { roundId }] },
+        where: {
+          leaderboardId: board.id,
+          kind: round.kind === 'MENTORING' ? LeaderboardPanelistKind.MENTOR : LeaderboardPanelistKind.JUDGE,
+          OR: [{ roundId: null }, { roundId }],
+        },
         select: { userId: true },
         distinct: ['userId'],
       }),
@@ -200,8 +206,9 @@ export class HackathonRoundsService {
         marked: m._count.scores > 0,
       })),
       teams,
+      // Judges for an evaluation round, mentors for a mentoring one.
       judges: judges.length,
-      panels,
+      panels: round.kind === 'MENTORING' ? 0 : panels,
       // Opening is refused until these are decided (only matters while PENDING/CLOSED).
       blockers: round.status === 'ACTIVE' ? [] : this.blockers(ctx, roundId),
       openRequests: requests.filter((r) => (OPEN_EVAL_STATUSES as readonly string[]).includes(r.status)).length,
@@ -214,6 +221,7 @@ export class HackathonRoundsService {
       name: r.name,
       order: r.order,
       status: r.status,
+      kind: r.kind,
       judgingMode: r.judgingMode,
       requiredEvaluations: r.requiredEvaluations,
       slotMinutes: r.slotMinutes,
@@ -221,6 +229,7 @@ export class HackathonRoundsService {
       eliminationEnabled: r.eliminationEnabled,
       countsTowardTotal: r.countsTowardTotal,
       endAt: r.endAt,
+      submissionsCloseAt: r.submissionsCloseAt,
     };
   }
 
@@ -230,7 +239,7 @@ export class HackathonRoundsService {
     await this.leaderboard.assertCanManage(userId, eventId);
     await this.teams.getBoardOrThrow(eventId);
     if (!dto.name?.trim()) throw new BadRequestException('Name the round, like "Round 2" or "Finals".');
-    const data = this.configData(dto, { judgingMode: 'SINGLE', requiredEvaluations: 1 });
+    const data = this.configData(dto, { kind: 'EVALUATION', judgingMode: 'SINGLE', requiredEvaluations: 1 });
     // Creates the round with a PENDING standing for every team.
     const round = await this.leaderboard.createRound(userId, eventId, { name: dto.name.trim() });
     await this.prisma.leaderboardRound.update({ where: { id: round.id }, data });
@@ -245,6 +254,15 @@ export class HackathonRoundsService {
       const open = await this.prisma.hackathonEvalRequest.count({ where: { roundId, status: { in: [...OPEN_EVAL_STATUSES] } } });
       if (open) throw new BadRequestException('Teams are in this round’s queues. Change how it’s judged once they’re through.');
     }
+    if (dto.kind !== undefined && dto.kind !== round.kind) {
+      const [requests, judgments] = await Promise.all([
+        this.prisma.hackathonEvalRequest.count({ where: { roundId } }),
+        this.prisma.leaderboardJudgment.count({ where: { roundId } }),
+      ]);
+      if (requests || judgments) {
+        throw new BadRequestException('Teams already had sessions in this round, so it can’t switch between judging and mentoring.');
+      }
+    }
     const data = this.configData(dto, round);
     if (dto.name !== undefined) {
       if (!dto.name.trim()) throw new BadRequestException('Name the round.');
@@ -258,22 +276,32 @@ export class HackathonRoundsService {
   /** Validated settings to write; `current` fills what the DTO leaves out for the cross-field check. */
   private configData(
     dto: UpdateHackathonRoundDto,
-    current: { judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number },
+    current: { kind: 'EVALUATION' | 'MENTORING'; judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number },
   ): Prisma.LeaderboardRoundUpdateInput {
-    const judgingMode = dto.judgingMode ?? current.judgingMode;
+    const kind = dto.kind ?? current.kind;
+    let judgingMode = dto.judgingMode ?? current.judgingMode;
     let requiredEvaluations = dto.requiredEvaluations ?? current.requiredEvaluations;
-    // Switching to several judges starts at 2; away from it, back to 1.
-    if (dto.judgingMode === 'MULTI' && dto.requiredEvaluations === undefined && requiredEvaluations < 2) requiredEvaluations = 2;
-    if (judgingMode !== 'MULTI') requiredEvaluations = 1;
-    const err = roundConfigError({ judgingMode, requiredEvaluations });
+    if (kind === 'MENTORING') {
+      // Mentors see teams one at a time; "sessions per team" rides on requiredEvaluations.
+      if (dto.judgingMode === undefined) judgingMode = 'SINGLE';
+    } else {
+      // Switching to several judges starts at 2; away from it, back to 1.
+      if (dto.judgingMode === 'MULTI' && dto.requiredEvaluations === undefined && requiredEvaluations < 2) requiredEvaluations = 2;
+      if (judgingMode !== 'MULTI') requiredEvaluations = 1;
+    }
+    const err = roundConfigError({ kind, judgingMode, requiredEvaluations });
     if (err) throw new BadRequestException(err);
     return {
+      kind,
       judgingMode,
       requiredEvaluations,
+      // Mentoring never eliminates and never counts toward a total.
+      ...(kind === 'MENTORING' ? { eliminationEnabled: false, countsTowardTotal: false } : {}),
+      ...(dto.submissionsCloseAt !== undefined ? { submissionsCloseAt: dto.submissionsCloseAt ? new Date(dto.submissionsCloseAt) : null } : {}),
       ...(dto.slotMinutes !== undefined ? { slotMinutes: dto.slotMinutes } : {}),
       ...(dto.callGraceMinutes !== undefined ? { callGraceMinutes: dto.callGraceMinutes } : {}),
-      ...(dto.eliminationEnabled !== undefined ? { eliminationEnabled: dto.eliminationEnabled } : {}),
-      ...(dto.countsTowardTotal !== undefined ? { countsTowardTotal: dto.countsTowardTotal } : {}),
+      ...(kind !== 'MENTORING' && dto.eliminationEnabled !== undefined ? { eliminationEnabled: dto.eliminationEnabled } : {}),
+      ...(kind !== 'MENTORING' && dto.countsTowardTotal !== undefined ? { countsTowardTotal: dto.countsTowardTotal } : {}),
       ...(dto.endAt !== undefined ? { endAt: dto.endAt ? new Date(dto.endAt) : null } : {}),
     };
   }
@@ -323,10 +351,12 @@ export class HackathonRoundsService {
           `Advance or eliminate every team in ${b.roundName} first. Still undecided: ${codes}${more}.`,
         );
       }
-      const criteria = await this.prisma.leaderboardMetric.count({
-        where: { leaderboardId: board.id, OR: [{ roundId }, { roundId: null }] },
-      });
-      if (!criteria) throw new BadRequestException('Add the criteria judges mark against before opening the round.');
+      if (round.kind === 'EVALUATION') {
+        const criteria = await this.prisma.leaderboardMetric.count({
+          where: { leaderboardId: board.id, OR: [{ roundId }, { roundId: null }] },
+        });
+        if (!criteria) throw new BadRequestException('Add the criteria judges mark against before opening the round.');
+      }
     }
 
     const now = new Date();
@@ -353,7 +383,7 @@ export class HackathonRoundsService {
 
     await this.leaderboard.recomputeAndBroadcast(board.id);
     const inRound = this.teamsInRound(ctx, roundId);
-    const judgeIds = await this.roundJudgeIds(board.id, roundId);
+    const judgeIds = await this.roundJudgeIds(board.id, roundId, round.kind);
     this.gateway.hackathonChanged(eventId, {
       judgeUserIds: [
         ...judgeIds,
@@ -378,17 +408,23 @@ export class HackathonRoundsService {
     return this.getRound(userId, eventId, roundId);
   }
 
-  /** Judges who judge this round, alone or on a panel for it. */
-  async roundJudgeIds(leaderboardId: string, roundId: string): Promise<string[]> {
+  /** Judges who judge this round, alone or on a panel for it; mentors for a mentoring round. */
+  async roundJudgeIds(leaderboardId: string, roundId: string, kind: 'EVALUATION' | 'MENTORING' = 'EVALUATION'): Promise<string[]> {
     const [solo, panel] = await Promise.all([
       this.prisma.leaderboardPanelist.findMany({
-        where: { leaderboardId, kind: LeaderboardPanelistKind.JUDGE, OR: [{ roundId: null }, { roundId }] },
+        where: {
+          leaderboardId,
+          kind: kind === 'MENTORING' ? LeaderboardPanelistKind.MENTOR : LeaderboardPanelistKind.JUDGE,
+          OR: [{ roundId: null }, { roundId }],
+        },
         select: { userId: true },
       }),
-      this.prisma.hackathonPanelMember.findMany({
-        where: { panel: { leaderboardId, OR: [{ roundId: null }, { roundId }] } },
-        select: { userId: true },
-      }),
+      kind === 'MENTORING'
+        ? Promise.resolve([] as { userId: string }[])
+        : this.prisma.hackathonPanelMember.findMany({
+            where: { panel: { leaderboardId, OR: [{ roundId: null }, { roundId }] } },
+            select: { userId: true },
+          }),
     ]);
     return [...new Set([...solo, ...panel].map((r) => r.userId))];
   }

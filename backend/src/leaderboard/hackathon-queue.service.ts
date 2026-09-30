@@ -28,6 +28,7 @@ import {
   isEliminated,
   judgeTakesTheme,
   judgmentLocked,
+  readLinks,
   takesPart,
   teamStage,
   type EvalStatus,
@@ -134,6 +135,7 @@ export class HackathonQueueService {
           name: r.name,
           order: r.order,
           status: r.status,
+          kind: r.kind,
           judgingMode: r.judgingMode,
           slotMinutes: r.slotMinutes,
           endAt: r.endAt,
@@ -183,7 +185,7 @@ export class HackathonQueueService {
     const list = await this.pickable(board.id, round, team);
     const loads = await this.queueLoads(board.id, list);
     return {
-      round: { id: round.id, name: round.name, judgingMode: round.judgingMode, slotMinutes: round.slotMinutes },
+      round: { id: round.id, name: round.name, kind: round.kind, judgingMode: round.judgingMode, slotMinutes: round.slotMinutes },
       evaluators: list
         .map((e) => {
           const load = loads.get(`${e.kind}:${e.id}`) ?? { waiting: 0, busy: false };
@@ -228,16 +230,29 @@ export class HackathonQueueService {
       throw new BadRequestException(required > 1 ? `Your team already has its ${required} evaluations in ${round.name}.` : `Your team was already evaluated in ${round.name}.`);
     }
 
-    const wantsPanel = round.judgingMode === 'PANEL';
+    const mentoring = round.kind === 'MENTORING';
+    const wantsPanel = !mentoring && round.judgingMode === 'PANEL';
     if (wantsPanel ? !dto.panelId || dto.judgeUserId : !dto.judgeUserId || dto.panelId) {
-      throw new BadRequestException(wantsPanel ? 'Pick a panel.' : 'Pick a judge.');
+      throw new BadRequestException(wantsPanel ? 'Pick a panel.' : mentoring ? 'Pick a mentor.' : 'Pick a judge.');
     }
     const choices = await this.pickable(board.id, round, team);
     const chosen = choices.find((c) => c.id === (dto.judgeUserId ?? dto.panelId));
-    if (!chosen) throw new BadRequestException(wantsPanel ? 'That panel isn’t judging this round.' : 'That judge isn’t judging your team in this round.');
+    if (!chosen) {
+      throw new BadRequestException(
+        wantsPanel
+          ? 'That panel isn’t judging this round.'
+          : mentoring
+            ? 'That mentor isn’t mentoring in this round.'
+            : 'That judge isn’t judging your team in this round.',
+      );
+    }
     if (!chosen.isAvailable) throw new BadRequestException(`${chosen.name} is on a break. Pick someone else or try again soon.`);
     if (chosen.kind === 'JUDGE' && completed.some((c) => c.judgeUserId === chosen.id)) {
-      throw new BadRequestException(`${chosen.name} already evaluated your team in this round. Pick another judge.`);
+      throw new BadRequestException(
+        mentoring
+          ? `Your team already had a session with ${chosen.name} in this round. Pick another mentor.`
+          : `${chosen.name} already evaluated your team in this round. Pick another judge.`,
+      );
     }
 
     const judgeWasIdle = !(await this.prisma.hackathonEvalRequest.count({
@@ -305,8 +320,8 @@ export class HackathonQueueService {
     const [profile, scopes, panels, ctx] = await Promise.all([
       this.ensureProfile(board.id, userId),
       this.prisma.leaderboardPanelist.findMany({
-        where: { leaderboardId: board.id, userId, kind: LeaderboardPanelistKind.JUDGE },
-        select: { roundId: true },
+        where: { leaderboardId: board.id, userId },
+        select: { roundId: true, kind: true },
       }),
       this.prisma.hackathonPanel.findMany({
         where: { leaderboardId: board.id, members: { some: { userId } } },
@@ -335,9 +350,14 @@ export class HackathonQueueService {
         judgeUserIds: [userId],
       })),
     ];
-    const allRounds = scopes.some((s) => s.roundId === null);
+    // Judges take evaluation rounds, mentors mentoring rounds.
+    const roundKind = profile.kind === 'MENTOR' ? 'MENTORING' : 'EVALUATION';
+    const myScopes = scopes.filter((s) => s.kind === profile.kind);
+    const allRounds = myScopes.some((s) => s.roundId === null);
     const myRounds = ctx.rounds.filter(
-      (r) => allRounds || scopes.some((s) => s.roundId === r.id) || panels.some((p) => p.roundId === null || p.roundId === r.id),
+      (r) =>
+        r.kind === roundKind &&
+        (allRounds || myScopes.some((s) => s.roundId === r.id) || panels.some((p) => p.roundId === null || p.roundId === r.id)),
     );
 
     const open = await this.prisma.hackathonEvalRequest.findMany({
@@ -390,6 +410,8 @@ export class HackathonQueueService {
 
     return {
       eventId,
+      // JUDGE gives marks; MENTOR gives feedback only.
+      kind: profile.kind,
       isAvailable: profile.isAvailable,
       location: profile.location,
       meetingUrl: profile.meetingUrl,
@@ -397,6 +419,7 @@ export class HackathonQueueService {
         id: r.id,
         name: r.name,
         status: r.status,
+        kind: r.kind,
         judgingMode: r.judgingMode,
         slotMinutes: r.slotMinutes,
         callGraceMinutes: r.callGraceMinutes,
@@ -604,7 +627,11 @@ export class HackathonQueueService {
     };
     const teamRows = await this.teamSummaries([...new Set([...open, ...recent].map((r) => r.entrantId))]);
 
-    const queue = async (kind: 'JUDGE' | 'PANEL', id: string, extra: { name: string; location: string | null; isAvailable: boolean; judgeId?: string }) => {
+    const queue = async (
+      kind: 'JUDGE' | 'PANEL',
+      id: string,
+      extra: { name: string; location: string | null; isAvailable: boolean; judgeId?: string; role?: 'JUDGE' | 'MENTOR' },
+    ) => {
       const mine = open.filter((r) => (kind === 'JUDGE' ? r.judgeUserId === id : r.panelId === id));
       const current = mine.find((r) => SLOT.includes(r.status));
       return {
@@ -612,6 +639,7 @@ export class HackathonQueueService {
         id,
         // The profile id, to pause a judge through the judges route.
         judgeId: extra.judgeId ?? null,
+        role: extra.role ?? 'JUDGE',
         name: extra.name,
         location: extra.location,
         isAvailable: extra.isAvailable,
@@ -632,7 +660,9 @@ export class HackathonQueueService {
       activeRounds: ctx.rounds.filter((r) => r.status === 'ACTIVE').map((r) => ({ id: r.id, name: r.name, judgingMode: r.judgingMode })),
       queues: [
         ...(await Promise.all(
-          profiles.map((p) => queue('JUDGE', p.userId, { name: nameOf(p.userId), location: p.location, isAvailable: p.isAvailable, judgeId: p.id })),
+          profiles.map((p) =>
+            queue('JUDGE', p.userId, { name: nameOf(p.userId), location: p.location, isAvailable: p.isAvailable, judgeId: p.id, role: p.kind }),
+          ),
         )),
         ...(await Promise.all(panels.map((p) => queue('PANEL', p.id, { name: p.name, location: p.location, isAvailable: p.isAvailable })))),
       ],
@@ -686,7 +716,11 @@ export class HackathonQueueService {
     });
     const choices = await this.pickable(board.id, round, { id: team.id, themeId: null });
     const target = choices.find((c) => c.id === (dto.judgeUserId ?? dto.panelId) && c.kind === (dto.panelId ? 'PANEL' : 'JUDGE'));
-    if (!target) throw new BadRequestException(round.judgingMode === 'PANEL' ? 'Pick a panel on this round.' : 'Pick a judge on this round.');
+    if (!target) {
+      throw new BadRequestException(
+        round.kind === 'MENTORING' ? 'Pick a mentor on this round.' : round.judgingMode === 'PANEL' ? 'Pick a panel on this round.' : 'Pick a judge on this round.',
+      );
+    }
     if (target.id === (req.judgeUserId ?? req.panelId)) throw new BadRequestException('The team is already in that queue.');
     if (target.kind === 'JUDGE') {
       const judged = await this.prisma.hackathonEvalRequest.count({
@@ -840,16 +874,24 @@ export class HackathonQueueService {
     const board = await this.teams.getBoardOrThrow(eventId);
     if (!board.enabled) throw new NotFoundException('Hackathon mode is not on for this event');
     const onPanel = await this.prisma.leaderboardPanelist.count({
-      where: { leaderboardId: board.id, userId, kind: LeaderboardPanelistKind.JUDGE },
+      where: { leaderboardId: board.id, userId },
     });
-    if (!onPanel) throw new ForbiddenException('You’re not judging this hackathon.');
+    if (!onPanel) throw new ForbiddenException('You’re not judging or mentoring at this hackathon.');
     return board;
   }
 
   private async ensureProfile(leaderboardId: string, userId: string) {
+    const existing = await this.prisma.hackathonJudgeProfile.findUnique({
+      where: { leaderboardId_userId: { leaderboardId, userId } },
+    });
+    if (existing) return existing;
+    // Added the old way: a mentor only if they have no judge rows.
+    const judgeRows = await this.prisma.leaderboardPanelist.count({
+      where: { leaderboardId, userId, kind: LeaderboardPanelistKind.JUDGE },
+    });
     return this.prisma.hackathonJudgeProfile.upsert({
       where: { leaderboardId_userId: { leaderboardId, userId } },
-      create: { leaderboardId, userId, themeIds: [] },
+      create: { leaderboardId, userId, kind: judgeRows ? 'JUDGE' : 'MENTOR', themeIds: [] },
       update: {},
     });
   }
@@ -943,10 +985,10 @@ export class HackathonQueueService {
    */
   private async pickable(
     leaderboardId: string,
-    round: { id: string; judgingMode: 'SINGLE' | 'PANEL' | 'MULTI' },
+    round: { id: string; kind: 'EVALUATION' | 'MENTORING'; judgingMode: 'SINGLE' | 'PANEL' | 'MULTI' },
     team: { id: string; themeId: string | null },
   ): Promise<Evaluator[]> {
-    if (round.judgingMode === 'PANEL') {
+    if (round.kind === 'EVALUATION' && round.judgingMode === 'PANEL') {
       const panels = await this.prisma.hackathonPanel.findMany({
         where: { leaderboardId, OR: [{ roundId: null }, { roundId: round.id }], members: { some: {} } },
         select: { id: true, name: true, location: true, meetingUrl: true, isAvailable: true, members: { select: { userId: true } } },
@@ -956,7 +998,8 @@ export class HackathonQueueService {
     const scopes = await this.prisma.leaderboardPanelist.findMany({
       where: {
         leaderboardId,
-        kind: LeaderboardPanelistKind.JUDGE,
+        // Mentoring rounds are for mentors, evaluation rounds for judges.
+        kind: round.kind === 'MENTORING' ? LeaderboardPanelistKind.MENTOR : LeaderboardPanelistKind.JUDGE,
         AND: [{ OR: [{ roundId: null }, { roundId: round.id }] }, { OR: [{ entrantId: null }, { entrantId: team.id }] }],
       },
       select: { userId: true },
@@ -1063,7 +1106,7 @@ export class HackathonQueueService {
   /** The judge's current slot: the team (names only), its statement, timings and marking progress. */
   private async slotView(r: RequestRow, ctx: RoundContext, userId: string, now: Date) {
     const round = ctx.rounds.find((x) => x.id === r.roundId);
-    const [team, mine, panelProgress] = await Promise.all([
+    const [team, mine, panelProgress, submission] = await Promise.all([
       this.prisma.leaderboardEntrant.findUnique({
         where: { id: r.entrantId },
         select: { id: true, teamCode: true, name: true, registrationId: true, room: { select: { name: true, location: true } }, ...TEAM_STATEMENT_SELECT },
@@ -1078,6 +1121,10 @@ export class HackathonQueueService {
             this.prisma.leaderboardJudgment.count({ where: { requestId: r.id, submittedAt: { not: null } } }),
           ])
         : Promise.resolve(null),
+      this.prisma.hackathonSubmission.findUnique({
+        where: { entrantId_roundId: { entrantId: r.entrantId, roundId: r.roundId } },
+        select: { links: true, notes: true },
+      }),
     ]);
     return {
       requestId: r.id,
@@ -1091,6 +1138,9 @@ export class HackathonQueueService {
             members: team.registrationId ? await this.leaderboard.teamMemberNames(team.registrationId) : [],
             room: team.room,
             statement: statementView(team),
+            // The team's project links for this round.
+            links: readLinks(submission?.links),
+            linksNotes: submission?.notes ?? null,
           }
         : null,
       calledAt: r.calledAt,
