@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, BellRinging, DoorOpen, Gavel, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from 'phosphor-react-native';
+import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import QuickTiles, { type QuickTile } from '../components/profile/QuickTiles';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -113,7 +114,23 @@ export default function HackathonHubScreen() {
   const maps = venueMapsUrl(hub.venue);
   const venueLines = [hub.venue.name, hub.venue.address].filter(Boolean) as string[];
   const joined = team.members.filter((m) => m.joined).length;
+  const request = team.evaluation?.request ?? null;
   const icon = (I: typeof MapPin) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const go = (path: string) => () => router.push(`/hackathon/${eventId}/${path}`);
+
+  // The one thing the team should do right now, if any, lives on the pass.
+  const cta =
+    request?.status === 'CALLED'
+      ? { label: 'You’re up! Go to judging', onPress: go('evaluate') }
+      : team.stage === 'NEEDS_PS' && team.statementBlock === null && team.isLead
+        ? { label: 'Choose problem statement', onPress: go('statement') }
+        : null;
+
+  const tiles: QuickTile[] = [
+    { key: 'team', label: `${joined}/${team.members.length} joined`, icon: icon(UsersThree), onPress: go('team') },
+    { key: 'updates', label: unread ? `${unread} new` : 'Updates', icon: icon(unread ? BellRinging : Bell), onPress: go('updates') },
+    ...(!cancelled ? [{ key: 'help', label: 'Get help', icon: icon(Lifebuoy), onPress: go('help') }] : []),
+  ];
 
   return (
     <>
@@ -136,30 +153,41 @@ export default function HackathonHubScreen() {
           />
         }
       >
-        {/* Team ID card */}
-        <View style={styles.idCard}>
-          <CardBackdrop shape={styles.idCard} />
-          <Text style={[styles.label, { color: tokens.textMuted }]}>{hub.event.title}</Text>
-          <Text
-            style={[styles.teamCode, { color: cancelled ? tokens.textMuted : tokens.text }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            accessibilityLabel={`Team ID ${team.teamCode ?? 'not assigned'}`}
-          >
-            {team.teamCode ?? '—'}
-          </Text>
-          <Text style={[styles.teamName, { color: tokens.textSecondary }]} numberOfLines={2}>
-            {team.name}
-          </Text>
+        {/* Team pass: who you are, then what's next */}
+        <View style={styles.pass}>
+          <CardBackdrop shape={styles.pass} />
+          <View style={styles.passTop}>
+            <Text style={[styles.label, { color: tokens.textMuted }]} numberOfLines={1}>
+              {hub.event.title}
+            </Text>
+            <Text
+              style={[styles.teamCode, { color: cancelled ? tokens.textMuted : tokens.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              accessibilityLabel={`Team ID ${team.teamCode ?? 'not assigned'}`}
+            >
+              {team.teamCode ?? '—'}
+            </Text>
+            <Text style={[styles.teamName, { color: tokens.textSecondary }]} numberOfLines={2}>
+              {team.name}
+              {team.isLead ? ' · Lead' : ''}
+            </Text>
+          </View>
+          <View style={[styles.passDivider, { backgroundColor: tokens.bg }]} />
+          <View style={styles.passBottom}>
+            <View style={styles.stageRow}>
+              {cancelled ? <WarningCircle size={22} color={tokens.danger} weight="fill" /> : null}
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.stageTitle, { color: cancelled ? tokens.danger : tokens.text }]}>{stage.title}</Text>
+                <Text style={[styles.stageBody, { color: tokens.textSecondary }]}>{stage.body}</Text>
+              </View>
+            </View>
+            {cta ? <Button label={cta.label} onPress={cta.onPress} style={{ marginTop: spacing[4] }} /> : null}
+          </View>
         </View>
 
-        {/* What's next */}
-        <View style={[styles.stage, { borderColor: cancelled ? tokens.danger : tokens.borderStrong }]}>
-          {cancelled ? <WarningCircle size={22} color={tokens.danger} weight="fill" /> : null}
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.stageTitle, { color: cancelled ? tokens.danger : tokens.text }]}>{stage.title}</Text>
-            <Text style={[styles.stageBody, { color: tokens.textSecondary }]}>{stage.body}</Text>
-          </View>
+        <View style={{ marginTop: spacing[4] }}>
+          <QuickTiles tiles={tiles} />
         </View>
 
         {!cancelled ? (
@@ -178,7 +206,7 @@ export default function HackathonHubScreen() {
                       : 'The organisers will assign it'
               }
               value={team.statement?.themeLabel ?? (team.statementBlock === null ? 'Open' : undefined)}
-              onPress={() => router.push(`/hackathon/${eventId}/statement`)}
+              onPress={go('statement')}
             />
           </SettingsGroup>
         ) : null}
@@ -188,79 +216,47 @@ export default function HackathonHubScreen() {
             <SettingsRow
               icon={icon(Gavel)}
               label={
-                team.evaluation.request
-                  ? team.evaluation.request.status === 'CALLED'
+                request
+                  ? request.status === 'CALLED'
                     ? 'You’re up!'
-                    : team.evaluation.request.status === 'WAITING'
-                      ? `Number ${team.evaluation.request.position ?? '…'} for ${team.evaluation.request.evaluatorName ?? 'your judge'}`
-                      : `${evalStatusLabel(team.evaluation.request.status)} · ${team.evaluation.request.evaluatorName ?? ''}`
+                    : request.status === 'WAITING'
+                      ? `Number ${request.position ?? '…'} for ${request.evaluatorName ?? 'your judge'}`
+                      : `${evalStatusLabel(request.status)} · ${request.evaluatorName ?? ''}`
                   : 'Evaluation'
               }
-              value={
-                team.evaluation.request
-                  ? team.evaluation.request.roundName
-                  : team.evaluation.openRounds
-                    ? 'Round open'
-                    : 'Not open yet'
-              }
-              onPress={() => router.push(`/hackathon/${eventId}/evaluate`)}
+              value={request ? request.roundName : team.evaluation.openRounds ? 'Round open' : 'Not open yet'}
+              onPress={go('evaluate')}
             />
-            <SettingsRow
-              icon={icon(LinkSimple)}
-              label="Project links"
-              onPress={() => router.push(`/hackathon/${eventId}/submission`)}
-            />
-            <SettingsRow
-              icon={icon(Trophy)}
-              label="Results and winners"
-              onPress={() => router.push(`/hackathon/${eventId}/results`)}
-            />
+            <SettingsRow icon={icon(LinkSimple)} label="Project links" onPress={go('submission')} />
+            <SettingsRow icon={icon(Trophy)} label="Results and winners" onPress={go('results')} />
           </SettingsGroup>
         ) : null}
 
-        {!cancelled ? (
-          <SettingsGroup title="Your room">
-            {team.room ? (
-              <SettingsRow icon={icon(DoorOpen)} label={team.room.name} value={team.room.location ?? undefined} />
-            ) : (
-              <SettingsRow icon={icon(DoorOpen)} label="Not assigned yet" value="We’ll notify you" />
-            )}
-          </SettingsGroup>
-        ) : null}
-        {!cancelled && team.room?.notes ? (
-          <Text style={[styles.note, { color: tokens.textSecondary }]}>{team.room.notes}</Text>
-        ) : null}
-
-        {venueLines.length || hub.venue.notes ? (
-          <>
-            <SettingsGroup title="Venue">
+        {!cancelled || venueLines.length ? (
+          <SettingsGroup title="Where to be">
+            {!cancelled ? (
+              <SettingsRow
+                icon={icon(DoorOpen)}
+                label={team.room?.name ?? 'Room not assigned yet'}
+                value={team.room ? team.room.location ?? undefined : 'We’ll notify you'}
+              />
+            ) : null}
+            {venueLines.length ? (
               <SettingsRow
                 icon={icon(MapPin)}
-                label={venueLines[0] ?? 'Venue'}
+                label={venueLines[0]}
                 value={maps ? 'Directions' : undefined}
                 external={!!maps}
                 onPress={maps ? () => void Linking.openURL(maps) : undefined}
               />
-            </SettingsGroup>
-            {venueLines[1] ? <Text style={[styles.note, { color: tokens.textSecondary }]}>{venueLines[1]}</Text> : null}
-            {hub.venue.notes ? <Text style={[styles.note, { color: tokens.textSecondary }]}>{hub.venue.notes}</Text> : null}
-          </>
+            ) : null}
+          </SettingsGroup>
         ) : null}
-
-        <SettingsGroup title="Team">
-          <SettingsRow
-            icon={icon(UsersThree)}
-            label={team.isLead ? 'Your team' : 'Team'}
-            value={`${joined} of ${team.members.length} joined`}
-            onPress={() => router.push(`/hackathon/${eventId}/team`)}
-          />
-          <SettingsRow
-            icon={unread ? icon(BellRinging) : icon(Bell)}
-            label="Updates"
-            value={unread ? `${unread} new` : undefined}
-            onPress={() => router.push(`/hackathon/${eventId}/updates`)}
-          />
-        </SettingsGroup>
+        {[!cancelled ? team.room?.notes : null, venueLines[1], hub.venue.notes].filter(Boolean).map((n, i) => (
+          <Text key={i} style={[styles.note, { color: tokens.textSecondary }]}>
+            {n}
+          </Text>
+        ))}
       </ScrollView>
     </>
   );
@@ -271,25 +267,15 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   emptyTitle: { fontSize: typography.fontSize.xl, textAlign: 'center', ...font('bold') },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
-  idCard: {
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-    paddingHorizontal: spacing[5],
-    paddingVertical: spacing[6],
-    alignItems: 'center',
-  },
+  pass: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  passTop: { paddingHorizontal: spacing[5], paddingTop: spacing[6], paddingBottom: spacing[5], alignItems: 'center' },
+  passDivider: { height: 2 },
+  passBottom: { padding: spacing[5] },
   label: { fontSize: typography.fontSize.xs, letterSpacing: 0.5, ...font('medium') },
-  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], letterSpacing: 1, ...font('bold') },
+  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], letterSpacing: 1, ...font('heading') },
   teamName: { marginTop: spacing[1], fontSize: typography.fontSize.lg, textAlign: 'center', ...font('medium') },
-  stage: {
-    marginTop: spacing[5],
-    flexDirection: 'row',
-    gap: spacing[3],
-    padding: spacing[4],
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-  },
-  stageTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
+  stageRow: { flexDirection: 'row', gap: spacing[3] },
+  stageTitle: { fontSize: typography.fontSize.base, ...font('medium') },
   stageBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
 });
