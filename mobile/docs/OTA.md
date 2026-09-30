@@ -22,6 +22,19 @@ the minimum version is raised past it.
 
 ## Publishing an update
 
+> **Until the next store build:** `npm run update:production` fails bundling for web
+> (Expo defaults `platforms` to include web). Setting `platforms` in `app.config.js` or
+> editing `package.json` scripts changes the fingerprint, so both have to wait for a store
+> build. Until then, bundle iOS + Android yourself and upload with `--skip-bundler`:
+>
+> ```bash
+> npm run ota:preflight
+> eas env:exec production "npx expo export --output-dir dist --experimental-bundle --dump-sourcemap --dump-assetmap --platform ios --platform android --clear"
+> eas update --channel production --environment production --rollout-percentage=20 --skip-bundler --message "…"
+> ```
+>
+> With the next store build, add `platforms: ["ios", "android"]` to `app.config.js`, then `ota:record`.
+
 ```bash
 npm run update:production
 ```

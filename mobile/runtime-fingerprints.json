@@ -1,6 +1,10 @@
 {
   "production": {
-    "ios": [],
-    "android": []
+    "ios": [
+      "dab32dd9064059763eb70b3d815ef649f818bc30"
+    ],
+    "android": [
+      "e336981a3815cf7dd17aefc2b27a609d9f41ed6f"
+    ]
   }
 }
