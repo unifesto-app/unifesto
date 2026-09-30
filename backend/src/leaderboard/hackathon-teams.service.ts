@@ -22,6 +22,7 @@ import {
   compareTeams,
   formatTeamCode,
   planTeamImport,
+  statementBlock,
   teamStage,
 } from './hackathon.shared';
 import type { ImportHackathonTeamsDto, UpdateHackathonTeamDto } from './dto/hackathon.dto';
@@ -42,6 +43,9 @@ const BOARD_SELECT = {
   venueLng: true,
   venueMapUrl: true,
   venueNotes: true,
+  psMode: true,
+  themeMode: true,
+  psDeadline: true,
 } satisfies Prisma.LeaderboardSelect;
 
 export type HackathonBoard = Prisma.LeaderboardGetPayload<{ select: typeof BOARD_SELECT }>;
@@ -62,6 +66,57 @@ const publicMember = (m: TeamMember): TeamMember => ({
   isLead: m.isLead,
   joined: m.joined,
 });
+
+/**
+ * Who locked the statement in, without account ids: a named team member, or
+ * the organisers (anyone not on the team, i.e. the curator who assigned it).
+ */
+export function setByLabel(setBy: string | null, members: { userId: string | null; name: string | null }[]) {
+  if (!setBy) return null;
+  const member = members.find((m) => m.userId === setBy);
+  return member ? { kind: 'TEAM' as const, name: member.name } : { kind: 'ORGANISER' as const, name: null };
+}
+
+/** The team columns behind its problem statement and theme. */
+export const TEAM_STATEMENT_SELECT = {
+  statementId: true,
+  statement: {
+    select: { id: true, code: true, title: true, description: true, theme: { select: { id: true, name: true } } },
+  },
+  customStatementTitle: true,
+  customStatementText: true,
+  themeId: true,
+  theme: { select: { id: true, name: true } },
+  themeText: true,
+  statementLockedAt: true,
+  statementSetBy: true,
+  statementChangedAfterEvalAt: true,
+} satisfies Prisma.LeaderboardEntrantSelect;
+
+type TeamStatementRow = Prisma.LeaderboardEntrantGetPayload<{ select: typeof TEAM_STATEMENT_SELECT }>;
+
+/**
+ * A team's problem statement as every screen shows it: one from the list
+ * (with its code) or the team's own, and its theme. Null when it has none yet.
+ */
+export function statementView(t: TeamStatementRow) {
+  const own = !t.statementId && !!t.customStatementTitle;
+  if (!t.statement && !own) return null;
+  const theme = t.theme ?? t.statement?.theme ?? null;
+  return {
+    source: own ? ('OWN' as const) : ('LIST' as const),
+    statementId: t.statement?.id ?? null,
+    code: t.statement?.code ?? null,
+    title: (own ? t.customStatementTitle : t.statement?.title) ?? '',
+    description: (own ? t.customStatementText : t.statement?.description) ?? '',
+    theme: theme ? { id: theme.id, name: theme.name } : null,
+    themeText: t.themeText,
+    /** What to show for the theme, whichever way it was given. */
+    themeLabel: theme?.name ?? t.themeText ?? null,
+    lockedAt: t.statementLockedAt,
+    changedAfterEvalAt: t.statementChangedAfterEvalAt,
+  };
+}
 
 /**
  * Hackathon teams: importing GROUP registrations as teams with curator-patterned
@@ -280,6 +335,7 @@ export class HackathonTeamsService {
         cancelledAt: true,
         registrationId: true,
         room: { select: { id: true, name: true } },
+        ...TEAM_STATEMENT_SELECT,
       },
     });
     const regIds = teams.map((t) => t.registrationId).filter((id): id is string => !!id);
@@ -305,12 +361,22 @@ export class HackathonTeamsService {
 
     return teams.sort(compareTeams).map((t) => {
       const reg = t.registrationId ? regById.get(t.registrationId) : undefined;
+      const ps = statementView(t);
       return {
         id: t.id,
         teamCode: t.teamCode,
         name: t.name,
         nameSource: t.teamNameSource,
-        stage: teamStage({ cancelled: !!t.cancelledAt }),
+        stage: teamStage({ cancelled: !!t.cancelledAt, statementLockedAt: t.statementLockedAt }),
+        statement: ps
+          ? {
+              code: ps.code,
+              title: ps.title,
+              themeLabel: ps.themeLabel,
+              locked: !!ps.lockedAt,
+              changedAfterEval: !!ps.changedAfterEvalAt,
+            }
+          : null,
         cancelledAt: t.cancelledAt,
         room: t.room,
         registrationId: t.registrationId,
@@ -328,16 +394,18 @@ export class HackathonTeamsService {
     await this.syncCancellations(board.id, [entrantId]);
     const team = await this.findTeamOrThrow(board.id, entrantId);
     const members = team.registrationId ? await this.members(team.registrationId) : [];
+    const ps = statementView(team);
     return {
       id: team.id,
       teamCode: team.teamCode,
       name: team.name,
       nameSource: team.teamNameSource,
-      stage: teamStage({ cancelled: !!team.cancelledAt }),
+      stage: teamStage({ cancelled: !!team.cancelledAt, statementLockedAt: team.statementLockedAt }),
       cancelledAt: team.cancelledAt,
       room: team.room,
       registrationId: team.registrationId,
       members: members.map(publicMember),
+      statement: ps ? { ...ps, setBy: setByLabel(team.statementSetBy, members) } : null,
     };
   }
 
@@ -387,7 +455,9 @@ export class HackathonTeamsService {
     }
 
     if (newRoom !== undefined && !team.cancelledAt && board.enabled) {
-      await this.notify(eventId, [{ id: team.id, name, teamCode }], newRoom ? 'ROOM_ASSIGNED' : 'ROOM_CLEARED', newRoom?.name);
+      await this.notify(eventId, [{ id: team.id, name, teamCode }], newRoom ? 'ROOM_ASSIGNED' : 'ROOM_CLEARED', {
+        roomName: newRoom?.name,
+      });
     }
     return this.getTeam(userId, eventId, entrantId);
   }
@@ -414,7 +484,7 @@ export class HackathonTeamsService {
     return { id: room.id, name: room.name };
   }
 
-  private async findTeamOrThrow(leaderboardId: string, entrantId: string) {
+  async findTeamOrThrow(leaderboardId: string, entrantId: string) {
     const team = await this.prisma.leaderboardEntrant.findFirst({
       where: { id: entrantId, leaderboardId },
       select: {
@@ -425,10 +495,21 @@ export class HackathonTeamsService {
         cancelledAt: true,
         registrationId: true,
         room: { select: { id: true, name: true, location: true, notes: true } },
+        ...TEAM_STATEMENT_SELECT,
       },
     });
     if (!team) throw new NotFoundException('Team not found');
     return team;
+  }
+
+  /** The registration's lead (the person who booked the group). */
+  async leadUserId(registrationId: string | null): Promise<string | null> {
+    if (!registrationId) return null;
+    const reg = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: { userId: true },
+    });
+    return reg?.userId ?? null;
   }
 
   // ── Members ───────────────────────────────────────────────────────────────
@@ -438,7 +519,7 @@ export class HackathonTeamsService {
    * joined only when an app account holds it; a lead-typed name with no
    * account is shown but can't open the hackathon yet.
    */
-  private async members(registrationId: string): Promise<(TeamMember & { userId: string | null })[]> {
+  async members(registrationId: string): Promise<(TeamMember & { userId: string | null })[]> {
     const reg = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
       select: { userId: true, user: { select: { fullName: true, username: true } } },
@@ -478,7 +559,7 @@ export class HackathonTeamsService {
    * The signed-in user's team on this event's hackathon: the registration they
    * booked, or a group they hold a claimed seat in. Null when they're on none.
    */
-  private async findMyTeam(leaderboardId: string, eventId: string, userId: string) {
+  async findMyTeam(leaderboardId: string, eventId: string, userId: string) {
     const [myRegs, mySeats] = await Promise.all([
       this.prisma.eventRegistration.findMany({ where: { eventId, userId }, select: { id: true } }),
       this.prisma.groupSeat.findMany({
@@ -540,6 +621,7 @@ export class HackathonTeamsService {
 
     const ownVenue = !!(board.venueName || board.venueAddress || board.venueLat != null);
     const cancelled = !!team?.cancelledAt;
+    const ps = team ? statementView(team) : null;
     return {
       eventId,
       event: {
@@ -571,12 +653,34 @@ export class HackathonTeamsService {
             teamCode: team.teamCode,
             name: team.name,
             nameSource: team.teamNameSource,
-            stage: teamStage({ cancelled }),
+            stage: teamStage({ cancelled, statementLockedAt: team.statementLockedAt }),
             isLead: leadReg?.userId === userId,
+            // What the team chose (or was assigned). Only the team's own; no marks.
+            statement: ps
+              ? {
+                  source: ps.source,
+                  code: ps.code,
+                  title: ps.title,
+                  description: ps.description,
+                  themeLabel: ps.themeLabel,
+                  lockedAt: ps.lockedAt,
+                  setBy: setByLabel(team.statementSetBy, members),
+                }
+              : null,
+            // Why the team can't lock one in itself right now (null = it can).
+            statementBlock: cancelled
+              ? null
+              : statementBlock({
+                  psMode: board.psMode,
+                  psDeadline: board.psDeadline,
+                  lockedAt: team.statementLockedAt,
+                  now: new Date(),
+                }),
             room: cancelled ? null : team.room ? { name: team.room.name, location: team.room.location, notes: team.room.notes } : null,
             members: members.map((m) => ({ ...publicMember(m), isMe: m.userId === userId })),
           }
         : null,
+      problemStatements: { mode: board.psMode, themeMode: board.themeMode, deadline: board.psDeadline },
       unreadCount,
     };
   }
@@ -608,12 +712,15 @@ export class HackathonTeamsService {
 
   // ── Notifications ─────────────────────────────────────────────────────────
 
-  /** One push + in-app notice per team. Best-effort: never fails the write. */
+  /**
+   * One push + in-app notice per team. Best-effort: never fails the write.
+   * `exceptUserId` leaves out the person who made the change (they know).
+   */
   async notify(
     eventId: string,
     teams: { id: string; name: string; teamCode: string | null }[],
     kind: HackathonUpdateEvent['kind'],
-    roomName?: string | null,
+    extra: { roomName?: string | null; statementTitle?: string | null; exceptUserId?: string } = {},
   ) {
     if (!teams.length) return;
     try {
@@ -621,7 +728,7 @@ export class HackathonTeamsService {
       if (!event) return;
       const people = await this.leaderboard.teamUserIds(teams.map((t) => t.id));
       for (const t of teams) {
-        const userIds = people.get(t.id) ?? [];
+        const userIds = (people.get(t.id) ?? []).filter((id) => id !== extra.exceptUserId);
         if (!userIds.length) continue;
         this.events.emit(NotificationEvents.HackathonUpdate, {
           userIds,
@@ -630,7 +737,8 @@ export class HackathonTeamsService {
           kind,
           teamCode: t.teamCode,
           teamName: t.name,
-          roomName: roomName ?? null,
+          roomName: extra.roomName ?? null,
+          statementTitle: extra.statementTitle ?? null,
         } satisfies HackathonUpdateEvent);
       }
     } catch {

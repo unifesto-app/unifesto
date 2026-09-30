@@ -701,6 +701,7 @@ export class LeaderboardService {
     const entrant = await this.loadEntrantWithBoard(entrantId);
     const board = entrant.leaderboard;
     this.assertRubric(board.mode);
+    this.assertHackathonTeamOpen(board, entrant);
     const round = await this.getRoundOrThrow(board.id, dto.roundId);
 
     // Panelists may only write while the round is open.
@@ -819,6 +820,23 @@ export class LeaderboardService {
           `Score for "${metric.label}" must be between ${min} and ${max}`,
         );
       }
+    }
+  }
+
+  /**
+   * Hackathon gate (plan §2 #10): a team can be judged only once its problem
+   * statement is locked, never after its registration was cancelled, and not
+   * at all while hackathon mode is off.
+   */
+  private assertHackathonTeamOpen(
+    board: { isHackathon: boolean; enabled: boolean },
+    entrant: { cancelledAt: Date | null; statementLockedAt: Date | null },
+  ) {
+    if (!board.isHackathon) return;
+    if (!board.enabled) throw new NotFoundException('Hackathon mode is not on for this event');
+    if (entrant.cancelledAt) throw new ForbiddenException("This team's registration was cancelled.");
+    if (!entrant.statementLockedAt) {
+      throw new ForbiddenException("This team hasn't locked in its problem statement yet.");
     }
   }
 
@@ -1330,11 +1348,20 @@ export class LeaderboardService {
       where: { eventId },
       include: {
         rounds: { orderBy: { order: 'asc' } },
-        entrants: { orderBy: { name: 'asc' }, select: { id: true, name: true, meta: true } },
+        entrants: {
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true, meta: true, cancelledAt: true, statementLockedAt: true },
+        },
         metrics: { orderBy: { displayOrder: 'asc' } },
       },
     });
     if (!board) return null;
+    // A switched-off hackathon is hidden from judges too; and until a team
+    // locks in its problem statement (or if it's cancelled) there's nothing to judge.
+    if (board.isHackathon && !board.enabled) return null;
+    const judgeable = board.isHackathon
+      ? board.entrants.filter((e) => !e.cancelledAt && e.statementLockedAt)
+      : board.entrants;
 
     const panelRows = await this.prisma.leaderboardPanelist.findMany({
       where: { leaderboardId: board.id, userId },
@@ -1383,7 +1410,7 @@ export class LeaderboardService {
         entrants:
           r.status === LeaderboardRoundStatus.CLOSED
             ? []
-            : board.entrants
+            : judgeable
                 .filter((e) => covers(r.id, e.id))
                 .map((e) => ({
                   id: e.id,

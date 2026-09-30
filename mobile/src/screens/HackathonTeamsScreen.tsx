@@ -21,15 +21,16 @@ import { font } from '../theme/fontHelpers';
 
 const GUTTER = spacing[6];
 
-type Filter = 'all' | 'active' | 'noroom' | 'cancelled';
+type Filter = 'all' | 'active' | 'nops' | 'noroom' | 'cancelled';
 const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'active', label: 'Active' },
+  { value: 'nops', label: 'No statement' },
   { value: 'noroom', label: 'No room' },
   { value: 'cancelled', label: 'Cancelled' },
 ];
 
-/** Every team with its Team ID, room and who has joined. Cancelled teams keep their ID. */
+/** Every team with its Team ID, problem statement, room and who has joined. Cancelled teams keep their ID. */
 export default function HackathonTeamsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
@@ -69,8 +70,9 @@ export default function HackathonTeamsScreen() {
       if (filter === 'active' && t.stage === 'CANCELLED') return false;
       if (filter === 'cancelled' && t.stage !== 'CANCELLED') return false;
       if (filter === 'noroom' && (t.room || t.stage === 'CANCELLED')) return false;
+      if (filter === 'nops' && t.stage !== 'NEEDS_PS') return false;
       if (!q) return true;
-      return [t.teamCode, t.name, t.leadName].some((s) => s?.toLowerCase().includes(q));
+      return [t.teamCode, t.name, t.leadName, t.statement?.code, t.statement?.title].some((s) => s?.toLowerCase().includes(q));
     });
   }, [teams, query, filter]);
 
@@ -154,7 +156,7 @@ export default function HackathonTeamsScreen() {
                   value={
                     t.stage === 'CANCELLED'
                       ? undefined
-                      : `${t.room?.name ?? 'No room'} · ${joinedLabel(t.joinedCount, t.groupSize)}`
+                      : `${t.statement ? t.statement.code ?? 'Own PS' : 'No PS'} · ${t.room?.name ?? 'No room'} · ${joinedLabel(t.joinedCount, t.groupSize)}`
                   }
                   trailing={t.stage === 'CANCELLED' ? <Badge label="Cancelled" tone="danger" /> : undefined}
                   onPress={() => router.push(`/manage/event/${eventId}/hackathon/team/${t.id}`)}

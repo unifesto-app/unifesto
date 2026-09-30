@@ -19,6 +19,7 @@ import {
   compareTeams,
   formatTeamCode,
   planRoomAllocation,
+  statementBlock,
 } from './hackathon.shared';
 import type {
   CreateHackathonRoomDto,
@@ -32,7 +33,8 @@ const blankToNull = (v: string | null | undefined) =>
 
 /**
  * Hackathon setup for curators: turning hackathon mode on/off, its settings
- * (Team ID pattern, team-name question, venue) and rooms. Gated by
+ * (Team ID pattern, team-name question, venue, how problem statements are
+ * chosen) and rooms. Gated by
  * `event:manage-leaderboard` (Curator, Co-Curator, Space Admin) and the
  * space's plan (`hasLeaderboard`).
  */
@@ -84,16 +86,21 @@ export class HackathonSetupService {
     ]);
 
     const hackathon = board?.isHackathon ? board : null;
-    let counts = { teams: 0, active: 0, cancelled: 0, unallocated: 0, rooms: 0 };
+    let counts = { teams: 0, active: 0, cancelled: 0, unallocated: 0, rooms: 0, psLocked: 0, statements: 0, themes: 0 };
     if (hackathon) {
       await this.teams.syncCancellations(hackathon.id);
-      const [teams, cancelled, unallocated, rooms] = await Promise.all([
+      const [teams, cancelled, unallocated, rooms, psLocked, statements, themes] = await Promise.all([
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id } }),
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id, cancelledAt: { not: null } } }),
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id, cancelledAt: null, roomId: null } }),
         this.prisma.hackathonRoom.count({ where: { leaderboardId: hackathon.id } }),
+        this.prisma.leaderboardEntrant.count({
+          where: { leaderboardId: hackathon.id, cancelledAt: null, statementLockedAt: { not: null } },
+        }),
+        this.prisma.hackathonStatement.count({ where: { leaderboardId: hackathon.id } }),
+        this.prisma.hackathonTheme.count({ where: { leaderboardId: hackathon.id } }),
       ]);
-      counts = { teams, active: teams - cancelled, cancelled, unallocated, rooms };
+      counts = { teams, active: teams - cancelled, cancelled, unallocated, rooms, psLocked, statements, themes };
     }
 
     return {
@@ -112,6 +119,9 @@ export class HackathonSetupService {
               ? formatTeamCode(hackathon.teamCodePrefix, hackathon.teamCodeDigits, hackathon.teamCodeNext)
               : null,
             teamNameFieldId: hackathon.teamNameFieldId,
+            psMode: hackathon.psMode,
+            themeMode: hackathon.themeMode,
+            psDeadline: hackathon.psDeadline,
             venue: {
               name: hackathon.venueName,
               address: hackathon.venueAddress,
@@ -254,9 +264,27 @@ export class HackathonSetupService {
     if (dto.venueLng !== undefined) data.venueLng = dto.venueLng;
     if (dto.venueMapUrl !== undefined) data.venueMapUrl = blankToNull(dto.venueMapUrl);
     if (dto.venueNotes !== undefined) data.venueNotes = blankToNull(dto.venueNotes);
+    if (dto.psMode !== undefined) data.psMode = dto.psMode;
+    if (dto.themeMode !== undefined) data.themeMode = dto.themeMode;
+    if (dto.psDeadline !== undefined) data.psDeadline = dto.psDeadline ? new Date(dto.psDeadline) : null;
 
     if (Object.keys(data).length) {
       await this.prisma.leaderboard.update({ where: { id: board.id }, data });
+    }
+
+    // Teams were told "we'll notify you" when statements open: do that the
+    // moment they can choose (or the window reopens after a deadline passed).
+    const now = new Date();
+    const psMode = dto.psMode !== undefined ? dto.psMode : board.psMode;
+    const psDeadline = dto.psDeadline !== undefined ? (data.psDeadline as Date | null) : board.psDeadline;
+    const openBefore = statementBlock({ psMode: board.psMode, psDeadline: board.psDeadline, lockedAt: null, now }) === null;
+    const openNow = statementBlock({ psMode, psDeadline, lockedAt: null, now }) === null;
+    if (board.enabled && openNow && !openBefore) {
+      const waiting = await this.prisma.leaderboardEntrant.findMany({
+        where: { leaderboardId: board.id, cancelledAt: null, statementLockedAt: null },
+        select: { id: true, name: true, teamCode: true },
+      });
+      await this.teams.notify(eventId, waiting, 'STATEMENTS_OPEN');
     }
     return this.getOverview(userId, eventId);
   }
@@ -410,7 +438,7 @@ export class HackathonSetupService {
           eventId,
           teamIds.map((id) => teamById.get(id)!),
           'ROOM_ASSIGNED',
-          room.name,
+          { roomName: room.name },
         );
       }
     }

@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { HackathonPsMode, HackathonThemeMode } from '@prisma/client';
 import {
   ArrayMaxSize,
   IsArray,
+  IsDateString,
+  IsEnum,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -14,9 +17,13 @@ import {
   Min,
 } from 'class-validator';
 import {
+  STATEMENT_CODE_MAX,
+  STATEMENT_TEXT_MAX,
+  STATEMENT_TITLE_MAX,
   TEAM_CODE_DIGITS_MAX,
   TEAM_CODE_DIGITS_MIN,
   TEAM_NAME_MAX,
+  THEME_NAME_MAX,
 } from '../hackathon.shared';
 
 /**
@@ -63,6 +70,18 @@ export class UpdateHackathonConfigDto {
   @ApiPropertyOptional({ description: 'e.g. "Enter through Gate 3"' })
   @IsOptional() @IsString() @MaxLength(1000)
   venueNotes?: string | null;
+
+  @ApiPropertyOptional({ enum: HackathonPsMode, description: 'How teams get a problem statement; null = not open yet' })
+  @IsOptional() @IsEnum(HackathonPsMode)
+  psMode?: HackathonPsMode | null;
+
+  @ApiPropertyOptional({ enum: HackathonThemeMode, description: 'Theme from the list, or short free text' })
+  @IsOptional() @IsEnum(HackathonThemeMode)
+  themeMode?: HackathonThemeMode;
+
+  @ApiPropertyOptional({ description: 'After this, teams can no longer choose; the curator assigns. null = no deadline' })
+  @IsOptional() @IsDateString()
+  psDeadline?: string | null;
 }
 
 export class ImportHackathonTeamsDto {
@@ -133,4 +152,106 @@ export class UpdateHackathonRoomDto {
   @ApiPropertyOptional()
   @IsOptional() @IsInt() @Min(0)
   order?: number;
+}
+
+// ── Problem statements & themes ──────────────────────────────────────────────
+
+export class CreateHackathonThemeDto {
+  @ApiProperty({ maxLength: THEME_NAME_MAX, example: 'HealthTech' })
+  @IsString() @IsNotEmpty() @MaxLength(THEME_NAME_MAX)
+  name: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsInt() @Min(0)
+  order?: number;
+}
+
+export class UpdateHackathonThemeDto {
+  @ApiPropertyOptional({ maxLength: THEME_NAME_MAX })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(THEME_NAME_MAX)
+  name?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsInt() @Min(0)
+  order?: number;
+}
+
+export class CreateHackathonStatementDto {
+  @ApiPropertyOptional({ maxLength: STATEMENT_CODE_MAX, description: 'Blank = the next free "PS-NN"' })
+  @IsOptional() @IsString() @MaxLength(STATEMENT_CODE_MAX)
+  code?: string | null;
+
+  @ApiProperty({ maxLength: STATEMENT_TITLE_MAX })
+  @IsString() @IsNotEmpty() @MaxLength(STATEMENT_TITLE_MAX)
+  title: string;
+
+  @ApiProperty({ maxLength: STATEMENT_TEXT_MAX })
+  @IsString() @MaxLength(STATEMENT_TEXT_MAX)
+  description: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsUUID()
+  themeId?: string | null;
+
+  @ApiPropertyOptional({ description: 'How many teams may take it; null = no limit', minimum: 1 })
+  @IsOptional() @IsInt() @Min(1) @Max(10000)
+  maxTeams?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsInt() @Min(0)
+  order?: number;
+}
+
+export class UpdateHackathonStatementDto {
+  @ApiPropertyOptional({ maxLength: STATEMENT_CODE_MAX })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(STATEMENT_CODE_MAX)
+  code?: string;
+
+  @ApiPropertyOptional({ maxLength: STATEMENT_TITLE_MAX })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(STATEMENT_TITLE_MAX)
+  title?: string;
+
+  @ApiPropertyOptional({ maxLength: STATEMENT_TEXT_MAX })
+  @IsOptional() @IsString() @MaxLength(STATEMENT_TEXT_MAX)
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsUUID()
+  themeId?: string | null;
+
+  @ApiPropertyOptional({ minimum: 1 })
+  @IsOptional() @IsInt() @Min(1) @Max(10000)
+  maxTeams?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsInt() @Min(0)
+  order?: number;
+}
+
+/**
+ * A problem statement for a team: one from the list (`statementId`) or its own
+ * (`title` + `description`), plus a theme when the statement doesn't bring one
+ * (`themeId` from the list, or `themeText` when themes are free text). Used by
+ * the team lead to lock theirs in and by the curator to assign one.
+ */
+export class SetTeamStatementDto {
+  @ApiPropertyOptional({ description: 'A statement from the list' })
+  @IsOptional() @IsUUID()
+  statementId?: string | null;
+
+  @ApiPropertyOptional({ maxLength: STATEMENT_TITLE_MAX, description: 'Own statement: title' })
+  @IsOptional() @IsString() @MaxLength(STATEMENT_TITLE_MAX)
+  title?: string | null;
+
+  @ApiPropertyOptional({ maxLength: STATEMENT_TEXT_MAX, description: 'Own statement: what the team will solve' })
+  @IsOptional() @IsString() @MaxLength(STATEMENT_TEXT_MAX)
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsUUID()
+  themeId?: string | null;
+
+  @ApiPropertyOptional({ maxLength: THEME_NAME_MAX })
+  @IsOptional() @IsString() @MaxLength(THEME_NAME_MAX)
+  themeText?: string | null;
 }

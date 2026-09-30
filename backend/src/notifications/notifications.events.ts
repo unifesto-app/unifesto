@@ -79,9 +79,22 @@ export interface HackathonUpdateEvent {
   userIds: string[];
   eventId: string;
   eventTitle: string;
-  kind: 'TEAM_ASSIGNED' | 'ROOM_ASSIGNED' | 'ROOM_CLEARED';
+  kind:
+    | 'TEAM_ASSIGNED'
+    | 'ROOM_ASSIGNED'
+    | 'ROOM_CLEARED'
+    // Problem statements (Phase 2): teams can now choose; a teammate locked
+    // one in; the curator assigned/changed one; the curator reopened it; the
+    // deadline is an hour away.
+    | 'STATEMENTS_OPEN'
+    | 'STATEMENT_LOCKED'
+    | 'STATEMENT_ASSIGNED'
+    | 'STATEMENT_UNLOCKED'
+    | 'STATEMENT_DEADLINE';
   teamCode?: string | null;
   teamName?: string | null;
   /** Room name for ROOM_ASSIGNED. */
   roomName?: string | null;
+  /** Statement title for STATEMENT_LOCKED / STATEMENT_ASSIGNED. */
+  statementTitle?: string | null;
 }

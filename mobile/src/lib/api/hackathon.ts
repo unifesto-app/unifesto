@@ -10,6 +10,18 @@ import { call, type Result } from './manageEvent';
 
 export type TeamStage = 'CANCELLED' | 'NEEDS_PS' | 'ACTIVE' | 'ELIMINATED';
 export type TeamNameSource = 'FORM' | 'LEAD' | 'CURATOR' | 'DEFAULT';
+/** How teams get a problem statement; null = not open yet. */
+export type PsMode = 'TEAM_WRITES' | 'TEAM_PICKS' | 'CURATOR_ASSIGNS';
+/** Themes from the curator's list, or short free text. */
+export type ThemeMode = 'LIST' | 'TEXT';
+/** Why a team can't lock in a statement itself right now (null = it can). */
+export type StatementBlock = 'LOCKED' | 'NOT_OPEN' | 'CURATOR_ASSIGNS' | 'DEADLINE_PASSED';
+
+/** Who locked a statement in: a named team member, or the organisers. */
+export interface StatementSetBy {
+  kind: 'TEAM' | 'ORGANISER';
+  name: string | null;
+}
 
 export interface Venue {
   name: string | null;
@@ -37,10 +49,23 @@ export interface HackathonOverview {
     teamCodeNext: number;
     nextTeamCode: string | null;
     teamNameFieldId: string | null;
+    psMode: PsMode | null;
+    themeMode: ThemeMode;
+    psDeadline: string | null;
     venue: Venue;
   } | null;
   eventVenue: Venue;
-  counts: { teams: number; active: number; cancelled: number; unallocated: number; rooms: number };
+  counts: {
+    teams: number;
+    active: number;
+    cancelled: number;
+    unallocated: number;
+    rooms: number;
+    /** Non-cancelled teams with a locked problem statement. */
+    psLocked: number;
+    statements: number;
+    themes: number;
+  };
   teamNameFields: { id: string; label: string; ticketTypeName: string | null }[];
   groupTicketTypes: { id: string; name: string; isActive: boolean }[];
 }
@@ -54,6 +79,10 @@ export interface HackathonConfigInput {
   venueAddress?: string | null;
   venueMapUrl?: string | null;
   venueNotes?: string | null;
+  psMode?: PsMode | null;
+  themeMode?: ThemeMode;
+  /** ISO time; null clears the deadline. */
+  psDeadline?: string | null;
 }
 
 export interface TeamRow {
@@ -69,6 +98,30 @@ export interface TeamRow {
   groupSize: number | null;
   /** People with an app account on the team (the lead included). */
   joinedCount: number;
+  statement: {
+    code: string | null;
+    title: string;
+    themeLabel: string | null;
+    locked: boolean;
+    /** The curator changed it after the team was evaluated. */
+    changedAfterEval: boolean;
+  } | null;
+}
+
+/** A team's problem statement in full, as the curator sees it. */
+export interface TeamStatement {
+  /** LIST = one from the curator's list; OWN = written by the team (or for it). */
+  source: 'LIST' | 'OWN';
+  statementId: string | null;
+  code: string | null;
+  title: string;
+  description: string;
+  theme: { id: string; name: string } | null;
+  themeText: string | null;
+  themeLabel: string | null;
+  lockedAt: string | null;
+  changedAfterEvalAt: string | null;
+  setBy: StatementSetBy | null;
 }
 
 export interface TeamMember {
@@ -90,6 +143,7 @@ export interface TeamDetail {
   room: { id: string; name: string; location: string | null; notes: string | null } | null;
   registrationId: string | null;
   members: TeamMember[];
+  statement: TeamStatement | null;
 }
 
 export interface ImportResult {
@@ -151,6 +205,83 @@ export const autoAllocateRooms = (eventId: string) =>
     json('POST'),
   );
 
+// ── Curator: problem statements & themes ─────────────────────────────────────
+
+export interface Theme {
+  id: string;
+  name: string;
+  order: number;
+  /** Statements on the list with this theme. */
+  statements: number;
+  /** Active teams with this theme. */
+  teams: number;
+}
+
+export interface Statement {
+  id: string;
+  code: string;
+  title: string;
+  description: string;
+  theme: { id: string; name: string } | null;
+  /** Null = no limit. */
+  maxTeams: number | null;
+  order: number;
+  taken: number;
+  placesLeft: number | null;
+  teams: { id: string; teamCode: string | null; name: string; locked: boolean }[];
+}
+
+export interface StatementList {
+  mode: PsMode | null;
+  themeMode: ThemeMode;
+  deadline: string | null;
+  /** What a new statement is coded if left blank. */
+  nextCode: string;
+  /** Teams that wrote their own statement. */
+  ownStatements: number;
+  statements: Statement[];
+}
+
+export interface StatementInput {
+  code?: string | null;
+  title: string;
+  description: string;
+  themeId?: string | null;
+  maxTeams?: number | null;
+}
+
+/** One from the list, or the team's own (title + description); plus a theme when needed. */
+export interface SetStatementInput {
+  statementId?: string;
+  title?: string;
+  description?: string;
+  themeId?: string;
+  themeText?: string;
+}
+
+export const getThemes = (eventId: string) => call<Theme[]>(`${base(eventId)}/themes`);
+export const createTheme = (eventId: string, name: string) =>
+  call<Theme>(`${base(eventId)}/themes`, json('POST', { name }));
+export const updateTheme = (eventId: string, themeId: string, name: string) =>
+  call<Theme>(`${base(eventId)}/themes/${themeId}`, json('PATCH', { name }));
+export const deleteTheme = (eventId: string, themeId: string) =>
+  call<{ ok: true }>(`${base(eventId)}/themes/${themeId}`, json('DELETE'));
+
+export const getStatements = (eventId: string) => call<StatementList>(`${base(eventId)}/statements`);
+export const createStatement = (eventId: string, input: StatementInput) =>
+  call<Statement>(`${base(eventId)}/statements`, json('POST', input));
+export const updateStatement = (eventId: string, statementId: string, input: Partial<StatementInput>) =>
+  call<Statement>(`${base(eventId)}/statements/${statementId}`, json('PATCH', input));
+export const deleteStatement = (eventId: string, statementId: string) =>
+  call<{ ok: true }>(`${base(eventId)}/statements/${statementId}`, json('DELETE'));
+
+/** Assign or change a team's statement (locks it for the team). */
+export const assignTeamStatement = (eventId: string, teamId: string, input: SetStatementInput) =>
+  call<TeamDetail>(`${base(eventId)}/teams/${teamId}/statement`, json('PUT', input));
+/** Clear a team's statement so it can choose again. */
+export const unlockTeamStatement = (eventId: string, teamId: string) =>
+  call<TeamDetail>(`${base(eventId)}/teams/${teamId}/statement/unlock`, json('POST'));
+
 // ── Team member ──────────────────────────────────────────────────────────────
 
 export interface HackathonHub {
@@ -167,14 +298,53 @@ export interface HackathonHub {
     isLead: boolean;
     room: { name: string; location: string | null; notes: string | null } | null;
     members: TeamMember[];
+    /** What the team chose or was assigned; null until then. */
+    statement: {
+      source: 'LIST' | 'OWN';
+      code: string | null;
+      title: string;
+      description: string;
+      themeLabel: string | null;
+      lockedAt: string | null;
+      setBy: StatementSetBy | null;
+    } | null;
+    /** Null when the team can lock one in now. Always null for a cancelled team. */
+    statementBlock: StatementBlock | null;
   } | null;
+  problemStatements: { mode: PsMode | null; themeMode: ThemeMode; deadline: string | null };
   unreadCount: number;
+}
+
+/** The team's statement screen: what it can choose from, and whether this person may. */
+export interface MyStatementOptions {
+  mode: PsMode | null;
+  themeMode: ThemeMode;
+  deadline: string | null;
+  cancelled: boolean;
+  block: StatementBlock | null;
+  /** Only the team lead locks the statement in. */
+  isLead: boolean;
+  themes: { id: string; name: string }[];
+  /** The list, when teams pick from it. */
+  statements: {
+    id: string;
+    code: string;
+    title: string;
+    description: string;
+    theme: { id: string; name: string } | null;
+    placesLeft: number | null;
+  }[];
 }
 
 /** The team hub, or `data: null` when the event runs no hackathon (or it's off). */
 export const getMyHackathon = (eventId: string) => call<HackathonHub | null>(`/hackathon/${eventId}/me`);
 export const renameMyTeam = (eventId: string, name: string) =>
   call<{ name: string }>(`/hackathon/${eventId}/me/team-name`, json('PATCH', { name }));
+export const getMyStatementOptions = (eventId: string) =>
+  call<MyStatementOptions>(`/hackathon/${eventId}/statements`);
+/** Lock in the team's statement (lead only, final). Returns the refreshed hub. */
+export const lockMyStatement = (eventId: string, input: SetStatementInput) =>
+  call<HackathonHub>(`/hackathon/${eventId}/me/statement`, json('POST', input));
 
 // ── In-app notification feed ─────────────────────────────────────────────────
 

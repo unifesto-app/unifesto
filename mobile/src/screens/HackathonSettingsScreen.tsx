@@ -2,15 +2,22 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlockTitle, FieldRow } from '../components/manage/FormFields';
+import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import ChipPicker from '../components/manage/ChipPicker';
+import DateTimeRow from '../components/manage/DateTimeRow';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
-import { getHackathonOverview, updateHackathonConfig, type HackathonOverview } from '../lib/api/hackathon';
-import { TEAM_CODE_PREFIX_RE, formatTeamCode } from '../lib/hackathon';
+import {
+  getHackathonOverview,
+  updateHackathonConfig,
+  type HackathonOverview,
+  type PsMode,
+  type ThemeMode,
+} from '../lib/api/hackathon';
+import { PS_MODE_OPTIONS, TEAM_CODE_PREFIX_RE, THEME_MODE_OPTIONS, formatTeamCode } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
@@ -28,7 +35,18 @@ interface Draft {
   venueAddress: string;
   venueMapUrl: string;
   venueNotes: string;
+  psMode: PsMode | 'OFF';
+  themeMode: ThemeMode;
+  /** ISO string (JSON-comparable for the dirty check); '' = no deadline. */
+  psDeadline: string;
 }
+
+/** Tomorrow, 6 pm: a sensible first deadline. */
+const defaultDeadline = () => {
+  const d = new Date(Date.now() + 24 * 3600 * 1000);
+  d.setHours(18, 0, 0, 0);
+  return d.toISOString();
+};
 
 const toDraft = (o: HackathonOverview): Draft => ({
   prefix: o.hackathon?.teamCodePrefix ?? '',
@@ -39,11 +57,15 @@ const toDraft = (o: HackathonOverview): Draft => ({
   venueAddress: o.hackathon?.venue.address ?? '',
   venueMapUrl: o.hackathon?.venue.mapUrl ?? '',
   venueNotes: o.hackathon?.venue.notes ?? '',
+  psMode: o.hackathon?.psMode ?? 'OFF',
+  themeMode: o.hackathon?.themeMode ?? 'LIST',
+  psDeadline: o.hackathon?.psDeadline ?? '',
 });
 
 /**
  * Hackathon settings: the Team ID format (with a live preview of the next ID),
- * where team names come from, and the venue teams are sent to.
+ * where team names come from, how teams get their problem statement and theme
+ * (with an optional deadline), and the venue teams are sent to.
  */
 export default function HackathonSettingsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -94,6 +116,8 @@ export default function HackathonSettingsScreen() {
       ? [0, 1, 2].map((i) => formatTeamCode(prefix, digits, next + i)).join(', ') + '…'
       : null;
   const ev = overview.eventVenue;
+  const teamsChoose = draft.psMode === 'TEAM_PICKS' || draft.psMode === 'TEAM_WRITES';
+  const opening = teamsChoose && !(overview.hackathon?.psMode === 'TEAM_PICKS' || overview.hackathon?.psMode === 'TEAM_WRITES');
   const eventVenue = [ev.name, ev.address].filter(Boolean).join(', ');
 
   const save = async () => {
@@ -112,6 +136,9 @@ export default function HackathonSettingsScreen() {
       venueAddress: draft.venueAddress.trim() || null,
       venueMapUrl: draft.venueMapUrl.trim() || null,
       venueNotes: draft.venueNotes.trim() || null,
+      psMode: draft.psMode === 'OFF' ? null : draft.psMode,
+      themeMode: draft.themeMode,
+      psDeadline: teamsChoose && draft.psDeadline ? draft.psDeadline : null,
     });
     setSaving(false);
     if (!res.ok) return setError(res.message);
@@ -169,6 +196,55 @@ export default function HackathonSettingsScreen() {
           {overview.teamNameFields.length
             ? 'Pick a registration question asked once per group to use its answer as the team name. Otherwise the name starts as “<lead>’s team” and the lead can change it.'
             : 'To collect team names at registration, add a text question asked once per group on your group ticket. Until then the lead names the team in the app.'}
+        </Text>
+
+        <View style={{ marginTop: spacing[8] }}>
+          <BlockTitle>Problem statements</BlockTitle>
+          <ChipPicker
+            options={PS_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            value={draft.psMode}
+            onChange={(v) => v && set({ psMode: v })}
+          />
+        </View>
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          {PS_MODE_OPTIONS.find((o) => o.value === draft.psMode)?.hint} A team’s statement locks when it’s chosen, and
+          only locked teams can be judged. You can always assign or change one from the team’s screen.
+        </Text>
+        {opening && overview.counts.active ? (
+          <Text style={[styles.note, { color: tokens.accent }]}>
+            Saving tells every team still without a statement that they can choose now.
+          </Text>
+        ) : null}
+
+        {teamsChoose ? (
+          <SettingsGroup plain>
+            <SwitchRow
+              label="Deadline for teams"
+              value={!!draft.psDeadline}
+              onValueChange={(on) => set({ psDeadline: on ? defaultDeadline() : '' })}
+            />
+            {draft.psDeadline ? (
+              <DateTimeRow label="Choose by" value={new Date(draft.psDeadline)} onChange={(d) => set({ psDeadline: d.toISOString() })} />
+            ) : null}
+          </SettingsGroup>
+        ) : null}
+        {teamsChoose && draft.psDeadline ? (
+          <Text style={[styles.note, { color: tokens.textMuted }]}>
+            Teams still choosing get a reminder an hour before. After it, you assign the rest.
+          </Text>
+        ) : null}
+
+        <View style={{ marginTop: spacing[8] }}>
+          <BlockTitle>Themes</BlockTitle>
+          <ChipPicker
+            options={THEME_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            value={draft.themeMode}
+            onChange={(v) => v && set({ themeMode: v })}
+          />
+        </View>
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          {THEME_MODE_OPTIONS.find((o) => o.value === draft.themeMode)?.hint}
+          {draft.themeMode === 'LIST' && !overview.counts.themes ? ' Add themes from the hackathon screen; with none, teams skip it.' : ''}
         </Text>
 
         <SettingsGroup title="Venue" plain>

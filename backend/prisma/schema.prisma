@@ -3143,6 +3143,9 @@ model Leaderboard {
   psMode      HackathonPsMode?     @map("ps_mode")
   themeMode   HackathonThemeMode   @default(LIST) @map("theme_mode")
   psDeadline  DateTime?            @map("ps_deadline") @db.Timestamptz(6)
+  // The deadline the "1 hour left" reminder was sent for. Moving the deadline
+  // makes it differ again, so teams are reminded about the new one.
+  psDeadlineRemindedFor DateTime? @map("ps_deadline_reminded_for") @db.Timestamptz(6)
   scoringMode HackathonScoringMode @default(PER_ROUND) @map("scoring_mode")
 
   // Hackathon venue. All null = fall back to the event's own venue.
@@ -3162,7 +3165,9 @@ model Leaderboard {
   rounds    LeaderboardRound[]
   panelists LeaderboardPanelist[]
   awards    LeaderboardAward[]
-  rooms     HackathonRoom[]
+  rooms      HackathonRoom[]
+  themes     HackathonTheme[]
+  statements HackathonStatement[]
 
   @@map("leaderboards")
 }
@@ -3238,6 +3243,25 @@ model LeaderboardEntrant {
   roomId         String?                  @map("room_id") @db.Uuid
   room           HackathonRoom?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
+  // ── Hackathon problem statement + theme ──
+  // Either one from the curator's list (statementId) or the team's own
+  // (customStatementTitle/Text). Theme is from the list (themeId) or free text.
+  statementId          String?             @map("statement_id") @db.Uuid
+  statement            HackathonStatement? @relation(fields: [statementId], references: [id], onDelete: NoAction)
+  customStatementTitle String?             @map("custom_statement_title") @db.VarChar(200)
+  customStatementText  String?             @map("custom_statement_text") @db.Text
+  themeId              String?             @map("theme_id") @db.Uuid
+  theme                HackathonTheme?     @relation(fields: [themeId], references: [id], onDelete: NoAction)
+  themeText            String?             @map("theme_text") @db.VarChar(60)
+  // Set when the statement is locked in (by the team, or assigned by the
+  // curator). Opens the hackathon for the team; null = still choosing.
+  statementLockedAt    DateTime?           @map("statement_locked_at") @db.Timestamptz(6)
+  // Who locked it: a team member, or the curator who assigned it.
+  statementSetBy       String?             @map("statement_set_by") @db.Uuid
+  // Stamped when the curator changes the statement/theme after the team had a
+  // submitted evaluation; the curator's results show "changed after evaluation".
+  statementChangedAfterEvalAt DateTime?    @map("statement_changed_after_eval_at") @db.Timestamptz(6)
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -3251,6 +3275,8 @@ model LeaderboardEntrant {
   @@index([leaderboardId])
   @@index([registrationId])
   @@index([roomId])
+  @@index([statementId])
+  @@index([themeId])
   @@map("leaderboard_entrants")
 }
 
@@ -3472,6 +3498,55 @@ model HackathonRoom {
   @@unique([leaderboardId, name])
   @@index([leaderboardId])
   @@map("hackathon_rooms")
+}
+
+/// A theme / domain teams work in (e.g. "HealthTech"). Statements can belong to one.
+model HackathonTheme {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  name  String @db.VarChar(60)
+  order Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  statements HackathonStatement[]
+  teams      LeaderboardEntrant[]
+
+  @@unique([leaderboardId, name])
+  @@index([leaderboardId])
+  @@map("hackathon_themes")
+}
+
+/// A problem statement from the curator's list, which teams pick or are assigned.
+model HackathonStatement {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  // Short handle shown everywhere, e.g. "PS-03".
+  code        String          @db.VarChar(20)
+  title       String          @db.VarChar(200)
+  description String          @db.Text
+  themeId     String?         @map("theme_id") @db.Uuid
+  theme       HackathonTheme? @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  // How many (non-cancelled) teams may take it. Null = no limit.
+  maxTeams    Int?            @map("max_teams")
+  order       Int             @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  teams LeaderboardEntrant[]
+
+  @@unique([leaderboardId, code])
+  @@index([leaderboardId])
+  @@index([themeId])
+  @@map("hackathon_statements")
 }
 
 // =====================================================

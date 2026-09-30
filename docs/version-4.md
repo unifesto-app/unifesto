@@ -367,10 +367,12 @@ Already built: backend (rounds, panels, judgments, awards), space curator consol
 | Force-update old builds (4.0.0 step 0.5), once 4.0.0 is live in both stores | planned |
 | Project submissions (repo, demo, deck) for entrants | moved → 4.3.0 |
 | Hackathon mobile section, Phase 1 of [`hackathon-mobile-plan.md`](hackathon-mobile-plan.md): hackathon mode on/off, group registrations imported as teams with curator Team IDs, venue + rooms (auto-allocate), team hub for every member, push + in-app notification feed. Needs migration `20260930120000_hackathon_foundation`; no new native modules (OTA-safe) | done (not deployed) |
+| Hackathon mobile section, Phase 2 of [`hackathon-mobile-plan.md`](hackathon-mobile-plan.md): themes and problem statements (codes, max teams), three modes (teams write / teams pick / curator assigns), optional deadline with a 1-hour reminder, lead locks it in once, curator assigns/changes/reopens, "changed after evaluation" flag, judging only for teams with a locked statement. Needs migration `20260930130000_hackathon_statements`; no new native modules (OTA-safe) | done (not deployed) |
 
 #### Log
 
 - **30 Sep:** Hackathon Phase 1 built (backend + mobile). Additive migration verified on Postgres with zero drift; 50-step end-to-end run and 22 HTTP checks against a local database; iOS bundle exports. Not deployed yet.
+- **30 Sep:** Hackathon Phase 2 built (backend + mobile). Additive migration verified on Postgres with zero drift; 50-step run of the real services against a local database (including two teams racing for a statement's last place); iOS bundle exports. Not deployed yet.
 
 ---
 

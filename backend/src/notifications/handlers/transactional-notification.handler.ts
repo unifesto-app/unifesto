@@ -55,7 +55,39 @@ export function hackathonPushCopy(e: HackathonUpdateEvent): { title: string; bod
         title: `${team}: room update`,
         body: `Your room at ${e.eventTitle} changed. The organisers will assign a new one.`,
       };
+    case 'STATEMENTS_OPEN':
+      return {
+        title: `${e.eventTitle}: problem statements are open`,
+        body: `Lock in ${e.teamName ? `${e.teamName}'s` : "your team's"} problem statement in the app to unlock the hackathon.`,
+      };
+    case 'STATEMENT_LOCKED':
+      return {
+        title: `${team} locked in its problem statement`,
+        body: `${e.statementTitle ? `"${e.statementTitle}". ` : ''}The hackathon is open for your team.`,
+      };
+    case 'STATEMENT_ASSIGNED':
+      return {
+        title: `${team}: your problem statement`,
+        body: `The organisers set it${e.statementTitle ? ` to "${e.statementTitle}"` : ''}. Details are in the app.`,
+      };
+    case 'STATEMENT_UNLOCKED':
+      return {
+        title: `${team}: choose your problem statement again`,
+        body: `The organisers reopened it for your team at ${e.eventTitle}.`,
+      };
+    case 'STATEMENT_DEADLINE':
+      return {
+        title: `${team}: 1 hour left to choose`,
+        body: `Lock in your problem statement for ${e.eventTitle} before the deadline, or the organisers will assign one.`,
+      };
   }
+}
+
+/** Problem-statement updates open the statement screen; the rest open the hub. */
+export function hackathonDeepLink(e: HackathonUpdateEvent): string {
+  return e.kind.startsWith('STATEMENT')
+    ? `unifesto://hackathon/${e.eventId}/statement`
+    : `unifesto://hackathon/${e.eventId}`;
 }
 
 /**
@@ -174,7 +206,7 @@ export class TransactionalNotificationHandler {
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
       ...hackathonPushCopy(e),
-      deepLink: `unifesto://hackathon/${e.eventId}`,
+      deepLink: hackathonDeepLink(e),
       data: { type: 'hackathon', kind: e.kind, eventId: e.eventId },
       inbox: { type: 'hackathon', eventId: e.eventId },
     });

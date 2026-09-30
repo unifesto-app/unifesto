@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IdentificationCard } from 'phosphor-react-native';
+import { IdentificationCard, Lightbulb, LockSimple, WarningCircle } from 'phosphor-react-native';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';
@@ -65,6 +65,21 @@ export default function HackathonTeamEditorScreen() {
       apply(t.data);
     });
   }, [eventId, teamId, apply]);
+
+  // Coming back from the statement screen: refresh what's shown, keep any unsaved edits.
+  const loaded = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!loaded.current) {
+        loaded.current = true;
+        return;
+      }
+      if (!eventId || !teamId) return;
+      void getTeam(eventId, teamId).then((t) => {
+        if (t.ok) setTeam(t.data);
+      });
+    }, [eventId, teamId]),
+  );
 
   const set = (patch: Partial<Draft>) => {
     setError('');
@@ -156,6 +171,41 @@ export default function HackathonTeamEditorScreen() {
           </>
         ) : null}
 
+        {!cancelled || team.statement ? (
+          <>
+            <SettingsGroup title="Problem statement">
+              <SettingsRow
+                icon={
+                  team.statement ? (
+                    <LockSimple size={26} color={tokens.accent} weight="fill" />
+                  ) : (
+                    <Lightbulb size={26} color={tokens.accent} weight="fill" />
+                  )
+                }
+                label={team.statement ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ') : 'Not chosen yet'}
+                value={team.statement?.themeLabel ?? (cancelled ? undefined : 'Assign')}
+                onPress={() =>
+                  router.push({ pathname: `/manage/event/${eventId}/hackathon/team-statement`, params: { teamId } } as never)
+                }
+              />
+            </SettingsGroup>
+            {team.statement?.changedAfterEvalAt ? (
+              <View style={styles.flag}>
+                <WarningCircle size={16} color={tokens.warning} weight="fill" />
+                <Text style={[styles.flagText, { color: tokens.warning }]}>Changed after evaluation. Earlier marks were kept.</Text>
+              </View>
+            ) : (
+              <Text style={[styles.note, { color: tokens.textMuted }]}>
+                {team.statement
+                  ? team.statement.setBy?.kind === 'ORGANISER'
+                    ? 'Assigned by organisers. Locked for the team.'
+                    : `Locked in by ${team.statement.setBy?.name ?? 'the team'}. Only organisers can change it.`
+                  : 'The team can’t be judged until it has one.'}
+              </Text>
+            )}
+          </>
+        ) : null}
+
         <SettingsGroup title={`Members · ${joined} of ${team.members.length} joined`} plain>
           {team.members.map((m) => (
             <SettingsRow
@@ -189,5 +239,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   banner: { marginBottom: spacing[2] },
+  flag: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], marginHorizontal: spacing[1] },
+  flagText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...font('semibold') },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
 });

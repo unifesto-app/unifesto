@@ -105,6 +105,56 @@ describe('LeaderboardService (privacy rules)', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  describe('HACKATHON GATE: a team is judged only after it locks its problem statement', () => {
+    const judge = { findMany: jest.fn().mockResolvedValue([{ kind: 'JUDGE', roundId: null, entrantId: null }]) };
+    const hackTeam = (over: Record<string, unknown>) => ({
+      findUnique: jest.fn().mockResolvedValue({
+        id: ENTRANT,
+        cancelledAt: null,
+        statementLockedAt: null,
+        leaderboard: { id: BOARD, eventId: EVENT, mode: 'RUBRIC', metrics: [], isHackathon: true, enabled: true },
+        ...over,
+      }),
+    });
+
+    it('rejects a team still choosing its statement', async () => {
+      const upsert = jest.fn();
+      const { svc } = build({
+        leaderboardEntrant: hackTeam({}),
+        leaderboardPanelist: judge,
+        leaderboardJudgment: { upsert, findFirst: jest.fn() },
+      });
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, overallReview: 'x' })).rejects.toThrow(
+        /problem statement/,
+      );
+      expect(upsert).not.toHaveBeenCalled();
+    });
+
+    it('rejects a cancelled team even with a locked statement', async () => {
+      const { svc } = build({
+        leaderboardEntrant: hackTeam({ cancelledAt: new Date(), statementLockedAt: new Date() }),
+        leaderboardPanelist: judge,
+      });
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, overallReview: 'x' })).rejects.toThrow(
+        /cancelled/,
+      );
+    });
+
+    it('accepts a team with a locked statement', async () => {
+      const upsert = jest.fn().mockResolvedValue({});
+      const { svc } = build({
+        leaderboardEntrant: hackTeam({ statementLockedAt: new Date() }),
+        leaderboardPanelist: judge,
+        leaderboardJudgment: { upsert, findFirst: jest.fn() },
+        leaderboard: { findUnique: jest.fn().mockResolvedValue(null) }, // skip recompute
+      });
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, overallReview: 'x' })).resolves.toEqual({
+        ok: true,
+      });
+      expect(upsert).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('ROUND-CLOSED READ-LOCK: reading own judgment on a CLOSED round is rejected', async () => {
     const { svc } = build({
       leaderboardRound: {

@@ -1,12 +1,18 @@
 import {
   TEAM_CODE_PREFIX_RE,
   TEAM_CODE_RE,
+  STATEMENT_CODE_RE,
   compareTeams,
+  deadlineReminderDue,
   defaultTeamName,
   formatTeamCode,
   initialTeamName,
+  nextStatementCode,
+  placesLeft,
   planRoomAllocation,
   planTeamImport,
+  resolveTheme,
+  statementBlock,
   teamStage,
 } from './hackathon.shared';
 
@@ -155,6 +161,138 @@ describe('hackathon rules', () => {
         { teamSeq: 2, teamCode: 'H-002' },
       ];
       expect(teams.sort(compareTeams).map((t) => t.teamCode)).toEqual(['H-002', 'H-010', 'Z-1']);
+    });
+  });
+});
+
+describe('problem statement rules', () => {
+  const NOW = new Date('2026-10-04T10:00:00Z');
+  const LATER = new Date('2026-10-04T12:00:00Z');
+  const EARLIER = new Date('2026-10-04T09:00:00Z');
+
+  describe('teamStage', () => {
+    it('is NEEDS_PS until the statement is locked, then ACTIVE', () => {
+      expect(teamStage({ cancelled: false })).toBe('NEEDS_PS');
+      expect(teamStage({ cancelled: false, statementLockedAt: NOW })).toBe('ACTIVE');
+    });
+
+    it('cancelled wins over a locked statement', () => {
+      expect(teamStage({ cancelled: true, statementLockedAt: NOW })).toBe('CANCELLED');
+    });
+  });
+
+  describe('statementBlock', () => {
+    const open = { psDeadline: null, lockedAt: null, now: NOW };
+
+    it('lets teams choose in TEAM_WRITES and TEAM_PICKS', () => {
+      expect(statementBlock({ ...open, psMode: 'TEAM_WRITES' })).toBeNull();
+      expect(statementBlock({ ...open, psMode: 'TEAM_PICKS' })).toBeNull();
+    });
+
+    it('is not open until the curator picks a mode', () => {
+      expect(statementBlock({ ...open, psMode: null })).toBe('NOT_OPEN');
+    });
+
+    it('leaves it to the curator in CURATOR_ASSIGNS', () => {
+      expect(statementBlock({ ...open, psMode: 'CURATOR_ASSIGNS' })).toBe('CURATOR_ASSIGNS');
+    });
+
+    it('closes at the deadline, not before', () => {
+      expect(statementBlock({ ...open, psMode: 'TEAM_PICKS', psDeadline: LATER })).toBeNull();
+      expect(statementBlock({ ...open, psMode: 'TEAM_PICKS', psDeadline: NOW })).toBe('DEADLINE_PASSED');
+      expect(statementBlock({ ...open, psMode: 'TEAM_PICKS', psDeadline: EARLIER })).toBe('DEADLINE_PASSED');
+    });
+
+    it('a locked statement stays locked whatever the mode', () => {
+      expect(statementBlock({ ...open, psMode: 'TEAM_PICKS', lockedAt: EARLIER })).toBe('LOCKED');
+      expect(statementBlock({ ...open, psMode: null, lockedAt: EARLIER })).toBe('LOCKED');
+    });
+  });
+
+  describe('resolveTheme', () => {
+    const themeIds = new Set(['t-health', 't-fin']);
+
+    it("takes the statement's own theme and ignores what was sent", () => {
+      expect(
+        resolveTheme({ themeMode: 'LIST', themeIds, statementThemeId: 't-fin', themeId: 't-health' }),
+      ).toEqual({ themeId: 't-fin', themeText: null });
+    });
+
+    it('needs a theme from the list when there is one', () => {
+      expect(resolveTheme({ themeMode: 'LIST', themeIds, statementThemeId: null })).toEqual({ error: 'Pick a theme.' });
+      expect(resolveTheme({ themeMode: 'LIST', themeIds, statementThemeId: null, themeId: 't-health' })).toEqual({
+        themeId: 't-health',
+        themeText: null,
+      });
+    });
+
+    it('rejects a theme that is not on the list', () => {
+      expect(resolveTheme({ themeMode: 'LIST', themeIds, statementThemeId: null, themeId: 't-gone' })).toHaveProperty('error');
+    });
+
+    it('needs no theme when the list is empty', () => {
+      expect(resolveTheme({ themeMode: 'LIST', themeIds: new Set(), statementThemeId: null })).toEqual({
+        themeId: null,
+        themeText: null,
+      });
+    });
+
+    it('takes short free text in TEXT mode', () => {
+      expect(resolveTheme({ themeMode: 'TEXT', themeIds, statementThemeId: null, themeText: '  Health   Tech ' })).toEqual({
+        themeId: null,
+        themeText: 'Health Tech',
+      });
+      expect(resolveTheme({ themeMode: 'TEXT', themeIds, statementThemeId: null, themeText: '  ' })).toHaveProperty('error');
+      expect(
+        resolveTheme({ themeMode: 'TEXT', themeIds, statementThemeId: null, themeText: 'x'.repeat(80) }),
+      ).toEqual({ themeId: null, themeText: 'x'.repeat(60) });
+    });
+  });
+
+  describe('nextStatementCode', () => {
+    it('starts at PS-01 and follows the highest number', () => {
+      expect(nextStatementCode([])).toBe('PS-01');
+      expect(nextStatementCode(['PS-01', 'PS-07', 'AI-1'])).toBe('PS-08');
+      expect(nextStatementCode(['ps-02'])).toBe('PS-03');
+    });
+
+    it('produces codes that pass the code rule', () => {
+      expect(STATEMENT_CODE_RE.test(nextStatementCode(['PS-99']))).toBe(true);
+      expect(STATEMENT_CODE_RE.test('PS 1')).toBe(false);
+      expect(STATEMENT_CODE_RE.test('-PS1')).toBe(false);
+    });
+  });
+
+  describe('placesLeft', () => {
+    it('is null without a limit and never negative', () => {
+      expect(placesLeft(null, 5)).toBeNull();
+      expect(placesLeft(3, 1)).toBe(2);
+      expect(placesLeft(3, 4)).toBe(0);
+    });
+  });
+
+  describe('deadlineReminderDue', () => {
+    const inHalfHour = new Date(NOW.getTime() + 30 * 60 * 1000);
+
+    it('fires within the last hour before the deadline, once per deadline', () => {
+      expect(deadlineReminderDue({ psMode: 'TEAM_PICKS', psDeadline: inHalfHour, remindedFor: null, now: NOW })).toBe(true);
+      expect(
+        deadlineReminderDue({ psMode: 'TEAM_PICKS', psDeadline: inHalfHour, remindedFor: inHalfHour, now: NOW }),
+      ).toBe(false);
+    });
+
+    it('re-arms when the deadline moves', () => {
+      expect(
+        deadlineReminderDue({ psMode: 'TEAM_WRITES', psDeadline: inHalfHour, remindedFor: EARLIER, now: NOW }),
+      ).toBe(true);
+    });
+
+    it('stays quiet too early, after the deadline, or when the curator assigns', () => {
+      expect(deadlineReminderDue({ psMode: 'TEAM_PICKS', psDeadline: LATER, remindedFor: null, now: NOW })).toBe(false);
+      expect(deadlineReminderDue({ psMode: 'TEAM_PICKS', psDeadline: EARLIER, remindedFor: null, now: NOW })).toBe(false);
+      expect(
+        deadlineReminderDue({ psMode: 'CURATOR_ASSIGNS', psDeadline: inHalfHour, remindedFor: null, now: NOW }),
+      ).toBe(false);
     });
   });
 });
