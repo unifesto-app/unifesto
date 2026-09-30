@@ -118,6 +118,16 @@ export function hackathonPushCopy(e: HackathonUpdateEvent): { title: string; bod
         title: `${team}: new judge`,
         body: `The organisers moved your team to ${e.evaluatorName ?? 'another judge'}'s queue. You keep your place.`,
       };
+    case 'WON':
+      return {
+        title: `${team} won ${e.awardTitle ?? 'an award'}!`,
+        body: `Congratulations from ${e.eventTitle}. See the winners in the app.`,
+      };
+    case 'WINNERS_ANNOUNCED':
+      return {
+        title: `${e.eventTitle}: winners announced`,
+        body: 'See who won, and your team\'s results, in the app. Thanks for taking part!',
+      };
   }
 }
 
@@ -125,6 +135,7 @@ export function hackathonPushCopy(e: HackathonUpdateEvent): { title: string; bod
 export function hackathonDeepLink(e: HackathonUpdateEvent): string {
   if (e.kind.startsWith('STATEMENT')) return `unifesto://hackathon/${e.eventId}/statement`;
   if (e.kind.startsWith('QUEUE') || e.kind === 'ROUND_OPENED') return `unifesto://hackathon/${e.eventId}/evaluate`;
+  if (e.kind === 'WON' || e.kind === 'WINNERS_ANNOUNCED') return `unifesto://hackathon/${e.eventId}/results`;
   return `unifesto://hackathon/${e.eventId}`;
 }
 
@@ -144,6 +155,8 @@ export function hackathonJudgePushCopy(e: HackathonJudgeUpdateEvent): { title: s
       return { title: `Time's up: ${team}`, body: 'Submit your marks to call the next team.' };
     case 'MARKS_REOPENED':
       return { title: `Your marks for ${team} are open again`, body: 'The organisers reopened them for 5 minutes.' };
+    case 'WINNERS_ANNOUNCED':
+      return { title: `${e.eventTitle}: winners announced`, body: 'Thanks for judging! See the winners in the app.' };
   }
 }
 
@@ -276,7 +289,7 @@ export class TransactionalNotificationHandler {
     await this.notifications.send(e.userIds, {
       category: 'registrationUpdates',
       ...hackathonJudgePushCopy(e),
-      deepLink: `unifesto://judging/${e.eventId}`,
+      deepLink: e.kind === 'WINNERS_ANNOUNCED' ? `unifesto://hackathon/${e.eventId}/results` : `unifesto://judging/${e.eventId}`,
       data: { type: 'hackathon', audience: 'judge', kind: e.kind, eventId: e.eventId },
       inbox: { type: 'hackathon', eventId: e.eventId },
     });

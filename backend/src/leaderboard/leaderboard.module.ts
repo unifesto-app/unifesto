@@ -10,6 +10,7 @@ import { HackathonStatementsService } from './hackathon-statements.service';
 import { HackathonJudgesService } from './hackathon-judges.service';
 import { HackathonRoundsService } from './hackathon-rounds.service';
 import { HackathonQueueService } from './hackathon-queue.service';
+import { HackathonResultsService } from './hackathon-results.service';
 
 /**
  * Competitive dashboard (leaderboards) and hackathon mode on top of it:
@@ -31,6 +32,7 @@ import { HackathonQueueService } from './hackathon-queue.service';
     HackathonJudgesService,
     HackathonRoundsService,
     HackathonQueueService,
+    HackathonResultsService,
   ],
   exports: [LeaderboardService],
 })

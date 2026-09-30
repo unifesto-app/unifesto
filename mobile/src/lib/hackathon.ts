@@ -246,3 +246,28 @@ export function roundBlockedCopy(r: TeamRound, hasOpenRequest: boolean): string 
   if (hasOpenRequest) return 'You’re already in a queue.';
   return null;
 }
+
+// ── Results (Phase 4) ────────────────────────────────────────────────────────
+
+/** "26.5" / "26" — scores without trailing zeros. */
+export function formatScore(n: number | null | undefined): string {
+  if (n == null) return '–';
+  return String(Math.round(n * 100) / 100);
+}
+
+/**
+ * The "top N" split, same rule as the server's topNSplit: the best N advance
+ * (teams tied with the Nth too), the rest are eliminated; unscored teams never advance.
+ */
+export function topNSplit(teams: { id: string; score: number | null }[], n: number): { advance: string[]; eliminate: string[]; tiedAtCut: number } {
+  const scored = teams.filter((t) => t.score != null).sort((a, b) => b.score! - a.score!);
+  const cut = scored[n - 1]?.score ?? null;
+  const advance = scored.filter((t, i) => i < n || (cut != null && t.score === cut)).map((t) => t.id);
+  const set = new Set(advance);
+  return { advance, eliminate: teams.filter((t) => !set.has(t.id)).map((t) => t.id), tiedAtCut: Math.max(0, advance.length - n) };
+}
+
+export const SCORING_MODE_OPTIONS = [
+  { value: 'PER_ROUND' as const, label: 'Final round decides', hint: 'The ranking follows the latest round that was opened.' },
+  { value: 'CUMULATIVE' as const, label: 'Add up rounds', hint: 'Scores add up across the rounds that count toward the total.' },
+];

@@ -546,10 +546,33 @@ endpoints stay backward compatible).
    `HackathonJudgeUpdate` event and open `unifesto://judging/:eventId` (`judging` added to the
    deep-link allowlist). Mentors and MENTORING rounds stay for Phase 5: mentors can't give
    marks on a hackathon board yet. Migration `20260930140000_hackathon_judging`.
-4. **Scoring modes, advancement, winners, export**
+4. **Scoring modes, advancement, winners, export** — **DONE 2026-09-30 (not deployed)**
    Submitted-only aggregation, CUMULATIVE mode, "top N" helper, award notes, winners
    broadcast, PS-changed flag, results CSV. Mobile: curator results + winners, team
    results.
+   *As built:* `recomputeAndBroadcast` ignores marks whose evaluation isn't submitted on
+   hackathon boards. PER_ROUND ranks on the **latest round that was opened** (a round still
+   PENDING has no marks), not blindly the last round; CUMULATIVE sums the round scores of
+   rounds with `countsTowardTotal`. Scoring mode and "share judges' notes" (existing
+   `revealReviews`, which notifies teams that have notes) live in hackathon config and on
+   the results screen. New `hackathon-results.service.ts`: `GET …/hackathon/results`
+   (per team per round: score = average of submitted evaluation totals, rank among
+   evaluated non-cancelled teams, decision, each judge's marks + notes + lock state;
+   overall total and rank; awards; PS-changed flag) and `GET …/hackathon/results.csv`
+   (per-judge per-criterion columns; cells starting with = + - @ are neutralised). The
+   "top N" helper is `PUT …/rounds/:id/decisions` (bulk, one recompute, eliminated teams
+   leave queues); ties at the cut all go through and unscored teams never advance. Awards
+   for hackathons move to `…/hackathon/awards` (+ `publish`, `:id/unpublish`) gated by the
+   new capability `event:declare-hackathon-winners` (seeded for CURATOR in the migration,
+   also for spaces that customised the Curator role; Space Admin inherits; Co-Curator
+   sees awards read-only). The old `…/leaderboard/awards` routes refuse hackathon boards.
+   A winner must be a team that took part (statement locked, not cancelled); a published
+   award's team can't change and it can't be deleted until unpublished. Publishing sends
+   `WON` (with the award) to winners and `WINNERS_ANNOUNCED` to every other team and all
+   judges; both open `unifesto://hackathon/:eventId/results`, which is the existing
+   `CompetitionScreen` (now with Team IDs and award notes; the hackathon bracket leaves
+   out cancelled teams and teams without a statement). Migration
+   `20260930150000_hackathon_results`.
 5. **Announcements, project links, mentors, polish**
    Announcements, submissions, MENTORING rounds. Remaining notification triggers from
    §10. Mobile: announce screen, submission screen, mentor path in console. End-to-end

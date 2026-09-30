@@ -7,6 +7,7 @@
  */
 
 import { call, type Result } from './manageEvent';
+import { makeAuthenticatedRequest } from './helpers';
 
 export type TeamStage = 'CANCELLED' | 'NEEDS_PS' | 'ACTIVE' | 'ELIMINATED';
 export type TeamNameSource = 'FORM' | 'LEAD' | 'CURATOR' | 'DEFAULT';
@@ -39,6 +40,8 @@ export interface HackathonOverview {
   eventTitle: string;
   /** False when the space's plan doesn't include hackathons. */
   planAllowed: boolean;
+  /** Curator / Space Admin: may declare and publish winners (Co-Curators can't). */
+  canDeclareWinners: boolean;
   /** A leaderboard that isn't a hackathon; blocks switching on only if it has entrants. */
   otherBoard: { entrants: number } | null;
   /** Null until hackathon mode has been switched on once. */
@@ -52,6 +55,9 @@ export interface HackathonOverview {
     psMode: PsMode | null;
     themeMode: ThemeMode;
     psDeadline: string | null;
+    scoringMode: ScoringMode;
+    /** Teams see the judges' written notes about their own team. */
+    revealReviews: boolean;
     venue: Venue;
   } | null;
   eventVenue: Venue;
@@ -65,6 +71,8 @@ export interface HackathonOverview {
     psLocked: number;
     statements: number;
     themes: number;
+    awards: number;
+    awardsPublished: number;
   };
   teamNameFields: { id: string; label: string; ticketTypeName: string | null }[];
   groupTicketTypes: { id: string; name: string; isActive: boolean }[];
@@ -83,6 +91,8 @@ export interface HackathonConfigInput {
   themeMode?: ThemeMode;
   /** ISO time; null clears the deadline. */
   psDeadline?: string | null;
+  scoringMode?: ScoringMode;
+  revealReviews?: boolean;
 }
 
 export interface TeamRow {
@@ -756,3 +766,128 @@ export const requestEvaluation = (eventId: string, roundId: string, pick: { judg
   call<MyEvaluation>(`/hackathon/${eventId}/rounds/${roundId}/requests`, json('POST', pick));
 export const leaveQueue = (eventId: string, requestId: string) =>
   call<MyEvaluation>(`/hackathon/${eventId}/requests/${requestId}`, json('DELETE'));
+
+// ── Results & winners (Phase 4) ──────────────────────────────────────────────
+
+export type ScoringMode = 'PER_ROUND' | 'CUMULATIVE';
+
+export interface ResultEvaluation {
+  judgmentId: string;
+  judgeUserId: string;
+  judgeName: string;
+  submittedAt: string;
+  editableUntil: string | null;
+  locked: boolean;
+  /** Weighted total of the marks. */
+  total: number;
+  marks: { metricId: string; value: number; comment: string | null }[];
+  review: string | null;
+}
+
+export interface ResultRound {
+  roundId: string;
+  takesPart: boolean;
+  standing: Standing;
+  /** Average of the submitted evaluations; null when none. */
+  score: number | null;
+  /** Among teams evaluated in the round; null when unscored. */
+  rank: number | null;
+  evaluations: ResultEvaluation[];
+}
+
+export interface ResultTeam {
+  id: string;
+  teamCode: string | null;
+  name: string;
+  stage: TeamStage;
+  room: string | null;
+  statement: { code: string | null; title: string; themeLabel: string | null } | null;
+  /** Set when the statement changed after the team was evaluated. */
+  psChangedAfterEvalAt: string | null;
+  /** Final round score (PER_ROUND) or sum of counted rounds (CUMULATIVE). */
+  total: number | null;
+  rank: number | null;
+  awards: { title: string; published: boolean }[];
+  rounds: ResultRound[];
+}
+
+export interface HackathonResults {
+  scoringMode: ScoringMode;
+  revealReviews: boolean;
+  canDeclareWinners: boolean;
+  /** PER_ROUND: the round that decides; null for CUMULATIVE. */
+  finalRoundId: string | null;
+  rounds: {
+    id: string;
+    name: string;
+    order: number;
+    status: RoundStatus;
+    judgingMode: JudgingMode;
+    eliminationEnabled: boolean;
+    countsTowardTotal: boolean;
+    criteria: { id: string; label: string; maxValue: number; weight: number }[];
+    /** Best possible evaluation total. */
+    maxScore: number;
+  }[];
+  /** Ranked teams first, then unranked. */
+  teams: ResultTeam[];
+}
+
+export const getResults = (eventId: string) => call<HackathonResults>(`${base(eventId)}/results`);
+/** Advance / eliminate several teams at once (the "top N" helper). */
+export const setRoundDecisions = (eventId: string, roundId: string, decisions: { entrantId: string; status: Standing }[]) =>
+  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/decisions`, json('PUT', { decisions }));
+
+export interface Award {
+  id: string;
+  title: string;
+  notes: string | null;
+  order: number;
+  published: boolean;
+  declaredAt: string | null;
+  team: { id: string; teamCode: string | null; name: string; cancelled: boolean };
+}
+
+export interface AwardsList {
+  /** Curator / Space Admin; Co-Curators see the list read-only. */
+  canDeclareWinners: boolean;
+  awards: Award[];
+  /** Teams that can win (in the hackathon, not cancelled). */
+  teams: { id: string; teamCode: string | null; name: string }[];
+}
+
+export interface AwardInput {
+  title?: string;
+  entrantId?: string;
+  notes?: string | null;
+}
+
+export const getAwards = (eventId: string) => call<AwardsList>(`${base(eventId)}/awards`);
+export const createAward = (eventId: string, input: AwardInput & { title: string; entrantId: string }) =>
+  call<AwardsList>(`${base(eventId)}/awards`, json('POST', input));
+export const updateAward = (eventId: string, awardId: string, input: AwardInput) =>
+  call<AwardsList>(`${base(eventId)}/awards/${awardId}`, json('PATCH', input));
+export const deleteAward = (eventId: string, awardId: string) =>
+  call<AwardsList>(`${base(eventId)}/awards/${awardId}`, json('DELETE'));
+/** Publish every unpublished award (or the given ones); winners and everyone else are told. */
+export const publishAwards = (eventId: string, awardIds?: string[]) =>
+  call<AwardsList>(`${base(eventId)}/awards/publish`, json('POST', awardIds?.length ? { awardIds } : {}));
+export const unpublishAward = (eventId: string, awardId: string) =>
+  call<AwardsList>(`${base(eventId)}/awards/${awardId}/unpublish`, json('POST'));
+
+/** The results CSV as text (the caller saves and shares it). */
+export async function getResultsCsv(eventId: string): Promise<Result<string>> {
+  const response = await makeAuthenticatedRequest(`${base(eventId)}/results.csv`);
+  if (!response) return { ok: false, denied: false, message: 'No connection' };
+  if (!response.ok) {
+    let message = 'Could not export the results.';
+    try {
+      const body = await response.json();
+      if (body?.message) message = String(body.message);
+    } catch {
+      /* keep default */
+    }
+    return { ok: false, denied: response.status === 403, message };
+  }
+  return { ok: true, data: await response.text() };
+}

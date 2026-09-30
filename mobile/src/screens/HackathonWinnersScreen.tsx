@@ -1,0 +1,148 @@
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Megaphone, Plus, Trophy } from 'phosphor-react-native';
+import { RefreshControl } from '../components/ui/RefreshControl';
+import { Button } from '../components/ui';
+import { AppAlert } from '../components/ui/AppAlert';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { useTokens } from '../context/ThemeContext';
+import useTopSpacing from '../hooks/useTopSpacing';
+import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
+import { getAwards, publishAwards, type AwardsList } from '../lib/api/hackathon';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { font } from '../theme/fontHelpers';
+
+const GUTTER = spacing[6];
+const ICON = 26;
+
+/**
+ * Winners (plan §2 #20): awards the curator declares for any team, whatever
+ * its rank, each with notes, then publishes. Winners hear "You won", everyone
+ * else "Winners announced". Co-Curators see the list read-only.
+ */
+export default function HackathonWinnersScreen() {
+  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const router = useRouter();
+  const tokens = useTokens();
+  const topSpacing = useTopSpacing();
+  const [data, setData] = useState<AwardsList | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useAnalyticsScreenTracking('HackathonWinners');
+
+  const load = useCallback(async () => {
+    if (!eventId) return;
+    const res = await getAwards(eventId);
+    if (res.ok) {
+      setData(res.data);
+      setError('');
+    } else setError(res.message);
+  }, [eventId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  if (!data) {
+    return (
+      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+      </View>
+    );
+  }
+
+  const unpublished = data.awards.filter((a) => !a.published);
+  const openAward = (id: string) => router.push({ pathname: `/manage/event/${eventId}/hackathon/award`, params: { awardId: id } });
+
+  const publish = () =>
+    AppAlert.alert(
+      `Publish ${unpublished.length} award${unpublished.length === 1 ? '' : 's'}?`,
+      `${unpublished.map((a) => `${a.title}: ${a.team.teamCode ?? a.team.name}`).join('\n')}\n\nWinning teams hear “You won”, every other team and all judges hear the winners are out.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Publish',
+          onPress: async () => {
+            setBusy(true);
+            const res = await publishAwards(eventId!);
+            setBusy(false);
+            if (!res.ok) return AppAlert.alert("Couldn't publish", res.message);
+            setData(res.data);
+          },
+        },
+      ],
+    );
+
+  return (
+    <ScrollView
+      style={{ backgroundColor: tokens.bg }}
+      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            setRefreshing(true);
+            await load();
+            setRefreshing(false);
+          }}
+          tintColor={tokens.accent}
+          colors={[tokens.accent]}
+          progressViewOffset={topSpacing}
+        />
+      }
+    >
+      <SettingsGroup title="Awards">
+        {data.awards.length === 0 ? <SettingsRow label="No awards yet" /> : null}
+        {data.awards.map((a) => (
+          <SettingsRow
+            key={a.id}
+            icon={<Trophy size={ICON} color={a.published ? tokens.accent : tokens.textMuted} weight="fill" />}
+            label={`${a.title} · ${a.team.teamCode ?? ''} ${a.team.name}`.trim()}
+            value={a.team.cancelled ? 'Team cancelled' : a.published ? 'Published' : 'Not published'}
+            onPress={data.canDeclareWinners ? () => openAward(a.id) : undefined}
+          />
+        ))}
+        {data.canDeclareWinners ? (
+          <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add an award" onPress={() => openAward('new')} />
+        ) : null}
+      </SettingsGroup>
+      <Text style={[styles.note, { color: tokens.textMuted }]}>
+        {data.canDeclareWinners
+          ? 'Pick any team, whatever its rank, and say why it won. Teams see awards and notes once you publish.'
+          : 'Only the Curator or a Space Admin can declare and publish winners.'}
+      </Text>
+
+      {data.canDeclareWinners && unpublished.length ? (
+        <Button
+          label={`Publish ${unpublished.length} award${unpublished.length === 1 ? '' : 's'}`}
+          size="lg"
+          fullWidth
+          loading={busy}
+          icon={<Megaphone size={18} color={tokens.accentFg} weight="fill" />}
+          onPress={publish}
+          style={{ marginTop: spacing[6] }}
+        />
+      ) : null}
+
+      <Button
+        label="See results"
+        variant="secondary"
+        fullWidth
+        onPress={() => router.push(`/manage/event/${eventId}/hackathon/results`)}
+        style={{ marginTop: spacing[3] }}
+      />
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+});

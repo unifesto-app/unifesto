@@ -3514,6 +3514,9 @@ model LeaderboardAward {
   title String @db.VarChar(160)
   order Int    @default(0)
 
+  // Hackathon: why they won, shown with the winner once published.
+  notes String? @db.Text
+
   published Boolean @default(false)
 
   declaredBy String?   @map("declared_by") @db.Uuid

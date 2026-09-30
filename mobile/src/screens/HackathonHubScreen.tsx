@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, BellRinging, DoorOpen, Gavel, Lightbulb, LockSimple, MapPin, UsersThree, WarningCircle } from 'phosphor-react-native';
+import { Bell, BellRinging, DoorOpen, Gavel, Lightbulb, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
@@ -204,6 +204,11 @@ export default function HackathonHubScreen() {
                     : 'Not open yet'
               }
               onPress={() => router.push(`/hackathon/${eventId}/evaluate`)}
+            />
+            <SettingsRow
+              icon={icon(Trophy)}
+              label="Results and winners"
+              onPress={() => router.push(`/hackathon/${eventId}/results`)}
             />
           </SettingsGroup>
         ) : null}

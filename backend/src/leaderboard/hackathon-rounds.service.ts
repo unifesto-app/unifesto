@@ -27,6 +27,7 @@ import {
 import type {
   CreateHackathonRoundDto,
   SetHackathonRoundStatusDto,
+  SetRoundDecisionsDto,
   SetTeamRoundDecisionDto,
   UpdateHackathonRoundDto,
   UpsertCriterionDto,
@@ -407,6 +408,70 @@ export class HackathonRoundsService {
     }
     await this.leaderboard.setEntrantRoundStatus(userId, eventId, entrantId, { roundId, status: dto.status });
     this.gateway.hackathonChanged(eventId, { entrantIds: [entrantId] });
+    return this.getRound(userId, eventId, roundId);
+  }
+
+  /**
+   * Advance / eliminate many teams at once (the app's "top N" helper). One
+   * write, one ranking recompute; eliminated teams leave any queue; each team
+   * whose decision changed is told.
+   */
+  async setDecisions(userId: string, eventId: string, roundId: string, dto: SetRoundDecisionsDto) {
+    await this.leaderboard.assertCanManage(userId, eventId);
+    const board = await this.teams.getBoardOrThrow(eventId);
+    const round = await this.findRoundOrThrow(board.id, roundId);
+    if (!round.eliminationEnabled) {
+      throw new BadRequestException('This round doesn’t eliminate: every team goes on to the next one.');
+    }
+    await this.teams.syncCancellations(board.id);
+    const ctx = await this.context(board.id);
+    const inRound = new Map(this.teamsInRound(ctx, roundId).map((t) => [t.id, t]));
+    const decisions = new Map(dto.decisions.map((d) => [d.entrantId, d.status]));
+    const outside = [...decisions.keys()].find((id) => !inRound.has(id));
+    if (outside) throw new BadRequestException('One of those teams isn’t in this round.');
+
+    const changed = [...decisions].filter(([id, status]) => ctx.standing(id, roundId) !== status);
+    if (!changed.length) return this.getRound(userId, eventId, roundId);
+    const now = new Date();
+    const eliminated = changed.filter(([, s]) => s === 'ELIMINATED').map(([id]) => id);
+    const open = eliminated.length
+      ? await this.prisma.hackathonEvalRequest.findMany({
+          where: { entrantId: { in: eliminated }, status: { in: [...OPEN_EVAL_STATUSES] } },
+          select: { judgeUserId: true, panel: { select: { members: { select: { userId: true } } } } },
+        })
+      : [];
+    await this.prisma.$transaction([
+      ...changed.map(([entrantId, status]) =>
+        this.prisma.leaderboardEntrantRound.upsert({
+          where: { entrantId_roundId: { entrantId, roundId } },
+          create: {
+            entrantId,
+            roundId,
+            status,
+            ...(status === 'PENDING' ? {} : { decidedBy: userId, decidedAt: now }),
+          },
+          update: {
+            status,
+            ...(status === 'PENDING' ? { decidedBy: null, decidedAt: null } : { decidedBy: userId, decidedAt: now }),
+          },
+        }),
+      ),
+      this.prisma.hackathonEvalRequest.updateMany({
+        where: { entrantId: { in: eliminated }, status: { in: [...OPEN_EVAL_STATUSES] } },
+        data: { status: 'CANCELLED', closedAt: now, closedReason: 'ELIMINATED', closedBy: userId },
+      }),
+    ]);
+    await this.leaderboard.recomputeAndBroadcast(board.id);
+    this.gateway.hackathonChanged(eventId, {
+      entrantIds: changed.map(([id]) => id),
+      judgeUserIds: open
+        .flatMap((r) => [r.judgeUserId, ...(r.panel?.members.map((m) => m.userId) ?? [])])
+        .filter((id): id is string => !!id),
+    });
+    for (const status of ['ADVANCED', 'ELIMINATED'] as const) {
+      const teams = changed.filter(([, s]) => s === status).map(([id]) => ({ id, name: inRound.get(id)!.name }));
+      if (teams.length) await this.leaderboard.notifyTeams(eventId, teams, { kind: status, label: round.name });
+    }
     return this.getRound(userId, eventId, roundId);
   }
 

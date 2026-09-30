@@ -53,9 +53,12 @@ import { hackathonRooms } from './leaderboard.gateway';
 import {
   OPEN_EVAL_STATUSES,
   SLOT_EVAL_STATUSES,
+  cumulativeTotal,
   editableUntil,
   effectiveStatus,
+  finalRoundId,
   judgmentLocked,
+  submittedKey,
 } from './hackathon.shared';
 import { TEAM_STATEMENT_SELECT, statementView } from './hackathon.views';
 
@@ -88,6 +91,18 @@ export class LeaderboardService {
     await this.authz.assertCan({ id: userId }, Action.EVENT_MANAGE_LEADERBOARD, {
       eventId,
     });
+  }
+
+  /**
+   * Declaring and publishing hackathon winners (plan §2 #32): Curator and
+   * Space Admin, not Co-Curator. A separate capability so it's editable in IAM.
+   */
+  async assertCanDeclareWinners(userId: string, eventId: string): Promise<void> {
+    await this.authz.assertCan({ id: userId }, Action.EVENT_DECLARE_HACKATHON_WINNERS, { eventId });
+  }
+
+  canDeclareWinners(userId: string, eventId: string): Promise<boolean> {
+    return this.authz.can({ id: userId }, Action.EVENT_DECLARE_HACKATHON_WINNERS, { eventId });
   }
 
   private async isEventManager(userId: string, eventId: string): Promise<boolean> {
@@ -1149,6 +1164,7 @@ export class LeaderboardService {
   async createAward(userId: string, eventId: string, dto: CreateAwardDto) {
     await this.assertCanManage(userId, eventId);
     const board = await this.getBoardByEventOrThrow(eventId);
+    this.assertNotHackathonAwards(board);
     const entrant = await this.prisma.leaderboardEntrant.findFirst({
       where: { id: dto.entrantId, leaderboardId: board.id },
       select: { id: true },
@@ -1167,6 +1183,7 @@ export class LeaderboardService {
   async updateAward(userId: string, eventId: string, awardId: string, dto: UpdateAwardDto) {
     await this.assertCanManage(userId, eventId);
     const board = await this.getBoardByEventOrThrow(eventId);
+    this.assertNotHackathonAwards(board);
     await this.getAwardOrThrow(board.id, awardId);
     if (dto.entrantId) {
       const entrant = await this.prisma.leaderboardEntrant.findFirst({
@@ -1181,6 +1198,7 @@ export class LeaderboardService {
   async deleteAward(userId: string, eventId: string, awardId: string) {
     await this.assertCanManage(userId, eventId);
     const board = await this.getBoardByEventOrThrow(eventId);
+    this.assertNotHackathonAwards(board);
     await this.getAwardOrThrow(board.id, awardId);
     await this.prisma.leaderboardAward.delete({ where: { id: awardId } });
     await this.recomputeAndBroadcast(board.id);
@@ -1195,6 +1213,7 @@ export class LeaderboardService {
   ) {
     await this.assertCanManage(userId, eventId);
     const board = await this.getBoardByEventOrThrow(eventId);
+    this.assertNotHackathonAwards(board);
     const before = await this.getAwardOrThrow(board.id, awardId);
     const award = await this.prisma.leaderboardAward.update({
       where: { id: awardId },
@@ -1255,7 +1274,7 @@ export class LeaderboardService {
   }
 
   /** One push per entrant (copy names the team). Best-effort: never fails the write. */
-  private async notifyTeams(
+  async notifyTeams(
     eventId: string,
     entrants: { id: string; name: string }[],
     update: Pick<CompetitionUpdateEvent, 'kind' | 'label'>,
@@ -1281,7 +1300,7 @@ export class LeaderboardService {
   }
 
   /** Feedback reveal: only teams that actually have a submitted written review. */
-  private async notifyFeedbackRevealed(leaderboardId: string, eventId: string) {
+  async notifyFeedbackRevealed(leaderboardId: string, eventId: string) {
     const reviewed = await this.prisma.leaderboardEntrant.findMany({
       where: {
         leaderboardId,
@@ -1290,6 +1309,16 @@ export class LeaderboardService {
       select: { id: true, name: true },
     });
     if (reviewed.length) await this.notifyTeams(eventId, reviewed, { kind: 'FEEDBACK' });
+  }
+
+  /**
+   * Hackathon winners are declared through the hackathon routes, which need
+   * `event:declare-hackathon-winners` (Curator / Space Admin, not Co-Curator).
+   */
+  private assertNotHackathonAwards(board: { isHackathon: boolean }) {
+    if (board.isHackathon) {
+      throw new BadRequestException('Declare hackathon winners from the hackathon screen in the Unifesto app.');
+    }
   }
 
   private async getAwardOrThrow(leaderboardId: string, awardId: string) {
@@ -1313,7 +1342,12 @@ export class LeaderboardService {
       include: {
         metrics: true,
         rounds: { orderBy: { order: 'asc' } },
-        entrants: { include: { scores: true } },
+        entrants: {
+          include: {
+            scores: true,
+            judgments: { where: { submittedAt: { not: null } }, select: { roundId: true, panelistUserId: true } },
+          },
+        },
       },
     });
     if (!board) return;
@@ -1321,8 +1355,17 @@ export class LeaderboardService {
 
     const updates: Prisma.PrismaPromise<unknown>[] = [];
     // roundId -> (entrantId -> {score, rank}) so we can lift the last round onto totals.
-    const lastRound = board.rounds[board.rounds.length - 1];
+    // Hackathons rank PER_ROUND on the latest round that was opened (plan §9).
+    const lastRoundId = board.isHackathon ? finalRoundId(board.rounds) : board.rounds[board.rounds.length - 1].id;
     const lastRoundResult = new Map<string, { score: number; rank: number }>();
+    // Hackathon: only marks from submitted evaluations count; drafts are ignored.
+    const submitted = new Set(
+      board.entrants.flatMap((e) => e.judgments.map((j) => submittedKey(j.roundId, e.id, j.panelistUserId))),
+    );
+    const counts = (s: { roundId: string; entrantId: string; judgeUserId: string | null }) =>
+      !board.isHackathon || (!!s.judgeUserId && submitted.has(submittedKey(s.roundId, s.entrantId, s.judgeUserId)));
+    // entrantId -> roundId -> round score, for CUMULATIVE totals.
+    const roundScores = new Map<string, Map<string, number>>();
 
     for (const round of board.rounds) {
       // Applicable metrics: this round's own criteria, plus board-level (null).
@@ -1331,7 +1374,7 @@ export class LeaderboardService {
         .map((m) => ({ id: m.id, weight: Number(m.weight), isPrimary: m.isPrimary }));
 
       const inputs: EntrantInput[] = board.entrants.map((e) => {
-        const cells = e.scores.filter((s) => s.roundId === round.id);
+        const cells = e.scores.filter((s) => s.roundId === round.id && counts(s));
         return {
           entrantId: e.id,
           firstScoredAt: cells.length
@@ -1364,13 +1407,29 @@ export class LeaderboardService {
             update: { roundScore: r.totalScore, rank: r.rank },
           }),
         );
-        if (round.id === lastRound.id) {
+        if (round.id === lastRoundId) {
           lastRoundResult.set(r.entrantId, { score: r.totalScore, rank: r.rank });
         }
+        const byRound = roundScores.get(r.entrantId) ?? new Map<string, number>();
+        byRound.set(round.id, r.totalScore);
+        roundScores.set(r.entrantId, byRound);
       }
     }
 
-    // Final ranking = the last round's ranking, mirrored to entrant totals.
+    if (board.isHackathon && board.scoringMode === 'CUMULATIVE') {
+      // CUMULATIVE: total = plain sum of the counted rounds' scores (plan §9).
+      const counted = new Set(board.rounds.filter((r) => r.countsTowardTotal).map((r) => r.id));
+      const totals = board.entrants
+        .map((e) => ({ id: e.id, total: cumulativeTotal(roundScores.get(e.id) ?? new Map(), counted) }))
+        .sort((a, b) => b.total - a.total);
+      totals.forEach((t, i) => {
+        const prev = i > 0 ? totals[i - 1] : null;
+        const rank = prev && prev.total === t.total ? (lastRoundResult.get(prev.id)?.rank ?? i + 1) : i + 1;
+        lastRoundResult.set(t.id, { score: t.total, rank });
+      });
+    }
+
+    // Final ranking = the last round's ranking (or the cumulative one), mirrored to entrant totals.
     for (const e of board.entrants) {
       const final = lastRoundResult.get(e.id);
       updates.push(
@@ -1808,11 +1867,23 @@ export class LeaderboardService {
         rounds: { orderBy: { order: 'asc' }, select: { id: true, name: true, order: true, status: true } },
         entrants: {
           orderBy: { name: 'asc' },
-          select: { id: true, name: true, userId: true, registrationId: true },
+          select: {
+            id: true,
+            name: true,
+            userId: true,
+            registrationId: true,
+            teamCode: true,
+            cancelledAt: true,
+            statementLockedAt: true,
+          },
         },
       },
     });
     if (!board || !board.enabled || board.status === 'DRAFT') return null;
+    // Hackathon bracket: only teams that are in (not cancelled, statement locked).
+    if (board.isHackathon) {
+      board.entrants = board.entrants.filter((e) => !e.cancelledAt && e.statementLockedAt);
+    }
 
     // Resolve which entrant(s) belong to this participant (soft links): their own
     // registration, or a group registration where they claimed a seat.
@@ -1841,7 +1912,7 @@ export class LeaderboardService {
     const awards = await this.prisma.leaderboardAward.findMany({
       where: { leaderboardId: board.id, published: true },
       orderBy: { order: 'asc' },
-      select: { id: true, title: true, entrantId: true },
+      select: { id: true, title: true, entrantId: true, notes: true },
     });
 
     // Own feedback, only when revealed — overall reviews, NO marks/comments-on-cells.
@@ -1862,6 +1933,7 @@ export class LeaderboardService {
       eventId,
       title: board.title,
       mode: board.mode,
+      isHackathon: board.isHackathon,
       revealReviews: board.revealReviews,
       myEntrantIds: [...myEntrantIds],
       rounds: board.rounds.map((r) => ({
@@ -1872,6 +1944,7 @@ export class LeaderboardService {
         entrants: board.entrants.map((e) => ({
           id: e.id,
           name: e.name,
+          teamCode: e.teamCode,
           isMine: myEntrantIds.has(e.id),
           status: statusByKey.get(`${r.id}:${e.id}`) ?? LeaderboardEntrantRoundStatus.PENDING,
         })),
@@ -1881,6 +1954,8 @@ export class LeaderboardService {
         title: a.title,
         entrantId: a.entrantId,
         entrantName: board.entrants.find((e) => e.id === a.entrantId)?.name ?? null,
+        teamCode: board.entrants.find((e) => e.id === a.entrantId)?.teamCode ?? null,
+        notes: a.notes,
         isMine: myEntrantIds.has(a.entrantId),
       })),
       feedback: myFeedback,

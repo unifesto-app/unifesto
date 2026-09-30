@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -20,7 +21,12 @@ import { HackathonStatementsService } from './hackathon-statements.service';
 import { HackathonJudgesService } from './hackathon-judges.service';
 import { HackathonRoundsService } from './hackathon-rounds.service';
 import { HackathonQueueService } from './hackathon-queue.service';
+import { HackathonResultsService } from './hackathon-results.service';
 import {
+  CreateHackathonAwardDto,
+  PublishAwardsDto,
+  SetRoundDecisionsDto,
+  UpdateHackathonAwardDto,
   AddHackathonJudgeDto,
   CallNextDto,
   CreateHackathonPanelDto,
@@ -64,6 +70,7 @@ export class HackathonController {
     private readonly judges: HackathonJudgesService,
     private readonly rounds: HackathonRoundsService,
     private readonly queue: HackathonQueueService,
+    private readonly results: HackathonResultsService,
   ) {}
 
   // ── Curator: mode + settings ──────────────────────────────────────────────
@@ -336,6 +343,77 @@ export class HackathonController {
     @Body() dto: SetTeamRoundDecisionDto,
   ) {
     return this.rounds.setTeamDecision(user.id, eventId, roundId, entrantId, dto);
+  }
+
+  @Put('events/:eventId/hackathon/rounds/:roundId/decisions')
+  @ApiOperation({ summary: 'Advance / eliminate several teams at once (the "top N" helper)' })
+  setDecisions(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('roundId', ParseUUIDPipe) roundId: string,
+    @Body() dto: SetRoundDecisionsDto,
+  ) {
+    return this.rounds.setDecisions(user.id, eventId, roundId, dto);
+  }
+
+  // ── Curator: results & winners ────────────────────────────────────────────
+
+  @Get('events/:eventId/hackathon/results')
+  @ApiOperation({ summary: 'Marks matrix and ranking per round and overall; PS-changed flags; awards' })
+  getResults(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.results.getResults(user.id, eventId);
+  }
+
+  @Get('events/:eventId/hackathon/results.csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @ApiOperation({ summary: 'The results as one CSV' })
+  async resultsCsv(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return (await this.results.resultsCsv(user.id, eventId)).csv;
+  }
+
+  @Get('events/:eventId/hackathon/awards')
+  listAwards(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.results.listAwards(user.id, eventId);
+  }
+
+  @Post('events/:eventId/hackathon/awards')
+  @ApiOperation({ summary: 'Declare an award for a team (Curator / Space Admin)' })
+  createAward(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: CreateHackathonAwardDto) {
+    return this.results.createAward(user.id, eventId, dto);
+  }
+
+  @Post('events/:eventId/hackathon/awards/publish')
+  @ApiOperation({ summary: 'Publish awards; winners and everyone else are told' })
+  publishAwards(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: PublishAwardsDto) {
+    return this.results.publishAwards(user.id, eventId, dto);
+  }
+
+  @Patch('events/:eventId/hackathon/awards/:awardId')
+  updateAward(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('awardId', ParseUUIDPipe) awardId: string,
+    @Body() dto: UpdateHackathonAwardDto,
+  ) {
+    return this.results.updateAward(user.id, eventId, awardId, dto);
+  }
+
+  @Post('events/:eventId/hackathon/awards/:awardId/unpublish')
+  unpublishAward(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('awardId', ParseUUIDPipe) awardId: string,
+  ) {
+    return this.results.unpublishAward(user.id, eventId, awardId);
+  }
+
+  @Delete('events/:eventId/hackathon/awards/:awardId')
+  deleteAward(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('awardId', ParseUUIDPipe) awardId: string,
+  ) {
+    return this.results.deleteAward(user.id, eventId, awardId);
   }
 
   @Post('events/:eventId/hackathon/rounds/:roundId/criteria')
