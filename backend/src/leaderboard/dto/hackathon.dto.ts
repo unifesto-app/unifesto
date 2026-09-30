@@ -1,7 +1,10 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  HackathonAnnouncementAudience,
   HackathonJudgingMode,
   HackathonPsMode,
+  HackathonRoundKind,
+  LeaderboardPanelistKind,
   HackathonScoringMode,
   HackathonThemeMode,
   LeaderboardEntrantRoundStatus,
@@ -32,6 +35,9 @@ import {
   REQUIRED_EVALUATIONS_MAX,
   SLOT_MINUTES_MAX,
   STATEMENT_CODE_MAX,
+  SUBMISSION_LABEL_MAX,
+  SUBMISSION_LINKS_MAX,
+  SUBMISSION_NOTES_MAX,
   STATEMENT_TEXT_MAX,
   STATEMENT_TITLE_MAX,
   TEAM_CODE_DIGITS_MAX,
@@ -286,6 +292,10 @@ export class UpdateHackathonRoundDto {
   @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160)
   name?: string;
 
+  @ApiPropertyOptional({ enum: HackathonRoundKind, description: 'MENTORING: mentors give feedback only' })
+  @IsOptional() @IsEnum(HackathonRoundKind)
+  kind?: HackathonRoundKind;
+
   @ApiPropertyOptional({ enum: HackathonJudgingMode })
   @IsOptional() @IsEnum(HackathonJudgingMode)
   judgingMode?: HackathonJudgingMode;
@@ -313,6 +323,10 @@ export class UpdateHackathonRoundDto {
   @ApiPropertyOptional({ description: 'After this, teams can no longer join a queue. null = no end time' })
   @IsOptional() @IsDateString()
   endAt?: string | null;
+
+  @ApiPropertyOptional({ description: 'Teams can change project links until then (else until the round closes)' })
+  @IsOptional() @IsDateString()
+  submissionsCloseAt?: string | null;
 }
 
 /** Same fields; the service requires `name`. */
@@ -377,6 +391,10 @@ export class AddHackathonJudgeDto extends JudgeFieldsDto {
   @ApiPropertyOptional({ maxLength: 200, description: 'Name for a new account' })
   @IsOptional() @IsString() @MaxLength(200)
   name?: string;
+
+  @ApiPropertyOptional({ enum: LeaderboardPanelistKind, description: 'JUDGE (default) or MENTOR' })
+  @IsOptional() @IsEnum(LeaderboardPanelistKind)
+  kind?: LeaderboardPanelistKind;
 }
 
 export class UpdateHackathonJudgeDto extends JudgeFieldsDto {
@@ -484,4 +502,45 @@ export class PublishAwardsDto {
   @ApiPropertyOptional({ description: 'Awards to publish; omitted = every unpublished award' })
   @IsOptional() @IsArray() @ArrayMaxSize(100) @IsUUID('all', { each: true })
   awardIds?: string[];
+}
+
+// ── Project links & announcements (Phase 5) ──────────────────────────────────
+
+class SubmissionLinkDto {
+  @ApiPropertyOptional({ maxLength: SUBMISSION_LABEL_MAX, example: 'GitHub' })
+  @IsOptional() @IsString() @MaxLength(SUBMISSION_LABEL_MAX)
+  label?: string;
+
+  @ApiProperty({ example: 'https://github.com/team/project' })
+  @IsString() @MaxLength(2000)
+  url: string;
+}
+
+export class SaveSubmissionDto {
+  @ApiProperty({ type: [SubmissionLinkDto] })
+  @IsArray() @ArrayMaxSize(SUBMISSION_LINKS_MAX + 5)
+  @ValidateNested({ each: true }) @Type(() => SubmissionLinkDto)
+  links: SubmissionLinkDto[];
+
+  @ApiPropertyOptional({ maxLength: SUBMISSION_NOTES_MAX })
+  @IsOptional() @IsString() @MaxLength(SUBMISSION_NOTES_MAX)
+  notes?: string | null;
+}
+
+export class SendAnnouncementDto {
+  @ApiProperty({ enum: HackathonAnnouncementAudience })
+  @IsEnum(HackathonAnnouncementAudience)
+  audience: HackathonAnnouncementAudience;
+
+  @ApiPropertyOptional({ description: 'ROOM: the room whose teams get it' })
+  @IsOptional() @IsUUID()
+  roomId?: string;
+
+  @ApiProperty({ maxLength: 120 })
+  @IsString() @IsNotEmpty() @MaxLength(120)
+  title: string;
+
+  @ApiProperty({ maxLength: 2000 })
+  @IsString() @IsNotEmpty() @MaxLength(2000)
+  body: string;
 }

@@ -3102,6 +3102,22 @@ enum HackathonTeamNameSource {
   @@map("hackathon_team_name_source")
 }
 
+enum HackathonRoundKind {
+  EVALUATION // judges give marks against criteria
+  MENTORING // mentors give written feedback only: no marks, no elimination
+
+  @@map("hackathon_round_kind")
+}
+
+enum HackathonAnnouncementAudience {
+  ALL // every team member and every judge / mentor
+  TEAMS // every team member
+  JUDGES // judges and mentors
+  ROOM // members of the teams in one room
+
+  @@map("hackathon_announcement_audience")
+}
+
 enum HackathonJudgingMode {
   SINGLE // one judge evaluates each team
   PANEL // a panel sits together: one slot, every member marks
@@ -3194,6 +3210,7 @@ model Leaderboard {
   judgeProfiles HackathonJudgeProfile[]
   panels        HackathonPanel[]
   evalRequests  HackathonEvalRequest[]
+  announcements HackathonAnnouncement[]
 
   @@map("leaderboards")
 }
@@ -3297,6 +3314,7 @@ model LeaderboardEntrant {
   panelistScopes LeaderboardPanelist[]
   awards         LeaderboardAward[]
   evalRequests   HackathonEvalRequest[]
+  submissions    HackathonSubmission[]
 
   @@unique([leaderboardId, teamCode])
   @@index([leaderboardId])
@@ -3372,8 +3390,11 @@ model LeaderboardRound {
   endAt   DateTime? @map("end_at") @db.Timestamptz(6)
 
   // ── Hackathon round settings (ignored on other boards) ──
+  // MENTORING rounds use mentors and take no marks; they never eliminate or count.
+  kind                HackathonRoundKind   @default(EVALUATION)
   judgingMode         HackathonJudgingMode @default(SINGLE) @map("judging_mode")
   // MULTI: how many separate evaluations (distinct judges) a team needs.
+  // MENTORING: how many sessions (distinct mentors) a team may have.
   requiredEvaluations Int                  @default(1) @map("required_evaluations")
   slotMinutes         Int                  @default(10) @map("slot_minutes")
   // How long a called team has to turn up before the judge may mark a no-show.
@@ -3382,6 +3403,8 @@ model LeaderboardRound {
   eliminationEnabled  Boolean              @default(true) @map("elimination_enabled")
   // CUMULATIVE scoring adds up only rounds with this on.
   countsTowardTotal   Boolean              @default(true) @map("counts_toward_total")
+  // Teams can edit their project links for this round until then (else until it closes).
+  submissionsCloseAt  DateTime?            @map("submissions_close_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3393,6 +3416,7 @@ model LeaderboardRound {
   judgments     LeaderboardJudgment[]
   panels        HackathonPanel[]
   evalRequests  HackathonEvalRequest[]
+  submissions   HackathonSubmission[]
 
   @@unique([leaderboardId, order])
   @@index([leaderboardId])
@@ -3616,6 +3640,9 @@ model HackathonJudgeProfile {
 
   userId String @map("user_id") @db.Uuid
 
+  // JUDGE gives marks in evaluation rounds; MENTOR gives feedback in mentoring rounds.
+  kind LeaderboardPanelistKind @default(JUDGE)
+
   // Themes this judge takes (soft refs → hackathon_themes). Empty = any theme.
   themeIds   String[] @map("theme_ids") @db.Uuid
   // A room / table ("Lab 2, table 4"), or a call link for online judging.
@@ -3720,6 +3747,56 @@ model HackathonEvalRequest {
   @@index([entrantId, roundId])
   @@index([roundId, status])
   @@map("hackathon_eval_requests")
+}
+
+/// A team's project links for a round (repo, demo, deck…), shown to its judges.
+model HackathonSubmission {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  roundId String           @map("round_id") @db.Uuid
+  round   LeaderboardRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  // [{ label, url }], https only, at most 10.
+  links Json
+  notes String? @db.Text
+
+  // The team member who last saved it (soft ref).
+  submittedBy String @map("submitted_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([entrantId, roundId])
+  @@index([roundId])
+  @@map("hackathon_submissions")
+}
+
+/// A message from the organisers, sent as push + in-app to the chosen audience.
+model HackathonAnnouncement {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  audience HackathonAnnouncementAudience
+  // ROOM: the room whose teams it went to (soft ref; the room may be deleted later).
+  roomId   String?                       @map("room_id") @db.Uuid
+  roomName String?                       @map("room_name") @db.VarChar(120)
+
+  title String @db.VarChar(120)
+  body  String @db.Text
+
+  // How many people it was sent to.
+  recipients Int @default(0)
+
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([leaderboardId, createdAt])
+  @@map("hackathon_announcements")
 }
 
 // =====================================================

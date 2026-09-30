@@ -393,6 +393,9 @@ export const markNotificationsRead = (scope: { eventId?: string; type?: string; 
 
 export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';
 export type JudgingMode = 'SINGLE' | 'PANEL' | 'MULTI';
+/** EVALUATION = judges give marks; MENTORING = mentors give feedback only. */
+export type RoundKind = 'EVALUATION' | 'MENTORING';
+export type PanelistRole = 'JUDGE' | 'MENTOR';
 export type Standing = 'PENDING' | 'ADVANCED' | 'ELIMINATED';
 export type EvalStatus =
   | 'WAITING'
@@ -409,8 +412,9 @@ export interface RoundSettings {
   name: string;
   order: number;
   status: RoundStatus;
+  kind: RoundKind;
   judgingMode: JudgingMode;
-  /** MULTI: evaluations each team needs. */
+  /** MULTI: evaluations each team needs; MENTORING: sessions a team may have. */
   requiredEvaluations: number;
   slotMinutes: number;
   callGraceMinutes: number;
@@ -418,6 +422,8 @@ export interface RoundSettings {
   countsTowardTotal: boolean;
   /** After this, teams can't join a queue. */
   endAt: string | null;
+  /** Teams can change project links until then (else until the round closes). */
+  submissionsCloseAt: string | null;
 }
 
 export interface RoundRow extends RoundSettings {
@@ -486,6 +492,7 @@ export interface Judge {
   /** Profile id (used in routes). */
   id: string;
   userId: string;
+  kind: PanelistRole;
   name: string | null;
   /** The email or phone number they were added with. */
   contact: string | null;
@@ -532,7 +539,7 @@ export interface PanelInput {
 
 export const getJudges = (eventId: string) => call<Judge[]>(`${base(eventId)}/judges`);
 export const getJudge = (eventId: string, judgeId: string) => call<Judge>(`${base(eventId)}/judges/${judgeId}`);
-export const addJudge = (eventId: string, input: JudgeInput & { mobile?: string; email?: string; name?: string }) =>
+export const addJudge = (eventId: string, input: JudgeInput & { mobile?: string; email?: string; name?: string; kind?: PanelistRole }) =>
   call<Judge>(`${base(eventId)}/judges`, json('POST', input));
 export const updateJudge = (eventId: string, judgeId: string, input: JudgeInput) =>
   call<Judge>(`${base(eventId)}/judges/${judgeId}`, json('PATCH', input));
@@ -569,6 +576,8 @@ export interface MonitorQueue {
   id: string;
   /** Judge profile id, to pause them; null for panels. */
   judgeId: string | null;
+  /** JUDGE or MENTOR (panels are always judges). */
+  role: PanelistRole;
   name: string;
   location: string | null;
   isAvailable: boolean;
@@ -631,6 +640,9 @@ export interface JudgeSlot {
     members: string[];
     room: { name: string; location: string | null } | null;
     statement: SlotStatement | null;
+    /** The team's project links for this round. */
+    links: SubmissionLink[];
+    linksNotes: string | null;
   } | null;
   calledAt: string | null;
   graceEndsAt: string | null;
@@ -655,10 +667,12 @@ export interface ConsoleQueue {
 
 export interface JudgeConsole {
   eventId: string;
+  /** MENTOR gives written feedback only. */
+  kind: PanelistRole;
   isAvailable: boolean;
   location: string | null;
   meetingUrl: string | null;
-  rounds: { id: string; name: string; status: RoundStatus; judgingMode: JudgingMode; slotMinutes: number; callGraceMinutes: number }[];
+  rounds: { id: string; name: string; status: RoundStatus; kind: RoundKind; judgingMode: JudgingMode; slotMinutes: number; callGraceMinutes: number }[];
   /** A slot open somewhere, which keeps Call next off. */
   busy: { requestId: string; status: EvalStatus; teamCode: string | null } | null;
   queues: ConsoleQueue[];
@@ -693,6 +707,7 @@ export interface TeamRound {
   name: string;
   order: number;
   status: RoundStatus;
+  kind: RoundKind;
   judgingMode: JudgingMode;
   slotMinutes: number;
   endAt: string | null;
@@ -759,7 +774,7 @@ export interface Evaluator {
 
 export const getMyEvaluation = (eventId: string) => call<MyEvaluation>(`/hackathon/${eventId}/evaluate`);
 export const getEvaluators = (eventId: string, roundId: string) =>
-  call<{ round: { id: string; name: string; judgingMode: JudgingMode; slotMinutes: number }; evaluators: Evaluator[] }>(
+  call<{ round: { id: string; name: string; kind: RoundKind; judgingMode: JudgingMode; slotMinutes: number }; evaluators: Evaluator[] }>(
     `/hackathon/${eventId}/rounds/${roundId}/evaluators`,
   );
 export const requestEvaluation = (eventId: string, roundId: string, pick: { judgeUserId?: string; panelId?: string }) =>
@@ -793,6 +808,8 @@ export interface ResultRound {
   /** Among teams evaluated in the round; null when unscored. */
   rank: number | null;
   evaluations: ResultEvaluation[];
+  links: SubmissionLink[];
+  linksNotes: string | null;
 }
 
 export interface ResultTeam {
@@ -822,6 +839,7 @@ export interface HackathonResults {
     name: string;
     order: number;
     status: RoundStatus;
+    kind: RoundKind;
     judgingMode: JudgingMode;
     eliminationEnabled: boolean;
     countsTowardTotal: boolean;
@@ -891,3 +909,55 @@ export async function getResultsCsv(eventId: string): Promise<Result<string>> {
   }
   return { ok: true, data: await response.text() };
 }
+
+// ── Project links & announcements (Phase 5) ──────────────────────────────────
+
+export interface SubmissionLink {
+  label: string;
+  url: string;
+}
+
+export interface MySubmissions {
+  eventId: string;
+  stage: TeamStage;
+  team: { id: string; teamCode: string | null; name: string };
+  rounds: {
+    roundId: string;
+    name: string;
+    kind: RoundKind;
+    status: RoundStatus;
+    /** Links lock then (else when the round closes). */
+    closesAt: string | null;
+    canEdit: boolean;
+    links: SubmissionLink[];
+    notes: string | null;
+    updatedAt: string | null;
+    updatedBy: string | null;
+  }[];
+}
+
+export const getMySubmissions = (eventId: string) => call<MySubmissions>(`/hackathon/${eventId}/submissions`);
+export const saveMySubmission = (eventId: string, roundId: string, input: { links: { label?: string; url: string }[]; notes?: string | null }) =>
+  call<MySubmissions>(`/hackathon/${eventId}/rounds/${roundId}/submission`, json('PUT', input));
+
+export type AnnouncementAudience = 'ALL' | 'TEAMS' | 'JUDGES' | 'ROOM';
+
+export interface Announcements {
+  rooms: { id: string; name: string; teams: number }[];
+  announcements: {
+    id: string;
+    audience: AnnouncementAudience;
+    roomName: string | null;
+    title: string;
+    body: string;
+    recipients: number;
+    sentBy: string | null;
+    createdAt: string;
+  }[];
+}
+
+export const getAnnouncements = (eventId: string) => call<Announcements>(`${base(eventId)}/announcements`);
+export const sendAnnouncement = (
+  eventId: string,
+  input: { audience: AnnouncementAudience; roomId?: string; title: string; body: string },
+) => call<Announcements>(`${base(eventId)}/announcements`, json('POST', input));

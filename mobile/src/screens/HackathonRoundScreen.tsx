@@ -23,6 +23,7 @@ import {
   updateRound,
   type JudgingMode,
   type RoundDetail,
+  type RoundKind,
   type RoundStatus,
   type Standing,
 } from '../lib/api/hackathon';
@@ -36,6 +37,7 @@ const ICON = 26;
 
 interface Draft {
   name: string;
+  kind: RoundKind;
   judgingMode: JudgingMode;
   requiredEvaluations: string;
   slotMinutes: string;
@@ -44,10 +46,13 @@ interface Draft {
   countsTowardTotal: boolean;
   /** ISO string; '' = no end time. */
   endAt: string;
+  /** ISO string; '' = links editable until the round closes. */
+  linksCloseAt: string;
 }
 
 const EMPTY: Draft = {
   name: '',
+  kind: 'EVALUATION',
   judgingMode: 'SINGLE',
   requiredEvaluations: '2',
   slotMinutes: '10',
@@ -55,17 +60,21 @@ const EMPTY: Draft = {
   eliminationEnabled: true,
   countsTowardTotal: true,
   endAt: '',
+  linksCloseAt: '',
 };
 
 const toDraft = (r: RoundDetail): Draft => ({
   name: r.name,
+  kind: r.kind,
   judgingMode: r.judgingMode,
-  requiredEvaluations: String(Math.max(2, r.requiredEvaluations)),
+  // Mentoring: sessions per team (1+); several judges: evaluations (2+).
+  requiredEvaluations: String(r.kind === 'MENTORING' ? r.requiredEvaluations : Math.max(2, r.requiredEvaluations)),
   slotMinutes: String(r.slotMinutes),
   callGraceMinutes: String(r.callGraceMinutes),
   eliminationEnabled: r.eliminationEnabled,
   countsTowardTotal: r.countsTowardTotal,
   endAt: r.endAt ?? '',
+  linksCloseAt: r.submissionsCloseAt ?? '',
 });
 
 /**
@@ -147,13 +156,19 @@ export default function HackathonRoundScreen() {
     if (!draft.name.trim()) return setError('Name the round, like "Round 2" or "Finals".');
     if (!Number.isInteger(slot) || slot < 1 || slot > 240) return setError('A slot is 1 to 240 minutes.');
     if (!Number.isInteger(grace) || grace < 0 || grace > 60) return setError('The grace time is 0 to 60 minutes.');
-    if (draft.judgingMode === 'MULTI' && (!Number.isInteger(needed) || needed < 2 || needed > 10)) {
+    const mentoring = draft.kind === 'MENTORING';
+    if (mentoring && (!Number.isInteger(needed) || needed < 1 || needed > 10)) {
+      return setError('A team can have 1 to 10 mentor sessions.');
+    }
+    if (!mentoring && draft.judgingMode === 'MULTI' && (!Number.isInteger(needed) || needed < 2 || needed > 10)) {
       return setError('With several judges, each team needs 2 to 10 evaluations.');
     }
     const body = {
       name: draft.name.trim(),
-      judgingMode: draft.judgingMode,
-      ...(draft.judgingMode === 'MULTI' ? { requiredEvaluations: needed } : {}),
+      kind: draft.kind,
+      judgingMode: mentoring ? ('SINGLE' as const) : draft.judgingMode,
+      ...(mentoring || draft.judgingMode === 'MULTI' ? { requiredEvaluations: needed } : {}),
+      submissionsCloseAt: draft.linksCloseAt || null,
       slotMinutes: slot,
       callGraceMinutes: grace,
       eliminationEnabled: draft.eliminationEnabled,
@@ -245,6 +260,7 @@ export default function HackathonRoundScreen() {
     ]);
 
   const mode = JUDGING_MODE_OPTIONS.find((o) => o.value === draft.judgingMode);
+  const mentoring = draft.kind === 'MENTORING';
   const icon = (I: typeof Play, color = tokens.accent) => <I size={ICON} color={color} weight="fill" />;
   const criteriaUrl = (metricId?: string) => ({
     pathname: `/manage/event/${eventId}/hackathon/criterion`,
@@ -283,16 +299,22 @@ export default function HackathonRoundScreen() {
                 {b.teams.length > 6 ? ` and ${b.teams.length - 6} more` : ''}.
               </Text>
             ))}
-            {round.status !== 'ACTIVE' && !round.criteria.length ? (
+            {round.kind === 'EVALUATION' && round.status !== 'ACTIVE' && !round.criteria.length ? (
               <Text style={[styles.note, { color: tokens.warning }]}>Add at least one criterion before opening.</Text>
             ) : null}
             <Text style={[styles.note, { color: tokens.textMuted }]}>
-              {round.judgingMode === 'PANEL'
-                ? `${round.panels} panel${round.panels === 1 ? '' : 's'} can take this round.`
-                : `${round.judges} judge${round.judges === 1 ? '' : 's'} judge this round.`}
+              {round.kind === 'MENTORING'
+                ? `${round.judges} mentor${round.judges === 1 ? '' : 's'} mentor this round.`
+                : round.judgingMode === 'PANEL'
+                  ? `${round.panels} panel${round.panels === 1 ? '' : 's'} can take this round.`
+                  : `${round.judges} judge${round.judges === 1 ? '' : 's'} judge this round.`}
               {round.openRequests ? ` ${round.openRequests} in queues now.` : ''}
             </Text>
+          </>
+        ) : null}
 
+        {round && round.kind === 'EVALUATION' ? (
+          <>
             <SettingsGroup title="Criteria">
               {round.criteria.map((c) => (
                 <SettingsRow
@@ -315,17 +337,45 @@ export default function HackathonRoundScreen() {
         </SettingsGroup>
 
         <View style={{ marginTop: spacing[6] }}>
-          <BlockTitle>How teams are judged</BlockTitle>
+          <BlockTitle>Kind of round</BlockTitle>
           <ChipPicker
-            options={JUDGING_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-            value={draft.judgingMode}
-            onChange={(v) => v && set({ judgingMode: v })}
+            options={[
+              { value: 'EVALUATION' as const, label: 'Judged' },
+              { value: 'MENTORING' as const, label: 'Mentoring' },
+            ]}
+            value={draft.kind}
+            onChange={(v) => v && set({ kind: v, ...(v === 'MENTORING' ? { requiredEvaluations: '1' } : {}) })}
           />
         </View>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>{mode?.hint}</Text>
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          {mentoring
+            ? 'Teams book sessions with mentors, who give written feedback. No marks, and nobody is eliminated.'
+            : 'Judges give marks against your criteria.'}
+        </Text>
+
+        {!mentoring ? (
+          <>
+            <View style={{ marginTop: spacing[6] }}>
+              <BlockTitle>How teams are judged</BlockTitle>
+              <ChipPicker
+                options={JUDGING_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                value={draft.judgingMode}
+                onChange={(v) => v && set({ judgingMode: v })}
+              />
+            </View>
+            <Text style={[styles.note, { color: tokens.textMuted }]}>{mode?.hint}</Text>
+          </>
+        ) : null}
 
         <SettingsGroup plain>
-          {draft.judgingMode === 'MULTI' ? (
+          {mentoring ? (
+            <FieldRow
+              label="Mentor sessions per team"
+              value={draft.requiredEvaluations}
+              onChangeText={(v) => set({ requiredEvaluations: v })}
+              keyboardType="number-pad"
+            />
+          ) : draft.judgingMode === 'MULTI' ? (
             <FieldRow
               label="Evaluations per team"
               value={draft.requiredEvaluations}
@@ -342,29 +392,44 @@ export default function HackathonRoundScreen() {
           />
         </SettingsGroup>
         <Text style={[styles.note, { color: tokens.textMuted }]}>
-          Judges mark during the slot. When it ends, marks are due before they can call the next team. A called team that
-          doesn’t turn up in time can be marked a no-show.
+          {mentoring
+            ? 'Mentors write their feedback during the slot. When it ends, it’s due before they can call the next team.'
+            : 'Judges mark during the slot. When it ends, marks are due before they can call the next team.'}{' '}
+          A called team that doesn’t turn up in time can be marked a no-show.
         </Text>
 
         <SettingsGroup plain>
-          <SwitchRow
-            label="Advance or eliminate teams"
-            hint="Off: every team goes on to the next round."
-            value={draft.eliminationEnabled}
-            onValueChange={(v) => set({ eliminationEnabled: v })}
-          />
-          <SwitchRow
-            label="Counts toward the total"
-            hint="Used when scores add up across rounds."
-            value={draft.countsTowardTotal}
-            onValueChange={(v) => set({ countsTowardTotal: v })}
-          />
+          {!mentoring ? (
+            <SwitchRow
+              label="Advance or eliminate teams"
+              hint="Off: every team goes on to the next round."
+              value={draft.eliminationEnabled}
+              onValueChange={(v) => set({ eliminationEnabled: v })}
+            />
+          ) : null}
+          {!mentoring ? (
+            <SwitchRow
+              label="Counts toward the total"
+              hint="Used when scores add up across rounds."
+              value={draft.countsTowardTotal}
+              onValueChange={(v) => set({ countsTowardTotal: v })}
+            />
+          ) : null}
           <SwitchRow
             label="Stop new requests at a set time"
             value={!!draft.endAt}
             onValueChange={(on) => set({ endAt: on ? new Date(Date.now() + 3 * 3600_000).toISOString() : '' })}
           />
           {draft.endAt ? <DateTimeRow label="Last requests" value={new Date(draft.endAt)} onChange={(d) => set({ endAt: d.toISOString() })} /> : null}
+          <SwitchRow
+            label="Lock project links at a set time"
+            hint="Off: teams can change their links until the round closes."
+            value={!!draft.linksCloseAt}
+            onValueChange={(on) => set({ linksCloseAt: on ? new Date(Date.now() + 3 * 3600_000).toISOString() : '' })}
+          />
+          {draft.linksCloseAt ? (
+            <DateTimeRow label="Links lock" value={new Date(draft.linksCloseAt)} onChange={(d) => set({ linksCloseAt: d.toISOString() })} />
+          ) : null}
         </SettingsGroup>
         {draft.endAt ? (
           <Text style={[styles.note, { color: tokens.textMuted }]}>

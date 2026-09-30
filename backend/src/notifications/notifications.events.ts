@@ -132,8 +132,28 @@ export interface HackathonJudgeUpdateEvent {
   userIds: string[];
   eventId: string;
   eventTitle: string;
-  kind: 'JUDGE_ADDED' | 'ROUND_OPENED' | 'ROUND_CLOSED' | 'QUEUE_JOINED' | 'TIME_UP' | 'MARKS_REOPENED' | 'WINNERS_ANNOUNCED';
+  kind:
+    | 'JUDGE_ADDED'
+    | 'MENTOR_ADDED'
+    | 'ROUND_OPENED'
+    | 'ROUND_CLOSED'
+    | 'QUEUE_JOINED'
+    | 'TIME_UP'
+    | 'MARKS_REOPENED'
+    | 'WINNERS_ANNOUNCED';
   teamCode?: string | null;
   teamName?: string | null;
   roundName?: string | null;
+}
+
+/**
+ * A curator announcement to a hackathon's teams, judges or one room. The
+ * recipients are resolved by the hackathon service. Push + in-app.
+ */
+export interface HackathonAnnouncementEvent {
+  userIds: string[];
+  eventId: string;
+  eventTitle: string;
+  title: string;
+  body: string;
 }

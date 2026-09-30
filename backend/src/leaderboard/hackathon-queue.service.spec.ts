@@ -14,6 +14,7 @@ describe('HackathonQueueService', () => {
     const prisma: any = {
       leaderboardPanelist: { count: jest.fn().mockResolvedValue(1) },
       hackathonJudgeProfile: {
+        findUnique: jest.fn().mockResolvedValue(null),
         upsert: jest.fn().mockResolvedValue({ id: 'profile-1', isAvailable: true, location: 'Lab 2', meetingUrl: null }),
       },
       hackathonEvalRequest: {

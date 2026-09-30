@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Coffee, Gavel, Plus, UsersFour } from 'phosphor-react-native';
+import { ChatsCircle, Coffee, Gavel, Plus, UsersFour } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -62,7 +62,10 @@ export default function HackathonJudgesScreen() {
     );
   }
 
-  const openJudge = (id: string) => router.push({ pathname: `/manage/event/${eventId}/hackathon/judge`, params: { judgeId: id } });
+  const openJudge = (id: string, kind?: 'MENTOR') =>
+    router.push({ pathname: `/manage/event/${eventId}/hackathon/judge`, params: { judgeId: id, ...(kind ? { kind } : {}) } });
+  const onlyJudges = judges.filter((j) => j.kind !== 'MENTOR');
+  const mentors = judges.filter((j) => j.kind === 'MENTOR');
   const openPanel = (id: string) => router.push({ pathname: `/manage/event/${eventId}/hackathon/panel`, params: { panelId: id } });
 
   return (
@@ -83,9 +86,9 @@ export default function HackathonJudgesScreen() {
         />
       }
     >
-      <SettingsGroup title={`Judges · ${judges.length}`}>
-        {judges.length === 0 ? <SettingsRow label="No judges yet" /> : null}
-        {judges.map((j) => (
+      <SettingsGroup title={`Judges · ${onlyJudges.length}`}>
+        {onlyJudges.length === 0 ? <SettingsRow label="No judges yet" /> : null}
+        {onlyJudges.map((j) => (
           <SettingsRow
             key={j.id}
             icon={j.isAvailable ? <Gavel size={ICON} color={tokens.accent} weight="fill" /> : <Coffee size={ICON} color={tokens.textMuted} weight="fill" />}
@@ -98,7 +101,23 @@ export default function HackathonJudgesScreen() {
       </SettingsGroup>
       <Text style={[styles.note, { color: tokens.textMuted }]}>
         Add judges by phone number or email. They sign in to Unifesto as usual and find the judge console under Judging.
-        They see team names and problem statements, never contact details.
+        They see team names, problem statements and project links, never contact details.
+      </Text>
+
+      <SettingsGroup title={`Mentors · ${mentors.length}`}>
+        {mentors.map((j) => (
+          <SettingsRow
+            key={j.id}
+            icon={j.isAvailable ? <ChatsCircle size={ICON} color={tokens.accent} weight="fill" /> : <Coffee size={ICON} color={tokens.textMuted} weight="fill" />}
+            label={j.name || j.contact || 'Mentor'}
+            value={judgeSummary(j)}
+            onPress={() => openJudge(j.id)}
+          />
+        ))}
+        <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add a mentor" onPress={() => openJudge('new', 'MENTOR')} />
+      </SettingsGroup>
+      <Text style={[styles.note, { color: tokens.textMuted }]}>
+        Mentors take mentoring rounds: teams book a session and get written feedback. Mentors never give marks.
       </Text>
 
       <SettingsGroup title="Panels">

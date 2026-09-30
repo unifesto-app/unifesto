@@ -22,7 +22,11 @@ import { HackathonJudgesService } from './hackathon-judges.service';
 import { HackathonRoundsService } from './hackathon-rounds.service';
 import { HackathonQueueService } from './hackathon-queue.service';
 import { HackathonResultsService } from './hackathon-results.service';
+import { HackathonSubmissionsService } from './hackathon-submissions.service';
+import { HackathonAnnouncementsService } from './hackathon-announcements.service';
 import {
+  SaveSubmissionDto,
+  SendAnnouncementDto,
   CreateHackathonAwardDto,
   PublishAwardsDto,
   SetRoundDecisionsDto,
@@ -71,6 +75,8 @@ export class HackathonController {
     private readonly rounds: HackathonRoundsService,
     private readonly queue: HackathonQueueService,
     private readonly results: HackathonResultsService,
+    private readonly submissions: HackathonSubmissionsService,
+    private readonly announcements: HackathonAnnouncementsService,
   ) {}
 
   // ── Curator: mode + settings ──────────────────────────────────────────────
@@ -582,6 +588,20 @@ export class HackathonController {
     return this.queue.reopenJudgment(user.id, eventId, judgmentId);
   }
 
+  // ── Curator: announcements ────────────────────────────────────────────────
+
+  @Get('events/:eventId/hackathon/announcements')
+  @ApiOperation({ summary: 'Sent announcements, newest first, and the rooms you can send to' })
+  listAnnouncements(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.announcements.list(user.id, eventId);
+  }
+
+  @Post('events/:eventId/hackathon/announcements')
+  @ApiOperation({ summary: 'Send an announcement (push + in-app) to all, teams, judges or one room' })
+  sendAnnouncement(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: SendAnnouncementDto) {
+    return this.announcements.send(user.id, eventId, dto);
+  }
+
   // ── Judge ─────────────────────────────────────────────────────────────────
 
   @Get('events/:eventId/hackathon/judge/console')
@@ -661,6 +681,23 @@ export class HackathonController {
     @Body() dto: SetTeamStatementDto,
   ) {
     return this.statements.lockMyStatement(user.id, eventId, dto);
+  }
+
+  @Get('hackathon/:eventId/submissions')
+  @ApiOperation({ summary: 'My team’s project links per round, and which it can still change' })
+  mySubmissions(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.submissions.getMine(user.id, eventId);
+  }
+
+  @Put('hackathon/:eventId/rounds/:roundId/submission')
+  @ApiOperation({ summary: 'Save my team’s project links for a round' })
+  saveSubmission(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('roundId', ParseUUIDPipe) roundId: string,
+    @Body() dto: SaveSubmissionDto,
+  ) {
+    return this.submissions.saveMine(user.id, eventId, roundId, dto);
   }
 
   @Get('hackathon/:eventId/evaluate')

@@ -36,8 +36,9 @@ const isPlaceholderMobile = (m: string) => m.startsWith('+0') || m.startsWith('d
  * they take, where teams find them and which rounds they judge, and groups
  * judges into panels for PANEL rounds.
  *
- * A judge is a LeaderboardPanelist (JUDGE) row per round scope, which also
- * grants the event-scoped JUDGE role, plus one HackathonJudgeProfile. Gated by
+ * A judge (or mentor) is a LeaderboardPanelist row of their kind per round
+ * scope, which also grants the event-scoped JUDGE / MENTOR role, plus one
+ * HackathonJudgeProfile. Mentors take MENTORING rounds and give feedback only. Gated by
  * `event:manage-leaderboard`.
  */
 @Injectable()
@@ -93,7 +94,8 @@ export class HackathonJudgesService {
       where: { leaderboardId_userId: { leaderboardId: board.id, userId: judgeUserId } },
       select: { id: true },
     });
-    if (existing) throw new ConflictException('They’re already a judge here. Open them in the list to make changes.');
+    if (existing) throw new ConflictException('They’re already a judge or mentor here. Open them in the list to make changes.');
+    const kind = dto.kind ?? LeaderboardPanelistKind.JUDGE;
 
     const themeIds = await this.checkThemes(board.id, dto.themeIds);
     const roundIds = await this.checkRounds(board.id, dto.roundIds);
@@ -102,18 +104,19 @@ export class HackathonJudgesService {
         data: {
           leaderboardId: board.id,
           userId: judgeUserId,
+          kind,
           themeIds: themeIds ?? [],
           location: blankToNull(dto.location) ?? null,
           meetingUrl: blankToNull(dto.meetingUrl) ?? null,
         },
         select: { id: true },
       });
-      await this.writeRoundScope(tx, board.id, judgeUserId, roundIds ?? null);
+      await this.writeRoundScope(tx, board.id, judgeUserId, kind, roundIds ?? null);
       return created;
     });
-    await this.leaderboard.grantPanelistRole(judgeUserId, eventId, LeaderboardPanelistKind.JUDGE, userId);
+    await this.leaderboard.grantPanelistRole(judgeUserId, eventId, kind, userId);
 
-    if (board.enabled) await this.notifyJudges(eventId, [judgeUserId], 'JUDGE_ADDED');
+    if (board.enabled) await this.notifyJudges(eventId, [judgeUserId], kind === 'MENTOR' ? 'MENTOR_ADDED' : 'JUDGE_ADDED');
     return this.getJudge(userId, eventId, profile.id);
   }
 
@@ -134,7 +137,7 @@ export class HackathonJudgesService {
           ...(dto.isAvailable !== undefined ? { isAvailable: dto.isAvailable } : {}),
         },
       });
-      if (roundIds !== undefined) await this.writeRoundScope(tx, board.id, profile.userId, roundIds);
+      if (roundIds !== undefined) await this.writeRoundScope(tx, board.id, profile.userId, profile.kind, roundIds);
     });
     this.gateway.hackathonChanged(eventId, { judgeUserIds: [profile.userId] });
     return this.getJudge(userId, eventId, judgeId);
@@ -171,35 +174,43 @@ export class HackathonJudgesService {
         where: { userId: profile.userId, panel: { leaderboardId: board.id } },
       }),
       this.prisma.leaderboardPanelist.deleteMany({
-        where: { leaderboardId: board.id, userId: profile.userId, kind: LeaderboardPanelistKind.JUDGE },
+        where: { leaderboardId: board.id, userId: profile.userId, kind: profile.kind },
       }),
       this.prisma.hackathonJudgeProfile.delete({ where: { id: profile.id } }),
     ]);
-    // No other judging on this event: they lose the JUDGE role and the Judging section.
-    const role = await this.prisma.role.findUnique({ where: { code: RoleCode.JUDGE }, select: { id: true } });
+    // No other judging on this event: they lose the role and the Judging section.
+    const role = await this.prisma.role.findUnique({
+      where: { code: profile.kind === 'MENTOR' ? RoleCode.MENTOR : RoleCode.JUDGE },
+      select: { id: true },
+    });
     if (role) await this.prisma.userRole.deleteMany({ where: { userId: profile.userId, roleId: role.id, eventId } });
     this.gateway.hackathonChanged(eventId, { judgeUserIds: [profile.userId] });
     return { ok: true };
   }
 
   /**
-   * Judges added the old way (a JUDGE panelist row with no profile) get a
-   * profile, so every judge on the board shows up and can take a queue.
+   * Judges and mentors added the old way (a panelist row with no profile) get
+   * a profile, so everyone on the board shows up and can take a queue.
    */
   private async ensureProfiles(leaderboardId: string) {
     const [rows, profiles] = await Promise.all([
       this.prisma.leaderboardPanelist.findMany({
-        where: { leaderboardId, kind: LeaderboardPanelistKind.JUDGE },
-        select: { userId: true },
-        distinct: ['userId'],
+        where: { leaderboardId },
+        select: { userId: true, kind: true },
+        orderBy: { kind: 'asc' },
       }),
       this.prisma.hackathonJudgeProfile.findMany({ where: { leaderboardId }, select: { userId: true } }),
     ]);
     const have = new Set(profiles.map((p) => p.userId));
-    const missing = rows.filter((r) => !have.has(r.userId));
-    if (missing.length) {
+    // One profile per person; someone with both kinds of rows counts as a judge.
+    const missing = new Map<string, LeaderboardPanelistKind>();
+    for (const r of rows) {
+      if (have.has(r.userId)) continue;
+      if (missing.get(r.userId) !== LeaderboardPanelistKind.JUDGE) missing.set(r.userId, r.kind);
+    }
+    if (missing.size) {
       await this.prisma.hackathonJudgeProfile.createMany({
-        data: missing.map((r) => ({ leaderboardId, userId: r.userId, themeIds: [] })),
+        data: [...missing].map(([userId, kind]) => ({ leaderboardId, userId, kind, themeIds: [] })),
         skipDuplicates: true,
       });
     }
@@ -226,8 +237,8 @@ export class HackathonJudgesService {
         },
       }),
       this.prisma.leaderboardPanelist.findMany({
-        where: { leaderboardId, userId: { in: userIds }, kind: LeaderboardPanelistKind.JUDGE, entrantId: null },
-        select: { userId: true, roundId: true },
+        where: { leaderboardId, userId: { in: userIds }, entrantId: null },
+        select: { userId: true, roundId: true, kind: true },
       }),
       this.prisma.hackathonTheme.findMany({ where: { leaderboardId }, select: { id: true, name: true } }),
       this.prisma.leaderboardRound.findMany({ where: { leaderboardId }, orderBy: { order: 'asc' }, select: { id: true, name: true } }),
@@ -245,12 +256,13 @@ export class HackathonJudgesService {
     const themeById = new Map(themes.map((t) => [t.id, t]));
     return profiles.map((p) => {
       const u = userById.get(p.userId);
-      const mine = scopes.filter((s) => s.userId === p.userId);
+      const mine = scopes.filter((s) => s.userId === p.userId && s.kind === p.kind);
       const allRounds = mine.length === 0 || mine.some((s) => s.roundId === null);
       const q = queue.filter((g) => g.judgeUserId === p.userId);
       return {
         id: p.id,
         userId: p.userId,
+        kind: p.kind,
         name: u?.fullName || u?.username || null,
         // What the curator typed to add them: their email, or phone number.
         contact: u?.identities[0]?.email ?? (u && !isPlaceholderMobile(u.mobileNumber) ? u.mobileNumber : null),
@@ -303,13 +315,19 @@ export class HackathonJudgesService {
    * Replace the judge's round scope: one row with no round (every round), or
    * one per round. Rows scoped to a single team (added the old way) stay.
    */
-  private async writeRoundScope(tx: Prisma.TransactionClient, leaderboardId: string, judgeUserId: string, roundIds: string[] | null) {
+  private async writeRoundScope(
+    tx: Prisma.TransactionClient,
+    leaderboardId: string,
+    judgeUserId: string,
+    kind: LeaderboardPanelistKind,
+    roundIds: string[] | null,
+  ) {
     await tx.leaderboardPanelist.deleteMany({
-      where: { leaderboardId, userId: judgeUserId, kind: LeaderboardPanelistKind.JUDGE, entrantId: null },
+      where: { leaderboardId, userId: judgeUserId, kind, entrantId: null },
     });
     const scope = roundIds?.length ? roundIds : [null];
     await tx.leaderboardPanelist.createMany({
-      data: scope.map((roundId) => ({ leaderboardId, userId: judgeUserId, kind: LeaderboardPanelistKind.JUDGE, roundId })),
+      data: scope.map((roundId) => ({ leaderboardId, userId: judgeUserId, kind, roundId })),
     });
   }
 
@@ -470,11 +488,13 @@ export class HackathonJudgesService {
     });
   }
 
-  /** Panel members must be judges on this hackathon. */
+  /** Panel members must be judges (not mentors) on this hackathon. */
   private async checkMembers(leaderboardId: string, userIds: string[]) {
     const unique = [...new Set(userIds)];
     if (!unique.length) return [];
-    const found = await this.prisma.hackathonJudgeProfile.count({ where: { leaderboardId, userId: { in: unique } } });
+    const found = await this.prisma.hackathonJudgeProfile.count({
+      where: { leaderboardId, userId: { in: unique }, kind: LeaderboardPanelistKind.JUDGE },
+    });
     if (found !== unique.length) throw new BadRequestException('Add everyone on the panel as a judge first.');
     return unique;
   }

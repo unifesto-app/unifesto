@@ -19,9 +19,10 @@ const ICON = 26;
 
 /** One line of progress for a round: open rounds show evaluations and the queue, closed ones decisions. */
 function roundSummary(r: RoundRow): string {
-  const mode = JUDGING_MODE_OPTIONS.find((o) => o.value === r.judgingMode)?.label ?? '';
+  const mode = r.kind === 'MENTORING' ? 'Mentoring' : JUDGING_MODE_OPTIONS.find((o) => o.value === r.judgingMode)?.label ?? '';
   if (r.status === 'ACTIVE') return `${roundStatusLabel(r.status)} · ${r.evaluated}/${r.teams} evaluated${r.inQueue ? ` · ${r.inQueue} in queue` : ''}`;
   if (r.status === 'CLOSED') return r.undecided ? `Closed · ${r.undecided} undecided` : 'Closed';
+  if (r.kind === 'MENTORING') return `${mode} · ${r.requiredEvaluations} session${r.requiredEvaluations === 1 ? '' : 's'} per team`;
   return `${mode} · ${r.criteria ? `${r.criteria} criteria` : 'no criteria yet'}`;
 }
 

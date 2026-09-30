@@ -573,10 +573,28 @@ endpoints stay backward compatible).
    `CompetitionScreen` (now with Team IDs and award notes; the hackathon bracket leaves
    out cancelled teams and teams without a statement). Migration
    `20260930150000_hackathon_results`.
-5. **Announcements, project links, mentors, polish**
+5. **Announcements, project links, mentors, polish** — **DONE 2026-09-30 (not deployed; device run-through still to do)**
    Announcements, submissions, MENTORING rounds. Remaining notification triggers from
    §10. Mobile: announce screen, submission screen, mentor path in console. End-to-end
    run-through on a device.
+   *As built:* a round has a `kind` (EVALUATION / MENTORING). A mentoring round never
+   eliminates or counts toward a total, opens without criteria, never uses panels, and
+   `requiredEvaluations` is the number of mentor sessions a team may have (each with a
+   different mentor). Mentors are added like judges (`kind: MENTOR` on the judge profile,
+   MENTOR panelist rows and role) and only appear in mentoring rounds; judges only in
+   judged rounds. In a hackathon the round decides the role for `submitJudgment`:
+   mentors submit written feedback only (marks are refused, empty feedback can't be
+   submitted), it completes the session, and the 5-minute lock applies to it too. The
+   judge console serves mentors ("Give feedback"). Mentoring rounds show sessions, not
+   scores, in results and the CSV, and never decide the PER_ROUND ranking. Project links:
+   `hackathon_submissions` (≤10 http(s) links + notes per team per round), editable by any
+   member of a team that takes part, until the round's optional `submissionsCloseAt` or its
+   close; judges/mentors see them in the console and scoring screen, curators in results and
+   the CSV. Announcements: `hackathon_announcements` with audience ALL / TEAMS / JUDGES
+   (judges + mentors) / ROOM; sent as push + in-app (`HackathonAnnouncement` event, opens
+   the updates feed), sender excluded, refused when nobody would get it; history with
+   recipient counts. All §10 triggers are now in place. Migration
+   `20260930160000_hackathon_mentors_links_announcements`.
 6. **Certificates + retire Space web leaderboard**
    Certificates wrapper + new template keys; mobile certificates screen. Then remove
    `websites/space/app/(dashboard)/dashboard/events/[eventId]/leaderboard/` (page + 7

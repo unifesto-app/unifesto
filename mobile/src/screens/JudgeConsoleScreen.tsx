@@ -99,6 +99,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   }
 
   const openRound = data.rounds.some((r) => r.status === 'ACTIVE');
+  const mentor = data.kind === 'MENTOR';
 
   const slotCard = (q: ConsoleQueue, s: JudgeSlot) => {
     const team = s.team;
@@ -125,12 +126,24 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
           <Text style={[styles.meta, { color: tokens.textMuted }]}>{team.members.join(', ')}</Text>
         ) : null}
         {team?.room ? <Text style={[styles.meta, { color: tokens.textMuted }]}>Room: {team.room.name}</Text> : null}
+        {team?.links.length ? (
+          <View style={{ marginTop: spacing[2] }}>
+            {team.links.map((l) => (
+              <Text key={l.url} style={[styles.meta, { color: tokens.accent }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
+                {l.label} ↗
+              </Text>
+            ))}
+            {team.linksNotes ? <Text style={[styles.meta, { color: tokens.textMuted }]}>{team.linksNotes}</Text> : null}
+          </View>
+        ) : null}
 
         <View style={{ marginTop: spacing[3] }}>
           {s.status === 'CALLED' ? <SlotTimer until={s.graceEndsAt} label="to arrive" doneLabel="Grace time over" /> : null}
           {s.status === 'IN_PROGRESS' ? <SlotTimer large until={s.slotEndsAt} label="left" doneLabel="Time’s up" /> : null}
           {s.status === 'AWAITING_MARKS' ? (
-            <Text style={[styles.meta, { color: tokens.warning }]}>Time’s up. Submit your marks to call the next team.</Text>
+            <Text style={[styles.meta, { color: tokens.warning }]}>
+              Time’s up. Submit your {mentor ? 'feedback' : 'marks'} to call the next team.
+            </Text>
           ) : null}
           {s.panelProgress ? (
             <Text style={[styles.meta, { color: tokens.textMuted }]}>
@@ -166,7 +179,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         {marking && team && s.round ? (
           <View style={styles.actions}>
             <Button
-              label={submitted ? 'Marks submitted · edit' : 'Give marks'}
+              label={submitted ? `${mentor ? 'Feedback' : 'Marks'} submitted · edit` : mentor ? 'Give feedback' : 'Give marks'}
               size="lg"
               fullWidth
               variant={submitted ? 'secondary' : 'primary'}
@@ -226,7 +239,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
       ) : null}
       {!openRound ? (
         <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[4] }]}>
-          No round you judge is open right now. We’ll notify you when one opens.
+          No round you {mentor ? 'mentor' : 'judge'} is open right now. We’ll notify you when one opens.
         </Text>
       ) : null}
 
@@ -262,7 +275,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
               <Text style={[styles.note, { color: tokens.textMuted }]}>
                 {data.busy.status === 'CALLED'
                   ? `Start ${data.busy.teamCode ?? 'the called team'} or mark it a no-show first.`
-                  : `Submit marks for ${data.busy.teamCode ?? 'the current team'} to call the next one.`}
+                  : `Submit ${mentor ? 'feedback' : 'marks'} for ${data.busy.teamCode ?? 'the current team'} to call the next one.`}
               </Text>
             ) : null}
           </View>
@@ -305,7 +318,8 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         </SettingsGroup>
       ) : null}
       <Text style={[styles.note, { color: tokens.textMuted }]}>
-        You can change marks for 5 minutes after you submit. After that they lock; the organisers can reopen them if needed.
+        You can change your {mentor ? 'feedback' : 'marks'} for 5 minutes after you submit. After that {mentor ? 'it locks' : 'they lock'}; the
+        organisers can reopen {mentor ? 'it' : 'them'} if needed.
       </Text>
     </ScrollView>
   );

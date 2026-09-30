@@ -7,6 +7,7 @@ import {
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -131,6 +132,8 @@ export default function JudgingEntrantScreen() {
       setOverallReview(judgment.data.overallReview ?? '');
       setSubmittedAt(judgment.data.submittedAt);
       setHack(judgment.data.hackathon ?? null);
+      // On hackathons the round decides the role (mentoring rounds are feedback only).
+      if (judgment.data.hackathon) setKind(judgment.data.kind);
       setEditableUntil(judgment.data.editableUntil ?? null);
       setMarksLocked(!!judgment.data.locked);
     }
@@ -384,6 +387,16 @@ export default function JudgingEntrantScreen() {
             </Text>
           ) : null}
           {hack?.members.length ? <Text style={styles.contextMuted}>{hack.members.join(', ')}</Text> : null}
+          {hack?.links?.length ? (
+            <View style={{ marginTop: spacing[2] }}>
+              {hack.links.map((l) => (
+                <Text key={l.url} style={[styles.contextText, { color: colors.primary, marginTop: spacing[1] }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
+                  {l.label} ↗
+                </Text>
+              ))}
+              {hack.linksNotes ? <Text style={styles.contextMuted}>{hack.linksNotes}</Text> : null}
+            </View>
+          ) : null}
           {hack?.slot?.status === 'IN_PROGRESS' ? (
             <View style={{ marginTop: spacing[3] }}>
               <SlotTimer until={hack.slot.slotEndsAt} label="left in the slot" doneLabel="Time’s up: submit your marks" />

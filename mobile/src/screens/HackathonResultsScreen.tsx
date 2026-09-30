@@ -254,7 +254,7 @@ export default function HackathonResultsScreen() {
           </>
         ) : (
           <>
-            <SettingsGroup title={`${round.name} · out of ${formatScore(round.maxScore)}`}>
+            <SettingsGroup title={round.kind === 'MENTORING' ? `${round.name} · mentoring` : `${round.name} · out of ${formatScore(round.maxScore)}`}>
               {roundTeams.length === 0 ? <SettingsRow label="No teams in this round" /> : null}
               {roundTeams.map(({ t, p }) => (
                 <SettingsRow
@@ -269,7 +269,11 @@ export default function HackathonResultsScreen() {
                     )
                   }
                   label={`${p.rank != null ? `${p.rank}. ` : ''}${teamLabel(t)}`}
-                  value={`${p.score != null ? formatScore(p.score) : 'Not evaluated'}${round.eliminationEnabled ? ` · ${standingLabel(p.standing)}` : ''}`}
+                  value={
+                    round.kind === 'MENTORING'
+                      ? `${p.evaluations.length} session${p.evaluations.length === 1 ? '' : 's'}`
+                      : `${p.score != null ? formatScore(p.score) : 'Not evaluated'}${round.eliminationEnabled ? ` · ${standingLabel(p.standing)}` : ''}`
+                  }
                   onPress={() => openTeam(t.id)}
                 />
               ))}
