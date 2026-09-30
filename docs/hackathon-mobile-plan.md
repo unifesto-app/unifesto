@@ -1,6 +1,6 @@
 # Hackathon Section (Mobile) — Plan
 
-Status: **FINALIZED FOR BUILD** (not started). All open questions answered 2026-09-30.
+Status: **IN BUILD** — Phases 1–2 done (not deployed). All open questions answered 2026-09-30.
 This is the **single source of truth** for hackathon work. It builds on the existing
 `leaderboard` module (rounds, panels, judgments, awards, participant view), recorded in
 [`hackathon-dashboard-plan.md`](hackathon-dashboard-plan.md), which has been trimmed so it
@@ -490,10 +490,30 @@ endpoints stay backward compatible).
    added to the deep-link allowlist (competition push taps weren't routing before).
    Hackathon GETs are never served from the app's memory cache. New boards start
    with a PENDING "Round 1" so nothing is judged until the curator opens a round.
-2. **Problem statements & themes**
+2. **Problem statements & themes** — **DONE 2026-09-30 (not deployed)**
    Themes, statements (max-teams enforced transactionally), three PS modes, deadline,
    lock + curator override, hub gate. Mobile: curator statements/themes, team statement
    screen, ACTIVE hub.
+   *As built:* only the **team lead** locks in the statement (other members see the same
+   choices read-only), in one go; a `statementLockedAt: null` guard on the write makes a
+   double tap or two devices land exactly one lock. A limited statement's row is locked
+   `FOR UPDATE` while its teams are counted, so two teams can't take the last place; the
+   limit binds the curator too ("raise its limit first"). The curator sets a team's
+   statement with `PUT …/teams/:id/statement` (any mode, after the deadline, locks it) and
+   can **reopen** it with `POST …/teams/:id/statement/unlock`, which clears the statement
+   and theme (freeing its place) so the team chooses again; the plan's `PATCH teams/:id`
+   stays for ID/name/room only. Team routes: `GET hackathon/:eventId/statements` and
+   `POST hackathon/:eventId/me/statement`. A theme is required unless the statement has
+   its own, or the board is in LIST mode with no themes yet. Deleting a statement or theme
+   an active team has is refused (FKs are `NO ACTION`); cancelled teams just drop it.
+   Hub gate on the server: `submitJudgment` rejects teams that are cancelled or have no
+   locked statement, and the judge's assignment list leaves them out (and returns nothing
+   while hackathon mode is off). New push + in-app kinds: statements open (sent when the
+   curator's settings open the window), locked (to teammates), assigned/changed,
+   reopened, and a deadline reminder an hour before (5-minute cron, claimed through
+   `psDeadlineRemindedFor` so it's sent once per deadline and re-armed when it moves).
+   Statement notices deep-link to the statement screen. Migration
+   `20260930130000_hackathon_statements`.
 3. **Judges, rounds config, queue, 5-minute lock** (largest)
    Judge profiles/themes/availability, panels, round config columns, eval requests +
    state machine + scheduler + socket rooms, judgment semantic change + reopen.

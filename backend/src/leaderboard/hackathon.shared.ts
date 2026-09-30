@@ -7,7 +7,7 @@
  * the rules exactly.
  */
 
-import type { HackathonTeamNameSource } from '@prisma/client';
+import type { HackathonPsMode, HackathonTeamNameSource, HackathonThemeMode } from '@prisma/client';
 
 /** Team ID prefix: starts with a letter/digit; letters, digits and - _ / . after. */
 export const TEAM_CODE_PREFIX_RE = /^[A-Za-z0-9][A-Za-z0-9_\-/.]{0,19}$/;
@@ -140,9 +140,9 @@ export function planRoomAllocation(
 }
 
 /**
- * Where a team is in the hackathon (plan §5). Phase 1 knows only
- * cancellation; the problem-statement lock and elimination arrive with the
- * later phases and slot into the same function.
+ * Where a team is in the hackathon (plan §5): cancelled, still choosing its
+ * problem statement, in (statement locked), or out. Elimination arrives with
+ * the scoring phase and slots into the same function.
  */
 export type TeamStage = 'CANCELLED' | 'NEEDS_PS' | 'ACTIVE' | 'ELIMINATED';
 
@@ -165,4 +165,95 @@ export function compareTeams(
   const sb = b.teamSeq ?? Number.MAX_SAFE_INTEGER;
   if (sa !== sb) return sa - sb;
   return (a.teamCode ?? '').localeCompare(b.teamCode ?? '', undefined, { numeric: true });
+}
+
+// ── Problem statements & themes (plan §2 #7–#10, §3 #5–#6) ──────────────────
+
+export const THEME_NAME_MAX = 60;
+export const STATEMENT_CODE_MAX = 20;
+export const STATEMENT_TITLE_MAX = 200;
+export const STATEMENT_TEXT_MAX = 4000;
+/** A statement code: letters, digits and - _ / . #, starting with a letter or digit. */
+export const STATEMENT_CODE_RE = /^[A-Za-z0-9][A-Za-z0-9_\-/.#]{0,19}$/;
+
+/** "PS-01", "PS-02", … — the first free one after the highest numbered code. */
+export function nextStatementCode(existing: string[]): string {
+  const taken = new Set(existing.map((c) => c.toUpperCase()));
+  let n = existing.reduce((max, c) => {
+    const m = /^PS-(\d+)$/i.exec(c);
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0) + 1;
+  while (taken.has(`PS-${String(n).padStart(2, '0')}`)) n++;
+  return `PS-${String(n).padStart(2, '0')}`;
+}
+
+/** Why a team can't lock in a problem statement itself right now (null = it can). */
+export type StatementBlock = 'LOCKED' | 'NOT_OPEN' | 'CURATOR_ASSIGNS' | 'DEADLINE_PASSED';
+
+/**
+ * Whether the team may choose (write or pick) its own statement. Teams choose
+ * only in TEAM_WRITES / TEAM_PICKS, only before the deadline, and only once:
+ * it locks on submit, after which only the curator changes it.
+ */
+export function statementBlock(opts: {
+  psMode: HackathonPsMode | null;
+  psDeadline: Date | null;
+  lockedAt: Date | null;
+  now: Date;
+}): StatementBlock | null {
+  if (opts.lockedAt) return 'LOCKED';
+  if (!opts.psMode) return 'NOT_OPEN';
+  if (opts.psMode === 'CURATOR_ASSIGNS') return 'CURATOR_ASSIGNS';
+  if (opts.psDeadline && opts.now >= opts.psDeadline) return 'DEADLINE_PASSED';
+  return null;
+}
+
+/**
+ * The team's theme, from what was sent and how the board asks for themes.
+ * A statement from the list that has a theme decides it outright. Otherwise:
+ * LIST mode needs one of the curator's themes (unless there are none yet);
+ * TEXT mode needs a short free-text theme. Returns an error message instead
+ * when the input doesn't fit.
+ */
+export function resolveTheme(opts: {
+  themeMode: HackathonThemeMode;
+  themeIds: ReadonlySet<string>;
+  statementThemeId: string | null;
+  themeId?: string | null;
+  themeText?: string | null;
+}): { themeId: string | null; themeText: string | null } | { error: string } {
+  if (opts.statementThemeId) return { themeId: opts.statementThemeId, themeText: null };
+  if (opts.themeMode === 'TEXT') {
+    const text = cleanName(opts.themeText, THEME_NAME_MAX);
+    if (!text) return { error: 'Add your theme or domain, like "HealthTech".' };
+    return { themeId: null, themeText: text };
+  }
+  if (opts.themeId) {
+    if (!opts.themeIds.has(opts.themeId)) return { error: 'That theme is no longer on the list. Pick another.' };
+    return { themeId: opts.themeId, themeText: null };
+  }
+  if (opts.themeIds.size) return { error: 'Pick a theme.' };
+  return { themeId: null, themeText: null };
+}
+
+/** Places left on a statement, or null when it has no limit. */
+export function placesLeft(maxTeams: number | null, taken: number): number | null {
+  return maxTeams == null ? null : Math.max(0, maxTeams - taken);
+}
+
+/**
+ * Whether the "1 hour left" reminder should go out now: teams choose their own
+ * statements, the deadline is within the hour and still ahead, and this
+ * deadline hasn't been reminded about yet (moving it re-arms the reminder).
+ */
+export function deadlineReminderDue(opts: {
+  psMode: HackathonPsMode | null;
+  psDeadline: Date | null;
+  remindedFor: Date | null;
+  now: Date;
+}): boolean {
+  if (!opts.psDeadline || (opts.psMode !== 'TEAM_WRITES' && opts.psMode !== 'TEAM_PICKS')) return false;
+  const msLeft = opts.psDeadline.getTime() - opts.now.getTime();
+  if (msLeft <= 0 || msLeft > 60 * 60 * 1000) return false;
+  return !opts.remindedFor || opts.remindedFor.getTime() !== opts.psDeadline.getTime();
 }

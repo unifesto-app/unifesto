@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, BellRinging, DoorOpen, MapPin, UsersThree, WarningCircle } from 'phosphor-react-native';
+import { Bell, BellRinging, DoorOpen, Lightbulb, LockSimple, MapPin, UsersThree, WarningCircle } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
@@ -108,7 +108,7 @@ export default function HackathonHubScreen() {
   }
 
   const team = hub.team;
-  const stage = stageCopy(team.stage);
+  const stage = stageCopy(team.stage, team.statementBlock, hub.problemStatements.deadline);
   const cancelled = team.stage === 'CANCELLED';
   const maps = venueMapsUrl(hub.venue);
   const venueLines = [hub.venue.name, hub.venue.address].filter(Boolean) as string[];
@@ -161,6 +161,27 @@ export default function HackathonHubScreen() {
             <Text style={[styles.stageBody, { color: tokens.textSecondary }]}>{stage.body}</Text>
           </View>
         </View>
+
+        {!cancelled ? (
+          <SettingsGroup title="Problem statement">
+            <SettingsRow
+              icon={team.statement?.lockedAt ? icon(LockSimple) : icon(Lightbulb)}
+              label={
+                team.statement
+                  ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ')
+                  : team.statementBlock === null
+                    ? team.isLead
+                      ? 'Choose your problem statement'
+                      : 'See the options'
+                    : team.statementBlock === 'NOT_OPEN'
+                      ? 'Not open yet'
+                      : 'The organisers will assign it'
+              }
+              value={team.statement?.themeLabel ?? (team.statementBlock === null ? 'Open' : undefined)}
+              onPress={() => router.push(`/hackathon/${eventId}/statement`)}
+            />
+          </SettingsGroup>
+        ) : null}
 
         {!cancelled ? (
           <SettingsGroup title="Your room">

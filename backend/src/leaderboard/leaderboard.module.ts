@@ -6,6 +6,7 @@ import { LeaderboardGateway } from './leaderboard.gateway';
 import { HackathonController } from './hackathon.controller';
 import { HackathonSetupService } from './hackathon-setup.service';
 import { HackathonTeamsService } from './hackathon-teams.service';
+import { HackathonStatementsService } from './hackathon-statements.service';
 
 /**
  * Competitive dashboard (leaderboards) and hackathon mode on top of it:
@@ -18,7 +19,13 @@ import { HackathonTeamsService } from './hackathon-teams.service';
 @Module({
   imports: [AuthModule],
   controllers: [LeaderboardController, HackathonController],
-  providers: [LeaderboardService, LeaderboardGateway, HackathonTeamsService, HackathonSetupService],
+  providers: [
+    LeaderboardService,
+    LeaderboardGateway,
+    HackathonTeamsService,
+    HackathonSetupService,
+    HackathonStatementsService,
+  ],
   exports: [LeaderboardService],
 })
 export class LeaderboardModule {}

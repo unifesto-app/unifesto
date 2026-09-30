@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Buildings, DoorOpen, DownloadSimple, GearSix, MapPin, Power, UsersThree } from 'phosphor-react-native';
+import { Buildings, DoorOpen, DownloadSimple, GearSix, Lightbulb, MapPin, Power, Tag, UsersThree } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -17,6 +17,7 @@ import {
   getHackathonOverview,
   type HackathonOverview,
 } from '../lib/api/hackathon';
+import { psModeSummary } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
@@ -27,6 +28,7 @@ const ICON = 28;
 const WHAT_IT_DOES = [
   'Group registrations become teams, each with a Team ID in your format.',
   'Every team member gets the hackathon screens: Team ID, venue, room and updates.',
+  'Teams lock in a problem statement (written, picked from your list, or assigned by you) before judging.',
   'Updates reach teams as a push and in the app.',
 ];
 
@@ -177,9 +179,9 @@ export default function HackathonManageScreen() {
           <ManageStats
             stats={[
               { label: 'Teams', value: data.counts.active },
-              { label: 'Cancelled', value: data.counts.cancelled },
+              { label: 'PS locked', value: data.counts.psLocked },
               { label: 'No room', value: data.counts.unallocated },
-              { label: 'Rooms', value: data.counts.rooms },
+              { label: 'Cancelled', value: data.counts.cancelled },
             ]}
           />
 
@@ -208,6 +210,30 @@ export default function HackathonManageScreen() {
               onPress={() => runImportTeams(eventId!, data, () => void load())}
             />
           </SettingsGroup>
+
+          <SettingsGroup title="Problem statements">
+            <SettingsRow
+              icon={icon(Lightbulb)}
+              label="Problem statements"
+              value={
+                data.counts.statements
+                  ? `${data.counts.statements} · ${psModeSummary(h?.psMode ?? null, h?.psDeadline ?? null)}`
+                  : psModeSummary(h?.psMode ?? null, h?.psDeadline ?? null)
+              }
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/statements`)}
+            />
+            <SettingsRow
+              icon={icon(Tag)}
+              label="Themes"
+              value={data.counts.themes ? String(data.counts.themes) : h?.themeMode === 'TEXT' ? 'Teams type it' : 'Add themes'}
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/themes`)}
+            />
+          </SettingsGroup>
+          {data.counts.active ? (
+            <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[2] }]}>
+              {data.counts.psLocked} of {data.counts.active} teams have locked in a problem statement. Only those teams can be judged.
+            </Text>
+          ) : null}
 
           <SettingsGroup title="Venue and rooms">
             <SettingsRow
