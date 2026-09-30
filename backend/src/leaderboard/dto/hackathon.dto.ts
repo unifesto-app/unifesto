@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   HackathonAnnouncementAudience,
+  HackathonHelpQueryStatus,
   HackathonJudgingMode,
   HackathonPsMode,
   HackathonRoundKind,
@@ -158,6 +159,10 @@ export class CreateHackathonRoomDto {
   @ApiPropertyOptional()
   @IsOptional() @IsInt() @Min(0)
   order?: number;
+
+  @ApiPropertyOptional({ type: [String], description: 'Event-team members on the floor in this room' })
+  @IsOptional() @IsArray() @ArrayMaxSize(50) @IsUUID('all', { each: true })
+  volunteerUserIds?: string[];
 }
 
 export class UpdateHackathonRoomDto {
@@ -180,6 +185,10 @@ export class UpdateHackathonRoomDto {
   @ApiPropertyOptional()
   @IsOptional() @IsInt() @Min(0)
   order?: number;
+
+  @ApiPropertyOptional({ type: [String], description: 'Event-team members on the floor in this room' })
+  @IsOptional() @IsArray() @ArrayMaxSize(50) @IsUUID('all', { each: true })
+  volunteerUserIds?: string[];
 }
 
 // ── Problem statements & themes ──────────────────────────────────────────────
@@ -543,6 +552,44 @@ export class SendAnnouncementDto {
   @ApiProperty({ maxLength: 2000 })
   @IsString() @IsNotEmpty() @MaxLength(2000)
   body: string;
+}
+
+// ── Help desk ────────────────────────────────────────────────────────────────
+
+export class CreateHelpTopicDto {
+  @ApiProperty({ maxLength: 60, example: 'Food' })
+  @IsString() @IsNotEmpty() @MaxLength(60)
+  name: string;
+
+  @ApiPropertyOptional({ type: [String], description: 'Points of contact, from the event team' })
+  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsUUID('all', { each: true })
+  pocUserIds?: string[];
+}
+
+export class UpdateHelpTopicDto {
+  @ApiPropertyOptional({ maxLength: 60 })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(60)
+  name?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsUUID('all', { each: true })
+  pocUserIds?: string[];
+}
+
+export class RaiseHelpQueryDto {
+  @ApiPropertyOptional({ description: 'A help topic of this hackathon; omit or null for "Other"' })
+  @IsOptional() @IsUUID()
+  topicId?: string | null;
+
+  @ApiProperty({ maxLength: 1000 })
+  @IsString() @IsNotEmpty() @MaxLength(1000)
+  message: string;
+}
+
+export class SetHelpQueryStatusDto {
+  @ApiProperty({ enum: HackathonHelpQueryStatus })
+  @IsEnum(HackathonHelpQueryStatus)
+  status: HackathonHelpQueryStatus;
 }
 
 // ── Certificates (Phase 6) ───────────────────────────────────────────────────

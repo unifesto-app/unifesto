@@ -14,6 +14,7 @@ import type {
   HackathonUpdateEvent,
   HackathonJudgeUpdateEvent,
   HackathonAnnouncementEvent,
+  HackathonHelpDeskEvent,
 } from '../notifications.events';
 
 /**
@@ -295,6 +296,20 @@ export class TransactionalNotificationHandler {
       body: e.body,
       deepLink: `unifesto://hackathon/${e.eventId}/updates`,
       data: { type: 'hackathon', kind: 'ANNOUNCEMENT', eventId: e.eventId },
+      inbox: { type: 'hackathon', eventId: e.eventId },
+    });
+  }
+
+  /** Help-desk queries: push + in-app, opening the inbox (staff) or the team's help screen. */
+  @OnEvent(NotificationEvents.HackathonHelpDesk, { async: true })
+  async onHackathonHelpDesk(e: HackathonHelpDeskEvent): Promise<void> {
+    if (!e.userIds?.length) return;
+    await this.notifications.send(e.userIds, {
+      category: 'registrationUpdates',
+      title: e.title,
+      body: e.body,
+      deepLink: e.deepLink,
+      data: { type: 'hackathon', kind: 'HELP', eventId: e.eventId },
       inbox: { type: 'hackathon', eventId: e.eventId },
     });
   }

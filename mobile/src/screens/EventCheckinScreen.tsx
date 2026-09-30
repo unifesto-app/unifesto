@@ -1,8 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MagnifyingGlass, QrCode } from 'phosphor-react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Lifebuoy, MagnifyingGlass, QrCode } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useCheckinHub } from '../hooks/useCheckinHub';
@@ -14,7 +14,8 @@ import CheckinProgressCard from '../components/checkin/CheckinProgressCard';
 import OfflineCheckinPanel from '../components/checkin/OfflineCheckinPanel';
 import PersonRow from '../components/checkin/PersonRow';
 import PointChips from '../components/checkin/PointChips';
-import { SettingsGroup } from '../components/profile/SettingsGroup';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { getHelpInbox } from '../lib/api/hackathon';
 import { Button } from '../components/ui';
 import { relativeWhen } from '../utils/eventFormat';
 import { checkinPhase, timeAgo } from '../utils/checkinFormat';
@@ -44,6 +45,17 @@ export default function EventCheckinScreen() {
   // No signal: counts come from the saved list + queued scans.
   const localStats = isOffline && offline.store ? offlineStats(offline.store, pointId || undefined) : null;
   const stats = localStats ?? hub.stats;
+
+  // Hackathon help desk: open queries sent to me (null = no hackathon / not staff).
+  const [openQueries, setOpenQueries] = useState<number | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!eventId) return;
+      void getHelpInbox(eventId).then((r) =>
+        setOpenQueries(r.ok && r.data ? r.data.queries.filter((q) => q.status !== 'RESOLVED').length : null),
+      );
+    }, [eventId]),
+  );
 
   const title = event?.title ?? params.title ?? 'Event';
   const start = event?.startDateTime ?? params.startDateTime;
@@ -132,6 +144,19 @@ export default function EventCheckinScreen() {
           onPress={() => router.push({ pathname: `/checkin/${eventId}/manual`, params: toolParams })}
         />
       </View>
+
+      {openQueries !== null ? (
+        <View style={styles.gutter}>
+          <SettingsGroup title="Hackathon">
+            <SettingsRow
+              icon={<Lifebuoy size={24} color={tokens.accent} weight="fill" />}
+              label="Help desk"
+              value={openQueries ? `${openQueries} open` : 'All clear'}
+              onPress={() => router.push(`/hackathon/${eventId}/help-desk`)}
+            />
+          </SettingsGroup>
+        </View>
+      ) : null}
 
       {/* Saved guest list + sync queue */}
       <View style={styles.gutter}>

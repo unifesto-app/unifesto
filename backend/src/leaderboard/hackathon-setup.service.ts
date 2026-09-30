@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { LeaderboardService } from './leaderboard.service';
+import { HackathonHelpService } from './hackathon-help.service';
 import { HackathonTeamsService } from './hackathon-teams.service';
 import {
   TEAM_CODE_PREFIX_RE,
@@ -44,6 +45,7 @@ export class HackathonSetupService {
     private readonly prisma: PrismaService,
     private readonly leaderboard: LeaderboardService,
     private readonly teams: HackathonTeamsService,
+    private readonly help: HackathonHelpService,
   ) {}
 
   // ── Overview ──────────────────────────────────────────────────────────────
@@ -332,8 +334,11 @@ export class HackathonSetupService {
         where: { leaderboardId: board.id, cancelledAt: null, roomId: null },
       }),
     ]);
+    // Volunteers come from the event team; someone taken off it drops out here.
+    const staff = await this.help.eventTeam(eventId);
     return {
       unallocated,
+      staff,
       rooms: rooms.map((r) => ({
         id: r.id,
         name: r.name,
@@ -342,6 +347,7 @@ export class HackathonSetupService {
         notes: r.notes,
         order: r.order,
         occupied: r.teams.length,
+        volunteers: r.volunteerUserIds.map((id) => staff.find((u) => u.id === id)).filter((u): u is (typeof staff)[number] => !!u),
         teams: r.teams.sort(compareTeams).map((t) => ({ id: t.id, teamCode: t.teamCode, name: t.name })),
       })),
     };
@@ -364,6 +370,7 @@ export class HackathonSetupService {
           capacity: dto.capacity,
           notes: blankToNull(dto.notes) ?? null,
           order: dto.order ?? (last ? last.order + 1 : 0),
+          volunteerUserIds: await this.help.assertOnEventTeam(eventId, dto.volunteerUserIds),
         },
       });
     } catch (err) {
@@ -393,6 +400,9 @@ export class HackathonSetupService {
           ...(dto.capacity !== undefined ? { capacity: dto.capacity } : {}),
           ...(dto.notes !== undefined ? { notes: blankToNull(dto.notes) } : {}),
           ...(dto.order !== undefined ? { order: dto.order } : {}),
+          ...(dto.volunteerUserIds !== undefined
+            ? { volunteerUserIds: await this.help.assertOnEventTeam(eventId, dto.volunteerUserIds) }
+            : {}),
         },
       });
     } catch (err) {

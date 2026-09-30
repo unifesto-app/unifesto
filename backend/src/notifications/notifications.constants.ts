@@ -28,5 +28,6 @@ export const NotificationEvents = {
   HackathonUpdate: 'notif.hackathon.update',
   HackathonJudgeUpdate: 'notif.hackathon.judge-update',
   HackathonAnnouncement: 'notif.hackathon.announcement',
+  HackathonHelpDesk: 'notif.hackathon.help-desk',
   StatusIncident: 'notif.status.incident',
 } as const;

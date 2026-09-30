@@ -11,7 +11,8 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
-import { createRoom, deleteRoom, getRooms, updateRoom, type Room } from '../lib/api/hackathon';
+import MultiChips from '../components/hackathon/MultiChips';
+import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
@@ -23,11 +24,12 @@ interface Draft {
   location: string;
   capacity: string;
   notes: string;
+  volunteerUserIds: string[];
 }
 
-const EMPTY: Draft = { name: '', location: '', capacity: '', notes: '' };
+const EMPTY: Draft = { name: '', location: '', capacity: '', notes: '', volunteerUserIds: [] };
 
-/** Add or edit a room: its name, where it is, how many teams fit, and notes for teams. */
+/** Add or edit a room: its name, where it is, how many teams fit, notes for teams, and its volunteers. */
 export default function HackathonRoomEditorScreen() {
   const { eventId, roomId } = useLocalSearchParams<{ eventId: string; roomId: string }>();
   const isNew = !roomId || roomId === 'new';
@@ -36,6 +38,7 @@ export default function HackathonRoomEditorScreen() {
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const [room, setRoom] = useState<Room | null>(null);
+  const [staff, setStaff] = useState<StaffUser[]>([]);
   const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
   const initial = useRef(JSON.stringify(EMPTY));
   const [saving, setSaving] = useState(false);
@@ -45,11 +48,19 @@ export default function HackathonRoomEditorScreen() {
   useAnalyticsScreenTracking('HackathonRoomEditor');
 
   useEffect(() => {
-    if (isNew || !eventId) return;
+    if (!eventId) return;
     void getRooms(eventId).then((r) => {
+      if (r.ok) setStaff(r.data.staff);
+      if (isNew) return;
       const found = r.ok ? r.data.rooms.find((x) => x.id === roomId) : undefined;
       if (!found) return setError('This room no longer exists.');
-      const d = { name: found.name, location: found.location ?? '', capacity: String(found.capacity), notes: found.notes ?? '' };
+      const d = {
+        name: found.name,
+        location: found.location ?? '',
+        capacity: String(found.capacity),
+        notes: found.notes ?? '',
+        volunteerUserIds: found.volunteers.map((v) => v.id),
+      };
       initial.current = JSON.stringify(d);
       setRoom(found);
       setDraft(d);
@@ -83,6 +94,7 @@ export default function HackathonRoomEditorScreen() {
       location: draft.location.trim() || null,
       capacity,
       notes: draft.notes.trim() || null,
+      volunteerUserIds: draft.volunteerUserIds,
     };
     setSaving(true);
     const res = isNew ? await createRoom(eventId!, body) : await updateRoom(eventId!, roomId!, body);
@@ -124,6 +136,23 @@ export default function HackathonRoomEditorScreen() {
         </SettingsGroup>
         <Text style={[styles.note, { color: tokens.textMuted }]}>Teams see the name, location and notes on their hackathon screen.</Text>
 
+        <SettingsGroup title="Volunteers here" plain>
+          {staff.length ? (
+            <View style={styles.chips}>
+              <MultiChips
+                options={staff.map((u) => ({ value: u.id, label: staffName(u) }))}
+                value={draft.volunteerUserIds}
+                onChange={(v) => set({ volunteerUserIds: v })}
+              />
+            </View>
+          ) : (
+            <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
+          )}
+        </SettingsGroup>
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          Teams in this room see their volunteers, and every query they raise goes to them too.
+        </Text>
+
         {room ? (
           <SettingsGroup title={`Teams here · ${room.occupied} of ${room.capacity}`} plain>
             {room.teams.length === 0 ? <SettingsRow label="No teams yet" /> : null}
@@ -159,6 +188,7 @@ export default function HackathonRoomEditorScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
+  chips: { paddingVertical: spacing[2] },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
 });

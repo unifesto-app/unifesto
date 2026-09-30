@@ -157,3 +157,16 @@ export interface HackathonAnnouncementEvent {
   title: string;
   body: string;
 }
+
+/**
+ * A hackathon help-desk query: raised (to its POCs, room volunteers or
+ * curators), or picked up / resolved (to the team). Copy and link are built by
+ * the hackathon service. Push + in-app.
+ */
+export interface HackathonHelpDeskEvent {
+  userIds: string[];
+  eventId: string;
+  title: string;
+  body: string;
+  deepLink: string;
+}

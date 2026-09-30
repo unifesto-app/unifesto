@@ -25,7 +25,12 @@ import { HackathonResultsService } from './hackathon-results.service';
 import { HackathonSubmissionsService } from './hackathon-submissions.service';
 import { HackathonAnnouncementsService } from './hackathon-announcements.service';
 import { HackathonCertificatesService } from './hackathon-certificates.service';
+import { HackathonHelpService } from './hackathon-help.service';
 import {
+  CreateHelpTopicDto,
+  RaiseHelpQueryDto,
+  SetHelpQueryStatusDto,
+  UpdateHelpTopicDto,
   IssueHackathonCertificatesDto,
   SaveSubmissionDto,
   SendAnnouncementDto,
@@ -80,6 +85,7 @@ export class HackathonController {
     private readonly submissions: HackathonSubmissionsService,
     private readonly announcements: HackathonAnnouncementsService,
     private readonly hackathonCertificates: HackathonCertificatesService,
+    private readonly help: HackathonHelpService,
   ) {}
 
   // ── Curator: mode + settings ──────────────────────────────────────────────
@@ -605,6 +611,38 @@ export class HackathonController {
     return this.announcements.send(user.id, eventId, dto);
   }
 
+  // ── Curator: help topics ──────────────────────────────────────────────────
+
+  @Get('events/:eventId/hackathon/help/topics')
+  @ApiOperation({ summary: 'Help topics with their POCs, and the event team to pick from' })
+  helpTopics(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.help.listTopics(user.id, eventId);
+  }
+
+  @Post('events/:eventId/hackathon/help/topics')
+  createHelpTopic(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: CreateHelpTopicDto) {
+    return this.help.createTopic(user.id, eventId, dto);
+  }
+
+  @Patch('events/:eventId/hackathon/help/topics/:topicId')
+  updateHelpTopic(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('topicId', ParseUUIDPipe) topicId: string,
+    @Body() dto: UpdateHelpTopicDto,
+  ) {
+    return this.help.updateTopic(user.id, eventId, topicId, dto);
+  }
+
+  @Delete('events/:eventId/hackathon/help/topics/:topicId')
+  deleteHelpTopic(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('topicId', ParseUUIDPipe) topicId: string,
+  ) {
+    return this.help.deleteTopic(user.id, eventId, topicId);
+  }
+
   // ── Curator: certificates ─────────────────────────────────────────────────
 
   @Get('events/:eventId/hackathon/certificates')
@@ -691,6 +729,37 @@ export class HackathonController {
     @Body() dto: RenameMyTeamDto,
   ) {
     return this.teams.renameMyTeam(user.id, eventId, dto.name);
+  }
+
+  @Get('hackathon/:eventId/help')
+  @ApiOperation({ summary: 'Help topics, my room’s volunteers, and my team’s queries' })
+  myHelp(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.help.getMyHelp(user.id, eventId);
+  }
+
+  @Post('hackathon/:eventId/help/queries')
+  @ApiOperation({ summary: 'Raise a query; it goes to the topic’s POCs and my room’s volunteers' })
+  raiseHelpQuery(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: RaiseHelpQueryDto) {
+    return this.help.raise(user.id, eventId, dto);
+  }
+
+  // ── Event team: help desk inbox ───────────────────────────────────────────
+
+  @Get('hackathon/:eventId/help/inbox')
+  @ApiOperation({ summary: 'Queries sent to me (every query for curators); null when there is no hackathon' })
+  helpInbox(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.help.inbox(user.id, eventId);
+  }
+
+  @Post('hackathon/:eventId/help/queries/:queryId/status')
+  @ApiOperation({ summary: 'Pick a query up, resolve it, or reopen it' })
+  setHelpQueryStatus(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('queryId', ParseUUIDPipe) queryId: string,
+    @Body() dto: SetHelpQueryStatusDto,
+  ) {
+    return this.help.setStatus(user.id, eventId, queryId, dto.status);
   }
 
   @Get('hackathon/:eventId/statements')

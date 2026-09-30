@@ -15,6 +15,7 @@ import { HackathonResultsService } from './hackathon-results.service';
 import { HackathonSubmissionsService } from './hackathon-submissions.service';
 import { HackathonAnnouncementsService } from './hackathon-announcements.service';
 import { HackathonCertificatesService } from './hackathon-certificates.service';
+import { HackathonHelpService } from './hackathon-help.service';
 
 /**
  * Competitive dashboard (leaderboards) and hackathon mode on top of it:
@@ -39,6 +40,7 @@ import { HackathonCertificatesService } from './hackathon-certificates.service';
     HackathonResultsService,
     HackathonSubmissionsService,
     HackathonAnnouncementsService,
+    HackathonHelpService,
     HackathonCertificatesService,
   ],
   exports: [LeaderboardService],
