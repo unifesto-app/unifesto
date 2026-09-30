@@ -12,6 +12,7 @@ import {
   LinkSimple,
   ShareNetwork,
   SignOut,
+  Trash,
   type Icon,
 } from 'phosphor-react-native';
 import { useTokens } from '../context/ThemeContext';
@@ -206,6 +207,7 @@ export const MENU_ICONS = {
   download: { ios: 'arrow.down.circle', android: 'ic_menu_save', glyph: DownloadSimple },
   website: { ios: 'safari', android: 'ic_menu_view', glyph: Globe },
   leave: { ios: 'rectangle.portrait.and.arrow.right', android: 'ic_menu_close_clear_cancel', glyph: SignOut },
+  delete: { ios: 'trash', android: 'ic_menu_delete', glyph: Trash },
 } as const;
 
 const styles = StyleSheet.create({

@@ -12,6 +12,7 @@ import { font } from '../../theme/fontHelpers';
 import { countdownLabel, dateChip, formatTime } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
+import { isEventOver } from '../../lib/upcomingTickets';
 
 // Event banners are 4:3.
 const THUMB_W = 84;
@@ -28,7 +29,7 @@ type Status =
 function statusOf(ticket: MyTicket): Status {
   if (ticket.registrationStatus === 'CANCELLED') return { kind: 'cancelled' };
   if (ticket.registrationStatus === 'ATTENDED') return { kind: 'checkedIn' };
-  if (new Date(ticket.startDateTime) < new Date()) return { kind: 'ended' };
+  if (new Date(ticket.startDateTime) < new Date() || isEventOver(ticket)) return { kind: 'ended' };
   return { kind: 'countdown', label: countdownLabel(ticket.startDateTime) };
 }
 
@@ -37,7 +38,15 @@ function statusOf(ticket: MyTicket): Status {
  * and a date stub on the right. Past and cancelled passes fade back so the
  * live ones stand out.
  */
-export default function TicketCard({ ticket, onPress }: { ticket: MyTicket; onPress: () => void }) {
+export default function TicketCard({
+  ticket,
+  onPress,
+  onLongPress,
+}: {
+  ticket: MyTicket;
+  onPress: () => void;
+  onLongPress?: () => void;
+}) {
   const tokens = useTokens();
   const defaults = useDefaultImages();
   const status = statusOf(ticket);
@@ -62,8 +71,10 @@ export default function TicketCard({ ticket, onPress }: { ticket: MyTicket; onPr
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={`Ticket for ${ticket.title}`}
+      accessibilityHint={onLongPress ? 'Long press to delete this ticket' : undefined}
       style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
       <CardBackdrop shape={styles.card} />

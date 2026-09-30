@@ -5,7 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import { consumeTicketsStale } from '../lib/ticketsRefresh';
 import { onReconnect } from '../lib/offline/connectivity';
 import { getMyRegisteredEvents } from '../lib/api/events';
+import { isEventOver } from '../lib/upcomingTickets';
 import {
+  deleteMyTicket,
   getMyMemberTickets,
   getMyWaitlist,
   createWaitlistOfferOrder,
@@ -32,6 +34,7 @@ const flatten = (r: any, extra: Record<string, unknown> = {}) =>
         qrCode: r.qrCode,
         registrationId: r.id,
         registrationStatus: r.status,
+        eventStatus: r.event.status,
         paymentStatus: r.paymentStatus,
         cancelledAt: r.cancelledAt,
         cancellationReason: r.cancellationReason,
@@ -48,6 +51,13 @@ export interface TicketList {
   loading: boolean;
   loadingMore: boolean;
 }
+
+/**
+ * Finished tickets can be deleted from my list: the event is over (ended, or
+ * marked completed / cancelled) or the ticket was cancelled. Live passes can't.
+ */
+export const canDeleteTicket = (ticket: MyTicket) =>
+  !!ticket?.registrationId && (ticket.registrationStatus === 'CANCELLED' || isEventOver(ticket));
 
 const emptyList = (): TicketList => ({ items: [], page: 1, hasMore: true, loading: true, loadingMore: false });
 const EMPTY_LISTS: Record<ListTab, TicketList> = { upcoming: emptyList(), past: emptyList(), cancelled: emptyList() };
@@ -116,7 +126,8 @@ export function useMyTickets() {
       const now = new Date();
       const filtered = [...memberEvents, ...ownEvents].filter((event: any) => {
         if (isCancelledTab) return true; // past and future alike
-        const upcoming = new Date(event.startDateTime) >= now;
+        // A completed or cancelled event is history even if its date hasn't come.
+        const upcoming = new Date(event.startDateTime) >= now && !isEventOver(event, +now);
         return key === 'upcoming' ? upcoming : !upcoming;
       });
       // Soonest first for what's coming; most recent first for history.
@@ -259,6 +270,32 @@ export function useMyTickets() {
     );
   };
 
+  /** Confirms, then deletes a finished ticket from my list (all tabs). */
+  const confirmDelete = (ticket: MyTicket) => {
+    if (!canDeleteTicket(ticket)) return;
+    AppAlert.alert('Delete ticket?', `${ticket.title} will be removed from your tickets. This can't be undone.`, [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteMyTicket(ticket.registrationId);
+            setLists((prev) => {
+              const next = { ...prev };
+              (Object.keys(next) as ListTab[]).forEach((key) => {
+                next[key] = { ...next[key], items: next[key].items.filter((i) => i.registrationId !== ticket.registrationId) };
+              });
+              return next;
+            });
+          } catch (err: any) {
+            AppAlert.alert('Could not delete', err?.message || 'Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   return {
     user,
     tab,
@@ -272,5 +309,6 @@ export function useMyTickets() {
     payingId,
     payForOffer,
     confirmLeave,
+    confirmDelete,
   };
 }

@@ -9,7 +9,7 @@ import { useStableTopInset } from '../components/CustomHeader';
 import { useTokens } from '../context/ThemeContext';
 import BrandGlow from '../components/ui/BrandGlow';
 import { Button } from '../components/ui';
-import { ALL_TABS, useMyTickets, type MyTicket, type TicketTab } from '../hooks/useMyTickets';
+import { ALL_TABS, canDeleteTicket, useMyTickets, type MyTicket, type TicketTab } from '../hooks/useMyTickets';
 import TicketTabs from '../components/tickets/TicketTabs';
 import TicketCard, { TicketCardSkeleton } from '../components/tickets/TicketCard';
 import WaitlistCard from '../components/tickets/WaitlistCard';
@@ -196,6 +196,8 @@ export default function TicketsScreen() {
                   key={ticket.registrationId || ticket.id}
                   ticket={ticket}
                   onPress={() => openTicket(ticket)}
+                  // Long-press a finished ticket to delete it from the list.
+                  onLongPress={canDeleteTicket(ticket) ? () => t.confirmDelete(ticket) : undefined}
                 />
               ))}
             </View>

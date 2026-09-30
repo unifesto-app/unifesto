@@ -4,8 +4,10 @@ import { getEventBySlug, getMyRegistrationsForEvent } from '../lib/api/events';
 import { getMyDetails, type MyDetails } from '../lib/api/attendeeControls';
 import { getRegistrationCheckins, type RegistrationCheckinRecord } from '../lib/api/checkin';
 import { markTicketsStale } from '../lib/ticketsRefresh';
+import { isEventOver } from '../lib/upcomingTickets';
 import {
   cancelMyRegistration,
+  deleteMyTicket,
   getMyGroupMembers,
   getRegistrationWhatsappGroup,
   setWhatsappGroupJoined,
@@ -80,6 +82,7 @@ export function useTicketDetail(ticketParam: unknown) {
   const [waSaving, setWaSaving] = useState(false);
   const [cancelledNow, setCancelledNow] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   // Pull-to-refresh: bumping the key re-runs every fetch below; the live
   // status replaces the (possibly stale) snapshot the list passed in.
   const [reloadKey, setReloadKey] = useState(0);
@@ -174,6 +177,11 @@ export function useTicketDetail(ticketParam: unknown) {
   const canEditDetails = !!details?.editable && !cancelled;
   const editDetailsUntil = details?.editsUntil ?? null;
   const canCancelFree = !!registrationId && !cancelled && isFree && !eventCompleted && !isGroupMember;
+  // A finished ticket (event over, or cancelled) can be deleted from my list.
+  // Needs the real registration id — `ticket.id` is the event's on list snapshots.
+  const canDelete =
+    !!ticket?.registrationId &&
+    (cancelled || !!eventCompleted || isEventOver({ ...ticket, startDateTime: startIso, endDateTime: endIso }));
 
   // Single registration-level check-in, used only if the history is empty.
   const fallbackCheckin =
@@ -245,6 +253,30 @@ export function useTicketDetail(ticketParam: unknown) {
     ]);
   };
 
+  /** Confirms, then deletes this finished ticket; `onDone` leaves the screen. */
+  const confirmDelete = (onDone: () => void) => {
+    if (!canDelete || deleting) return;
+    AppAlert.alert('Delete ticket?', `${title} will be removed from your tickets. This can't be undone.`, [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await deleteMyTicket(ticket.registrationId);
+            markTicketsStale();
+            onDone();
+          } catch (e: any) {
+            AppAlert.alert('Could not delete', e?.message || 'Please try again.');
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
+  };
+
   const cancelledAt: string | undefined = ticket?.cancelledAt ?? undefined;
   const cancellation = describeCancellation(ticket?.cancellationReason);
 
@@ -283,6 +315,8 @@ export function useTicketDetail(ticketParam: unknown) {
     toggleJoinedWhatsapp,
     openWhatsapp,
     confirmCancel,
+    canDelete,
+    confirmDelete,
     refreshing,
     refresh,
   };

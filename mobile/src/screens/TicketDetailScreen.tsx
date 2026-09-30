@@ -86,18 +86,20 @@ export default function TicketDetailScreen() {
                 : []),
               ...(t.eventSlug ? [{ id: 'event', title: 'View event', icon: MENU_ICONS.website }] : []),
               { id: 'report', title: 'Report an issue', icon: MENU_ICONS.report, destructive: true },
+              ...(t.canDelete ? [{ id: 'delete', title: 'Delete ticket', icon: MENU_ICONS.delete, destructive: true }] : []),
             ]}
             onSelect={(action) => {
               if (action === 'calendar') t.addToCalendar();
               else if (action === 'event') openEvent();
               else if (action === 'report') setReportOpen(true);
+              else if (action === 'delete') t.confirmDelete(() => router.back());
             }}
           />
         </HeaderActions>
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, cancelled, t.eventSlug, t.startIso, tokens.text]);
+  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, tokens.text]);
 
   if (!t.ticket) {
     return (
