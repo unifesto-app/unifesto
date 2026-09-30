@@ -18,7 +18,6 @@ import {
   ChartBar,
   Hourglass,
   Stack,
-  Trophy,
   ArrowsClockwise,
   Tag,
   WhatsappLogo,
@@ -74,7 +73,6 @@ const NAV_GROUPS: EventNavGroup[] = [
     items: [
       { href: "/content", label: "Content", icon: FileText, requires: "event:edit" },
       { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", feature: "hasCertificates" },
-      { href: "/leaderboard", label: "Leaderboard", icon: Trophy, requires: "event:edit", feature: "hasLeaderboard" },
     ],
   },
   {

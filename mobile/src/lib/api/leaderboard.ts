@@ -7,8 +7,8 @@
  * client mirrors that — it never assembles another panelist's data and it treats
  * a closed round as a locked, read-only state rather than an error to retry.
  *
- * Curator management of the board lives in the space (web) app; mobile is the
- * scoring surface only.
+ * Hackathon curator tools (rounds, judges, queues, results, winners,
+ * certificates) are in the app too, in src/lib/api/hackathon.ts.
  */
 
 import { makeAuthenticatedRequest } from './helpers';

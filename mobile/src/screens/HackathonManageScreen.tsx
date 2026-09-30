@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Broadcast, Buildings, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
+import { Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -280,6 +280,12 @@ export default function HackathonManageScreen() {
                     : 'None yet'
               }
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/winners`)}
+            />
+            <SettingsRow
+              icon={icon(Certificate)}
+              label="Certificates"
+              value="Participants and winners"
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/certificates`)}
             />
           </SettingsGroup>
 

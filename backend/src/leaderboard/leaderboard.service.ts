@@ -25,7 +25,6 @@ import { Action, AuthorizationService } from '../auth/authorization';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
 import {
-  AssignJudgeDto,
   AssignPanelistDto,
   CreateAwardDto,
   CreateEntrantDto,
@@ -1993,35 +1992,6 @@ export class LeaderboardService {
       })),
       feedback: myFeedback,
     };
-  }
-
-  // ── Judges (legacy event-role assignment, kept for the current hack app) ──
-
-  async assignJudge(userId: string, eventId: string, dto: AssignJudgeDto) {
-    await this.assertCanManage(userId, eventId);
-    await this.grantPanelistRole(dto.userId, eventId, LeaderboardPanelistKind.JUDGE, userId);
-    const role = await this.prisma.role.findUnique({ where: { code: RoleCode.JUDGE } });
-    return this.prisma.userRole.findFirst({
-      where: { userId: dto.userId, roleId: role!.id, eventId, spaceId: null },
-    });
-  }
-
-  async removeJudge(userId: string, eventId: string, judgeUserId: string) {
-    await this.assertCanManage(userId, eventId);
-    const role = await this.prisma.role.findUnique({ where: { code: RoleCode.JUDGE } });
-    if (!role) return { ok: true };
-    await this.prisma.userRole.deleteMany({
-      where: { userId: judgeUserId, roleId: role.id, eventId },
-    });
-    return { ok: true };
-  }
-
-  async listJudges(userId: string, eventId: string) {
-    await this.assertCanManage(userId, eventId);
-    return this.prisma.userRole.findMany({
-      where: { eventId, role: { code: RoleCode.JUDGE } },
-      include: { user: { select: { id: true, fullName: true, username: true } } },
-    });
   }
 
   // ── Account resolution ────────────────────────────────────────────────────

@@ -3894,6 +3894,11 @@ model Certificate {
   // How this recipient qualified (drives nothing at render; kept for audit).
   audience CertificateAudience
 
+  // Hackathon winner certificate: the award it's for (soft ref → leaderboard_awards),
+  // which fills {awardTitle}. Part of the dedup key, so a team with two awards
+  // gets one certificate per award from the same template.
+  awardId String? @map("award_id") @db.Uuid
+
   certificateNumber String @unique @map("certificate_number") @db.VarChar(100)
   verificationCode  String @unique @map("verification_code") @db.VarChar(64)
 
@@ -3948,6 +3953,9 @@ model CertificateBatch {
 
   // Hand-picked registrations for the MANUAL audience; empty otherwise.
   registrationIds String[] @map("registration_ids") @db.Uuid
+
+  // Hackathon winners batch: the award these certificates are for (soft ref).
+  awardId String? @map("award_id") @db.Uuid
 
   status CertificateBatchStatus @default(QUEUED)
 

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { CertificatesModule } from '../certificates/certificates.module';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
@@ -13,6 +14,7 @@ import { HackathonQueueService } from './hackathon-queue.service';
 import { HackathonResultsService } from './hackathon-results.service';
 import { HackathonSubmissionsService } from './hackathon-submissions.service';
 import { HackathonAnnouncementsService } from './hackathon-announcements.service';
+import { HackathonCertificatesService } from './hackathon-certificates.service';
 
 /**
  * Competitive dashboard (leaderboards) and hackathon mode on top of it:
@@ -23,7 +25,7 @@ import { HackathonAnnouncementsService } from './hackathon-announcements.service
  * and to resolve the optional viewer on the public HTTP endpoint).
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, CertificatesModule],
   controllers: [LeaderboardController, HackathonController],
   providers: [
     LeaderboardService,
@@ -37,6 +39,7 @@ import { HackathonAnnouncementsService } from './hackathon-announcements.service
     HackathonResultsService,
     HackathonSubmissionsService,
     HackathonAnnouncementsService,
+    HackathonCertificatesService,
   ],
   exports: [LeaderboardService],
 })

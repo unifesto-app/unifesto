@@ -544,3 +544,15 @@ export class SendAnnouncementDto {
   @IsString() @IsNotEmpty() @MaxLength(2000)
   body: string;
 }
+
+// ── Certificates (Phase 6) ───────────────────────────────────────────────────
+
+export class IssueHackathonCertificatesDto {
+  @ApiProperty({ description: 'An existing certificate template of this event' })
+  @IsUUID()
+  templateId: string;
+
+  @ApiProperty({ enum: ['PARTICIPANTS', 'WINNERS'], description: 'Every non-cancelled team, or the winners (one batch per award)' })
+  @IsEnum(['PARTICIPANTS', 'WINNERS'])
+  audience: 'PARTICIPANTS' | 'WINNERS';
+}

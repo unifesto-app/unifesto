@@ -961,3 +961,37 @@ export const sendAnnouncement = (
   eventId: string,
   input: { audience: AnnouncementAudience; roomId?: string; title: string; body: string },
 ) => call<Announcements>(`${base(eventId)}/announcements`, json('POST', input));
+
+// ── Certificates (Phase 6) ───────────────────────────────────────────────────
+
+export type CertificateBatchStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export interface CertificateBatch {
+  id: string;
+  status: CertificateBatchStatus;
+  total: number;
+  issued: number;
+  reactivated: number;
+  skipped: number;
+  failed: number;
+  error: string | null;
+}
+
+export interface HackathonCertificates {
+  /** Curator / Space Admin (Co-Curators see this read-only). */
+  canIssue: boolean;
+  /** The space's plan includes certificates. */
+  planAllowed: boolean;
+  /** New certificates can be issued until the post-event window closes. */
+  window: { closesAt: string; isOpen: boolean };
+  templates: { id: string; name: string; backgroundUrl: string; usesTeam: boolean; usesAward: boolean }[];
+  participants: { teams: number; people: number };
+  winners: { awardId: string; title: string; team: { teamCode: string | null; name: string } }[];
+  batches: (CertificateBatch & { label: string; kind: 'WINNERS' | 'PARTICIPANTS'; createdAt: string; finishedAt: string | null })[];
+}
+
+export const getHackathonCertificates = (eventId: string) => call<HackathonCertificates>(`${base(eventId)}/certificates`);
+export const issueHackathonCertificates = (eventId: string, templateId: string, audience: 'PARTICIPANTS' | 'WINNERS') =>
+  call<HackathonCertificates & { batchIds: string[] }>(`${base(eventId)}/certificates/issue`, json('POST', { templateId, audience }));
+export const getCertificateBatch = (eventId: string, batchId: string) =>
+  call<CertificateBatch>(`${base(eventId)}/certificates/batches/${batchId}`);

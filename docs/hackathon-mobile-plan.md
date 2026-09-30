@@ -1,6 +1,7 @@
 # Hackathon Section (Mobile) — Plan
 
-Status: **IN BUILD** — Phases 1–2 done (not deployed). All open questions answered 2026-09-30.
+Status: **BUILT** — all six phases done 2026-10-01 (not yet deployed; a full run-through on
+a device is still to do). All open questions answered 2026-09-30.
 This is the **single source of truth** for hackathon work. It builds on the existing
 `leaderboard` module (rounds, panels, judgments, awards, participant view), recorded in
 [`hackathon-dashboard-plan.md`](hackathon-dashboard-plan.md), which has been trimmed so it
@@ -595,13 +596,32 @@ endpoints stay backward compatible).
    the updates feed), sender excluded, refused when nobody would get it; history with
    recipient counts. All §10 triggers are now in place. Migration
    `20260930160000_hackathon_mentors_links_announcements`.
-6. **Certificates + retire Space web leaderboard**
+6. **Certificates + retire Space web leaderboard** — **DONE 2026-10-01 (not deployed)**
    Certificates wrapper + new template keys; mobile certificates screen. Then remove
    `websites/space/app/(dashboard)/dashboard/events/[eventId]/leaderboard/` (page + 7
    tabs), its nav item in `websites/space/components/shell/EventNav.tsx`,
    `websites/space/lib/api/leaderboard-api.ts` and `websites/space/lib/hack.ts`; remove
    the backend's legacy `/leaderboard/judges` routes (kept only for the old `hack` app;
    nothing calls them). `tsc` the Space app after removal.
+   *As built:* instead of new field keys (which would need the Space web template designer
+   changed), the three values are **placeholders in a template's custom text** —
+   `{teamName}`, `{teamCode}`, `{awardTitle}` — which the renderer already substitutes, so
+   curators add e.g. "Team {teamName} ({teamCode})" in the existing designer; they're blank
+   on events without a hackathon. New `hackathon-certificates.service.ts` +
+   `…/hackathon/certificates` (overview: templates with whether they print the team /
+   award, participants and winners, past batches), `…/certificates/issue`
+   `{ templateId, audience: PARTICIPANTS | WINNERS }` and `…/certificates/batches/:id`.
+   Issuing needs `event:declare-hackathon-winners` (Co-Curators see it read-only) plus the
+   space's certificates plan and the post-event issuance window, via a new
+   `CertificatesService.issueForRegistrations` (the module's own routes stay Space Admin
+   only). Participants = every non-cancelled team's registration (one certificate per
+   claimed seat); winners = one MANUAL batch per published award, stamped with
+   `awardId` on the batch and each certificate (part of the dedup key, so a team with two
+   awards gets two; reissue keeps the award). Mobile: Certificates screen (audience,
+   template, issue, live batch progress, history) from the hackathon dashboard. The Space
+   web leaderboard page, its nav item, `leaderboard-api.ts`, `hack.ts` and the backend's
+   legacy `/leaderboard/judges` routes are removed. Migration
+   `20260930170000_hackathon_certificates`.
 
 ## 14. Testing
 

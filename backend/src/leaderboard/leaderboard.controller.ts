@@ -17,7 +17,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthService } from '../auth/auth.service';
 import { LeaderboardService } from './leaderboard.service';
 import {
-  AssignJudgeDto,
   AssignPanelistDto,
   CreateAwardDto,
   CreateEntrantDto,
@@ -317,25 +316,5 @@ export class LeaderboardController {
   @ApiOperation({ summary: 'METRIC organiser entry: authoritative values for a round' })
   submitScores(@Request() req, @Param('entrantId') entrantId: string, @Body() dto: SubmitScoresDto) {
     return this.leaderboard.submitScores(req.user.id, entrantId, dto);
-  }
-
-  // ── Manager: judges (legacy, kept until the hack app is removed) ───────────
-
-  @Get('events/:eventId/leaderboard/judges')
-  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
-  listJudges(@Request() req, @Param('eventId') eventId: string) {
-    return this.leaderboard.listJudges(req.user.id, eventId);
-  }
-
-  @Post('events/:eventId/leaderboard/judges')
-  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
-  assignJudge(@Request() req, @Param('eventId') eventId: string, @Body() dto: AssignJudgeDto) {
-    return this.leaderboard.assignJudge(req.user.id, eventId, dto);
-  }
-
-  @Delete('events/:eventId/leaderboard/judges/:judgeUserId')
-  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
-  removeJudge(@Request() req, @Param('eventId') eventId: string, @Param('judgeUserId') judgeUserId: string) {
-    return this.leaderboard.removeJudge(req.user.id, eventId, judgeUserId);
   }
 }
