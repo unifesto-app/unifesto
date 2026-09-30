@@ -41,6 +41,11 @@ npm run update:production
 | Crash spike or bad bug during the rollout | `npm run update:revert-rollout` (everyone goes back to the previous update) |
 | Already at 100% and broken | `npm run update:rollback` → choose "previous update" (republish the last good group) or "embedded" (the code shipped in the store build) |
 
+The same three (set 50% / promote to 100%, revert rollout, roll back by republishing an
+earlier update) are in the admin app under **Apex › OTA updates**, which lists what's
+published per channel. It needs `EXPO_TOKEN` (an Expo robot token with access to the
+project) in the backend's `.env`. Rolling back to the embedded code stays CLI-only.
+
 Rollback is interactive; it asks which channel and which update. Test it once on
 the `preview` channel before relying on it (W3 done-when).
 

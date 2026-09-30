@@ -642,6 +642,37 @@ export const getAppVersionPolicy = () => call<AppVersionPolicy>('/admin/app-vers
 /** PATCH /admin/app-version — both platforms, full objects. */
 export const updateAppVersionPolicy = (body: AppVersionPolicy) => call<AppVersionPolicy>('/admin/app-version', patch(body));
 
+// ── OTA updates (EAS Update, via the backend's Expo token) ───────────────────
+
+export type OtaChannel = 'production' | 'preview';
+
+export interface OtaGroup {
+  group: string;
+  message: string | null;
+  createdAt: string;
+  runtimeVersion: string;
+  platforms: string[];
+  /** Per-platform update ids; matches Updates.updateId on a phone. */
+  updateIds: string[];
+  /** null when not a staged rollout. */
+  rolloutPercentage: number | null;
+  controlGroup: string | null;
+  isRollBackToEmbedded: boolean;
+  gitCommitHash: string | null;
+  publishedBy: string | null;
+}
+
+/** GET /admin/ota — latest update groups on a channel, newest first. */
+export const getOtaGroups = (channel: OtaChannel) =>
+  call<{ channel: OtaChannel; groups: OtaGroup[] }>(`/admin/ota${qs({ channel })}`);
+/** POST /admin/ota/:group/rollout — move a staged rollout (100 finishes it). */
+export const setOtaRollout = (group: string, percentage: number) =>
+  call<{ ok: true }>(`/admin/ota/${group}/rollout`, post({ percentage }));
+/** POST /admin/ota/:group/revert — delete the rollout, republish the update before it. */
+export const revertOtaRollout = (group: string) => call<{ ok: true }>(`/admin/ota/${group}/revert`, post({}));
+/** POST /admin/ota/:group/republish — make an earlier update the latest again (rollback). */
+export const republishOtaGroup = (group: string) => call<{ ok: true }>(`/admin/ota/${group}/republish`, post({}));
+
 // ── Unifesto Stats recipients ────────────────────────────────────────────────
 
 /** GET /admin/stats-recipients — numbers that get the daily/weekly stats WhatsApp. */

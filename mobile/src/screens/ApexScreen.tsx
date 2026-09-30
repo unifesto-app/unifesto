@@ -11,6 +11,7 @@ import {
   CalendarBlank,
   ChartBar,
   ChartLineUp,
+  CloudArrowDown,
   DeviceMobile,
   EnvelopeSimple,
   Flag,
@@ -244,6 +245,7 @@ export default function ApexScreen() {
           <SettingsRow icon={glyph(Tag)} label="Categories" onPress={() => router.push('/apex/categories')} />
           <SettingsRow icon={glyph(ImageSquare)} label="Default images" onPress={() => router.push('/apex/default-images')} />
           <SettingsRow icon={glyph(DeviceMobile)} label="App version" onPress={() => router.push('/apex/app-version')} />
+          <SettingsRow icon={glyph(CloudArrowDown)} label="OTA updates" onPress={() => router.push('/apex/ota')} />
         </SettingsGroup>
 
         <SettingsGroup title="Platform">
