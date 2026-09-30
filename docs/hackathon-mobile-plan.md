@@ -514,11 +514,38 @@ endpoints stay backward compatible).
    `psDeadlineRemindedFor` so it's sent once per deadline and re-armed when it moves).
    Statement notices deep-link to the statement screen. Migration
    `20260930130000_hackathon_statements`.
-3. **Judges, rounds config, queue, 5-minute lock** (largest)
+3. **Judges, rounds config, queue, 5-minute lock** (largest) — **DONE 2026-09-30 (not deployed)**
    Judge profiles/themes/availability, panels, round config columns, eval requests +
    state machine + scheduler + socket rooms, judgment semantic change + reopen.
    Mobile: curator judges/panels/rounds/queues, team evaluate screen, judge console,
    scoring screen changes.
+   *As built:* new services `hackathon-judges.service.ts` (judges + panels),
+   `hackathon-rounds.service.ts` (round settings, criteria, open/pause/close, advance /
+   eliminate) and `hackathon-queue.service.ts` (team, judge and curator queue routes, the
+   30-second tick). Hackathon rounds are managed only through `events/:eventId/hackathon/rounds…`;
+   the old `PATCH …/leaderboard/rounds/:id/status` refuses hackathon boards, because opening
+   checks undecided teams and closing cancels queues. Opening also needs at least one
+   criterion; criteria are round-scoped and edited from the round screen (a new maximum can't
+   go below a mark already given; a marked criterion can't be deleted). Pausing or closing a
+   round cancels every open request in it, including a running slot, and tells the teams.
+   Judges are added by phone number (10 digits = +91; an unverified account with that number
+   becomes theirs on sign-in) or email; their round scope is JUDGE panelist rows (one with no
+   round = every round), and a `hackathon_judge_profiles` row holds themes, location / call
+   link and availability. A judge on a break can't be picked or call next. Teams pick from
+   judges on the round who take their theme (or any theme; text themes match everyone), or
+   from the round's panels in PANEL rounds. **Any team member** can join or leave the queue
+   (one open request per team, enforced by the partial unique index
+   `hackathon_eval_requests_one_open_per_team`). Marks go in only during the team's slot
+   (IN_PROGRESS / AWAITING_MARKS); the first submit needs every criterion and completes the
+   slot (PANEL: once every member submitted). A team eliminated in any round is ELIMINATED,
+   leaves any queue, and can't request again; a cancelled team drops out of its queue on the
+   next `syncCancellations`. Sockets only carry a `hackathon:changed` ping to rooms the server
+   picks (`hq:manage:<event>`, `hq:judge:<event>:<user>`, `hq:team:<entrant>`); every screen
+   refetches over HTTP and polls every 10 s while the socket is down. "You're up"
+   (`QUEUE_CALLED`) shows as a modal while the app is open. Judge pushes use a separate
+   `HackathonJudgeUpdate` event and open `unifesto://judging/:eventId` (`judging` added to the
+   deep-link allowlist). Mentors and MENTORING rounds stay for Phase 5: mentors can't give
+   marks on a hackathon board yet. Migration `20260930140000_hackathon_judging`.
 4. **Scoring modes, advancement, winners, export**
    Submitted-only aggregation, CUMULATIVE mode, "top N" helper, award notes, winners
    broadcast, PS-changed flag, results CSV. Mobile: curator results + winners, team

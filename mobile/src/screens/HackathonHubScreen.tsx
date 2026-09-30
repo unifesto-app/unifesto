@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, BellRinging, DoorOpen, Lightbulb, LockSimple, MapPin, UsersThree, WarningCircle } from 'phosphor-react-native';
+import { Bell, BellRinging, DoorOpen, Gavel, Lightbulb, LockSimple, MapPin, UsersThree, WarningCircle } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
@@ -11,7 +11,7 @@ import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getMyHackathon, type HackathonHub } from '../lib/api/hackathon';
-import { stageCopy, venueMapsUrl } from '../lib/hackathon';
+import { evalStatusLabel, stageCopy, venueMapsUrl } from '../lib/hackathon';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -179,6 +179,31 @@ export default function HackathonHubScreen() {
               }
               value={team.statement?.themeLabel ?? (team.statementBlock === null ? 'Open' : undefined)}
               onPress={() => router.push(`/hackathon/${eventId}/statement`)}
+            />
+          </SettingsGroup>
+        ) : null}
+
+        {team.evaluation ? (
+          <SettingsGroup title="Judging">
+            <SettingsRow
+              icon={icon(Gavel)}
+              label={
+                team.evaluation.request
+                  ? team.evaluation.request.status === 'CALLED'
+                    ? 'You’re up!'
+                    : team.evaluation.request.status === 'WAITING'
+                      ? `Number ${team.evaluation.request.position ?? '…'} for ${team.evaluation.request.evaluatorName ?? 'your judge'}`
+                      : `${evalStatusLabel(team.evaluation.request.status)} · ${team.evaluation.request.evaluatorName ?? ''}`
+                  : 'Evaluation'
+              }
+              value={
+                team.evaluation.request
+                  ? team.evaluation.request.roundName
+                  : team.evaluation.openRounds
+                    ? 'Round open'
+                    : 'Not open yet'
+              }
+              onPress={() => router.push(`/hackathon/${eventId}/evaluate`)}
             />
           </SettingsGroup>
         ) : null}

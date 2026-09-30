@@ -90,11 +90,45 @@ export interface HackathonUpdateEvent {
     | 'STATEMENT_LOCKED'
     | 'STATEMENT_ASSIGNED'
     | 'STATEMENT_UNLOCKED'
-    | 'STATEMENT_DEADLINE';
+    | 'STATEMENT_DEADLINE'
+    // Rounds and the evaluation queue (Phase 3): a round the team is in
+    // opened / closed; it's next in line; it's been called ("You're up");
+    // it missed its call; the organisers took it out of a queue or moved it
+    // to another judge.
+    | 'ROUND_OPENED'
+    | 'ROUND_CLOSED'
+    | 'QUEUE_NEXT'
+    | 'QUEUE_CALLED'
+    | 'QUEUE_NO_SHOW'
+    | 'QUEUE_REMOVED'
+    | 'QUEUE_MOVED';
   teamCode?: string | null;
   teamName?: string | null;
   /** Room name for ROOM_ASSIGNED. */
   roomName?: string | null;
   /** Statement title for STATEMENT_LOCKED / STATEMENT_ASSIGNED. */
   statementTitle?: string | null;
+  /** Round name for ROUND_* and QUEUE_* kinds. */
+  roundName?: string | null;
+  /** The judge or panel, for QUEUE_* kinds. */
+  evaluatorName?: string | null;
+  /** Where to go when called (a room / table), for QUEUE_CALLED. */
+  location?: string | null;
+  /** Online judging: the call to join, for QUEUE_CALLED. */
+  meetingUrl?: string | null;
+}
+
+/**
+ * A hackathon update for a judge: they were added, a round they judge opened
+ * or closed, a team joined their queue while they were free, their slot ran
+ * out, or the organisers reopened marks they'd submitted. Push + in-app.
+ */
+export interface HackathonJudgeUpdateEvent {
+  userIds: string[];
+  eventId: string;
+  eventTitle: string;
+  kind: 'JUDGE_ADDED' | 'ROUND_OPENED' | 'ROUND_CLOSED' | 'QUEUE_JOINED' | 'TIME_UP' | 'MARKS_REOPENED';
+  teamCode?: string | null;
+  teamName?: string | null;
+  roundName?: string | null;
 }

@@ -49,6 +49,7 @@ describe('Hackathon services', () => {
         count: jest.fn().mockResolvedValue(0),
       },
       leaderboardEntrantRound: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      hackathonEvalRequest: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) },
       leaderboardRound: {
         findMany: jest.fn().mockResolvedValue([{ id: 'round-1' }]),
         count: jest.fn().mockResolvedValue(0),
@@ -145,6 +146,11 @@ describe('Hackathon services', () => {
       expect(calls).toContainEqual({ where: { id: { in: ['t2'] } }, data: { cancelledAt: null } });
       // Nothing deletes the team or its code.
       expect(prisma.leaderboardEntrant.update).not.toHaveBeenCalled();
+      // The cancelled team leaves any queue it was in.
+      expect(prisma.hackathonEvalRequest.updateMany).toHaveBeenCalledWith({
+        where: { entrantId: { in: ['t1'] }, status: { in: ['WAITING', 'CALLED', 'IN_PROGRESS', 'AWAITING_MARKS'] } },
+        data: expect.objectContaining({ status: 'CANCELLED', closedReason: 'TEAM_CANCELLED' }),
+      });
     });
   });
 

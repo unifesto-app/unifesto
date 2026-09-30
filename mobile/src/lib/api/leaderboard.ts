@@ -21,6 +21,8 @@ export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';
 export interface JudgingEvent {
   boardId: string;
   boardTitle: string | null;
+  /** Hackathon boards open the judge console instead of the list. */
+  isHackathon?: boolean;
   kind: PanelistKind;
   totalRounds: number;
   activeRounds: number;
@@ -68,6 +70,7 @@ export interface MyAssignments {
   boardId: string;
   eventId: string;
   title: string | null;
+  isHackathon?: boolean;
   kind: PanelistKind;
   metrics: JudgingMetric[];
   rounds: AssignmentRound[];
@@ -81,6 +84,26 @@ export interface MyJudgment {
   scores: { metricId: string; value: number; comment: string | null }[];
   overallReview: string | null;
   submittedAt: string | null;
+  /** Hackathon: marks can change until then (5 min after submit or a reopen). */
+  editableUntil?: string | null;
+  locked?: boolean;
+  /** Hackathon: the team and the judge's running slot with it. */
+  hackathon?: {
+    teamCode: string | null;
+    teamName: string;
+    members: string[];
+    room: { name: string; location: string | null } | null;
+    statement: { source: 'LIST' | 'OWN'; code: string | null; title: string; description: string; themeLabel: string | null } | null;
+    round: { name: string; slotMinutes: number; judgingMode: string } | null;
+    slot: {
+      requestId: string;
+      status: string;
+      calledAt: string | null;
+      startedAt: string | null;
+      slotEndsAt: string | null;
+      panelName: string | null;
+    } | null;
+  } | null;
 }
 
 export interface ScoreCell {
@@ -166,25 +189,37 @@ export async function getMyJudgment(
   return { ok: false, locked, message };
 }
 
-/** Save or submit this panelist's judgment. Surfaces the backend's reason on 4xx. */
+/**
+ * Save or submit this panelist's judgment. Surfaces the backend's reason on 4xx;
+ * `locked` = the hackathon 5-minute window has closed.
+ */
 export async function submitJudgment(
   entrantId: string,
   payload: SubmitJudgmentPayload,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; locked?: boolean; submittedAt?: string | null; editableUntil?: string | null }> {
   const response = await makeAuthenticatedRequest(
     `/leaderboard/entrants/${entrantId}/judgment`,
     { method: 'POST', body: JSON.stringify(payload) },
   );
   if (!response) return { ok: false, message: 'You need to be signed in.' };
-  if (response.ok) return { ok: true };
+  if (response.ok) {
+    try {
+      const body = await response.json();
+      return { ok: true, submittedAt: body?.submittedAt ?? null, editableUntil: body?.editableUntil ?? null };
+    } catch {
+      return { ok: true };
+    }
+  }
   let message = 'Could not save. Please try again.';
+  let locked = false;
   try {
     const body = await response.json();
     if (body?.message) message = String(body.message);
+    locked = body?.code === 'JUDGMENT_LOCKED';
   } catch {
     /* keep default */
   }
-  return { ok: false, message };
+  return { ok: false, message, locked };
 }
 
 // ── Participant view (Phase 4) ──────────────────────────────────────────────

@@ -17,8 +17,10 @@ import { NotificationEvents } from '../notifications/notifications.constants';
 import type { HackathonUpdateEvent } from '../notifications/notifications.events';
 import { LeaderboardService } from './leaderboard.service';
 import {
+  OPEN_EVAL_STATUSES,
   TEAM_CODE_RE,
   cleanName,
+  effectiveStatus,
   compareTeams,
   formatTeamCode,
   planTeamImport,
@@ -26,6 +28,9 @@ import {
   teamStage,
 } from './hackathon.shared';
 import type { ImportHackathonTeamsDto, UpdateHackathonTeamDto } from './dto/hackathon.dto';
+import { TEAM_STATEMENT_SELECT, setByLabel, statementView } from './hackathon.views';
+
+export { TEAM_STATEMENT_SELECT, setByLabel, statementView };
 
 /** The board columns every hackathon path needs. */
 const BOARD_SELECT = {
@@ -66,57 +71,6 @@ const publicMember = (m: TeamMember): TeamMember => ({
   isLead: m.isLead,
   joined: m.joined,
 });
-
-/**
- * Who locked the statement in, without account ids: a named team member, or
- * the organisers (anyone not on the team, i.e. the curator who assigned it).
- */
-export function setByLabel(setBy: string | null, members: { userId: string | null; name: string | null }[]) {
-  if (!setBy) return null;
-  const member = members.find((m) => m.userId === setBy);
-  return member ? { kind: 'TEAM' as const, name: member.name } : { kind: 'ORGANISER' as const, name: null };
-}
-
-/** The team columns behind its problem statement and theme. */
-export const TEAM_STATEMENT_SELECT = {
-  statementId: true,
-  statement: {
-    select: { id: true, code: true, title: true, description: true, theme: { select: { id: true, name: true } } },
-  },
-  customStatementTitle: true,
-  customStatementText: true,
-  themeId: true,
-  theme: { select: { id: true, name: true } },
-  themeText: true,
-  statementLockedAt: true,
-  statementSetBy: true,
-  statementChangedAfterEvalAt: true,
-} satisfies Prisma.LeaderboardEntrantSelect;
-
-type TeamStatementRow = Prisma.LeaderboardEntrantGetPayload<{ select: typeof TEAM_STATEMENT_SELECT }>;
-
-/**
- * A team's problem statement as every screen shows it: one from the list
- * (with its code) or the team's own, and its theme. Null when it has none yet.
- */
-export function statementView(t: TeamStatementRow) {
-  const own = !t.statementId && !!t.customStatementTitle;
-  if (!t.statement && !own) return null;
-  const theme = t.theme ?? t.statement?.theme ?? null;
-  return {
-    source: own ? ('OWN' as const) : ('LIST' as const),
-    statementId: t.statement?.id ?? null,
-    code: t.statement?.code ?? null,
-    title: (own ? t.customStatementTitle : t.statement?.title) ?? '',
-    description: (own ? t.customStatementText : t.statement?.description) ?? '',
-    theme: theme ? { id: theme.id, name: theme.name } : null,
-    themeText: t.themeText,
-    /** What to show for the theme, whichever way it was given. */
-    themeLabel: theme?.name ?? t.themeText ?? null,
-    lockedAt: t.statementLockedAt,
-    changedAfterEvalAt: t.statementChangedAfterEvalAt,
-  };
-}
 
 /**
  * Hackathon teams: importing GROUP registrations as teams with curator-patterned
@@ -183,6 +137,11 @@ export class HackathonTeamsService {
       await this.prisma.leaderboardEntrant.updateMany({
         where: { id: { in: toCancel.map((t) => t.id) } },
         data: { cancelledAt: new Date() },
+      });
+      // A cancelled team drops out of any queue it was in.
+      await this.prisma.hackathonEvalRequest.updateMany({
+        where: { entrantId: { in: toCancel.map((t) => t.id) }, status: { in: [...OPEN_EVAL_STATUSES] } },
+        data: { status: 'CANCELLED', closedAt: new Date(), closedReason: 'TEAM_CANCELLED' },
       });
     }
     if (toRestore.length) {
@@ -358,6 +317,7 @@ export class HackathonTeamsService {
       : [[], []];
     const regById = new Map(regs.map((r) => [r.id, r]));
     const joinedByReg = new Map(joined.map((j) => [j.registrationId, j._count._all]));
+    const eliminated = await this.eliminatedIds(board.id);
 
     return teams.sort(compareTeams).map((t) => {
       const reg = t.registrationId ? regById.get(t.registrationId) : undefined;
@@ -367,7 +327,7 @@ export class HackathonTeamsService {
         teamCode: t.teamCode,
         name: t.name,
         nameSource: t.teamNameSource,
-        stage: teamStage({ cancelled: !!t.cancelledAt, statementLockedAt: t.statementLockedAt }),
+        stage: teamStage({ cancelled: !!t.cancelledAt, statementLockedAt: t.statementLockedAt, eliminated: eliminated.has(t.id) }),
         statement: ps
           ? {
               code: ps.code,
@@ -400,7 +360,11 @@ export class HackathonTeamsService {
       teamCode: team.teamCode,
       name: team.name,
       nameSource: team.teamNameSource,
-      stage: teamStage({ cancelled: !!team.cancelledAt, statementLockedAt: team.statementLockedAt }),
+      stage: teamStage({
+        cancelled: !!team.cancelledAt,
+        statementLockedAt: team.statementLockedAt,
+        eliminated: (await this.eliminatedIds(board.id, [team.id])).has(team.id),
+      }),
       cancelledAt: team.cancelledAt,
       room: team.room,
       registrationId: team.registrationId,
@@ -621,6 +585,8 @@ export class HackathonTeamsService {
 
     const ownVenue = !!(board.venueName || board.venueAddress || board.venueLat != null);
     const cancelled = !!team?.cancelledAt;
+    const eliminated = team ? await this.eliminatedIds(board.id, [team.id]) : new Set<string>();
+    const evaluation = team && !cancelled && team.statementLockedAt ? await this.evaluationSummary(board.id, team.id) : null;
     const ps = team ? statementView(team) : null;
     return {
       eventId,
@@ -653,7 +619,7 @@ export class HackathonTeamsService {
             teamCode: team.teamCode,
             name: team.name,
             nameSource: team.teamNameSource,
-            stage: teamStage({ cancelled, statementLockedAt: team.statementLockedAt }),
+            stage: teamStage({ cancelled, statementLockedAt: team.statementLockedAt, eliminated: eliminated.has(team.id) }),
             isLead: leadReg?.userId === userId,
             // What the team chose (or was assigned). Only the team's own; no marks.
             statement: ps
@@ -678,6 +644,8 @@ export class HackathonTeamsService {
                 }),
             room: cancelled ? null : team.room ? { name: team.room.name, location: team.room.location, notes: team.room.notes } : null,
             members: members.map((m) => ({ ...publicMember(m), isMe: m.userId === userId })),
+            // Open rounds and where the team is in a queue (no marks).
+            evaluation,
           }
         : null,
       problemStatements: { mode: board.psMode, themeMode: board.themeMode, deadline: board.psDeadline },
@@ -706,6 +674,70 @@ export class HackathonTeamsService {
     return { name };
   }
 
+  /** Teams eliminated in any round: their run has ended. */
+  async eliminatedIds(leaderboardId: string, entrantIds?: string[]): Promise<Set<string>> {
+    const rows = await this.prisma.leaderboardEntrantRound.findMany({
+      where: {
+        status: 'ELIMINATED',
+        round: { leaderboardId },
+        ...(entrantIds ? { entrantId: { in: entrantIds } } : {}),
+      },
+      select: { entrantId: true },
+    });
+    return new Set(rows.map((r) => r.entrantId));
+  }
+
+  /** For the hub: how many rounds are open, and the team's place in a queue if it's in one. */
+  private async evaluationSummary(leaderboardId: string, entrantId: string) {
+    const [openRounds, request] = await Promise.all([
+      this.prisma.leaderboardRound.count({ where: { leaderboardId, status: 'ACTIVE' } }),
+      this.prisma.hackathonEvalRequest.findFirst({
+        where: { entrantId, status: { in: [...OPEN_EVAL_STATUSES] } },
+        select: {
+          id: true,
+          status: true,
+          slotEndsAt: true,
+          requestedAt: true,
+          judgeUserId: true,
+          panelId: true,
+          round: { select: { name: true } },
+          panel: { select: { name: true } },
+        },
+      }),
+    ]);
+    let position: number | null = null;
+    let evaluatorName: string | null = request?.panel?.name ?? null;
+    if (request?.judgeUserId) {
+      const judge = await this.prisma.user.findUnique({
+        where: { id: request.judgeUserId },
+        select: { fullName: true, username: true },
+      });
+      evaluatorName = judge?.fullName || judge?.username || null;
+    }
+    if (request?.status === 'WAITING') {
+      position =
+        1 +
+        (await this.prisma.hackathonEvalRequest.count({
+          where: {
+            ...(request.judgeUserId ? { judgeUserId: request.judgeUserId } : { panelId: request.panelId }),
+            status: 'WAITING',
+            OR: [{ requestedAt: { lt: request.requestedAt } }, { requestedAt: request.requestedAt, id: { lt: request.id } }],
+          },
+        }));
+    }
+    return {
+      openRounds,
+      request: request
+        ? {
+            status: effectiveStatus(request, new Date()),
+            position,
+            roundName: request.round.name,
+            evaluatorName,
+          }
+        : null,
+    };
+  }
+
   private unreadCount(userId: string, eventId: string) {
     return this.prisma.userNotification.count({ where: { userId, eventId, readAt: null } });
   }
@@ -720,7 +752,9 @@ export class HackathonTeamsService {
     eventId: string,
     teams: { id: string; name: string; teamCode: string | null }[],
     kind: HackathonUpdateEvent['kind'],
-    extra: { roomName?: string | null; statementTitle?: string | null; exceptUserId?: string } = {},
+    extra: Pick<HackathonUpdateEvent, 'roomName' | 'statementTitle' | 'roundName' | 'evaluatorName' | 'location' | 'meetingUrl'> & {
+      exceptUserId?: string;
+    } = {},
   ) {
     if (!teams.length) return;
     try {
@@ -739,6 +773,10 @@ export class HackathonTeamsService {
           teamName: t.name,
           roomName: extra.roomName ?? null,
           statementTitle: extra.statementTitle ?? null,
+          roundName: extra.roundName ?? null,
+          evaluatorName: extra.evaluatorName ?? null,
+          location: extra.location ?? null,
+          meetingUrl: extra.meetingUrl ?? null,
         } satisfies HackathonUpdateEvent);
       }
     } catch {

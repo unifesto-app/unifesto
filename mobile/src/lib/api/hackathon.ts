@@ -310,6 +310,11 @@ export interface HackathonHub {
     } | null;
     /** Null when the team can lock one in now. Always null for a cancelled team. */
     statementBlock: StatementBlock | null;
+    /** Open rounds and the team's place in a queue; null until it can be judged. */
+    evaluation: {
+      openRounds: number;
+      request: { status: EvalStatus; position: number | null; roundName: string; evaluatorName: string | null } | null;
+    } | null;
   } | null;
   problemStatements: { mode: PsMode | null; themeMode: ThemeMode; deadline: string | null };
   unreadCount: number;
@@ -373,3 +378,381 @@ export const getNotifications = (scope: { eventId?: string; type?: string; befor
   call<{ items: InAppNotification[]; nextBefore: string | null }>(`/users/me/notifications${feedQuery(scope)}`);
 export const markNotificationsRead = (scope: { eventId?: string; type?: string; ids?: string[] }): Promise<Result<{ updated: number }>> =>
   call<{ updated: number }>('/users/me/notifications/read', json('POST', scope));
+
+// ── Judging: rounds, criteria, judges, panels, queues (Phase 3) ──────────────
+
+export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';
+export type JudgingMode = 'SINGLE' | 'PANEL' | 'MULTI';
+export type Standing = 'PENDING' | 'ADVANCED' | 'ELIMINATED';
+export type EvalStatus =
+  | 'WAITING'
+  | 'CALLED'
+  | 'IN_PROGRESS'
+  | 'AWAITING_MARKS'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'WITHDRAWN'
+  | 'CANCELLED';
+
+export interface RoundSettings {
+  id: string;
+  name: string;
+  order: number;
+  status: RoundStatus;
+  judgingMode: JudgingMode;
+  /** MULTI: evaluations each team needs. */
+  requiredEvaluations: number;
+  slotMinutes: number;
+  callGraceMinutes: number;
+  eliminationEnabled: boolean;
+  countsTowardTotal: boolean;
+  /** After this, teams can't join a queue. */
+  endAt: string | null;
+}
+
+export interface RoundRow extends RoundSettings {
+  criteria: number;
+  teams: number;
+  evaluated: number;
+  inQueue: number;
+  undecided: number;
+}
+
+export interface Criterion {
+  id: string;
+  label: string;
+  maxValue: number;
+  weight: number;
+  /** Set on the board for every round (older boards). */
+  allRounds: boolean;
+  /** Judges already gave marks against it. */
+  marked: boolean;
+}
+
+export interface RoundDetail extends RoundSettings {
+  criteria: Criterion[];
+  teams: {
+    id: string;
+    teamCode: string | null;
+    name: string;
+    standing: Standing;
+    evaluations: number;
+    required: number;
+    queueStatus: EvalStatus | null;
+  }[];
+  judges: number;
+  panels: number;
+  /** Undecided teams in earlier rounds, which block opening this one. */
+  blockers: { roundId: string; roundName: string; teams: { id: string; teamCode: string | null; name: string }[] }[];
+  openRequests: number;
+}
+
+export type RoundInput = Partial<Omit<RoundSettings, 'id' | 'order' | 'status'>>;
+
+export const getRounds = (eventId: string) => call<RoundRow[]>(`${base(eventId)}/rounds`);
+export const getRound = (eventId: string, roundId: string) => call<RoundDetail>(`${base(eventId)}/rounds/${roundId}`);
+export const createRound = (eventId: string, input: RoundInput & { name: string }) =>
+  call<RoundDetail>(`${base(eventId)}/rounds`, json('POST', input));
+export const updateRound = (eventId: string, roundId: string, input: RoundInput) =>
+  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}`, json('PATCH', input));
+export const deleteRound = (eventId: string, roundId: string) =>
+  call<{ ok: true }>(`${base(eventId)}/rounds/${roundId}`, json('DELETE'));
+export const setRoundStatus = (eventId: string, roundId: string, status: RoundStatus) =>
+  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/status`, json('POST', { status }));
+export const setTeamDecision = (eventId: string, roundId: string, teamId: string, status: Standing) =>
+  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/teams/${teamId}/decision`, json('PUT', { status }));
+export const addCriterion = (eventId: string, roundId: string, input: { label: string; maxValue: number; weight?: number }) =>
+  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/criteria`, json('POST', input));
+export const updateCriterion = (
+  eventId: string,
+  roundId: string,
+  metricId: string,
+  input: { label: string; maxValue: number; weight?: number },
+) => call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/criteria/${metricId}`, json('PATCH', input));
+export const deleteCriterion = (eventId: string, roundId: string, metricId: string) =>
+  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/criteria/${metricId}`, json('DELETE'));
+
+export interface Judge {
+  /** Profile id (used in routes). */
+  id: string;
+  userId: string;
+  name: string | null;
+  /** The email or phone number they were added with. */
+  contact: string | null;
+  /** Has opened the app at least once. */
+  signedIn: boolean;
+  themes: { id: string; name: string }[];
+  location: string | null;
+  meetingUrl: string | null;
+  isAvailable: boolean;
+  /** Null = every round. */
+  rounds: { id: string; name: string }[] | null;
+  panels: { id: string; name: string }[];
+  queue: { waiting: number; busy: boolean };
+}
+
+export interface JudgeInput {
+  themeIds?: string[];
+  location?: string | null;
+  meetingUrl?: string | null;
+  /** Null or empty = every round. */
+  roundIds?: string[] | null;
+  isAvailable?: boolean;
+}
+
+export interface Panel {
+  id: string;
+  name: string;
+  round: { id: string; name: string } | null;
+  location: string | null;
+  meetingUrl: string | null;
+  isAvailable: boolean;
+  members: { userId: string; name: string | null }[];
+  queue: { waiting: number; busy: boolean };
+}
+
+export interface PanelInput {
+  name?: string;
+  roundId?: string | null;
+  location?: string | null;
+  meetingUrl?: string | null;
+  memberUserIds?: string[];
+  isAvailable?: boolean;
+}
+
+export const getJudges = (eventId: string) => call<Judge[]>(`${base(eventId)}/judges`);
+export const getJudge = (eventId: string, judgeId: string) => call<Judge>(`${base(eventId)}/judges/${judgeId}`);
+export const addJudge = (eventId: string, input: JudgeInput & { mobile?: string; email?: string; name?: string }) =>
+  call<Judge>(`${base(eventId)}/judges`, json('POST', input));
+export const updateJudge = (eventId: string, judgeId: string, input: JudgeInput) =>
+  call<Judge>(`${base(eventId)}/judges/${judgeId}`, json('PATCH', input));
+export const removeJudge = (eventId: string, judgeId: string) =>
+  call<{ ok: true }>(`${base(eventId)}/judges/${judgeId}`, json('DELETE'));
+
+export const getPanels = (eventId: string) => call<Panel[]>(`${base(eventId)}/panels`);
+export const createPanel = (eventId: string, input: PanelInput & { name: string }) =>
+  call<Panel>(`${base(eventId)}/panels`, json('POST', input));
+export const updatePanel = (eventId: string, panelId: string, input: PanelInput) =>
+  call<Panel>(`${base(eventId)}/panels/${panelId}`, json('PATCH', input));
+export const deletePanel = (eventId: string, panelId: string) =>
+  call<{ ok: true }>(`${base(eventId)}/panels/${panelId}`, json('DELETE'));
+
+/** A team in a queue list. */
+export interface QueueTeam {
+  id: string;
+  teamCode: string | null;
+  name: string;
+  themeLabel: string | null;
+}
+
+export interface WaitingEntry {
+  requestId: string;
+  position: number;
+  roundName: string | null;
+  team: QueueTeam | null;
+  requestedAt: string;
+}
+
+export interface MonitorQueue {
+  kind: 'JUDGE' | 'PANEL';
+  /** User id (judge) or panel id. */
+  id: string;
+  /** Judge profile id, to pause them; null for panels. */
+  judgeId: string | null;
+  name: string;
+  location: string | null;
+  isAvailable: boolean;
+  current: {
+    requestId: string;
+    status: EvalStatus;
+    roundName: string | null;
+    team: QueueTeam | null;
+    calledAt: string | null;
+    startedAt: string | null;
+    slotEndsAt: string | null;
+  } | null;
+  waiting: WaitingEntry[];
+}
+
+export interface QueueMonitor {
+  activeRounds: { id: string; name: string; judgingMode: JudgingMode }[];
+  queues: MonitorQueue[];
+  recent: {
+    requestId: string;
+    status: EvalStatus;
+    roundName: string | null;
+    roundActive: boolean;
+    team: QueueTeam | null;
+    closedAt: string | null;
+    closedReason: string | null;
+    judgments: { id: string; judgeName: string; submittedAt: string; editableUntil: string | null; locked: boolean }[];
+  }[];
+}
+
+export const getQueues = (eventId: string) => call<QueueMonitor>(`${base(eventId)}/queues`);
+export const removeFromQueue = (eventId: string, requestId: string) =>
+  call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/remove`, json('POST'));
+export const reassignRequest = (eventId: string, requestId: string, to: { judgeUserId?: string; panelId?: string }) =>
+  call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/reassign`, json('POST', to));
+export const forceComplete = (eventId: string, requestId: string) =>
+  call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/force-complete`, json('POST'));
+export const reopenJudgment = (eventId: string, judgmentId: string) =>
+  call<QueueMonitor>(`${base(eventId)}/judgments/${judgmentId}/reopen`, json('POST'));
+
+// ── Judge console ────────────────────────────────────────────────────────────
+
+export interface SlotStatement {
+  source: 'LIST' | 'OWN';
+  code: string | null;
+  title: string;
+  description: string;
+  themeLabel: string | null;
+}
+
+export interface JudgeSlot {
+  requestId: string;
+  status: EvalStatus;
+  round: { id: string; name: string; slotMinutes: number; callGraceMinutes: number } | null;
+  team: {
+    id: string;
+    teamCode: string | null;
+    name: string;
+    /** Names only, never contacts. */
+    members: string[];
+    room: { name: string; location: string | null } | null;
+    statement: SlotStatement | null;
+  } | null;
+  calledAt: string | null;
+  graceEndsAt: string | null;
+  startedAt: string | null;
+  slotEndsAt: string | null;
+  myMarks: { submittedAt: string | null; editableUntil: string | null } | null;
+  panelProgress: { total: number; submitted: number } | null;
+}
+
+export interface ConsoleQueue {
+  kind: 'JUDGE' | 'PANEL';
+  id: string;
+  /** Panel name; null for the judge's own queue. */
+  name: string | null;
+  location: string | null;
+  meetingUrl: string | null;
+  isAvailable: boolean;
+  current: JudgeSlot | null;
+  waiting: WaitingEntry[];
+  canCallNext: boolean;
+}
+
+export interface JudgeConsole {
+  eventId: string;
+  isAvailable: boolean;
+  location: string | null;
+  meetingUrl: string | null;
+  rounds: { id: string; name: string; status: RoundStatus; judgingMode: JudgingMode; slotMinutes: number; callGraceMinutes: number }[];
+  /** A slot open somewhere, which keeps Call next off. */
+  busy: { requestId: string; status: EvalStatus; teamCode: string | null } | null;
+  queues: ConsoleQueue[];
+  recent: {
+    requestId: string;
+    status: EvalStatus;
+    roundId: string;
+    roundName: string | null;
+    team: QueueTeam | null;
+    closedAt: string | null;
+    submittedAt: string | null;
+    editableUntil: string | null;
+    locked: boolean;
+  }[];
+}
+
+const judgeBase = (eventId: string) => `${base(eventId)}/judge`;
+export const getJudgeConsole = (eventId: string) => call<JudgeConsole>(`${judgeBase(eventId)}/console`);
+export const setJudgeAvailability = (eventId: string, isAvailable: boolean) =>
+  call<JudgeConsole>(`${judgeBase(eventId)}/availability`, json('PATCH', { isAvailable }));
+export const callNextTeam = (eventId: string, panelId?: string) =>
+  call<JudgeConsole>(`${judgeBase(eventId)}/call-next`, json('POST', panelId ? { panelId } : {}));
+export const startSlot = (eventId: string, requestId: string) =>
+  call<JudgeConsole>(`${judgeBase(eventId)}/requests/${requestId}/start`, json('POST'));
+export const markNoShow = (eventId: string, requestId: string) =>
+  call<JudgeConsole>(`${judgeBase(eventId)}/requests/${requestId}/no-show`, json('POST'));
+
+// ── Team: evaluation ─────────────────────────────────────────────────────────
+
+export interface TeamRound {
+  id: string;
+  name: string;
+  order: number;
+  status: RoundStatus;
+  judgingMode: JudgingMode;
+  slotMinutes: number;
+  endAt: string | null;
+  takesPart: boolean;
+  standing: Standing;
+  completed: number;
+  required: number;
+  canRequest: boolean;
+  acceptingRequests: boolean;
+}
+
+export interface TeamRequest {
+  id: string;
+  roundId: string;
+  roundName: string | null;
+  status: EvalStatus;
+  /** 1 = next. Null once called. */
+  position: number | null;
+  waitMinutes: number | null;
+  evaluator: {
+    kind: 'JUDGE' | 'PANEL';
+    name: string;
+    location: string | null;
+    /** Only once the team is called. */
+    meetingUrl: string | null;
+    online: boolean;
+  } | null;
+  requestedAt: string;
+  calledAt: string | null;
+  graceEndsAt: string | null;
+  startedAt: string | null;
+  slotEndsAt: string | null;
+}
+
+export interface MyEvaluation {
+  eventId: string;
+  stage: TeamStage;
+  team: { id: string; teamCode: string | null; name: string };
+  rounds: TeamRound[];
+  openRequest: TeamRequest | null;
+  history: {
+    id: string;
+    roundName: string | null;
+    status: EvalStatus;
+    closedReason: string | null;
+    evaluatorName: string | null;
+    closedAt: string | null;
+  }[];
+}
+
+export interface Evaluator {
+  kind: 'JUDGE' | 'PANEL';
+  /** User id (judge) or panel id. */
+  id: string;
+  name: string;
+  location: string | null;
+  online: boolean;
+  isAvailable: boolean;
+  waiting: number;
+  busy: boolean;
+  waitMinutes: number;
+  alreadyEvaluated: boolean;
+}
+
+export const getMyEvaluation = (eventId: string) => call<MyEvaluation>(`/hackathon/${eventId}/evaluate`);
+export const getEvaluators = (eventId: string, roundId: string) =>
+  call<{ round: { id: string; name: string; judgingMode: JudgingMode; slotMinutes: number }; evaluators: Evaluator[] }>(
+    `/hackathon/${eventId}/rounds/${roundId}/evaluators`,
+  );
+export const requestEvaluation = (eventId: string, roundId: string, pick: { judgeUserId?: string; panelId?: string }) =>
+  call<MyEvaluation>(`/hackathon/${eventId}/rounds/${roundId}/requests`, json('POST', pick));
+export const leaveQueue = (eventId: string, requestId: string) =>
+  call<MyEvaluation>(`/hackathon/${eventId}/requests/${requestId}`, json('DELETE'));

@@ -12,6 +12,7 @@ import type {
   StatusIncidentEvent,
   CompetitionUpdateEvent,
   HackathonUpdateEvent,
+  HackathonJudgeUpdateEvent,
 } from '../notifications.events';
 
 /**
@@ -80,14 +81,70 @@ export function hackathonPushCopy(e: HackathonUpdateEvent): { title: string; bod
         title: `${team}: 1 hour left to choose`,
         body: `Lock in your problem statement for ${e.eventTitle} before the deadline, or the organisers will assign one.`,
       };
+    case 'ROUND_OPENED':
+      return {
+        title: `${e.roundName ?? 'A round'} is open`,
+        body: `Pick a judge and join the queue for ${e.eventTitle} in the app.`,
+      };
+    case 'ROUND_CLOSED':
+      return {
+        title: `${e.roundName ?? 'The round'} has closed`,
+        body: `Evaluations for ${e.roundName ?? 'this round'} at ${e.eventTitle} are over. Results come later.`,
+      };
+    case 'QUEUE_NEXT':
+      return {
+        title: `${team}: you're next`,
+        body: `${e.evaluatorName ?? 'Your judge'} calls you next. Get ready${e.location ? ` near ${e.location}` : ''}.`,
+      };
+    case 'QUEUE_CALLED':
+      return {
+        title: `${team}: you're up!`,
+        body: e.meetingUrl
+          ? `${e.evaluatorName ?? 'Your judge'} is ready. Join the call from the app now.`
+          : `Go to ${e.evaluatorName ?? 'your judge'}${e.location ? ` at ${e.location}` : ''} now.`,
+      };
+    case 'QUEUE_NO_SHOW':
+      return {
+        title: `${team}: you missed your call`,
+        body: `${e.evaluatorName ?? 'The judge'} moved on. You can join a queue again from the app.`,
+      };
+    case 'QUEUE_REMOVED':
+      return {
+        title: `${team}: queue update`,
+        body: `The organisers took your team out of ${e.evaluatorName ? `${e.evaluatorName}'s` : 'the'} queue. You can join again from the app.`,
+      };
+    case 'QUEUE_MOVED':
+      return {
+        title: `${team}: new judge`,
+        body: `The organisers moved your team to ${e.evaluatorName ?? 'another judge'}'s queue. You keep your place.`,
+      };
   }
 }
 
-/** Problem-statement updates open the statement screen; the rest open the hub. */
+/** Statement updates open the statement screen, round and queue ones the evaluate screen, the rest the hub. */
 export function hackathonDeepLink(e: HackathonUpdateEvent): string {
-  return e.kind.startsWith('STATEMENT')
-    ? `unifesto://hackathon/${e.eventId}/statement`
-    : `unifesto://hackathon/${e.eventId}`;
+  if (e.kind.startsWith('STATEMENT')) return `unifesto://hackathon/${e.eventId}/statement`;
+  if (e.kind.startsWith('QUEUE') || e.kind === 'ROUND_OPENED') return `unifesto://hackathon/${e.eventId}/evaluate`;
+  return `unifesto://hackathon/${e.eventId}`;
+}
+
+/** Push + in-app copy for a judge. */
+export function hackathonJudgePushCopy(e: HackathonJudgeUpdateEvent): { title: string; body: string } {
+  const team = [e.teamCode, e.teamName].filter(Boolean).join(' · ') || 'A team';
+  switch (e.kind) {
+    case 'JUDGE_ADDED':
+      return { title: `You're judging ${e.eventTitle}`, body: 'Your judge console is in the app, under Judging.' };
+    case 'ROUND_OPENED':
+      return { title: `${e.roundName ?? 'A round'} is open`, body: `Teams at ${e.eventTitle} can join your queue now.` };
+    case 'ROUND_CLOSED':
+      return { title: `${e.roundName ?? 'The round'} has closed`, body: `Judging for ${e.roundName ?? 'this round'} at ${e.eventTitle} is over.` };
+    case 'QUEUE_JOINED':
+      return { title: `${team} joined your queue`, body: 'Call them from your judge console when you’re ready.' };
+    case 'TIME_UP':
+      return { title: `Time's up: ${team}`, body: 'Submit your marks to call the next team.' };
+    case 'MARKS_REOPENED':
+      return { title: `Your marks for ${team} are open again`, body: 'The organisers reopened them for 5 minutes.' };
+  }
 }
 
 /**
@@ -208,6 +265,19 @@ export class TransactionalNotificationHandler {
       ...hackathonPushCopy(e),
       deepLink: hackathonDeepLink(e),
       data: { type: 'hackathon', kind: e.kind, eventId: e.eventId },
+      inbox: { type: 'hackathon', eventId: e.eventId },
+    });
+  }
+
+  /** Judge updates: push + in-app, opening the judge console. */
+  @OnEvent(NotificationEvents.HackathonJudgeUpdate, { async: true })
+  async onHackathonJudgeUpdate(e: HackathonJudgeUpdateEvent): Promise<void> {
+    if (!e.userIds?.length) return;
+    await this.notifications.send(e.userIds, {
+      category: 'registrationUpdates',
+      ...hackathonJudgePushCopy(e),
+      deepLink: `unifesto://judging/${e.eventId}`,
+      data: { type: 'hackathon', audience: 'judge', kind: e.kind, eventId: e.eventId },
       inbox: { type: 'hackathon', eventId: e.eventId },
     });
   }

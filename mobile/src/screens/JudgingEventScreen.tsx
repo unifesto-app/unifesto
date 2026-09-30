@@ -21,6 +21,7 @@ import { spacing, borderRadius, font } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import JudgeConsoleScreen from './JudgeConsoleScreen';
 
 /** Colour + label for a round's lifecycle state. */
 function roundBadge(status: RoundStatus, colors: any): { label: string; color: string } {
@@ -174,6 +175,9 @@ export default function JudgingEventScreen() {
       tintColor={colors.primary}
     />
   );
+
+  // Hackathons run on a queue: the judge console replaces the team list.
+  if (data?.isHackathon && eventId) return <JudgeConsoleScreen eventId={eventId} />;
 
   if (!data || data.rounds.length === 0) {
     return (

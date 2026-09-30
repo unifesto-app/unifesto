@@ -44,7 +44,7 @@ describe('LeaderboardService (privacy rules)', () => {
     };
     const authz = { assertCan: jest.fn(), can: jest.fn().mockResolvedValue(false) };
     const planConfig = { getEffectiveLimits: jest.fn() };
-    const gateway = { broadcast: jest.fn() };
+    const gateway = { broadcast: jest.fn(), hackathonChanged: jest.fn() };
     const svc = new LeaderboardService(
       prisma as any,
       planConfig as any,
@@ -140,18 +140,151 @@ describe('LeaderboardService (privacy rules)', () => {
       );
     });
 
-    it('accepts a team with a locked statement', async () => {
-      const upsert = jest.fn().mockResolvedValue({});
+    it('accepts a team with a locked statement during its slot', async () => {
+      const upsert = jest.fn().mockResolvedValue({ submittedAt: null, reopenedAt: null, requestId: 'req-1' });
       const { svc } = build({
         leaderboardEntrant: hackTeam({ statementLockedAt: new Date() }),
         leaderboardPanelist: judge,
-        leaderboardJudgment: { upsert, findFirst: jest.fn() },
+        leaderboardJudgment: { upsert, findFirst: jest.fn(), findUnique: jest.fn().mockResolvedValue(null) },
+        hackathonEvalRequest: { findFirst: jest.fn().mockResolvedValue({ id: 'req-1', panelId: null }), count: jest.fn() },
         leaderboard: { findUnique: jest.fn().mockResolvedValue(null) }, // skip recompute
       });
-      await expect(svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, overallReview: 'x' })).resolves.toEqual({
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, overallReview: 'x' })).resolves.toMatchObject({
         ok: true,
+        slotCompleted: false,
       });
       expect(upsert).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('HACKATHON MARKS: during the slot, then 5 minutes to change them', () => {
+    const judge = { findMany: jest.fn().mockResolvedValue([{ kind: 'JUDGE', roundId: null, entrantId: null }]) };
+    const METRIC = { id: 'm1', label: 'Innovation', roundId: ROUND, minValue: 0, maxValue: 10 };
+    const hackTeam = () => ({
+      findUnique: jest.fn().mockResolvedValue({
+        id: ENTRANT,
+        leaderboardId: BOARD,
+        cancelledAt: null,
+        statementLockedAt: new Date(),
+        leaderboard: { id: BOARD, eventId: EVENT, mode: 'RUBRIC', metrics: [METRIC], isHackathon: true, enabled: true },
+      }),
+    });
+    const base = (over: Record<string, any>) => ({
+      leaderboardEntrant: hackTeam(),
+      leaderboardPanelist: judge,
+      leaderboardScore: { upsert: jest.fn(), findMany: jest.fn() },
+      leaderboard: { findUnique: jest.fn().mockResolvedValue(null) },
+      ...over,
+    });
+
+    it('refuses marks when the judge has no running slot with the team', async () => {
+      const upsert = jest.fn();
+      const { svc } = build(
+        base({
+          leaderboardJudgment: { upsert, findUnique: jest.fn().mockResolvedValue(null) },
+          hackathonEvalRequest: { findFirst: jest.fn().mockResolvedValue(null), count: jest.fn().mockResolvedValue(0) },
+        }),
+      );
+      await expect(
+        svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 5 }] }),
+      ).rejects.toThrow(/slot/);
+      expect(upsert).not.toHaveBeenCalled();
+    });
+
+    it('refuses to submit until every criterion has a mark', async () => {
+      const { svc } = build(base({ leaderboardJudgment: { upsert: jest.fn(), findUnique: jest.fn() } }));
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, submit: true })).rejects.toThrow(/Innovation/);
+    });
+
+    it('first submit stamps submittedAt and completes the slot', async () => {
+      const upsert = jest.fn().mockResolvedValue({ submittedAt: new Date(), reopenedAt: null, requestId: 'req-1' });
+      const complete = jest.fn().mockResolvedValue({ count: 1 });
+      const { svc } = build(
+        base({
+          leaderboardJudgment: { upsert, findUnique: jest.fn().mockResolvedValue(null) },
+          hackathonEvalRequest: {
+            findFirst: jest.fn().mockResolvedValue({ id: 'req-1', panelId: null }),
+            count: jest.fn(),
+            updateMany: complete,
+          },
+        }),
+      );
+      await expect(
+        svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 7 }], submit: true }),
+      ).resolves.toMatchObject({ ok: true, slotCompleted: true });
+      expect(upsert.mock.calls[0][0].create.submittedAt).toBeInstanceOf(Date);
+      expect(complete).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: 'req-1' }), data: expect.objectContaining({ status: 'COMPLETED' }) }),
+      );
+    });
+
+    it('an edit within 5 minutes keeps the first submit time', async () => {
+      const first = new Date(Date.now() - 2 * 60_000);
+      const upsert = jest.fn().mockResolvedValue({ submittedAt: first, reopenedAt: null, requestId: 'req-1' });
+      const { svc } = build(
+        base({
+          leaderboardJudgment: {
+            upsert,
+            findUnique: jest.fn().mockResolvedValue({ submittedAt: first, reopenedAt: null, requestId: 'req-1' }),
+          },
+        }),
+      );
+      await svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 8 }], submit: true });
+      expect(upsert.mock.calls[0][0].update.submittedAt).toBeUndefined();
+    });
+
+    it('locks marks 5 minutes after submit (JUDGMENT_LOCKED)', async () => {
+      const first = new Date(Date.now() - 6 * 60_000);
+      const upsert = jest.fn();
+      const { svc } = build(
+        base({
+          leaderboardJudgment: {
+            upsert,
+            findUnique: jest.fn().mockResolvedValue({ submittedAt: first, reopenedAt: null, requestId: 'req-1' }),
+          },
+        }),
+      );
+      await expect(
+        svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 9 }], submit: true }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(upsert).not.toHaveBeenCalled();
+    });
+
+    it('a curator reopen gives another 5 minutes', async () => {
+      const first = new Date(Date.now() - 20 * 60_000);
+      const reopened = new Date(Date.now() - 60_000);
+      const upsert = jest.fn().mockResolvedValue({ submittedAt: first, reopenedAt: reopened, requestId: 'req-1' });
+      const { svc } = build(
+        base({
+          leaderboardJudgment: {
+            upsert,
+            findUnique: jest.fn().mockResolvedValue({ submittedAt: first, reopenedAt: reopened, requestId: 'req-1' }),
+          },
+        }),
+      );
+      await expect(
+        svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 9 }], submit: true }),
+      ).resolves.toMatchObject({ ok: true });
+    });
+
+    it('a PANEL slot completes only when every member has submitted', async () => {
+      const upsert = jest.fn().mockResolvedValue({ submittedAt: new Date(), reopenedAt: null, requestId: 'req-1' });
+      const complete = jest.fn();
+      const { svc } = build(
+        base({
+          leaderboardJudgment: { upsert, findUnique: jest.fn().mockResolvedValue(null), count: jest.fn().mockResolvedValue(1) },
+          hackathonEvalRequest: {
+            findFirst: jest.fn().mockResolvedValue({ id: 'req-1', panelId: 'panel-1' }),
+            count: jest.fn(),
+            updateMany: complete,
+          },
+          hackathonPanelMember: { findMany: jest.fn().mockResolvedValue([{ userId: JUDGE }, { userId: 'judge-2' }]) },
+        }),
+      );
+      await expect(
+        svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 6 }], submit: true }),
+      ).resolves.toMatchObject({ slotCompleted: false });
+      expect(complete).not.toHaveBeenCalled();
     });
   });
 

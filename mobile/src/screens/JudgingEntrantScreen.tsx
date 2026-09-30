@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Lock, SealCheck } from 'phosphor-react-native';
+import { Lock, LockSimple, SealCheck } from 'phosphor-react-native';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 import {
@@ -18,6 +18,7 @@ import {
   getMyJudgment,
   submitJudgment,
   JudgingMetric,
+  MyJudgment,
   PanelistKind,
 } from '../lib/api/leaderboard';
 import { spacing, borderRadius, font } from '../theme';
@@ -25,6 +26,9 @@ import { getFontFamily } from '../theme/fontHelpers';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
+import SlotTimer from '../components/hackathon/SlotTimer';
+import { useNow } from '../hooks/useHackathonSocket';
+import { formatClock, secondsUntil } from '../lib/hackathon';
 
 /**
  * ── Submit policy (the decision point) ────────────────────────────────────
@@ -81,8 +85,18 @@ export default function JudgingEntrantScreen() {
   const [overallReview, setOverallReview] = useState('');
   const [submittedAt, setSubmittedAt] = useState<string | null>(null);
   const [saving, setSaving] = useState<false | 'draft' | 'submit'>(false);
+  // Hackathon: the team and slot, and the 5-minute window after submitting.
+  const [hack, setHack] = useState<MyJudgment['hackathon']>(null);
+  const [editableUntil, setEditableUntil] = useState<string | null>(null);
+  const [marksLocked, setMarksLocked] = useState(false);
+  const now = useNow(!!hack);
 
   const isMentor = kind === 'MENTOR';
+  const editLeft = secondsUntil(editableUntil, now);
+  // Locked by the server, or the countdown just ran out on screen.
+  const readOnly = marksLocked || (!!submittedAt && editLeft != null && editLeft <= 0);
+  // Hackathon marks go in during the team's slot (or while editable after submitting).
+  const noSlot = !!hack && !hack.slot && !submittedAt;
 
   const load = useCallback(async () => {
     if (!eventId || !entrantId || !roundId) {
@@ -116,6 +130,9 @@ export default function JudgingEntrantScreen() {
       setComments(existingComments);
       setOverallReview(judgment.data.overallReview ?? '');
       setSubmittedAt(judgment.data.submittedAt);
+      setHack(judgment.data.hackathon ?? null);
+      setEditableUntil(judgment.data.editableUntil ?? null);
+      setMarksLocked(!!judgment.data.locked);
     }
     setLoading(false);
   }, [eventId, entrantId, roundId]);
@@ -160,10 +177,20 @@ export default function JudgingEntrantScreen() {
     setSaving(false);
 
     if (!result.ok) {
-      AppAlert.alert('Could not save', result.message ?? 'Please try again.');
+      if (result.locked) setMarksLocked(true);
+      AppAlert.alert(result.locked ? 'Marks locked' : 'Could not save', result.message ?? 'Please try again.');
       return;
     }
-    if (submit) {
+    if (hack) {
+      setSubmittedAt(result.submittedAt ?? submittedAt);
+      setEditableUntil(result.editableUntil ?? editableUntil);
+    }
+    if (submit && hack) {
+      AppAlert.alert('Marks submitted', 'You can still change them for 5 minutes. Back to your queue?', [
+        { text: 'Stay here', style: 'cancel' },
+        { text: 'Back to queue', onPress: () => router.back() },
+      ]);
+    } else if (submit) {
       AppAlert.alert('Submitted', 'Your review has been recorded.', [
         { text: 'Done', onPress: () => router.back() },
       ]);
@@ -204,6 +231,21 @@ export default function JudgingEntrantScreen() {
       fontSize: 12,
       fontFamily: getFontFamily('semibold'),
       color: colors.success,
+      flexShrink: 1,
+    },
+    contextText: {
+      fontSize: 15,
+      fontFamily: getFontFamily('semibold'),
+      color: colors.text,
+      marginTop: spacing[3],
+      lineHeight: 21,
+    },
+    contextMuted: {
+      fontSize: 13,
+      fontFamily: getFontFamily('normal'),
+      color: colors.textMuted,
+      marginTop: spacing[2],
+      lineHeight: 19,
     },
     sectionLabel: {
       fontSize: 12,
@@ -330,14 +372,47 @@ export default function JudgingEntrantScreen() {
         <View style={styles.header}>
           <Text style={styles.entrantName}>{entrantName ?? 'Entrant'}</Text>
           {roundName && <Text style={styles.roundName}>{roundName}</Text>}
-          {submittedAt && (
+          {hack?.statement ? (
+            <Text style={styles.contextText}>
+              {[hack.statement.code, hack.statement.title].filter(Boolean).join(' · ')}
+              {hack.statement.themeLabel ? `  (${hack.statement.themeLabel})` : ''}
+            </Text>
+          ) : null}
+          {hack?.statement?.description ? (
+            <Text style={styles.contextMuted} numberOfLines={6}>
+              {hack.statement.description}
+            </Text>
+          ) : null}
+          {hack?.members.length ? <Text style={styles.contextMuted}>{hack.members.join(', ')}</Text> : null}
+          {hack?.slot?.status === 'IN_PROGRESS' ? (
+            <View style={{ marginTop: spacing[3] }}>
+              <SlotTimer until={hack.slot.slotEndsAt} label="left in the slot" doneLabel="Time’s up: submit your marks" />
+            </View>
+          ) : null}
+          {hack?.slot?.status === 'AWAITING_MARKS' ? (
+            <Text style={[styles.contextText, { color: colors.warning }]}>Time’s up. Submit your marks to call the next team.</Text>
+          ) : null}
+          {submittedAt && !readOnly && (
             <View style={styles.submittedPill}>
               <SealCheck size={14} color={colors.success} weight="fill" />
               <Text style={styles.submittedText}>
-                {isMentor ? 'Review submitted' : 'Submitted'} — you can still edit
+                {isMentor ? 'Review submitted' : 'Submitted'}
+                {hack && editLeft != null ? ` — you can change it for ${formatClock(Math.max(0, editLeft))}` : ' — you can still edit'}
               </Text>
             </View>
           )}
+          {readOnly ? (
+            <View style={styles.submittedPill}>
+              <LockSimple size={14} color={colors.textMuted} weight="fill" />
+              <Text style={[styles.submittedText, { color: colors.textMuted }]}>Locked. Ask the organisers if something needs fixing.</Text>
+            </View>
+          ) : null}
+          {noSlot ? (
+            <View style={styles.submittedPill}>
+              <Lock size={14} color={colors.warning} weight="fill" />
+              <Text style={[styles.submittedText, { color: colors.warning }]}>Call this team from your queue to give marks.</Text>
+            </View>
+          ) : null}
         </View>
 
         {!isMentor && metrics.length > 0 && (
@@ -355,6 +430,7 @@ export default function JudgingEntrantScreen() {
                     placeholderTextColor={colors.textMuted}
                     value={scores[m.id] ?? ''}
                     onChangeText={(t) => setScores((prev) => ({ ...prev, [m.id]: t }))}
+                    editable={!readOnly && !noSlot}
                     maxLength={7}
                   />
                 </View>
@@ -368,6 +444,7 @@ export default function JudgingEntrantScreen() {
                   placeholderTextColor={colors.textMuted}
                   value={comments[m.id] ?? ''}
                   onChangeText={(t) => setComments((prev) => ({ ...prev, [m.id]: t }))}
+                  editable={!readOnly && !noSlot}
                   multiline
                   maxLength={2000}
                 />
@@ -391,11 +468,13 @@ export default function JudgingEntrantScreen() {
             placeholderTextColor={colors.textMuted}
             value={overallReview}
             onChangeText={setOverallReview}
+            editable={!readOnly && !noSlot}
             multiline
             maxLength={5000}
           />
         </View>
 
+        {readOnly || noSlot ? null : (
         <View style={styles.actions}>
           <GradientButton
             onPress={() => handleSave(true)}
@@ -415,6 +494,7 @@ export default function JudgingEntrantScreen() {
             Save draft
           </GradientButton>
         </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
