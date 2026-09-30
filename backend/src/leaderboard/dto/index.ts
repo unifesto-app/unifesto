@@ -230,12 +230,6 @@ export class SubmitJudgmentDto {
   submit?: boolean;
 }
 
-export class AssignJudgeDto {
-  @ApiProperty({ description: 'User to grant the event-scoped JUDGE role' })
-  @IsUUID()
-  userId: string;
-}
-
 // ── Rounds ────────────────────────────────────────────────────────────────
 
 export class CreateRoundDto {

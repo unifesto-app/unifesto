@@ -24,7 +24,9 @@ import { HackathonQueueService } from './hackathon-queue.service';
 import { HackathonResultsService } from './hackathon-results.service';
 import { HackathonSubmissionsService } from './hackathon-submissions.service';
 import { HackathonAnnouncementsService } from './hackathon-announcements.service';
+import { HackathonCertificatesService } from './hackathon-certificates.service';
 import {
+  IssueHackathonCertificatesDto,
   SaveSubmissionDto,
   SendAnnouncementDto,
   CreateHackathonAwardDto,
@@ -77,6 +79,7 @@ export class HackathonController {
     private readonly results: HackathonResultsService,
     private readonly submissions: HackathonSubmissionsService,
     private readonly announcements: HackathonAnnouncementsService,
+    private readonly hackathonCertificates: HackathonCertificatesService,
   ) {}
 
   // ── Curator: mode + settings ──────────────────────────────────────────────
@@ -600,6 +603,29 @@ export class HackathonController {
   @ApiOperation({ summary: 'Send an announcement (push + in-app) to all, teams, judges or one room' })
   sendAnnouncement(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: SendAnnouncementDto) {
     return this.announcements.send(user.id, eventId, dto);
+  }
+
+  // ── Curator: certificates ─────────────────────────────────────────────────
+
+  @Get('events/:eventId/hackathon/certificates')
+  @ApiOperation({ summary: 'Templates, who would get certificates, and past batches' })
+  certificates(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {
+    return this.hackathonCertificates.getOverview(user.id, eventId);
+  }
+
+  @Post('events/:eventId/hackathon/certificates/issue')
+  @ApiOperation({ summary: 'Issue participant or winner certificates from a template (Curator / Space Admin)' })
+  issueCertificates(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string, @Body() dto: IssueHackathonCertificatesDto) {
+    return this.hackathonCertificates.issue(user.id, eventId, dto);
+  }
+
+  @Get('events/:eventId/hackathon/certificates/batches/:batchId')
+  certificateBatch(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('batchId', ParseUUIDPipe) batchId: string,
+  ) {
+    return this.hackathonCertificates.batch(user.id, eventId, batchId);
   }
 
   // ── Judge ─────────────────────────────────────────────────────────────────

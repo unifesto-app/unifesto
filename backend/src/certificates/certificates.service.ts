@@ -711,15 +711,19 @@ export class CertificatesService {
     // Recipients who already hold an ACTIVE certificate from THIS template are
     // skipped (idempotent re-runs). Active certs from OTHER templates don't
     // block issuance — one event can hand out several different certificates.
+    // A hackathon winners batch is per award, so the award is part of the key:
+    // one team with two awards gets two certificates from the same template.
+    const awardId = batch.awardId ?? null;
     const dedupKey = (registrationId: string | null, memberIndex: number | null) =>
       `${registrationId ?? '-'}:${memberIndex ?? '-'}`;
     const activeForTemplate = await this.prisma.certificate.findMany({
-      where: { templateId: template.id, status: CertificateStatus.ISSUED },
+      where: { templateId: template.id, status: CertificateStatus.ISSUED, awardId },
       select: { registrationId: true, memberIndex: true },
     });
     const alreadyIssued = new Set(
       activeForTemplate.map((c) => dedupKey(c.registrationId, c.memberIndex)),
     );
+    const hackathon = await this.hackathonValues(batch.eventId, awardId);
 
     // A recipient's REVOKED certificate (from ANY template on this event) is
     // reactivated IN PLACE rather than duplicated: we re-render it with the
@@ -727,7 +731,7 @@ export class CertificatesService {
     // verification code so its verify link never breaks. Most-recent-first, so a
     // recipient with several revoked rows reactivates their latest one.
     const revokedRows = await this.prisma.certificate.findMany({
-      where: { eventId: batch.eventId, status: CertificateStatus.REVOKED },
+      where: { eventId: batch.eventId, status: CertificateStatus.REVOKED, awardId },
       orderBy: [{ revokedAt: 'desc' }, { issuedAt: 'desc' }],
       select: {
         id: true,
@@ -790,6 +794,7 @@ export class CertificatesService {
             recipient,
             reuse.certificateNumber,
             reuse.verificationCode,
+            hackathon(recipient.registrationId),
           );
           await this.prisma.certificate.update({
             where: { id: reuse.id },
@@ -827,6 +832,8 @@ export class CertificatesService {
             recipient,
             dto,
             userId,
+            awardId,
+            hackathon(recipient.registrationId),
           );
           issued++;
         }
@@ -911,8 +918,14 @@ export class CertificatesService {
     recipient: { name: string },
     certificateNumber: string,
     verificationCode: string,
+    // Hackathon placeholders ({teamName}, {teamCode}, {awardTitle}); blank elsewhere.
+    extra: Record<string, string> = {},
   ): Promise<{ pdfUrl: string; imageUrl: string }> {
     const values: Record<string, string> = {
+      teamName: '',
+      teamCode: '',
+      awardTitle: '',
+      ...extra,
       recipientName: recipient.name,
       eventTitle: event.title,
       issueDate,
@@ -1063,6 +1076,8 @@ export class CertificatesService {
     recipient: Recipient,
     dto: IssueCertificatesDto,
     userId: string,
+    awardId: string | null = null,
+    extra: Record<string, string> = {},
   ): Promise<{ certificateNumber: string; verificationCode: string; pdfUrl: string }> {
     const verificationCode = randomBytes(16).toString('hex');
     const prefix = this.certificatePrefix(event.slug);
@@ -1079,6 +1094,7 @@ export class CertificatesService {
         recipient,
         certificateNumber,
         verificationCode,
+        extra,
       );
       try {
         await this.prisma.certificate.create({
@@ -1091,6 +1107,7 @@ export class CertificatesService {
             recipientName: recipient.name,
             recipientEmail: recipient.email,
             audience: dto.audience,
+            awardId,
             certificateNumber,
             verificationCode,
             pdfUrl,
@@ -1240,6 +1257,137 @@ export class CertificatesService {
   }
 
   // =====================================================
+  // HACKATHON  (docs/hackathon-mobile-plan.md §9.2)
+  // =====================================================
+
+  /**
+   * Placeholder values for a hackathon event's certificates: `{teamName}` and
+   * `{teamCode}` from the recipient's team (by registration), `{awardTitle}`
+   * from the award a winners batch is for. Everything is blank for an event
+   * without a hackathon, so templates render the same as before.
+   */
+  private async hackathonValues(
+    eventId: string,
+    awardId: string | null,
+  ): Promise<(registrationId: string | null) => Record<string, string>> {
+    const board = await this.prisma.leaderboard.findUnique({
+      where: { eventId },
+      select: { id: true, isHackathon: true },
+    });
+    if (!board?.isHackathon) return () => ({});
+    const [teams, award] = await Promise.all([
+      this.prisma.leaderboardEntrant.findMany({
+        where: { leaderboardId: board.id, registrationId: { not: null } },
+        select: { registrationId: true, name: true, teamCode: true },
+      }),
+      awardId
+        ? this.prisma.leaderboardAward.findFirst({ where: { id: awardId, leaderboardId: board.id }, select: { title: true } })
+        : Promise.resolve(null),
+    ]);
+    const byReg = new Map(teams.map((t) => [t.registrationId!, t]));
+    return (registrationId) => {
+      const team = registrationId ? byReg.get(registrationId) : undefined;
+      return { teamName: team?.name ?? '', teamCode: team?.teamCode ?? '', awardTitle: award?.title ?? '' };
+    };
+  }
+
+  /**
+   * Hackathon issuing (the caller has already checked the user may declare
+   * winners): queue a MANUAL batch for these registrations, optionally for one
+   * award. The space's certificates plan, the issuance window and the template
+   * are checked here, exactly as for any other issue.
+   */
+  async issueForRegistrations(
+    requestedBy: string,
+    eventId: string,
+    templateId: string,
+    registrationIds: string[],
+    awardId: string | null = null,
+  ): Promise<{ batchId: string }> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { spaceId: true, endDateTime: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!(await this.spaceHasCertificatesPlan(event.spaceId))) {
+      throw new ForbiddenException('Certificates are not included in this space’s plan. Upgrade to enable them.');
+    }
+    this.assertIssuanceWindowOpen(event.endDateTime);
+    const template = await this.prisma.certificateTemplate.findFirst({
+      where: { id: templateId, eventId },
+      select: { id: true },
+    });
+    if (!template) throw new NotFoundException('Template not found for this event');
+    if (!registrationIds.length) throw new BadRequestException('Nobody to issue certificates to.');
+
+    const batch = await this.prisma.certificateBatch.create({
+      data: {
+        eventId,
+        templateId,
+        audience: CertificateAudience.MANUAL,
+        registrationIds,
+        awardId,
+        requestedBy,
+      },
+      select: { id: true },
+    });
+    const queued = await this.issuanceQueue.add(batch.id);
+    if (!queued) {
+      void this.processBatch(batch.id).catch((error) =>
+        this.logger.error(`Inline issuance for batch ${batch.id} failed`, error),
+      );
+    }
+    return { batchId: batch.id };
+  }
+
+  /** What the hackathon certificates screen needs: plan, window and the event's templates. */
+  async hackathonSetup(eventId: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { spaceId: true, endDateTime: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    const [planAllowed, templates, batches] = await Promise.all([
+      this.spaceHasCertificatesPlan(event.spaceId),
+      this.prisma.certificateTemplate.findMany({
+        where: { eventId },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, name: true, backgroundUrl: true, fields: true },
+      }),
+      this.prisma.certificateBatch.findMany({
+        where: { eventId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
+    ]);
+    return {
+      planAllowed,
+      window: this.describeIssuanceWindow(event.endDateTime),
+      templates: templates.map((t) => {
+        const labels = (Array.isArray(t.fields) ? (t.fields as unknown as CertificateFieldDef[]) : [])
+          .filter((f) => f.key === 'custom')
+          .map((f) => f.label ?? '');
+        return {
+          id: t.id,
+          name: t.name,
+          backgroundUrl: t.backgroundUrl,
+          // Whether the design prints the team / award (via custom-text placeholders).
+          usesTeam: labels.some((l) => /\{team(Name|Code)\}/.test(l)),
+          usesAward: labels.some((l) => l.includes('{awardTitle}')),
+        };
+      }),
+      batches,
+    };
+  }
+
+  /** One batch's progress, for an event the caller manages. */
+  async batchForEvent(eventId: string, batchId: string) {
+    const batch = await this.prisma.certificateBatch.findFirst({ where: { id: batchId, eventId } });
+    if (!batch) throw new NotFoundException('Batch not found');
+    return batch;
+  }
+
+  // =====================================================
   // REISSUE  (revoked → live again, from the latest template)
   // =====================================================
 
@@ -1253,6 +1401,8 @@ export class CertificatesService {
     recipientEmail: true,
     certificateNumber: true,
     verificationCode: true,
+    registrationId: true,
+    awardId: true,
   } satisfies Prisma.CertificateSelect;
 
   /**
@@ -1330,6 +1480,9 @@ export class CertificatesService {
       recipientEmail: string | null;
       certificateNumber: string;
       verificationCode: string;
+      eventId: string;
+      registrationId: string | null;
+      awardId: string | null;
     },
     event: { title: string; space: { name: string } | null },
     userId: string,
@@ -1350,6 +1503,7 @@ export class CertificatesService {
       { name: cert.recipientName },
       cert.certificateNumber,
       cert.verificationCode,
+      (await this.hackathonValues(cert.eventId, cert.awardId))(cert.registrationId),
     );
 
     await this.prisma.certificate.update({
