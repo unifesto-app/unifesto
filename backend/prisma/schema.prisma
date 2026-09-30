@@ -3102,6 +3102,29 @@ enum HackathonTeamNameSource {
   @@map("hackathon_team_name_source")
 }
 
+enum HackathonJudgingMode {
+  SINGLE // one judge evaluates each team
+  PANEL // a panel sits together: one slot, every member marks
+  MULTI // the team collects `requiredEvaluations` separate evaluations
+
+  @@map("hackathon_judging_mode")
+}
+
+/// Where a team's evaluation request is. WAITING…AWAITING_MARKS are "open":
+/// a team has at most one open request (partial unique index in the migration).
+enum HackathonEvalStatus {
+  WAITING // in the judge's / panel's queue
+  CALLED // the judge called the team; it's on its way
+  IN_PROGRESS // the slot is running (slotEndsAt set)
+  AWAITING_MARKS // the slot ran out; the judge still has to submit
+  COMPLETED // marks submitted (or the curator force-completed it)
+  NO_SHOW // called, didn't turn up within the grace time
+  WITHDRAWN // the team left the queue
+  CANCELLED // removed by the curator, or the round closed / team cancelled
+
+  @@map("hackathon_eval_status")
+}
+
 model Leaderboard {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
@@ -3168,6 +3191,9 @@ model Leaderboard {
   rooms      HackathonRoom[]
   themes     HackathonTheme[]
   statements HackathonStatement[]
+  judgeProfiles HackathonJudgeProfile[]
+  panels        HackathonPanel[]
+  evalRequests  HackathonEvalRequest[]
 
   @@map("leaderboards")
 }
@@ -3270,6 +3296,7 @@ model LeaderboardEntrant {
   judgments      LeaderboardJudgment[]
   panelistScopes LeaderboardPanelist[]
   awards         LeaderboardAward[]
+  evalRequests   HackathonEvalRequest[]
 
   @@unique([leaderboardId, teamCode])
   @@index([leaderboardId])
@@ -3340,7 +3367,21 @@ model LeaderboardRound {
   status LeaderboardRoundStatus @default(PENDING)
 
   startAt DateTime? @map("start_at") @db.Timestamptz(6)
+  // Hackathon: after this, teams can't join a queue; teams already waiting
+  // are still evaluated and the curator closes the round.
   endAt   DateTime? @map("end_at") @db.Timestamptz(6)
+
+  // ── Hackathon round settings (ignored on other boards) ──
+  judgingMode         HackathonJudgingMode @default(SINGLE) @map("judging_mode")
+  // MULTI: how many separate evaluations (distinct judges) a team needs.
+  requiredEvaluations Int                  @default(1) @map("required_evaluations")
+  slotMinutes         Int                  @default(10) @map("slot_minutes")
+  // How long a called team has to turn up before the judge may mark a no-show.
+  callGraceMinutes    Int                  @default(3) @map("call_grace_minutes")
+  // Off: no advance/eliminate; every team goes on to the next round.
+  eliminationEnabled  Boolean              @default(true) @map("elimination_enabled")
+  // CUMULATIVE scoring adds up only rounds with this on.
+  countsTowardTotal   Boolean              @default(true) @map("counts_toward_total")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3350,6 +3391,8 @@ model LeaderboardRound {
   entrantRounds LeaderboardEntrantRound[]
   panelists     LeaderboardPanelist[]
   judgments     LeaderboardJudgment[]
+  panels        HackathonPanel[]
+  evalRequests  HackathonEvalRequest[]
 
   @@unique([leaderboardId, order])
   @@index([leaderboardId])
@@ -3434,13 +3477,23 @@ model LeaderboardJudgment {
 
   overallReview String? @map("overall_review") @db.Text
 
-  // Set on submit → "reviewed" is `submittedAt != null`.
+  // Set on submit → "reviewed" is `submittedAt != null`. On hackathon boards
+  // it is stamped on the FIRST submit only, and edits are allowed until
+  // max(submittedAt, reopenedAt) + 5 minutes.
   submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
+
+  // Hackathon: the queue slot these marks were given in.
+  requestId String?               @map("request_id") @db.Uuid
+  request   HackathonEvalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  // The curator reopened locked marks for another 5 minutes (soft ref to a user).
+  reopenedBy String?   @map("reopened_by") @db.Uuid
+  reopenedAt DateTime? @map("reopened_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([entrantId, roundId, panelistUserId])
+  @@index([requestId])
   @@index([roundId])
   @@index([panelistUserId])
   @@map("leaderboard_judgments")
@@ -3547,6 +3600,123 @@ model HackathonStatement {
   @@index([leaderboardId])
   @@index([themeId])
   @@map("hackathon_statements")
+}
+
+/// A judge on a hackathon: which themes they judge, where teams find them, and
+/// whether they're taking teams. Which rounds they judge stays on
+/// LeaderboardPanelist; this row is the hackathon-only extra. `userId` is a soft ref.
+model HackathonJudgeProfile {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+
+  // Themes this judge takes (soft refs → hackathon_themes). Empty = any theme.
+  themeIds   String[] @map("theme_ids") @db.Uuid
+  // A room / table ("Lab 2, table 4"), or a call link for online judging.
+  location   String?  @db.VarChar(200)
+  meetingUrl String?  @map("meeting_url") @db.Text
+  // Off = on a break: teams can't join their queue, and they can't call next.
+  isAvailable Boolean @default(true) @map("is_available")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([leaderboardId, userId])
+  @@index([userId])
+  @@map("hackathon_judge_profiles")
+}
+
+/// Judges who sit together for PANEL rounds: one queue, one slot, every member
+/// marks. `roundId` null = the panel serves every PANEL round.
+model HackathonPanel {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  roundId String?           @map("round_id") @db.Uuid
+  round   LeaderboardRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+
+  name        String  @db.VarChar(120)
+  location    String? @db.VarChar(200)
+  meetingUrl  String? @map("meeting_url") @db.Text
+  isAvailable Boolean @default(true) @map("is_available")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members      HackathonPanelMember[]
+  evalRequests HackathonEvalRequest[]
+
+  @@unique([leaderboardId, name])
+  @@index([leaderboardId])
+  @@index([roundId])
+  @@map("hackathon_panels")
+}
+
+model HackathonPanelMember {
+  panelId String         @map("panel_id") @db.Uuid
+  panel   HackathonPanel @relation(fields: [panelId], references: [id], onDelete: Cascade)
+
+  // Soft ref to a user who has a judge profile on the same board.
+  userId String @map("user_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([panelId, userId])
+  @@index([userId])
+  @@map("hackathon_panel_members")
+}
+
+/// A team asking to be evaluated in a round, by one judge (`judgeUserId`) or a
+/// panel (`panelId`). Server timestamps drive the slot: `slotEndsAt` =
+/// `startedAt` + the round's slotMinutes. One open request per team at a time
+/// (partial unique index `hackathon_eval_requests_one_open_per_team`).
+model HackathonEvalRequest {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  roundId String           @map("round_id") @db.Uuid
+  round   LeaderboardRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  // Exactly one of these: a judge (soft ref to a user) or a panel.
+  judgeUserId String?         @map("judge_user_id") @db.Uuid
+  panelId     String?         @map("panel_id") @db.Uuid
+  panel       HackathonPanel? @relation(fields: [panelId], references: [id], onDelete: SetNull)
+
+  status HackathonEvalStatus @default(WAITING)
+
+  requestedBy String    @map("requested_by") @db.Uuid
+  // Queue order. Moving a team to another judge keeps it, so it keeps its place in time.
+  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  calledAt    DateTime? @map("called_at") @db.Timestamptz(6)
+  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
+  slotEndsAt  DateTime? @map("slot_ends_at") @db.Timestamptz(6)
+  closedAt    DateTime? @map("closed_at") @db.Timestamptz(6)
+  // Why it closed when it wasn't a normal finish, e.g. REMOVED, ROUND_CLOSED.
+  closedReason String?  @map("closed_reason") @db.VarChar(40)
+  // Who closed it: the judge, a team member, or the curator (soft ref).
+  closedBy     String?  @map("closed_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  judgments LeaderboardJudgment[]
+
+  @@index([leaderboardId, status])
+  @@index([judgeUserId, status, requestedAt])
+  @@index([panelId, status, requestedAt])
+  @@index([entrantId, roundId])
+  @@index([roundId, status])
+  @@map("hackathon_eval_requests")
 }
 
 // =====================================================

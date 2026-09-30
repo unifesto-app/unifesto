@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Buildings, DoorOpen, DownloadSimple, GearSix, Lightbulb, MapPin, Power, Tag, UsersThree } from 'phosphor-react-native';
+import { Broadcast, Buildings, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Power, Tag, UsersThree } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -29,6 +29,7 @@ const WHAT_IT_DOES = [
   'Group registrations become teams, each with a Team ID in your format.',
   'Every team member gets the hackathon screens: Team ID, venue, room and updates.',
   'Teams lock in a problem statement (written, picked from your list, or assigned by you) before judging.',
+  'Teams pick a judge and wait in a live queue; judges call them, run a timed slot and give marks.',
   'Updates reach teams as a push and in the app.',
 ];
 
@@ -234,6 +235,24 @@ export default function HackathonManageScreen() {
               {data.counts.psLocked} of {data.counts.active} teams have locked in a problem statement. Only those teams can be judged.
             </Text>
           ) : null}
+
+          <SettingsGroup title="Judging">
+            <SettingsRow
+              icon={icon(ListNumbers)}
+              label="Rounds and criteria"
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/rounds`)}
+            />
+            <SettingsRow
+              icon={icon(Gavel)}
+              label="Judges and panels"
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/judges`)}
+            />
+            <SettingsRow
+              icon={icon(Broadcast)}
+              label="Live queues"
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/queues`)}
+            />
+          </SettingsGroup>
 
           <SettingsGroup title="Venue and rooms">
             <SettingsRow

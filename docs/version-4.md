@@ -368,11 +368,13 @@ Already built: backend (rounds, panels, judgments, awards), space curator consol
 | Project submissions (repo, demo, deck) for entrants | moved → 4.3.0 |
 | Hackathon mobile section, Phase 1 of [`hackathon-mobile-plan.md`](hackathon-mobile-plan.md): hackathon mode on/off, group registrations imported as teams with curator Team IDs, venue + rooms (auto-allocate), team hub for every member, push + in-app notification feed. Needs migration `20260930120000_hackathon_foundation`; no new native modules (OTA-safe) | done (not deployed) |
 | Hackathon mobile section, Phase 2 of [`hackathon-mobile-plan.md`](hackathon-mobile-plan.md): themes and problem statements (codes, max teams), three modes (teams write / teams pick / curator assigns), optional deadline with a 1-hour reminder, lead locks it in once, curator assigns/changes/reopens, "changed after evaluation" flag, judging only for teams with a locked statement. Needs migration `20260930130000_hackathon_statements`; no new native modules (OTA-safe) | done (not deployed) |
+| Hackathon mobile section, Phase 3 of [`hackathon-mobile-plan.md`](hackathon-mobile-plan.md): judges added by phone or email (themes, room or call link, rounds, breaks), panels, round settings (one judge / panel / several judges, slot and grace times, elimination, end time), criteria, open/pause/close with the undecided-teams gate, live evaluation queue (teams pick a judge, judge calls next, starts the slot, no-show after grace), 5-minute edit lock with curator reopen, live queue monitor (remove, move, finish a slot, pause a judge), team evaluate screen, judge console, realtime over the existing socket. Needs migration `20260930140000_hackathon_judging`; no new native modules (`socket.io-client` was already a dependency; OTA-safe) | done (not deployed) |
 
 #### Log
 
 - **30 Sep:** Hackathon Phase 1 built (backend + mobile). Additive migration verified on Postgres with zero drift; 50-step end-to-end run and 22 HTTP checks against a local database; iOS bundle exports. Not deployed yet.
 - **30 Sep:** Hackathon Phase 2 built (backend + mobile). Additive migration verified on Postgres with zero drift; 50-step run of the real services against a local database (including two teams racing for a statement's last place); iOS bundle exports. Not deployed yet.
+- **30 Sep:** Hackathon Phase 3 built (backend + mobile). Additive migration verified on Postgres with zero drift; 71-step run of the real services against a local database (queue, call next, no-show grace, 5-minute lock + reopen, move, time's up tick, undecided-teams gate, MULTI distinct judges, PANEL completion, cancellation); 124 leaderboard/notification unit tests pass; backend and mobile `tsc` clean; iOS bundle exports. Not deployed yet.
 
 ---
 

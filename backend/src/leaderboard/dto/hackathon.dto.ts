@@ -1,8 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { HackathonPsMode, HackathonThemeMode } from '@prisma/client';
+import {
+  HackathonJudgingMode,
+  HackathonPsMode,
+  HackathonThemeMode,
+  LeaderboardEntrantRoundStatus,
+  LeaderboardRoundStatus,
+} from '@prisma/client';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsInt,
@@ -17,6 +24,9 @@ import {
   Min,
 } from 'class-validator';
 import {
+  CALL_GRACE_MINUTES_MAX,
+  REQUIRED_EVALUATIONS_MAX,
+  SLOT_MINUTES_MAX,
   STATEMENT_CODE_MAX,
   STATEMENT_TEXT_MAX,
   STATEMENT_TITLE_MAX,
@@ -254,4 +264,165 @@ export class SetTeamStatementDto {
   @ApiPropertyOptional({ maxLength: THEME_NAME_MAX })
   @IsOptional() @IsString() @MaxLength(THEME_NAME_MAX)
   themeText?: string | null;
+}
+
+// ── Rounds & criteria ────────────────────────────────────────────────────────
+
+/** A hackathon round's settings. On create only `name` is required. */
+export class UpdateHackathonRoundDto {
+  @ApiPropertyOptional({ maxLength: 160 })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160)
+  name?: string;
+
+  @ApiPropertyOptional({ enum: HackathonJudgingMode })
+  @IsOptional() @IsEnum(HackathonJudgingMode)
+  judgingMode?: HackathonJudgingMode;
+
+  @ApiPropertyOptional({ description: 'MULTI: evaluations each team needs (2+)', minimum: 1 })
+  @IsOptional() @IsInt() @Min(1) @Max(REQUIRED_EVALUATIONS_MAX)
+  requiredEvaluations?: number;
+
+  @ApiPropertyOptional({ minimum: 1, maximum: SLOT_MINUTES_MAX })
+  @IsOptional() @IsInt() @Min(1) @Max(SLOT_MINUTES_MAX)
+  slotMinutes?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: CALL_GRACE_MINUTES_MAX })
+  @IsOptional() @IsInt() @Min(0) @Max(CALL_GRACE_MINUTES_MAX)
+  callGraceMinutes?: number;
+
+  @ApiPropertyOptional({ description: 'Off = no advance/eliminate; every team goes on' })
+  @IsOptional() @IsBoolean()
+  eliminationEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Counted in a cumulative total' })
+  @IsOptional() @IsBoolean()
+  countsTowardTotal?: boolean;
+
+  @ApiPropertyOptional({ description: 'After this, teams can no longer join a queue. null = no end time' })
+  @IsOptional() @IsDateString()
+  endAt?: string | null;
+}
+
+/** Same fields; the service requires `name`. */
+export class CreateHackathonRoundDto extends UpdateHackathonRoundDto {}
+
+export class SetHackathonRoundStatusDto {
+  @ApiProperty({ enum: LeaderboardRoundStatus })
+  @IsEnum(LeaderboardRoundStatus)
+  status: LeaderboardRoundStatus;
+}
+
+export class UpsertCriterionDto {
+  @ApiProperty({ maxLength: 160, example: 'Innovation' })
+  @IsString() @IsNotEmpty() @MaxLength(160)
+  label: string;
+
+  @ApiProperty({ description: 'Highest mark a judge can give', minimum: 1 })
+  @IsNumber() @Min(1) @Max(1000)
+  maxValue: number;
+
+  @ApiPropertyOptional({ description: 'Relative weight (default 1)', minimum: 0.1 })
+  @IsOptional() @IsNumber() @Min(0.1) @Max(100)
+  weight?: number;
+}
+
+export class SetTeamRoundDecisionDto {
+  @ApiProperty({ enum: LeaderboardEntrantRoundStatus })
+  @IsEnum(LeaderboardEntrantRoundStatus)
+  status: LeaderboardEntrantRoundStatus;
+}
+
+// ── Judges & panels ──────────────────────────────────────────────────────────
+
+class JudgeFieldsDto {
+  @ApiPropertyOptional({ description: 'Themes they judge; empty = any theme' })
+  @IsOptional() @IsArray() @ArrayMaxSize(100) @IsUUID('all', { each: true })
+  themeIds?: string[];
+
+  @ApiPropertyOptional({ maxLength: 200, example: 'Lab 2, table 4' })
+  @IsOptional() @IsString() @MaxLength(200)
+  location?: string | null;
+
+  @ApiPropertyOptional({ description: 'Call link for online judging' })
+  @IsOptional() @IsUrl({ protocols: ['http', 'https'], require_protocol: true }) @MaxLength(2000)
+  meetingUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Rounds they judge; null or empty = every round' })
+  @IsOptional() @IsArray() @ArrayMaxSize(50) @IsUUID('all', { each: true })
+  roundIds?: string[] | null;
+}
+
+/** Add a judge by phone number or email: an existing account, or one that links when they sign in. */
+export class AddHackathonJudgeDto extends JudgeFieldsDto {
+  @ApiPropertyOptional({ example: '+919876543210' })
+  @IsOptional() @IsString() @MaxLength(20)
+  mobile?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MaxLength(320)
+  email?: string;
+
+  @ApiPropertyOptional({ maxLength: 200, description: 'Name for a new account' })
+  @IsOptional() @IsString() @MaxLength(200)
+  name?: string;
+}
+
+export class UpdateHackathonJudgeDto extends JudgeFieldsDto {
+  @ApiPropertyOptional({ description: 'Off = on a break; teams can’t join their queue' })
+  @IsOptional() @IsBoolean()
+  isAvailable?: boolean;
+}
+
+export class UpdateHackathonPanelDto {
+  @ApiPropertyOptional({ maxLength: 120 })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(120)
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'The PANEL round it serves; null = every PANEL round' })
+  @IsOptional() @IsUUID()
+  roundId?: string | null;
+
+  @ApiPropertyOptional({ maxLength: 200 })
+  @IsOptional() @IsString() @MaxLength(200)
+  location?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsUrl({ protocols: ['http', 'https'], require_protocol: true }) @MaxLength(2000)
+  meetingUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Judges on the panel (user ids of this hackathon’s judges)' })
+  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsUUID('all', { each: true })
+  memberUserIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsBoolean()
+  isAvailable?: boolean;
+}
+
+/** Same fields; the service requires `name`. */
+export class CreateHackathonPanelDto extends UpdateHackathonPanelDto {}
+
+// ── Queue ────────────────────────────────────────────────────────────────────
+
+/** A judge (SINGLE / MULTI rounds) or a panel (PANEL rounds). */
+export class PickEvaluatorDto {
+  @ApiPropertyOptional()
+  @IsOptional() @IsUUID()
+  judgeUserId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsUUID()
+  panelId?: string;
+}
+
+export class JudgeAvailabilityDto {
+  @ApiProperty()
+  @IsBoolean()
+  isAvailable: boolean;
+}
+
+export class CallNextDto {
+  @ApiPropertyOptional({ description: 'Call from this panel’s queue instead of your own' })
+  @IsOptional() @IsUUID()
+  panelId?: string;
 }

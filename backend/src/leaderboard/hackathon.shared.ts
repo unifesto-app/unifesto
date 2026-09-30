@@ -257,3 +257,164 @@ export function deadlineReminderDue(opts: {
   if (msLeft <= 0 || msLeft > 60 * 60 * 1000) return false;
   return !opts.remindedFor || opts.remindedFor.getTime() !== opts.psDeadline.getTime();
 }
+
+// ── Judges, rounds and the evaluation queue (plan §2 #11–#19, §7, §8) ───────
+
+export type EvalStatus =
+  | 'WAITING'
+  | 'CALLED'
+  | 'IN_PROGRESS'
+  | 'AWAITING_MARKS'
+  | 'COMPLETED'
+  | 'NO_SHOW'
+  | 'WITHDRAWN'
+  | 'CANCELLED';
+
+/** A request in one of these is "open": the team has at most one. */
+export const OPEN_EVAL_STATUSES = ['WAITING', 'CALLED', 'IN_PROGRESS', 'AWAITING_MARKS'] as const;
+/** The judge (or panel) is busy with this team: Call next waits for it. */
+export const SLOT_EVAL_STATUSES = ['CALLED', 'IN_PROGRESS', 'AWAITING_MARKS'] as const;
+
+export const isOpenStatus = (s: EvalStatus) => (OPEN_EVAL_STATUSES as readonly string[]).includes(s);
+export const isSlotStatus = (s: EvalStatus) => (SLOT_EVAL_STATUSES as readonly string[]).includes(s);
+
+/** How long a judge may still change submitted marks (plan §2 #17). */
+export const EDIT_WINDOW_MS = 5 * 60 * 1000;
+export const SLOT_MINUTES_MAX = 240;
+export const CALL_GRACE_MINUTES_MAX = 60;
+export const REQUIRED_EVALUATIONS_MAX = 10;
+
+/**
+ * The status to show and act on. A running slot whose time is up is
+ * AWAITING_MARKS even before the 30-second tick writes it down.
+ */
+export function effectiveStatus(r: { status: EvalStatus; slotEndsAt: Date | null }, now: Date): EvalStatus {
+  if (r.status === 'IN_PROGRESS' && r.slotEndsAt && r.slotEndsAt.getTime() <= now.getTime()) return 'AWAITING_MARKS';
+  return r.status;
+}
+
+/** When a called team's grace runs out and the judge may mark it a no-show. */
+export function graceEndsAt(calledAt: Date | null, graceMinutes: number): Date | null {
+  return calledAt ? new Date(calledAt.getTime() + graceMinutes * 60_000) : null;
+}
+
+/**
+ * Until when a judge can still change their submitted marks: five minutes from
+ * the first submit, or from the curator reopening them, whichever is later.
+ * Null while nothing has been submitted (drafts are always editable).
+ */
+export function editableUntil(j: { submittedAt: Date | null; reopenedAt: Date | null }): Date | null {
+  if (!j.submittedAt) return null;
+  const from = j.reopenedAt && j.reopenedAt > j.submittedAt ? j.reopenedAt : j.submittedAt;
+  return new Date(from.getTime() + EDIT_WINDOW_MS);
+}
+
+export function judgmentLocked(j: { submittedAt: Date | null; reopenedAt: Date | null }, now: Date): boolean {
+  const until = editableUntil(j);
+  return !!until && now.getTime() >= until.getTime();
+}
+
+/** Completed evaluations a team needs in a round: one, or N for MULTI. */
+export function evaluationsRequired(round: { judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number }): number {
+  return round.judgingMode === 'MULTI' ? Math.max(1, round.requiredEvaluations) : 1;
+}
+
+/** Settings that can't stand together; null when fine. */
+export function roundConfigError(r: { judgingMode: 'SINGLE' | 'PANEL' | 'MULTI'; requiredEvaluations: number }): string | null {
+  if (r.judgingMode === 'MULTI' && (r.requiredEvaluations < 2 || r.requiredEvaluations > REQUIRED_EVALUATIONS_MAX)) {
+    return `With several judges, each team needs between 2 and ${REQUIRED_EVALUATIONS_MAX} evaluations.`;
+  }
+  return null;
+}
+
+export type RoundStanding = 'PENDING' | 'ADVANCED' | 'ELIMINATED';
+
+export interface RoundRef {
+  id: string;
+  order: number;
+  eliminationEnabled: boolean;
+}
+
+/**
+ * Whether a team takes part in `roundId` (plan §9): it wasn't eliminated
+ * earlier, and it advanced from the latest earlier round that eliminates
+ * (with none, every team takes part). The team's own decision in this round
+ * doesn't matter here.
+ */
+export function takesPart(
+  rounds: RoundRef[],
+  standing: (roundId: string) => RoundStanding,
+  roundId: string,
+): { in: true } | { in: false; reason: 'ELIMINATED' | 'NOT_ADVANCED' } {
+  const target = rounds.find((r) => r.id === roundId);
+  if (!target) return { in: false, reason: 'NOT_ADVANCED' };
+  const earlier = rounds.filter((r) => r.order < target.order).sort((a, b) => a.order - b.order);
+  if (earlier.some((r) => standing(r.id) === 'ELIMINATED')) return { in: false, reason: 'ELIMINATED' };
+  const gate = [...earlier].reverse().find((r) => r.eliminationEnabled);
+  if (gate && standing(gate.id) !== 'ADVANCED') return { in: false, reason: 'NOT_ADVANCED' };
+  return { in: true };
+}
+
+/** Eliminated in any round: the team's run has ended. */
+export function isEliminated(rounds: RoundRef[], standing: (roundId: string) => RoundStanding): boolean {
+  return rounds.some((r) => standing(r.id) === 'ELIMINATED');
+}
+
+/**
+ * Teams still waiting for an advance/eliminate decision in a round before
+ * `roundId` that eliminates (plan §2 #33). Opening `roundId` is refused while
+ * this is non-empty. Only teams that took part in that round count.
+ */
+export function undecidedBefore(
+  rounds: RoundRef[],
+  teams: { id: string; standing: (roundId: string) => RoundStanding }[],
+  roundId: string,
+): { roundId: string; teamIds: string[] }[] {
+  const target = rounds.find((r) => r.id === roundId);
+  if (!target) return [];
+  const out: { roundId: string; teamIds: string[] }[] = [];
+  for (const r of rounds.filter((x) => x.order < target.order && x.eliminationEnabled).sort((a, b) => a.order - b.order)) {
+    const teamIds = teams
+      .filter((t) => takesPart(rounds, t.standing, r.id).in && t.standing(r.id) === 'PENDING')
+      .map((t) => t.id);
+    if (teamIds.length) out.push({ roundId: r.id, teamIds });
+  }
+  return out;
+}
+
+/** A judge takes a team if they take any theme, or the team's theme. Text themes match everyone. */
+export function judgeTakesTheme(judgeThemeIds: readonly string[], teamThemeId: string | null): boolean {
+  return judgeThemeIds.length === 0 || !teamThemeId || judgeThemeIds.includes(teamThemeId);
+}
+
+/** Rough wait: the teams ahead plus the one in the slot, one slot each. */
+export function estimatedWaitMinutes(ahead: number, busy: boolean, slotMinutes: number): number {
+  return (ahead + (busy ? 1 : 0)) * slotMinutes;
+}
+
+/**
+ * A judge's phone number as accounts store it (E.164). Ten digits are taken as
+ * an Indian number, as the app's sign-in does. Null when it can't be a number.
+ */
+export function normalizeMobile(raw: string): string | null {
+  const s = raw.replace(/[\s\-().]/g, '');
+  if (/^\d{10}$/.test(s)) return `+91${s}`;
+  if (/^91\d{10}$/.test(s)) return `+${s}`;
+  if (/^\+[1-9]\d{6,14}$/.test(s)) return s;
+  return null;
+}
+
+/** A stable criterion key from its label, unique on the board ("innovation", "innovation-2"). */
+export function criterionKey(label: string, taken: ReadonlySet<string>): string {
+  const base =
+    label
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'criterion';
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n++;
+  return `${base}-${n}`;
+}

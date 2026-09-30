@@ -49,6 +49,15 @@ import {
   RankMode,
   rankEntrants,
 } from './ranking';
+import { hackathonRooms } from './leaderboard.gateway';
+import {
+  OPEN_EVAL_STATUSES,
+  SLOT_EVAL_STATUSES,
+  editableUntil,
+  effectiveStatus,
+  judgmentLocked,
+} from './hackathon.shared';
+import { TEAM_STATEMENT_SELECT, statementView } from './hackathon.views';
 
 /** The event-scoped role a panel kind maps to (grants app access + mobile section). */
 const PANELIST_ROLE: Record<LeaderboardPanelistKind, RoleCode> = {
@@ -153,7 +162,7 @@ export class LeaderboardService {
    * (un-closing to "not started" is meaningless). Tighten `CLOSED: [...]` to
    * `[]` if reopening should be forbidden for privacy.
    */
-  private assertRoundTransition(
+  assertRoundTransition(
     from: LeaderboardRoundStatus,
     to: LeaderboardRoundStatus,
   ) {
@@ -489,6 +498,11 @@ export class LeaderboardService {
   ) {
     await this.assertCanManage(userId, eventId);
     const board = await this.getBoardByEventOrThrow(eventId);
+    if (board.isHackathon) {
+      // Opening a hackathon round checks undecided teams, and closing one
+      // cancels its queues: that lives in HackathonRoundsService.
+      throw new BadRequestException('Open and close hackathon rounds from the hackathon screen in the Unifesto app.');
+    }
     const round = await this.getRoundOrThrow(board.id, roundId);
     this.assertRoundTransition(round.status, dto.status);
     const updated = await this.prisma.leaderboardRound.update({
@@ -615,7 +629,7 @@ export class LeaderboardService {
     return { ok: true };
   }
 
-  private async grantPanelistRole(
+  async grantPanelistRole(
     targetUserId: string,
     eventId: string,
     kind: LeaderboardPanelistKind,
@@ -718,6 +732,9 @@ export class LeaderboardService {
     if (hasScores && kind === LeaderboardPanelistKind.MENTOR) {
       throw new ForbiddenException('Mentors submit reviews only, not scores.');
     }
+    if (board.isHackathon) {
+      return this.submitHackathonJudgment(userId, { id: entrantId, leaderboardId: board.id }, board, round, kind, dto);
+    }
     if (hasScores) this.validateScoreCells(board.metrics, dto.scores!);
 
     await this.prisma.$transaction(async (tx) => {
@@ -775,6 +792,210 @@ export class LeaderboardService {
 
     await this.recomputeAndBroadcast(board.id);
     return { ok: true };
+  }
+
+  /**
+   * A judge's marks on a hackathon board (plan §8). Marks go in during the
+   * team's slot: the judge (or their panel) must have called and started the
+   * team. `submittedAt` is stamped on the FIRST submit only; after it the judge
+   * can change their marks for 5 minutes (or 5 minutes after the curator
+   * reopens them), then they lock. Submitting needs every criterion of the round.
+   * The first submit completes the slot (a PANEL slot once every member has).
+   */
+  private async submitHackathonJudgment(
+    userId: string,
+    entrant: { id: string; leaderboardId: string },
+    board: { id: string; eventId: string; metrics: { id: string; label: string; roundId: string | null; minValue: Prisma.Decimal; maxValue: Prisma.Decimal }[] },
+    round: { id: string },
+    kind: LeaderboardPanelistKind,
+    dto: SubmitJudgmentDto,
+  ) {
+    if (kind !== LeaderboardPanelistKind.JUDGE) {
+      throw new ForbiddenException('Only judges give marks in this hackathon.');
+    }
+    const metrics = board.metrics.filter((m) => m.roundId === null || m.roundId === round.id);
+    const cells = dto.scores ?? [];
+    const inRound = new Set(metrics.map((m) => m.id));
+    for (const c of cells) {
+      if (!inRound.has(c.metricId)) throw new BadRequestException('That criterion isn’t part of this round.');
+    }
+    this.validateScoreCells(metrics, cells);
+    if (dto.submit) {
+      if (!metrics.length) throw new BadRequestException("The organisers haven't set this round's criteria yet.");
+      const given = new Set(cells.map((c) => c.metricId));
+      const missing = metrics.find((m) => !given.has(m.id));
+      if (missing) throw new BadRequestException(`Give a mark for "${missing.label}" before submitting.`);
+    }
+
+    const now = new Date();
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const key = { entrantId: entrant.id, roundId: round.id, panelistUserId: userId };
+      const existing = await tx.leaderboardJudgment.findUnique({
+        where: { entrantId_roundId_panelistUserId: key },
+        select: { submittedAt: true, reopenedAt: true, requestId: true },
+      });
+      let slot: { id: string; panelId: string | null } | null = null;
+      if (existing?.submittedAt) {
+        if (judgmentLocked(existing, now)) {
+          throw new ForbiddenException({
+            statusCode: 403,
+            code: 'JUDGMENT_LOCKED',
+            message: 'Your marks are locked. Ask the organisers if something needs fixing.',
+          });
+        }
+      } else {
+        slot = await this.findJudgeSlot(tx, entrant.leaderboardId, round.id, entrant.id, userId);
+        if (!slot) {
+          throw new ForbiddenException('Marks go in during the team’s slot. Call the team from your queue first.');
+        }
+      }
+
+      for (const cell of cells) {
+        await tx.leaderboardScore.upsert({
+          where: {
+            entrantId_metricId_judgeUserId_roundId: {
+              entrantId: entrant.id,
+              metricId: cell.metricId,
+              judgeUserId: userId,
+              roundId: round.id,
+            },
+          },
+          create: {
+            entrantId: entrant.id,
+            metricId: cell.metricId,
+            roundId: round.id,
+            judgeUserId: userId,
+            value: cell.value,
+            comment: cell.comment,
+            updatedBy: userId,
+          },
+          update: { value: cell.value, comment: cell.comment, updatedBy: userId },
+        });
+      }
+
+      const firstSubmit = !!dto.submit && !existing?.submittedAt;
+      const judgment = await tx.leaderboardJudgment.upsert({
+        where: { entrantId_roundId_panelistUserId: key },
+        create: {
+          ...key,
+          kind,
+          overallReview: dto.overallReview,
+          submittedAt: firstSubmit ? now : null,
+          requestId: slot?.id ?? null,
+        },
+        update: {
+          kind,
+          ...(dto.overallReview !== undefined ? { overallReview: dto.overallReview } : {}),
+          ...(firstSubmit ? { submittedAt: now } : {}),
+          ...(slot && !existing?.requestId ? { requestId: slot.id } : {}),
+        },
+        select: { submittedAt: true, reopenedAt: true, requestId: true },
+      });
+
+      let panelUserIds: string[] = [];
+      let completed = false;
+      if (firstSubmit && slot) {
+        let done = true;
+        if (slot.panelId) {
+          const members = await tx.hackathonPanelMember.findMany({
+            where: { panelId: slot.panelId },
+            select: { userId: true },
+          });
+          panelUserIds = members.map((m) => m.userId);
+          const submitted = await tx.leaderboardJudgment.count({
+            where: { requestId: slot.id, submittedAt: { not: null }, panelistUserId: { in: panelUserIds } },
+          });
+          done = submitted >= panelUserIds.length;
+        }
+        if (done) {
+          const res = await tx.hackathonEvalRequest.updateMany({
+            where: { id: slot.id, status: { in: [...OPEN_EVAL_STATUSES] } },
+            data: { status: 'COMPLETED', closedAt: now, closedBy: userId },
+          });
+          completed = res.count > 0;
+        }
+      }
+      return { judgment, panelUserIds, completed };
+    });
+
+    await this.recomputeAndBroadcast(board.id);
+    this.gateway.hackathonChanged(board.eventId, {
+      judgeUserIds: [userId, ...outcome.panelUserIds],
+      entrantIds: [entrant.id],
+    });
+    return {
+      ok: true,
+      submittedAt: outcome.judgment.submittedAt,
+      editableUntil: editableUntil(outcome.judgment),
+      slotCompleted: outcome.completed,
+    };
+  }
+
+  /**
+   * The judge's running slot with this team in this round: their own request,
+   * or one for a panel they sit on, that was called and started.
+   */
+  private async findJudgeSlot(
+    tx: Prisma.TransactionClient,
+    leaderboardId: string,
+    roundId: string,
+    entrantId: string,
+    userId: string,
+  ): Promise<{ id: string; panelId: string | null } | null> {
+    const req = await tx.hackathonEvalRequest.findFirst({
+      where: {
+        leaderboardId,
+        roundId,
+        entrantId,
+        status: { in: ['IN_PROGRESS', 'AWAITING_MARKS'] },
+        OR: [{ judgeUserId: userId }, { panel: { members: { some: { userId } } } }],
+      },
+      select: { id: true, panelId: true },
+    });
+    if (req) return req;
+    const called = await tx.hackathonEvalRequest.count({
+      where: {
+        leaderboardId,
+        roundId,
+        entrantId,
+        status: 'CALLED',
+        OR: [{ judgeUserId: userId }, { panel: { members: { some: { userId } } } }],
+      },
+    });
+    if (called) throw new ForbiddenException('Start the slot once the team is with you, then give marks.');
+    return null;
+  }
+
+  /**
+   * The socket rooms this user may join for the event's hackathon: curators
+   * the live queue room, judges their own queue room, team members their team's.
+   */
+  async hackathonRoomsFor(eventId: string, userId: string): Promise<string[]> {
+    const board = await this.prisma.leaderboard.findUnique({
+      where: { eventId },
+      select: { id: true, isHackathon: true, enabled: true },
+    });
+    if (!board?.isHackathon || !board.enabled) return [];
+    const rooms: string[] = [];
+    if (await this.isEventManager(userId, eventId)) rooms.push(hackathonRooms.manage(eventId));
+    const judge = await this.prisma.leaderboardPanelist.count({ where: { leaderboardId: board.id, userId } });
+    if (judge) rooms.push(hackathonRooms.judge(eventId, userId));
+    const [myRegs, mySeats] = await Promise.all([
+      this.prisma.eventRegistration.findMany({ where: { eventId, userId }, select: { id: true } }),
+      this.prisma.groupSeat.findMany({
+        where: { claimedByUserId: userId, status: 'CLAIMED', registration: { eventId } },
+        select: { registrationId: true },
+      }),
+    ]);
+    const regIds = [...new Set([...myRegs.map((r) => r.id), ...mySeats.map((s) => s.registrationId)])];
+    if (regIds.length) {
+      const teams = await this.prisma.leaderboardEntrant.findMany({
+        where: { leaderboardId: board.id, registrationId: { in: regIds } },
+        select: { id: true },
+      });
+      for (const t of teams) rooms.push(hackathonRooms.team(t.id));
+    }
+    return rooms;
   }
 
   /**
@@ -880,6 +1101,23 @@ export class LeaderboardService {
       create: { entrantId, roundId: round.id, status: dto.status, ...decided },
       update: { status: dto.status, ...decided },
     });
+    // An eliminated hackathon team's run has ended: it leaves any queue it's in.
+    if (board.isHackathon && dto.status === LeaderboardEntrantRoundStatus.ELIMINATED) {
+      const open = await this.prisma.hackathonEvalRequest.findMany({
+        where: { entrantId, status: { in: [...OPEN_EVAL_STATUSES] } },
+        select: { judgeUserId: true, panel: { select: { members: { select: { userId: true } } } } },
+      });
+      if (open.length) {
+        await this.prisma.hackathonEvalRequest.updateMany({
+          where: { entrantId, status: { in: [...OPEN_EVAL_STATUSES] } },
+          data: { status: 'CANCELLED', closedAt: new Date(), closedReason: 'ELIMINATED', closedBy: userId },
+        });
+        this.gateway.hackathonChanged(eventId, {
+          judgeUserIds: open.flatMap((r) => [r.judgeUserId, ...(r.panel?.members.map((m) => m.userId) ?? [])]).filter((id): id is string => !!id),
+          entrantIds: [entrantId],
+        });
+      }
+    }
     // The bracket participants see reads only this table — broadcast the change.
     await this.recomputeAndBroadcast(board.id);
     // Tell the team, but only on a real change to a decided state (re-saving the
@@ -1293,6 +1531,7 @@ export class LeaderboardService {
       select: {
         id: true,
         title: true,
+        isHackathon: true,
         event: {
           select: {
             id: true,
@@ -1314,6 +1553,7 @@ export class LeaderboardService {
       .map((b) => ({
         boardId: b.id,
         boardTitle: b.title,
+        isHackathon: b.isHackathon,
         kind: kindByBoard.get(b.id)!,
         totalRounds: b.rounds.length,
         activeRounds: b.rounds.filter((r) => r.status === LeaderboardRoundStatus.ACTIVE).length,
@@ -1391,6 +1631,7 @@ export class LeaderboardService {
       boardId: board.id,
       eventId,
       title: board.title,
+      isHackathon: board.isHackathon,
       kind,
       metrics: board.metrics.map((m) => ({
         id: m.id,
@@ -1450,10 +1691,11 @@ export class LeaderboardService {
         : Promise.resolve([]),
       this.prisma.leaderboardJudgment.findFirst({
         where: { entrantId, roundId: round.id, panelistUserId: userId },
-        select: { overallReview: true, submittedAt: true },
+        select: { overallReview: true, submittedAt: true, reopenedAt: true },
       }),
     ]);
 
+    const now = new Date();
     return {
       entrantId,
       roundId: round.id,
@@ -1465,7 +1707,90 @@ export class LeaderboardService {
       })),
       overallReview: judgment?.overallReview ?? null,
       submittedAt: judgment?.submittedAt ?? null,
+      // Hackathon boards lock submitted marks 5 minutes after submit / reopen.
+      editableUntil: board.isHackathon && judgment ? editableUntil(judgment) : null,
+      locked: board.isHackathon && !!judgment && judgmentLocked(judgment, now),
+      hackathon: board.isHackathon ? await this.judgeTeamContext(board.id, round.id, entrantId, userId, now) : null,
     };
+  }
+
+  /**
+   * What a judge sees about a team while marking it (plan §2 #29): Team ID,
+   * name, member names (never contacts), room, problem statement and theme,
+   * plus their running slot with it, if any.
+   */
+  private async judgeTeamContext(leaderboardId: string, roundId: string, entrantId: string, userId: string, now: Date) {
+    const [team, slot, round] = await Promise.all([
+      this.prisma.leaderboardEntrant.findUnique({
+        where: { id: entrantId },
+        select: {
+          teamCode: true,
+          name: true,
+          registrationId: true,
+          room: { select: { name: true, location: true } },
+          ...TEAM_STATEMENT_SELECT,
+        },
+      }),
+      this.prisma.hackathonEvalRequest.findFirst({
+        where: {
+          leaderboardId,
+          roundId,
+          entrantId,
+          status: { in: [...SLOT_EVAL_STATUSES] },
+          OR: [{ judgeUserId: userId }, { panel: { members: { some: { userId } } } }],
+        },
+        select: { id: true, status: true, calledAt: true, startedAt: true, slotEndsAt: true, panel: { select: { name: true } } },
+      }),
+      this.prisma.leaderboardRound.findUnique({
+        where: { id: roundId },
+        select: { name: true, slotMinutes: true, judgingMode: true },
+      }),
+    ]);
+    if (!team) return null;
+    const memberNames = team.registrationId ? await this.teamMemberNames(team.registrationId) : [];
+    return {
+      teamCode: team.teamCode,
+      teamName: team.name,
+      members: memberNames,
+      room: team.room,
+      statement: statementView(team),
+      round,
+      slot: slot
+        ? {
+            requestId: slot.id,
+            status: effectiveStatus(slot, now),
+            calledAt: slot.calledAt,
+            startedAt: slot.startedAt,
+            slotEndsAt: slot.slotEndsAt,
+            panelName: slot.panel?.name ?? null,
+          }
+        : null,
+    };
+  }
+
+  /** Names on a group registration: the lead and each held seat. Names only, no contacts. */
+  async teamMemberNames(registrationId: string): Promise<string[]> {
+    const reg = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: { user: { select: { fullName: true, username: true } } },
+    });
+    const seats = await this.prisma.groupSeat.findMany({
+      where: { registrationId, status: { not: 'RELEASED' } },
+      orderBy: { seatIndex: 'asc' },
+      select: { seatIndex: true, memberDetails: true, claimedBy: { select: { fullName: true, username: true } } },
+    });
+    const leadName = reg?.user.fullName || reg?.user.username || null;
+    if (!seats.length) return leadName ? [leadName] : [];
+    return seats
+      .map((s) => {
+        const details =
+          s.memberDetails && typeof s.memberDetails === 'object' && !Array.isArray(s.memberDetails)
+            ? (s.memberDetails as Record<string, unknown>)
+            : {};
+        const typed = typeof details.name === 'string' ? details.name.trim() : '';
+        return s.claimedBy?.fullName || s.claimedBy?.username || typed || (s.seatIndex === 1 ? leadName : null);
+      })
+      .filter((n): n is string => !!n);
   }
 
   // ── Participant view (never exposes marks) ────────────────────────────────
@@ -1600,7 +1925,7 @@ export class LeaderboardService {
    * placeholder mobile plus an EMAIL identity carrying the real address. When
    * that person later signs in with the same email, auth resolves + links them.
    */
-  private async findOrCreateUserByEmail(email: string, name: string): Promise<string> {
+  async findOrCreateUserByEmail(email: string, name: string): Promise<string> {
     const normalized = email.trim().toLowerCase();
     if (!normalized) throw new BadRequestException('A valid email is required.');
 

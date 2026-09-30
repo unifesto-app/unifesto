@@ -26,5 +26,6 @@ export const NotificationEvents = {
   WhatsappInbound: 'notif.whatsapp.inbound',
   CompetitionUpdate: 'notif.competition.update',
   HackathonUpdate: 'notif.hackathon.update',
+  HackathonJudgeUpdate: 'notif.hackathon.judge-update',
   StatusIncident: 'notif.status.incident',
 } as const;

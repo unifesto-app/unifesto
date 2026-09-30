@@ -5,7 +5,19 @@
  */
 
 import { Platform } from 'react-native';
-import type { PsMode, StatementBlock, TeamStage, ThemeMode, Venue } from './api/hackathon';
+import type {
+  EvalStatus,
+  JudgingMode,
+  PsMode,
+  RoundStatus,
+  Standing,
+  StatementBlock,
+  TeamRequest,
+  TeamRound,
+  TeamStage,
+  ThemeMode,
+  Venue,
+} from './api/hackathon';
 
 /** Same rule the server enforces for the prefix. */
 export const TEAM_CODE_PREFIX_RE = /^[A-Za-z0-9][A-Za-z0-9_\-/.]{0,19}$/;
@@ -132,4 +144,105 @@ export function placesLabel(placesLeft: number | null): string | null {
   if (placesLeft == null) return null;
   if (placesLeft === 0) return 'Full';
   return `${placesLeft} place${placesLeft === 1 ? '' : 's'} left`;
+}
+
+// ── Judging and the evaluation queue (Phase 3) ───────────────────────────────
+
+/** Whole seconds from `now` until `iso` (negative once it has passed); null without a time. */
+export function secondsUntil(iso: string | null | undefined, now = Date.now()): number | null {
+  if (!iso) return null;
+  return Math.round((new Date(iso).getTime() - now) / 1000);
+}
+
+/** 245 → "4:05", -30 → "-0:30", 3725 → "1:02:05". */
+export function formatClock(totalSeconds: number): string {
+  const sign = totalSeconds < 0 ? '-' : '';
+  let s = Math.abs(totalSeconds);
+  const h = Math.floor(s / 3600);
+  s -= h * 3600;
+  const m = Math.floor(s / 60);
+  const sec = s - m * 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return h ? `${sign}${h}:${pad(m)}:${pad(sec)}` : `${sign}${m}:${pad(sec)}`;
+}
+
+/** "About 20 min", "Any minute", for a team's wait. */
+export function waitLabel(minutes: number | null): string | null {
+  if (minutes == null) return null;
+  if (minutes <= 0) return 'Any minute';
+  if (minutes < 60) return `About ${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `About ${h} h${m ? ` ${m} min` : ''}`;
+}
+
+export const JUDGING_MODE_OPTIONS: { value: JudgingMode; label: string; hint: string }[] = [
+  { value: 'SINGLE', label: 'One judge', hint: 'Each team picks one judge and is evaluated once.' },
+  { value: 'PANEL', label: 'Panel', hint: 'Judges sit together as a panel. One slot per team, every panel judge gives marks.' },
+  { value: 'MULTI', label: 'Several judges', hint: 'Each team gets evaluated separately by a set number of different judges.' },
+];
+
+export function roundStatusLabel(status: RoundStatus): string {
+  return status === 'ACTIVE' ? 'Open' : status === 'CLOSED' ? 'Closed' : 'Not open';
+}
+
+export function standingLabel(s: Standing): string {
+  return s === 'ADVANCED' ? 'Advanced' : s === 'ELIMINATED' ? 'Eliminated' : 'Undecided';
+}
+
+/** Short queue status for curator and judge lists. */
+export function evalStatusLabel(s: EvalStatus): string {
+  switch (s) {
+    case 'WAITING':
+      return 'Waiting';
+    case 'CALLED':
+      return 'Called';
+    case 'IN_PROGRESS':
+      return 'In slot';
+    case 'AWAITING_MARKS':
+      return 'Marks due';
+    case 'COMPLETED':
+      return 'Evaluated';
+    case 'NO_SHOW':
+      return 'No-show';
+    case 'WITHDRAWN':
+      return 'Left the queue';
+    case 'CANCELLED':
+      return 'Removed';
+  }
+}
+
+/** What the team's evaluate screen says about its open request. */
+export function teamRequestCopy(r: TeamRequest): { title: string; body: string } {
+  const who = r.evaluator?.name ?? 'your judge';
+  const where = r.evaluator?.location ? ` at ${r.evaluator.location}` : '';
+  switch (r.status) {
+    case 'WAITING':
+      return r.position === 1
+        ? { title: 'You’re next', body: `${who} calls you next. Stay close${where ? ` to ${r.evaluator!.location}` : ''}.` }
+        : { title: `Number ${r.position ?? '…'} in line`, body: `Waiting for ${who}. We’ll notify you when you’re next.` };
+    case 'CALLED':
+      return r.evaluator?.meetingUrl
+        ? { title: 'You’re up!', body: `${who} is ready. Join the call now.` }
+        : { title: 'You’re up!', body: `Go to ${who}${where} now.` };
+    case 'IN_PROGRESS':
+      return { title: 'Your evaluation is on', body: `You’re with ${who}. Good luck!` };
+    case 'AWAITING_MARKS':
+      return { title: 'Evaluation done', body: `${who} is finishing their notes.` };
+    default:
+      return { title: evalStatusLabel(r.status), body: '' };
+  }
+}
+
+/** Why a round shows no "Join a queue" button for the team. */
+export function roundBlockedCopy(r: TeamRound, hasOpenRequest: boolean): string | null {
+  if (r.canRequest) return null;
+  if (r.status === 'PENDING') return 'Not open yet. We’ll notify you when it opens.';
+  if (r.status === 'CLOSED') return 'This round has closed.';
+  if (!r.takesPart) return r.standing === 'ELIMINATED' ? 'Your team didn’t go through to this round.' : 'Your team isn’t in this round.';
+  if (r.standing !== 'PENDING') return r.standing === 'ADVANCED' ? 'You’re through to the next round.' : 'Your run ended here.';
+  if (r.completed >= r.required) return r.required > 1 ? `All ${r.required} evaluations done.` : 'Evaluated. Results come later.';
+  if (!r.acceptingRequests) return 'This round has stopped taking new requests.';
+  if (hasOpenRequest) return 'You’re already in a queue.';
+  return null;
 }

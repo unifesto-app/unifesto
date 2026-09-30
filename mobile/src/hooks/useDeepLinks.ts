@@ -8,6 +8,7 @@ import {
 } from '../services/deepLinkRouter';
 import { takeClipResumePath } from '../services/clipHandoff';
 import { showInAppNotice } from '../components/ui/InAppNotice';
+import { AppAlert } from '../components/ui/AppAlert';
 import { notificationArrived } from '../lib/notificationBus';
 
 /** Push types shown as an in-app card when the app is open (they also land in the in-app feed). */
@@ -46,10 +47,19 @@ export function useDeepLinks(): void {
     // banner. preventDefault has to run synchronously inside this listener.
     OneSignalService.addNotificationForegroundListener((event: any) => {
       const notification = event?.getNotification?.() ?? event?.notification;
-      const data = (notification?.additionalData ?? {}) as { type?: string; eventId?: string };
+      const data = (notification?.additionalData ?? {}) as { type?: string; eventId?: string; kind?: string };
       if (!data.type || !IN_APP_TYPES.has(data.type)) return;
       notificationArrived({ type: data.type, eventId: data.eventId });
       const deepLink = extractPushDeepLink({ notification });
+      // "You're up" must not be missed: a modal instead of a card that slides away.
+      if (data.type === 'hackathon' && data.kind === 'QUEUE_CALLED') {
+        event?.preventDefault?.();
+        AppAlert.alert(notification?.title || 'You’re up!', notification?.body, [
+          { text: 'Later', style: 'cancel' },
+          { text: 'Open', onPress: () => routeToDeepLink(deepLink, { isAuthenticated: authRef.current }) },
+        ]);
+        return;
+      }
       const shown = showInAppNotice({
         title: notification?.title || 'Update',
         body: notification?.body,
