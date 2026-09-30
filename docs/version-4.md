@@ -581,6 +581,7 @@ Today: 1 EC2 host (8 GB), 3 API replicas × 1 GB behind Caddy, RDS Postgres, Red
 | Fingerprint check before publish (script in `mobile/`, fails if it differs from the store build) | done: `ota:preflight` vs `runtime-fingerprints.json` (record each store build with `ota:record`) |
 | Update id + runtime shown in Profile → About and sent with support tickets / Crashlytics | done (4.0.5): Profile › About, `support_tickets.client_info`, Crashlytics attributes |
 | In-app "What's new" | done (4.0.5): `src/lib/whatsNew.ts`, shown once after an update, not on fresh installs |
+| Apex › OTA updates (mobile): list groups per channel, 50% / promote / revert / roll back | built 1 Oct: `backend/src/admin/ota-admin.*` (`/admin/ota`), needs `EXPO_TOKEN` + backend deploy, then OTA; mutations untested until the first real update |
 
 **Done when:** every OTA in v4 went through staged rollout and the runbook was tested once on the preview channel.
 
