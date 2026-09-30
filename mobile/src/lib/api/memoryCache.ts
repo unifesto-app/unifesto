@@ -38,6 +38,11 @@ const NEVER: RegExp[] = [
   /^\/refunds/,
   /^\/payments/,
   /^\/leaderboard/,
+  // Hackathon teams, rooms and the in-app feed change with other curators'
+  // edits and incoming pushes, not only this device's writes.
+  /^\/hackathon\//,
+  /^\/events\/[^/]+\/hackathon/,
+  /^\/users\/me\/notifications/,
   /^\/discussions/,
   /^\/support/,
   /^\/app\/version/,

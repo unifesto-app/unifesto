@@ -27,6 +27,7 @@ import {
   Receipt,
   ShareNetwork,
   Ticket,
+  Trophy,
   UsersThree,
   Wallet,
   WhatsappLogo,
@@ -256,6 +257,13 @@ export default function ManageEventScreen() {
               icon={icon(Handshake)}
               label="Partners"
               onPress={() => router.push({ pathname: `/manage/event/${e.id}/partners`, params: { title: e.title } })}
+            />
+          ) : null}
+          {h.access.hosts ? (
+            <SettingsRow
+              icon={icon(Trophy)}
+              label="Hackathon"
+              onPress={() => router.push(`/manage/event/${e.id}/hackathon`)}
             />
           ) : null}
           {h.access.canJudge ? (

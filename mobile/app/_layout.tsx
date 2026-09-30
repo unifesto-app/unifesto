@@ -16,6 +16,7 @@ import { SpaceAccessProvider } from '../src/context/SpaceAccessContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
 import { stackHeaderDefaults } from '../src/navigation/stackHeader';
 import { AppAlertHost } from '../src/components/ui/AppAlert';
+import { InAppNoticeHost } from '../src/components/ui/InAppNotice';
 import { ImageCropHost } from '../src/components/ui/ImageCropper';
 import { OfflineBanner } from '../src/components/ui/OfflineBanner';
 import ConsentManager from '../src/services/ConsentManager';
@@ -151,6 +152,7 @@ function RootStack() {
         </NavigationThemeProvider>
         </SpaceAccessProvider>
         <OfflineBanner />
+        <InAppNoticeHost />
         <AppAlertHost />
         <ImageCropHost />
       </FavoritesProvider>

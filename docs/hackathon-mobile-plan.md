@@ -474,13 +474,22 @@ Follow `mobile/DESIGN.md` tokens and existing `SettingsGroup`/`SettingsRow` patt
 Until Phase 6 removes it, the Space web leaderboard page must keep compiling (existing
 endpoints stay backward compatible).
 
-1. **Foundation: mode, teams, IDs, venue, rooms, inbox**
+1. **Foundation: mode, teams, IDs, venue, rooms, inbox** — **DONE 2026-09-30 (not deployed)**
    Migration (6.1, 6.2 team-code/room/cancel columns, rooms, `user_notifications`);
    enable + config; import with ID counter (transaction, `SELECT … FOR UPDATE` on the
    board row); cancellation hook in the registration cancel/refund paths + read-time
    fallback; team-name resolution; auto-allocate; notification `inbox` option + feed
    endpoints. Mobile: curator dashboard/settings/teams/rooms; team hub (NEEDS_PS view),
    team screen, updates feed, foreground banner.
+   *As built:* cancellation is detected by comparing each team with its registration
+   on every read that shows teams (`syncCancellations`), instead of hooking the six
+   places that cancel registrations, so new cancel paths are covered too. The in-app
+   feed lives at `users/me/notifications` (next to `users/me/push-devices`). Hackathon
+   and competition pushes also land in the feed, and while the app is open they show
+   as an in-app card instead of the system banner. `competition` and `hackathon` were
+   added to the deep-link allowlist (competition push taps weren't routing before).
+   Hackathon GETs are never served from the app's memory cache. New boards start
+   with a PENDING "Round 1" so nothing is judged until the curator opens a round.
 2. **Problem statements & themes**
    Themes, statements (max-teams enforced transactionally), three PS modes, deadline,
    lock + curator override, hub gate. Mobile: curator statements/themes, team statement

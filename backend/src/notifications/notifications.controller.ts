@@ -18,7 +18,13 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PushCampaignService } from './push-campaign.service';
 import { PushDeviceService } from './push-device.service';
+import { UserNotificationsService } from './user-notifications.service';
 import { RegisterPushDeviceDto } from './dto/push-device.dto';
+import {
+  ListUserNotificationsQueryDto,
+  MarkNotificationsReadDto,
+  NotificationScopeQueryDto,
+} from './dto/user-notifications.dto';
 import {
   CreateOrganiserAnnouncementDto,
   CreatePushBroadcastDto,
@@ -102,5 +108,30 @@ export class PushDeviceController {
   @Delete(':subscriptionId')
   unregister(@CurrentUser() user: User, @Param('subscriptionId') subscriptionId: string) {
     return this.devices.unregister(user.id, subscriptionId);
+  }
+}
+
+/**
+ * The signed-in user's in-app notification feed: the copy of each push that
+ * was sent with `inbox`, kept even when push is off.
+ */
+@Controller('users/me/notifications')
+@UseGuards(JwtAuthGuard)
+export class UserNotificationsController {
+  constructor(private readonly feed: UserNotificationsService) {}
+
+  @Get()
+  list(@CurrentUser() user: User, @Query() query: ListUserNotificationsQueryDto) {
+    return this.feed.list(user.id, query);
+  }
+
+  @Get('unread-count')
+  unreadCount(@CurrentUser() user: User, @Query() query: NotificationScopeQueryDto) {
+    return this.feed.unreadCount(user.id, query);
+  }
+
+  @Post('read')
+  markRead(@CurrentUser() user: User, @Body() dto: MarkNotificationsReadDto) {
+    return this.feed.markRead(user.id, dto);
   }
 }

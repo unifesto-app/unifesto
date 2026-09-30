@@ -3,10 +3,13 @@ import { AuthModule } from '../auth/auth.module';
 import { LeaderboardController } from './leaderboard.controller';
 import { LeaderboardService } from './leaderboard.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
+import { HackathonController } from './hackathon.controller';
+import { HackathonSetupService } from './hackathon-setup.service';
+import { HackathonTeamsService } from './hackathon-teams.service';
 
 /**
- * Competitive dashboard (leaderboards): curator surfaces in the space app,
- * judge/mentor/participant views in mobile.
+ * Competitive dashboard (leaderboards) and hackathon mode on top of it:
+ * curator, judge/mentor and team screens are in mobile.
  *
  * PrismaModule and PlanConfigModule are @Global, so only AuthModule needs
  * importing (for JwtAuthGuard + AuthService, the latter used to auth sockets
@@ -14,8 +17,8 @@ import { LeaderboardGateway } from './leaderboard.gateway';
  */
 @Module({
   imports: [AuthModule],
-  controllers: [LeaderboardController],
-  providers: [LeaderboardService, LeaderboardGateway],
+  controllers: [LeaderboardController, HackathonController],
+  providers: [LeaderboardService, LeaderboardGateway, HackathonTeamsService, HackathonSetupService],
   exports: [LeaderboardService],
 })
 export class LeaderboardModule {}

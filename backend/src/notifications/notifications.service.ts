@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PushLogStatus } from '@prisma/client';
+import { Prisma, PushLogStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OneSignalService } from './onesignal.service';
 import { NotificationCategory } from './notifications.constants';
@@ -13,6 +13,12 @@ export interface SendOptions {
   deepLink?: string;
   /** Set for campaign fan-out; null/undefined for transactional pushes. */
   campaignId?: string;
+  /**
+   * Also keep an in-app copy (`user_notifications`) for every recipient. It is
+   * written before the push-preference check, so someone with push off still
+   * sees it in the app.
+   */
+  inbox?: { type: string; eventId?: string | null };
 }
 
 export interface SendSummary {
@@ -64,6 +70,8 @@ export class NotificationsService {
     try {
       const unique = [...new Set(userIds)].filter(Boolean);
       if (unique.length === 0) return summary;
+
+      if (opts.inbox) await this.writeInbox(unique, opts);
 
       const settings = await this.prisma.notificationSettings.findMany({
         where: { userId: { in: unique } },
@@ -143,6 +151,25 @@ export class NotificationsService {
       this.logger.error(`notifications.sendToSegments failed: ${err?.message ?? err}`);
     }
     return summary;
+  }
+
+  /** The in-app copy. Its own try so a failed insert never costs the push. */
+  private async writeInbox(userIds: string[], opts: SendOptions): Promise<void> {
+    try {
+      await this.prisma.userNotification.createMany({
+        data: userIds.map((userId) => ({
+          userId,
+          eventId: opts.inbox!.eventId ?? null,
+          type: opts.inbox!.type,
+          title: opts.title,
+          body: opts.body,
+          deepLink: opts.deepLink ?? null,
+          data: (opts.data ?? undefined) as Prisma.InputJsonValue | undefined,
+        })),
+      });
+    } catch (err: any) {
+      this.logger.warn(`Failed to write in-app notifications: ${err?.message ?? err}`);
+    }
   }
 
   private isAllowed(

@@ -75,7 +75,7 @@ export class LeaderboardService {
    * plus Platform Admin by inheritance). Panelists are authorized separately, by
    * their assignment — never by this capability.
    */
-  private async assertCanManage(userId: string, eventId: string): Promise<void> {
+  async assertCanManage(userId: string, eventId: string): Promise<void> {
     await this.authz.assertCan({ id: userId }, Action.EVENT_MANAGE_LEADERBOARD, {
       eventId,
     });
@@ -111,18 +111,23 @@ export class LeaderboardService {
    * Mirrors Sessions: the plan checked is the space *creator's*, and a missing
    * subscription is left alone rather than locking a not-yet-billed space out.
    */
-  private async assertPlanAllows(eventId: string) {
+  async assertPlanAllows(eventId: string) {
+    if (!(await this.planAllows(eventId))) {
+      throw new ForbiddenException(
+        'The competitive dashboard is not included in this plan. Ask an admin to enable it.',
+      );
+    }
+  }
+
+  /** Non-throwing form of {@link assertPlanAllows}, for screens that explain the gate. */
+  async planAllows(eventId: string): Promise<boolean> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { space: { select: { subscription: true } } },
     });
     const subscription = event?.space?.subscription;
-    if (!subscription) return;
-    if (!this.planConfig.getEffectiveLimits(subscription).hasLeaderboard) {
-      throw new ForbiddenException(
-        'The competitive dashboard is not included in this plan. Ask an admin to enable it.',
-      );
-    }
+    if (!subscription) return true;
+    return this.planConfig.getEffectiveLimits(subscription).hasLeaderboard;
   }
 
   private assertRubric(mode: string) {
@@ -961,7 +966,7 @@ export class LeaderboardService {
    * a registration; a group registration's team is its lead plus every member
    * who claimed a seat.
    */
-  private async teamUserIds(entrantIds: string[]): Promise<Map<string, string[]>> {
+  async teamUserIds(entrantIds: string[]): Promise<Map<string, string[]>> {
     const entrants = await this.prisma.leaderboardEntrant.findMany({
       where: { id: { in: entrantIds } },
       select: { id: true, userId: true, registrationId: true },

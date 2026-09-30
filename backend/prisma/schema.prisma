@@ -460,6 +460,7 @@ model User {
   eventTransferRequests        EventOwnershipTransfer[]      @relation("EventTransferRequester")
   subEventAttachRequests       SubEventAttachRequest[]       @relation("SubEventAttachRequester")
   notificationSettings         NotificationSettings?
+  inAppNotifications           UserNotification[]
   supportTicketsRaised         SupportTicket[]               @relation("SupportTicketRequester")
   supportTicketsAssigned       SupportTicket[]               @relation("SupportTicketAssignee")
   supportMessages              SupportMessage[]              @relation("SupportMessageAuthor")
@@ -518,6 +519,32 @@ model NotificationSettings {
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("notification_settings")
+}
+
+/// The in-app copy of a notification, kept whether or not the push was sent
+/// (push can be off; the in-app feed still shows it). Written by
+/// NotificationsService.send when the caller passes `inbox`.
+model UserNotification {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // The event it's about, so an event's screens can show just their own feed.
+  eventId  String?   @map("event_id") @db.Uuid
+  // What produced it, e.g. "hackathon". Lets the app filter and pick an icon.
+  type     String    @db.VarChar(40)
+  title    String    @db.VarChar(200)
+  body     String    @db.Text
+  deepLink String?   @map("deep_link") @db.Text
+  data     Json?
+  readAt   DateTime? @map("read_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, eventId, readAt])
+  @@map("user_notifications")
 }
 
 // =====================================================
@@ -3019,6 +3046,41 @@ enum LeaderboardPanelistKind {
   @@map("leaderboard_panelist_kind")
 }
 
+// ── Hackathon mode (docs/hackathon-mobile-plan.md) ──
+// A hackathon is a RUBRIC board with `isHackathon = true`: entrants are teams
+// imported from GROUP registrations, each with a curator-patterned Team ID.
+
+enum HackathonPsMode {
+  TEAM_WRITES // the team writes its own problem statement
+  TEAM_PICKS // the team picks one from the curator's list
+  CURATOR_ASSIGNS // the curator assigns one from the list
+
+  @@map("hackathon_ps_mode")
+}
+
+enum HackathonThemeMode {
+  LIST // dropdown of the curator's themes
+  TEXT // short free text
+
+  @@map("hackathon_theme_mode")
+}
+
+enum HackathonScoringMode {
+  PER_ROUND // final ranking = the last scored round
+  CUMULATIVE // total = sum of the counted rounds' scores
+
+  @@map("hackathon_scoring_mode")
+}
+
+enum HackathonTeamNameSource {
+  FORM // the linked per-group registration question
+  LEAD // set by the team lead in the app
+  CURATOR // set by the curator
+  DEFAULT // "<lead name>'s team"
+
+  @@map("hackathon_team_name_source")
+}
+
 model Leaderboard {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
@@ -3046,6 +3108,30 @@ model Leaderboard {
   // Used only when tieBreak = PRIMARY_METRIC. Soft reference to a metric.
   tieBreakMetricId String?             @map("tie_break_metric_id") @db.Uuid
 
+  // ── Hackathon mode ──
+  isHackathon     Boolean @default(false) @map("is_hackathon")
+  // Team ID pattern: prefix + zero-padded counter, e.g. "HACK25-" + 3 → HACK25-001.
+  teamCodePrefix  String? @map("team_code_prefix") @db.VarChar(20)
+  teamCodeDigits  Int     @default(3) @map("team_code_digits")
+  // Next number to hand out. Only ever moves forward, so an ID is never reused.
+  teamCodeNext    Int     @default(1) @map("team_code_next")
+  // Per-group registration question whose answer becomes the team name (soft
+  // ref → EventFormField). Null = the lead names the team, else a default.
+  teamNameFieldId String? @map("team_name_field_id") @db.Uuid
+
+  psMode      HackathonPsMode?     @map("ps_mode")
+  themeMode   HackathonThemeMode   @default(LIST) @map("theme_mode")
+  psDeadline  DateTime?            @map("ps_deadline") @db.Timestamptz(6)
+  scoringMode HackathonScoringMode @default(PER_ROUND) @map("scoring_mode")
+
+  // Hackathon venue. All null = fall back to the event's own venue.
+  venueName    String? @map("venue_name") @db.VarChar(255)
+  venueAddress String? @map("venue_address") @db.Text
+  venueLat     Float?  @map("venue_lat")
+  venueLng     Float?  @map("venue_lng")
+  venueMapUrl  String? @map("venue_map_url") @db.Text
+  venueNotes   String? @map("venue_notes") @db.Text
+
   createdBy String?  @map("created_by") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3055,6 +3141,7 @@ model Leaderboard {
   rounds    LeaderboardRound[]
   panelists LeaderboardPanelist[]
   awards    LeaderboardAward[]
+  rooms     HackathonRoom[]
 
   @@map("leaderboards")
 }
@@ -3118,6 +3205,18 @@ model LeaderboardEntrant {
   totalScore Decimal @default(0) @map("total_score") @db.Decimal(14, 4)
   rank       Int?
 
+  // ── Hackathon team (null on other boards) ──
+  // Unique per board. Kept after cancellation so it is never handed out again.
+  teamCode       String?                  @map("team_code") @db.VarChar(40)
+  // The counter value the code was minted from; orders teams by import.
+  teamSeq        Int?                     @map("team_seq")
+  teamNameSource HackathonTeamNameSource? @map("team_name_source")
+  // Stamped when the linked registration is found cancelled; cleared if it is
+  // restored. The team keeps its code and shows as cancelled.
+  cancelledAt    DateTime?                @map("cancelled_at") @db.Timestamptz(6)
+  roomId         String?                  @map("room_id") @db.Uuid
+  room           HackathonRoom?           @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -3127,8 +3226,10 @@ model LeaderboardEntrant {
   panelistScopes LeaderboardPanelist[]
   awards         LeaderboardAward[]
 
+  @@unique([leaderboardId, teamCode])
   @@index([leaderboardId])
   @@index([registrationId])
+  @@index([roomId])
   @@map("leaderboard_entrants")
 }
 
@@ -3325,6 +3426,31 @@ model LeaderboardAward {
   @@index([leaderboardId])
   @@index([entrantId])
   @@map("leaderboard_awards")
+}
+
+/// A room teams are allocated to at a hackathon venue.
+model HackathonRoom {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  name     String  @db.VarChar(120)
+  // Where it is, e.g. "Block C, 2nd floor".
+  location String? @db.VarChar(200)
+  // How many teams fit. Cancelled teams don't count against it.
+  capacity Int
+  notes    String? @db.Text
+  order    Int     @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  teams LeaderboardEntrant[]
+
+  @@unique([leaderboardId, name])
+  @@index([leaderboardId])
+  @@map("hackathon_rooms")
 }
 
 // =====================================================
