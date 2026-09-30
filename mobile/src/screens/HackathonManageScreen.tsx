@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
+import { Lifebuoy, Tray, Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -260,6 +260,16 @@ export default function HackathonManageScreen() {
               label="Send an announcement"
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/announce`)}
             />
+          </SettingsGroup>
+
+          <SettingsGroup title="Help desk">
+            <SettingsRow
+              icon={icon(Lifebuoy)}
+              label="Help topics and contacts"
+              value="Food, Wi-Fi…"
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/help-topics`)}
+            />
+            <SettingsRow icon={icon(Tray)} label="Queries from teams" onPress={() => router.push(`/hackathon/${eventId}/help-desk`)} />
           </SettingsGroup>
 
           <SettingsGroup title="Results and winners">

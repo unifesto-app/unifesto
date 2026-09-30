@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { HackathonTeamsService } from './hackathon-teams.service';
+import { HackathonHelpService } from './hackathon-help.service';
 import { HackathonSetupService } from './hackathon-setup.service';
 
 /**
@@ -77,7 +78,8 @@ describe('Hackathon services', () => {
     };
     const events = { emit: jest.fn() };
     const teams = new HackathonTeamsService(prisma, leaderboard, events as any);
-    const setup = new HackathonSetupService(prisma, leaderboard, teams);
+    const help = new HackathonHelpService(prisma, leaderboard, teams, events as any);
+    const setup = new HackathonSetupService(prisma, leaderboard, teams, help);
     return { teams, setup, prisma, leaderboard, events };
   };
 

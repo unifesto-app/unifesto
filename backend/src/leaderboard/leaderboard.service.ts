@@ -105,6 +105,11 @@ export class LeaderboardService {
     return this.authz.can({ id: userId }, Action.EVENT_DECLARE_HACKATHON_WINNERS, { eventId });
   }
 
+  /** Non-throwing assertCanManage. */
+  canManage(userId: string, eventId: string): Promise<boolean> {
+    return this.isEventManager(userId, eventId);
+  }
+
   private async isEventManager(userId: string, eventId: string): Promise<boolean> {
     return this.authz.can({ id: userId }, Action.EVENT_MANAGE_LEADERBOARD, {
       eventId,

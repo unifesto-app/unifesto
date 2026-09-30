@@ -172,6 +172,7 @@ export interface Room {
   order: number;
   occupied: number;
   teams: { id: string; teamCode: string | null; name: string }[];
+  volunteers: StaffUser[];
 }
 
 export interface RoomInput {
@@ -179,6 +180,16 @@ export interface RoomInput {
   location?: string | null;
   capacity: number;
   notes?: string | null;
+  volunteerUserIds?: string[];
+}
+
+/** Someone on the event team: who can be a room volunteer or a help-topic POC. */
+export interface StaffUser {
+  id: string;
+  fullName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  roleCode: string | null;
 }
 
 const base = (eventId: string) => `/events/${eventId}/hackathon`;
@@ -203,7 +214,8 @@ export const updateTeam = (
   input: { teamCode?: string; name?: string; roomId?: string | null },
 ) => call<TeamDetail>(`${base(eventId)}/teams/${teamId}`, json('PATCH', input));
 
-export const getRooms = (eventId: string) => call<{ unallocated: number; rooms: Room[] }>(`${base(eventId)}/rooms`);
+export const getRooms = (eventId: string) =>
+  call<{ unallocated: number; staff: StaffUser[]; rooms: Room[] }>(`${base(eventId)}/rooms`);
 export const createRoom = (eventId: string, input: RoomInput) => call<Room>(`${base(eventId)}/rooms`, json('POST', input));
 export const updateRoom = (eventId: string, roomId: string, input: Partial<RoomInput>) =>
   call<Room>(`${base(eventId)}/rooms/${roomId}`, json('PATCH', input));
@@ -961,6 +973,68 @@ export const sendAnnouncement = (
   eventId: string,
   input: { audience: AnnouncementAudience; roomId?: string; title: string; body: string },
 ) => call<Announcements>(`${base(eventId)}/announcements`, json('POST', input));
+
+// ── Help desk ────────────────────────────────────────────────────────────────
+
+export type HelpQueryStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+
+export interface HelpTopics {
+  staff: StaffUser[];
+  topics: { id: string; name: string; pocs: StaffUser[] }[];
+}
+
+/** A team's view: what it can ask about, its room's volunteers, its queries. */
+export interface MyHelp {
+  topics: { id: string; name: string }[];
+  room: { name: string; volunteers: { name: string | null; avatarUrl: string | null }[] } | null;
+  queries: {
+    id: string;
+    topicName: string;
+    message: string;
+    status: HelpQueryStatus;
+    handledByName: string | null;
+    createdAt: string;
+    acknowledgedAt: string | null;
+    resolvedAt: string | null;
+  }[];
+}
+
+export interface HelpInboxQuery {
+  id: string;
+  topicName: string;
+  roomName: string | null;
+  message: string;
+  status: HelpQueryStatus;
+  team: { teamCode: string | null; name: string };
+  raisedByName: string | null;
+  handledByName: string | null;
+  handledByMe: boolean;
+  sentToMe: boolean;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  resolvedAt: string | null;
+}
+
+/** Null when the event runs no hackathon. Curators see every query. */
+export type HelpInbox = { canManage: boolean; queries: HelpInboxQuery[] } | null;
+
+export const getHelpTopics = (eventId: string) => call<HelpTopics>(`${base(eventId)}/help/topics`);
+export const createHelpTopic = (eventId: string, input: { name: string; pocUserIds: string[] }) =>
+  call<HelpTopics>(`${base(eventId)}/help/topics`, json('POST', input));
+export const updateHelpTopic = (eventId: string, topicId: string, input: { name?: string; pocUserIds?: string[] }) =>
+  call<HelpTopics>(`${base(eventId)}/help/topics/${topicId}`, json('PATCH', input));
+export const deleteHelpTopic = (eventId: string, topicId: string) =>
+  call<HelpTopics>(`${base(eventId)}/help/topics/${topicId}`, json('DELETE'));
+
+export const getMyHelp = (eventId: string) => call<MyHelp>(`/hackathon/${eventId}/help`);
+export const raiseHelpQuery = (eventId: string, input: { topicId: string | null; message: string }) =>
+  call<MyHelp>(`/hackathon/${eventId}/help/queries`, json('POST', input));
+export const getHelpInbox = (eventId: string) => call<HelpInbox>(`/hackathon/${eventId}/help/inbox`);
+export const setHelpQueryStatus = (eventId: string, queryId: string, status: HelpQueryStatus) =>
+  call<HelpInbox>(`/hackathon/${eventId}/help/queries/${queryId}/status`, json('POST', { status }));
+
+export const HELP_STATUS_LABEL: Record<HelpQueryStatus, string> = { OPEN: 'Waiting', ACKNOWLEDGED: 'On it', RESOLVED: 'Resolved' };
+export const staffName = (u: { fullName: string | null; username: string | null }) => u.fullName || u.username || 'Team member';
 
 // ── Certificates (Phase 6) ───────────────────────────────────────────────────
 

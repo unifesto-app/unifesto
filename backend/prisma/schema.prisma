@@ -3109,6 +3109,14 @@ enum HackathonRoundKind {
   @@map("hackathon_round_kind")
 }
 
+enum HackathonHelpQueryStatus {
+  OPEN // raised, nobody on it yet
+  ACKNOWLEDGED // someone from the event team is on it
+  RESOLVED
+
+  @@map("hackathon_help_query_status")
+}
+
 enum HackathonAnnouncementAudience {
   ALL // every team member and every judge / mentor
   TEAMS // every team member
@@ -3179,13 +3187,13 @@ model Leaderboard {
   // ref → EventFormField). Null = the lead names the team, else a default.
   teamNameFieldId String? @map("team_name_field_id") @db.Uuid
 
-  psMode      HackathonPsMode?     @map("ps_mode")
-  themeMode   HackathonThemeMode   @default(LIST) @map("theme_mode")
-  psDeadline  DateTime?            @map("ps_deadline") @db.Timestamptz(6)
+  psMode                HackathonPsMode?     @map("ps_mode")
+  themeMode             HackathonThemeMode   @default(LIST) @map("theme_mode")
+  psDeadline            DateTime?            @map("ps_deadline") @db.Timestamptz(6)
   // The deadline the "1 hour left" reminder was sent for. Moving the deadline
   // makes it differ again, so teams are reminded about the new one.
-  psDeadlineRemindedFor DateTime? @map("ps_deadline_reminded_for") @db.Timestamptz(6)
-  scoringMode HackathonScoringMode @default(PER_ROUND) @map("scoring_mode")
+  psDeadlineRemindedFor DateTime?            @map("ps_deadline_reminded_for") @db.Timestamptz(6)
+  scoringMode           HackathonScoringMode @default(PER_ROUND) @map("scoring_mode")
 
   // Hackathon venue. All null = fall back to the event's own venue.
   venueName    String? @map("venue_name") @db.VarChar(255)
@@ -3199,18 +3207,20 @@ model Leaderboard {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  metrics   LeaderboardMetric[]
-  entrants  LeaderboardEntrant[]
-  rounds    LeaderboardRound[]
-  panelists LeaderboardPanelist[]
-  awards    LeaderboardAward[]
-  rooms      HackathonRoom[]
-  themes     HackathonTheme[]
-  statements HackathonStatement[]
+  metrics       LeaderboardMetric[]
+  entrants      LeaderboardEntrant[]
+  rounds        LeaderboardRound[]
+  panelists     LeaderboardPanelist[]
+  awards        LeaderboardAward[]
+  rooms         HackathonRoom[]
+  themes        HackathonTheme[]
+  statements    HackathonStatement[]
   judgeProfiles HackathonJudgeProfile[]
   panels        HackathonPanel[]
   evalRequests  HackathonEvalRequest[]
   announcements HackathonAnnouncement[]
+  helpTopics    HackathonHelpTopic[]
+  helpQueries   HackathonHelpQuery[]
 
   @@map("leaderboards")
 }
@@ -3289,21 +3299,21 @@ model LeaderboardEntrant {
   // ── Hackathon problem statement + theme ──
   // Either one from the curator's list (statementId) or the team's own
   // (customStatementTitle/Text). Theme is from the list (themeId) or free text.
-  statementId          String?             @map("statement_id") @db.Uuid
-  statement            HackathonStatement? @relation(fields: [statementId], references: [id], onDelete: NoAction)
-  customStatementTitle String?             @map("custom_statement_title") @db.VarChar(200)
-  customStatementText  String?             @map("custom_statement_text") @db.Text
-  themeId              String?             @map("theme_id") @db.Uuid
-  theme                HackathonTheme?     @relation(fields: [themeId], references: [id], onDelete: NoAction)
-  themeText            String?             @map("theme_text") @db.VarChar(60)
+  statementId                 String?             @map("statement_id") @db.Uuid
+  statement                   HackathonStatement? @relation(fields: [statementId], references: [id], onDelete: NoAction)
+  customStatementTitle        String?             @map("custom_statement_title") @db.VarChar(200)
+  customStatementText         String?             @map("custom_statement_text") @db.Text
+  themeId                     String?             @map("theme_id") @db.Uuid
+  theme                       HackathonTheme?     @relation(fields: [themeId], references: [id], onDelete: NoAction)
+  themeText                   String?             @map("theme_text") @db.VarChar(60)
   // Set when the statement is locked in (by the team, or assigned by the
   // curator). Opens the hackathon for the team; null = still choosing.
-  statementLockedAt    DateTime?           @map("statement_locked_at") @db.Timestamptz(6)
+  statementLockedAt           DateTime?           @map("statement_locked_at") @db.Timestamptz(6)
   // Who locked it: a team member, or the curator who assigned it.
-  statementSetBy       String?             @map("statement_set_by") @db.Uuid
+  statementSetBy              String?             @map("statement_set_by") @db.Uuid
   // Stamped when the curator changes the statement/theme after the team had a
   // submitted evaluation; the curator's results show "changed after evaluation".
-  statementChangedAfterEvalAt DateTime?    @map("statement_changed_after_eval_at") @db.Timestamptz(6)
+  statementChangedAfterEvalAt DateTime?           @map("statement_changed_after_eval_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3315,6 +3325,7 @@ model LeaderboardEntrant {
   awards         LeaderboardAward[]
   evalRequests   HackathonEvalRequest[]
   submissions    HackathonSubmission[]
+  helpQueries    HackathonHelpQuery[]
 
   @@unique([leaderboardId, teamCode])
   @@index([leaderboardId])
@@ -3507,11 +3518,11 @@ model LeaderboardJudgment {
   submittedAt DateTime? @map("submitted_at") @db.Timestamptz(6)
 
   // Hackathon: the queue slot these marks were given in.
-  requestId String?               @map("request_id") @db.Uuid
-  request   HackathonEvalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  requestId  String?               @map("request_id") @db.Uuid
+  request    HackathonEvalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
   // The curator reopened locked marks for another 5 minutes (soft ref to a user).
-  reopenedBy String?   @map("reopened_by") @db.Uuid
-  reopenedAt DateTime? @map("reopened_at") @db.Timestamptz(6)
+  reopenedBy String?               @map("reopened_by") @db.Uuid
+  reopenedAt DateTime?             @map("reopened_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3562,13 +3573,16 @@ model HackathonRoom {
   leaderboardId String      @map("leaderboard_id") @db.Uuid
   leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
 
-  name     String  @db.VarChar(120)
+  name             String   @db.VarChar(120)
   // Where it is, e.g. "Block C, 2nd floor".
-  location String? @db.VarChar(200)
+  location         String?  @db.VarChar(200)
   // How many teams fit. Cancelled teams don't count against it.
-  capacity Int
-  notes    String? @db.Text
-  order    Int     @default(0)
+  capacity         Int
+  notes            String?  @db.Text
+  order            Int      @default(0)
+  // Event-team members on the floor here (soft refs → users). Teams see them;
+  // they get this room's help queries.
+  volunteerUserIds String[] @default([]) @map("volunteer_user_ids") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3644,12 +3658,12 @@ model HackathonJudgeProfile {
   kind LeaderboardPanelistKind @default(JUDGE)
 
   // Themes this judge takes (soft refs → hackathon_themes). Empty = any theme.
-  themeIds   String[] @map("theme_ids") @db.Uuid
+  themeIds    String[] @map("theme_ids") @db.Uuid
   // A room / table ("Lab 2, table 4"), or a call link for online judging.
-  location   String?  @db.VarChar(200)
-  meetingUrl String?  @map("meeting_url") @db.Text
+  location    String?  @db.VarChar(200)
+  meetingUrl  String?  @map("meeting_url") @db.Text
   // Off = on a break: teams can't join their queue, and they can't call next.
-  isAvailable Boolean @default(true) @map("is_available")
+  isAvailable Boolean  @default(true) @map("is_available")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3724,17 +3738,17 @@ model HackathonEvalRequest {
 
   status HackathonEvalStatus @default(WAITING)
 
-  requestedBy String    @map("requested_by") @db.Uuid
+  requestedBy  String    @map("requested_by") @db.Uuid
   // Queue order. Moving a team to another judge keeps it, so it keeps its place in time.
-  requestedAt DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
-  calledAt    DateTime? @map("called_at") @db.Timestamptz(6)
-  startedAt   DateTime? @map("started_at") @db.Timestamptz(6)
-  slotEndsAt  DateTime? @map("slot_ends_at") @db.Timestamptz(6)
-  closedAt    DateTime? @map("closed_at") @db.Timestamptz(6)
+  requestedAt  DateTime  @default(now()) @map("requested_at") @db.Timestamptz(6)
+  calledAt     DateTime? @map("called_at") @db.Timestamptz(6)
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  slotEndsAt   DateTime? @map("slot_ends_at") @db.Timestamptz(6)
+  closedAt     DateTime? @map("closed_at") @db.Timestamptz(6)
   // Why it closed when it wasn't a normal finish, e.g. REMOVED, ROUND_CLOSED.
-  closedReason String?  @map("closed_reason") @db.VarChar(40)
+  closedReason String?   @map("closed_reason") @db.VarChar(40)
   // Who closed it: the judge, a team member, or the curator (soft ref).
-  closedBy     String?  @map("closed_by") @db.Uuid
+  closedBy     String?   @map("closed_by") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -5078,4 +5092,66 @@ model StayGuest {
 
   @@index([bookingId])
   @@map("stay_guests")
+}
+
+/// A help topic teams raise queries under ("Food", "Wi-Fi"), with its points
+/// of contact from the event team.
+model HackathonHelpTopic {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  name       String   @db.VarChar(60)
+  // Soft refs → users on the event team.
+  pocUserIds String[] @default([]) @map("poc_user_ids") @db.Uuid
+  order      Int      @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  queries HackathonHelpQuery[]
+
+  @@unique([leaderboardId, name])
+  @@index([leaderboardId])
+  @@map("hackathon_help_topics")
+}
+
+/// A query a team raised. Sent to the topic's POCs + the team's room
+/// volunteers ("Other" → curators); `notifiedUserIds` is who it went to and
+/// who sees it in their inbox.
+model HackathonHelpQuery {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  leaderboardId String      @map("leaderboard_id") @db.Uuid
+  leaderboard   Leaderboard @relation(fields: [leaderboardId], references: [id], onDelete: Cascade)
+
+  entrantId String             @map("entrant_id") @db.Uuid
+  entrant   LeaderboardEntrant @relation(fields: [entrantId], references: [id], onDelete: Cascade)
+
+  // Null = "Other". The name is kept so the query still reads right if the topic goes.
+  topicId   String?             @map("topic_id") @db.Uuid
+  topic     HackathonHelpTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  topicName String              @map("topic_name") @db.VarChar(60)
+  // Where the team was when it asked (soft ref + name).
+  roomId    String?             @map("room_id") @db.Uuid
+  roomName  String?             @map("room_name") @db.VarChar(120)
+
+  message String                   @db.Text
+  status  HackathonHelpQueryStatus @default(OPEN)
+
+  raisedBy        String    @map("raised_by") @db.Uuid
+  notifiedUserIds String[]  @default([]) @map("notified_user_ids") @db.Uuid
+  // Who took it (soft ref), and when.
+  handledBy       String?   @map("handled_by") @db.Uuid
+  acknowledgedAt  DateTime? @map("acknowledged_at") @db.Timestamptz(6)
+  resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([leaderboardId, status])
+  @@index([entrantId, createdAt])
+  @@index([notifiedUserIds], type: Gin)
+  @@map("hackathon_help_queries")
 }
