@@ -69,3 +69,19 @@ export interface CompetitionUpdateEvent {
   label?: string;
   entrantName?: string;
 }
+
+/**
+ * A hackathon team update: the team was imported and given its Team ID, or it
+ * was put in (or moved out of) a room. Always delivered as push + in-app.
+ */
+export interface HackathonUpdateEvent {
+  /** Team members to notify, resolved by the hackathon service. */
+  userIds: string[];
+  eventId: string;
+  eventTitle: string;
+  kind: 'TEAM_ASSIGNED' | 'ROOM_ASSIGNED' | 'ROOM_CLEARED';
+  teamCode?: string | null;
+  teamName?: string | null;
+  /** Room name for ROOM_ASSIGNED. */
+  roomName?: string | null;
+}

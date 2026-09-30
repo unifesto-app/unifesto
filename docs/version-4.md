@@ -366,10 +366,11 @@ Already built: backend (rounds, panels, judgments, awards), space curator consol
 | Sponsor/partner quick win: mobile `partnering` section in `spaceSections.ts` (partners find their stats in the Space tab) | planned (from 4.3.0) |
 | Force-update old builds (4.0.0 step 0.5), once 4.0.0 is live in both stores | planned |
 | Project submissions (repo, demo, deck) for entrants | moved → 4.3.0 |
+| Hackathon mobile section, Phase 1 of [`hackathon-mobile-plan.md`](hackathon-mobile-plan.md): hackathon mode on/off, group registrations imported as teams with curator Team IDs, venue + rooms (auto-allocate), team hub for every member, push + in-app notification feed. Needs migration `20260930120000_hackathon_foundation`; no new native modules (OTA-safe) | done (not deployed) |
 
 #### Log
 
-_Nothing yet._
+- **30 Sep:** Hackathon Phase 1 built (backend + mobile). Additive migration verified on Postgres with zero drift; 50-step end-to-end run and 22 HTTP checks against a local database; iOS bundle exports. Not deployed yet.
 
 ---
 

@@ -256,6 +256,14 @@ export default function TicketDetailScreen() {
                 }
               />
             ) : null}
+            {t.hackathon && t.eventId ? (
+              <SettingsRow
+                icon={<Trophy size={24} color={accent} />}
+                label="Hackathon"
+                value={t.hackathon.cancelled ? 'Cancelled' : t.hackathon.teamCode ?? undefined}
+                onPress={() => router.push(`/hackathon/${t.eventId}` as never)}
+              />
+            ) : null}
             {t.competition && t.eventId ? (
               <SettingsRow
                 icon={<Trophy size={24} color={accent} />}

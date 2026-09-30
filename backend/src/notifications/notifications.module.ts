@@ -7,10 +7,12 @@ import { PushCampaignService } from './push-campaign.service';
 import { PushSchedulerService } from './push-scheduler.service';
 import { PushDeviceService } from './push-device.service';
 import { TransactionalNotificationHandler } from './handlers/transactional-notification.handler';
+import { UserNotificationsService } from './user-notifications.service';
 import {
   AdminPushController,
   OrganiserAnnouncementController,
   PushDeviceController,
+  UserNotificationsController,
 } from './notifications.controller';
 
 /**
@@ -24,7 +26,12 @@ import {
  */
 @Module({
   imports: [AuthModule, EventsModule],
-  controllers: [AdminPushController, OrganiserAnnouncementController, PushDeviceController],
+  controllers: [
+    AdminPushController,
+    OrganiserAnnouncementController,
+    PushDeviceController,
+    UserNotificationsController,
+  ],
   providers: [
     OneSignalService,
     NotificationsService,
@@ -32,7 +39,8 @@ import {
     PushSchedulerService,
     PushDeviceService,
     TransactionalNotificationHandler,
+    UserNotificationsService,
   ],
-  exports: [NotificationsService, OneSignalService],
+  exports: [NotificationsService, OneSignalService, UserNotificationsService],
 })
 export class NotificationsModule {}

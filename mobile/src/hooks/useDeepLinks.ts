@@ -7,6 +7,11 @@ import {
   consumePendingDeepLink,
 } from '../services/deepLinkRouter';
 import { takeClipResumePath } from '../services/clipHandoff';
+import { showInAppNotice } from '../components/ui/InAppNotice';
+import { notificationArrived } from '../lib/notificationBus';
+
+/** Push types shown as an in-app card when the app is open (they also land in the in-app feed). */
+const IN_APP_TYPES = new Set(['hackathon', 'competition']);
 
 /**
  * Wires the app's deep-link entry points once, near the navigation root.
@@ -36,8 +41,24 @@ export function useDeepLinks(): void {
         isAuthenticated: authRef.current,
       });
     });
-    // OneSignalService owns the underlying listener for the app's lifetime; it is
-    // registered at the root and never needs teardown.
+    // Hackathon/competition pushes that land while the app is open show as an
+    // in-app card (and refresh the screen on display) instead of the system
+    // banner. preventDefault has to run synchronously inside this listener.
+    OneSignalService.addNotificationForegroundListener((event: any) => {
+      const notification = event?.getNotification?.() ?? event?.notification;
+      const data = (notification?.additionalData ?? {}) as { type?: string; eventId?: string };
+      if (!data.type || !IN_APP_TYPES.has(data.type)) return;
+      notificationArrived({ type: data.type, eventId: data.eventId });
+      const deepLink = extractPushDeepLink({ notification });
+      const shown = showInAppNotice({
+        title: notification?.title || 'Update',
+        body: notification?.body,
+        onPress: () => routeToDeepLink(deepLink, { isAuthenticated: authRef.current }),
+      });
+      if (shown) event?.preventDefault?.();
+    });
+    // OneSignalService owns the underlying listeners for the app's lifetime;
+    // they are registered at the root and never need teardown.
   }, []);
 
   // Once auth has settled, so the auth gate in routeToDeepLink sees real state.

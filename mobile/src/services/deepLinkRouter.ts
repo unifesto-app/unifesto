@@ -45,6 +45,8 @@ const ALLOWED_PREFIXES = new Set([
   'notification-settings',
   'claim', // group-seat invite claim links (fast-registration Part 2)
   'apex', // platform-admin alerts (e.g. WhatsApp inbox); screens re-check the role server-side
+  'hackathon', // a team's hackathon hub (room, Team ID, updates)
+  'competition', // a participant's round results / winners
 ]);
 
 /**
@@ -59,6 +61,8 @@ const AUTH_REQUIRED_PREFIXES = new Set([
   'notification-settings',
   'claim', // must be signed in to claim a seat (queues → login → replays)
   'apex',
+  'hackathon',
+  'competition',
 ]);
 
 /** First path segment, lowercased (e.g. "/ticket/123" -> "ticket"). */

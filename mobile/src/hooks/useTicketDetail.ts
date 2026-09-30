@@ -17,6 +17,7 @@ import {
 import { googleCalendarUrl, icsDownloadUrl, outlookCalendarUrl, type CalendarEvent } from '../lib/calendar';
 import { AppAlert } from '../components/ui/AppAlert';
 import { getParticipantView } from '../lib/api/leaderboard';
+import { getMyHackathon } from '../lib/api/hackathon';
 import { journeyFor, standingOf } from '../lib/competition';
 
 export type TicketStatus = 'registered' | 'checkedIn' | 'cancelled';
@@ -74,6 +75,8 @@ export function useTicketDetail(ticketParam: unknown) {
   const [eventId, setEventId] = useState<string | undefined>(ticket?.eventId ?? ticket?.event?.id ?? undefined);
   // Hackathon / competition board for this event, if the organiser runs one.
   const [competition, setCompetition] = useState<{ status: string } | null>(null);
+  // In hackathon mode the team hub replaces the competition row.
+  const [hackathon, setHackathon] = useState<{ teamCode: string | null; cancelled: boolean } | null>(null);
   const [checkins, setCheckins] = useState<RegistrationCheckinRecord[]>([]);
   const [roster, setRoster] = useState<MyGroupRoster | null>(null);
   const [waGroup, setWaGroup] = useState<TicketWhatsappGroup | null>(null);
@@ -141,6 +144,10 @@ export function useTicketDetail(ticketParam: unknown) {
         ? res.data.awards.length ? 'Winners announced' : ''
         : s.kind === 'in' ? 'Advanced' : s.kind === 'out' ? 'Out' : 'Awaiting results';
       setCompetition({ status });
+    });
+    getMyHackathon(eventId).then((res) => {
+      const team = res.ok ? res.data?.team : null;
+      setHackathon(team ? { teamCode: team.teamCode, cancelled: team.stage === 'CANCELLED' } : null);
     });
   }, [eventId, reloadKey]);
 
@@ -283,7 +290,8 @@ export function useTicketDetail(ticketParam: unknown) {
   return {
     ticket,
     eventId,
-    competition,
+    competition: hackathon ? null : competition,
+    hackathon,
     registrationId,
     cancelledAt,
     cancellation,

@@ -11,6 +11,7 @@ import type {
   WhatsappInboundEvent,
   StatusIncidentEvent,
   CompetitionUpdateEvent,
+  HackathonUpdateEvent,
 } from '../notifications.events';
 
 /**
@@ -32,6 +33,28 @@ export function competitionPushCopy(e: CompetitionUpdateEvent): { title: string;
       return { title: 'Judges\' feedback is in', body: `Read what the panel said about ${e.entrantName ?? 'your team'} at ${e.eventTitle}.` };
     case 'AWARD':
       return { title: `${team} won ${e.label ?? 'an award'}!`, body: `Congratulations from ${e.eventTitle}.` };
+  }
+}
+
+/** Push + in-app copy for a hackathon team update. */
+export function hackathonPushCopy(e: HackathonUpdateEvent): { title: string; body: string } {
+  const team = e.teamName || 'Your team';
+  switch (e.kind) {
+    case 'TEAM_ASSIGNED':
+      return {
+        title: `You're in ${e.eventTitle}`,
+        body: `${team} is registered${e.teamCode ? ` as ${e.teamCode}` : ''}. Open the app for your venue and next steps.`,
+      };
+    case 'ROOM_ASSIGNED':
+      return {
+        title: `${team}: your room is ${e.roomName ?? 'ready'}`,
+        body: `Head to ${e.roomName ?? 'your room'} for ${e.eventTitle}. Details are in the app.`,
+      };
+    case 'ROOM_CLEARED':
+      return {
+        title: `${team}: room update`,
+        body: `Your room at ${e.eventTitle} changed. The organisers will assign a new one.`,
+      };
   }
 }
 
@@ -140,6 +163,20 @@ export class TransactionalNotificationHandler {
       ...competitionPushCopy(e),
       deepLink: `unifesto://competition/${e.eventId}`,
       data: { type: 'competition', kind: e.kind, eventId: e.eventId },
+      inbox: { type: 'competition', eventId: e.eventId },
+    });
+  }
+
+  /** Hackathon team updates: always push + in-app, opening the team's hub. */
+  @OnEvent(NotificationEvents.HackathonUpdate, { async: true })
+  async onHackathonUpdate(e: HackathonUpdateEvent): Promise<void> {
+    if (!e.userIds?.length) return;
+    await this.notifications.send(e.userIds, {
+      category: 'registrationUpdates',
+      ...hackathonPushCopy(e),
+      deepLink: `unifesto://hackathon/${e.eventId}`,
+      data: { type: 'hackathon', kind: e.kind, eventId: e.eventId },
+      inbox: { type: 'hackathon', eventId: e.eventId },
     });
   }
 }
