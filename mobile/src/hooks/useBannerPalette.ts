@@ -88,15 +88,8 @@ async function extract(source: PaletteSource | null, uri: string): Promise<strin
   return top;
 }
 
-/**
- * A light → dark gradient of the banner's single most frequent colour: lighter
- * and darker versions of that same hue (no fade to white or black).
- * Null until extracted (or when there is no banner). `source` names the event
- * (slug or id) or space (id) for the backend's ranked palette; without it the
- * colour is picked on-device.
- */
-export function useBannerPalette(uri?: string | null, source?: PaletteSource | null): [string, string, string] | null {
-  const { isDark } = useTheme();
+/** The banner's most frequent (non-neutral) colour, raw. Null until extracted. */
+function useBannerTop(uri?: string | null, source?: PaletteSource | null): string | null {
   const [top, setTop] = useState<string | null>(() => (uri ? cache.get(uri) ?? null : null));
   // Callers pass a fresh object each render; key the effect on its contents.
   const sourceKey = !source ? '' : 'event' in source ? `event:${source.event}` : `space:${source.space}`;
@@ -116,7 +109,31 @@ export function useBannerPalette(uri?: string | null, source?: PaletteSource | n
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `source` is captured via sourceKey
   }, [sourceKey, uri]);
 
-  const color = top ? toRgb(top) : null;
+  return top;
+}
+
+/**
+ * The banner's colour as an element tint (text, icons, dots) on the plain
+ * theme background: same hue, lightness pushed far enough from the bg to read.
+ */
+export function useBannerAccent(uri?: string | null, source?: PaletteSource | null): string | null {
+  const { isDark } = useTheme();
+  const color = toRgb(useBannerTop(uri, source) ?? '');
+  if (!color) return null;
+  const [h, sat, l] = rgbToHsl(color);
+  return toHex(hslToRgb([h, Math.max(sat, 0.5), isDark ? Math.max(l, 0.62) : Math.min(l, 0.42)]));
+}
+
+/**
+ * A light → dark gradient of the banner's single most frequent colour: lighter
+ * and darker versions of that same hue (no fade to white or black).
+ * Null until extracted (or when there is no banner). `source` names the event
+ * (slug or id) or space (id) for the backend's ranked palette; without it the
+ * colour is picked on-device.
+ */
+export function useBannerPalette(uri?: string | null, source?: PaletteSource | null): [string, string, string] | null {
+  const { isDark } = useTheme();
+  const color = toRgb(useBannerTop(uri, source) ?? '');
   if (!color) return null;
   // Same hue and saturation, only lightness changes: a lighter version of the
   // colour at the top → a darker version at the bottom. The lightness bands
