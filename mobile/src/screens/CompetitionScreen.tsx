@@ -159,11 +159,18 @@ export default function CompetitionScreen() {
               key={a.id}
               icon={<Trophy size={ICON} color={a.isMine ? tokens.accent : tokens.textMuted} weight="fill" />}
               label={a.title}
-              value={a.isMine ? `${a.entrantName ?? 'Your team'} · You` : a.entrantName ?? ''}
+              value={`${[a.teamCode, a.entrantName ?? (a.isMine ? 'Your team' : '')].filter(Boolean).join(' ')}${a.isMine ? ' · You' : ''}`}
             />
           ))}
         </SettingsGroup>
       ) : null}
+      {view.awards
+        .filter((a) => a.notes)
+        .map((a) => (
+          <Text key={`note-${a.id}`} style={[styles.note, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
+            {a.title}: {a.notes}
+          </Text>
+        ))}
 
       {steps.length ? (
         <SettingsGroup title="My rounds">
@@ -214,7 +221,7 @@ export default function CompetitionScreen() {
               ? sortBracket(bracket.entrants).map((e) => (
                   <SettingsRow
                     key={e.id}
-                    label={e.isMine ? `${e.name} (you)` : e.name}
+                    label={`${e.teamCode ? `${e.teamCode}  ` : ''}${e.name}${e.isMine ? ' (you)' : ''}`}
                     value={STATUS_LABEL[e.status]}
                   />
                 ))

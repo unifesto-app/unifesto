@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Broadcast, Buildings, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Power, Tag, UsersThree } from 'phosphor-react-native';
+import { Broadcast, Buildings, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Power, Tag, Trophy, UsersThree } from 'phosphor-react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -251,6 +251,27 @@ export default function HackathonManageScreen() {
               icon={icon(Broadcast)}
               label="Live queues"
               onPress={() => router.push(`/manage/event/${eventId}/hackathon/queues`)}
+            />
+          </SettingsGroup>
+
+          <SettingsGroup title="Results and winners">
+            <SettingsRow
+              icon={icon(ChartBar)}
+              label="Results"
+              value={h?.scoringMode === 'CUMULATIVE' ? 'Rounds added up' : 'Final round decides'}
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/results`)}
+            />
+            <SettingsRow
+              icon={icon(Trophy)}
+              label="Winners"
+              value={
+                data.counts.awards
+                  ? `${data.counts.awardsPublished} of ${data.counts.awards} published`
+                  : data.canDeclareWinners
+                    ? 'Add awards'
+                    : 'None yet'
+              }
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/winners`)}
             />
           </SettingsGroup>
 

@@ -55,7 +55,7 @@ export class HackathonSetupService {
    */
   async getOverview(userId: string, eventId: string) {
     await this.leaderboard.assertCanManage(userId, eventId);
-    const [event, board, planAllowed] = await Promise.all([
+    const [event, board, planAllowed, canDeclareWinners] = await Promise.all([
       this.prisma.event.findUnique({
         where: { id: eventId },
         select: {
@@ -69,6 +69,7 @@ export class HackathonSetupService {
       }),
       this.prisma.leaderboard.findUnique({ where: { eventId } }),
       this.leaderboard.planAllows(eventId),
+      this.leaderboard.canDeclareWinners(userId, eventId),
     ]);
     if (!event) throw new NotFoundException('Event not found');
 
@@ -86,10 +87,10 @@ export class HackathonSetupService {
     ]);
 
     const hackathon = board?.isHackathon ? board : null;
-    let counts = { teams: 0, active: 0, cancelled: 0, unallocated: 0, rooms: 0, psLocked: 0, statements: 0, themes: 0 };
+    let counts = { teams: 0, active: 0, cancelled: 0, unallocated: 0, rooms: 0, psLocked: 0, statements: 0, themes: 0, awards: 0, awardsPublished: 0 };
     if (hackathon) {
       await this.teams.syncCancellations(hackathon.id);
-      const [teams, cancelled, unallocated, rooms, psLocked, statements, themes] = await Promise.all([
+      const [teams, cancelled, unallocated, rooms, psLocked, statements, themes, awards, awardsPublished] = await Promise.all([
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id } }),
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id, cancelledAt: { not: null } } }),
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id, cancelledAt: null, roomId: null } }),
@@ -99,14 +100,18 @@ export class HackathonSetupService {
         }),
         this.prisma.hackathonStatement.count({ where: { leaderboardId: hackathon.id } }),
         this.prisma.hackathonTheme.count({ where: { leaderboardId: hackathon.id } }),
+        this.prisma.leaderboardAward.count({ where: { leaderboardId: hackathon.id } }),
+        this.prisma.leaderboardAward.count({ where: { leaderboardId: hackathon.id, published: true } }),
       ]);
-      counts = { teams, active: teams - cancelled, cancelled, unallocated, rooms, psLocked, statements, themes };
+      counts = { teams, active: teams - cancelled, cancelled, unallocated, rooms, psLocked, statements, themes, awards, awardsPublished };
     }
 
     return {
       eventId,
       eventTitle: event.title,
       planAllowed,
+      // Declaring / publishing winners: Curator and Space Admin only.
+      canDeclareWinners,
       // A leaderboard that isn't a hackathon blocks switching on only if it has entrants.
       otherBoard: board && !board.isHackathon ? { entrants: await this.prisma.leaderboardEntrant.count({ where: { leaderboardId: board.id } }) } : null,
       hackathon: hackathon
@@ -122,6 +127,8 @@ export class HackathonSetupService {
             psMode: hackathon.psMode,
             themeMode: hackathon.themeMode,
             psDeadline: hackathon.psDeadline,
+            scoringMode: hackathon.scoringMode,
+            revealReviews: hackathon.revealReviews,
             venue: {
               name: hackathon.venueName,
               address: hackathon.venueAddress,
@@ -267,9 +274,23 @@ export class HackathonSetupService {
     if (dto.psMode !== undefined) data.psMode = dto.psMode;
     if (dto.themeMode !== undefined) data.themeMode = dto.themeMode;
     if (dto.psDeadline !== undefined) data.psDeadline = dto.psDeadline ? new Date(dto.psDeadline) : null;
+    if (dto.scoringMode !== undefined) data.scoringMode = dto.scoringMode;
+    if (dto.revealReviews !== undefined) data.revealReviews = dto.revealReviews;
 
+    const before = await this.prisma.leaderboard.findUniqueOrThrow({
+      where: { id: board.id },
+      select: { scoringMode: true, revealReviews: true },
+    });
     if (Object.keys(data).length) {
       await this.prisma.leaderboard.update({ where: { id: board.id }, data });
+    }
+    // Totals depend on the scoring mode.
+    if (dto.scoringMode !== undefined && dto.scoringMode !== before.scoringMode) {
+      await this.leaderboard.recomputeAndBroadcast(board.id);
+    }
+    // Teams with written feedback are told once it's shared (marks never are).
+    if (dto.revealReviews === true && !before.revealReviews && board.enabled) {
+      await this.leaderboard.notifyFeedbackRevealed(board.id, eventId);
     }
 
     // Teams were told "we'll notify you" when statements open: do that the

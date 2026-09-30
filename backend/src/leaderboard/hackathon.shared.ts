@@ -418,3 +418,77 @@ export function criterionKey(label: string, taken: ReadonlySet<string>): string 
   while (taken.has(`${base}-${n}`)) n++;
   return `${base}-${n}`;
 }
+
+// ── Scoring, results and export (plan §9) ───────────────────────────────────
+
+/** A mark counts only once its judge has submitted the evaluation it belongs to. */
+export const submittedKey = (roundId: string, entrantId: string, judgeUserId: string) => `${roundId}:${entrantId}:${judgeUserId}`;
+
+/**
+ * The round a PER_ROUND hackathon is ranked on: the latest round that has
+ * been opened (a round still waiting to start has no marks yet), else the last.
+ */
+export function finalRoundId(rounds: { id: string; order: number; status: 'PENDING' | 'ACTIVE' | 'CLOSED' }[]): string | null {
+  const sorted = [...rounds].sort((a, b) => a.order - b.order);
+  const started = sorted.filter((r) => r.status !== 'PENDING');
+  return (started[started.length - 1] ?? sorted[sorted.length - 1])?.id ?? null;
+}
+
+/** CUMULATIVE: a team's total is the plain sum of its scores in the rounds that count. */
+export function cumulativeTotal(roundScores: ReadonlyMap<string, number>, countedRoundIds: ReadonlySet<string>): number {
+  let total = 0;
+  for (const [roundId, score] of roundScores) if (countedRoundIds.has(roundId)) total += score;
+  return Math.round(total * 1e4) / 1e4;
+}
+
+/**
+ * Standard competition ranks, highest score first (1, 2, 2, 4). Items with no
+ * score (null) are left unranked at the end.
+ */
+export function competitionRanks<T extends { score: number | null }>(items: T[]): (T & { rank: number | null })[] {
+  const scored = items.filter((i) => i.score != null).sort((a, b) => b.score! - a.score!);
+  const out: (T & { rank: number | null })[] = [];
+  scored.forEach((item, i) => {
+    const prev = out[i - 1];
+    out.push({ ...item, rank: prev && prev.score === item.score ? prev.rank : i + 1 });
+  });
+  return [...out, ...items.filter((i) => i.score == null).map((i) => ({ ...i, rank: null }))];
+}
+
+/** One evaluation's weighted total: Σ weight × mark over the criteria marked. */
+export function evaluationTotal(marks: { metricId: string; value: number }[], weights: ReadonlyMap<string, number>): number {
+  const t = marks.reduce((sum, m) => sum + (weights.get(m.metricId) ?? 0) * m.value, 0);
+  return Math.round(t * 1e4) / 1e4;
+}
+
+/**
+ * The "top N" split for a round (plan §9): the best N teams advance, the rest
+ * are eliminated. Teams tied with the Nth go through too, so nobody is cut on
+ * a tie; `tiedAtCut` says how many extra that let in. Unscored teams never advance.
+ */
+export function topNSplit(teams: { id: string; score: number | null }[], n: number): { advance: string[]; eliminate: string[]; tiedAtCut: number } {
+  const ranked = competitionRanks(teams);
+  const cutScore = ranked.filter((t) => t.rank != null)[n - 1]?.score ?? null;
+  const advance = ranked.filter((t, i) => t.rank != null && (i < n || (cutScore != null && t.score === cutScore))).map((t) => t.id);
+  const set = new Set(advance);
+  return {
+    advance,
+    eliminate: teams.filter((t) => !set.has(t.id)).map((t) => t.id),
+    tiedAtCut: Math.max(0, advance.length - n),
+  };
+}
+
+/**
+ * One CSV cell. Quoted when needed; a leading = + - @ is prefixed with ' so a
+ * spreadsheet never runs team-typed text as a formula.
+ */
+export function csvCell(v: unknown): string {
+  let s = v == null ? '' : String(v);
+  if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`;
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/** A CSV document (CRLF, with a BOM so Excel reads names in any script). */
+export function toCsv(rows: unknown[][]): string {
+  return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
+}

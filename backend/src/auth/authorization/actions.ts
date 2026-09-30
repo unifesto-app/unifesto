@@ -35,6 +35,7 @@ export const Action = {
   EVENT_CHECK_IN: 'event:check-in', // scan / check attendees in
   EVENT_MANAGE_ATTENDEES: 'event:manage-attendees', // manually add / bulk-import attendees, send payment links
   EVENT_MANAGE_LEADERBOARD: 'event:manage-leaderboard', // competitive dashboard: rounds, panels, advancement, awards
+  EVENT_DECLARE_HACKATHON_WINNERS: 'event:declare-hackathon-winners', // hackathon awards: declare, publish, notes
 } as const;
 
 export type Action = (typeof Action)[keyof typeof Action];
@@ -64,6 +65,7 @@ export const ACTION_SCOPE: Record<Action, RoleScope> = {
   [Action.EVENT_CHECK_IN]: RoleScope.EVENT,
   [Action.EVENT_MANAGE_ATTENDEES]: RoleScope.EVENT,
   [Action.EVENT_MANAGE_LEADERBOARD]: RoleScope.EVENT,
+  [Action.EVENT_DECLARE_HACKATHON_WINNERS]: RoleScope.EVENT,
 };
 
 /**

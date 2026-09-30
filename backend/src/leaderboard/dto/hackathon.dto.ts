@@ -2,12 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   HackathonJudgingMode,
   HackathonPsMode,
+  HackathonScoringMode,
   HackathonThemeMode,
   LeaderboardEntrantRoundStatus,
   LeaderboardRoundStatus,
 } from '@prisma/client';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsDateString,
@@ -22,7 +24,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import {
   CALL_GRACE_MINUTES_MAX,
   REQUIRED_EVALUATIONS_MAX,
@@ -92,6 +96,14 @@ export class UpdateHackathonConfigDto {
   @ApiPropertyOptional({ description: 'After this, teams can no longer choose; the curator assigns. null = no deadline' })
   @IsOptional() @IsDateString()
   psDeadline?: string | null;
+
+  @ApiPropertyOptional({ enum: HackathonScoringMode, description: 'PER_ROUND = final round decides; CUMULATIVE = sum of counted rounds' })
+  @IsOptional() @IsEnum(HackathonScoringMode)
+  scoringMode?: HackathonScoringMode;
+
+  @ApiPropertyOptional({ description: 'Teams see the judges’ written notes about their own team (never marks)' })
+  @IsOptional() @IsBoolean()
+  revealReviews?: boolean;
 }
 
 export class ImportHackathonTeamsDto {
@@ -425,4 +437,51 @@ export class CallNextDto {
   @ApiPropertyOptional({ description: 'Call from this panel’s queue instead of your own' })
   @IsOptional() @IsUUID()
   panelId?: string;
+}
+
+// ── Results & winners (Phase 4) ──────────────────────────────────────────────
+
+class TeamDecisionDto {
+  @ApiProperty()
+  @IsUUID()
+  entrantId: string;
+
+  @ApiProperty({ enum: LeaderboardEntrantRoundStatus })
+  @IsEnum(LeaderboardEntrantRoundStatus)
+  status: LeaderboardEntrantRoundStatus;
+}
+
+/** Several advance/eliminate decisions at once (the "top N" helper). */
+export class SetRoundDecisionsDto {
+  @ApiProperty({ type: [TeamDecisionDto] })
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(1000)
+  @ValidateNested({ each: true }) @Type(() => TeamDecisionDto)
+  decisions: TeamDecisionDto[];
+}
+
+export class UpdateHackathonAwardDto {
+  @ApiPropertyOptional({ maxLength: 160, example: 'Winner' })
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160)
+  title?: string;
+
+  @ApiPropertyOptional({ description: 'The winning team' })
+  @IsOptional() @IsUUID()
+  entrantId?: string;
+
+  @ApiPropertyOptional({ maxLength: 2000, description: 'Why they won, shown with the winner' })
+  @IsOptional() @IsString() @MaxLength(2000)
+  notes?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsInt() @Min(0)
+  order?: number;
+}
+
+/** Same fields; the service requires `title` and `entrantId`. */
+export class CreateHackathonAwardDto extends UpdateHackathonAwardDto {}
+
+export class PublishAwardsDto {
+  @ApiPropertyOptional({ description: 'Awards to publish; omitted = every unpublished award' })
+  @IsOptional() @IsArray() @ArrayMaxSize(100) @IsUUID('all', { each: true })
+  awardIds?: string[];
 }

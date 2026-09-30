@@ -752,7 +752,10 @@ export class HackathonTeamsService {
     eventId: string,
     teams: { id: string; name: string; teamCode: string | null }[],
     kind: HackathonUpdateEvent['kind'],
-    extra: Pick<HackathonUpdateEvent, 'roomName' | 'statementTitle' | 'roundName' | 'evaluatorName' | 'location' | 'meetingUrl'> & {
+    extra: Pick<
+      HackathonUpdateEvent,
+      'roomName' | 'statementTitle' | 'roundName' | 'evaluatorName' | 'location' | 'meetingUrl' | 'awardTitle'
+    > & {
       exceptUserId?: string;
     } = {},
   ) {
@@ -777,6 +780,7 @@ export class HackathonTeamsService {
           evaluatorName: extra.evaluatorName ?? null,
           location: extra.location ?? null,
           meetingUrl: extra.meetingUrl ?? null,
+          awardTitle: extra.awardTitle ?? null,
         } satisfies HackathonUpdateEvent);
       }
     } catch {

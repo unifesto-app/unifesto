@@ -234,17 +234,27 @@ export interface ParticipantRound {
   name: string;
   order: number;
   status: RoundStatus;
-  entrants: { id: string; name: string; isMine: boolean; status: EntrantRoundStatus }[];
+  entrants: { id: string; name: string; teamCode?: string | null; isMine: boolean; status: EntrantRoundStatus }[];
 }
 
 export interface ParticipantView {
   eventId: string;
   title: string | null;
   mode: 'RUBRIC' | 'METRIC';
+  isHackathon?: boolean;
   revealReviews: boolean;
   myEntrantIds: string[];
   rounds: ParticipantRound[];
-  awards: { id: string; title: string; entrantId: string; entrantName: string | null; isMine: boolean }[];
+  awards: {
+    id: string;
+    title: string;
+    entrantId: string;
+    entrantName: string | null;
+    teamCode?: string | null;
+    /** Hackathon: why they won. */
+    notes?: string | null;
+    isMine: boolean;
+  }[];
   feedback: { roundId: string; entrantId: string; overallReview: string | null }[];
 }
 

@@ -101,7 +101,10 @@ export interface HackathonUpdateEvent {
     | 'QUEUE_CALLED'
     | 'QUEUE_NO_SHOW'
     | 'QUEUE_REMOVED'
-    | 'QUEUE_MOVED';
+    | 'QUEUE_MOVED'
+    // Results (Phase 4): this team won an award; winners were announced.
+    | 'WON'
+    | 'WINNERS_ANNOUNCED';
   teamCode?: string | null;
   teamName?: string | null;
   /** Room name for ROOM_ASSIGNED. */
@@ -116,6 +119,8 @@ export interface HackathonUpdateEvent {
   location?: string | null;
   /** Online judging: the call to join, for QUEUE_CALLED. */
   meetingUrl?: string | null;
+  /** The award's title, for WON. */
+  awardTitle?: string | null;
 }
 
 /**
@@ -127,7 +132,7 @@ export interface HackathonJudgeUpdateEvent {
   userIds: string[];
   eventId: string;
   eventTitle: string;
-  kind: 'JUDGE_ADDED' | 'ROUND_OPENED' | 'ROUND_CLOSED' | 'QUEUE_JOINED' | 'TIME_UP' | 'MARKS_REOPENED';
+  kind: 'JUDGE_ADDED' | 'ROUND_OPENED' | 'ROUND_CLOSED' | 'QUEUE_JOINED' | 'TIME_UP' | 'MARKS_REOPENED' | 'WINNERS_ANNOUNCED';
   teamCode?: string | null;
   teamName?: string | null;
   roundName?: string | null;

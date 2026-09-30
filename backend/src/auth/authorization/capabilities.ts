@@ -40,6 +40,9 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
     Action.EVENT_CHECK_IN,
     Action.EVENT_MANAGE_ATTENDEES,
     Action.EVENT_MANAGE_LEADERBOARD,
+    // Declaring and publishing hackathon winners is the Curator's call
+    // (Space Admins inherit it; Co-Curators don't have it).
+    Action.EVENT_DECLARE_HACKATHON_WINNERS,
     // Curators run their events end-to-end, including outbound email to their
     // audiences (space:manage-email is a SPACE-scoped action, resolved against
     // the space the curator holds a role in).

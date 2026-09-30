@@ -27,3 +27,14 @@ export const slugPart = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40) || 'export';
+
+/** Save CSV text the server built (e.g. hackathon results) and open the share sheet. */
+export async function shareCsvText(fileName: string, csv: string): Promise<boolean> {
+  const file = new File(Paths.cache, fileName.endsWith('.csv') ? fileName : `${fileName}.csv`);
+  if (file.exists) file.delete();
+  file.create();
+  file.write(csv);
+  if (!(await Sharing.isAvailableAsync())) return false;
+  await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+  return true;
+}
