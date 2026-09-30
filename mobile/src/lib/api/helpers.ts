@@ -11,12 +11,35 @@ import {
 import { clearCheckinRosters } from '../offline/checkinStorage';
 import { cachedGet, invalidateApiCache } from './memoryCache';
 
-const TOKEN_KEY = 'unifesto_access_token';
-const REFRESH_KEY = 'unifesto_refresh_token';
+/**
+ * Tokens are readable after the first unlock since boot, not only while the
+ * phone is unlocked: widget refreshes, background fetch and reloads with the
+ * phone locked otherwise fail with "User interaction is not allowed" and every
+ * request goes out signed-out. The Keychain can't change an existing item's
+ * accessibility, so the tokens moved to new keys; `readToken` carries the old
+ * one over on first read.
+ */
+const KEYCHAIN = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK };
+const TOKEN_KEY = 'unifesto_access_token_v2';
+const REFRESH_KEY = 'unifesto_refresh_token_v2';
+const LEGACY_KEYS: Record<string, string> = {
+  [TOKEN_KEY]: 'unifesto_access_token',
+  [REFRESH_KEY]: 'unifesto_refresh_token',
+};
+
+async function readToken(key: string): Promise<string | null> {
+  const value = await SecureStore.getItemAsync(key, KEYCHAIN);
+  if (value) return value;
+  const legacy = await SecureStore.getItemAsync(LEGACY_KEYS[key]);
+  if (!legacy) return null;
+  await SecureStore.setItemAsync(key, legacy, KEYCHAIN);
+  await SecureStore.deleteItemAsync(LEGACY_KEYS[key]);
+  return legacy;
+}
 
 export async function getToken(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
+    return await readToken(TOKEN_KEY);
   } catch (error) {
     if (__DEV__) console.warn('[api] Failed to read auth token from SecureStore:', error);
     return null;
@@ -25,14 +48,14 @@ export async function getToken(): Promise<string | null> {
 
 export async function getRefreshToken(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(REFRESH_KEY);
+    return await readToken(REFRESH_KEY);
   } catch {
     return null;
   }
 }
 
 export async function saveToken(token: string): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+  await SecureStore.setItemAsync(TOKEN_KEY, token, KEYCHAIN);
 }
 
 /** Persist the access token and (when present) the refresh token together. */
@@ -40,13 +63,14 @@ export async function saveTokens(
   accessToken: string,
   refreshToken?: string | null
 ): Promise<void> {
-  await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
-  if (refreshToken) await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
+  await SecureStore.setItemAsync(TOKEN_KEY, accessToken, KEYCHAIN);
+  if (refreshToken) await SecureStore.setItemAsync(REFRESH_KEY, refreshToken, KEYCHAIN);
 }
 
 export async function clearToken(): Promise<void> {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
-  await SecureStore.deleteItemAsync(REFRESH_KEY);
+  await Promise.all(
+    [TOKEN_KEY, REFRESH_KEY, ...Object.values(LEGACY_KEYS)].map((k) => SecureStore.deleteItemAsync(k)),
+  );
   invalidateApiCache();
   // Signed out (explicitly or by a dead refresh): the account's offline copies
   // go too, including saved guest lists (attendee names). Unsynced check-ins

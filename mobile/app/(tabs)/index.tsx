@@ -14,6 +14,7 @@ import HomeHeader from '../../src/components/home/HomeHeader';
 import { Rail, Section } from '../../src/components/home/Section';
 import HeroCarousel from '../../src/components/home/HeroCarousel';
 import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNextCard';
+import HackathonCard, { useMyHackathon } from '../../src/components/home/HackathonCard';
 import InviteCards from '../../src/components/home/InviteCards';
 import { useMyInvites } from '../../src/hooks/useMyInvites';
 import PromptCard from '../../src/components/home/PromptCard';
@@ -93,6 +94,8 @@ export default function HomeTab() {
         : null;
 
   const nextTicket = data.upcomingTickets[0];
+  // My team hub, when one of my upcoming tickets is a hackathon I'm on a team in.
+  const hackathon = useMyHackathon(data.upcomingTickets);
 
   // A plain View wraps the ScrollView so it is NOT the screen's root
   // scrollable: that stops the native tab host from auto-adding the safe-area
@@ -151,6 +154,12 @@ export default function HomeTab() {
               }
               onSeeAllTickets={() => router.navigate('/tickets')}
             />
+          </View>
+        ) : null}
+
+        {hackathon ? (
+          <View style={styles.block}>
+            <HackathonCard hub={hackathon} onPress={() => router.push(`/hackathon/${hackathon.eventId}` as never)} />
           </View>
         ) : null}
 
