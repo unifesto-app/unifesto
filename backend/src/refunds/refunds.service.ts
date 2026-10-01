@@ -8,7 +8,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { NotificationEvents } from '../notifications/notifications.constants';
+import type { RegistrationUpdateEvent } from '../notifications/notifications.events';
 import {
   CreateRefundRequestDto,
   CuratorReviewDto,
@@ -46,7 +48,7 @@ export class RefundsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
-    private readonly whatsapp: WhatsAppService,
+    private readonly events: EventEmitter2,
   ) {
     // Refunds use standard Razorpay Checkout (payments.refund) — the same
     // integration that collects ticket payments. This is unrelated to RazorpayX.
@@ -90,7 +92,7 @@ export class RefundsService {
 
   // --- Notifications --------------------------------------------------------
   // All notification helpers are best-effort: they swallow their own errors so a
-  // failed email/WhatsApp never blocks or reverses the refund decision itself.
+  // failed email/push never blocks or reverses the refund decision itself.
 
   private async userContact(
     userId: string,
@@ -311,11 +313,12 @@ export class RefundsService {
           }`,
         ),
       );
-      void this.whatsapp.sendRefundUpdate(payer.mobile ?? '', {
-        userName: payer.name,
+      this.events.emit(NotificationEvents.RegistrationUpdate, {
+        userId: request.registration.userId,
+        eventId: request.eventId,
         eventTitle,
-        status: 'declined',
-      });
+        kind: 'REFUND_DECLINED',
+      } satisfies RegistrationUpdateEvent);
     }
 
     return updated;
@@ -356,11 +359,12 @@ export class RefundsService {
           }`,
         ),
       );
-      void this.whatsapp.sendRefundUpdate(payer.mobile ?? '', {
-        userName: payer.name,
+      this.events.emit(NotificationEvents.RegistrationUpdate, {
+        userId: request.registration.userId,
+        eventId: request.registration.eventId,
         eventTitle: request.registration.event.title,
-        status: 'declined',
-      });
+        kind: 'REFUND_DECLINED',
+      } satisfies RegistrationUpdateEvent);
       return rejected;
     }
 
@@ -507,12 +511,13 @@ export class RefundsService {
         }<p style="color:#6b7280;font-size:12px">The booking processing fee is non-refundable.</p>`,
       ),
     );
-    void this.whatsapp.sendRefundUpdate(payer.mobile ?? '', {
-      userName: payer.name,
+    this.events.emit(NotificationEvents.RegistrationUpdate, {
+      userId: reg.userId,
+      eventId: reg.eventId,
       eventTitle,
-      status: 'approved',
-      detail: `₹${money(amount)}`,
-    });
+      kind: 'REFUND_APPROVED',
+      amount: `₹${money(amount)}`,
+    } satisfies RegistrationUpdateEvent);
 
     return this.prisma.refundRequest.findUnique({ where: { id: requestId } });
   }

@@ -11,6 +11,17 @@ export interface RegistrationConfirmedEvent {
   eventSlug?: string;
 }
 
+/** Cancellation / refund outcome for an attendee (push replaces WhatsApp here). */
+export interface RegistrationUpdateEvent {
+  userId: string;
+  eventId: string;
+  eventTitle: string;
+  eventSlug?: string;
+  kind: 'CANCELLED' | 'REFUND_APPROVED' | 'REFUND_DECLINED';
+  /** Refund amount text, e.g. "₹499". */
+  amount?: string;
+}
+
 export interface WaitlistOfferEvent {
   userId: string;
   eventId: string;

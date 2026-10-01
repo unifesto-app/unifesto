@@ -4,10 +4,9 @@ import { RefundsController } from './refunds.controller';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
-import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, EmailModule, WhatsAppModule],
+  imports: [AuthModule, PrismaModule, EmailModule],
   controllers: [RefundsController],
   providers: [RefundsService],
   exports: [RefundsService],

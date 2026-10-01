@@ -22,6 +22,7 @@ export type NotificationCategory =
 export const NotificationEvents = {
   RegistrationConfirmed: 'notif.registration.confirmed',
   WaitlistOffer: 'notif.waitlist.offer',
+  RegistrationUpdate: 'notif.registration.update',
   NewEvent: 'notif.event.new',
   WhatsappInbound: 'notif.whatsapp.inbound',
   CompetitionUpdate: 'notif.competition.update',

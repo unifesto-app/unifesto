@@ -65,7 +65,6 @@ describe('AuthService - getUserById', () => {
           provide: WhatsAppService,
           useValue: {
             sendOtp: jest.fn(),
-            sendWelcomeMessage: jest.fn(),
           },
         },
         {

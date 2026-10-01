@@ -9,7 +9,6 @@ import { StorageModule } from '../storage/storage.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
 import { CacheModule } from '../cache/cache.module';
 import { EmailModule } from '../email/email.module';
-import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { BannerPaletteModule } from '../banner-palette/banner-palette.module';
 
 @Module({
@@ -20,7 +19,6 @@ import { BannerPaletteModule } from '../banner-palette/banner-palette.module';
     SubscriptionModule,
     CacheModule,
     EmailModule,
-    WhatsAppModule,
     BannerPaletteModule,
   ],
   controllers: [EventsController],

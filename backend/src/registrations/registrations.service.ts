@@ -61,7 +61,7 @@ import { WaitlistService } from './waitlist.service';
 import { GroupSeatsService } from './group-seats.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationEvents } from '../notifications/notifications.constants';
-import type { RegistrationConfirmedEvent } from '../notifications/notifications.events';
+import type { RegistrationConfirmedEvent, RegistrationUpdateEvent } from '../notifications/notifications.events';
 import { NOT_DELETED } from '../common/soft-delete';
 import { utmColumns } from '../common/utm';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
@@ -4672,16 +4672,6 @@ export class RegistrationsService {
     try {
       // WhatsApp notification
       if (registration.user.mobileNumber) {
-        await this.whatsappService.sendPaymentConfirmation(
-          registration.user.mobileNumber,
-          {
-            userName: registration.user.fullName || registration.user.username || 'there',
-            eventTitle: registration.event.title,
-            amount: Number(registration.razorpayAmount),
-            ticketCode: updatedRegistration!.tickets[0]?.ticketCode || registration.qrCode,
-          },
-        );
-
         // Format dates for registration confirmation
         const eventDate = new Date(registration.event.startDateTime).toLocaleDateString('en-US', {
           month: 'long',
@@ -5757,20 +5747,15 @@ export class RegistrationsService {
       });
     });
 
-    // Send WhatsApp notification
-    try {
-      if (registration.user.mobileNumber) {
-        await this.whatsappService.sendCancellationNotification(
-          registration.user.mobileNumber,
-          {
-            userName: registration.user.fullName || registration.user.username || 'there',
-            eventTitle: registration.event.title,
-            razorpayRefundInitiated,
-          },
-        );
-      }
-    } catch (error) {
-      this.logger.error('Failed to send cancellation notification', error);
+    // Push only when the organiser cancelled; a self-cancel already happened in-app.
+    if (opts.byOrganiser) {
+      this.events.emit(NotificationEvents.RegistrationUpdate, {
+        userId,
+        eventId,
+        eventTitle: registration.event.title,
+        eventSlug: registration.event.slug,
+        kind: 'CANCELLED',
+      } satisfies RegistrationUpdateEvent);
     }
 
     // Send email notification (non-blocking)

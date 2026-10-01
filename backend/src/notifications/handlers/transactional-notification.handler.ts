@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications.service';
 import { NotificationEvents } from '../notifications.constants';
 import type {
   RegistrationConfirmedEvent,
+  RegistrationUpdateEvent,
   WaitlistOfferEvent,
   NewEventEvent,
   WhatsappInboundEvent,
@@ -184,6 +185,21 @@ export class TransactionalNotificationHandler {
       body: `Your spot for ${e.eventTitle} is confirmed.`,
       deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
       data: { type: 'registration', eventId: e.eventId },
+    });
+  }
+
+  @OnEvent(NotificationEvents.RegistrationUpdate, { async: true })
+  async onRegistrationUpdate(e: RegistrationUpdateEvent): Promise<void> {
+    const copy = {
+      CANCELLED: { title: 'Registration cancelled', body: `Your registration for ${e.eventTitle} was cancelled.` },
+      REFUND_APPROVED: { title: 'Refund approved', body: `Your refund${e.amount ? ` of ${e.amount}` : ''} for ${e.eventTitle} has been approved.` },
+      REFUND_DECLINED: { title: 'Refund request declined', body: `Your refund request for ${e.eventTitle} wasn't approved.` },
+    }[e.kind];
+    await this.notifications.send([e.userId], {
+      category: 'registrationUpdates',
+      ...copy,
+      deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
+      data: { type: 'registration_update', eventId: e.eventId },
     });
   }
 

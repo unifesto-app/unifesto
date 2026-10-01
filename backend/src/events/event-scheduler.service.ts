@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { RedisService } from '../redis/redis.service';
 import { NOT_DELETED } from '../common/soft-delete';
 
@@ -13,7 +12,6 @@ export class EventSchedulerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    private readonly whatsappService: WhatsAppService,
     private readonly redis: RedisService,
   ) {}
 
@@ -25,7 +23,7 @@ export class EventSchedulerService {
    * The 23–25h window is 2h wide but the cron fires hourly, so the same event
    * matches in up to 3 consecutive runs — and each of the 3 replicas runs its
    * own copy of the cron. A per-event Redis guard (setNx, 3-day TTL) collapses
-   * all of that to one email+WhatsApp reminder per event, mirroring the T-24h
+   * all of that to one email reminder per event, mirroring the T-24h
    * push reminder in PushSchedulerService. Keyed separately from the push guard
    * so the two channels each still fire once.
    */
@@ -99,23 +97,6 @@ export class EventSchedulerService {
             );
         }
 
-        // WhatsApp reminder
-        if (reg.user.mobileNumber) {
-          this.whatsappService
-            .sendEventReminder(reg.user.mobileNumber, {
-              userName: reg.user.fullName || reg.user.username || 'there',
-              eventTitle: event.title,
-              eventDate: this.formatDate(event.startDateTime),
-              eventTime: this.formatTime(event.startDateTime, event.endDateTime),
-              venueName: event.venueName || undefined,
-              city: event.city || undefined,
-              isOnline: event.type === 'ONLINE',
-              onlineUrl: event.onlineUrl || undefined,
-            })
-            .catch((err) =>
-              this.logger.error('Event reminder WhatsApp failed', err),
-            );
-        }
       }
 
       this.logger.log(
