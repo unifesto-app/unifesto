@@ -149,7 +149,7 @@ export default function EditDetailsScreen() {
         AppAlert.alert('Check your answers', `${s.title}: ${problem}`);
         return;
       }
-      if (d.seatIndex !== undefined && !(d.name ?? '').trim()) {
+      if (curator && d.seatIndex !== undefined && !(d.name ?? '').trim()) {
         AppAlert.alert('Name needed', `${s.title}: add a name.`);
         return;
       }
@@ -162,7 +162,7 @@ export default function EditDetailsScreen() {
         const me = changed.find((s) => s.key === 'me');
         const res = await updateMyDetails(registrationId!, {
           ...(team ? { formResponses: draft.team.answers } : {}),
-          ...(me ? { name: (draft.me.name ?? '').trim(), customFields: draft.me.answers } : {}),
+          ...(me ? { customFields: draft.me.answers } : {}),
         });
         if (!res.ok) throw new Error(res.message);
         setMine(res.data);
@@ -219,8 +219,14 @@ export default function EditDetailsScreen() {
               {mine?.lockedReason ?? 'These details can’t be changed right now.'} Ask the organiser if something is wrong.
             </Text>
           </View>
-        ) : !curator && mine?.editsUntil ? (
-          <Text style={[styles.note, { color: tokens.textMuted, marginTop: 0 }]}>
+        ) : null}
+        {!curator ? (
+          <Text style={[styles.note, { color: tokens.textMuted }]}>
+            Name, email, phone and gender can't be changed here. You can change your name and gender in your profile.
+          </Text>
+        ) : null}
+        {editable && !curator && mine?.editsUntil ? (
+          <Text style={[styles.note, { color: tokens.textMuted }]}>
             You can change these until{' '}
             {new Date(mine.editsUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.
           </Text>
@@ -237,7 +243,7 @@ export default function EditDetailsScreen() {
               {editable ? (
                 <>
                   <Text style={[styles.section, { color: tokens.textMuted }]}>{s.title}</Text>
-                  {s.seatIndex !== undefined ? (
+                  {curator && s.seatIndex !== undefined ? (
                     <SettingsGroup plain>
                       <FieldRow label="Name" value={d.name ?? ''} onChangeText={(v) => set(s.key, { name: v })} maxLength={100} />
                     </SettingsGroup>

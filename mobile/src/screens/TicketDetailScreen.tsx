@@ -242,7 +242,8 @@ export default function TicketDetailScreen() {
                 onPress={() => router.push(`/group/${t.registrationId}` as never)}
               />
             ) : null}
-            {t.canEditDetails ? (
+            {/* Group leads edit everything from Manage group. */}
+            {t.canEditDetails && !t.canManageGroup ? (
               <SettingsRow
                 icon={<PencilSimple size={24} color={accent} />}
                 label="Edit my details"

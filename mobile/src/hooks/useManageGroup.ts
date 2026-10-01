@@ -4,7 +4,7 @@ import { profileGenderToAttendeeOption } from '../utils/profile';
 import { firstFormProblem } from '../utils/formQuestions';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
 import { getEventById } from '../lib/api/events';
-import { replaceMemberAsLead } from '../lib/api/attendeeControls';
+import { getMyDetails, replaceMemberAsLead, updateMyDetails, type MyDetails } from '../lib/api/attendeeControls';
 import {
   getRegistrationSeats,
   inviteSeats,
@@ -93,6 +93,12 @@ export function useManageGroup(registrationId: string) {
   const [saving, setSaving] = useState(false);
   const [rosterError, setRosterError] = useState('');
 
+  // ── Answers block: a lead's team (per_group) answers, or a teammate's own ──
+  const [details, setDetails] = useState<MyDetails | null>(null);
+  const [teamFields, setTeamFields] = useState<CustomField[]>([]);
+  const [teamDraft, setTeamDraft] = useState<Record<string, unknown>>({});
+  const [savingTeam, setSavingTeam] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -118,7 +124,18 @@ export function useManageGroup(registrationId: string) {
         setCustomFields([]);
       }
     }
-    if (seatRes.status === 'rejected' && rosterRes.status === 'rejected') {
+    // A lead edits the team's per-group answers here; a teammate (no access to
+    // seats/roster) edits their own per-member answers.
+    const mine = await getMyDetails(registrationId).catch(() => null);
+    const isMember = mine?.ok && mine.data.role === 'member';
+    if (mine?.ok && mine.data.role !== 'solo') {
+      const d = mine.data;
+      setDetails(d);
+      setTeamDraft({ ...((isMember ? d.member?.customFields : d.formResponses) ?? {}) });
+      const { fields } = await getEventCustomFields(d.eventId).catch(() => ({ fields: [] as CustomField[] }));
+      setTeamFields(getFieldsForTicket(fields, d.ticketTypeId ?? '').filter((f) => !!f.per_group === !isMember));
+    }
+    if (seatRes.status === 'rejected' && rosterRes.status === 'rejected' && !isMember) {
       setError((seatRes.reason as Error)?.message || 'Could not load your group.');
     }
     setLoading(false);
@@ -305,8 +322,29 @@ export function useManageGroup(registrationId: string) {
     }
   };
 
+  const saveTeam = async () => {
+    const problem = firstFormProblem(teamFields, teamDraft, { enforceRequired: true });
+    if (problem) {
+      AppAlert.alert('Check your answers', problem);
+      return;
+    }
+    setSavingTeam(true);
+    const isMember = details?.role === 'member';
+    const res = await updateMyDetails(registrationId, isMember ? { customFields: teamDraft } : { formResponses: teamDraft });
+    setSavingTeam(false);
+    if (!res.ok) {
+      AppAlert.alert('Couldn’t save', res.message);
+      return;
+    }
+    setDetails(res.data);
+    setTeamDraft({ ...((isMember ? res.data.member?.customFields : res.data.formResponses) ?? {}) });
+    AppAlert.alert('Saved', isMember ? 'Your answers are updated.' : 'Team answers are updated.');
+  };
+
   // ── Rows ──
   const canEdit = !!roster?.editable;
+  // The organiser's edit switch + deadline (the server enforces it too).
+  const answersOpen = details ? details.editable : true;
   const rows: GroupRow[] =
     seats.length > 0
       ? seats.map((s, i): GroupRow => {
@@ -340,7 +378,7 @@ export function useManageGroup(registrationId: string) {
                 ...(teamChanges && !isLead ? { onReplace: () => replace(s.seatIndex, md.name || label) } : {}),
                 onEdit: !roster
                   ? () => showClaimDetails(s)
-                  : () => startEditing(i, !canEdit || (i > 0 && s.claimedByUserId) ? 'view' : 'edit'),
+                  : () => startEditing(i, !canEdit || !answersOpen || (i > 0 && s.claimedByUserId) ? 'view' : 'edit'),
               };
           }
         })
@@ -348,7 +386,7 @@ export function useManageGroup(registrationId: string) {
           const m = roster?.members[i];
           const name = m?.name?.trim();
           return name
-            ? { key: `member-${i}`, kind: 'filled', isLead: i === 0, name, sub: m?.email?.trim() || null, editable: true, onEdit: () => startEditing(i, canEdit ? 'edit' : 'view') }
+            ? { key: `member-${i}`, kind: 'filled', isLead: i === 0, name, sub: m?.email?.trim() || null, editable: true, onEdit: () => startEditing(i, canEdit && answersOpen ? 'edit' : 'view') }
             : // Email invite only: an empty spot is never typed in by the lead.
               // (The server creates seats for older groups on first load, so
               // this fallback is only hit if the seat list failed to load.)
@@ -393,5 +431,18 @@ export function useManageGroup(registrationId: string) {
     changeMemberCustomField,
     saveRoster,
     closeEditing,
+    // answers block (lead: team answers · teammate: own answers)
+    isMember: details?.role === 'member',
+    /** Why answers can't be changed right now, when they can't. */
+    lockedReason: details && !details.editable ? details.lockedReason ?? 'These can’t be changed right now.' : null,
+    details,
+    teamFields,
+    teamDraft,
+    teamChanged:
+      JSON.stringify(teamDraft) !==
+      JSON.stringify((details?.role === 'member' ? details.member?.customFields : details?.formResponses) ?? {}),
+    changeTeamAnswer: (fieldId: string, value: unknown) => setTeamDraft((prev) => ({ ...prev, [fieldId]: value })),
+    savingTeam,
+    saveTeam,
   };
 }

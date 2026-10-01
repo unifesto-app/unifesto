@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { enforceFormAnswers } from './form-answers.policy';
+import { editWindow } from './attendee-details.service';
 import { checkAnswers, formatAnswer, type FormFieldLike } from './form-answers.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
@@ -1639,13 +1640,10 @@ export class RegistrationsService {
     if ((reg.groupSize ?? 0) <= 1) {
       throw new BadRequestException('This is not a group registration');
     }
-    // Once the event has ended the roster is frozen — mirrors the mobile gate
-    // that hides "Manage group" on completed events.
-    if (reg.event?.status === EventStatus.COMPLETED) {
-      throw new BadRequestException(
-        'This event has ended, so the group can no longer be managed',
-      );
-    }
+    // Same window as every other attendee detail edit: the organiser's switch
+    // and deadline, and closed once the event is over or cancelled.
+    const edits = editWindow(reg.event);
+    if (!edits.open) throw new BadRequestException(edits.reason);
 
     const roster = this.parseRosterUpdate(members, reg.groupSize as number);
 

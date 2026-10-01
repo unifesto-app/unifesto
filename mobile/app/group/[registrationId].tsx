@@ -14,8 +14,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowCounterClockwise, CaretRight, EnvelopeSimple, GenderIntersex, Phone, Plus, Star, User, UsersThree } from 'phosphor-react-native';
 import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
-import FormRow from '../../src/components/profile/FormRow';
-import { ATTENDEE_GENDER_OPTIONS, profileGenderToAttendeeOption } from '../../src/utils/profile';
+import { profileGenderToAttendeeOption } from '../../src/utils/profile';
 import AttendeeForm from '../../src/components/AttendeeForm';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
 import { displayAnswer, visibleFields } from '../../src/utils/formQuestions';
@@ -29,6 +28,7 @@ import { borderRadius, spacing } from '../../src/theme/spacing';
 import { typography } from '../../src/theme/typography';
 import { font } from '../../src/theme/fontHelpers';
 import { CardBackdrop } from '../../src/components/ui/CardSurface';
+import { Button } from '../../src/components/ui';
 
 const GUTTER = spacing[6];
 const AVATAR = 40;
@@ -105,7 +105,6 @@ export default function ManageGroupRoute() {
                 mobile: !!saved?.mobile?.trim(),
                 gender: !!saved?.gender?.trim(),
               };
-              const set = (field: keyof GroupMemberInput) => (value: string) => g.changeMember(idx, field, value);
               return (
                 <View key={idx}>
                   {!locked ? (
@@ -129,60 +128,18 @@ export default function ManageGroupRoute() {
                         ) : null}
                       </SettingsGroup>
                       <Text style={[styles.body, { color: tokens.textMuted, marginTop: spacing[2] }]}>
-                        {view ? 'Their details are theirs to change.' : "Name, email, mobile and gender can't be changed once added."}
+                        {idx === 0
+                          ? "Name, email, phone and gender can't be changed here. You can change your name and gender in your profile."
+                          : view && !g.lockedReason
+                            ? 'Their details are theirs to change.'
+                            : "Name, email, phone and gender can't be changed here."}
                       </Text>
+                      {g.lockedReason ? (
+                        <Text style={[styles.body, { color: tokens.textMuted, marginTop: spacing[1] }]}>
+                          {g.lockedReason} Ask the organiser if something is wrong.
+                        </Text>
+                      ) : null}
 
-                      {!view && (!has.name || !has.email || !has.mobile) ? (
-                        <View style={{ marginTop: spacing[5] }}>
-                          <Text style={[styles.cardTitle, { color: tokens.text }]}>Add what's missing</Text>
-                          <SettingsGroup>
-                            {!has.name ? (
-                              <FormRow icon={<User size={24} color={tokens.accent} weight="duotone" />} value={m.name} onChangeText={set('name')} placeholder="Full name" autoCapitalize="words" />
-                            ) : null}
-                            {!has.email ? (
-                              <FormRow
-                                icon={<EnvelopeSimple size={24} color={tokens.accent} weight="duotone" />}
-                                value={m.email}
-                                onChangeText={set('email')}
-                                placeholder="Email"
-                                autoCapitalize="none"
-                                keyboardType="email-address"
-                              />
-                            ) : null}
-                            {!has.mobile ? (
-                              <FormRow
-                                icon={<Phone size={24} color={tokens.accent} weight="duotone" />}
-                                prefix="+91"
-                                value={m.mobile}
-                                onChangeText={(v) => set('mobile')(v.replace(/[^0-9]/g, ''))}
-                                placeholder="10-digit mobile"
-                                keyboardType="number-pad"
-                                maxLength={10}
-                              />
-                            ) : null}
-                          </SettingsGroup>
-                        </View>
-                      ) : null}
-                      {!view && !has.gender ? (
-                        <View style={{ marginTop: spacing[5] }}>
-                          <Text style={[styles.cardTitle, { color: tokens.text }]}>Gender</Text>
-                          <View style={styles.chips}>
-                            {ATTENDEE_GENDER_OPTIONS.map((opt) => {
-                              const active = m.gender === opt;
-                              return (
-                                <Pressable
-                                  key={opt}
-                                  onPress={() => set('gender')(opt)}
-                                  style={[styles.chip, { backgroundColor: active ? tokens.text : undefined }]}
-                                >
-                                  {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                                  <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{opt}</Text>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      ) : null}
                     </>
                   )}
 
@@ -252,7 +209,16 @@ export default function ManageGroupRoute() {
             </>
           ) : null}
 
-          {g.rows.length > 0 ? (
+          {g.isMember ? (
+            <View style={{ marginTop: spacing[6] }}>
+              <SettingsGroup>
+                <SettingsRow icon={<User size={24} color={tokens.accent} weight="duotone" />} label={g.details?.member?.name || 'Me'} />
+              </SettingsGroup>
+              <Text style={[styles.body, { color: tokens.textMuted, marginTop: spacing[2] }]}>
+                Name, email, phone and gender can't be changed here. You can change your name and gender in your profile.
+              </Text>
+            </View>
+          ) : g.rows.length > 0 ? (
             <View style={[styles.card, { paddingVertical: spacing[1], paddingHorizontal: 0, marginTop: spacing[6] }]}>
               <CardBackdrop shape={styles.card} />
               {g.rows.map((row, idx) => (
@@ -269,6 +235,41 @@ export default function ManageGroupRoute() {
               There's nothing to manage for this ticket.
             </Text>
           )}
+
+          {/* Lead: the per-group questions, asked once for everyone. Teammate: their own answers. */}
+          {g.details && g.teamFields.length > 0 ? (
+            <View style={[styles.card, { marginTop: spacing[4] }]}>
+              <CardBackdrop shape={styles.card} />
+              <Text style={[styles.cardTitle, { color: tokens.text }]}>{g.isMember ? 'My answers' : 'Team answers'}</Text>
+              {g.details.editable ? (
+                <>
+                  {g.details.editsUntil ? (
+                    <Text style={[styles.small, { color: tokens.textMuted }]}>
+                      You can change these until{' '}
+                      {new Date(g.details.editsUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.
+                    </Text>
+                  ) : null}
+                  {visibleFields(g.teamFields, g.teamDraft).map((field) => (
+                    <CustomFieldInput key={field.id} field={field} value={g.teamDraft[field.id]} onChange={(v) => g.changeTeamAnswer(field.id, v)} />
+                  ))}
+                  <Button label={g.isMember ? 'Save my answers' : 'Save team answers'} loading={g.savingTeam} disabled={!g.teamChanged} onPress={g.saveTeam} fullWidth style={{ marginTop: spacing[4] }} />
+                </>
+              ) : (
+                <>
+                  <Text style={[styles.small, { color: tokens.textMuted }]}>
+                    {g.details.lockedReason ?? 'These can’t be changed right now.'} Ask the organiser if something is wrong.
+                  </Text>
+                  {visibleFields(g.teamFields, g.teamDraft)
+                    .filter((field) => field.field_type !== 'section')
+                    .map((field) => (
+                      <Text key={field.id} style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
+                        {field.label}: <Text style={{ color: tokens.text }}>{displayAnswer(field, g.teamDraft[field.id]) || 'Not answered'}</Text>
+                      </Text>
+                    ))}
+                </>
+              )}
+            </View>
+          ) : null}
 
           {/* Inline invite (seats) — opened from an open row */}
           {g.composerOpen ? (
@@ -420,9 +421,6 @@ const styles = StyleSheet.create({
   card: { borderRadius: borderRadius.xl, padding: spacing[5], overflow: 'hidden' },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontSize: typography.fontSize.base, marginBottom: spacing[3], ...font('semibold') },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { height: 40, paddingHorizontal: spacing[5], borderRadius: borderRadius.full, justifyContent: 'center' },
-  chipText: { fontSize: typography.fontSize.sm, ...font('semibold') },
   editHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 64, paddingVertical: spacing[2] },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, alignItems: 'center', justifyContent: 'center' },
