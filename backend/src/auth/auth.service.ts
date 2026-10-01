@@ -419,14 +419,6 @@ export class AuthService {
 
         const accessToken = this.generateAccessToken(newUser.id);
 
-        // Send welcome message via WhatsApp
-        if (newUser.username) {
-          await this.whatsappService.sendWelcomeMessage(
-            dto.mobileNumber,
-            newUser.username,
-          );
-        }
-
         return {
           accessToken,
           refreshToken: this.generateRefreshToken(newUser.id),
