@@ -340,6 +340,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-09-29** · 5.3l header backdrop redone after QA ("can't see it on many screens"): drawn by the app on both platforms (real blur on iOS, raised tint on Android instead of a page-colour wash) with a bottom hairline
 - **2026-09-29** · 5.3t team member replacement, 5.3u attendee detail edits (verified against a local Postgres copy), 5.3v OTA system, 5.3k default images, 5.3m push history delete, 5.3n UptimeRobot, 5.3o widgets + Countdown
 - **2026-09-30** · 5.3w Up next no longer shows completed tickets; finished tickets can be deleted from my list (+ migration)
+- **2026-10-01** · 5.3u follow-up: detail edits moved into Manage group (lead: team answers; teammates can now open it for their own answers); name/email/phone/gender read-only with a pointer to Profile; lead's roster save now honours the organiser's edit switch + deadline (was only blocked on COMPLETED)
 
 #### Shipped
 

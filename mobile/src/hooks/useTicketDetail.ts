@@ -179,7 +179,9 @@ export function useTicketDetail(ticketParam: unknown) {
 
   const isGroupMember = !!ticket?.isGroupMember;
   const cancelled = status === 'cancelled';
-  const canManageGroup = !!roster?.editable && !!registrationId && !isGroupMember && !eventCompleted;
+  // Leads manage the whole group; teammates open it for their own details.
+  const canManageGroup =
+    !!registrationId && !eventCompleted && (isGroupMember ? details?.role === 'member' && !cancelled : !!roster?.editable);
   const canRefund = !!registrationId && !cancelled && !isFree && !isGroupMember;
   const canEditDetails = !!details?.editable && !cancelled;
   const editDetailsUntil = details?.editsUntil ?? null;
