@@ -39,7 +39,7 @@ changes each mobile release depends on.
 
 | Version | Type | Theme | Target | Ships as | Built by | Status | Shipped |
 |---|---|---|---|---|---|---|---|
-| [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | in progress | – |
+| [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | shipped (iOS 36, Android 45 approved) | – |
 | [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | in progress | – |
 | [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
