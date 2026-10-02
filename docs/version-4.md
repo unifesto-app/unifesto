@@ -255,10 +255,10 @@ Owner: **C** = Claude, **Y** = you. Gate = what must be true before the next row
 
 #### Shipped
 
-- iOS build: –
-- Android build: –
+- iOS build: 36 (`1e0affa`), submitted 26 Sep · runtime `e197ffbecf4be9ed7002503f074c1cdf1220328c`
+- Android build: 45 (`e21ff68`), submitted 26 Sep · runtime `54e9557aa67944c2f844221ecb9f2227fd2ccf81`
 - Backend deploy: 2026-09-26 18:00 IST (backend + space, 0.9)
-- OTA update: –
+- OTA update: none reached this runtime. The 1 Oct update (groups `8e408eea` / `83309ce3`) was published to the unbuilt 4.0.5 fingerprint, see 4.0.5 log
 
 ---
 
@@ -277,9 +277,9 @@ Collects every failure from the 4.0.0 build, upload, device QA and App Review, a
 | 5.1 | EAS builds 43/44/33/34 errored at "Configure expo-updates": local fingerprint ≠ EAS (node_modules files rewritten by local prebuild). Fixed with `mobile/fingerprint.config.js` | done in 4.0.0 · [#12](https://github.com/unifesto-app/unifesto/pull/12) |
 | 5.2 | iOS build 35 rejected on upload, ITMS-90683 (missing `NSMotionUsageDescription`, also Location Always + Face ID). Keys restored with honest text; build 36 uploaded | done in 4.0.0 · [#13](https://github.com/unifesto-app/unifesto/pull/13) |
 | 5.3 | Device QA failures from 4.0.0 (26 Sep), itemised below as 5.3a–5.3p | in progress: a–e, g–j, l done |
-| 5.4 | App Review / Play review findings on 4.0.0 | planned: list pending |
+| 5.4 | App Review / Play review findings on 4.0.0 | no findings on record (checked 2 Oct: nothing in repo or EAS submissions). Y: confirm iOS 36 + Android 45 review status in App Store Connect / Play Console; add any finding here as 5.4a… |
 | 5.5 | Bump `version` to 4.0.5 in `mobile/app.config.js` + `mobile/package.json` | done |
-| 5.6 | Pre-build: grep linked iOS APIs vs purpose strings; `npx expo-doctor`; clean-checkout fingerprint matches EAS | planned |
+| 5.6 | Pre-build: grep linked iOS APIs vs purpose strings; `npx expo-doctor`; clean-checkout fingerprint matches EAS | done 2 Oct: merged Info.plist has every key for linked modules (camera, mic, photos, location incl. Always, motion, Face ID, local network, notifications); expo-doctor 21/21 after 9 SDK 57 patch bumps; clean `npm ci` checkout = local fingerprint (iOS `d1776dd1…`, Android `d379e9cc…`); tsc + iOS/Android bundle export green |
 | 5.7 | `eas build --profile production --platform all` → `eas submit` | planned |
 
 **5.3 · Issues found on 4.0.0 builds (iOS 36, Android 45)**
@@ -303,7 +303,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 | 5.3m | Push notifications: delete | No delete exists | Delete broadcasts from Apex push history (decided: Apex history, not the user inbox) | B + M | done |
 | 5.3n | Apex mobile Status page should use UptimeRobot | Status reads our own `/health` only | Backend proxies UptimeRobot API (monitors, uptime %, incidents); key in env | B + M + Y | done: Apex › Status "External monitoring"; needs UPTIMEROBOT_API_KEY (read-only) in backend .env |
 | 5.3o | Widgets show no data; more widgets wanted | Up next is fed only from the Home tab (`useHomeData` → `syncUpNextWidget`); needs a device check of the App Group / Android task handler | Debug on device, then add widgets | N | done in code: widgets refresh on sign-in, foreground and ticket changes (not only from Home), live events no longer drop off, new "Countdown" widget (iOS + Android). Device check of the iOS App Group still needed |
-| 5.3p | Android: event location shows an empty grid | Google Maps grid = key rejected. Key is set in EAS, so most likely the key's Android restriction lacks the **Play app-signing SHA-1** (Play re-signs builds) | Add the Play app-signing SHA-1 + `com.unifesto.app` to the key in Google Cloud; confirm Maps SDK for Android is enabled | Y | planned |
+| 5.3p | Android: event location shows an empty grid | Google Maps grid = key rejected. Key is set in EAS, so most likely the key's Android restriction lacks the **Play app-signing SHA-1** (Play re-signs builds) | Add the Play app-signing SHA-1 + `com.unifesto.app` to the key in Google Cloud; confirm Maps SDK for Android is enabled | Y | planned: Play Console › Setup › App signing → copy **App signing key** SHA-1; Google Cloud › Credentials › the `GOOGLE_MAPS_ANDROID_API_KEY` key › Android apps → add `com.unifesto.app` + that SHA-1 (keep the upload-key entry); APIs › confirm Maps SDK for Android enabled. No build needed, works on 4.0.0 too |
 | 5.3q | Push device "Link failed: 404 Target user does not exist" in Apex | Transfer to an external id with no OneSignal user yet (new account, device never ran `login()`) | Create the OneSignal user, retry the transfer once | B | done |
 | 5.3r | "App version: Not reported yet" after social sign-up | Report fired while only a temp token existed, never retried until a cold start | Wait for the access token; retry on foreground resume (24h gate kept) | M | done |
 | 5.3s | Pull-to-refresh on event, space and ticket detail | – | Refresh control on the three detail screens | M | done |
@@ -327,7 +327,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 #### Release checklist (4.0.5)
 
 - [ ] C · Every 5.3/5.4 item fixed on the release branch (base `main`), tsc + bundles green in CI
-- [ ] C · Version bumped, pre-build checks (5.6) pass
+- [x] C · Version bumped, pre-build checks (5.6) pass
 - [ ] Y · `eas build --profile production --platform all`, TestFlight / internal testing smoke of the failed items + section D
 - [ ] Y · `eas submit --profile production --platform all`
 - [ ] C · Record build numbers + fingerprint under Shipped; 4.1.0 OTA targets this runtime
@@ -341,12 +341,15 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-09-29** · 5.3t team member replacement, 5.3u attendee detail edits (verified against a local Postgres copy), 5.3v OTA system, 5.3k default images, 5.3m push history delete, 5.3n UptimeRobot, 5.3o widgets + Countdown
 - **2026-09-30** · 5.3w Up next no longer shows completed tickets; finished tickets can be deleted from my list (+ migration)
 - **2026-10-01** · 5.3u follow-up: detail edits moved into Manage group (lead: team answers; teammates can now open it for their own answers); name/email/phone/gender read-only with a pointer to Profile; lead's roster save now honours the organiser's edit switch + deadline (was only blocked on COMPLETED)
+- **2026-10-02** · Verified on EAS: **no 4.0.5 build exists yet**; the newest production builds are 4.0.0 (iOS 36, Android 45). The "4.0.5 runtimes" recorded on 1 Oct (`1ab016e`) came from `ota:record` on the local tree (`dab32dd9…` iOS / `e336981a…` Android), so the 1 Oct OTA (Hackathon help desk + Apex OTA updates, groups `8e408eea` / `83309ce3`) targets a runtime no installed app has and reached nobody, and `ota:preflight` was passing falsely. `runtime-fingerprints.json` reset to the live 4.0.0 fingerprints; preflight now correctly fails until the 4.0.5 store build ships. Still open before the build: 5.3p (Maps key SHA-1, console only), 5.4 confirm review status
+
+- **2026-10-02** · 5.6 pre-build checks pass (see table). `expo install --fix` bumped 9 SDK 57 patches (expo, expo-updates, expo-router, expo-camera, expo-widgets, …), so the 4.0.5 fingerprint is now iOS `d1776dd1…` / Android `d379e9cc…`. Ready to build once 5.3p/5.4 are confirmed
 
 #### Shipped
 
-- iOS build: –
-- Android build: –
-- Runtime fingerprint: –
+- iOS build: – (not built, checked 2 Oct)
+- Android build: – (not built, checked 2 Oct)
+- Runtime fingerprint: – (run `npm run ota:record` only **after** the store build is live; it records the local tree, not the build)
 
 ---
 
