@@ -276,8 +276,8 @@ Collects every failure from the 4.0.0 build, upload, device QA and App Review, a
 |---|---|---|
 | 5.1 | EAS builds 43/44/33/34 errored at "Configure expo-updates": local fingerprint ≠ EAS (node_modules files rewritten by local prebuild). Fixed with `mobile/fingerprint.config.js` | done in 4.0.0 · [#12](https://github.com/unifesto-app/unifesto/pull/12) |
 | 5.2 | iOS build 35 rejected on upload, ITMS-90683 (missing `NSMotionUsageDescription`, also Location Always + Face ID). Keys restored with honest text; build 36 uploaded | done in 4.0.0 · [#13](https://github.com/unifesto-app/unifesto/pull/13) |
-| 5.3 | Device QA failures from 4.0.0 (26 Sep), itemised below as 5.3a–5.3p | in progress: a–e, g–j, l done |
-| 5.4 | App Review / Play review findings on 4.0.0 | no findings on record (checked 2 Oct: nothing in repo or EAS submissions). Y: confirm iOS 36 + Android 45 review status in App Store Connect / Play Console; add any finding here as 5.4a… |
+| 5.3 | Device QA failures from 4.0.0 (26 Sep), itemised below as 5.3a–5.3w | done (5.3f web part moved → W10) |
+| 5.4 | App Review / Play review findings on 4.0.0 | done 2 Oct: none. iOS 36 and Android 45 both approved, no rejections or policy warnings |
 | 5.5 | Bump `version` to 4.0.5 in `mobile/app.config.js` + `mobile/package.json` | done |
 | 5.6 | Pre-build: grep linked iOS APIs vs purpose strings; `npx expo-doctor`; clean-checkout fingerprint matches EAS | done 2 Oct: merged Info.plist has every key for linked modules (camera, mic, photos, location incl. Always, motion, Face ID, local network, notifications); expo-doctor 21/21 after 9 SDK 57 patch bumps; clean `npm ci` checkout = local fingerprint (iOS `d1776dd1…`, Android `d379e9cc…`); tsc + iOS/Android bundle export green |
 | 5.7 | `eas build --profile production --platform all` → `eas submit` | planned |
@@ -341,10 +341,11 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-09-29** · 5.3t team member replacement, 5.3u attendee detail edits (verified against a local Postgres copy), 5.3v OTA system, 5.3k default images, 5.3m push history delete, 5.3n UptimeRobot, 5.3o widgets + Countdown
 - **2026-09-30** · 5.3w Up next no longer shows completed tickets; finished tickets can be deleted from my list (+ migration)
 - **2026-10-01** · 5.3u follow-up: detail edits moved into Manage group (lead: team answers; teammates can now open it for their own answers); name/email/phone/gender read-only with a pointer to Profile; lead's roster save now honours the organiser's edit switch + deadline (was only blocked on COMPLETED)
-- **2026-10-02** · Verified on EAS: **no 4.0.5 build exists yet**; the newest production builds are 4.0.0 (iOS 36, Android 45). The "4.0.5 runtimes" recorded on 1 Oct (`1ab016e`) came from `ota:record` on the local tree (`dab32dd9…` iOS / `e336981a…` Android), so the 1 Oct OTA (Hackathon help desk + Apex OTA updates, groups `8e408eea` / `83309ce3`) targets a runtime no installed app has and reached nobody, and `ota:preflight` was passing falsely. `runtime-fingerprints.json` reset to the live 4.0.0 fingerprints; preflight now correctly fails until the 4.0.5 store build ships. Still open before the build: 5.4 confirm review status
+- **2026-10-02** · Verified on EAS: **no 4.0.5 build exists yet**; the newest production builds are 4.0.0 (iOS 36, Android 45). The "4.0.5 runtimes" recorded on 1 Oct (`1ab016e`) came from `ota:record` on the local tree (`dab32dd9…` iOS / `e336981a…` Android), so the 1 Oct OTA (Hackathon help desk + Apex OTA updates, groups `8e408eea` / `83309ce3`) targets a runtime no installed app has and reached nobody, and `ota:preflight` was passing falsely. `runtime-fingerprints.json` reset to the live 4.0.0 fingerprints; preflight now correctly fails until the 4.0.5 store build ships. All pre-build items closed
 
+- **2026-10-02** · 5.4 closed: 4.0.0 approved on both stores (iOS 36, Android 45), no review findings
 - **2026-10-02** · 5.3p fixed in the console: Android maps load on the live 4.0.0 build
-- **2026-10-02** · 5.6 pre-build checks pass (see table). `expo install --fix` bumped 9 SDK 57 patches (expo, expo-updates, expo-router, expo-camera, expo-widgets, …), so the 4.0.5 fingerprint is now iOS `d1776dd1…` / Android `d379e9cc…`. Ready to build once 5.4 is confirmed
+- **2026-10-02** · 5.6 pre-build checks pass (see table). `expo install --fix` bumped 9 SDK 57 patches (expo, expo-updates, expo-router, expo-camera, expo-widgets, …), so the 4.0.5 fingerprint is now iOS `d1776dd1…` / Android `d379e9cc…`. Ready to build
 
 #### Shipped
 
