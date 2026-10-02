@@ -47,6 +47,7 @@ const navItems: NavItem[] = [
           { label: "Institutions", href: "/spaces?type=university", description: "Top-level institutions" },
           { label: "Clubs", href: "/spaces?type=club", description: "Clubs, cells & departments" },
           { label: "Communities", href: "/spaces?type=community", description: "Independent groups" },
+          { label: "Request a Space", href: "/request-space", description: "Run yours on Unifesto" },
         ],
       },
     ],
