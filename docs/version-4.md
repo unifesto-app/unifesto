@@ -509,10 +509,11 @@ _Nothing yet._
 | Legal links in app point to the new versioned documents | planned |
 | Tracked-link surfaces in the Space tab (create/share/QR + clicks), from W10 | planned |
 | v4 polish + bug bash from the 4.x patch backlog | planned |
+| Public Request a Space page on web (`/request-space`): email + WhatsApp OTP creates the account, then files the request | done |
 
 #### Log
 
-_Nothing yet._
+- **2026-10-02** · Public Request a Space page on web (`/request-space`) with inline email + WhatsApp OTP signup; linked from the Spaces menu and sitemap. Web deploy only, no backend change
 
 ---
 
