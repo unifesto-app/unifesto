@@ -20,7 +20,7 @@ import CustomFieldInput from '../../src/components/CustomFieldInput';
 import { displayAnswer, visibleFields } from '../../src/utils/formQuestions';
 import Skeleton from '../../src/components/Skeleton';
 import { ActionBar } from '../../src/components/event/EventOverlays';
-import { useManageGroup, type GroupRow } from '../../src/hooks/useManageGroup';
+import { useManageGroup, type GroupRow, type SeatAction } from '../../src/hooks/useManageGroup';
 import useTopSpacing from '../../src/hooks/useTopSpacing';
 import { useTokens } from '../../src/context/ThemeContext';
 import type { GroupMemberInput } from '../../src/lib/api/registrations';
@@ -172,11 +172,59 @@ export default function ManageGroupRoute() {
               );
             })}
             {g.rosterError ? <Text style={[styles.error, { color: tokens.danger }]}>{g.rosterError}</Text> : null}
+            <SeatActions actions={g.openRow?.actions ?? []} />
           </ScrollView>
         </KeyboardAvoidingView>
         {g.editMode !== 'view' ? (
           <ActionBar info={null} label="Save" loading={g.saving} accent={tokens.accent} onPress={g.saveRoster} />
         ) : null}
+      </View>
+    );
+  }
+
+  // ── One seat's page: who holds it (or its state) and what you can do ──
+  if (g.openRow) {
+    const row = g.openRow;
+    const md = g.openSeat?.memberDetails || {};
+    const title = row.kind === 'filled' ? row.name : row.label;
+    const status =
+      row.kind === 'filled'
+        ? row.isLead
+          ? 'Team lead'
+          : 'In the team'
+        : row.kind === 'invited'
+          ? `Invited${row.email ? ` · ${row.email}` : ''}, waiting to claim`
+          : row.kind === 'released'
+            ? 'Released. It stays yours, but no one can claim it until you reopen it.'
+            : 'Open. Invite someone to claim it.';
+    return (
+      <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
+        {header}
+        <ScrollView contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[10] + insets.bottom }}>
+          <View style={styles.editHead}>
+            <Text style={[styles.title, { color: tokens.text, flex: 1 }]} numberOfLines={2}>
+              {title}
+            </Text>
+            <Pressable onPress={g.closeSeat} hitSlop={10}>
+              <Text style={[styles.link, { color: tokens.textSecondary }]}>Done</Text>
+            </Pressable>
+          </View>
+          <Text style={[styles.body, { color: tokens.textMuted, marginTop: 4 }]}>{status}</Text>
+          {row.kind === 'filled' && (md.email || md.mobile) ? (
+            <View style={{ marginTop: spacing[5] }}>
+              <SettingsGroup>
+                {md.email ? <SettingsRow icon={<EnvelopeSimple size={24} color={tokens.accent} weight="duotone" />} label={md.email} /> : null}
+                {md.mobile ? <SettingsRow icon={<Phone size={24} color={tokens.accent} weight="duotone" />} label={`+91 ${md.mobile}`} /> : null}
+              </SettingsGroup>
+            </View>
+          ) : null}
+          <SeatActions actions={row.actions} />
+          {row.actions.length === 0 && row.kind === 'filled' && !row.isLead && g.team?.isLead && !g.team.open ? (
+            <Text style={[styles.small, { color: tokens.textMuted, marginTop: spacing[5] }]}>
+              {g.team.lockedReason ?? 'Team changes are closed.'} Ask the organiser if you need a change.
+            </Text>
+          ) : null}
+        </ScrollView>
       </View>
     );
   }
@@ -400,98 +448,72 @@ export default function ManageGroupRoute() {
   );
 }
 
-/** One person-slot: an avatar/mark, who it is, and what you can do with it. */
+/** A seat's actions, as a list on its page. Destructive ones are red. */
+function SeatActions({ actions }: { actions: SeatAction[] }) {
+  if (actions.length === 0) return null;
+  return (
+    <View style={{ marginTop: spacing[6] }}>
+      <SettingsGroup title="Actions">
+        {actions.map((a) => (
+          <SettingsRow key={a.key} label={a.label} danger={a.danger} onPress={a.onPress} />
+        ))}
+      </SettingsGroup>
+    </View>
+  );
+}
+
+/** One person-slot: who it is (or the seat's state). Tap to open its page. */
 function Row({ row }: { row: GroupRow }) {
   const tokens = useTokens();
-
   const leadMark = row.isLead ? <Star size={12} color={tokens.accent} weight="fill" /> : null;
-  const TextAction = ({ label, onPress, danger }: { label: string; onPress: () => void; danger?: boolean }) => (
-    <Pressable onPress={onPress} hitSlop={8}>
-      <Text style={[styles.action, { color: danger ? tokens.danger : tokens.accent }]}>{label}</Text>
-    </Pressable>
-  );
 
-  if (row.kind === 'filled') {
-    return (
-      <Pressable onPress={row.onEdit} style={({ pressed }) => [styles.row, pressed && { backgroundColor: tokens.pressed }]}>
-        <View style={[styles.avatar, { backgroundColor: tokens.surface }]}>
-          <Text style={[styles.avatarText, { color: tokens.text }]}>{row.name.charAt(0).toUpperCase()}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={styles.nameRow}>
-            {leadMark}
-            <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
-              {row.name}
-              {row.isLead ? <Text style={{ color: tokens.textMuted }}>{'  You'}</Text> : null}
-            </Text>
-          </View>
-          {row.sub ? <Text style={[styles.small, { color: tokens.textMuted }]} numberOfLines={1}>{row.sub}</Text> : null}
-        </View>
-        {row.onChange ? <TextAction label="Change" onPress={row.onChange} /> : null}
-        <Text style={[styles.action, { color: tokens.textSecondary }]}>{row.editable ? 'Edit' : 'Details'}</Text>
-        <CaretRight size={14} color={tokens.textMuted} />
-      </Pressable>
-    );
-  }
-
-  if (row.kind === 'invited') {
-    return (
-      <View style={styles.row}>
-        <View style={styles.avatar}>
-          <EnvelopeSimple size={24} color={tokens.accent} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={styles.nameRow}>
-            {leadMark}
-            <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>{row.email || row.label}</Text>
-          </View>
-          <Text style={[styles.small, { color: tokens.accent }]}>Invited, waiting to claim</Text>
-        </View>
-        <View style={styles.actions}>
-          <TextAction label="Revoke" onPress={row.onRevoke} />
-          <TextAction label="Release" onPress={row.onRelease} danger />
-          {row.onRemove ? <TextAction label="Remove" onPress={row.onRemove} danger /> : null}
-        </View>
+  const mark =
+    row.kind === 'filled' ? (
+      <View style={[styles.avatar, { backgroundColor: tokens.surface }]}>
+        <Text style={[styles.avatarText, { color: tokens.text }]}>{row.name.charAt(0).toUpperCase()}</Text>
       </View>
-    );
-  }
-
-  if (row.kind === 'released') {
-    return (
-      <View style={[styles.row, { opacity: 0.6 }]}>
-        <View style={styles.avatar}>
-          <ArrowCounterClockwise size={22} color={tokens.textMuted} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: tokens.textSecondary }]}>{row.label}</Text>
-          <Text style={[styles.small, { color: tokens.textMuted }]}>Released</Text>
-        </View>
-        <View style={styles.actions}>
-          <TextAction label="Reopen" onPress={row.onReopen} />
-          {row.onRemove ? <TextAction label="Remove" onPress={row.onRemove} danger /> : null}
-        </View>
-      </View>
-    );
-  }
-
-  // open
-  return (
-    <Pressable onPress={row.onInvite} style={({ pressed }) => [styles.row, pressed && { backgroundColor: tokens.pressed }]}>
+    ) : (
       <View style={styles.avatar}>
-        <Plus size={24} color={tokens.accent} weight="bold" />
+        {row.kind === 'invited' ? (
+          <EnvelopeSimple size={24} color={tokens.accent} />
+        ) : row.kind === 'released' ? (
+          <ArrowCounterClockwise size={22} color={tokens.textMuted} />
+        ) : (
+          <Plus size={24} color={tokens.accent} weight="bold" />
+        )}
       </View>
+    );
+
+  const [title, sub, titleColor, subColor] =
+    row.kind === 'filled'
+      ? [row.name, row.sub, tokens.text, tokens.textMuted]
+      : row.kind === 'invited'
+        ? [row.email || row.label, 'Invited, waiting to claim', tokens.text, tokens.accent]
+        : row.kind === 'released'
+          ? [row.label, 'Released', tokens.textSecondary, tokens.textMuted]
+          : ['Invite by email', row.label, tokens.accent, tokens.textMuted];
+
+  return (
+    <Pressable
+      onPress={row.onOpen}
+      style={({ pressed }) => [styles.row, row.kind === 'released' && { opacity: 0.6 }, pressed && { backgroundColor: tokens.pressed }]}
+    >
+      {mark}
       <View style={{ flex: 1 }}>
-        <Text style={[styles.name, { color: tokens.accent }]}>Invite by email</Text>
-        <Text style={[styles.small, { color: tokens.textMuted }]}>{row.label}</Text>
-      </View>
-      {row.onRelease || row.onRemove ? (
-        <View style={styles.actions}>
-          {row.onRelease ? <TextAction label="Release" onPress={row.onRelease} danger /> : null}
-          {row.onRemove ? <TextAction label="Remove" onPress={row.onRemove} danger /> : null}
+        <View style={styles.nameRow}>
+          {leadMark}
+          <Text style={[styles.name, { color: titleColor }]} numberOfLines={1}>
+            {title}
+            {row.kind === 'filled' && row.isLead ? <Text style={{ color: tokens.textMuted }}>{'  You'}</Text> : null}
+          </Text>
         </View>
-      ) : (
-        <CaretRight size={14} color={tokens.textMuted} />
-      )}
+        {sub ? (
+          <Text style={[styles.small, { color: subColor }]} numberOfLines={1}>
+            {sub}
+          </Text>
+        ) : null}
+      </View>
+      <CaretRight size={14} color={tokens.textMuted} />
     </Pressable>
   );
 }

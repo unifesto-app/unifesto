@@ -40,11 +40,20 @@ import { AppAlert } from '../components/ui/AppAlert';
  *  - shared-ticket roster: the lead fills in each member's details.
  * A registration is normally one model; seats win when present.
  */
+/** Something the lead can do to one seat, listed on that seat's own page. */
+export interface SeatAction {
+  key: string;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}
+
+/** One person-slot in the list. Tapping it opens its page, where its actions live. */
 export type GroupRow =
-  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; onEdit: () => void; editable: boolean; onChange?: () => void }
-  | { key: string; kind: 'invited'; isLead: boolean; label: string; email: string | null; onRevoke: () => void; onRelease: () => void; onRemove?: () => void }
-  | { key: string; kind: 'open'; isLead: boolean; label: string; onInvite: () => void; onRelease?: () => void; onRemove?: () => void }
-  | { key: string; kind: 'released'; isLead: boolean; label: string; onReopen: () => void; onRemove?: () => void };
+  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; editable: boolean; onOpen: () => void; actions: SeatAction[] }
+  | { key: string; kind: 'invited'; isLead: boolean; label: string; email: string | null; onOpen: () => void; actions: SeatAction[] }
+  | { key: string; kind: 'open'; isLead: boolean; label: string; onOpen: () => void; actions: SeatAction[] }
+  | { key: string; kind: 'released'; isLead: boolean; label: string; onOpen: () => void; actions: SeatAction[] };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isComplete = (m?: { name?: string; email?: string; mobile?: string } | null) =>
@@ -92,6 +101,8 @@ export function useManageGroup(registrationId: string) {
   // What the lead may change right now (organiser's window), or a lead
   // handover addressed to me as a member.
   const [team, setTeam] = useState<TeamState | null>(null);
+  // The row whose page is open (its details and actions), by row key.
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const [addCount, setAddCount] = useState(1);
   const [adding, setAdding] = useState(false);
   const { user } = useAuth();
@@ -199,136 +210,144 @@ export function useManageGroup(registrationId: string) {
     }
   };
 
-  const showClaimDetails = (s: GroupSeat) => {
-    const md = s.memberDetails || {};
-    const lines = [md.name, md.email, md.mobile].filter(Boolean).join('\n');
-    AppAlert.alert(`Seat ${s.seatIndex}`, lines || 'This seat has been claimed.', [{ text: 'Close' }]);
+  /** Leave the seat's page (back to the list), e.g. after an action changed it. */
+  const closeSeat = () => {
+    setOpenKey(null);
+    setEditing(false);
+    setEditIndex(null);
+    setRosterError('');
   };
 
-  /** Take a filled seat back from its member: hand it to someone new, or just free it. */
-  const replace = (seatIndex: number, name: string) => {
-    const freeSeat = async () => {
-      const res = await replaceMemberAsLead(registrationId, seatIndex);
-      if (!res.ok) AppAlert.alert('Could not remove', res.message);
-      await load();
-    };
-    AppAlert.alert(
-      `Replace ${name}?`,
-      "They lose this seat and their ticket stops working. They're told by email.",
-      [
-        {
-          text: 'Invite someone else',
-          onPress: () => {
-            setEmail('');
-            setComposerSeat(seatIndex);
-            setReplacing({ seatIndex, name });
-            setComposerOpen(true);
-          },
-        },
-        { text: 'Just free the seat', style: 'destructive', onPress: () => void freeSeat() },
-        { text: 'Cancel', style: 'cancel' },
-      ],
-    );
-  };
-
-  const revoke = (seatIndex: number) => {
-    AppAlert.alert('Revoke invite?', 'The current link stops working and the seat re-opens.', [
+  /** Confirm, run, then go back to the list and refresh. */
+  const confirmThen = (
+    title: string,
+    body: string,
+    cta: string,
+    run: () => Promise<{ ok: boolean; message?: string } | void>,
+    destructive = true,
+  ) =>
+    AppAlert.alert(title, body, [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Revoke',
-        style: 'destructive',
+        text: cta,
+        style: destructive ? 'destructive' : 'default',
         onPress: async () => {
           try {
-            await revokeSeat(registrationId, seatIndex);
-            await load();
+            const res = await run();
+            if (res && !res.ok) {
+              AppAlert.alert("Couldn't do that", res.message ?? 'Please try again.');
+              return;
+            }
+            closeSeat();
           } catch (e: any) {
-            AppAlert.alert('Error', e?.message || 'Could not revoke.');
+            AppAlert.alert("Couldn't do that", e?.message || 'Please try again.');
+          } finally {
+            await load();
           }
         },
       },
     ]);
-  };
 
-  const release = (seatIndex: number) => {
-    AppAlert.alert(
-      'Release this seat?',
-      'It is removed from your group. You keep the seat you paid for and can reopen it later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Release',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await releaseSeat(registrationId, seatIndex);
-              await load();
-            } catch (e: any) {
-              AppAlert.alert('Error', e?.message || 'Could not release the seat.');
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const reopen = async (seatIndex: number) => {
-    try {
-      await reopenSeat(registrationId, seatIndex);
-      await load();
-    } catch (e: any) {
-      AppAlert.alert('Error', e?.message || 'Could not reopen the seat.');
-    }
+  const inviteInto = (seatIndex: number, replacingName?: string) => {
+    closeSeat();
+    setEmail('');
+    setComposerSeat(seatIndex);
+    setReplacing(replacingName ? { seatIndex, name: replacingName } : null);
+    setComposerOpen(true);
   };
 
   // ── Team changes (lead, inside the organiser's window) ──
   const lead = team?.isLead ? team : null;
   const teamOpen = !!lead?.open;
   const canShrink = !!lead && lead.groupSize > lead.minGroupSize;
+  const removeNote = `Your team gets one smaller and the seat goes back on sale.${lead?.addNeedsPayment ? ' Nothing is refunded.' : ''}`;
 
-  const removeSeat = (seatIndex: number, name: string | null) =>
-    AppAlert.alert(
-      name ? `Remove ${name} from the team?` : 'Remove this seat?',
-      (name ? "They lose their ticket and are told by email. " : '') +
-        `Your team gets one smaller and the seat goes back on sale.${lead?.addNeedsPayment ? ' Nothing is refunded.' : ''}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            const res = await removeSeatAsLead(registrationId, seatIndex);
-            if (!res.ok) AppAlert.alert('Could not remove', res.message);
-            await load();
-          },
-        },
-      ],
-    );
-
-  const makeLead = (seatIndex: number, name: string) =>
-    AppAlert.alert(
-      `Make ${name} the team lead?`,
-      "They'll be asked to accept. Once they do, they manage the team and its booking, including refunds, and you become a member.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Ask them',
-          onPress: async () => {
-            const res = await requestLeadTransfer(registrationId, seatIndex);
-            if (!res.ok) AppAlert.alert('Could not ask', res.message);
-            await load();
-          },
-        },
-      ],
-    );
-
-  /** One menu for a filled member seat: lead, replace, free, remove. */
-  const memberMenu = (s: GroupSeat, name: string) => {
-    const options: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
-    if (s.claimedByUserId && !team?.leadTransfer) options.push({ text: 'Make team lead', onPress: () => makeLead(s.seatIndex, name) });
-    options.push({ text: 'Give the seat to someone else', onPress: () => replace(s.seatIndex, name) });
-    if (canShrink) options.push({ text: 'Remove from team', style: 'destructive', onPress: () => removeSeat(s.seatIndex, name) });
-    options.push({ text: 'Cancel', style: 'cancel' });
-    AppAlert.alert(name, undefined, options);
+  /** Everything the lead can do to one seat, by its state. */
+  const seatActions = (s: GroupSeat, name: string, isLead: boolean): SeatAction[] => {
+    if (isLead) return [];
+    const i = s.seatIndex;
+    const out: SeatAction[] = [];
+    const removeAction: SeatAction = {
+      key: 'remove',
+      label: s.status === 'CLAIMED' ? 'Remove from team' : 'Remove this seat',
+      danger: true,
+      onPress: () =>
+        confirmThen(
+          s.status === 'CLAIMED' ? `Remove ${name} from the team?` : 'Remove this seat?',
+          (s.status === 'CLAIMED' ? 'They lose their ticket and are told by email. ' : '') + removeNote,
+          'Remove',
+          () => removeSeatAsLead(registrationId, i),
+        ),
+    };
+    switch (s.status) {
+      case 'OPEN':
+        out.push({ key: 'invite', label: 'Invite by email', onPress: () => inviteInto(i) });
+        out.push({
+          key: 'release',
+          label: 'Release seat',
+          danger: true,
+          onPress: () =>
+            confirmThen('Release this seat?', 'It is removed from your group. You keep the seat you paid for and can reopen it later.', 'Release', () =>
+              releaseSeat(registrationId, i),
+            ),
+        });
+        break;
+      case 'INVITED':
+        out.push({
+          key: 'revoke',
+          label: 'Revoke invite',
+          onPress: () => confirmThen('Revoke invite?', 'The current link stops working and the seat re-opens.', 'Revoke', () => revokeSeat(registrationId, i)),
+        });
+        out.push({
+          key: 'release',
+          label: 'Release seat',
+          danger: true,
+          onPress: () =>
+            confirmThen('Release this seat?', 'The invite stops working and the seat leaves your group. You keep the seat you paid for and can reopen it later.', 'Release', () =>
+              releaseSeat(registrationId, i),
+            ),
+        });
+        break;
+      case 'RELEASED':
+        out.push({
+          key: 'reopen',
+          label: 'Reopen seat',
+          onPress: () => confirmThen('Reopen this seat?', 'It goes back to open so you can invite someone.', 'Reopen', () => reopenSeat(registrationId, i), false),
+        });
+        break;
+      default:
+        if (!teamOpen) return [];
+        if (s.claimedByUserId && !team?.leadTransfer) {
+          out.push({
+            key: 'lead',
+            label: 'Make team lead',
+            onPress: () =>
+              confirmThen(
+                `Make ${name} the team lead?`,
+                "They'll be asked to accept. Once they do, they manage the team and its booking, including refunds, and you become a member.",
+                'Ask them',
+                () => requestLeadTransfer(registrationId, i),
+                false,
+              ),
+          });
+        }
+        out.push({ key: 'give', label: 'Give the seat to someone else', onPress: () => inviteInto(i, name) });
+        out.push({
+          key: 'free',
+          label: 'Free the seat',
+          danger: true,
+          onPress: () =>
+            confirmThen(
+              `Take the seat back from ${name}?`,
+              "They lose this seat and their ticket stops working. They're told by email. The seat stays in your team, open for someone new.",
+              'Free the seat',
+              () => replaceMemberAsLead(registrationId, i),
+            ),
+        });
+        break;
+    }
+    if (teamOpen && canShrink) out.push(removeAction);
+    return out;
   };
 
   const cancelTransfer = async () => {
@@ -412,6 +431,7 @@ export function useManageGroup(registrationId: string) {
   };
 
   const closeEditing = () => {
+    setOpenKey(null);
     setEditing(false);
     setEditIndex(null);
     setRosterError('');
@@ -486,37 +506,15 @@ export function useManageGroup(registrationId: string) {
           const key = `seat-${s.seatIndex}`;
           const isLead = i === 0;
           const label = `Seat ${s.seatIndex}`;
+          const actions = seatActions(s, md.name || label, isLead);
+          const onOpen = () => setOpenKey(key);
           switch (s.status) {
             case 'RELEASED':
-              return {
-                key,
-                kind: 'released',
-                isLead,
-                label,
-                onReopen: () => reopen(s.seatIndex),
-                ...(teamOpen && canShrink ? { onRemove: () => removeSeat(s.seatIndex, null) } : {}),
-              };
+              return { key, kind: 'released', isLead, label, onOpen, actions };
             case 'OPEN':
-              return {
-                key,
-                kind: 'open',
-                isLead,
-                label,
-                onInvite: () => openComposer(s.seatIndex),
-                onRelease: () => release(s.seatIndex),
-                ...(teamOpen && canShrink ? { onRemove: () => removeSeat(s.seatIndex, null) } : {}),
-              };
+              return { key, kind: 'open', isLead, label, onOpen, actions };
             case 'INVITED':
-              return {
-                key,
-                kind: 'invited',
-                isLead,
-                label,
-                email: s.inviteEmail,
-                onRevoke: () => revoke(s.seatIndex),
-                onRelease: () => release(s.seatIndex),
-                ...(teamOpen && canShrink ? { onRemove: () => removeSeat(s.seatIndex, null) } : {}),
-              };
+              return { key, kind: 'invited', isLead, label, email: s.inviteEmail, onOpen, actions };
             default:
               return {
                 key,
@@ -525,23 +523,50 @@ export function useManageGroup(registrationId: string) {
                 name: md.name || label,
                 sub: md.email ?? null,
                 editable: canEdit,
-                ...(teamOpen && !isLead ? { onChange: () => memberMenu(s, md.name || label) } : {}),
-                onEdit: !roster
-                  ? () => showClaimDetails(s)
-                  : () => startEditing(i, !canEdit || !answersOpen || (i > 0 && s.claimedByUserId) ? 'view' : 'edit'),
+                actions,
+                // With a roster, the member's page is the member editor; without
+                // one, it is the seat page (details + actions).
+                onOpen: () => {
+                  setOpenKey(key);
+                  if (roster) startEditing(i, !canEdit || !answersOpen || (i > 0 && s.claimedByUserId) ? 'view' : 'edit');
+                },
               };
           }
         })
       : Array.from({ length: roster?.groupSize ?? 0 }).map((_, i): GroupRow => {
           const m = roster?.members[i];
           const name = m?.name?.trim();
+          const key = `member-${i}`;
           return name
-            ? { key: `member-${i}`, kind: 'filled', isLead: i === 0, name, sub: m?.email?.trim() || null, editable: true, onEdit: () => startEditing(i, canEdit && answersOpen ? 'edit' : 'view') }
+            ? {
+                key,
+                kind: 'filled',
+                isLead: i === 0,
+                name,
+                sub: m?.email?.trim() || null,
+                editable: true,
+                actions: [],
+                onOpen: () => {
+                  setOpenKey(key);
+                  startEditing(i, canEdit && answersOpen ? 'edit' : 'view');
+                },
+              }
             : // Email invite only: an empty spot is never typed in by the lead.
               // (The server creates seats for older groups on first load, so
               // this fallback is only hit if the seat list failed to load.)
-              { key: `member-${i}`, kind: 'open', isLead: i === 0, label: `Member ${i + 1}`, onInvite: () => openComposer(i + 1) };
+              {
+                key,
+                kind: 'open',
+                isLead: i === 0,
+                label: `Member ${i + 1}`,
+                onOpen: () => setOpenKey(key),
+                actions: [{ key: 'invite', label: 'Invite by email', onPress: () => inviteInto(i + 1) }],
+              };
         });
+
+  /** The open seat's row and, for a filled seat, its saved details. */
+  const openRow = rows.find((r) => r.key === openKey) ?? null;
+  const openSeat = openKey?.startsWith('seat-') ? seats.find((x) => `seat-${x.seatIndex}` === openKey) ?? null : null;
 
   // "Filled" = has a person (claimed seat / named member); released seats
   // leave the group, so they don't count toward the total either.
@@ -581,6 +606,10 @@ export function useManageGroup(registrationId: string) {
     changeMemberCustomField,
     saveRoster,
     closeEditing,
+    // the open seat's page
+    openRow,
+    openSeat,
+    closeSeat,
     // team changes
     team,
     teamOpen,
