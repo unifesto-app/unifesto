@@ -72,6 +72,7 @@ export interface Stay {
   propertyType: StayPropertyType;
   description: string | null;
   coverImageUrl: string | null;
+  galleryUrls: string[];
   address: string | null;
   city: string | null;
   mapUrl: string | null;
@@ -287,12 +288,20 @@ export const updateStay = (eventId: string, stayId: string, body: Partial<StayIn
   call<Stay>(`/events/${eventId}/stays/${stayId}`, json('PATCH', body));
 export const deleteStay = (eventId: string, stayId: string) =>
   call<{ deleted: boolean }>(`/events/${eventId}/stays/${stayId}`, { method: 'DELETE' });
-export const uploadStayCover = (eventId: string, stayId: string, uri: string) => {
-  const name = uri.split('/').pop() || 'cover.jpg';
+const imagePart = (uri: string) => {
+  const name = uri.split('/').pop() || 'photo.jpg';
   const ext = /\.(\w+)$/.exec(name)?.[1]?.toLowerCase();
   const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  return postMultipart<{ coverImageUrl: string }>(`/events/${eventId}/stays/${stayId}/cover`, { field: 'file', uri, name, type });
+  return { field: 'file', uri, name, type };
 };
+export const uploadStayCover = (eventId: string, stayId: string, uri: string) =>
+  postMultipart<{ coverImageUrl: string }>(`/events/${eventId}/stays/${stayId}/cover`, imagePart(uri));
+export const addStayGalleryPhoto = (eventId: string, stayId: string, uri: string) =>
+  postMultipart<{ galleryUrls: string[] }>(`/events/${eventId}/stays/${stayId}/gallery`, imagePart(uri));
+export const removeStayGalleryPhoto = (eventId: string, stayId: string, url: string) =>
+  call<{ galleryUrls: string[] }>(`/events/${eventId}/stays/${stayId}/gallery/remove`, json('POST', { url }));
+/** Same cap as the backend's STAY_GALLERY_MAX. */
+export const STAY_GALLERY_MAX = 12;
 
 export const createStayOption = (eventId: string, stayId: string, body: StayOptionInput) =>
   call<Stay>(`/events/${eventId}/stays/${stayId}/options`, json('POST', body));

@@ -61,6 +61,9 @@ export const stayQuestionSlot = (questionId: string) => questionId;
 const num = (d: Prisma.Decimal | number | null | undefined) =>
   d == null ? 0 : Number(d);
 
+/** Photos per stay, on top of the cover. */
+const STAY_GALLERY_MAX = 12;
+
 /**
  * Unifesto Stay — the property side: what the event team sets up (stays,
  * options, questions) and what attendees browse before booking. Bookings
@@ -208,6 +211,7 @@ export class StaysService {
       propertyType: s.propertyType,
       description: s.description,
       coverImageUrl: s.coverImageUrl,
+      galleryUrls: s.galleryUrls,
       address: s.address,
       city: s.city,
       mapUrl: s.mapUrl,
@@ -444,6 +448,39 @@ export class StaysService {
       data: { coverImageUrl: url },
     });
     return { coverImageUrl: url };
+  }
+
+  async addGalleryPhoto(
+    eventId: string,
+    stayId: string,
+    file: Express.Multer.File | undefined,
+  ) {
+    const stay = await this.loadStay(eventId, stayId);
+    if (stay.galleryUrls.length >= STAY_GALLERY_MAX)
+      throw new BadRequestException(`A stay can have up to ${STAY_GALLERY_MAX} photos.`);
+    if (!file?.buffer?.length)
+      throw new BadRequestException('Choose an image to upload.');
+    const mime = sniffMime(file.buffer);
+    if (!mime || !mime.startsWith('image/'))
+      throw new BadRequestException('Upload a JPG, PNG or WebP image.');
+    const url = await this.storage.uploadFile(file, 'stays/', stayId);
+    const updated = await this.prisma.stay.update({
+      where: { id: stayId },
+      data: { galleryUrls: { push: url } },
+      select: { galleryUrls: true },
+    });
+    return { galleryUrls: updated.galleryUrls };
+  }
+
+  // ponytail: drops the URL only, the S3 object stays (same as replacing a cover).
+  async removeGalleryPhoto(eventId: string, stayId: string, url: string) {
+    const stay = await this.loadStay(eventId, stayId);
+    const updated = await this.prisma.stay.update({
+      where: { id: stayId },
+      data: { galleryUrls: stay.galleryUrls.filter((u) => u !== url) },
+      select: { galleryUrls: true },
+    });
+    return { galleryUrls: updated.galleryUrls };
   }
 
   // ───────────────────────────── team: options ─────────────────────────────

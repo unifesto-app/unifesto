@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Camera, Question, Trash } from 'phosphor-react-native';
+import { Camera, Plus, Question, Trash } from 'phosphor-react-native';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import ChipPicker from '../components/manage/ChipPicker';
@@ -28,6 +28,9 @@ import {
   toDay,
   updateStay,
   uploadStayCover,
+  addStayGalleryPhoto,
+  removeStayGalleryPhoto,
+  STAY_GALLERY_MAX,
   type Stay,
   type StayInput,
   type StayPropertyType,
@@ -214,6 +217,42 @@ export default function StayEditorScreen() {
     setStay({ ...stay, coverImageUrl: res.data.coverImageUrl });
   };
 
+  const addPhotos = async () => {
+    if (!stay || !eventId) return;
+    const room = STAY_GALLERY_MAX - stay.galleryUrls.length;
+    if (room <= 0) return AppAlert.alert('Gallery is full', `A stay can have up to ${STAY_GALLERY_MAX} photos.`);
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: room, quality: 0.85 });
+    if (picked.canceled || !picked.assets?.length) return;
+    setUploading(true);
+    let gallery = stay.galleryUrls;
+    // One at a time: each upload returns the full list, so the last one wins cleanly.
+    for (const asset of picked.assets.slice(0, room)) {
+      const res = await addStayGalleryPhoto(eventId, stay.id, asset.uri);
+      if (!res.ok) {
+        AppAlert.alert("Couldn't upload", res.message);
+        break;
+      }
+      gallery = res.data.galleryUrls;
+    }
+    setUploading(false);
+    setStay((s) => (s ? { ...s, galleryUrls: gallery } : s));
+  };
+
+  const removePhoto = (url: string) =>
+    AppAlert.alert('Remove this photo?', 'Guests will no longer see it.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          if (!stay || !eventId) return;
+          const res = await removeStayGalleryPhoto(eventId, stay.id, url);
+          if (!res.ok) return AppAlert.alert("Couldn't remove", res.message);
+          setStay((s) => (s ? { ...s, galleryUrls: res.data.galleryUrls } : s));
+        },
+      },
+    ]);
+
   const remove = () =>
     AppAlert.alert(`Delete ${stay?.name}?`, 'Its options and questions go too. A stay with bookings can only be hidden.', [
       { text: 'Cancel', style: 'cancel' },
@@ -268,6 +307,28 @@ export default function StayEditorScreen() {
               <Text style={styles.coverText}>{stay.coverImageUrl ? 'Change photo' : 'Add a photo'}</Text>
             </View>
           </Pressable>
+        ) : null}
+
+        {stay ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.gallery} style={{ marginBottom: spacing[5] }}>
+            {stay.galleryUrls.map((url) => (
+              <Pressable key={url} onPress={() => removePhoto(url)} accessibilityRole="button" accessibilityLabel="Remove photo">
+                <Image source={{ uri: url }} style={[styles.thumb, { backgroundColor: tokens.fill }]} contentFit="cover" />
+              </Pressable>
+            ))}
+            {stay.galleryUrls.length < STAY_GALLERY_MAX ? (
+              <Pressable
+                onPress={() => void addPhotos()}
+                disabled={uploading}
+                accessibilityRole="button"
+                accessibilityLabel="Add gallery photos"
+                style={[styles.thumb, styles.addThumb, { backgroundColor: tokens.fill }]}
+              >
+                <Plus size={22} color={tokens.textSecondary} />
+                <Text style={[styles.addText, { color: tokens.textSecondary }]}>Photos</Text>
+              </Pressable>
+            ) : null}
+          </ScrollView>
         ) : null}
 
         <SettingsGroup plain>
@@ -408,7 +469,11 @@ export default function StayEditorScreen() {
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: borderRadius.xl, overflow: 'hidden', justifyContent: 'flex-end', marginBottom: spacing[5] },
+  cover: { width: '100%', aspectRatio: 16 / 9, borderRadius: borderRadius.xl, overflow: 'hidden', justifyContent: 'flex-end', marginBottom: spacing[3] },
+  gallery: { gap: spacing[2] },
+  thumb: { width: 76, height: 76, borderRadius: borderRadius.lg },
+  addThumb: { alignItems: 'center', justifyContent: 'center', gap: 2 },
+  addText: { fontSize: typography.fontSize.xs, ...font('medium') },
   coverBtn: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
