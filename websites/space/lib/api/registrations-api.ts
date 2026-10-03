@@ -600,6 +600,57 @@ export async function reopenGroupSeat(
 }
 
 /**
+ * Take a seat out of a group: the group gets one smaller, the seat goes back
+ * on sale, nothing is refunded. Later seats are renumbered.
+ * Backed by `POST /events/:id/registrations/:registrationId/seats/:seatIndex/remove`.
+ */
+export async function removeGroupSeat(
+  eventId: string,
+  registrationId: string,
+  seatIndex: number
+): Promise<{ data: { groupSize: number } | null; error: ApiError | null }> {
+  return apiCall<{ groupSize: number }>(
+    backendClient.post(
+      `/events/${eventId}/registrations/${registrationId}/seats/${seatIndex}/remove`
+    )
+  );
+}
+
+/**
+ * Add seats to a group without payment (collect any money outside the app).
+ * Backed by `POST /events/:id/registrations/:registrationId/seats/add`.
+ */
+export async function addGroupSeats(
+  eventId: string,
+  registrationId: string,
+  seats: number
+): Promise<{ data: { groupSize: number } | null; error: ApiError | null }> {
+  return apiCall<{ groupSize: number }>(
+    backendClient.post(
+      `/events/${eventId}/registrations/${registrationId}/seats/add`,
+      { seats }
+    )
+  );
+}
+
+/**
+ * Make the member on this seat the group's lead (they take over the booking;
+ * the old lead becomes a member).
+ * Backed by `POST /events/:id/registrations/:registrationId/seats/:seatIndex/make-lead`.
+ */
+export async function makeGroupLead(
+  eventId: string,
+  registrationId: string,
+  seatIndex: number
+): Promise<{ data: { status: string } | null; error: ApiError | null }> {
+  return apiCall<{ status: string }>(
+    backendClient.post(
+      `/events/${eventId}/registrations/${registrationId}/seats/${seatIndex}/make-lead`
+    )
+  );
+}
+
+/**
  * ADMIN: transfer a registration directly to the account that owns `email`.
  * Reassigns the holder — same ticket, QR, payment and roster — provided that
  * account exists and isn't already registered for this event. Organisers can't

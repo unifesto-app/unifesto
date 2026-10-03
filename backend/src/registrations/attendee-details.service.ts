@@ -31,6 +31,38 @@ export function editWindow(event: EditWindowEvent, now = new Date()): { open: bo
   return { open: true, reason: null };
 }
 
+export interface TeamWindowEvent {
+  status: EventStatus;
+  endDateTime: Date;
+  allowTeamChanges: boolean;
+  teamChangesUntil: Date | null;
+}
+
+/**
+ * Whether a group lead may change their team right now (replace, add or remove
+ * members, hand over the lead), and why not if not. Curators aren't bound by it.
+ * A hackathon team that has submitted is locked separately (see TeamChangesService).
+ */
+export function teamChangeWindow(event: TeamWindowEvent, now = new Date()): { open: boolean; reason: string | null } {
+  if (event.status === EventStatus.CANCELLED) return { open: false, reason: 'This event was cancelled.' };
+  if (event.status === EventStatus.COMPLETED || event.endDateTime.getTime() < now.getTime()) {
+    return { open: false, reason: 'This event has ended, so the team can no longer change.' };
+  }
+  if (!event.allowTeamChanges) return { open: false, reason: "The organiser hasn't turned on team changes for this event." };
+  if (event.teamChangesUntil && event.teamChangesUntil.getTime() <= now.getTime()) {
+    return { open: false, reason: 'Team changes closed on the organiser’s deadline.' };
+  }
+  return { open: true, reason: null };
+}
+
+/** An ISO string / null / undefined from a DTO → Date / null / undefined, or a 400. */
+function parseDeadline(v: string | null | undefined): Date | null | undefined {
+  if (v === undefined) return undefined;
+  const d = v ? new Date(v) : null;
+  if (d && Number.isNaN(d.getTime())) throw new BadRequestException('Give the deadline as a date and time');
+  return d;
+}
+
 export interface DetailsUpdate {
   /** Registration-level answers: a solo attendee's, or a group's team-wide ones. */
   formResponses?: Json;
@@ -45,6 +77,7 @@ const eventSelect = {
   status: true,
   endDateTime: true,
   allowTeamChanges: true,
+  teamChangesUntil: true,
   attendeeEditsEnabled: true,
   attendeeEditsUntil: true,
 } satisfies Prisma.EventSelect;
@@ -70,17 +103,20 @@ export class AttendeeDetailsService {
 
   async setControls(
     eventId: string,
-    dto: { allowTeamChanges?: boolean; attendeeEditsEnabled?: boolean; attendeeEditsUntil?: string | null },
+    dto: {
+      allowTeamChanges?: boolean;
+      teamChangesUntil?: string | null;
+      attendeeEditsEnabled?: boolean;
+      attendeeEditsUntil?: string | null;
+    },
   ) {
-    let until: Date | null | undefined;
-    if (dto.attendeeEditsUntil !== undefined) {
-      until = dto.attendeeEditsUntil ? new Date(dto.attendeeEditsUntil) : null;
-      if (until && Number.isNaN(until.getTime())) throw new BadRequestException('Give the deadline as a date and time');
-    }
+    const until = parseDeadline(dto.attendeeEditsUntil);
+    const teamUntil = parseDeadline(dto.teamChangesUntil);
     const event = await this.prisma.event.update({
       where: { id: eventId },
       data: {
         ...(dto.allowTeamChanges !== undefined ? { allowTeamChanges: dto.allowTeamChanges } : {}),
+        ...(teamUntil !== undefined ? { teamChangesUntil: teamUntil } : {}),
         ...(dto.attendeeEditsEnabled !== undefined ? { attendeeEditsEnabled: dto.attendeeEditsEnabled } : {}),
         ...(until !== undefined ? { attendeeEditsUntil: until } : {}),
       },
@@ -90,6 +126,8 @@ export class AttendeeDetailsService {
     await Promise.all([this.cache.invalidateEventCache(event.slug), this.cache.invalidateEventCache(event.id)]);
     return {
       allowTeamChanges: event.allowTeamChanges,
+      teamChangesUntil: event.teamChangesUntil,
+      teamChangesOpen: teamChangeWindow(event).open,
       attendeeEditsEnabled: event.attendeeEditsEnabled,
       attendeeEditsUntil: event.attendeeEditsUntil,
       attendeeEditsOpen: editWindow(event).open,

@@ -34,8 +34,8 @@ interface SeatRowProps {
   seat: GroupSeatRow;
   /** Registration questions, for labelling this member's answers. */
   fields: CustomField[];
-  /** 'release' | 'reopen' for unfilled seats, 'replace' for a filled member seat, when allowed now. */
-  action?: 'release' | 'reopen' | 'replace';
+  /** Show a "Manage seat" link (the screen opens its menu of seat actions). */
+  action?: 'manage';
   busy?: boolean;
   onAction?: () => void;
 }
@@ -112,8 +112,8 @@ export default function SeatRow({ seat, fields, action, busy, onAction }: SeatRo
             <ActivityIndicator size="small" color={tokens.accent} />
           ) : (
             <Pressable onPress={onAction} hitSlop={8}>
-              <Text style={[styles.link, { color: action === 'reopen' ? tokens.accent : tokens.danger }]}>
-                {action === 'release' ? 'Release seat' : action === 'replace' ? 'Replace member' : 'Reopen seat'}
+              <Text style={[styles.link, { color: tokens.accent }]}>
+                Manage seat
               </Text>
             </Pressable>
           )}

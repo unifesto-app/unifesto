@@ -3,10 +3,13 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEmail,
   IsInt,
   IsObject,
   IsOptional,
+  IsString,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -36,4 +39,35 @@ export class ClaimSeatDto {
   @IsOptional()
   @IsObject()
   memberDetails?: Record<string, unknown>;
+}
+
+/** Add seats to a group (team changes). */
+export class AddSeatsDto {
+  @IsInt()
+  @Min(1)
+  @Max(20)
+  seats!: number;
+}
+
+/** Hand the lead to the member on this seat. */
+export class LeadTransferDto {
+  @IsInt()
+  @Min(2)
+  seatIndex!: number;
+}
+
+export class RespondLeadTransferDto {
+  @IsBoolean()
+  accept!: boolean;
+}
+
+export class VerifyAddSeatsDto {
+  @IsString()
+  razorpayOrderId!: string;
+
+  @IsString()
+  razorpayPaymentId!: string;
+
+  @IsString()
+  razorpaySignature!: string;
 }

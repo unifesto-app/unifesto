@@ -18,6 +18,7 @@ import { PlanConfigService } from '../subscription/plan-config.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PaymentsService } from '../payments/payments.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
+import { TeamChangesService } from './team-changes.service';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
 import { resolveSpaceSurfaces } from '../white-label/branding.util';
 import { buildExportFile, type ExportFormat } from './export.util';
@@ -87,6 +88,7 @@ export class RegistrationsService {
     private readonly redis: RedisService,
     private readonly coupons: CouponsService,
     private readonly stayBookings: StayBookingsService,
+    private readonly teamChanges: TeamChangesService,
   ) {}
 
   private generateQRCode(): string {
@@ -4870,6 +4872,10 @@ export class RegistrationsService {
         // A Unifesto Stay payment rides the same account-wide webhook; its
         // order notes carry `stayBookingId` instead of `registrationId`.
         if (await this.stayBookings.completeFromWebhook(orderId, paymentId, paymentData.notes)) {
+          return { received: true };
+        }
+        // Extra seats bought for a group carry `groupSeatPurchaseId`.
+        if (await this.teamChanges.completeFromWebhook(orderId, paymentId, paymentData.notes)) {
           return { received: true };
         }
         // Money was captured at Razorpay but we can't tie it to a registration.

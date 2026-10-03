@@ -3,8 +3,23 @@ import {} from 'react-native';
 import { profileGenderToAttendeeOption } from '../utils/profile';
 import { firstFormProblem } from '../utils/formQuestions';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
-import { getEventById } from '../lib/api/events';
-import { getMyDetails, replaceMemberAsLead, updateMyDetails, type MyDetails } from '../lib/api/attendeeControls';
+import RazorpayCheckout from 'react-native-razorpay';
+import {
+  addSeatsAsLead,
+  cancelLeadTransfer,
+  createAddSeatsOrder,
+  getMyDetails,
+  getTeamState,
+  removeSeatAsLead,
+  replaceMemberAsLead,
+  requestLeadTransfer,
+  respondLeadTransfer,
+  updateMyDetails,
+  verifyAddSeats,
+  type MyDetails,
+  type TeamState,
+} from '../lib/api/attendeeControls';
+import { useAuth } from '../context/AuthContext';
 import {
   getRegistrationSeats,
   inviteSeats,
@@ -26,10 +41,10 @@ import { AppAlert } from '../components/ui/AppAlert';
  * A registration is normally one model; seats win when present.
  */
 export type GroupRow =
-  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; onEdit: () => void; editable: boolean; onReplace?: () => void }
-  | { key: string; kind: 'invited'; isLead: boolean; label: string; email: string | null; onRevoke: () => void; onRelease: () => void }
-  | { key: string; kind: 'open'; isLead: boolean; label: string; onInvite: () => void; onRelease?: () => void }
-  | { key: string; kind: 'released'; isLead: boolean; label: string; onReopen: () => void };
+  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; onEdit: () => void; editable: boolean; onChange?: () => void }
+  | { key: string; kind: 'invited'; isLead: boolean; label: string; email: string | null; onRevoke: () => void; onRelease: () => void; onRemove?: () => void }
+  | { key: string; kind: 'open'; isLead: boolean; label: string; onInvite: () => void; onRelease?: () => void; onRemove?: () => void }
+  | { key: string; kind: 'released'; isLead: boolean; label: string; onReopen: () => void; onRemove?: () => void };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isComplete = (m?: { name?: string; email?: string; mobile?: string } | null) =>
@@ -74,8 +89,12 @@ export function useManageGroup(registrationId: string) {
   const [composerSeat, setComposerSeat] = useState<number | null>(null);
   // Set while the composer is inviting someone to take over a filled seat.
   const [replacing, setReplacing] = useState<{ seatIndex: number; name: string } | null>(null);
-  // The organiser lets leads replace members (Event settings › Allow team changes).
-  const [teamChanges, setTeamChanges] = useState(false);
+  // What the lead may change right now (organiser's window), or a lead
+  // handover addressed to me as a member.
+  const [team, setTeam] = useState<TeamState | null>(null);
+  const [addCount, setAddCount] = useState(1);
+  const [adding, setAdding] = useState(false);
+  const { user } = useAuth();
 
   // ── Roster (shared-ticket member details) ──
   const [roster, setRoster] = useState<MyGroupRoster | null>(null);
@@ -113,9 +132,6 @@ export function useManageGroup(registrationId: string) {
     if (rosterRes.status === 'fulfilled' && rosterRes.value) {
       const r = rosterRes.value;
       setRoster(r);
-      getEventById(r.eventId)
-        .then((e: any) => setTeamChanges(!!e?.allowTeamChanges && e?.status !== 'COMPLETED' && e?.status !== 'CANCELLED'))
-        .catch(() => setTeamChanges(false));
       try {
         const { fields } = await getEventCustomFields(r.eventId);
         const applicable = r.ticketTypeId ? getFieldsForTicket(fields, r.ticketTypeId) : fields;
@@ -126,7 +142,11 @@ export function useManageGroup(registrationId: string) {
     }
     // A lead edits the team's per-group answers here; a teammate (no access to
     // seats/roster) edits their own per-member answers.
-    const mine = await getMyDetails(registrationId).catch(() => null);
+    const [mine, teamRes] = await Promise.all([
+      getMyDetails(registrationId).catch(() => null),
+      getTeamState(registrationId),
+    ]);
+    setTeam(teamRes.ok ? teamRes.data : null);
     const isMember = mine?.ok && mine.data.role === 'member';
     if (mine?.ok && mine.data.role !== 'solo') {
       const d = mine.data;
@@ -260,6 +280,120 @@ export function useManageGroup(registrationId: string) {
     }
   };
 
+  // ── Team changes (lead, inside the organiser's window) ──
+  const lead = team?.isLead ? team : null;
+  const teamOpen = !!lead?.open;
+  const canShrink = !!lead && lead.groupSize > lead.minGroupSize;
+
+  const removeSeat = (seatIndex: number, name: string | null) =>
+    AppAlert.alert(
+      name ? `Remove ${name} from the team?` : 'Remove this seat?',
+      (name ? "They lose their ticket and are told by email. " : '') +
+        `Your team gets one smaller and the seat goes back on sale.${lead?.addNeedsPayment ? ' Nothing is refunded.' : ''}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await removeSeatAsLead(registrationId, seatIndex);
+            if (!res.ok) AppAlert.alert('Could not remove', res.message);
+            await load();
+          },
+        },
+      ],
+    );
+
+  const makeLead = (seatIndex: number, name: string) =>
+    AppAlert.alert(
+      `Make ${name} the team lead?`,
+      "They'll be asked to accept. Once they do, they manage the team and its booking, including refunds, and you become a member.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Ask them',
+          onPress: async () => {
+            const res = await requestLeadTransfer(registrationId, seatIndex);
+            if (!res.ok) AppAlert.alert('Could not ask', res.message);
+            await load();
+          },
+        },
+      ],
+    );
+
+  /** One menu for a filled member seat: lead, replace, free, remove. */
+  const memberMenu = (s: GroupSeat, name: string) => {
+    const options: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
+    if (s.claimedByUserId && !team?.leadTransfer) options.push({ text: 'Make team lead', onPress: () => makeLead(s.seatIndex, name) });
+    options.push({ text: 'Give the seat to someone else', onPress: () => replace(s.seatIndex, name) });
+    if (canShrink) options.push({ text: 'Remove from team', style: 'destructive', onPress: () => removeSeat(s.seatIndex, name) });
+    options.push({ text: 'Cancel', style: 'cancel' });
+    AppAlert.alert(name, undefined, options);
+  };
+
+  const cancelTransfer = async () => {
+    const res = await cancelLeadTransfer(registrationId);
+    if (!res.ok) AppAlert.alert('Could not cancel', res.message);
+    await load();
+  };
+
+  const answerTransfer = async (accept: boolean) => {
+    if (!team?.leadTransfer) return;
+    const res = await respondLeadTransfer(team.leadTransfer.id, accept);
+    if (!res.ok) {
+      AppAlert.alert(accept ? 'Could not accept' : 'Could not decline', res.message);
+    } else if (accept) {
+      AppAlert.alert("You're the team lead", 'You can now manage the team and its booking.');
+    }
+    await load();
+  };
+
+  /** Add seats: straight away when free, else pay for them first. */
+  const addSeats = async () => {
+    if (!lead) return;
+    setAdding(true);
+    try {
+      if (!lead.addNeedsPayment) {
+        const res = await addSeatsAsLead(registrationId, addCount);
+        if (!res.ok) AppAlert.alert('Could not add seats', res.message);
+        return;
+      }
+      const order = await createAddSeatsOrder(registrationId, addCount);
+      if (!order.ok) {
+        AppAlert.alert("Couldn't start payment", order.message);
+        return;
+      }
+      const payment: any = await RazorpayCheckout.open({
+        key: order.data.razorpayKeyId,
+        order_id: order.data.razorpayOrderId,
+        amount: order.data.amount,
+        currency: order.data.currency || 'INR',
+        name: 'Unifesto',
+        description: `${addCount} extra seat${addCount > 1 ? 's' : ''} · ${order.data.eventTitle}`,
+        prefill: { name: user?.fullName || '', email: '', contact: user?.mobileNumber || '' },
+        theme: { color: '#3491ff' },
+      } as any);
+      const verified = await verifyAddSeats(order.data.purchaseId, {
+        razorpayOrderId: payment.razorpay_order_id,
+        razorpayPaymentId: payment.razorpay_payment_id,
+        razorpaySignature: payment.razorpay_signature,
+      });
+      if (!verified.ok) {
+        AppAlert.alert('Payment received', "We're adding your seats. Pull down to refresh in a moment.");
+      } else if (verified.data.outcome === 'refund') {
+        AppAlert.alert("Seats couldn't be added", "They're no longer available, so your payment is being refunded.");
+      }
+    } catch (err: any) {
+      // Razorpay reports a dismissed sheet as an error; nothing to alarm anyone about.
+      const cancelled = err?.code === 0 || err?.description === 'Payment Cancelled';
+      if (!cancelled) AppAlert.alert('Payment failed', err?.description || err?.message || 'Please try again');
+    } finally {
+      setAdding(false);
+      setAddCount(1);
+      await load();
+    }
+  };
+
   // ── Roster editing ──
   const startEditing = (index: number | null = null, mode: 'fill' | 'edit' | 'view' = 'fill') => {
     setEditMode(mode);
@@ -354,9 +488,24 @@ export function useManageGroup(registrationId: string) {
           const label = `Seat ${s.seatIndex}`;
           switch (s.status) {
             case 'RELEASED':
-              return { key, kind: 'released', isLead, label, onReopen: () => reopen(s.seatIndex) };
+              return {
+                key,
+                kind: 'released',
+                isLead,
+                label,
+                onReopen: () => reopen(s.seatIndex),
+                ...(teamOpen && canShrink ? { onRemove: () => removeSeat(s.seatIndex, null) } : {}),
+              };
             case 'OPEN':
-              return { key, kind: 'open', isLead, label, onInvite: () => openComposer(s.seatIndex), onRelease: () => release(s.seatIndex) };
+              return {
+                key,
+                kind: 'open',
+                isLead,
+                label,
+                onInvite: () => openComposer(s.seatIndex),
+                onRelease: () => release(s.seatIndex),
+                ...(teamOpen && canShrink ? { onRemove: () => removeSeat(s.seatIndex, null) } : {}),
+              };
             case 'INVITED':
               return {
                 key,
@@ -366,6 +515,7 @@ export function useManageGroup(registrationId: string) {
                 email: s.inviteEmail,
                 onRevoke: () => revoke(s.seatIndex),
                 onRelease: () => release(s.seatIndex),
+                ...(teamOpen && canShrink ? { onRemove: () => removeSeat(s.seatIndex, null) } : {}),
               };
             default:
               return {
@@ -375,7 +525,7 @@ export function useManageGroup(registrationId: string) {
                 name: md.name || label,
                 sub: md.email ?? null,
                 editable: canEdit,
-                ...(teamChanges && !isLead ? { onReplace: () => replace(s.seatIndex, md.name || label) } : {}),
+                ...(teamOpen && !isLead ? { onChange: () => memberMenu(s, md.name || label) } : {}),
                 onEdit: !roster
                   ? () => showClaimDetails(s)
                   : () => startEditing(i, !canEdit || !answersOpen || (i > 0 && s.claimedByUserId) ? 'view' : 'edit'),
@@ -431,6 +581,15 @@ export function useManageGroup(registrationId: string) {
     changeMemberCustomField,
     saveRoster,
     closeEditing,
+    // team changes
+    team,
+    teamOpen,
+    addCount,
+    setAddCount,
+    adding,
+    addSeats,
+    cancelTransfer,
+    answerTransfer,
     // answers block (lead: team answers · teammate: own answers)
     isMember: details?.role === 'member',
     /** Why answers can't be changed right now, when they can't. */
