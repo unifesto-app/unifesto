@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bed, CaretRight, House, MapPin, Moon } from 'phosphor-react-native';
@@ -128,7 +128,7 @@ export default function StayBrowseScreen() {
       {data.stays.map((stay) => (
         <View key={stay.id} style={styles.card}>
           <CardBackdrop shape={styles.card} />
-          {stay.coverImageUrl ? <Image source={{ uri: stay.coverImageUrl }} style={styles.cover} contentFit="cover" /> : null}
+          <StayPhotos urls={[stay.coverImageUrl, ...(stay.galleryUrls ?? [])].filter((u): u is string => !!u)} />
           <View style={styles.cardBody}>
             <Text style={[styles.stayName, { color: tokens.text }]}>{stay.name}</Text>
             <Text style={[styles.meta, { color: tokens.textSecondary }]}>
@@ -214,6 +214,32 @@ export default function StayBrowseScreen() {
   );
 }
 
+/** Cover first, then the gallery; swipe through, one photo per page. */
+function StayPhotos({ urls }: { urls: string[] }) {
+  const [width, setWidth] = useState(0);
+  const [page, setPage] = useState(0);
+  if (urls.length === 0) return null;
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (width) setPage(Math.round(e.nativeEvent.contentOffset.x / width));
+  };
+  return (
+    <View style={styles.cover} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onMomentumScrollEnd={onScroll}>
+        {urls.map((url) => (
+          <Image key={url} source={{ uri: url }} style={{ width, height: '100%' }} contentFit="cover" />
+        ))}
+      </ScrollView>
+      {urls.length > 1 ? (
+        <View style={styles.counter}>
+          <Text style={styles.counterText}>
+            {page + 1} / {urls.length}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
@@ -226,6 +252,8 @@ const styles = StyleSheet.create({
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
   card: { marginTop: spacing[6], borderRadius: borderRadius['2xl'], overflow: 'hidden' },
   cover: { width: '100%', aspectRatio: 16 / 9 },
+  counter: { position: 'absolute', right: spacing[3], bottom: spacing[3], paddingHorizontal: spacing[2], paddingVertical: 2, borderRadius: borderRadius.full, backgroundColor: 'rgba(0,0,0,0.55)' },
+  counterText: { color: '#ffffff', fontSize: typography.fontSize.xs, ...font('medium') },
   cardBody: { padding: spacing[5], gap: spacing[2] },
   stayName: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...font('heading') },
   meta: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...font() },

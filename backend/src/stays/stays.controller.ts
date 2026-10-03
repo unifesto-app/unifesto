@@ -130,6 +130,30 @@ export class StaysController {
     return this.stays.uploadCover(eventId, stayId, file);
   }
 
+  @Post('events/:eventId/stays/:stayId/gallery')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
+  @UseInterceptors(FileInterceptor('file', uploadLimit(10)))
+  @ApiConsumes('multipart/form-data')
+  addGalleryPhoto(
+    @Param('eventId', uuid) eventId: string,
+    @Param('stayId', uuid) stayId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.stays.addGalleryPhoto(eventId, stayId, file);
+  }
+
+  @Post('events/:eventId/stays/:stayId/gallery/remove')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })
+  removeGalleryPhoto(
+    @Param('eventId', uuid) eventId: string,
+    @Param('stayId', uuid) stayId: string,
+    @Body('url') url: string,
+  ) {
+    return this.stays.removeGalleryPhoto(eventId, stayId, String(url ?? ''));
+  }
+
   @Post('events/:eventId/stays/:stayId/options')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_EDIT, { eventKey: 'eventId' })

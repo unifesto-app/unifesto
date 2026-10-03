@@ -4906,6 +4906,8 @@ model Stay {
   propertyType  StayPropertyType @default(HOSTEL) @map("property_type")
   description   String?          @db.Text
   coverImageUrl String?          @map("cover_image_url") @db.Text
+  // Extra photos (rooms, washrooms, common areas), shown after the cover.
+  galleryUrls   String[]         @default([]) @map("gallery_urls")
   address       String?          @db.Text
   city          String?          @db.VarChar(100)
   mapUrl        String?          @map("map_url") @db.Text
