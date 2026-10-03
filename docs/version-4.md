@@ -40,7 +40,7 @@ changes each mobile release depends on.
 | Version | Type | Theme | Target | Ships as | Built by | Status | Shipped |
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | shipped (iOS 36, Android 45 approved) | – |
-| [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | in progress | – |
+| [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | shipped (iOS 39, Android 46 live) | 3 Oct |
 | [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
@@ -328,9 +328,9 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 
 - [ ] C · Every 5.3/5.4 item fixed on the release branch (base `main`), tsc + bundles green in CI
 - [x] C · Version bumped, pre-build checks (5.6) pass
-- [ ] Y · `eas build --profile production --platform all`, TestFlight / internal testing smoke of the failed items + section D
-- [ ] Y · `eas submit --profile production --platform all`
-- [ ] C · Record build numbers + fingerprint under Shipped; 4.1.0 OTA targets this runtime
+- [x] Y · `eas build --profile production --platform all`, TestFlight / internal testing smoke of the failed items + section D
+- [x] Y · `eas submit --profile production --platform all`
+- [x] C · Record build numbers + fingerprint under Shipped; 4.1.0 OTA targets this runtime
 
 #### Log
 
@@ -346,12 +346,13 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 - **2026-10-02** · 5.4 closed: 4.0.0 approved on both stores (iOS 36, Android 45), no review findings
 - **2026-10-02** · 5.3p fixed in the console: Android maps load on the live 4.0.0 build
 - **2026-10-02** · 5.6 pre-build checks pass (see table). `expo install --fix` bumped 9 SDK 57 patches (expo, expo-updates, expo-router, expo-camera, expo-widgets, …), so the 4.0.5 fingerprint is now iOS `d1776dd1…` / Android `d379e9cc…`. Ready to build
+- **2026-10-03** · 4.0.5 live on both stores (iOS 39 / Android 46, EAS production builds of 2 Oct). Fingerprints read from EAS (not the local tree) match the 2 Oct record and are now first in `runtime-fingerprints.json`; 4.0.0 kept for users not yet updated. OTAs from 4.1.0 on target this runtime; force-update to minimum 4.0.5 is unblocked
 
 #### Shipped
 
-- iOS build: – (not built, checked 2 Oct)
-- Android build: – (not built, checked 2 Oct)
-- Runtime fingerprint: – (run `npm run ota:record` only **after** the store build is live; it records the local tree, not the build)
+- iOS build: 39, built 2 Oct, live 3 Oct · runtime `d1776dd1e847165bdd66cfddd6165c836578319d`
+- Android build: 46, built 2 Oct, live 3 Oct · runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
+- Runtime fingerprints: recorded from EAS build metadata into `runtime-fingerprints.json` (3 Oct)
 
 ---
 
