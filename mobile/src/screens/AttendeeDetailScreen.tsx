@@ -7,15 +7,15 @@ import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, P
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
-import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail } from '../lib/api/manageEvent';
+import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail, type GroupSeatRow } from '../lib/api/manageEvent';
 import { attendeeBadge } from '../components/manage/AttendeeRow';
-import SeatRow from '../components/manage/SeatRow';
+import SeatRow, { seatPerson } from '../components/manage/SeatRow';
 import { displayFieldValue } from '../hooks/useEventRegistration';
 import { getEventCustomFields, openFormUpload, type CustomField } from '../lib/api/tickets';
 import { displayAnswer, isFileAnswer } from '../utils/formQuestions';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { FieldRow } from '../components/manage/FormFields';
-import { replaceMemberAsCurator } from '../lib/api/attendeeControls';
+import { addSeatsAsCurator, makeLeadAsCurator, removeSeatAsCurator, replaceMemberAsCurator } from '../lib/api/attendeeControls';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
@@ -110,6 +110,69 @@ export default function AttendeeDetailScreen() {
         },
       ],
     );
+
+  /** Run one seat change, then refresh. */
+  const seatCall = async (seatIndex: number, fn: () => Promise<{ ok: boolean; message?: string }>, failTitle: string) => {
+    setSeatBusy(seatIndex);
+    const res = await fn();
+    setSeatBusy(null);
+    if (!res.ok) AppAlert.alert(failTitle, (res as { message?: string }).message ?? 'Please try again.');
+    await load();
+  };
+
+  const confirmRemove = (seatIndex: number, name: string) =>
+    AppAlert.alert(
+      `Remove ${name} from the group?`,
+      'The group gets one smaller and the seat goes back on sale. Nothing is refunded. A member who is removed loses their ticket and is told by email.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => void seatCall(seatIndex, () => removeSeatAsCurator(eventId!, registrationId!, seatIndex), "Couldn't remove"),
+        },
+      ],
+    );
+
+  const confirmMakeLead = (seatIndex: number, name: string) =>
+    AppAlert.alert(
+      `Make ${name} the group lead?`,
+      'They manage the group and its booking from now on, including refunds. The current lead becomes a member. Both are told.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Make lead',
+          onPress: () => void seatCall(seatIndex, () => makeLeadAsCurator(eventId!, registrationId!, seatIndex), "Couldn't change the lead"),
+        },
+      ],
+    );
+
+  /** Every change a curator can make to one seat, by its state. */
+  const seatMenu = (s: GroupSeatRow) => {
+    const name = seatPerson(s).name || `Seat ${s.seatIndex}`;
+    const opts: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [];
+    if (s.status === 'OPEN' || s.status === 'INVITED') opts.push({ text: 'Release seat', onPress: () => seatAction(s.seatIndex, true) });
+    if (s.status === 'RELEASED') opts.push({ text: 'Reopen seat', onPress: () => seatAction(s.seatIndex, false) });
+    if (s.status === 'CLAIMED') {
+      if (s.claimedBy) opts.push({ text: 'Make group lead', onPress: () => confirmMakeLead(s.seatIndex, name) });
+      opts.push({
+        text: 'Replace member',
+        onPress: () => {
+          setReplaceEmail('');
+          setReplacing({ seatIndex: s.seatIndex, name });
+        },
+      });
+    }
+    opts.push({ text: 'Remove from group', style: 'destructive', onPress: () => confirmRemove(s.seatIndex, name) });
+    opts.push({ text: 'Cancel', style: 'cancel' });
+    AppAlert.alert(name, undefined, opts);
+  };
+
+  const addSeat = () =>
+    AppAlert.alert('Add a seat to this group?', 'The group gets one bigger and the lead can invite someone. Nothing is charged in the app; collect any payment yourself.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Add seat', onPress: () => void seatCall(0, () => addSeatsAsCurator(eventId!, registrationId!, 1), "Couldn't add a seat") },
+    ]);
 
   const openAction = (kind: 'cancel' | 'refund' | 'transfer') =>
     router.push({ pathname: `/manage/event/${eventId}/attendee-action`, params: { registrationId, kind } });
@@ -277,34 +340,22 @@ export default function AttendeeDetailScreen() {
       ) : null}
 
       {seats.length > 0 ? (
-        <SettingsGroup title={`Group seats · ${seats.filter((x) => x.status === 'CLAIMED').length} of ${seats.length} filled`} plain>
-          {seats.map((s) => {
-            // Unfilled seats can be retired; retired ones reopened. Frozen once cancelled.
-            // Filled member seats (not the lead's) can be handed to someone else.
-            const action = cancelled
-              ? undefined
-              : s.status === 'OPEN' || s.status === 'INVITED'
-                ? ('release' as const)
-                : s.status === 'RELEASED'
-                  ? ('reopen' as const)
-                  : s.status === 'CLAIMED' && s.seatIndex !== 1
-                    ? ('replace' as const)
-                    : undefined;
-            return (
-              <SeatRow
-                key={s.seatIndex}
-                seat={s}
-                fields={fields}
-                action={action}
-                busy={seatBusy === s.seatIndex}
-                onAction={() =>
-                  action === 'replace'
-                    ? (setReplaceEmail(''), setReplacing({ seatIndex: s.seatIndex, name: s.memberDetails?.name || `Seat ${s.seatIndex}` }))
-                    : seatAction(s.seatIndex, action === 'release')
-                }
-              />
-            );
-          })}
+        <SettingsGroup
+          title={`Group seats · ${seats.filter((x) => x.status === 'CLAIMED').length} of ${seats.length} filled`}
+          action={cancelled ? undefined : { label: seatBusy === 0 ? 'Adding…' : 'Add seat', onPress: addSeat }}
+          plain
+        >
+          {seats.map((s) => (
+            // Seat 1 is the lead's; every other seat can change until the group is cancelled.
+            <SeatRow
+              key={s.seatIndex}
+              seat={s}
+              fields={fields}
+              action={cancelled || s.seatIndex === 1 ? undefined : 'manage'}
+              busy={seatBusy === s.seatIndex}
+              onAction={() => seatMenu(s)}
+            />
+          ))}
         </SettingsGroup>
       ) : null}
 

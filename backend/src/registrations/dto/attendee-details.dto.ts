@@ -7,6 +7,12 @@ export class AttendeeControlsDto {
   @IsBoolean()
   allowTeamChanges?: boolean;
 
+  @ApiPropertyOptional({ description: 'Team changes close at this time; null = open until the event ends', nullable: true })
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsISO8601()
+  teamChangesUntil?: string | null;
+
   @ApiPropertyOptional({ description: 'Attendees may edit their own registration details' })
   @IsOptional()
   @IsBoolean()

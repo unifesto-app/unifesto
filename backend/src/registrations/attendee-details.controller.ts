@@ -4,6 +4,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Action, Can, CanGuard } from '../auth/authorization';
 import { AttendeeDetailsService } from './attendee-details.service';
 import { GroupSeatsService } from './group-seats.service';
+import { TeamChangesService } from './team-changes.service';
+import { AddSeatsDto } from './dto/group-seat.dto';
 import { AttendeeControlsDto, CuratorUpdateDetailsDto, ReplaceMemberDto, UpdateDetailsDto } from './dto/attendee-details.dto';
 
 /**
@@ -19,6 +21,7 @@ export class AttendeeDetailsController {
   constructor(
     private readonly details: AttendeeDetailsService,
     private readonly seats: GroupSeatsService,
+    private readonly team: TeamChangesService,
   ) {}
 
   // ---- Curator ----
@@ -66,6 +69,42 @@ export class AttendeeDetailsController {
     @Body() dto: ReplaceMemberDto,
   ) {
     return this.seats.replaceMember(registrationId, seatIndex, { by: 'curator', eventId, newEmail: dto.email });
+  }
+
+  @Post('events/:eventId/registrations/:registrationId/seats/:seatIndex/remove')
+  @UseGuards(CanGuard)
+  @Can(Action.EVENT_MANAGE_ATTENDEES, { eventKey: 'eventId' })
+  @ApiOperation({ summary: 'Remove a seat from a group; the team shrinks, no refund (curator)' })
+  curatorRemove(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('registrationId', ParseUUIDPipe) registrationId: string,
+    @Param('seatIndex', ParseIntPipe) seatIndex: number,
+  ) {
+    return this.team.removeSeat(registrationId, seatIndex, { by: 'curator', eventId });
+  }
+
+  @Post('events/:eventId/registrations/:registrationId/seats/add')
+  @UseGuards(CanGuard)
+  @Can(Action.EVENT_MANAGE_ATTENDEES, { eventKey: 'eventId' })
+  @ApiOperation({ summary: 'Add seats to a group without payment (curator; collect any money outside the app)' })
+  curatorAdd(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('registrationId', ParseUUIDPipe) registrationId: string,
+    @Body() dto: AddSeatsDto,
+  ) {
+    return this.team.addSeats(registrationId, dto.seats, { by: 'curator', eventId });
+  }
+
+  @Post('events/:eventId/registrations/:registrationId/seats/:seatIndex/make-lead')
+  @UseGuards(CanGuard)
+  @Can(Action.EVENT_MANAGE_ATTENDEES, { eventKey: 'eventId' })
+  @ApiOperation({ summary: "Make the member on this seat the group's lead (curator)" })
+  curatorMakeLead(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('registrationId', ParseUUIDPipe) registrationId: string,
+    @Param('seatIndex', ParseIntPipe) seatIndex: number,
+  ) {
+    return this.team.curatorTransfer(eventId, registrationId, seatIndex);
   }
 
   // ---- Attendee ----

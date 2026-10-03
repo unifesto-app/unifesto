@@ -18,6 +18,9 @@ const json = (method: string, body: unknown): RequestInit => ({
 
 export interface AttendeeControls {
   allowTeamChanges: boolean;
+  /** Team changes close at this time; null = open until the event ends. */
+  teamChangesUntil: string | null;
+  teamChangesOpen: boolean;
   attendeeEditsEnabled: boolean;
   attendeeEditsUntil: string | null;
   /** Whether attendees can edit right now (switch on, before deadline, event not over). */
@@ -26,7 +29,7 @@ export interface AttendeeControls {
 
 export const setAttendeeControls = (
   eventId: string,
-  body: Partial<Pick<AttendeeControls, 'allowTeamChanges' | 'attendeeEditsEnabled' | 'attendeeEditsUntil'>>,
+  body: Partial<Pick<AttendeeControls, 'allowTeamChanges' | 'teamChangesUntil' | 'attendeeEditsEnabled' | 'attendeeEditsUntil'>>,
 ) => call<AttendeeControls>(`/events/${eventId}/attendee-controls`, json('PATCH', body));
 
 // ── Attendee: my details ─────────────────────────────────────────────────────
@@ -99,3 +102,79 @@ export const replaceMemberAsCurator = (eventId: string, registrationId: string, 
     `/events/${eventId}/registrations/${registrationId}/seats/${seatIndex}/replace`,
     json('POST', email ? { email } : {}),
   );
+
+// ── Team changes: remove / add members, hand over the lead ──────────────────
+
+export interface LeadTransferInfo {
+  id: string;
+  /** The request is addressed to me (I'm the member being asked to lead). */
+  toMe: boolean;
+  fromName: string;
+  toName: string;
+  createdAt: string;
+}
+
+/** What I can change about my group right now. Members get `leadTransfer` only. */
+export type TeamState =
+  | { isLead: false; leadTransfer: LeadTransferInfo | null }
+  | {
+      isLead: true;
+      leadTransfer: LeadTransferInfo | null;
+      open: boolean;
+      lockedReason: string | null;
+      until: string | null;
+      groupSize: number;
+      minGroupSize: number;
+      maxGroupSize: number | null;
+      /** How many more seats can be added (null = no limit). */
+      canAddUpTo: number | null;
+      addPricePerSeat: number;
+      addNeedsPayment: boolean;
+    };
+
+export const getTeamState = (registrationId: string) => call<TeamState>(`/registrations/${registrationId}/team`);
+
+export const removeSeatAsLead = (registrationId: string, seatIndex: number) =>
+  call<{ groupSize: number }>(`/registrations/${registrationId}/seats/${seatIndex}/remove`, { method: 'POST' });
+
+export const addSeatsAsLead = (registrationId: string, seats: number) =>
+  call<{ groupSize: number }>(`/registrations/${registrationId}/seats/add`, json('POST', { seats }));
+
+export interface AddSeatsOrder {
+  purchaseId: string;
+  razorpayOrderId: string;
+  razorpayKeyId: string;
+  amount: number; // paise
+  currency: string;
+  eventTitle: string;
+  breakdown: { baseAmount: number; processingFee: number; totalAmount: number };
+}
+
+export const createAddSeatsOrder = (registrationId: string, seats: number) =>
+  call<AddSeatsOrder>(`/registrations/${registrationId}/seats/add/order`, json('POST', { seats }));
+
+export const verifyAddSeats = (
+  purchaseId: string,
+  body: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string },
+) => call<{ outcome: 'added' | 'refund' | 'already'; seats: number }>(`/registrations/seat-purchases/${purchaseId}/verify`, json('POST', body));
+
+export const requestLeadTransfer = (registrationId: string, seatIndex: number) =>
+  call<{ id: string }>(`/registrations/${registrationId}/lead-transfer`, json('POST', { seatIndex }));
+
+export const cancelLeadTransfer = (registrationId: string) =>
+  call<{ cancelled: boolean }>(`/registrations/${registrationId}/lead-transfer/cancel`, { method: 'POST' });
+
+export const respondLeadTransfer = (transferId: string, accept: boolean) =>
+  call<{ status: string }>(`/registrations/lead-transfers/${transferId}/respond`, json('POST', { accept }));
+
+/** Curator: take a seat out of a group (team shrinks, seat back on sale, no refund). */
+export const removeSeatAsCurator = (eventId: string, registrationId: string, seatIndex: number) =>
+  call<{ groupSize: number }>(`/events/${eventId}/registrations/${registrationId}/seats/${seatIndex}/remove`, { method: 'POST' });
+
+/** Curator: add seats without payment (collect any money outside the app). */
+export const addSeatsAsCurator = (eventId: string, registrationId: string, seats: number) =>
+  call<{ groupSize: number }>(`/events/${eventId}/registrations/${registrationId}/seats/add`, json('POST', { seats }));
+
+/** Curator: make the member on this seat the group's lead, directly. */
+export const makeLeadAsCurator = (eventId: string, registrationId: string, seatIndex: number) =>
+  call<{ status: string }>(`/events/${eventId}/registrations/${registrationId}/seats/${seatIndex}/make-lead`, { method: 'POST' });

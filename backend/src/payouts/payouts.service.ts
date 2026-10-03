@@ -218,6 +218,20 @@ export class PayoutsService {
     });
   }
 
+  /**
+   * Extra group seats bought after booking (their own Razorpay payment). Only
+   * purchases that actually added seats count: a late payment that was
+   * refunded in full never did, and nets to zero.
+   */
+  private readonly ADDON_ADDED = { seatsAddedAt: { not: null } } satisfies Prisma.GroupSeatPurchaseWhereInput;
+
+  private paidSeatAddons(eventId: string) {
+    return this.prisma.groupSeatPurchase.findMany({
+      where: { eventId, paymentStatus: PaymentStatus.PAID, ...this.ADDON_ADDED },
+      select: { totalAmount: true, processingFee: true },
+    });
+  }
+
   /** Payout statuses that hold (commit) part of an event's balance. */
   private readonly COMMITTING_STATUSES = [
     PayoutStatus.PENDING,
@@ -239,15 +253,16 @@ export class PayoutsService {
       select: { space: { select: { subscription: true } } },
     });
 
-    const [registrations, stays] = await Promise.all([
+    const [registrations, stays, addons] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { eventId, paymentStatus: PaymentStatus.PAID },
         select: { totalAmount: true, processingFee: true },
       }),
       this.paidStayBookings(eventId),
+      this.paidSeatAddons(eventId),
     ]);
 
-    const gross = this.ticketRevenue([...registrations, ...stays]);
+    const gross = this.ticketRevenue([...registrations, ...stays, ...addons]);
     const platformFeePercent =
       feePercentOverride ??
       this.resolvePlatformFeePercent(event?.space?.subscription);
@@ -312,6 +327,7 @@ export class PayoutsService {
     const grossRevenue = this.ticketRevenue([
       ...registrations,
       ...(await this.paidStayBookings(eventId)),
+      ...(await this.paidSeatAddons(eventId)),
     ]);
     const platformFeePercent = this.resolvePlatformFeePercent(
       event.space?.subscription,
@@ -365,7 +381,8 @@ export class PayoutsService {
     }
     const eventFilter = eventIds ? { eventId: { in: eventIds } } : {};
     const online = { paymentMode: StayPaymentMode.ONLINE };
-    const [ever, current, stayEver, stayCurrent] = await Promise.all([
+    const added = this.ADDON_ADDED;
+    const [ever, current, stayEver, stayCurrent, addonEver, addonCurrent] = await Promise.all([
       this.prisma.eventRegistration.aggregate({
         where: { ...eventFilter, paymentStatus: { in: this.EVER_PAID } },
         _sum: { totalAmount: true, processingFee: true },
@@ -383,16 +400,27 @@ export class PayoutsService {
         where: { ...eventFilter, ...online, paymentStatus: PaymentStatus.PAID },
         _sum: { totalAmount: true, processingFee: true },
       }),
+      // Extra group seats bought after booking count with the group's ticket.
+      this.prisma.groupSeatPurchase.aggregate({
+        where: { ...eventFilter, ...added, paymentStatus: { in: this.EVER_PAID } },
+        _sum: { totalAmount: true, processingFee: true },
+      }),
+      this.prisma.groupSeatPurchase.aggregate({
+        where: { ...eventFilter, ...added, paymentStatus: PaymentStatus.PAID },
+        _sum: { totalAmount: true, processingFee: true },
+      }),
     ]);
     const n = (d: Prisma.Decimal | null) => Number(d ?? 0);
     return {
-      collectedOverall: n(ever._sum.totalAmount) + n(stayEver._sum.totalAmount),
-      processingFees: n(ever._sum.processingFee) + n(stayEver._sum.processingFee),
+      collectedOverall: n(ever._sum.totalAmount) + n(stayEver._sum.totalAmount) + n(addonEver._sum.totalAmount),
+      processingFees: n(ever._sum.processingFee) + n(stayEver._sum.processingFee) + n(addonEver._sum.processingFee),
       currentGross:
         n(current._sum.totalAmount) -
         n(current._sum.processingFee) +
         n(stayCurrent._sum.totalAmount) -
-        n(stayCurrent._sum.processingFee),
+        n(stayCurrent._sum.processingFee) +
+        n(addonCurrent._sum.totalAmount) -
+        n(addonCurrent._sum.processingFee),
     };
   }
 
@@ -595,6 +623,8 @@ export class PayoutsService {
       stayEverByEvent,
       stayCurrentByEvent,
       stayRefundByEvent,
+      addonEverByEvent,
+      addonCurrentByEvent,
     ] = await Promise.all([
         this.prisma.space.findMany({
           select: { id: true, name: true, slug: true, subscription: true },
@@ -643,6 +673,18 @@ export class PayoutsService {
           where: stayOnline,
           _sum: { refundedAmount: true },
         }),
+        // Extra group seats bought after booking (refunds of these run through
+        // refund requests, so they're already in refundByEvent).
+        this.prisma.groupSeatPurchase.groupBy({
+          by: ['eventId'],
+          where: { ...this.ADDON_ADDED, paymentStatus: { in: this.EVER_PAID } },
+          _sum: { totalAmount: true, processingFee: true },
+        }),
+        this.prisma.groupSeatPurchase.groupBy({
+          by: ['eventId'],
+          where: { ...this.ADDON_ADDED, paymentStatus: PaymentStatus.PAID },
+          _sum: { totalAmount: true, processingFee: true },
+        }),
       ]);
 
     // Index every aggregate by eventId for O(1) lookup during assembly.
@@ -661,9 +703,11 @@ export class PayoutsService {
     const ever = new Map<string, { total: number; fee: number }>();
     addTo(ever, everByEvent);
     addTo(ever, stayEverByEvent);
+    addTo(ever, addonEverByEvent);
     const current = new Map<string, { total: number; fee: number }>();
     addTo(current, currentByEvent);
     addTo(current, stayCurrentByEvent);
+    addTo(current, addonCurrentByEvent);
     const settledByEvent = new Map<string, number>();
     const pendingByEvent = new Map<string, number>();
     for (const r of payoutByEvent) {

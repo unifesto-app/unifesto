@@ -24,6 +24,9 @@ import {
   restoreRegistration,
   releaseGroupSeat,
   reopenGroupSeat,
+  removeGroupSeat,
+  addGroupSeats,
+  makeGroupLead,
   type TransferRequest,
 } from "@/lib/api/registrations-api";
 import type {
@@ -339,16 +342,30 @@ export default function AttendeeDetailPage() {
   // (RELEASED → OPEN), then refetch so the seat list reflects the new state.
   const mutateSeat = async (
     seatIndex: number,
-    action: "release" | "reopen"
+    action: "release" | "reopen" | "remove" | "make-lead" | "add"
   ) => {
+    const ask: Partial<Record<typeof action, string>> = {
+      remove:
+        "Remove this seat from the group? The group gets one smaller and the seat goes back on sale. Nothing is refunded. A member who is removed loses their ticket and is told by email.",
+      "make-lead":
+        "Make this member the group lead? They manage the group and its booking from now on, including refunds. The current lead becomes a member.",
+      add: "Add a seat to this group? The lead can invite someone into it. Nothing is charged in the app; collect any payment yourself.",
+    };
+    if (ask[action] && !window.confirm(ask[action])) return;
     setSeatMutating(seatIndex);
     setSeatError("");
     const { error } =
       action === "release"
         ? await releaseGroupSeat(eventId, registrationId, seatIndex)
-        : await reopenGroupSeat(eventId, registrationId, seatIndex);
+        : action === "reopen"
+        ? await reopenGroupSeat(eventId, registrationId, seatIndex)
+        : action === "remove"
+        ? await removeGroupSeat(eventId, registrationId, seatIndex)
+        : action === "make-lead"
+        ? await makeGroupLead(eventId, registrationId, seatIndex)
+        : await addGroupSeats(eventId, registrationId, 1);
     if (error) {
-      setSeatError(error.message || `Could not ${action} that seat.`);
+      setSeatError(error.message || "Could not update that seat.");
       setSeatMutating(null);
       return;
     }
@@ -685,11 +702,12 @@ export default function AttendeeDetailPage() {
           {/* Group seats — pay-first invite/claim state (fast-registration
               Part 2). Shows which of the N paid seats are OPEN (unfilled),
               INVITED (email sent, awaiting claim) or CLAIMED (a member confirmed
-              and got their own ticket). Only the lead can send invites; this view
-              is read-only for the organiser. */}
+              and got their own ticket). Only the lead can send invites; the
+              organiser can release/reopen, remove or add seats, and make a
+              member the lead. */}
           {groupSeats.length > 0 && (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Ticket className="h-4 w-4" />
                   Group seats ({groupSeats.filter((s) => s.status === "CLAIMED").length}/
@@ -698,6 +716,16 @@ export default function AttendeeDetailPage() {
                     `, ${groupSeats.filter((s) => s.status === "RELEASED").length} released`}
                   )
                 </CardTitle>
+                {registration.status !== "CANCELLED" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={seatMutating === 0}
+                    onClick={() => mutateSeat(0, "add")}
+                  >
+                    {seatMutating === 0 ? "Adding…" : "Add seat"}
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-2">
                 {seatError && <ErrorNotice message={seatError} />}
@@ -755,6 +783,12 @@ export default function AttendeeDetailPage() {
                     (seat.status === "OPEN" || seat.status === "INVITED") &&
                     registration.status !== "CANCELLED";
                   const busy = seatMutating === seat.seatIndex;
+                  // Any seat but the lead's can leave the group; a member who
+                  // claimed with their own account can take over as lead.
+                  const canChange =
+                    seat.seatIndex !== 1 && registration.status !== "CANCELLED";
+                  const canLead =
+                    canChange && seat.status === "CLAIMED" && !!seat.claimedBy;
                   return (
                     <div
                       key={seat.seatIndex}
@@ -834,6 +868,26 @@ export default function AttendeeDetailPage() {
                             >
                               <ArrowCounterClockwise className="h-4 w-4" />
                               {busy ? "Reopening…" : "Reopen"}
+                            </Button>
+                          )}
+                          {canLead && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => mutateSeat(seat.seatIndex, "make-lead")}
+                            >
+                              Make lead
+                            </Button>
+                          )}
+                          {canChange && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={busy}
+                              onClick={() => mutateSeat(seat.seatIndex, "remove")}
+                            >
+                              Remove
                             </Button>
                           )}
                         </div>

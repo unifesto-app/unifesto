@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowCounterClockwise, CaretRight, EnvelopeSimple, GenderIntersex, Phone, Plus, Star, User, UsersThree } from 'phosphor-react-native';
+import { ArrowCounterClockwise, CaretRight, Crown, EnvelopeSimple, GenderIntersex, Minus, Phone, Plus, Star, User, UsersThree } from 'phosphor-react-native';
 import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
 import { profileGenderToAttendeeOption } from '../../src/utils/profile';
 import AttendeeForm from '../../src/components/AttendeeForm';
@@ -209,6 +209,45 @@ export default function ManageGroupRoute() {
             </>
           ) : null}
 
+          {/* Lead handover: asked of me (member), or waiting on someone (lead). */}
+          {g.team?.leadTransfer ? (
+            <View style={[styles.card, { marginTop: spacing[5] }]}>
+              <CardBackdrop shape={styles.card} />
+              <View style={styles.nameRow}>
+                <Crown size={20} color={tokens.accent} weight="duotone" />
+                <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>
+                  {g.team.leadTransfer.toMe ? 'Lead your team?' : `Waiting for ${g.team.leadTransfer.toName}`}
+                </Text>
+              </View>
+              <Text style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
+                {g.team.leadTransfer.toMe
+                  ? `${g.team.leadTransfer.fromName} wants you to take over as team lead. You'll manage the team and its booking, including refunds.`
+                  : `You asked ${g.team.leadTransfer.toName} to take over as team lead. Nothing changes until they accept.`}
+              </Text>
+              {g.team.leadTransfer.toMe ? (
+                <View style={[styles.actions, { marginTop: spacing[4] }]}>
+                  <Button label="Accept" onPress={() => void g.answerTransfer(true)} style={{ flex: 1 }} />
+                  <Button label="Decline" variant="secondary" onPress={() => void g.answerTransfer(false)} style={{ flex: 1 }} />
+                </View>
+              ) : (
+                <Pressable onPress={() => void g.cancelTransfer()} hitSlop={8} style={{ marginTop: spacing[3] }}>
+                  <Text style={[styles.link, { color: tokens.danger }]}>Cancel request</Text>
+                </Pressable>
+              )}
+            </View>
+          ) : null}
+
+          {/* The organiser's window for team changes (lead only). */}
+          {g.team?.isLead && g.usesSeats ? (
+            <Text style={[styles.small, { color: tokens.textMuted, marginTop: spacing[4] }]}>
+              {g.team.open
+                ? g.team.until
+                  ? `You can change your team until ${new Date(g.team.until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.`
+                  : 'You can change your team until the event ends.'
+                : `${g.team.lockedReason ?? 'Team changes are closed.'} Ask the organiser if you need a change.`}
+            </Text>
+          ) : null}
+
           {g.isMember ? (
             <View style={{ marginTop: spacing[6] }}>
               <SettingsGroup>
@@ -235,6 +274,44 @@ export default function ManageGroupRoute() {
               There's nothing to manage for this ticket.
             </Text>
           )}
+
+          {/* Lead: grow the team, inside the window and its size limit. */}
+          {g.team?.isLead && g.teamOpen && g.usesSeats && g.team.canAddUpTo !== 0 ? (
+            <View style={[styles.card, { marginTop: spacing[4] }]}>
+              <CardBackdrop shape={styles.card} />
+              <Text style={[styles.cardTitle, { color: tokens.text }]}>Add people</Text>
+              <Text style={[styles.small, { color: tokens.textMuted }]}>
+                {g.team.addNeedsPayment
+                  ? `₹${g.team.addPricePerSeat} per person, plus the processing fee. Each new seat gets an invite link.`
+                  : 'New seats are free on this ticket. Each one gets an invite link.'}
+              </Text>
+              <View style={[styles.stepper, { marginTop: spacing[4] }]}>
+                <Pressable
+                  onPress={() => g.setAddCount(Math.max(1, g.addCount - 1))}
+                  disabled={g.addCount <= 1}
+                  hitSlop={10}
+                  accessibilityLabel="One fewer seat"
+                  style={{ opacity: g.addCount <= 1 ? 0.3 : 1 }}
+                >
+                  <Minus size={22} color={tokens.text} weight="bold" />
+                </Pressable>
+                <Text style={[styles.stepCount, { color: tokens.text }]}>{g.addCount}</Text>
+                <Pressable
+                  onPress={() => g.setAddCount(Math.min(g.team?.isLead ? g.team.canAddUpTo ?? 20 : 20, 20, g.addCount + 1))}
+                  hitSlop={10}
+                  accessibilityLabel="One more seat"
+                >
+                  <Plus size={22} color={tokens.text} weight="bold" />
+                </Pressable>
+                <Button
+                  label={g.team.addNeedsPayment ? `Pay ₹${g.team.addPricePerSeat * g.addCount} + fee` : `Add ${g.addCount} seat${g.addCount > 1 ? 's' : ''}`}
+                  loading={g.adding}
+                  onPress={() => void g.addSeats()}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          ) : null}
 
           {/* Lead: the per-group questions, asked once for everyone. Teammate: their own answers. */}
           {g.details && g.teamFields.length > 0 ? (
@@ -350,7 +427,7 @@ function Row({ row }: { row: GroupRow }) {
           </View>
           {row.sub ? <Text style={[styles.small, { color: tokens.textMuted }]} numberOfLines={1}>{row.sub}</Text> : null}
         </View>
-        {row.onReplace ? <TextAction label="Replace" onPress={row.onReplace} danger /> : null}
+        {row.onChange ? <TextAction label="Change" onPress={row.onChange} /> : null}
         <Text style={[styles.action, { color: tokens.textSecondary }]}>{row.editable ? 'Edit' : 'Details'}</Text>
         <CaretRight size={14} color={tokens.textMuted} />
       </Pressable>
@@ -373,6 +450,7 @@ function Row({ row }: { row: GroupRow }) {
         <View style={styles.actions}>
           <TextAction label="Revoke" onPress={row.onRevoke} />
           <TextAction label="Release" onPress={row.onRelease} danger />
+          {row.onRemove ? <TextAction label="Remove" onPress={row.onRemove} danger /> : null}
         </View>
       </View>
     );
@@ -388,7 +466,10 @@ function Row({ row }: { row: GroupRow }) {
           <Text style={[styles.name, { color: tokens.textSecondary }]}>{row.label}</Text>
           <Text style={[styles.small, { color: tokens.textMuted }]}>Released</Text>
         </View>
-        <TextAction label="Reopen" onPress={row.onReopen} />
+        <View style={styles.actions}>
+          <TextAction label="Reopen" onPress={row.onReopen} />
+          {row.onRemove ? <TextAction label="Remove" onPress={row.onRemove} danger /> : null}
+        </View>
       </View>
     );
   }
@@ -403,7 +484,14 @@ function Row({ row }: { row: GroupRow }) {
         <Text style={[styles.name, { color: tokens.accent }]}>Invite by email</Text>
         <Text style={[styles.small, { color: tokens.textMuted }]}>{row.label}</Text>
       </View>
-      {row.onRelease ? <TextAction label="Release" onPress={row.onRelease} danger /> : <CaretRight size={14} color={tokens.textMuted} />}
+      {row.onRelease || row.onRemove ? (
+        <View style={styles.actions}>
+          {row.onRelease ? <TextAction label="Release" onPress={row.onRelease} danger /> : null}
+          {row.onRemove ? <TextAction label="Remove" onPress={row.onRemove} danger /> : null}
+        </View>
+      ) : (
+        <CaretRight size={14} color={tokens.textMuted} />
+      )}
     </Pressable>
   );
 }
@@ -428,6 +516,8 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   name: { flexShrink: 1, fontSize: typography.fontSize.base, ...font('semibold') },
   actions: { flexDirection: 'row', gap: spacing[4] },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  stepCount: { minWidth: 24, textAlign: 'center', fontSize: typography.fontSize.lg, ...font('semibold') },
   action: { fontSize: typography.fontSize.sm, ...font('semibold') },
   divider: { height: StyleSheet.hairlineWidth },
   inputRow: {

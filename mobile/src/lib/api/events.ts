@@ -102,6 +102,7 @@ export interface Event {
   whatsappCommunityUrl?: string | null;
   /** Team leads may replace a member of their group (curator switch). */
   allowTeamChanges?: boolean;
+  teamChangesUntil?: string | null;
   /** Attendees may edit their registration details (curator switch)… */
   attendeeEditsEnabled?: boolean;
   /** …until this time (null = no deadline). */

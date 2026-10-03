@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   EventStatus,
+  GroupLeadTransferStatus,
   GroupSeatStatus,
   PaymentStatus,
   Prisma,
@@ -19,6 +20,7 @@ import { enforceFormAnswers } from './form-answers.policy';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
+import { teamChangeWindow } from './attendee-details.service';
 
 export interface CreateSeatsParams {
   registrationId: string;
@@ -72,19 +74,27 @@ export class GroupSeatsService {
     private readonly whatsapp: WhatsAppService,
   ) {}
 
+  /** The roster changed under an open lead handover: withdraw it (accept re-checks too). */
+  static cancelPendingLeadTransfer(tx: Prisma.TransactionClient, registrationId: string) {
+    return tx.groupLeadTransfer.updateMany({
+      where: { registrationId, status: GroupLeadTransferStatus.PENDING },
+      data: { status: GroupLeadTransferStatus.CANCELLED, respondedAt: new Date() },
+    });
+  }
+
   /** 32-byte invite token (64 hex chars); rotated on revoke. */
   static newToken(): string {
     return crypto.randomBytes(32).toString('hex');
   }
 
-  private ticketCode(): string {
+  ticketCode(): string {
     return crypto.randomBytes(4).toString('hex').toUpperCase();
   }
-  private qrCode(): string {
+  qrCode(): string {
     return crypto.randomBytes(16).toString('hex');
   }
 
-  private claimUrl(token: string): string {
+  claimUrl(token: string): string {
     const base = (process.env.WEB_URL || 'https://unifesto.app').replace(/\/$/, '');
     return `${base}/claim/${token}`;
   }
@@ -507,6 +517,34 @@ export class GroupSeatsService {
     return { seatIndex, status: GroupSeatStatus.OPEN };
   }
 
+  // ── Team changes: the lead's window ─────────────────────────────────────────
+
+  /**
+   * A lead may change their team (replace, add or remove members, hand over the
+   * lead) only inside the organiser's window, and not once their hackathon team
+   * has submitted. Curators skip this check entirely.
+   */
+  async assertLeadMayChangeTeam(
+    registrationId: string,
+    event: Parameters<typeof teamChangeWindow>[0],
+  ): Promise<void> {
+    const reason = await this.leadTeamLockReason(registrationId, event);
+    if (reason) throw new ForbiddenException(reason);
+  }
+
+  /** Why the lead can't change the team right now, or null when they can. */
+  async leadTeamLockReason(
+    registrationId: string,
+    event: Parameters<typeof teamChangeWindow>[0],
+  ): Promise<string | null> {
+    const window = teamChangeWindow(event);
+    if (!window.open) return window.reason;
+    const submitted = await this.prisma.hackathonSubmission.count({
+      where: { entrant: { registrationId } },
+    });
+    return submitted > 0 ? 'Your team has submitted its project, so the team is locked.' : null;
+  }
+
   // ── Replace a member (4.0.5) ────────────────────────────────────────────────
 
   /**
@@ -533,7 +571,15 @@ export class GroupSeatsService {
         status: true,
         eventId: true,
         event: {
-          select: { id: true, title: true, slug: true, status: true, endDateTime: true, allowTeamChanges: true },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            status: true,
+            endDateTime: true,
+            allowTeamChanges: true,
+            teamChangesUntil: true,
+          },
         },
       },
     });
@@ -542,9 +588,7 @@ export class GroupSeatsService {
       if (reg.userId !== opts.leadUserId) {
         throw new ForbiddenException('Only the group lead can replace members');
       }
-      if (!reg.event.allowTeamChanges) {
-        throw new ForbiddenException("The organiser hasn't turned on team changes for this event");
-      }
+      await this.assertLeadMayChangeTeam(reg.id, reg.event);
     } else if (reg.eventId !== opts.eventId) {
       throw new NotFoundException('Registration not found');
     }
@@ -606,6 +650,7 @@ export class GroupSeatsService {
         },
       });
       if (reset.count !== 1) throw new BadRequestException('This seat just changed. Refresh and try again.');
+      await GroupSeatsService.cancelPendingLeadTransfer(tx, registrationId);
       if (oldEmail) {
         await tx.eventTicket.deleteMany({
           where: { registrationId, attendeeEmail: { equals: oldEmail, mode: 'insensitive' } },
@@ -959,7 +1004,7 @@ export class GroupSeatsService {
   }
 
   /** The claimer's primary (else any) account email; falls back to the invite email. */
-  private async primaryEmail(userId: string, fallback: string | null): Promise<string | null> {
+  async primaryEmail(userId: string, fallback: string | null): Promise<string | null> {
     // Only labels the ticket / addresses the confirmation, so it must never
     // fail a claim: any lookup error falls back to the invite email.
     try {
@@ -1345,7 +1390,7 @@ export class GroupSeatsService {
     this.logger.log(`Sent ${sent} claim reminder(s)`);
   }
 
-  private inviteHtml(eventTitle: string, claimUrl: string): string {
+  inviteHtml(eventTitle: string, claimUrl: string): string {
     return [
       `<p>You've been invited to join <strong>${eventTitle}</strong> on Unifesto.</p>`,
       `<p><a href="${claimUrl}" style="display:inline-block;padding:12px 20px;background:#3491ff;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">Claim your seat</a></p>`,

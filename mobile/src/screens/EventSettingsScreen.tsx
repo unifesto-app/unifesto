@@ -232,11 +232,34 @@ export default function EventSettingsScreen() {
             <SettingsGroup title="Attendees" plain>
               <SwitchRow
                 label="Allow team changes"
-                hint="Team leads can replace a member of their group. You can always replace members from Attendees."
+                hint="Team leads can add, remove or replace members and hand over the lead. You can always do this from Attendees."
                 value={!!event.allowTeamChanges}
                 disabled={busy === 'teamChanges'}
                 onValueChange={(v) => setControls('teamChanges', { allowTeamChanges: v })}
               />
+              {event.allowTeamChanges ? (
+                <SwitchRow
+                  label="Lock teams at a set time"
+                  value={!!event.teamChangesUntil}
+                  disabled={busy === 'teamDeadline'}
+                  onValueChange={(v) =>
+                    setControls('teamDeadline', {
+                      // Default to the day before the event starts, never in the past.
+                      teamChangesUntil: v
+                        ? new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString()
+                        : null,
+                    })
+                  }
+                />
+              ) : null}
+              {event.allowTeamChanges && event.teamChangesUntil ? (
+                <DateTimeRow
+                  label="Teams lock"
+                  value={new Date(event.teamChangesUntil)}
+                  minimumDate={new Date()}
+                  onChange={(d) => setControls('teamDeadline', { teamChangesUntil: d.toISOString() })}
+                />
+              ) : null}
               <SwitchRow
                 label="Attendees can edit their details"
                 hint="People can change their registration answers from their ticket. Group leads edit the team's, members their own."

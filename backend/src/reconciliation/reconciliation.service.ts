@@ -10,7 +10,7 @@ function r2(n: number): number {
 
 /** A platform payment row, flattened across event + session registrations. */
 interface PlatformPayment {
-  source: 'EVENT' | 'SESSION' | 'STAY';
+  source: 'EVENT' | 'SESSION' | 'STAY' | 'SEATS';
   registrationId: string;
   title: string;
   paymentStatus: PaymentStatus;
@@ -69,7 +69,7 @@ export class ReconciliationService {
   private async platformPayments(fromMs: number, toMs: number): Promise<PlatformPayment[]> {
     const window = { paidAt: { gte: new Date(fromMs), lte: new Date(toMs) } };
 
-    const [events, sessions, stays] = await Promise.all([
+    const [events, sessions, stays, seats] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { paymentId: { not: null }, ...window },
         select: {
@@ -111,6 +111,21 @@ export class ReconciliationService {
           event: { select: { title: true } },
         },
       }),
+      // Extra seats bought for a group after booking (their own payment).
+      this.prisma.groupSeatPurchase.findMany({
+        where: { paymentId: { not: null }, ...window },
+        select: {
+          registrationId: true,
+          paymentId: true,
+          paymentStatus: true,
+          totalAmount: true,
+          processingFee: true,
+          refundedAmount: true,
+          paidAt: true,
+          seats: true,
+          registration: { select: { event: { select: { title: true } } } },
+        },
+      }),
     ]);
 
     const rows: (PlatformPayment & { paymentId: string })[] = [
@@ -143,6 +158,17 @@ export class ReconciliationService {
         title: `Stay · ${s.stay?.name ?? 'Stay'} · ${s.event?.title ?? 'Event'}`,
         // A stay payment is always PAID/REFUNDED once it has a paymentId.
         paymentStatus: s.paymentStatus ?? PaymentStatus.PAID,
+        razorpayAmount: Number(s.totalAmount),
+        processingFee: Number(s.processingFee),
+        refundedAmount: Number(s.refundedAmount),
+        paidAt: s.paidAt,
+      })),
+      ...seats.map((s) => ({
+        source: 'SEATS' as const,
+        registrationId: s.registrationId,
+        paymentId: s.paymentId as string,
+        title: `${s.seats} extra seat${s.seats > 1 ? 's' : ''} · ${s.registration.event.title}`,
+        paymentStatus: s.paymentStatus,
         razorpayAmount: Number(s.totalAmount),
         processingFee: Number(s.processingFee),
         refundedAmount: Number(s.refundedAmount),
@@ -461,7 +487,7 @@ export class ReconciliationService {
 
     // Payments already attributed to a registration (event, session or stay)
     // are, by definition, not orphaned — skip them regardless of the notes.
-    const [attachedEvents, attachedSessions, attachedStays] = await Promise.all([
+    const [attachedEvents, attachedSessions, attachedStays, seatOrders] = await Promise.all([
       capturedIds.length
         ? this.prisma.eventRegistration.findMany({
             where: { paymentId: { in: capturedIds } },
@@ -480,11 +506,23 @@ export class ReconciliationService {
             select: { paymentId: true },
           })
         : Promise.resolve([]),
+      // Extra-seat payments belong to their purchase, never to a registration,
+      // so attaching one here would be wrong. Matched by order: an unsettled one
+      // is settled by the Razorpay webhook (retried for 24h), like a stay.
+      // ponytail: no manual settle button; add one if a webhook ever stays lost.
+      captured.length
+        ? this.prisma.groupSeatPurchase.findMany({
+            where: { orderId: { in: captured.map((p) => p.orderId).filter((o): o is string => !!o) } },
+            select: { orderId: true },
+          })
+        : Promise.resolve([]),
     ]);
+    const seatOrderIds = new Set(seatOrders.map((r) => r.orderId));
     const attributed = new Set<string>([
       ...attachedEvents.map((r) => r.paymentId as string),
       ...attachedSessions.map((r) => r.paymentId as string),
       ...attachedStays.map((r) => r.paymentId as string),
+      ...captured.filter((p) => p.orderId && seatOrderIds.has(p.orderId)).map((p) => p.id),
     ]);
 
     // Resolve the registration each unattributed payment was created for.
