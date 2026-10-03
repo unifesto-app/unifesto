@@ -41,7 +41,7 @@ changes each mobile release depends on.
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | shipped (iOS 36, Android 45 approved) | – |
 | [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | shipped (iOS 39, Android 46 live) | 3 Oct |
-| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | planned | – |
+| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | rolling out (20%, 4 Oct) | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
 | [4.4.0](#440--event-feedback-and-user-iam) | minor | Event feedback system, user-level IAM | **Mon 5 Oct** | OTA | OTA | planned | – |
@@ -358,7 +358,7 @@ Layer: **B** backend (deploy.sh, reaches 4.0.0 too) · **M** mobile JS · **N** 
 
 ### 4.1.0 · Hackathon event day
 
-**Type:** minor · **Target:** Tue 29 Sep · **Ships as:** OTA (4.0.0 runtime) + backend/web/space deploy
+**Type:** minor · **Target:** Tue 29 Sep · **Ships as:** OTA (4.0.5 runtime) + backend/web/space deploy
 
 Already built: backend (rounds, panels, judgments, awards), space curator console (7 tabs), mobile judge/mentor scoring, mobile participant view + push. The `hack` app has been removed.
 
@@ -403,6 +403,15 @@ Already built: backend (rounds, panels, judgments, awards), space curator consol
 - **1 Oct:** Home Hackathon card + Keychain token accessibility fix (mobile, JS-only). Mobile `tsc` clean for the touched files; not yet seen on a device.
 - **1 Oct:** Hackathon help desk built (backend + mobile). Migration applied on top of main's schema on a local Postgres with zero drift; routing rules unit-tested (148 leaderboard tests pass); backend and mobile `tsc` clean. Not deployed; not yet run through on a device.
 
+- **4 Oct:** 4.1.0 OTA published to production at 20% from `main` `4e6b026` (preflight passed on both 4.0.5 runtimes; bundled with the `--skip-bundler` recipe). Carries everything above plus the 4.1.0 "What's new" (#37). Team changes were also run against a local Postgres before merge (6 end-to-end cases, see #34). Promote to 100% after ~2 h with clean Crashlytics.
+
+#### Shipped
+
+- OTA (4.0.5 runtime), published 4 Oct at 20%:
+  - iOS: group `6bf9a804-d8e6-4b4d-8bf2-b6da08e40808`, update `01a1033e-ff49-75d1-b308-3a25504b51d5`, runtime `d1776dd1e847165bdd66cfddd6165c836578319d`
+  - Android: group `78402f35-dd30-49f4-b951-9b33fbb733ce`, update `01a1033e-ff49-7ae1-9572-7f7389ae3e43`, runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
+- Backend + Space deploy: 3 Oct 16:32 UTC (team changes, Stay gallery; migrations `20261003120000_stay_gallery`, `20261003130000_team_changes`)
+- Rollout to 100%: pending
 ---
 
 ### 4.2.0 · Support system complete
