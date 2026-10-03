@@ -134,7 +134,7 @@ export default function HomeTab() {
 
         {myInvites.invites.length > 0 ? (
           <View style={styles.block}>
-            <InviteCards invites={myInvites.invites} onOpen={(t) => router.push(`/claim/${t}`)} onDismiss={myInvites.dismiss} />
+            <InviteCards invites={myInvites.invites} onOpen={(t) => router.push(`/claim/${t}`)} onDecline={myInvites.decline} />
           </View>
         ) : null}
 

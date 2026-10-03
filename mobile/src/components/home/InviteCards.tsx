@@ -18,16 +18,16 @@ const TINT = 'rgba(52,145,255,0.14)';
 /**
  * "You've been invited" cards: seats someone booked for me in a group ticket,
  * still waiting to be claimed. A gentle nudge, never a gate: "View" opens the
- * claim screen (claim, decline or just look), ✕ hides the card.
+ * claim screen (claim, decline or just look), ✕ declines it (after a confirm).
  */
 export default function InviteCards({
   invites,
   onOpen,
-  onDismiss,
+  onDecline,
 }: {
   invites: MyInvite[];
   onOpen: (token: string) => void;
-  onDismiss: (token: string) => void;
+  onDecline: (token: string) => void;
 }) {
   const tokens = useTokens();
   const defaults = useDefaultImages();
@@ -67,10 +67,10 @@ export default function InviteCards({
             </View>
             <Text style={[styles.view, { color: tokens.accent }]}>View</Text>
             <Pressable
-              onPress={() => onDismiss(inv.token)}
+              onPress={() => onDecline(inv.token)}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Hide this invite"
+              accessibilityLabel="Decline this invite"
               style={({ pressed }) => [styles.close, { opacity: pressed ? 0.6 : 1 }]}
             >
               <X size={16} color={tokens.textMuted} weight="bold" />
