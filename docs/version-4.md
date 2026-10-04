@@ -41,7 +41,8 @@ changes each mobile release depends on.
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | shipped (iOS 36, Android 45 approved) | – |
 | [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | shipped (iOS 39, Android 46 live) | 3 Oct |
-| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | rolling out (20%, 4 Oct) | – |
+| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | shipped (100%, base for 4.1.1) | 4 Oct |
+| [4.1.1](#411--smoother-event-creation) | minor (named patch) | Smoother mobile event creation, multiple categories per event | 4 Oct | OTA | OTA | rolling out (20%, 4 Oct) | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
 | [4.4.0](#440--event-feedback-and-user-iam) | minor | Event feedback system, user-level IAM | **Mon 5 Oct** | OTA | OTA | planned | – |
@@ -411,6 +412,47 @@ Already built: backend (rounds, panels, judgments, awards), space curator consol
   - iOS: group `6bf9a804-d8e6-4b4d-8bf2-b6da08e40808`, update `01a1033e-ff49-75d1-b308-3a25504b51d5`, runtime `d1776dd1e847165bdd66cfddd6165c836578319d`
   - Android: group `78402f35-dd30-49f4-b951-9b33fbb733ce`, update `01a1033e-ff49-7ae1-9572-7f7389ae3e43`, runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
 - Backend + Space deploy: 3 Oct 16:32 UTC (team changes, Stay gallery; migrations `20261003120000_stay_gallery`, `20261003130000_team_changes`)
+- Rollout to 100%: 4 Oct ~07:30 UTC. Starting the 4.1.1 rollout ended this one's 20% stage and made it the base update, so everyone not in 4.1.1's 20% gets 4.1.0. It had been at 20% for ~12 h; Crashlytics not re-checked at that point.
+---
+
+### 4.1.1 · Smoother event creation
+
+**Type:** minor, published as 4.1.1 · **Ships as:** OTA (4.0.5 runtime) + backend deploy
+
+Why: creating an event on mobile was one long form, buried four taps deep, that lost everything if you left and took ~8 taps from "done" to live.
+
+**Version note:** this adds features, so by the version rules it is a minor release. 4.2.0 was already taken by the Support release, so it went out as 4.1.1.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Create in three steps (Basics / When & where / Tickets), Next checks only the current step, tap back to reached steps; edit stays one page | done |
+| Autosave the create form per space (AsyncStorage), "Picked up where I left off · Start over", cleared once the event exists | done |
+| Inline field errors (`validateEventDraft` returns field + message; jumps to the step with the problem) | done |
+| Pin on map: shared `geocodeVenue` (from `VenueMap`) + map preview; quiet 4 s attempt at save; Android asks for location only on tap | done |
+| Tags as chips (`TagsField`) | done |
+| "Save as draft / Publish now" at the end (default draft); publish waits for the first ticket | done |
+| Cover / ticket / publish follow-ups retryable (Retry / Skip) before opening the event | done |
+| "New event" on Home and the Space tab, Space Admins only (`adminSpaces()`); fixes Curators being sent to a form they can't submit | done |
+| Multiple categories per event (max 3, primary first): `Event.categories` + migration `20261004120000_event_categories` (backfill + GIN index); `category` kept as the primary; single-category clients only swap the primary (`resolveCategories`); listing filter matches any; category counts unnest the list (and skip soft-deleted events) | done |
+| "What's new" entry for 4.1.1 | dropped (would need its own PR; changes are mostly organiser-side) |
+| Space web multi-select categories | planned |
+| Show every category on event detail (mobile + web) | planned |
+| Device run-through of the create flow (all steps, leave and return, Pin on map, Publish now) | planned |
+
+#### Log
+
+- **4 Oct:** Create flow + multiple categories built (#39). Backend `tsc` clean, 74 events/registrations/categories tests pass (new `event-categories.spec.ts`); migration applied on top of main's schema on a local Postgres with zero drift; mobile `tsc` clean + `eventDraft.check.ts` self-check. Not seen on a device.
+- **4 Oct:** Backend with `categories` confirmed live in production (API returns backfilled `categories`) before publishing the OTA, since the backend rejects unknown fields.
+- **4 Oct:** 4.1.1 OTA published to production at 20% from `main` `e87540f` (preflight passed on both 4.0.5 runtimes; `--skip-bundler` recipe). Publishing it promoted 4.1.0 to the base (see 4.1.0 Shipped). Promote to 100% after ~2 h with clean Crashlytics.
+
+#### Shipped
+
+- OTA (4.0.5 runtime), published 4 Oct ~07:30 UTC at 20%:
+  - iOS: group `cb4ee139-14c3-4c9a-9f5a-b982c353fee7`, update `01a105d3-d237-7119-9d8a-8873eabbd1da`, runtime `d1776dd1e847165bdd66cfddd6165c836578319d`
+  - Android: group `16c13122-5047-4e30-9e0a-bff85302b4ef`, update `01a105d3-d237-77b4-a8cf-dcd5c3cd8e0d`, runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
+- Backend (migration `20261004120000_event_categories`): live by 4 Oct ~07:20 UTC (verified through the API; deploy time not recorded here)
 - Rollout to 100%: pending
 ---
 
