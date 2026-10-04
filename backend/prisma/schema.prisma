@@ -1289,7 +1289,10 @@ model Event {
 
   // Metadata
   tags       String[]
+  /** Primary category (first of `categories`), kept for single-category readers. */
   category   String?         @db.VarChar(100)
+  /** Every category the event is in, primary first (max 3). */
+  categories String[]        @default([])
   visibility EventVisibility @default(PUBLIC)
   status     EventStatus     @default(DRAFT)
 
@@ -1464,6 +1467,7 @@ model Event {
   @@index([createdBy])
   // Every listing filters `deletedAt: null`, so it belongs in the hot indexes.
   @@index([deletedAt])
+  @@index([categories], type: Gin)
   // Sub-event lookups (hub pages, management lists) filter by parent.
   @@index([parentEventId])
   // Series reconciliation lists occurrences by their parent.

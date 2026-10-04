@@ -26,6 +26,8 @@ export interface Event {
   isFree: boolean;
   tags: string[];
   category: string | null;
+  /** Every category, primary first. Older events may only have `category`. */
+  categories?: string[];
   visibility: 'PUBLIC' | 'PRIVATE' | 'SPACE_ONLY';
   status: 'DRAFT' | 'PUBLISHED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED';
   spaceId: string;

@@ -26,6 +26,11 @@ const hasCode = (space: OperatorSpace, codes: readonly string[]) =>
   (space.userRole && codes.includes(space.userRole.code)) ||
   space.eventAccess.some((e) => codes.includes(e.roleCode));
 
+/** Spaces where I can create events: space:create-event is held by Space Admins only. */
+export function adminSpaces(spaces: OperatorSpace[]): OperatorSpace[] {
+  return spaces.filter((s) => s.userRole?.code === 'SPACE_ADMIN');
+}
+
 /** Spaces where the user hosts (Space Admin, or Curator/Co-Curator of an event). */
 export function hostedSpaces(spaces: OperatorSpace[]): OperatorSpace[] {
   return spaces.filter((s) => hasCode(s, HOSTING_ROLE_CODES));

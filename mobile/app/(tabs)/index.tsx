@@ -170,6 +170,7 @@ export default function HomeTab() {
               upcoming={workspace.upcoming}
               loadingUpcoming={workspace.loadingUpcoming}
               hosting={workspace.hostedSpaceIds.length > 0}
+              canCreate={workspace.adminSpaceIds.length > 0}
               judging={workspace.judging}
               sponsorships={workspace.sponsorships}
               onScan={(e) =>
@@ -180,9 +181,9 @@ export default function HomeTab() {
               }
               onOpenEvent={(e) => router.push(`/manage/event/${e.id}`)}
               onCreateEvent={() =>
-                // One space: straight into the form. Several: let me pick on the Space tab.
-                workspace.hostedSpaceIds.length === 1
-                  ? router.push(`/manage/space/${workspace.hostedSpaceIds[0]}/new-event`)
+                // One space I can create in: straight into the form. Otherwise pick on the Space tab.
+                workspace.adminSpaceIds.length === 1
+                  ? router.push(`/manage/space/${workspace.adminSpaceIds[0]}/new-event`)
                   : router.navigate('/space')
               }
               onOpenJudging={(j) => router.push({ pathname: `/judging/${j.eventId}`, params: { title: j.title } })}

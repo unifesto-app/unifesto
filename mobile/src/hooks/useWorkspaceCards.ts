@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, type Href } from 'expo-router';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import usePlatformAdmin from './usePlatformAdmin';
-import { activeEvents, hostedSpaces } from '../lib/spaceSections';
+import { activeEvents, adminSpaces, hostedSpaces } from '../lib/spaceSections';
 import { getManagedSpaceEvents, type ManagedEvent } from '../lib/api/manageSpace';
 import type { CheckinEvent } from '../lib/api/checkin';
 import type { JudgingEvent } from '../lib/api/leaderboard';
@@ -44,6 +44,8 @@ export interface WorkspaceData {
   loadingUpcoming: boolean;
   /** Spaces I host (capped); drives the empty state and "new event" target. */
   hostedSpaceIds: string[];
+  /** Spaces I can create events in (Space Admin). */
+  adminSpaceIds: string[];
   judging: JudgingEvent[];
   sponsorships: PortalSponsor[];
   overview: PlatformOverview | null;
@@ -172,6 +174,7 @@ export function useWorkspaceCards(): WorkspaceData {
     upcoming,
     loadingUpcoming: loadingUpcoming && hosted.length > 0,
     hostedSpaceIds: hosted.map((s) => s.id),
+    adminSpaceIds: adminSpaces(hosted).map((s) => s.id),
     judging: activeEvents(access.judgingEvents, now),
     sponsorships: access.sponsorships,
     overview,

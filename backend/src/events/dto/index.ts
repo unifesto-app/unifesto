@@ -9,6 +9,7 @@ import {
   Min,
   Max,
   IsArray,
+  ArrayMaxSize,
   IsUUID,
   IsNumber,
   IsUrl,
@@ -19,6 +20,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
+import { MAX_EVENT_CATEGORIES } from '../event-categories';
 import {
   EventType,
   EventVisibility,
@@ -134,6 +136,14 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiPropertyOptional({ example: ['Technology', 'Workshop'], description: 'Primary first; sets `category` too.' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_EVENT_CATEGORIES)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  categories?: string[];
 
   @ApiProperty({
     enum: EventVisibility,
@@ -337,6 +347,14 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString()
   category?: string;
+
+  @ApiPropertyOptional({ example: ['Technology', 'Workshop'], description: 'Primary first; sets `category` too.' })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_EVENT_CATEGORIES)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  categories?: string[];
 
   @ApiPropertyOptional({ enum: EventVisibility })
   @IsOptional()

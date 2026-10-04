@@ -92,6 +92,7 @@ export class RecurrenceService {
       isFree: parent.isFree,
       tags: parent.tags,
       category: parent.category,
+      categories: parent.categories,
       visibility: parent.visibility,
       // Occurrences of a published series are themselves published, so they
       // list and register immediately; a draft series yields draft occurrences.

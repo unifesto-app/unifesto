@@ -74,6 +74,7 @@ import {
   UpdateTicketTypeDto,
 } from './dto';
 import slugify from 'slugify';
+import { resolveCategories } from './event-categories';
 import {
   checkFieldDefinition,
   sanitizeConfig,
@@ -1515,7 +1516,7 @@ export class EventsService {
         waitlistEnabled: dto.waitlistEnabled || false,
         isFree: dto.isFree ?? true,
         tags: dto.tags || [],
-        category: dto.category,
+        ...resolveCategories(dto),
         visibility: dto.visibility,
         spaceId: dto.spaceId,
         parentEventId: dto.parentEventId ?? null,
@@ -1599,7 +1600,15 @@ export class EventsService {
     }
 
     if (category) {
-      where.category = { contains: category, mode: 'insensitive' };
+      // Search owns `where.OR`, so this goes under AND.
+      where.AND = [
+        {
+          OR: [
+            { category: { contains: category, mode: 'insensitive' } },
+            { categories: { has: category } },
+          ],
+        },
+      ];
     }
 
     if (startDate) {
@@ -2240,7 +2249,7 @@ export class EventsService {
         waitlistEnabled: dto.waitlistEnabled,
         isFree: dto.isFree,
         tags: dto.tags,
-        category: dto.category,
+        ...resolveCategories(dto, event),
         visibility: dto.visibility,
         whatsappGroupUrl: whatsappLinks.whatsappGroupUrl,
         whatsappCommunityUrl: whatsappLinks.whatsappCommunityUrl,
@@ -2291,6 +2300,7 @@ export class EventsService {
             isFree: updated.isFree,
             tags: updated.tags,
             category: updated.category,
+            categories: updated.categories,
             visibility: updated.visibility,
           });
         }

@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from '
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Buildings, Globe } from 'phosphor-react-native';
+import { Buildings, Globe, Plus } from 'phosphor-react-native';
 import { UnIcon } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
@@ -11,7 +11,7 @@ import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import BrandGlow from '../components/ui/BrandGlow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { activeEvents, hostedSpaces, hostingRoleLabel } from '../lib/spaceSections';
+import { activeEvents, adminSpaces, hostedSpaces, hostingRoleLabel } from '../lib/spaceSections';
 import { relativeWhen } from '../utils/eventFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -59,8 +59,22 @@ export default function SpaceScreen() {
   const checkin = activeEvents(checkinEvents, now);
   const judging = activeEvents(judgingEvents, now);
 
+  // New event goes straight to the form; with several spaces, ask which one.
+  const creatable = adminSpaces(hostedSpaces(spaces));
+  const newEvent = () => {
+    const open = (id: string) => router.push(`/manage/space/${id}/new-event`);
+    if (creatable.length === 1) return open(creatable[0].id);
+    AppAlert.alert('New event in…', undefined, [
+      ...creatable.map((s) => ({ text: s.name, onPress: () => open(s.id) })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  };
+
   const hosting = (
     <SettingsGroup key="hosting" title="My spaces">
+      {creatable.length > 0 ? (
+        <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="New event" onPress={newEvent} />
+      ) : null}
       {hostedSpaces(spaces).map((s) => (
         <SettingsRow
           key={s.id}
