@@ -9,6 +9,8 @@ interface FieldRowProps extends Omit<TextInputProps, 'style'> {
   label: string;
   /** Full-width input under a small caption (names, descriptions). */
   stacked?: boolean;
+  /** Shown under the input in the danger colour. */
+  error?: string;
 }
 
 /**
@@ -16,12 +18,17 @@ interface FieldRowProps extends Omit<TextInputProps, 'style'> {
  *  inline:  "Capacity ............ 120"  (short numeric values, right-aligned)
  *  stacked: small caption over a full-width input (free text)
  */
-export function FieldRow({ label, stacked, multiline, ...input }: FieldRowProps) {
+export function FieldRow({ label, stacked, multiline, error, ...input }: FieldRowProps) {
   const tokens = useTokens();
+  const errorText = error ? (
+    <Text style={[styles.error, { color: tokens.danger }]} accessibilityLiveRegion="polite">
+      {error}
+    </Text>
+  ) : null;
   if (stacked) {
     return (
       <View style={styles.stacked}>
-        <Text style={[styles.caption, { color: tokens.textMuted }]}>{label}</Text>
+        <Text style={[styles.caption, { color: error ? tokens.danger : tokens.textMuted }]}>{label}</Text>
         <TextInput
           {...input}
           multiline={multiline}
@@ -29,20 +36,24 @@ export function FieldRow({ label, stacked, multiline, ...input }: FieldRowProps)
           selectionColor={tokens.accent}
           style={[styles.stackedInput, multiline && styles.multiline, { color: tokens.text }]}
         />
+        {errorText}
       </View>
     );
   }
   return (
-    <View style={styles.row}>
-      <Text style={[styles.label, { color: tokens.text }]} numberOfLines={1}>
-        {label}
-      </Text>
-      <TextInput
-        {...input}
-        placeholderTextColor={tokens.textMuted}
-        selectionColor={tokens.accent}
-        style={[styles.inlineInput, { color: tokens.text }]}
-      />
+    <View>
+      <View style={styles.row}>
+        <Text style={[styles.label, { color: error ? tokens.danger : tokens.text }]} numberOfLines={1}>
+          {label}
+        </Text>
+        <TextInput
+          {...input}
+          placeholderTextColor={tokens.textMuted}
+          selectionColor={tokens.accent}
+          style={[styles.inlineInput, { color: tokens.text }]}
+        />
+      </View>
+      {errorText ? <View style={styles.inlineError}>{errorText}</View> : null}
     </View>
   );
 }
@@ -96,5 +107,7 @@ const styles = StyleSheet.create({
   caption: { fontSize: typography.fontSize.xs, ...font('medium') },
   stackedInput: { fontSize: typography.fontSize.base, paddingTop: spacing[1], paddingBottom: spacing[3], ...font('medium') },
   multiline: { minHeight: 64, textAlignVertical: 'top' },
+  error: { paddingBottom: spacing[3], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.4, ...font('medium') },
+  inlineError: { paddingHorizontal: spacing[4], marginTop: -spacing[2] },
   blockTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...font('semibold') },
 });

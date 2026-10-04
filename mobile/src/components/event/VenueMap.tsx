@@ -64,7 +64,8 @@ interface VenueMapProps {
   name: string;
   address?: string | null;
   accent: string;
-  onDirections: () => void;
+  /** Omit to hide the Directions link (e.g. a preview in a form). */
+  onDirections?: () => void;
 }
 
 const join = (...parts: (string | null | undefined)[]) =>
@@ -108,6 +109,27 @@ async function geocodeFirst(query: string): Promise<Coords | null> {
 }
 
 /**
+ * Try the lookups in order and take the first one that is genuinely specific.
+ * A hit sitting on the city's centre is the geocoder falling back to "the
+ * city", so it is skipped rather than pinning the wrong spot. Throws when the
+ * geocoder can't run (Android needs a location permission first).
+ */
+export async function geocodeVenue(place: VenuePlace): Promise<Coords | null> {
+  const cityQuery = place.city ? join(place.city, place.state, place.country || 'India') : '';
+  let cityCentre: Coords | null | undefined;
+  for (const q of geocodeCandidates(place)) {
+    const hit = await geocodeFirst(q).catch(() => null);
+    if (!hit) continue;
+    if (cityQuery) {
+      if (cityCentre === undefined) cityCentre = await geocodeFirst(cityQuery).catch(() => null);
+      if (cityCentre && distanceM(hit, cityCentre) < CITY_CENTRE_RADIUS_M) continue;
+    }
+    return hit;
+  }
+  return null;
+}
+
+/**
  * Venue map: native (Apple Maps on iOS, Google Maps on Android) with a pin,
  * dark-styled and non-interactive so it never traps the page scroll. Falls
  * back to a keyless Google embed when native maps aren't available in this
@@ -118,13 +140,10 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
   const [resolved, setResolved] = useState<Coords | null>(coords ?? null);
   const [geocodeFailed, setGeocodeFailed] = useState(false);
 
-  // No saved coordinates (organisers type the venue as free text): try the
-  // lookups in order and take the first one that is genuinely specific. A hit
-  // sitting on the city's centre is the geocoder falling back to "the city",
-  // so skip it rather than pin the wrong spot. Android's geocoder needs a
-  // location permission — only used if already granted (never prompt here).
+  // No saved coordinates (older events typed the venue as free text): geocode
+  // it. Android's geocoder needs a location permission — only used if already
+  // granted (never prompt here).
   const candidates = geocodeCandidates(place);
-  const cityQuery = place.city ? join(place.city, place.state, place.country || 'India') : '';
   const candidateKey = candidates.join('|');
 
   useEffect(() => {
@@ -140,18 +159,10 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
           const { status } = await Location.getForegroundPermissionsAsync();
           if (status !== 'granted') throw new Error('no permission');
         }
-        let cityCentre: Coords | null | undefined;
-        for (const q of candidates) {
-          const hit = await geocodeFirst(q).catch(() => null);
-          if (!hit) continue;
-          if (cityQuery) {
-            if (cityCentre === undefined) cityCentre = await geocodeFirst(cityQuery).catch(() => null);
-            if (cityCentre && distanceM(hit, cityCentre) < CITY_CENTRE_RADIUS_M) continue;
-          }
-          if (!cancelled) setResolved(hit);
-          return;
-        }
-        if (!cancelled) setGeocodeFailed(true);
+        const hit = await geocodeVenue(place);
+        if (cancelled) return;
+        if (hit) setResolved(hit);
+        else setGeocodeFailed(true);
       } catch {
         if (!cancelled) setGeocodeFailed(true);
       }
@@ -160,7 +171,7 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coords, candidateKey, cityQuery]);
+  }, [coords, candidateKey]);
   const showNative = !!Maps && !!resolved;
   const showWeb = !Maps || geocodeFailed;
 
@@ -206,16 +217,18 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
             <Text style={[styles.address, { color: tokens.textMuted }]} numberOfLines={2}>{address}</Text>
           ) : null}
         </View>
-        <Pressable
-          onPress={onDirections}
-          hitSlop={10}
-          accessibilityRole="link"
-          accessibilityLabel="Get directions"
-          style={({ pressed }) => [styles.directions, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <NavigationArrow size={16} color={accent} weight="fill" />
-          <Text style={[styles.directionsText, { color: accent }]}>Directions</Text>
-        </Pressable>
+        {onDirections ? (
+          <Pressable
+            onPress={onDirections}
+            hitSlop={10}
+            accessibilityRole="link"
+            accessibilityLabel="Get directions"
+            style={({ pressed }) => [styles.directions, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <NavigationArrow size={16} color={accent} weight="fill" />
+            <Text style={[styles.directionsText, { color: accent }]}>Directions</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

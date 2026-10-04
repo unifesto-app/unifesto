@@ -7,11 +7,15 @@ import { buildRRule, defaultRecurrence, parseRRuleToState, type RecurrenceState 
  * can bind directly; turned into a payload only on save. Mirrors the web
  * wizard's rules so both apps accept and reject the same things.
  */
+/** Matches the backend cap; the first pick is the primary category. */
+export const MAX_EVENT_CATEGORIES = 3;
+
 export interface EventDraft {
   title: string;
   slug: string;
   description: string;
-  category: string;
+  /** Category names, primary first. */
+  categories: string[];
   /** Comma-separated as typed. */
   tags: string;
   type: EventType;
@@ -49,7 +53,7 @@ export function emptyEventDraft(): EventDraft {
     title: '',
     slug: '',
     description: '',
-    category: '',
+    categories: [],
     tags: '',
     type: 'IN_PERSON',
     start,
@@ -77,7 +81,7 @@ export function toEventDraft(e: Event): EventDraft {
     title: e.title ?? '',
     slug: e.slug ?? '',
     description: e.description ?? '',
-    category: e.category ?? '',
+    categories: e.categories?.length ? e.categories : e.category ? [e.category] : [],
     tags: (e.tags ?? []).join(', '),
     type: e.type,
     start: new Date(e.startDateTime),
@@ -102,25 +106,82 @@ export function toEventDraft(e: Event): EventDraft {
 export const sanitizeSlug = (raw: string) =>
   raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').replace(/^-+/, '');
 
-export function validateEventDraft(d: EventDraft, creating: boolean): string {
-  if (d.title.trim().length < 3) return 'Give the event a name of at least 3 characters.';
-  if (!creating && !d.slug.replace(/-+$/, '')) return 'The link name can’t be empty.';
-  if (d.end <= d.start) return 'The end has to be after the start.';
-  if (d.recurrence.enabled && !buildRRule(d.recurrence)) return 'Pick the last date the event repeats on.';
+/** A form field the validator can point at, so the screen can mark it inline. */
+export type DraftField =
+  | 'title'
+  | 'slug'
+  | 'end'
+  | 'recurrence'
+  | 'onlineUrl'
+  | 'ticketName'
+  | 'ticketPrice'
+  | 'ticketCapacity';
+
+export interface DraftProblem {
+  field: DraftField;
+  message: string;
+}
+
+/** Create is split into steps; each field lives on one. */
+export const CREATE_STEPS = ['Basics', 'When & where', 'Tickets'] as const;
+export const FIELD_STEP: Record<DraftField, number> = {
+  title: 0,
+  slug: 0,
+  end: 1,
+  recurrence: 1,
+  onlineUrl: 1,
+  ticketName: 2,
+  ticketPrice: 2,
+  ticketCapacity: 2,
+};
+
+/** First problem in form order (so it is also the earliest step), or null. */
+export function validateEventDraft(d: EventDraft, creating: boolean): DraftProblem | null {
+  const bad = (field: DraftField, message: string) => ({ field, message });
+  if (d.title.trim().length < 3) return bad('title', 'Give the event a name of at least 3 characters.');
+  if (!creating && !d.slug.replace(/-+$/, '')) return bad('slug', 'The link name can’t be empty.');
+  if (d.end <= d.start) return bad('end', 'The end has to be after the start.');
+  if (d.recurrence.enabled && !buildRRule(d.recurrence)) return bad('recurrence', 'Pick the last date the event repeats on.');
   if (showOnline(d) && d.onlineUrl.trim() && !/^https?:\/\/\S+\.\S+/i.test(d.onlineUrl.trim()))
-    return "The joining link doesn't look like a web address.";
+    return bad('onlineUrl', "The joining link doesn't look like a web address.");
   if (creating) {
-    if (!d.ticketName.trim()) return `Name the first ${isPaid(d) ? 'ticket' : 'RSVP option'}.`;
+    if (!d.ticketName.trim()) return bad('ticketName', `Name the first ${isPaid(d) ? 'ticket' : 'RSVP option'}.`);
     if (isPaid(d)) {
       const p = Number(d.ticketPrice);
-      if (!d.ticketPrice.trim() || Number.isNaN(p) || p < 0) return 'Enter a ticket price (0 or more).';
+      if (!d.ticketPrice.trim() || Number.isNaN(p) || p < 0) return bad('ticketPrice', 'Enter a ticket price (0 or more).');
     }
     if (d.ticketCapacity.trim()) {
       const c = Number(d.ticketCapacity);
-      if (!Number.isInteger(c) || c < 1) return 'Capacity must be a whole number of 1 or more.';
+      if (!Number.isInteger(c) || c < 1) return bad('ticketCapacity', 'Capacity must be a whole number of 1 or more.');
     }
   }
-  return '';
+  return null;
+}
+
+/** Draft ⇄ JSON for autosave; the two Dates come back as Dates. */
+export const serializeDraft = (d: EventDraft) => JSON.stringify(d);
+export function parseDraft(raw: string): EventDraft | null {
+  try {
+    const o = JSON.parse(raw);
+    const start = new Date(o.start);
+    const end = new Date(o.end);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    // Drafts saved before multi-select held a single `category`.
+    const categories: string[] = Array.isArray(o.categories) ? o.categories : o.category ? [o.category] : [];
+    delete o.category;
+    return { ...emptyEventDraft(), ...o, categories, start, end };
+  } catch {
+    return null;
+  }
+}
+
+/** "a, b ,, c" → ["a","b","c"], de-duplicated case-insensitively. */
+export function splitTags(tags: string): string[] {
+  const seen = new Set<string>();
+  return tags
+    .split(',')
+    .map((t) => t.trim())
+    .filter((t) => t && !seen.has(t.toLowerCase()) && seen.add(t.toLowerCase()));
 }
 
 const timezone = () => {
@@ -140,7 +201,7 @@ export function eventDraftToPayload(d: EventDraft, original?: Event, parentEvent
   // A series can't also be a sub-event; on edit only an existing series can change its rule.
   const rule = buildRRule(d.recurrence);
   const sendRule = rule && (original ? !!original.isRecurring : !parentEventId);
-  const tags = d.tags.split(',').map((t) => t.trim()).filter(Boolean);
+  const tags = splitTags(d.tags);
   const slug = d.slug.replace(/-+$/, '');
   return {
     title: d.title.trim(),
@@ -152,7 +213,7 @@ export function eventDraftToPayload(d: EventDraft, original?: Event, parentEvent
     startDateTime: d.start.toISOString(),
     endDateTime: d.end.toISOString(),
     ...(original ? {} : { timezone: timezone(), isFree: !isPaid(d) }),
-    category: d.category || undefined,
+    ...(original || d.categories.length ? { categories: d.categories } : {}),
     ...(original ? { tags } : tags.length ? { tags } : {}),
     ...(showVenue(d)
       ? {

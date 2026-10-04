@@ -31,7 +31,8 @@ export interface EventDetailsPayload {
   startDateTime: string;
   endDateTime: string;
   timezone?: string;
-  category?: string;
+  /** Up to MAX_EVENT_CATEGORIES, primary first; the backend derives `category`. */
+  categories?: string[];
   tags?: string[];
   isFree?: boolean;
   venueName?: string;

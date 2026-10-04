@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarBlank, CaretRight, Gavel, Handshake, QrCode } from 'phosphor-react-native';
+import { CalendarBlank, CaretRight, Gavel, Handshake, Plus, QrCode } from 'phosphor-react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -23,6 +23,8 @@ interface SpacePanelProps {
   loadingUpcoming: boolean;
   /** True when the user hosts at least one space (shows the empty state). */
   hosting: boolean;
+  /** Can create events somewhere (Space Admin): shows a New event row. */
+  canCreate: boolean;
   judging: JudgingEvent[];
   sponsorships: PortalSponsor[];
   onScan: (e: CheckinEvent) => void;
@@ -89,6 +91,9 @@ export default function SpacePanel(p: SpacePanelProps) {
           {p.upcoming.map((e) => (
             <EventRow key={e.id} event={e} onPress={() => p.onOpenEvent(e)} />
           ))}
+          {p.canCreate ? (
+            <LinkRow icon={<Plus size={22} color={tokens.accent} weight="bold" />} title="New event" meta="Set it up in three steps" onPress={p.onCreateEvent} />
+          ) : null}
         </View>
       ) : p.hosting ? (
         <Pressable
@@ -100,7 +105,9 @@ export default function SpacePanel(p: SpacePanelProps) {
           <CalendarBlank {...glyph} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.title, { color: tokens.text }]}>No upcoming events</Text>
-            <Text style={[styles.meta, { color: tokens.textMuted }]}>Plan the next one from my space.</Text>
+            <Text style={[styles.meta, { color: tokens.textMuted }]}>
+              {p.canCreate ? 'Create the next one.' : 'Plan the next one from my space.'}
+            </Text>
           </View>
           <CaretRight size={16} color={tokens.textMuted} weight="bold" />
         </Pressable>

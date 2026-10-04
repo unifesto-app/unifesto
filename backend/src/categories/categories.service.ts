@@ -24,18 +24,17 @@ export class CategoriesService {
       select: { id: true, name: true, slug: true, description: true, iconUrl: true, bannerUrl: true, order: true },
     });
 
-    // Get event counts per category (upcoming/ongoing only)
-    const now = new Date();
-    const counts = await this.prisma.event.groupBy({
-      by: ['category'],
-      where: {
-        status: 'PUBLISHED',
-        endDateTime: { gte: now },
-      },
-      _count: { id: true },
-    });
-
-    const countMap = new Map(counts.map(c => [c.category, c._count.id]));
+    // Upcoming/ongoing published events per category (soft-deleted ones
+    // excluded); an event counts once in each category it's in.
+    const counts = await this.prisma.$queryRaw<{ name: string; count: bigint }[]>`
+      SELECT c AS name, COUNT(*) AS count
+      FROM "events" e, unnest(e."categories") AS c
+      WHERE e."status" = 'PUBLISHED'
+        AND e."end_date_time" >= now()
+        AND e."deleted_at" IS NULL
+      GROUP BY c
+    `;
+    const countMap = new Map(counts.map((c) => [c.name, Number(c.count)]));
 
     return categories.map(cat => ({
       ...cat,
