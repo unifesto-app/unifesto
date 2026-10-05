@@ -18,6 +18,9 @@ import {
 import { UserProfileDto } from '../auth/dto';
 import { StorageService } from '../storage/storage.service';
 
+/** What a closed account's refund request reason becomes. */
+export const REDACTED_REFUND_REASON = 'Removed when the account was closed';
+
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
@@ -930,7 +933,23 @@ export class UsersService {
     await this.prisma.$transaction([
       this.prisma.eventRegistration.updateMany({
         where: { userId },
-        data: { formResponses: Prisma.DbNull },
+        // Closing the account withdraws sponsor-sharing consent too.
+        data: { formResponses: Prisma.DbNull, shareContactWithSponsors: false },
+      }),
+      // Sponsor leads from the user's registrations: the contact snapshot and
+      // the crew's note go; the row stays so sponsors' lead counts hold. Leads
+      // already exported by a sponsor are outside our reach.
+      this.prisma.sponsorLead.updateMany({
+        where: { registration: { userId } },
+        data: { name: null, email: null, phone: null, note: null },
+      }),
+      // Refunds on the user's registrations: the free-text reason (NOT NULL)
+      // is replaced. Amounts, status, Razorpay ids and staff decision notes
+      // stay as the money record. A request still in review loses its reason
+      // too — reviewers keep the amount, registration and history.
+      this.prisma.refundRequest.updateMany({
+        where: { registration: { userId } },
+        data: { reason: REDACTED_REFUND_REASON },
       }),
       ...[...rosters].map(([id, r]) =>
         this.prisma.eventRegistration.update({

@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { UsersService, privateFileKeys } from './users.service';
+import { REDACTED_REFUND_REASON, UsersService, privateFileKeys } from './users.service';
 
 /**
  * closeAccount's DPDP scrub: personal data on the user's registrations, group
@@ -67,6 +67,8 @@ function makePrisma() {
       updateMany: op('stayBooking.updateMany'),
     },
     stayGuest: { updateMany: op('stayGuest.updateMany') },
+    sponsorLead: { updateMany: op('sponsorLead.updateMany') },
+    refundRequest: { updateMany: op('refundRequest.updateMany') },
     userIdentity: { deleteMany: op('d') },
     userPushDevice: { deleteMany: op('d') },
     adminDevice: { deleteMany: op('d') },
@@ -96,9 +98,24 @@ describe('UsersService.closeAccount PII scrub', () => {
 
   const writes = (name: string) => tx.filter((w) => w.name === name).map((w) => w.args);
 
-  it('nulls form answers on the user’s own registrations only, leaving money fields alone', () => {
+  it('nulls form answers and sponsor consent on the user’s own registrations, leaving money fields alone', () => {
     expect(writes('eventRegistration.updateMany')).toEqual([
-      { where: { userId: USER }, data: { formResponses: Prisma.DbNull } },
+      {
+        where: { userId: USER },
+        data: { formResponses: Prisma.DbNull, shareContactWithSponsors: false },
+      },
+    ]);
+  });
+
+  it('scrubs sponsor lead contacts and refund reasons on the user’s registrations', () => {
+    expect(writes('sponsorLead.updateMany')).toEqual([
+      {
+        where: { registration: { userId: USER } },
+        data: { name: null, email: null, phone: null, note: null },
+      },
+    ]);
+    expect(writes('refundRequest.updateMany')).toEqual([
+      { where: { registration: { userId: USER } }, data: { reason: REDACTED_REFUND_REASON } },
     ]);
   });
 
