@@ -690,6 +690,8 @@ Today: `unifesto.app/terms`, `/privacy`, `/refund` exist as static pages.
 | Cookie Policy (web) | planned |
 | Grievance redressal page (IT Rules 2021) | planned |
 | Versioned legal documents: stored with version + effective date, change log, acceptance recorded per user | planned |
+| DPDP erasure on account close: scrub personal data on the user's registrations (form answers), group seats + roster entries and stay bookings/guests, delete their private uploads; money fields kept | in progress: #41 open, needs backend rebuild (no migration) |
+| Privacy Policy "How long we keep it": say organiser-question answers are erased on account close (once the rewritten page and #41 land) | planned |
 
 Flow: drafts by 4 Oct → your lawyer 5–8 Oct (D6).
 
@@ -699,6 +701,10 @@ Company details for every document:
 - **Grievance officer:** Vinay Buddolla · vinay@unifesto.app · +91 93460 95136 → publish 9 Oct with re-acceptance (4.6.0).
 
 **Done when:** a lawyer has signed off on every document and they're live with acceptance tracking.
+
+#### Log
+
+- **6 Oct:** Account-close PII scrub built (#41): `closeAccount` clears the closing user's registration form answers, claimed group seats and their own legacy roster entries, and stay booking/guest details in the close transaction, then deletes referenced `private/form-uploads/` files (best-effort). Other members' data and all money fields untouched. New `users.service.close-account.spec.ts` (5 tests) + registrations/stays suites (85) pass, backend `tsc` clean. Not run against a real DB or S3. Not covered: `SponsorLead` contacts, `RefundRequest` reasons, abandoned-checkout uploads (left to the 180-day purge).
 
 ### W7 · Content system (blogs, careers, pages) · 3 Oct → 8 Oct
 
