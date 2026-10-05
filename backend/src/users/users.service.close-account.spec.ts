@@ -104,8 +104,11 @@ function makePrisma() {
     // Phone-only leads whose last 10 digits match, as the SQL narrows them.
     $queryRaw: jest.fn(async () => [
       { id: 'lead-p1', phone: '+91 98 76 54 32 10' },
-      // Typed with a trunk 0: normalizeMobile can't read it, so it's left.
+      // Typed with a trunk 0, with and without spacing: both are this user.
       { id: 'lead-p0', phone: '09876543210' },
+      { id: 'lead-p0s', phone: ' 0 98765-43210' },
+      // A trunk 0 in front of someone else's number.
+      { id: 'lead-p0x', phone: '09876543211' },
       // A US number ending in the same 10 digits: not this user.
       { id: 'lead-px', phone: '+1 212 9876543210' },
     ]),
@@ -145,10 +148,10 @@ describe('UsersService.closeAccount PII scrub', () => {
     // The SQL narrows phone-only leads on the mobile's last 10 digits.
     expect((prisma.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual(['9876543210']);
     // me_work@work.in's `_` would match meXwork@ under ILIKE; only exact hits go,
-    // and of the phone candidates only the real +91 number does.
+    // and of the phone candidates only this user's +91 number (any format) does.
     expect(writes('lead.updateMany')).toEqual([
       {
-        where: { id: { in: ['lead-1', 'lead-p1'] } },
+        where: { id: { in: ['lead-1', 'lead-p1', 'lead-p0', 'lead-p0s'] } },
         data: { name: null, email: null, phone: null, message: null },
       },
     ]);

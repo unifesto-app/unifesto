@@ -936,7 +936,8 @@ export class UsersService {
     // Phone-only leads (no email, so organiser-entered) by the VERIFIED mobile.
     // A lead with some other email but this phone is left alone: shared
     // numbers. Lead phones are free text, so SQL narrows on the last 10 digits
-    // and normalizeMobile (accounts' E.164 form) confirms the exact number.
+    // and normalizeMobile (accounts' E.164 form) confirms the exact number —
+    // retried without a leading trunk 0 ("09876543210"), which it doesn't read.
     const mobile = user.mobileVerified ? normalizeMobile(user.mobileNumber) : null;
     const phoneLeadIds = mobile
       ? (
@@ -945,7 +946,13 @@ export class UsersService {
             WHERE email IS NULL AND phone IS NOT NULL
               AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = ${mobile.slice(-10)}`
         )
-          .filter((l) => normalizeMobile(l.phone) === mobile)
+          .filter((l) => {
+            const typed = l.phone.trim();
+            const read =
+              normalizeMobile(typed) ??
+              (typed.startsWith('0') ? normalizeMobile(typed.slice(1)) : null);
+            return read === mobile;
+          })
           .map((l) => l.id)
       : [];
     const funnelLeadIds = [...emailLeadIds, ...phoneLeadIds];
