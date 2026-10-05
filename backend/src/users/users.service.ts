@@ -878,7 +878,95 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.deletedAt) return;
 
+    // Personal data on related records (DPDP erasure). Money fields — amounts,
+    // payment ids, status, refundedAmount — are never touched, so financials
+    // and tax records still reconcile.
+    //
+    // Group rosters: only THIS user's entries go. As a lead, their own seat 1
+    // and roster entry 0 are scrubbed but the members they brought keep their
+    // details (they're still attending). As a member of someone else's group,
+    // their claimed seat and matching roster entry on the lead's registration
+    // are scrubbed and nothing else on that registration changes.
+    const [regs, seats, bookings] = await Promise.all([
+      this.prisma.eventRegistration.findMany({
+        where: { userId },
+        select: { id: true, formResponses: true, groupMembers: true },
+      }),
+      this.prisma.groupSeat.findMany({
+        where: { claimedByUserId: userId },
+        select: {
+          seatIndex: true,
+          memberDetails: true,
+          registration: { select: { id: true, groupMembers: true } },
+        },
+      }),
+      this.prisma.stayBooking.findMany({
+        where: { userId },
+        select: { answers: true, guests: { select: { idProof: true } } },
+      }),
+    ]);
+
+    // Legacy `groupMembers` JSON: index i is seat i+1. Entries are blanked to
+    // {} rather than removed so everyone else keeps their index.
+    const rosters = new Map<string, { members: unknown[]; drop: Set<number> }>();
+    const markRoster = (id: string, members: Prisma.JsonValue, index: number) => {
+      if (!Array.isArray(members) || index >= members.length) return;
+      const r = rosters.get(id) ?? { members, drop: new Set<number>() };
+      r.drop.add(index);
+      rosters.set(id, r);
+    };
+    for (const r of regs) markRoster(r.id, r.groupMembers, 0);
+    for (const s of seats) {
+      markRoster(s.registration.id, s.registration.groupMembers, s.seatIndex - 1);
+    }
+
+    const privateKeys = privateFileKeys([
+      ...regs.map((r) => r.formResponses),
+      ...seats.map((s) => s.memberDetails),
+      ...[...rosters.values()].flatMap((r) => [...r.drop].map((i) => r.members[i])),
+      ...bookings.flatMap((b) => [b.answers, ...b.guests.map((g) => g.idProof)]),
+    ]);
+
     await this.prisma.$transaction([
+      this.prisma.eventRegistration.updateMany({
+        where: { userId },
+        data: { formResponses: Prisma.DbNull },
+      }),
+      ...[...rosters].map(([id, r]) =>
+        this.prisma.eventRegistration.update({
+          where: { id },
+          data: {
+            groupMembers: r.members.map((m, i) =>
+              r.drop.has(i) ? {} : m,
+            ) as Prisma.InputJsonValue,
+          },
+        }),
+      ),
+      this.prisma.groupSeat.updateMany({
+        where: { claimedByUserId: userId },
+        data: { memberDetails: Prisma.DbNull, inviteEmail: null },
+      }),
+      this.prisma.stayBooking.updateMany({
+        where: { userId },
+        data: {
+          emergencyName: null,
+          emergencyPhone: null,
+          note: null,
+          answers: Prisma.DbNull,
+        },
+      }),
+      // Everyone on the user's own bookings: they typed these guests in.
+      // name/gender are NOT NULL; gender alone isn't identifying once the
+      // name, contacts and ID are gone, and keeps bed-allocation counts true.
+      this.prisma.stayGuest.updateMany({
+        where: { booking: { userId } },
+        data: {
+          name: 'Deleted guest',
+          phone: null,
+          email: null,
+          idProof: Prisma.DbNull,
+        },
+      }),
       this.prisma.userIdentity.deleteMany({ where: { userId } }),
       this.prisma.userPushDevice.deleteMany({ where: { userId } }),
       this.prisma.adminDevice.deleteMany({ where: { userId } }),
@@ -918,6 +1006,11 @@ export class UsersService {
     await this.deleteHostedAvatar(user.avatarUrl).catch((err) =>
       this.logger.warn(`Avatar cleanup failed for deleted user ${userId}: ${err}`),
     );
+    // Best-effort: deleteObject logs and swallows its own failures. Uploads
+    // from abandoned checkouts aren't referenced anywhere, so they're left to
+    // the 180-day post-event purge (FormUploadsService.purgeExpired).
+    // ponytail: one DELETE per key; batch DeleteObjects if a user ever has hundreds.
+    for (const key of privateKeys) await this.storageService.deleteObject(key);
 
     this.logger.log(`User ${userId} account closed`);
   }
@@ -1027,4 +1120,28 @@ export class UsersService {
       organiserAnnouncements: settings.organiserAnnouncements,
     };
   }
+}
+
+/**
+ * Every private upload key (FileAnswer `{ key, … }` under private/form-uploads/)
+ * found anywhere in these JSON values — registration answers, group member
+ * details and stay answers/ID proofs all store files that way.
+ */
+export function privateFileKeys(values: unknown[]): string[] {
+  const keys = new Set<string>();
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (!v || typeof v !== 'object') return;
+    const { key } = v as { key?: unknown };
+    if (
+      typeof key === 'string' &&
+      key.startsWith('private/form-uploads/') &&
+      !key.includes('..')
+    ) {
+      keys.add(key);
+    }
+    Object.values(v).forEach(walk);
+  };
+  values.forEach(walk);
+  return [...keys];
 }
