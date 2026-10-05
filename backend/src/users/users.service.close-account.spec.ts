@@ -1,5 +1,6 @@
-import { Prisma } from '@prisma/client';
-import { REDACTED_REFUND_REASON, UsersService, privateFileKeys } from './users.service';
+import { Prisma, RefundStatus } from '@prisma/client';
+import { UsersService, privateFileKeys } from './users.service';
+import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 
 /**
  * closeAccount's DPDP scrub: personal data on the user's registrations, group
@@ -107,7 +108,7 @@ describe('UsersService.closeAccount PII scrub', () => {
     ]);
   });
 
-  it('scrubs sponsor lead contacts and refund reasons on the user’s registrations', () => {
+  it('scrubs sponsor lead contacts and decided refund reasons on the user’s registrations', () => {
     expect(writes('sponsorLead.updateMany')).toEqual([
       {
         where: { registration: { userId: USER } },
@@ -115,7 +116,13 @@ describe('UsersService.closeAccount PII scrub', () => {
       },
     ]);
     expect(writes('refundRequest.updateMany')).toEqual([
-      { where: { registration: { userId: USER } }, data: { reason: REDACTED_REFUND_REASON } },
+      {
+        where: {
+          registration: { userId: USER },
+          status: { in: [RefundStatus.APPROVED, RefundStatus.REJECTED] },
+        },
+        data: { reason: REDACTED_REFUND_REASON },
+      },
     ]);
   });
 

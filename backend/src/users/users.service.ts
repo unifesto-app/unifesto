@@ -14,12 +14,10 @@ import {
   ACCOUNT_DELETION_GRACE_DAYS,
   DAY_MS,
   deletionDueAt,
+  REDACTED_REFUND_REASON,
 } from '../common/account-deletion';
 import { UserProfileDto } from '../auth/dto';
 import { StorageService } from '../storage/storage.service';
-
-/** What a closed account's refund request reason becomes. */
-export const REDACTED_REFUND_REASON = 'Removed when the account was closed';
 
 @Injectable()
 export class UsersService {
@@ -943,12 +941,15 @@ export class UsersService {
         where: { registration: { userId } },
         data: { name: null, email: null, phone: null, note: null },
       }),
-      // Refunds on the user's registrations: the free-text reason (NOT NULL)
-      // is replaced. Amounts, status, Razorpay ids and staff decision notes
-      // stay as the money record. A request still in review loses its reason
-      // too — reviewers keep the amount, registration and history.
+      // Decided refunds on the user's registrations: the free-text reason
+      // (NOT NULL) is replaced. Amounts, status, Razorpay ids and staff
+      // decision notes stay as the money record. One still in review keeps
+      // its reason for the reviewers; RefundsService redacts it when decided.
       this.prisma.refundRequest.updateMany({
-        where: { registration: { userId } },
+        where: {
+          registration: { userId },
+          status: { in: [RefundStatus.APPROVED, RefundStatus.REJECTED] },
+        },
         data: { reason: REDACTED_REFUND_REASON },
       }),
       ...[...rosters].map(([id, r]) =>

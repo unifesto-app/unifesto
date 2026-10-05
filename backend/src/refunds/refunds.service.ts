@@ -28,6 +28,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 
 /** Round to 2 decimal places (money). */
@@ -323,6 +324,8 @@ export class RefundsService {
       where: { id: requestId },
       data: {
         status: dto.action === 'FORWARD' ? RefundStatus.PENDING_ADMIN : RefundStatus.REJECTED,
+        ...(dto.action === 'REJECT' &&
+          (await this.reasonOnceDecided(request.registration.userId))),
         curatorNote: dto.note?.trim() || null,
         curatorActionBy: userId,
         curatorActionAt: new Date(),
@@ -382,6 +385,7 @@ export class RefundsService {
         where: { id: requestId },
         data: {
           status: RefundStatus.REJECTED,
+          ...(await this.reasonOnceDecided(request.registration.userId)),
           adminNote: dto.note?.trim() || null,
           adminActionBy: adminId,
           adminActionAt: new Date(),
@@ -428,6 +432,7 @@ export class RefundsService {
   ) {
     const requestId = request.id;
     const reg = request.registration;
+    const closedReason = await this.reasonOnceDecided(reg.userId);
     // A group may also hold extra-seats payments made after booking; a refund
     // draws on the group's own payment first, then on those, oldest first.
     const addons = await this.paidSeatAddons(reg.id);
@@ -565,6 +570,7 @@ export class RefundsService {
           where: { id: requestId },
           data: {
             status: RefundStatus.APPROVED,
+            ...closedReason,
             adminNote,
             adminActionBy: adminId,
             adminActionAt: new Date(),
@@ -723,6 +729,18 @@ export class RefundsService {
     });
 
     return this.settleApprovedRefund(request, adminId, dto.approvedAmount, dto.reason);
+  }
+
+  /**
+   * Account close leaves a refund still in review its reason so reviewers can
+   * decide it; the decision then redacts it. Spread into the deciding update.
+   */
+  private async reasonOnceDecided(holderId: string): Promise<{ reason?: string }> {
+    const holder = await this.prisma.user.findUnique({
+      where: { id: holderId },
+      select: { deletedAt: true },
+    });
+    return holder?.deletedAt ? { reason: REDACTED_REFUND_REASON } : {};
   }
 
   // --- Reads ----------------------------------------------------------------
