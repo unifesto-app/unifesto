@@ -1,5 +1,5 @@
 import { Prisma, RefundStatus } from '@prisma/client';
-import { UsersService, privateFileKeys } from './users.service';
+import { UsersService, leadMobile, privateFileKeys } from './users.service';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 
 /**
@@ -109,6 +109,9 @@ function makePrisma() {
       { id: 'lead-p0s', phone: ' 0 98765-43210' },
       // A trunk 0 in front of someone else's number.
       { id: 'lead-p0x', phone: '09876543211' },
+      // The 00 international prefix: this user, and a US number.
+      { id: 'lead-p00', phone: '0091 98765 43210' },
+      { id: 'lead-p00x', phone: '001 212 9876543210' },
       // A US number ending in the same 10 digits: not this user.
       { id: 'lead-px', phone: '+1 212 9876543210' },
     ]),
@@ -151,7 +154,7 @@ describe('UsersService.closeAccount PII scrub', () => {
     // and of the phone candidates only this user's +91 number (any format) does.
     expect(writes('lead.updateMany')).toEqual([
       {
-        where: { id: { in: ['lead-1', 'lead-p1', 'lead-p0', 'lead-p0s'] } },
+        where: { id: { in: ['lead-1', 'lead-p1', 'lead-p0', 'lead-p0s', 'lead-p00'] } },
         data: { name: null, email: null, phone: null, message: null },
       },
     ]);
@@ -230,6 +233,23 @@ describe('UsersService.closeAccount with no verified email or mobile', () => {
     expect(tx.find((w: any) => w.name === 'lead.updateMany').args.where).toEqual({
       id: { in: [] },
     });
+  });
+});
+
+describe('leadMobile', () => {
+  it.each([
+    ['+91 98765 43210', '+919876543210'],
+    ['9876543210', '+919876543210'],
+    ['09876543210', '+919876543210'],
+    [' 0 98765-43210 ', '+919876543210'],
+    ['0091 98765 43210', '+919876543210'],
+    ['00919876543210', '+919876543210'],
+    ['001 (212) 555-0123', '+12125550123'],
+    ['0', null],
+    ['00', null],
+    ['call me', null],
+  ])('%j → %j', (raw, expected) => {
+    expect(leadMobile(raw)).toBe(expected);
   });
 });
 
