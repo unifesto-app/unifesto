@@ -936,7 +936,7 @@ export class UsersService {
     // Phone-only leads (no email, so organiser-entered) by the VERIFIED mobile.
     // A lead with some other email but this phone is left alone: shared
     // numbers. Lead phones are free text, so SQL narrows on the last 10 digits
-    // and leadMobile (accounts' E.164 form) confirms the exact number.
+    // and normalizeMobile (accounts' E.164 form) confirms the exact number.
     const mobile = user.mobileVerified ? normalizeMobile(user.mobileNumber) : null;
     const phoneLeadIds = mobile
       ? (
@@ -945,7 +945,7 @@ export class UsersService {
             WHERE email IS NULL AND phone IS NOT NULL
               AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = ${mobile.slice(-10)}`
         )
-          .filter((l) => leadMobile(l.phone) === mobile)
+          .filter((l) => normalizeMobile(l.phone) === mobile)
           .map((l) => l.id)
       : [];
     const funnelLeadIds = [...emailLeadIds, ...phoneLeadIds];
@@ -1188,25 +1188,6 @@ export class UsersService {
       organiserAnnouncements: settings.organiserAnnouncements,
     };
   }
-}
-
-/**
- * A free-text lead phone in accounts' E.164 form, or null. normalizeMobile
- * plus the two prefixes organisers type that it doesn't read: the `00`
- * international prefix ("0091 98765 43210") and the trunk `0`
- * ("09876543210"). Kept here, not in normalizeMobile, so the hackathon judges
- * form's validation doesn't change.
- */
-export function leadMobile(raw: string): string | null {
-  const typed = raw.trim();
-  return (
-    normalizeMobile(typed) ??
-    (typed.startsWith('00')
-      ? normalizeMobile(`+${typed.slice(2)}`)
-      : typed.startsWith('0')
-        ? normalizeMobile(typed.slice(1))
-        : null)
-  );
 }
 
 /**

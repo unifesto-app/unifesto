@@ -1,5 +1,5 @@
 import { Prisma, RefundStatus } from '@prisma/client';
-import { UsersService, leadMobile, privateFileKeys } from './users.service';
+import { UsersService, privateFileKeys } from './users.service';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 
 /**
@@ -233,23 +233,6 @@ describe('UsersService.closeAccount with no verified email or mobile', () => {
     expect(tx.find((w: any) => w.name === 'lead.updateMany').args.where).toEqual({
       id: { in: [] },
     });
-  });
-});
-
-describe('leadMobile', () => {
-  it.each([
-    ['+91 98765 43210', '+919876543210'],
-    ['9876543210', '+919876543210'],
-    ['09876543210', '+919876543210'],
-    [' 0 98765-43210 ', '+919876543210'],
-    ['0091 98765 43210', '+919876543210'],
-    ['00919876543210', '+919876543210'],
-    ['001 (212) 555-0123', '+12125550123'],
-    ['0', null],
-    ['00', null],
-    ['call me', null],
-  ])('%j → %j', (raw, expected) => {
-    expect(leadMobile(raw)).toBe(expected);
   });
 });
 
