@@ -18,6 +18,7 @@ import {
 } from '../common/account-deletion';
 import { UserProfileDto } from '../auth/dto';
 import { StorageService } from '../storage/storage.service';
+import { normalizeMobile } from '../leaderboard/hackathon.shared';
 
 @Injectable()
 export class UsersService {
@@ -915,11 +916,10 @@ export class UsersService {
     // Organiser lead funnel ("Notify me", space inquiries, manual/imported
     // leads) has no user link, only the email someone typed. Match on the
     // account's VERIFIED emails only, so we never erase someone else who typed
-    // an address we can't vouch for; phone isn't matched (free-text formats,
-    // shared numbers). The DB match is case-insensitive (ILIKE, where `_` is a
-    // wildcard), so confirm each hit is an exact lowercase match here.
+    // an address we can't vouch for. The DB match is case-insensitive (ILIKE,
+    // where `_` is a wildcard), so confirm each hit is an exact lowercase match.
     const verifiedEmails = new Set(identities.map((i) => (i.email as string).toLowerCase()));
-    const funnelLeadIds = verifiedEmails.size
+    const emailLeadIds = verifiedEmails.size
       ? (
           await this.prisma.lead.findMany({
             where: {
@@ -933,6 +933,22 @@ export class UsersService {
           .filter((l) => verifiedEmails.has((l.email ?? '').toLowerCase()))
           .map((l) => l.id)
       : [];
+    // Phone-only leads (no email, so organiser-entered) by the VERIFIED mobile.
+    // A lead with some other email but this phone is left alone: shared
+    // numbers. Lead phones are free text, so SQL narrows on the last 10 digits
+    // and normalizeMobile (accounts' E.164 form) confirms the exact number.
+    const mobile = user.mobileVerified ? normalizeMobile(user.mobileNumber) : null;
+    const phoneLeadIds = mobile
+      ? (
+          await this.prisma.$queryRaw<{ id: string; phone: string }[]>`
+            SELECT id, phone FROM leads
+            WHERE email IS NULL AND phone IS NOT NULL
+              AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = ${mobile.slice(-10)}`
+        )
+          .filter((l) => normalizeMobile(l.phone) === mobile)
+          .map((l) => l.id)
+      : [];
+    const funnelLeadIds = [...emailLeadIds, ...phoneLeadIds];
 
     // Legacy `groupMembers` JSON: index i is seat i+1. Entries are blanked to
     // {} rather than removed so everyone else keeps their index.

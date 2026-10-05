@@ -20,7 +20,13 @@ function makePrisma() {
   const op = (name: string) => jest.fn((args: unknown) => ({ name, args }));
   return {
     user: {
-      findUnique: jest.fn(async () => ({ id: USER, deletedAt: null, avatarUrl: null })),
+      findUnique: jest.fn(async () => ({
+        id: USER,
+        deletedAt: null,
+        avatarUrl: null,
+        mobileNumber: '+919876543210',
+        mobileVerified: true,
+      })),
       update: op('user.update'),
     },
     eventRegistration: {
@@ -95,6 +101,14 @@ function makePrisma() {
     payoutBankAccount: { deleteMany: op('d') },
     eventCheckinAccess: { deleteMany: op('d') },
     sessionCoHost: { deleteMany: op('d') },
+    // Phone-only leads whose last 10 digits match, as the SQL narrows them.
+    $queryRaw: jest.fn(async () => [
+      { id: 'lead-p1', phone: '+91 98 76 54 32 10' },
+      // Typed with a trunk 0: normalizeMobile can't read it, so it's left.
+      { id: 'lead-p0', phone: '09876543210' },
+      // A US number ending in the same 10 digits: not this user.
+      { id: 'lead-px', phone: '+1 212 9876543210' },
+    ]),
     $transaction: jest.fn(async (ops: unknown[]) => ops),
   };
 }
@@ -123,15 +137,18 @@ describe('UsersService.closeAccount PII scrub', () => {
     ]);
   });
 
-  it('scrubs organiser funnel leads matching a verified email exactly, any case', () => {
+  it('scrubs funnel leads matching a verified email exactly (any case) or the verified mobile', () => {
     expect(prisma.userIdentity.findMany).toHaveBeenCalledWith({
       where: { userId: USER, emailVerified: true, email: { not: null } },
       select: { email: true },
     });
-    // me_work@work.in's `_` would match meXwork@ under ILIKE; only exact hits go.
+    // The SQL narrows phone-only leads on the mobile's last 10 digits.
+    expect((prisma.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual(['9876543210']);
+    // me_work@work.in's `_` would match meXwork@ under ILIKE; only exact hits go,
+    // and of the phone candidates only the real +91 number does.
     expect(writes('lead.updateMany')).toEqual([
       {
-        where: { id: { in: ['lead-1'] } },
+        where: { id: { in: ['lead-1', 'lead-p1'] } },
         data: { name: null, email: null, phone: null, message: null },
       },
     ]);
@@ -187,10 +204,17 @@ describe('UsersService.closeAccount PII scrub', () => {
   });
 });
 
-describe('UsersService.closeAccount with no verified email', () => {
+describe('UsersService.closeAccount with no verified email or mobile', () => {
   it('does not look up or match any funnel leads', async () => {
     const prisma = makePrisma();
     prisma.userIdentity.findMany = jest.fn(async () => []);
+    prisma.user.findUnique = jest.fn(async () => ({
+      id: USER,
+      deletedAt: null,
+      avatarUrl: null,
+      mobileNumber: '+919876543210',
+      mobileVerified: false,
+    }));
     const service = new UsersService(
       prisma as any,
       { get: () => undefined } as any,
@@ -198,6 +222,7 @@ describe('UsersService.closeAccount with no verified email', () => {
     );
     await (service as any).closeAccount(USER);
     expect(prisma.lead.findMany).not.toHaveBeenCalled();
+    expect(prisma.$queryRaw).not.toHaveBeenCalled();
     const tx = (prisma.$transaction.mock.calls[0] as any)[0];
     expect(tx.find((w: any) => w.name === 'lead.updateMany').args.where).toEqual({
       id: { in: [] },
