@@ -888,7 +888,7 @@ export class UsersService {
     // details (they're still attending). As a member of someone else's group,
     // their claimed seat and matching roster entry on the lead's registration
     // are scrubbed and nothing else on that registration changes.
-    const [regs, seats, bookings] = await Promise.all([
+    const [regs, seats, bookings, identities] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { userId },
         select: { id: true, formResponses: true, groupMembers: true },
@@ -905,7 +905,34 @@ export class UsersService {
         where: { userId },
         select: { answers: true, guests: { select: { idProof: true } } },
       }),
+      // Read before the identities are deleted below: the organiser lead
+      // funnel has no user link, only the email someone typed.
+      this.prisma.userIdentity.findMany({
+        where: { userId, emailVerified: true, email: { not: null } },
+        select: { email: true },
+      }),
     ]);
+    // Organiser lead funnel ("Notify me", space inquiries, manual/imported
+    // leads) has no user link, only the email someone typed. Match on the
+    // account's VERIFIED emails only, so we never erase someone else who typed
+    // an address we can't vouch for; phone isn't matched (free-text formats,
+    // shared numbers). The DB match is case-insensitive (ILIKE, where `_` is a
+    // wildcard), so confirm each hit is an exact lowercase match here.
+    const verifiedEmails = new Set(identities.map((i) => (i.email as string).toLowerCase()));
+    const funnelLeadIds = verifiedEmails.size
+      ? (
+          await this.prisma.lead.findMany({
+            where: {
+              OR: [...verifiedEmails].map((email) => ({
+                email: { equals: email, mode: 'insensitive' as const },
+              })),
+            },
+            select: { id: true, email: true },
+          })
+        )
+          .filter((l) => verifiedEmails.has((l.email ?? '').toLowerCase()))
+          .map((l) => l.id)
+      : [];
 
     // Legacy `groupMembers` JSON: index i is seat i+1. Entries are blanked to
     // {} rather than removed so everyone else keeps their index.
@@ -937,6 +964,11 @@ export class UsersService {
       // Sponsor leads from the user's registrations: the contact snapshot and
       // the crew's note go; the row stays so sponsors' lead counts hold. Leads
       // already exported by a sponsor are outside our reach.
+      // The row keeps its source/status so the organiser's funnel counts hold.
+      this.prisma.lead.updateMany({
+        where: { id: { in: funnelLeadIds } },
+        data: { name: null, email: null, phone: null, message: null },
+      }),
       this.prisma.sponsorLead.updateMany({
         where: { registration: { userId } },
         data: { name: null, email: null, phone: null, note: null },

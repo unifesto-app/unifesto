@@ -70,7 +70,22 @@ function makePrisma() {
     stayGuest: { updateMany: op('stayGuest.updateMany') },
     sponsorLead: { updateMany: op('sponsorLead.updateMany') },
     refundRequest: { updateMany: op('refundRequest.updateMany') },
-    userIdentity: { deleteMany: op('d') },
+    userIdentity: {
+      // The query asks for verified emails only; the mock returns what such a
+      // query would (the unverified one is filtered by the where clause).
+      findMany: jest.fn(async () => [{ email: 'Me@Example.com' }, { email: 'me_work@work.in' }]),
+      deleteMany: op('d'),
+    },
+    lead: {
+      // What a case-insensitive ILIKE could return: two real matches plus a
+      // `_`-wildcard false positive that must be dropped.
+      findMany: jest.fn(async () => [
+        { id: 'lead-1', email: 'me@example.com' },
+        { id: 'lead-2', email: 'ME@WORK.IN' },
+        { id: 'lead-x', email: 'meXwork@work.in' },
+      ]),
+      updateMany: op('lead.updateMany'),
+    },
     userPushDevice: { deleteMany: op('d') },
     adminDevice: { deleteMany: op('d') },
     notificationSettings: { deleteMany: op('d') },
@@ -104,6 +119,20 @@ describe('UsersService.closeAccount PII scrub', () => {
       {
         where: { userId: USER },
         data: { formResponses: Prisma.DbNull, shareContactWithSponsors: false },
+      },
+    ]);
+  });
+
+  it('scrubs organiser funnel leads matching a verified email exactly, any case', () => {
+    expect(prisma.userIdentity.findMany).toHaveBeenCalledWith({
+      where: { userId: USER, emailVerified: true, email: { not: null } },
+      select: { email: true },
+    });
+    // me_work@work.in's `_` would match meXwork@ under ILIKE; only exact hits go.
+    expect(writes('lead.updateMany')).toEqual([
+      {
+        where: { id: { in: ['lead-1'] } },
+        data: { name: null, email: null, phone: null, message: null },
       },
     ]);
   });
@@ -155,6 +184,24 @@ describe('UsersService.closeAccount PII scrub', () => {
   it('deletes the user’s private files but not a fellow member’s', () => {
     const deleted = storage.deleteObject.mock.calls.map((c) => c[0]).sort();
     expect(deleted).toEqual([MY_FORM, MY_MEMBER_FILE, MY_ID].sort());
+  });
+});
+
+describe('UsersService.closeAccount with no verified email', () => {
+  it('does not look up or match any funnel leads', async () => {
+    const prisma = makePrisma();
+    prisma.userIdentity.findMany = jest.fn(async () => []);
+    const service = new UsersService(
+      prisma as any,
+      { get: () => undefined } as any,
+      { deleteObject: jest.fn() } as any,
+    );
+    await (service as any).closeAccount(USER);
+    expect(prisma.lead.findMany).not.toHaveBeenCalled();
+    const tx = (prisma.$transaction.mock.calls[0] as any)[0];
+    expect(tx.find((w: any) => w.name === 'lead.updateMany').args.where).toEqual({
+      id: { in: [] },
+    });
   });
 });
 
