@@ -717,6 +717,8 @@ Today: `unifesto.app/terms`, `/privacy`, `/refund` exist as static pages.
 | Cookie Policy (web) | planned |
 | Grievance redressal page (IT Rules 2021) | planned |
 | Versioned legal documents: stored with version + effective date, change log, acceptance recorded per user | planned |
+| DPDP erasure on account close: scrub personal data on the user's registrations (form answers), group seats + roster entries, stay bookings/guests, sponsor-lead contacts (+ consent off), organiser funnel leads (by verified email, or verified mobile for phone-only leads) and refund reasons, delete their private uploads; money fields kept | in progress: #41 open, needs backend rebuild (no migration) |
+| Privacy Policy "How long we keep it": say organiser-question answers are erased on account close (once the rewritten page and #41 land) | planned |
 
 Flow: drafts by 4 Oct → your lawyer 5–8 Oct (D6).
 
@@ -726,6 +728,17 @@ Company details for every document:
 - **Grievance officer:** Vinay Buddolla · vinay@unifesto.app · +91 93460 95136 → publish 9 Oct with re-acceptance (4.6.0).
 
 **Done when:** a lawyer has signed off on every document and they're live with acceptance tracking.
+
+#### Log
+
+- **6 Oct:** Account-close PII scrub built (#41): `closeAccount` clears the closing user's registration form answers, claimed group seats and their own legacy roster entries, and stay booking/guest details in the close transaction, then deletes referenced `private/form-uploads/` files (best-effort). Other members' data and all money fields untouched. New `users.service.close-account.spec.ts` (5 tests) + registrations/stays suites (85) pass, backend `tsc` clean. Not run against a real DB or S3. Not covered: abandoned-checkout uploads (left to the 180-day purge).
+- **6 Oct:** #41 extended: `SponsorLead` name/email/phone/note cleared (row kept for sponsor counts) and `shareContactWithSponsors` set false on the user's registrations; `RefundRequest.reason` replaced with a placeholder (amounts, status, Razorpay ids, staff notes kept; a request still in review loses its reason too).
+- **6 Oct:** #41: a refund still in review at close now keeps its reason for the reviewers; the curator-reject, admin-reject and approve paths redact it when they decide a closed account's refund (`RefundsService.reasonOnceDecided`). New `refunds.closed-account.spec.ts` (incl. the approve path through settlement, Razorpay stubbed); 97 users/refunds/registrations/stays tests pass, `tsc` clean.
+- **6 Oct:** #41: organiser `Lead` funnel covered. No user link, so leads are matched on the account's verified identity emails (case-insensitive, then confirmed exact in code since Postgres ILIKE treats `_` as a wildcard); name/email/phone/message cleared, source/status kept for funnel counts. Phone not matched. 99 users/refunds/registrations/stays/sponsors tests pass, `tsc` clean.
+- **6 Oct:** #41: phone-only funnel leads (no email) also matched on the account's verified mobile: SQL narrows on the last 10 digits (`regexp_replace` strips formatting, checked on local Postgres 17), then `normalizeMobile` (reused from `leaderboard/hackathon.shared.ts`) confirms the exact E.164 number. Leads with another email but this phone are left (shared numbers); trunk-`0` numbers aren't read by `normalizeMobile` so aren't matched.
+- **6 Oct:** #41: trunk-`0` lead phones (`09876543210`, `0 98765-43210`) now matched too: the scrub retries `normalizeMobile` without the leading `0`. Done locally so the hackathon judges form's validation doesn't change. 243 tests pass, `tsc` clean.
+- **6 Oct:** #41: `00` international prefix (`0091 98765 43210`) matched too. Both retries now live in an exported `leadMobile()` in `users.service.ts` with its own table test. 253 tests pass, `tsc` clean.
+- **6 Oct:** #41: folded the `0`/`00` handling into the shared `normalizeMobile` (`leaderboard/hackathon.shared.ts`) and removed `leadMobile`, so the hackathon judges form also accepts `09876543210` / `0091 98765 43210` (resolves to the same E.164 account, no duplicates). The mobile judge editor only checks non-empty, so backend-only. 253 tests pass, `tsc` clean. Leads a sponsor already exported can't be recalled. 91 users/registrations/stays tests pass, `tsc` clean.
 
 ### W7 · Content system (blogs, careers, pages) · 3 Oct → 8 Oct
 

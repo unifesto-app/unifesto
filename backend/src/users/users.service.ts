@@ -14,9 +14,11 @@ import {
   ACCOUNT_DELETION_GRACE_DAYS,
   DAY_MS,
   deletionDueAt,
+  REDACTED_REFUND_REASON,
 } from '../common/account-deletion';
 import { UserProfileDto } from '../auth/dto';
 import { StorageService } from '../storage/storage.service';
+import { normalizeMobile } from '../leaderboard/hackathon.shared';
 
 @Injectable()
 export class UsersService {
@@ -878,7 +880,161 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.deletedAt) return;
 
+    // Personal data on related records (DPDP erasure). Money fields — amounts,
+    // payment ids, status, refundedAmount — are never touched, so financials
+    // and tax records still reconcile.
+    //
+    // Group rosters: only THIS user's entries go. As a lead, their own seat 1
+    // and roster entry 0 are scrubbed but the members they brought keep their
+    // details (they're still attending). As a member of someone else's group,
+    // their claimed seat and matching roster entry on the lead's registration
+    // are scrubbed and nothing else on that registration changes.
+    const [regs, seats, bookings, identities] = await Promise.all([
+      this.prisma.eventRegistration.findMany({
+        where: { userId },
+        select: { id: true, formResponses: true, groupMembers: true },
+      }),
+      this.prisma.groupSeat.findMany({
+        where: { claimedByUserId: userId },
+        select: {
+          seatIndex: true,
+          memberDetails: true,
+          registration: { select: { id: true, groupMembers: true } },
+        },
+      }),
+      this.prisma.stayBooking.findMany({
+        where: { userId },
+        select: { answers: true, guests: { select: { idProof: true } } },
+      }),
+      // Read before the identities are deleted below: the organiser lead
+      // funnel has no user link, only the email someone typed.
+      this.prisma.userIdentity.findMany({
+        where: { userId, emailVerified: true, email: { not: null } },
+        select: { email: true },
+      }),
+    ]);
+    // Organiser lead funnel ("Notify me", space inquiries, manual/imported
+    // leads) has no user link, only the email someone typed. Match on the
+    // account's VERIFIED emails only, so we never erase someone else who typed
+    // an address we can't vouch for. The DB match is case-insensitive (ILIKE,
+    // where `_` is a wildcard), so confirm each hit is an exact lowercase match.
+    const verifiedEmails = new Set(identities.map((i) => (i.email as string).toLowerCase()));
+    const emailLeadIds = verifiedEmails.size
+      ? (
+          await this.prisma.lead.findMany({
+            where: {
+              OR: [...verifiedEmails].map((email) => ({
+                email: { equals: email, mode: 'insensitive' as const },
+              })),
+            },
+            select: { id: true, email: true },
+          })
+        )
+          .filter((l) => verifiedEmails.has((l.email ?? '').toLowerCase()))
+          .map((l) => l.id)
+      : [];
+    // Phone-only leads (no email, so organiser-entered) by the VERIFIED mobile.
+    // A lead with some other email but this phone is left alone: shared
+    // numbers. Lead phones are free text, so SQL narrows on the last 10 digits
+    // and normalizeMobile (accounts' E.164 form) confirms the exact number.
+    const mobile = user.mobileVerified ? normalizeMobile(user.mobileNumber) : null;
+    const phoneLeadIds = mobile
+      ? (
+          await this.prisma.$queryRaw<{ id: string; phone: string }[]>`
+            SELECT id, phone FROM leads
+            WHERE email IS NULL AND phone IS NOT NULL
+              AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = ${mobile.slice(-10)}`
+        )
+          .filter((l) => normalizeMobile(l.phone) === mobile)
+          .map((l) => l.id)
+      : [];
+    const funnelLeadIds = [...emailLeadIds, ...phoneLeadIds];
+
+    // Legacy `groupMembers` JSON: index i is seat i+1. Entries are blanked to
+    // {} rather than removed so everyone else keeps their index.
+    const rosters = new Map<string, { members: unknown[]; drop: Set<number> }>();
+    const markRoster = (id: string, members: Prisma.JsonValue, index: number) => {
+      if (!Array.isArray(members) || index >= members.length) return;
+      const r = rosters.get(id) ?? { members, drop: new Set<number>() };
+      r.drop.add(index);
+      rosters.set(id, r);
+    };
+    for (const r of regs) markRoster(r.id, r.groupMembers, 0);
+    for (const s of seats) {
+      markRoster(s.registration.id, s.registration.groupMembers, s.seatIndex - 1);
+    }
+
+    const privateKeys = privateFileKeys([
+      ...regs.map((r) => r.formResponses),
+      ...seats.map((s) => s.memberDetails),
+      ...[...rosters.values()].flatMap((r) => [...r.drop].map((i) => r.members[i])),
+      ...bookings.flatMap((b) => [b.answers, ...b.guests.map((g) => g.idProof)]),
+    ]);
+
     await this.prisma.$transaction([
+      this.prisma.eventRegistration.updateMany({
+        where: { userId },
+        // Closing the account withdraws sponsor-sharing consent too.
+        data: { formResponses: Prisma.DbNull, shareContactWithSponsors: false },
+      }),
+      // Sponsor leads from the user's registrations: the contact snapshot and
+      // the crew's note go; the row stays so sponsors' lead counts hold. Leads
+      // already exported by a sponsor are outside our reach.
+      // The row keeps its source/status so the organiser's funnel counts hold.
+      this.prisma.lead.updateMany({
+        where: { id: { in: funnelLeadIds } },
+        data: { name: null, email: null, phone: null, message: null },
+      }),
+      this.prisma.sponsorLead.updateMany({
+        where: { registration: { userId } },
+        data: { name: null, email: null, phone: null, note: null },
+      }),
+      // Decided refunds on the user's registrations: the free-text reason
+      // (NOT NULL) is replaced. Amounts, status, Razorpay ids and staff
+      // decision notes stay as the money record. One still in review keeps
+      // its reason for the reviewers; RefundsService redacts it when decided.
+      this.prisma.refundRequest.updateMany({
+        where: {
+          registration: { userId },
+          status: { in: [RefundStatus.APPROVED, RefundStatus.REJECTED] },
+        },
+        data: { reason: REDACTED_REFUND_REASON },
+      }),
+      ...[...rosters].map(([id, r]) =>
+        this.prisma.eventRegistration.update({
+          where: { id },
+          data: {
+            groupMembers: r.members.map((m, i) =>
+              r.drop.has(i) ? {} : m,
+            ) as Prisma.InputJsonValue,
+          },
+        }),
+      ),
+      this.prisma.groupSeat.updateMany({
+        where: { claimedByUserId: userId },
+        data: { memberDetails: Prisma.DbNull, inviteEmail: null },
+      }),
+      this.prisma.stayBooking.updateMany({
+        where: { userId },
+        data: {
+          emergencyName: null,
+          emergencyPhone: null,
+          note: null,
+          answers: Prisma.DbNull,
+        },
+      }),
+      // Everyone on the user's own bookings: they typed these guests in.
+      // name/gender are NOT NULL; gender alone isn't identifying once the
+      // name, contacts and ID are gone, and keeps bed-allocation counts true.
+      this.prisma.stayGuest.updateMany({
+        where: { booking: { userId } },
+        data: {
+          name: 'Deleted guest',
+          phone: null,
+          email: null,
+          idProof: Prisma.DbNull,
+        },
+      }),
       this.prisma.userIdentity.deleteMany({ where: { userId } }),
       this.prisma.userPushDevice.deleteMany({ where: { userId } }),
       this.prisma.adminDevice.deleteMany({ where: { userId } }),
@@ -918,6 +1074,11 @@ export class UsersService {
     await this.deleteHostedAvatar(user.avatarUrl).catch((err) =>
       this.logger.warn(`Avatar cleanup failed for deleted user ${userId}: ${err}`),
     );
+    // Best-effort: deleteObject logs and swallows its own failures. Uploads
+    // from abandoned checkouts aren't referenced anywhere, so they're left to
+    // the 180-day post-event purge (FormUploadsService.purgeExpired).
+    // ponytail: one DELETE per key; batch DeleteObjects if a user ever has hundreds.
+    for (const key of privateKeys) await this.storageService.deleteObject(key);
 
     this.logger.log(`User ${userId} account closed`);
   }
@@ -1027,4 +1188,28 @@ export class UsersService {
       organiserAnnouncements: settings.organiserAnnouncements,
     };
   }
+}
+
+/**
+ * Every private upload key (FileAnswer `{ key, … }` under private/form-uploads/)
+ * found anywhere in these JSON values — registration answers, group member
+ * details and stay answers/ID proofs all store files that way.
+ */
+export function privateFileKeys(values: unknown[]): string[] {
+  const keys = new Set<string>();
+  const walk = (v: unknown): void => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (!v || typeof v !== 'object') return;
+    const { key } = v as { key?: unknown };
+    if (
+      typeof key === 'string' &&
+      key.startsWith('private/form-uploads/') &&
+      !key.includes('..')
+    ) {
+      keys.add(key);
+    }
+    Object.values(v).forEach(walk);
+  };
+  values.forEach(walk);
+  return [...keys];
 }

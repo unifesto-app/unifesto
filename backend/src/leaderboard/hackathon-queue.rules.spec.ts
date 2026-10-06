@@ -131,6 +131,21 @@ describe('hackathon judging rules', () => {
     expect(normalizeMobile('abc')).toBeNull();
   });
 
+  it.each([
+    ['+91 98765 43210', '+919876543210'],
+    ['9876543210', '+919876543210'],
+    ['09876543210', '+919876543210'],
+    [' 0 98765-43210 ', '+919876543210'],
+    ['0091 98765 43210', '+919876543210'],
+    ['00919876543210', '+919876543210'],
+    ['001 (212) 555-0123', '+12125550123'],
+    ['0', null],
+    ['00', null],
+    ['call me', null],
+  ])('normalizeMobile reads trunk-0 and 00-prefixed numbers: %j → %j', (raw, expected) => {
+    expect(normalizeMobile(raw)).toBe(expected);
+  });
+
   it('makes a unique criterion key from its label', () => {
     expect(criterionKey('Innovation & Impact', new Set())).toBe('innovation-impact');
     expect(criterionKey('Innovation', new Set(['innovation', 'innovation-2']))).toBe('innovation-3');

@@ -410,11 +410,15 @@ export function estimatedWaitMinutes(ahead: number, busy: boolean, slotMinutes: 
 }
 
 /**
- * A judge's phone number as accounts store it (E.164). Ten digits are taken as
- * an Indian number, as the app's sign-in does. Null when it can't be a number.
+ * A typed phone number as accounts store it (E.164). Ten digits are taken as
+ * an Indian number, as the app's sign-in does; a leading `00` (international
+ * prefix) reads as `+`, and a single leading trunk `0` is dropped. Null when
+ * it can't be a number. Used for judges and to match leads on account close.
  */
 export function normalizeMobile(raw: string): string | null {
-  const s = raw.replace(/[\s\-().]/g, '');
+  let s = raw.replace(/[\s\-().]/g, '');
+  if (s.startsWith('00')) s = `+${s.slice(2)}`;
+  else if (s.startsWith('0')) s = s.slice(1);
   if (/^\d{10}$/.test(s)) return `+91${s}`;
   if (/^91\d{10}$/.test(s)) return `+${s}`;
   if (/^\+[1-9]\d{6,14}$/.test(s)) return s;
