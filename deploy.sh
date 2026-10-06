@@ -94,6 +94,12 @@ rsync -az --delete \
   --exclude 'certs' \
   --exclude '*.tsbuildinfo' \
   --exclude '.DS_Store' \
+  --exclude '/_company' \
+  --exclude '/.claude/settings.local.json' \
+  --exclude '/backend/coverage' \
+  --exclude '/backend/.env.local' \
+  --exclude '/backend/prisma/manual' \
+  --exclude '/backend/src/aws/examples' \
   "${HERE}/" "${SERVER}:${REMOTE_DIR}/"
 
 echo "==> Building images on the server"
