@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unifesto Brand Guidelines</title>
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Hanken+Grotesk:wght@300;400;500;600&display=block" rel="stylesheet">
+<style>
+  @page { size: 1600px 900px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Hanken Grotesk", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { position: relative; width: 1600px; height: 900px; overflow: hidden; padding: 88px 104px; break-after: page; display: flex; flex-direction: column; }
+  .dark { background: #000; color: #ececee; --muted: #8a8a90; --line: rgb(255 255 255 / .12); --card: #0a0a0b; }
+  .light { background: #fff; color: #111113; --muted: #63636a; --line: rgb(0 0 0 / .1); --card: #f4f4f5; }
+  .display { font-family: "Michroma", sans-serif; font-weight: 400; letter-spacing: .01em; line-height: 1.15; }
+  .ey { font-size: 14px; letter-spacing: .42em; text-transform: uppercase; color: var(--muted); }
+  .ey::before { content: ""; display: block; width: 56px; margin-inline: var(--rule-x, 0); height: 1px; background: currentColor; margin-bottom: 22px; }
+  h2 { font-family: "Michroma"; font-weight: 400; font-size: 44px; margin-top: 18px; }
+  p { font-size: 20px; line-height: 1.6; font-weight: 300; }
+  .muted { color: var(--muted); }
+  .foot { position: absolute; left: 104px; right: 104px; bottom: 48px; display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; }
+  .cap { font-size: 15px; color: var(--muted); }
+  .grid { display: grid; gap: 28px; }
+  .horizon::after { content: ""; position: absolute; left: -25%; right: -25%; top: 760px; height: 1400px; border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 0%, #1a1a1d, #000 55%); box-shadow: 0 -2px 0 rgb(255 255 255 / .25), 0 -50px 140px rgb(255 255 255 / .08); }
+  .stars { position: absolute; inset: 0; background-image:
+    radial-gradient(1.5px 1.5px at 12% 20%, #fff9, transparent), radial-gradient(1px 1px at 80% 12%, #fff7, transparent),
+    radial-gradient(1.4px 1.4px at 90% 40%, #fffa, transparent), radial-gradient(1px 1px at 36% 46%, #fff5, transparent),
+    radial-gradient(1.2px 1.2px at 64% 30%, #fff6, transparent), radial-gradient(1px 1px at 22% 70%, #fff4, transparent); }
+  .x { position: relative; }
+  .x::after { content: "✕"; position: absolute; top: 14px; right: 18px; font-size: 18px; color: #d93636; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Cover -->
+<section class="page dark horizon">
+  <div class="stars"></div>
+  <div style="position:relative; margin:auto; text-align:center; --rule-x:auto">
+    <img src="svg/wordmark-silver.svg" style="width:640px">
+    <p class="ey" style="margin-top:44px">Brand guidelines · October 2026</p>
+  </div>
+</section>
+
+<!-- 2 · Who we are -->
+<section class="page light">
+  <p class="ey">01 · Who we are</p>
+  <h2>Run the whole event.<br><span class="muted">Not just the ticket page.</span></h2>
+  <div class="grid" style="grid-template-columns: 1.3fr 1fr; margin-top: 56px; gap: 72px">
+    <div>
+      <p class="cap" style="margin-bottom:12px">Boilerplate (use as written)</p>
+      <p style="font-weight:400">Unifesto is an event platform for clubs, communities, institutions and startups in India. Organisers run ticketing, QR check-in, payouts, certificates, sponsors and hackathon judging from one Space. Attendees discover events, register and carry their pass in the Unifesto app.</p>
+    </div>
+    <div>
+      <p class="cap" style="margin-bottom:12px">Tagline</p>
+      <p class="display" style="font-size:26px; line-height:1.5">Optimize.<br>Organize.<br>Elevate.</p>
+      <p class="cap" style="margin:36px 0 12px">Name</p>
+      <p>Always <b style="font-weight:600">Unifesto</b>: one word, capital U in text. Never UniFesto, UNIFESTO or Uni Festo. The lowercase form belongs to the logo only.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>02</span></div>
+</section>
+
+<!-- 3 · Logo -->
+<section class="page dark">
+  <p class="ey">02 · Logo</p>
+  <h2>The wordmark</h2>
+  <div class="grid" style="grid-template-columns: 1fr 1fr; margin-top: 48px">
+    <div class="card" style="height:300px; display:grid; place-items:center; background:#000"><img src="svg/wordmark-silver.svg" style="width:440px"></div>
+    <div class="card" style="height:300px; display:grid; place-items:center; background:#fff"><img src="svg/wordmark-ink.svg" style="width:440px"></div>
+    <span class="cap">Silver on dark. The primary logo.</span>
+    <span class="cap">Ink (#111113) on light.</span>
+  </div>
+  <div class="grid" style="grid-template-columns: 1fr 1fr; margin-top: 36px; gap: 56px">
+    <p><b style="font-weight:500">Clear space.</b> <span class="muted">Keep empty space around the wordmark at least the height of its "u" on every side. Nothing else enters that zone.</span></p>
+    <p><b style="font-weight:500">Minimum size.</b> <span class="muted">96 px wide on screen, 25 mm in print. Below that, use the symbol.</span></p>
+  </div>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>03</span></div>
+</section>
+
+<!-- 4 · Symbol & app icon -->
+<section class="page light">
+  <p class="ey">03 · Symbol &amp; icon</p>
+  <h2>The u</h2>
+  <div class="grid" style="grid-template-columns: 360px 1fr 1fr; margin-top: 48px; align-items: start">
+    <div><img src="png/app-icon-dark-rounded-1024.png" style="width:360px; display:block"><p class="cap" style="margin-top:14px">App icon. Silver u, starlight and horizon on black.</p></div>
+    <div>
+      <div class="card" style="height:220px; display:flex; gap:28px; align-items:end; justify-content:center; padding-bottom:48px; background:#0a0a0b">
+        <img src="svg/favicon.svg" width="16"><img src="svg/favicon.svg" width="32"><img src="svg/favicon.svg" width="64"><img src="svg/favicon.svg" width="112">
+      </div>
+      <p class="cap" style="margin-top:14px">Favicon and small sizes: tile and u only, no stars or horizon.</p>
+    </div>
+    <div>
+      <div class="card" style="height:220px; display:grid; grid-template-columns:1fr 1fr; place-items:center; padding:24px">
+        <img src="svg/symbol-ink.svg" width="140"><div style="background:#000; border-radius:14px; display:grid; place-items:center; width:170px; height:170px"><img src="svg/symbol-silver.svg" width="140"></div>
+      </div>
+      <p class="cap" style="margin-top:14px">The symbol alone: avatars, stickers, merchandise, and anywhere the wordmark would fall below its minimum size.</p>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:44px; max-width:1100px">The u is the first letter of the wordmark, unchanged. Use it when the brand is already named nearby (an app grid, a profile photo), and the full wordmark everywhere else.</p>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>04</span></div>
+</section>
+
+<!-- 5 · Colour -->
+<section class="page dark">
+  <p class="ey">04 · Colour</p>
+  <h2>Monochrome cosmos</h2>
+  <p class="muted" style="margin-top:18px; max-width:900px">Everything is night: black ground, light type, one silver accent. Light surfaces flip the same roles. No brand blue, no second colour.</p>
+  <div class="grid" style="grid-template-columns: repeat(6, 1fr); margin-top: 52px; gap: 20px">
+    <div><div class="card" style="height:220px; background:#000"></div><p style="margin-top:14px; font-weight:500">Night</p><p class="cap">#000000</p></div>
+    <div><div class="card" style="height:220px; background:#0a0a0b"></div><p style="margin-top:14px; font-weight:500">Night 2</p><p class="cap">#0A0A0B</p></div>
+    <div><div class="card" style="height:220px; background:linear-gradient(135deg,#fff,#e4e4e8 50%,#a6a6ad)"></div><p style="margin-top:14px; font-weight:500">Silver</p><p class="cap">#FFFFFF → #A6A6AD</p></div>
+    <div><div class="card" style="height:220px; background:#ececee"></div><p style="margin-top:14px; font-weight:500">Paper</p><p class="cap">#ECECEE</p></div>
+    <div><div class="card" style="height:220px; background:#8a8a90"></div><p style="margin-top:14px; font-weight:500">Muted</p><p class="cap">#8A8A90</p></div>
+    <div><div class="card" style="height:220px; background:#111113; border-color:#fff3"></div><p style="margin-top:14px; font-weight:500">Ink</p><p class="cap">#111113</p></div>
+  </div>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>05</span></div>
+</section>
+
+<!-- 6 · Typography -->
+<section class="page light">
+  <p class="ey">05 · Typography</p>
+  <h2>Two typefaces</h2>
+  <div class="grid" style="grid-template-columns: 1fr 1fr; margin-top: 48px; gap: 64px">
+    <div style="border-top:1px solid var(--line); padding-top:28px">
+      <p class="cap">Display · Michroma (Google Fonts)</p>
+      <p class="display" style="font-size:56px; margin-top:22px">Aa Bb 123</p>
+      <p class="display" style="font-size:22px; margin-top:22px; line-height:1.5">One event, two sides of the door.</p>
+      <p class="muted" style="margin-top:22px; font-size:17px">Headlines only. One weight; never bold or condensed.</p>
+    </div>
+    <div style="border-top:1px solid var(--line); padding-top:28px">
+      <p class="cap">Text · Hanken Grotesk (Google Fonts)</p>
+      <p style="font-size:56px; margin-top:22px; font-weight:400; line-height:1.15">Aa Bb 123</p>
+      <p style="margin-top:22px; font-weight:400">Find events near you, register in a few taps, and walk in with the pass on your phone.</p>
+      <p class="muted" style="margin-top:22px; font-size:17px">Body, UI and captions. Light 300 to Semibold 600.</p>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:40px; font-size:17px">The wordmark is drawn artwork, not typed text. Always use the supplied files.</p>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>06</span></div>
+</section>
+
+<!-- 7 · Misuse -->
+<section class="page dark">
+  <p class="ey">06 · Please don't</p>
+  <h2>Keep the mark as it is</h2>
+  <div class="grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 44px; gap: 22px">
+    <div><div class="card x" style="height:170px; display:grid; place-items:center"><img src="svg/wordmark-white.svg" style="width:300px; transform:scaleX(1.35)"></div><p class="cap" style="margin-top:12px">Stretch or squash it</p></div>
+    <div><div class="card x" style="height:170px; display:grid; place-items:center"><img src="svg/wordmark-white.svg" style="width:300px; filter: invert(48%) sepia(90%) saturate(2500%) hue-rotate(195deg)"></div><p class="cap" style="margin-top:12px">Recolour it (including the old blue)</p></div>
+    <div><div class="card x" style="height:170px; display:grid; place-items:center"><img src="svg/wordmark-white.svg" style="width:300px; transform:rotate(-12deg)"></div><p class="cap" style="margin-top:12px">Rotate or tilt it</p></div>
+    <div><div class="card x" style="height:170px; display:grid; place-items:center; background:#fff"><img src="svg/wordmark-silver.svg" style="width:300px"></div><p class="cap" style="margin-top:12px">Put silver on a light background</p></div>
+    <div><div class="card x" style="height:170px; display:grid; place-items:center"><img src="svg/wordmark-white.svg" style="width:300px; filter: drop-shadow(0 0 14px #fff) drop-shadow(6px 6px 0 #555)"></div><p class="cap" style="margin-top:12px">Add glows, shadows or outlines</p></div>
+    <div><div class="card x" style="height:170px; display:grid; place-items:center"><span style="font: 700 48px Arial; letter-spacing:-.02em">unifesto</span></div><p class="cap" style="margin-top:12px">Retype it in another font</p></div>
+  </div>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>07</span></div>
+</section>
+
+<!-- 8 · Powered by -->
+<section class="page light">
+  <p class="ey">07 · Powered by</p>
+  <h2>For events run on Unifesto</h2>
+  <p class="muted" style="margin-top:18px; max-width:980px">Organisers can show the badge on event pages, posters, standees and sponsor walls. Use the boxed badge on photos and busy backgrounds, and the one-colour version on a plain colour.</p>
+  <div class="grid" style="grid-template-columns: 1fr 1fr 1fr 1fr; margin-top: 44px; gap: 20px">
+    <div class="card" style="height:150px; display:grid; place-items:center; background:#1c1c1f"><img src="svg/powered-by-dark.svg" style="width:300px"></div>
+    <div class="card" style="height:150px; display:grid; place-items:center; background:#ececee"><img src="svg/powered-by-light.svg" style="width:300px"></div>
+    <div class="card" style="height:150px; display:grid; place-items:center; background:#3c5a8c"><img src="svg/powered-by-white.svg" style="width:300px"></div>
+    <div class="card" style="height:150px; display:grid; place-items:center; background:#f8d478"><img src="svg/powered-by-black.svg" style="width:300px"></div>
+    <span class="cap">Dark badge</span><span class="cap">Light badge</span><span class="cap">White, on dark colours</span><span class="cap">Black, on light colours</span>
+  </div>
+  <div class="grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 40px; gap: 48px">
+    <p style="font-size:18px"><b style="font-weight:500">Size.</b> <span class="muted">At least 120 px wide on screen and 30 mm in print. Stacked versions suit square spaces.</span></p>
+    <p style="font-size:18px"><b style="font-weight:500">Place.</b> <span class="muted">Corners or the footer, with clear space of half the badge height. Never over faces or text.</span></p>
+    <p style="font-size:18px"><b style="font-weight:500">Link.</b> <span class="muted">Online, link the badge to unifesto.app. The ready-made snippet is on unifesto.app/press.</span></p>
+  </div>
+  <div class="foot"><span>Unifesto Brand Guidelines</span><span>08</span></div>
+</section>
+
+<!-- 8 · Contact -->
+<section class="page dark horizon">
+  <div class="stars"></div>
+  <div style="position:relative">
+    <p class="ey">Questions</p>
+    <h2>Press &amp; brand enquiries</h2>
+    <p style="margin-top:28px; font-size:26px">support@unifesto.app</p>
+    <p class="muted" style="margin-top:8px">www.unifesto.app/press · Unifesto Private Limited, Hyderabad, India</p>
+  </div>
+  <img src="svg/wordmark-silver.svg" style="position:absolute; left:104px; bottom:200px; width:260px; z-index:1">
+</section>
+
+</body>
+</html>

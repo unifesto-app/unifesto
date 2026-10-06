@@ -65,7 +65,7 @@ function SpaceDetailSkeleton() {
     <main className="min-h-screen bg-canvas">
       <Navbar />
       <div aria-hidden className="pt-20">
-        <div className="h-64 animate-pulse bg-white/[0.03] md:h-80" />
+        <div className="h-64 animate-pulse bg-night-2 md:h-80" />
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-10">
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 animate-pulse rounded-2xl bg-white/[0.06]" />
@@ -151,14 +151,14 @@ export default function SpaceDetailClient({ params }: Props) {
             <Buildings className="h-7 w-7 text-primary" aria-hidden />
           </div>
           <div>
-            <h1 className="text-xl font-extrabold text-white">Space not found</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <h1 className="font-display text-2xl font-bold text-paper">Space not found</h1>
+            <p className="mt-1 text-sm text-paper/65">
               This space doesn&apos;t exist or is no longer available.
             </p>
           </div>
           <Link
             href="/spaces"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-shadow duration-200 hover:shadow-[0_0_24px_rgba(52,145,255,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-shadow duration-200 hover:shadow-[0_0_24px_rgb(var(--glow)/0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
           >
             <ArrowUUpLeft className="h-4 w-4" aria-hidden />
             Browse spaces
@@ -220,106 +220,106 @@ export default function SpaceDetailClient({ params }: Props) {
     >
       <Navbar />
 
-      {/* Hero banner */}
-      <section
-        className="relative mt-20 flex aspect-[4/3] items-end overflow-hidden px-6 pb-8 pt-24 md:mt-24"
-        style={
-          space.banner_url
-            ? { backgroundImage: `url(${space.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : undefined
-        }
-      >
-        <div
-          aria-hidden
-          className={
-            space.banner_url
-              ? "pointer-events-none absolute inset-0 bg-gradient-to-t from-canvas via-canvas/70 to-canvas/20"
-              : "pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_20%_-10%,color-mix(in_srgb,var(--primary)_22%,transparent),transparent_60%)]"
-          }
-        />
+      {/* Hero: compact 4:3 banner beside the identity (never cropped, text
+          beside it rather than over it). Stacks on small screens. */}
+      <section className="px-5 pb-6 pt-28 sm:px-8 md:pt-32">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-12">
+          <div
+            className="enter aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center shadow-[0_32px_64px_-32px_rgba(0,0,0,0.6)]"
+            style={
+              space.banner_url
+                ? { backgroundImage: `url(${space.banner_url})` }
+                : { background: "radial-gradient(120% 120% at 20% -10%, color-mix(in srgb, var(--primary) 26%, transparent), transparent 60%), var(--night-2)" }
+            }
+            role={space.banner_url ? "img" : undefined}
+            aria-label={space.banner_url ? `${space.name} banner` : undefined}
+          />
+          <div>
+            <nav aria-label="Breadcrumb" className="enter mb-6 flex items-center gap-2 text-xs text-paper/60">
+              <Link href="/spaces" className="link-draw transition-colors duration-150 hover:text-paper">
+                Spaces
+              </Link>
+              <CaretRight className="h-3 w-3" aria-hidden />
+              {parentSpace && (
+                <>
+                  <Link
+                    href={`/space/${parentSpace.slug || parentSpace.id}`}
+                    className="link-draw max-w-[160px] truncate transition-colors duration-150 hover:text-paper"
+                  >
+                    {parentSpace.name}
+                  </Link>
+                  <CaretRight className="h-3 w-3" aria-hidden />
+                </>
+              )}
+              <span className="max-w-[200px] truncate text-paper/85">{space.name}</span>
+            </nav>
 
-        <div className="relative z-10 mx-auto w-full max-w-5xl">
-          {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-2 text-xs text-slate-400">
-            <Link href="/spaces" className="transition-colors hover:text-white">
-              Spaces
-            </Link>
-            <CaretRight className="h-3 w-3 text-slate-600" aria-hidden />
-            {parentSpace && (
-              <>
-                <Link
-                  href={`/space/${parentSpace.slug || parentSpace.id}`}
-                  className="max-w-[160px] truncate transition-colors hover:text-white"
-                >
-                  {parentSpace.name}
-                </Link>
-                <CaretRight className="h-3 w-3 text-slate-600" aria-hidden />
-              </>
-            )}
-            <span className="max-w-[200px] truncate text-slate-200">{space.name}</span>
-          </nav>
-
-          <div className="flex items-end gap-4">
-            <SpaceAvatar space={space} size="lg" />
-            <div className="min-w-0 flex-1 pb-1">
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                {space.is_verified && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2.5 py-1 text-[11px] font-semibold text-primary ring-1 ring-primary/25">
-                    <VerifiedMark className="h-3.5 w-3.5" />
-                    Verified
-                  </span>
-                )}
-              </div>
-              <h1 className="text-balance text-3xl font-extrabold leading-tight tracking-[-0.02em] text-white md:text-4xl">
-                {space.name}
-              </h1>
-              {location && <p className="mt-1 text-sm text-slate-300">{location}</p>}
+            <div className="enter flex items-center gap-4" style={{ ["--d" as string]: "80ms" }}>
+              <SpaceAvatar space={space} size="lg" />
+              {space.is_verified && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                  <VerifiedMark className="h-3.5 w-3.5" />
+                  Verified
+                </span>
+              )}
             </div>
+            <h1
+              className="waterline-load mt-5 font-display text-[clamp(1.9rem,4.2vw,3.1rem)] font-bold leading-[1.04] text-paper [text-wrap:balance]"
+              style={{ letterSpacing: "-0.035em" }}
+            >
+              <span className="line">
+                <span className="line-inner">{space.name}</span>
+              </span>
+            </h1>
+            {location && (
+              <p className="enter mt-2 text-sm text-paper/65" style={{ ["--d" as string]: "200ms" }}>
+                {location}
+              </p>
+            )}
+            {space.description && (
+              <p className="enter mt-5 max-w-xl text-pretty text-[15px] leading-relaxed text-paper/75" style={{ ["--d" as string]: "260ms" }}>
+                {space.description}
+              </p>
+            )}
+            <a
+              href={spaceDeepLink}
+              onClick={(e) => {
+                e.preventDefault();
+                openAppOrStore(spaceDeepLink);
+              }}
+              className="enter btn btn-lg btn-primary mt-7"
+              style={{ ["--d" as string]: "340ms", ...(brandColor ? { background: brandColor } : {}) }}
+            >
+              <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden="true" />
+              Join in the Unifesto app
+            </a>
           </div>
-
-          {space.description && (
-            <p className="mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-slate-300">{space.description}</p>
-          )}
-
-          {/* Join the space in the app; falls back to the store if not installed. */}
-          <a
-            href={spaceDeepLink}
-            onClick={(e) => {
-              e.preventDefault();
-              openAppOrStore(spaceDeepLink);
-            }}
-            className="mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_24px_color-mix(in_srgb,var(--primary)_40%,transparent)]"
-            style={{ background: brandColor ?? brandGradient }}
-          >
-            <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden="true" />
-            Join in the Unifesto app
-          </a>
         </div>
       </section>
 
-      {/* Stats bar */}
-      <div className="border-b border-white/5 bg-canvas">
-        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-px overflow-hidden px-6 sm:grid-cols-4">
+      {/* Stats: a quiet row of solid tiles. */}
+      <div className="px-5 sm:px-8">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-2 sm:grid-cols-4" data-stagger="rise">
           {stats.map((s) => (
-            <div key={s.label} className="flex items-center gap-3 py-5">
-              <s.icon className="h-5 w-5 text-primary/70" aria-hidden />
+            <div key={s.label} className="flex items-center gap-3 rounded-2xl bg-night-2 p-5">
+              <s.icon className="h-5 w-5 text-primary" aria-hidden />
               <div>
-                <p className="text-xl font-extrabold leading-none text-white">{s.value}</p>
-                <p className="mt-1 text-xs text-slate-400">{s.label}</p>
+                <p className="tabular font-display text-xl font-bold leading-none text-paper">{s.value}</p>
+                <p className="mt-1 text-xs text-paper/60">{s.label}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-6 py-10">
+      <div className="mx-auto max-w-6xl px-5 pb-20 pt-12 sm:px-8">
         {/* Parent space */}
         {parentSpace && (
           <section className="mb-12">
-            <h2 className="mb-4 text-sm font-bold text-slate-300">Part of</h2>
+            <h2 className="mb-4 text-sm font-bold text-paper/75">Part of</h2>
             <Link
               href={`/space/${parentSpace.slug || parentSpace.id}`}
-              className="group flex items-center gap-4 rounded-2xl border border-white/8 bg-white/[0.02] p-5 transition-colors duration-200 hover:border-primary/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+              className="group flex items-center gap-4 rounded-3xl bg-night-2 p-6 transition-colors duration-150 hover:bg-night-3"
             >
               <SpaceAvatar space={parentSpace} />
               <div className="min-w-0 flex-1">
@@ -328,7 +328,7 @@ export default function SpaceDetailClient({ params }: Props) {
                   {parentSpace.is_verified && <VerifiedMark className="h-3.5 w-3.5" />}
                 </p>
               </div>
-              <CaretRight className="h-4 w-4 shrink-0 text-slate-500 transition-colors group-hover:text-primary" aria-hidden />
+              <CaretRight className="h-4 w-4 shrink-0 text-paper/55 transition-colors group-hover:text-primary" aria-hidden />
             </Link>
           </section>
         )}
@@ -336,12 +336,12 @@ export default function SpaceDetailClient({ params }: Props) {
         {/* Organisers */}
         {organiserList.length > 0 && (
           <section className="mb-12">
-            <h2 className="mb-4 text-sm font-bold text-slate-300">Organisers</h2>
+            <h2 className="mb-4 text-sm font-bold text-paper/75">Organisers</h2>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {organiserList.map((organiser) => (
                 <div
                   key={organiser.id}
-                  className="flex items-center gap-3.5 rounded-xl border border-white/8 bg-white/[0.02] p-3.5"
+                  className="flex items-center gap-3.5 rounded-2xl bg-night-2 p-4"
                 >
                   {organiser.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -360,7 +360,7 @@ export default function SpaceDetailClient({ params }: Props) {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-white">{organiser.name}</p>
-                    <p className="mt-0.5 text-xs text-slate-400">{organiser.roleLabel}</p>
+                    <p className="mt-0.5 text-xs text-paper/65">{organiser.roleLabel}</p>
                   </div>
                 </div>
               ))}
@@ -371,16 +371,16 @@ export default function SpaceDetailClient({ params }: Props) {
         {/* Sub-spaces */}
         {subSpaces.length > 0 && (
           <section className="mb-12">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-slate-300">
+            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-paper/75">
               Sub-spaces
-              <span className="font-normal text-slate-500">({subSpaces.length})</span>
+              <span className="font-normal text-paper/55">({subSpaces.length})</span>
             </h2>
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {subSpaces.map((sub) => (
                 <Link
                   key={sub.id}
                   href={`/space/${sub.slug || sub.id}`}
-                  className="group flex items-center gap-3.5 rounded-xl border border-white/8 bg-white/[0.02] p-3.5 transition-colors duration-200 hover:border-primary/30 hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
+                  className="group flex items-center gap-3.5 rounded-2xl bg-night-2 p-4 transition-colors duration-150 hover:bg-night-3"
                 >
                   <SpaceAvatar space={sub} />
                   <div className="min-w-0 flex-1">
@@ -389,7 +389,7 @@ export default function SpaceDetailClient({ params }: Props) {
                       {sub.is_verified && <VerifiedMark className="h-3.5 w-3.5" />}
                     </p>
                   </div>
-                  <CaretRight className="h-4 w-4 shrink-0 text-slate-500 transition-colors group-hover:text-primary" aria-hidden />
+                  <CaretRight className="h-4 w-4 shrink-0 text-paper/55 transition-colors group-hover:text-primary" aria-hidden />
                 </Link>
               ))}
             </div>
@@ -398,9 +398,9 @@ export default function SpaceDetailClient({ params }: Props) {
 
         {/* Events */}
         <section>
-          <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-slate-300">
+          <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-paper/75">
             Events
-            <span className="font-normal text-slate-500">({topLevelEvents.length})</span>
+            <span className="font-normal text-paper/55">({topLevelEvents.length})</span>
           </h2>
 
           {topLevelEvents.length > 0 ? (
@@ -410,13 +410,13 @@ export default function SpaceDetailClient({ params }: Props) {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-white/8 py-16 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-3xl bg-night-2 px-6 py-16 text-center">
               <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
                 <CalendarBlank className="h-6 w-6 text-primary" aria-hidden />
               </div>
               <div>
                 <p className="text-base font-bold text-white">No events yet</p>
-                <p className="mt-1 text-sm text-slate-400">This space hasn&apos;t published any events.</p>
+                <p className="mt-1 text-sm text-paper/65">This space hasn&apos;t published any events.</p>
               </div>
             </div>
           )}
@@ -424,7 +424,7 @@ export default function SpaceDetailClient({ params }: Props) {
 
         {/* Get in touch — inquiry funnel */}
         <section className="mt-12">
-          <div className="mx-auto max-w-xl">
+          <div>
             <LeadCaptureForm
               title={`Get in touch with ${space.name}`}
               description="Have a question, a partnership idea, or want to sponsor? Send a note and the team will reach out."

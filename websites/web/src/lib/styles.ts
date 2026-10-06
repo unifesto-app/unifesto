@@ -1,12 +1,11 @@
 import type { CSSProperties } from "react";
 
-/** Brand gradient applied as text fill: use as style={gradientText} */
-export const gradientText: CSSProperties = {
-  background: "linear-gradient(135deg, #3491ff, #0062ff)",
-  WebkitBackgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  backgroundClip: "text",
-};
+/* Legacy helpers, kept so existing call sites compile. The brand no longer
+   uses gradients: both resolve to flat brand blue. Prefer the classes
+   (text-primary, bg-primary, .btn-primary) in new code. */
 
-/** Brand gradient value (for use in background/border inline styles) */
-export const brandGradient = "linear-gradient(135deg, #3491ff, #0062ff)";
+/** Accent text colour (formerly gradient-clipped text). */
+export const gradientText: CSSProperties = { color: "var(--primary)" };
+
+/** Accent fill (formerly a blue gradient). */
+export const brandGradient = "var(--primary)";

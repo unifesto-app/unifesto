@@ -55,10 +55,10 @@ export default function EventSponsors({ sponsors }: EventSponsorsProps) {
         {groups.map((group) => (
           <div key={group.key}>
             <h3
-              className="mb-3 text-xs font-semibold uppercase tracking-wide"
+              className="mb-3 text-sm font-semibold"
               style={{ color: group.color ?? undefined }}
             >
-              <span className={group.color ? "" : "text-slate-400"}>
+              <span className={group.color ? "" : "text-paper/65"}>
                 {group.label}
               </span>
             </h3>
@@ -76,7 +76,7 @@ export default function EventSponsors({ sponsors }: EventSponsorsProps) {
 
 function SponsorCard({ sponsor }: { sponsor: PublicSponsor }) {
   const inner = (
-    <div className="flex h-full flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-center transition-colors hover:border-white/25 hover:bg-white/10">
+    <div className="flex h-full flex-col items-center gap-3 rounded-3xl bg-night-2 p-4 text-center transition-colors hover:bg-white/10">
       {sponsor.logo_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -92,7 +92,7 @@ function SponsorCard({ sponsor }: { sponsor: PublicSponsor }) {
       )}
       <span className="text-sm font-semibold text-white">{sponsor.name}</span>
       {sponsor.description && (
-        <span className="line-clamp-2 text-xs text-slate-400">
+        <span className="line-clamp-2 text-xs text-paper/65">
           {sponsor.description}
         </span>
       )}

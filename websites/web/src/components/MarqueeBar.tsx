@@ -9,38 +9,31 @@ const partners = [
   "AWS Cloud Clubs MRUH",
 ];
 
-// Duplicate for seamless loop
+// Second copy only closes the loop; hidden from assistive tech.
 const marqueeItems = [...partners, ...partners];
 
 const Node = () => (
-  <span
-    className="mx-7 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary/60 select-none"
-    aria-hidden="true"
-  />
+  <span className="mx-7 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary select-none" aria-hidden="true" />
 );
 
+/* A paper band between the dark hero and the dark platform section. The
+   ticker is time-based motion, so it runs linear (see .animate-marquee). */
 export default function MarqueeBar() {
   return (
     <section
       aria-label="Clubs and cells hosting on Unifesto"
-      className="relative overflow-hidden border-y border-white/10 bg-canvas py-6"
+      data-surface="light"
+      className="surface-paper relative overflow-hidden py-7"
     >
-      {/* Edge fades keep the strip inside the dark page theme */}
-      <div
-        className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-black to-transparent"
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-black to-transparent"
-        aria-hidden="true"
-      />
+      <p className="sr-only">Clubs and cells hosting on Unifesto</p>
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-[var(--paper-bg)] to-transparent" aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-[var(--paper-bg)] to-transparent" aria-hidden="true" />
 
-      {/* Scrolling content */}
-      <div className="flex overflow-hidden" style={{ willChange: "transform" }}>
+      <div className="flex overflow-hidden">
         <div className="animate-marquee flex items-center">
           {marqueeItems.map((partner, i) => (
-            <span key={`${partner}-${i}`} className="inline-flex items-center">
-              <span className="whitespace-nowrap text-lg font-semibold tracking-tight text-slate-300 md:text-xl">
+            <span key={`${partner}-${i}`} className="inline-flex items-center" aria-hidden={i >= partners.length || undefined}>
+              <span className="whitespace-nowrap font-display text-sm text-ink/70 md:text-base">
                 {partner}
               </span>
               <Node />

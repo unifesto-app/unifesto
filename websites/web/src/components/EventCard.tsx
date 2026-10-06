@@ -74,10 +74,6 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
   const isTrending = Boolean(event.is_trending);
   const isFeatured = Boolean(event.is_featured);
 
-  const delayClass =
-    ["", "animate-delay-100", "animate-delay-200", "animate-delay-300", "animate-delay-400"][
-      index % 5
-    ] ?? "";
 
   const formattedDate = formatDateRange(event.start_date, event.end_date);
   const formattedTime = formatEventTime(event.start_date);
@@ -134,44 +130,41 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
         }
       }}
       tabIndex={0}
-      className={`animate-fade-in-up ${delayClass} group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3491ff] focus-visible:ring-offset-2 focus-visible:ring-offset-black`}
+      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
     >
       {/* Poster: real image when available, else dark field with the on-brand radial gradient. */}
-      <div
-        className="relative flex aspect-[4/3] items-end overflow-hidden bg-[#0a0a0d] p-5"
-        style={
-          imageUrl
-            ? {
-                backgroundImage: `url(${imageUrl})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }
-            : undefined
-        }
-      >
+      <div className="relative flex aspect-[4/3] items-end overflow-hidden bg-night-3 p-5">
+        {/* Poster layer zooms on hover (child moves, the card does not). */}
+        {imageUrl && (
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] ease-[cubic-bezier(.19,1,.22,1)] group-hover:scale-[1.04]"
+            style={{ backgroundImage: `url(${imageUrl})` }}
+          />
+        )}
         <div
           aria-hidden
           className={
             imageUrl
-              ? "pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"
-              : "pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgba(52,145,255,0.18),transparent_60%)]"
+              ? "pointer-events-none absolute inset-0 bg-gradient-to-t from-scrim/80 via-scrim/15 to-transparent"
+              : "pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgb(var(--glow)/0.18),transparent_60%)]"
           }
         />
 
         {/* Category pill, bottom-left, matching the blog card kicker. */}
-        <span className="relative z-10 rounded-full border border-primary/25 bg-primary/12 px-2.5 py-1 text-[11px] font-semibold text-primary">
+        <span className="blur-bg relative z-10 rounded-full px-2.5 py-1 text-[11px] font-semibold text-paper">
           {event.category || "Event"}
         </span>
 
         {/* Status badges, top-right: restrained, brand-consistent. */}
         <div className="absolute right-3 top-3 z-10 flex flex-wrap justify-end gap-1.5">
           {isTrending && (
-            <span className="rounded-full border border-white/25 bg-black/30 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-ink">
               Trending
             </span>
           )}
           {isFeatured && (
-            <span className="rounded-full border border-primary/40 bg-primary/20 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+            <span className="blur-bg rounded-full px-2 py-0.5 text-[10px] font-semibold text-paper">
               Featured
             </span>
           )}
@@ -179,31 +172,31 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
       </div>
 
       {/* Card body */}
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-6">
         <div>
-          <h3 className="text-base font-bold leading-snug text-white line-clamp-2">
+          <h3 className="text-base font-bold leading-snug text-paper line-clamp-2">
             {event.title}
           </h3>
           {spaceHref ? (
             <Link
               href={spaceHref}
               onClick={(e) => e.stopPropagation()}
-              className="mt-1 block truncate text-xs font-medium text-slate-400 transition-colors duration-200 hover:text-primary"
+              className="mt-1 block truncate text-xs font-medium text-paper/60 transition-colors duration-150 hover:text-primary"
             >
               {organizerName}
             </Link>
           ) : (
-            <span className="mt-1 block truncate text-xs font-medium text-slate-400">
+            <span className="mt-1 block truncate text-xs font-medium text-paper/60">
               {organizerName}
             </span>
           )}
         </div>
 
         {/* Meta: higher contrast than before (slate-400, not slate-500/600). */}
-        <div className="flex flex-col gap-1.5 text-xs text-slate-400">
+        <div className="flex flex-col gap-1.5 text-xs text-paper/65">
           <div className="flex items-center gap-1.5">
             <CalendarBlank
-              className="h-3.5 w-3.5 flex-shrink-0 text-primary/70"
+              className="h-3.5 w-3.5 flex-shrink-0 text-primary/80"
               aria-hidden="true"
             />
             <span className="truncate">
@@ -213,7 +206,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
           </div>
           <div className="flex items-center gap-1.5">
             <MapPin
-              className="h-3.5 w-3.5 flex-shrink-0 text-primary/70"
+              className="h-3.5 w-3.5 flex-shrink-0 text-primary/80"
               aria-hidden="true"
             />
             <span className="truncate">{location}</span>
@@ -221,23 +214,23 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
         </div>
 
         {/* Footer: price + affordance (no gradient pill). */}
-        <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3">
+        <div className="mt-auto flex items-center justify-between pt-3">
           <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-bold text-white">{priceLabel}</span>
+            <span className="text-sm font-bold text-paper">{priceLabel}</span>
             {priceSubLabel && (
-              <span className="text-[10px] font-medium text-green-400">
+              <span className="text-[10px] font-medium text-primary">
                 {priceSubLabel}
               </span>
             )}
           </div>
           {isCompleted ? (
-            <span className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-400">
+            <span className="rounded-full bg-paper/[0.06] px-3 py-1.5 text-xs font-medium text-paper/60">
               {event.status === "cancelled" ? "Cancelled" : "Completed"}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-all duration-200 group-hover:gap-2">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
               View
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
             </span>
           )}
         </div>

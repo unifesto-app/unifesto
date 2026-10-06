@@ -3,55 +3,56 @@ import { join } from "node:path";
 import type { CSSProperties, ReactNode } from "react";
 
 /**
- * Shared building blocks for the dynamic Open Graph image routes
- * (`event/[slug]/opengraph-image.tsx`, `space/[spaceSlug]/opengraph-image.tsx`).
+ * Shared building blocks for the dynamic Open Graph image routes (site
+ * default, event, space, blog post, certificate).
  *
- * Layout (both event and space): Unifesto wordmark top-left, the entity's
- * details on the left (title on one line, host/description on two, small meta,
- * and a CTA capsule at the bottom), and the artwork as a bordered card on the
- * right — 4:3 for banners, 1:1 for a space logo.
+ * Look: the site's "monochrome cosmos" — black ground, one soft starlight
+ * glow, silver wordmark, Michroma headings over Hanken Grotesk body, hairline
+ * borders and a silver CTA. Left column: wordmark, kind chip, title (≤2
+ * lines), subtitle (≤2 lines), meta rows, CTA + domain. Right: the artwork in
+ * a hairline frame (4:3 banner / 1:1 logo), or a monogram when there is none.
  */
 
 /** Standard Open Graph / Twitter summary_large_image canvas. */
 export const OG_SIZE = { width: 1200, height: 630 } as const;
 
-/** Brand palette (mirrors globals.css / lib/styles). */
+/** Mirrors the dark tokens in globals.css. */
 export const BRAND = {
-  bg: "#050507",
-  primary: "#3491ff",
-  primaryBright: "#0062ff",
-  text: "#ffffff",
-  muted: "#9aa4b2",
-  gradient: "linear-gradient(135deg, #3491ff, #0062ff)",
-  // Card backdrop: brand blue dissolving from the bottom-right corner into black.
-  bgWash: "linear-gradient(315deg, #123f73 0%, #0a2a5a 18%, #071630 33%, #050507 58%)",
-  // Soft heat glow rising from the bottom edge (same brand blue), fading up.
-  bottomHeat:
-    "linear-gradient(0deg, rgba(52,145,255,0.30) 0%, rgba(52,145,255,0.09) 30%, rgba(52,145,255,0) 60%)",
+  bg: "#000000",
+  surface: "#0a0a0b",
+  text: "#ececee",
+  muted: "#a1a1a8",
+  faint: "#6b6b72",
+  hairline: "rgba(255,255,255,0.14)",
+  silver: "linear-gradient(180deg, #ffffff 0%, #e4e4e8 50%, #b4b4bb 100%)",
+  glow: "radial-gradient(circle at 80% 28%, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.035) 32%, rgba(0,0,0,0) 62%)",
 } as const;
 
-type OgFont = { name: string; data: Buffer; weight: 400 | 500 | 700; style: "normal" };
+const PAD = 64;
+const GAP = 56;
+
+type OgFont = { name: string; data: Buffer; weight: 400 | 600; style: "normal" };
 let fontsCache: OgFont[] | null = null;
 
 /**
- * Load the Product Sans weights used by the cards. The TTFs are copied into
- * `public/fonts/` (which the Dockerfile ships into the standalone runtime), so
- * they resolve at `process.cwd()/public/...`. On any failure we return [] and
- * next/og falls back to its default font rather than erroring the image.
+ * Michroma (display) + Hanken Grotesk (body), the same faces the site loads
+ * through next/font. Satori needs raw TTF buffers, so static TTFs live in
+ * `public/fonts/og/` (shipped into the standalone runtime). On failure we
+ * return [] and next/og falls back to its default font.
  */
 export async function loadOgFonts(): Promise<OgFont[]> {
   if (fontsCache) return fontsCache;
   try {
-    const dir = join(process.cwd(), "public", "fonts", "product-sans");
-    const [regular, medium, bold] = await Promise.all([
-      readFile(join(dir, "ProductSans-Regular.ttf")),
-      readFile(join(dir, "ProductSans-Medium.ttf")),
-      readFile(join(dir, "ProductSans-Bold.ttf")),
+    const dir = join(process.cwd(), "public", "fonts", "og");
+    const [display, regular, semibold] = await Promise.all([
+      readFile(join(dir, "Michroma-Regular.ttf")),
+      readFile(join(dir, "HankenGrotesk-Regular.ttf")),
+      readFile(join(dir, "HankenGrotesk-SemiBold.ttf")),
     ]);
     fontsCache = [
-      { name: "Product Sans", data: regular, weight: 400, style: "normal" },
-      { name: "Product Sans", data: medium, weight: 500, style: "normal" },
-      { name: "Product Sans", data: bold, weight: 700, style: "normal" },
+      { name: "Michroma", data: display, weight: 400, style: "normal" },
+      { name: "Hanken Grotesk", data: regular, weight: 400, style: "normal" },
+      { name: "Hanken Grotesk", data: semibold, weight: 600, style: "normal" },
     ];
     return fontsCache;
   } catch {
@@ -60,10 +61,9 @@ export async function loadOgFonts(): Promise<OgFont[]> {
 }
 
 /**
- * Fetch a remote image (e.g. an uploaded banner or logo) and return it as a
- * base64 data URL, or null on any problem. We inline the bytes rather than
- * handing Satori a URL so the render never depends on Satori's own network
- * fetch — a slow or broken asset degrades gracefully to the monogram.
+ * Fetch a remote image (an uploaded banner or logo) and return it as a base64
+ * data URL, or null on any problem. Inlining the bytes means a slow or broken
+ * asset degrades to the monogram instead of failing the render.
  */
 export async function fetchImageAsDataUrl(
   url: string | null | undefined,
@@ -76,7 +76,8 @@ export async function fetchImageAsDataUrl(
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
     const type = res.headers.get("content-type") ?? "image/jpeg";
-    if (!type.startsWith("image/")) return null;
+    // Satori can't decode webp/avif/gif-anim reliably; skip rather than crash.
+    if (!/^image\/(png|jpe?g|svg\+xml)/i.test(type)) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.byteLength > 5_000_000) return null;
     return `data:${type};base64,${buf.toString("base64")}`;
@@ -87,21 +88,43 @@ export async function fetchImageAsDataUrl(
   }
 }
 
-/**
- * Read a PNG bundled under the app's `public/` dir (copied into the standalone
- * runtime by the Dockerfile) and return it as a data URL. Used for the local
- * Unifesto wordmark, which Satori cannot load by relative URL.
- */
-export async function readPublicPngAsDataUrl(relPath: string): Promise<string | null> {
+/** Read a file under `public/` as a data URL (Satori can't load relative URLs). */
+export async function readPublicAsDataUrl(relPath: string): Promise<string | null> {
   try {
     const buf = await readFile(join(process.cwd(), "public", relPath));
-    return `data:image/png;base64,${buf.toString("base64")}`;
+    const type = relPath.endsWith(".svg") ? "image/svg+xml" : "image/png";
+    return `data:${type};base64,${buf.toString("base64")}`;
   } catch {
     return null;
   }
 }
 
-/** Two-line clamp (Satori supports the WebKit line-clamp trio). */
+/** Everything every card needs: fonts + the silver wordmark. */
+export async function loadOgBase() {
+  const [fonts, wordmark] = await Promise.all([
+    loadOgFonts(),
+    readPublicAsDataUrl("press/wordmark-silver.svg"),
+  ]);
+  return { fonts, wordmark };
+}
+
+/** Plain text from Markdown-ish input, collapsed to one line. */
+export function plain(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const text = input
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#*_>`~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text || null;
+}
+
+/** Hard character cap; Satori's line-clamp alone can't be trusted. */
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}
+
 const clamp2: CSSProperties = {
   display: "-webkit-box",
   WebkitLineClamp: 2,
@@ -110,69 +133,68 @@ const clamp2: CSSProperties = {
 };
 
 /**
- * Hard character cap with an ellipsis. Satori's line-clamp is unreliable, so we
- * bound the text in code too — this is the real guarantee against overflow.
+ * Pick the largest Michroma size that fits the title in two lines of `width`,
+ * then cap the length so the smallest size still fits. Michroma is an
+ * extended face: ~0.62em per glyph measured, 0.72 with word-wrap slack.
+ * ponytail: width estimate, not measured; swap for real text metrics if titles clip.
  */
-function truncate(text: string, max: number): string {
-  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
-}
-
-/** Fallback wordmark drawn with primitives if the PNG can't be read. */
-function TextWordmark() {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <div style={{ width: 24, height: 24, borderRadius: 7, background: BRAND.primary }} />
-      <div style={{ fontSize: 38, fontWeight: 700, color: BRAND.text, letterSpacing: -1 }}>
-        unifesto
-      </div>
-    </div>
-  );
+function fitTitle(title: string, width: number): { text: string; size: number } {
+  const perChar = 0.72;
+  const sizes = [56, 48, 40, 34];
+  for (const size of sizes) {
+    const perLine = Math.floor(width / (size * perChar));
+    if (title.length <= perLine * 2) return { text: title, size };
+  }
+  const min = sizes[sizes.length - 1];
+  return { text: truncate(title, Math.floor(width / (min * perChar)) * 2), size: min };
 }
 
 export interface OgCardProps {
-  /** Data URL of the Unifesto wordmark PNG, or null to fall back to text. */
+  /** Data URL of the silver wordmark SVG, or null for a text fallback. */
   wordmark: string | null;
-  /** Primary heading — event title or space name. Rendered on one line. */
+  /** Small chip above the title: "Event", "Space", "Blog"… */
+  kind?: string;
   title: string;
-  /** Secondary line — "Hosted by …" (event) or description (space). 2 lines. */
   subtitle?: string | null;
-  /** Small meta rows under the subtitle (date, location, members…). */
-  meta: string[];
-  /** CTA capsule label, bottom-left (e.g. "Register Now" / "RSVP Now"). */
-  cta: string;
-  /** Data URL for the card image, or null for the monogram placeholder. */
-  image: string | null;
-  /** Card aspect ratio — 4:3 for banners, 1:1 for logos. */
+  /** Short rows under the subtitle (date, venue, members…). */
+  meta?: (string | null | undefined)[];
+  /** Silver button label; omit for no button. */
+  cta?: string;
+  /** Data URL of the artwork. null → monogram; undefined → text-only card. */
+  image?: string | null;
   imageAspect?: "4:3" | "1:1";
-  /** How the image sits in the card — cover for banners, contain for logos. */
+  /** cover crops to fill; contain letterboxes on the surface colour. */
   imageFit?: "cover" | "contain";
-  /** Card background behind the image (dark for banners, light for logos). */
+  /** Background behind the artwork (e.g. white for transparent logos). */
   imageBg?: string;
-  /** Single letter used in the placeholder when there is no image. */
-  monogram: string;
+  /** Hairline frame around the artwork. Off for the bare brand symbol. */
+  frame?: boolean;
 }
 
 /**
- * The shared OG card. Rendered by `ImageResponse`, so every container carries
- * an explicit `display` and all text sits inside a flex element (Satori rules).
+ * The shared OG card, rendered by `ImageResponse`: every container has an
+ * explicit `display` and all text sits in a flex element (Satori rules).
  */
 export function OgCard({
   wordmark,
+  kind,
   title,
   subtitle,
-  meta,
+  meta = [],
   cta,
   image,
   imageAspect = "4:3",
   imageFit = "cover",
-  imageBg = BRAND.bg,
-  monogram,
+  imageBg = BRAND.surface,
+  frame = true,
 }: OgCardProps): ReactNode {
-  const safeTitle = truncate(title, 44);
-  const safeSubtitle = subtitle ? truncate(subtitle, 120) : null;
-  const titleSize = safeTitle.length <= 18 ? 58 : safeTitle.length <= 30 ? 46 : 38;
-  const dims = imageAspect === "1:1" ? { w: 392, h: 392 } : { w: 452, h: 339 };
-  const rows = meta.filter(Boolean);
+  const hasArt = image !== undefined;
+  const art = imageAspect === "1:1" ? { w: 400, h: 400 } : { w: 452, h: 339 };
+  const colWidth = OG_SIZE.width - PAD * 2 - (hasArt ? art.w + GAP : 0);
+  const fitted = fitTitle(title, colWidth);
+  const safeSubtitle = subtitle ? truncate(subtitle, hasArt ? 92 : 160) : null;
+  const rows = meta.filter((x): x is string => Boolean(x));
+  const radius = 18;
 
   return (
     <div
@@ -180,78 +202,87 @@ export function OgCard({
         display: "flex",
         width: "100%",
         height: "100%",
-        padding: 64,
-        gap: 52,
-        background: BRAND.bgWash,
+        padding: PAD,
+        gap: GAP,
+        background: BRAND.bg,
         position: "relative",
-        fontFamily: "Product Sans",
+        fontFamily: "Hanken Grotesk",
+        color: BRAND.text,
       }}
     >
-      {/* Heat glow rising from the bottom, same brand blue */}
-      <div style={{ position: "absolute", inset: 0, background: BRAND.bottomHeat }} />
+      <div style={{ position: "absolute", inset: 0, background: BRAND.glow }} />
 
-      {/* LEFT — wordmark, details, CTA */}
+      {/* LEFT: wordmark, copy, CTA */}
       <div
         style={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          flex: 1,
+          width: colWidth,
           height: "100%",
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
           {wordmark ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={wordmark} alt="Unifesto" height={44} style={{ height: 44 }} />
+            <img src={wordmark} alt="Unifesto" width={156} height={34} />
           ) : (
-            <TextWordmark />
+            <div style={{ display: "flex", fontFamily: "Michroma", fontSize: 30 }}>unifesto</div>
           )}
         </div>
 
-        {/* Title (1 line) + subtitle (2 lines) + small meta */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          {kind && (
+            <div style={{ display: "flex", marginBottom: 22 }}>
+              <div
+                style={{
+                  display: "flex",
+                  padding: "6px 14px",
+                  borderRadius: 999,
+                  border: `1px solid ${BRAND.hairline}`,
+                  fontSize: 18,
+                  color: BRAND.muted,
+                }}
+              >
+                {kind}
+              </div>
+            </div>
+          )}
+
           <div
             style={{
-              display: "flex",
-              fontSize: titleSize,
-              fontWeight: 700,
+              ...clamp2,
+              fontFamily: "Michroma",
+              fontSize: fitted.size,
+              lineHeight: 1.18,
+              letterSpacing: -0.5,
               color: BRAND.text,
-              letterSpacing: -1.2,
-              lineHeight: 1.1,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: 560,
             }}
           >
-            {safeTitle}
+            {fitted.text}
           </div>
 
           {safeSubtitle && (
-            <div style={{ ...clamp2, fontSize: 24, color: BRAND.muted, lineHeight: 1.35, maxWidth: 560 }}>
+            <div style={{ ...clamp2, marginTop: 18, fontSize: 26, lineHeight: 1.38, color: BRAND.muted }}>
               {safeSubtitle}
             </div>
           )}
 
           {rows.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 4 }}>
-              {rows.map((item, i) => (
-                <div
-                  key={i}
-                  style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 19, color: BRAND.muted }}
-                >
-                  <div style={{ width: 7, height: 7, borderRadius: 999, background: BRAND.primary }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
+              {rows.map((row, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 22 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: 2, background: BRAND.silver }} />
                   <div
                     style={{
                       display: "flex",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
-                      maxWidth: 520,
+                      maxWidth: colWidth - 20,
                     }}
                   >
-                    {item}
+                    {row}
                   </div>
                 </div>
               ))}
@@ -259,71 +290,66 @@ export function OgCard({
           )}
         </div>
 
-        {/* CTA capsule, bottom-left */}
-        <div style={{ display: "flex" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              padding: "14px 30px",
-              borderRadius: 999,
-              background: BRAND.gradient,
-              fontSize: 24,
-              fontWeight: 700,
-              color: BRAND.text,
-            }}
-          >
-            {cta}
-          </div>
-        </div>
-      </div>
-
-      {/* RIGHT — bordered image card (4:3 banner or 1:1 logo) */}
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <div
-          style={{
-            display: "flex",
-            width: dims.w,
-            height: dims.h,
-            borderRadius: 28,
-            overflow: "hidden",
-            border: "2px solid rgba(255,255,255,0.16)",
-            background: image ? imageBg : BRAND.gradient,
-            padding: image && imageFit === "contain" ? 28 : 0,
-          }}
-        >
-          {image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={image}
-              alt=""
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: imageFit,
-                // Satori doesn't clip <img> to a parent's overflow:hidden, so the
-                // image must round its own corners (card radius 28 − 2px border).
-                borderRadius: imageFit === "cover" ? 26 : 0,
-              }}
-            />
-          ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 22 }}>
+          {cta && (
             <div
               style={{
                 display: "flex",
-                width: "100%",
-                height: "100%",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 150,
-                fontWeight: 700,
-                color: BRAND.text,
+                padding: "13px 28px",
+                borderRadius: 10,
+                background: BRAND.silver,
+                color: "#000000",
+                fontSize: 22,
+                fontWeight: 600,
               }}
             >
-              {monogram}
+              {cta}
             </div>
           )}
+          <div style={{ display: "flex", fontSize: 20, color: BRAND.faint }}>unifesto.app</div>
         </div>
       </div>
+
+      {/* RIGHT: artwork */}
+      {hasArt && (
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              width: art.w,
+              height: art.h,
+              borderRadius: radius,
+              border: frame ? `1px solid ${BRAND.hairline}` : "none",
+              background: frame ? (image ? imageBg : BRAND.surface) : "transparent",
+              padding: image && imageFit === "contain" ? (frame ? 24 : 56) : 0,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt=""
+                width={art.w}
+                height={art.h}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: imageFit,
+                  // Satori doesn't clip <img> to the parent, so round it here
+                  // (frame radius minus the 1px border).
+                  borderRadius: imageFit === "cover" ? radius - 1 : 0,
+                }}
+              />
+            ) : (
+              <div style={{ display: "flex", fontFamily: "Michroma", fontSize: 150, color: BRAND.text }}>
+                {(title.trim()[0] ?? "U").toUpperCase()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

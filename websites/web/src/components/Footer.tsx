@@ -1,7 +1,7 @@
-"use client";
-
-import { useState } from "react";
 import Image from "next/image";
+import { LEGAL } from "@/lib/legal";
+import GooglePlayBadge from "@/app/assets/svg/GetItOnGooglePlay_Badge_Web_color_English.svg";
+import AppStoreBadge from "@/app/assets/svg/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg";
 
 const socials = [
   {
@@ -33,157 +33,139 @@ const socials = [
   },
 ];
 
-const featureLinks = [
-  { label: "Event Discovery", href: "/features#event-discovery" },
-  { label: "Forge", href: "/features#forge" },
-  { label: "Gate", href: "/features#gate" },
-  { label: "Ticketing & RSVP", href: "/features#ticketing-rsvp" },
-  { label: "Analytics", href: "/features#analytics" },
+/* Four columns mirror the navbar: discover, organisers, company, help.
+   Legal pages are reference, not navigation, so they sit in the bottom bar. */
+const COLUMNS = [
+  {
+    title: "Discover",
+    links: [
+      { label: "Events", href: "/events" },
+      { label: "Spaces", href: "/spaces" },
+      { label: "The app", href: "/app" },
+    ],
+  },
+  {
+    title: "Organisers",
+    links: [
+      { label: "Platform", href: "/organisers" },
+      { label: "Hackathons", href: "/hackathons" },
+      { label: "Unifesto Stay", href: "/stay" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Request a Space", href: "/request-space" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/about" },
+      { label: "Careers", href: "/careers" },
+      { label: "Press", href: "/press" },
+      { label: "Blog", href: "/blog" },
+    ],
+  },
+  {
+    title: "Help",
+    links: [
+      { label: "Support", href: "/support" },
+      { label: "Docs", href: "/docs" },
+      { label: "Refunds", href: "/refund" },
+      { label: "Grievance redressal", href: "/grievance" },
+      { label: "Delete account", href: "/delete-account" },
+    ],
+  },
 ];
 
-const companyLinks = [
-  { label: "About Us", href: "/about" },
-  { label: "Careers", href: "/careers" },
-  { label: "Blog", href: "/blog" },
-  { label: "Docs", href: "/docs" },
+const LEGAL_LINKS = [
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Privacy notice", href: "/privacy-notice" },
+  { label: "Cookies", href: "/cookies" },
+  { label: "Code of conduct", href: "/code-of-conduct" },
+  { label: "Data rights", href: "/data-rights" },
+  { label: "Privacy requests", href: "/privacy-requests" },
+  { label: "Subprocessors", href: "/subprocessors" },
+  { label: "Security", href: "/security" },
 ];
 
-const supportLinks = [
-  { label: "Help Center", href: "/support" },
-  { label: "FAQs", href: "/support#faq" },
-  { label: "Contact Us", href: "/support#contact" },
-  { label: "Live Chat", href: "#chat" },
-  { label: "Email Support", href: "mailto:support@unifesto.app" },
-];
-
-const legalLinks = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Refund Policy", href: "/refund" },
-  { label: "Terms & Conditions", href: "/terms" },
-  { label: "Delete Account", href: "/delete-account" },
-];
-
-function LinkColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
-  return (
-    <div>
-      <h3 className="text-xs font-semibold text-white uppercase tracking-widest mb-4">{title}</h3>
-      <ul className="flex flex-col gap-2.5">
-        {links.map((l) => (
-          <li key={l.label}>
-            <a href={l.href} className="text-sm text-slate-400 hover:text-white transition-colors duration-200">
-              {l.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
+/* The page's anchor: one big line, the four ways onward, the stores, and
+   the legal row.
+   No newsletter box: there is nothing behind it to subscribe to. */
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-  const [email, setEmail] = useState("");
-  const [subscribed, setSubscribed] = useState(false);
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email) { setSubscribed(true); setEmail(""); }
-  };
-
+  const year = new Date().getFullYear();
   return (
-    <footer aria-label="Site footer" className="relative bg-canvas border-t border-white/5 px-6">
-      {/* Top gradient line */}
-      <div
-        className="absolute top-0 left-1/2 -translate-x-1/2 w-2/3 h-px pointer-events-none"
-        style={{ background: "linear-gradient(90deg, transparent, var(--primary), transparent)" }}
-        aria-hidden="true"
-      />
-
-      <div className="max-w-7xl mx-auto">
-
-        {/* Newsletter strip */}
-        <div className="border-b border-white/5 py-10 flex flex-col md:flex-row items-center justify-between gap-6">
+    <footer aria-label="Site footer" className="surface-night relative">
+      <div className="mx-auto max-w-7xl px-5 pb-10 pt-20 sm:px-8 md:pt-28">
+        <div className="grid gap-14 lg:grid-cols-[1.1fr_1.4fr] lg:gap-20">
           <div>
-            <p className="text-base font-semibold text-white">Stay in the loop</p>
-            <p className="text-sm text-slate-400 mt-0.5">Get event updates straight to your inbox.</p>
-          </div>
-          {subscribed ? (
-            <p className="text-sm font-medium text-primary">You&apos;re subscribed!</p>
-          ) : (
-            <form onSubmit={handleSubscribe} className="flex items-center gap-2 w-full md:w-auto">
-              <input
-                id="footer-newsletter-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="flex-1 md:w-64 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm text-white placeholder-slate-500 outline-none hover:border-white/20 focus:border-primary transition-colors duration-200"
-              />
-              <button
-                type="submit"
-                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-black transition-transform duration-200 hover:-translate-y-0.5 whitespace-nowrap"
-              >
-                Subscribe
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* Main grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-8 py-12">
-
-          {/* Brand column: spans 2 on lg */}
-          <div className="col-span-2 flex flex-col gap-4">
-            <a href="/" aria-label="Unifesto home">
-              {/* Same wordmark asset as the navbar — one rendering of the brand. */}
-              <Image
-                src="/UnifestoAppWordmark.png"
-                alt="Unifesto"
-                width={640}
-                height={200}
-                className="h-7 w-auto"
-              />
-            </a>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-[220px]">
-              The all-in-one event platform to discover, host, and elevate events.
+            <p
+              data-reveal="blur"
+              className="max-w-md font-display text-[clamp(1.75rem,3.4vw,2.5rem)] font-bold leading-[1.05] text-paper [text-wrap:balance]"
+              style={{ letterSpacing: "-0.03em" }}
+            >
+              Run the whole event. <span className="text-primary">From one Space.</span>
             </p>
-            <div className="flex items-center gap-2 mt-1">
-              {socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={s.label}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white border border-white/10 hover:border-white/20 hover:bg-white/5 transition-all duration-200"
-                >
-                  {s.icon}
+            <div className="mt-8 flex items-center gap-3">
+              {[
+                { label: "App Store", href: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496", image: AppStoreBadge },
+                { label: "Google Play", href: "https://play.google.com/store/apps/details?id=com.unifesto.app", image: GooglePlayBadge },
+              ].map((s) => (
+                <a key={s.label} href={s.href} className="transition-opacity duration-150 hover:opacity-80">
+                  <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
                 </a>
               ))}
             </div>
-            <a href="mailto:support@unifesto.app" className="text-sm text-slate-400 hover:text-white transition-colors duration-200 mt-1">
+          </div>
+
+          <nav aria-label="Footer" className="grid grid-cols-2 gap-10 sm:grid-cols-4" data-stagger="rise">
+            {COLUMNS.map((col) => (
+              <div key={col.title}>
+                <h2 className="mb-4 text-sm font-semibold text-paper">{col.title}</h2>
+                <ul className="flex flex-col gap-3">
+                  {col.links.map((l) => (
+                    <li key={l.href}>
+                      <a href={l.href} className="link-draw text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
+                        {l.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-20 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-1">
+            {socials.map((s) => (
+              <a
+                key={s.label}
+                href={s.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={s.label}
+                className="flex h-10 w-10 items-center justify-center rounded-full text-paper/60 transition-colors duration-150 hover:bg-paper/[0.07] hover:text-paper"
+              >
+                {s.icon}
+              </a>
+            ))}
+            <a href="mailto:support@unifesto.app" className="link-draw ml-3 text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
               support@unifesto.app
             </a>
           </div>
-
-          <LinkColumn title="Features" links={featureLinks} />
-          <LinkColumn title="Company" links={companyLinks} />
-          <LinkColumn title="Support" links={supportLinks} />
-          <LinkColumn title="Legal" links={legalLinks} />
-
+          <p className="text-xs text-paper/50">© {year} {LEGAL.company} · CIN {LEGAL.cin}</p>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-white/5 py-6 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-[11px] tracking-[0.2em] font-semibold text-primary">
-            #UnifestoEverywhere
-          </p>
-          <p className="text-xs text-slate-400">
-            © {currentYear} Unifesto Private Limited. All rights reserved.
-          </p>
-        </div>
-
+        <nav aria-label="Legal" className="mt-8 border-t border-paper/10 pt-6">
+          <ul className="flex flex-wrap gap-x-5 gap-y-2">
+            {LEGAL_LINKS.map((l) => (
+              <li key={l.href}>
+                <a href={l.href} className="link-draw text-xs text-paper/50 transition-colors duration-150 hover:text-paper">
+                  {l.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
       </div>
     </footer>
   );

@@ -1,10 +1,15 @@
+import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PageHero from "@/components/site/PageHero";
+import Section from "@/components/site/Section";
 import { getPosts, postMeta, type BlogPost } from "@/lib/api/blog";
 
-export const metadata = {
-  title: "Blog | Unifesto",
+export const metadata: Metadata = withSocial({
+  alternates: { canonical: "/blog" },
+  title: "Blog",
   description:
     "Stories, insights, and updates from the Unifesto team about events, community life, and event management best practices.",
   keywords: [
@@ -14,28 +19,13 @@ export const metadata = {
     "community life",
     "event stories",
   ],
-  openGraph: {
-    title: "Blog | Unifesto",
-    description:
-      "Stories, insights, and updates from the Unifesto team about events and community life.",
-    type: "website",
-    url: "https://www.unifesto.app/blog",
-    siteName: "Unifesto",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Blog | Unifesto",
-    description:
-      "Stories, insights, and updates from the Unifesto team about events and community life.",
-    site: "@unifestoapp",
-  },
-};
+}, { title: "Unifesto Blog", description: "Stories, insights, and updates from the Unifesto team about events and community life." });
 
 function Meta({ post }: { post: BlogPost }) {
   const { date, readTime } = postMeta(post);
   return (
-    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-slate-400">
-      <span className="text-slate-300">{post.author}</span>
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-paper/65">
+      <span className="text-paper/75">{post.author}</span>
       <span aria-hidden>·</span>
       <span>{date}</span>
       {readTime && (
@@ -51,7 +41,7 @@ function Meta({ post }: { post: BlogPost }) {
 function CardImage({ post, large }: { post: BlogPost; large?: boolean }) {
   return (
     <div
-      className={`relative flex items-end overflow-hidden bg-[#0a0a0d] p-5 ${
+      className={`relative flex items-end overflow-hidden bg-night-3 p-6 ${
         large ? "min-h-[220px]" : "aspect-video"
       }`}
     >
@@ -60,15 +50,15 @@ function CardImage({ post, large }: { post: BlogPost; large?: boolean }) {
         <img
           src={post.coverImageUrl}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-90"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[600ms] ease-[cubic-bezier(.19,1,.22,1)] group-hover:scale-[1.04]"
         />
       ) : (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgba(52,145,255,0.2),transparent_60%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgb(var(--glow)/0.2),transparent_60%)]"
         />
       )}
-      <span className="relative rounded-full border border-primary/25 bg-primary/12 px-3 py-1 text-xs font-semibold text-primary backdrop-blur-sm">
+      <span className="blur-bg relative rounded-full px-3 py-1 text-xs font-semibold text-paper">
         {post.category}
       </span>
     </div>
@@ -79,19 +69,20 @@ function FeaturedCard({ post }: { post: BlogPost }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group grid overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.05] md:grid-cols-2"
+      className="group grid overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3 md:grid-cols-2"
     >
       <CardImage post={post} large />
-      <div className="flex flex-col justify-center gap-4 p-6 md:p-8">
-        <h2 className="text-2xl font-bold leading-snug tracking-[-0.02em] text-white md:text-3xl">
+      <div className="flex flex-col justify-center gap-4 p-8 md:p-10">
+        <h2 className="font-display text-2xl font-bold leading-snug text-paper md:text-3xl" style={{ letterSpacing: "-0.03em" }}>
           {post.title}
         </h2>
-        <p className="text-pretty text-sm leading-relaxed text-slate-300 md:text-base">
+        <p className="text-pretty text-sm leading-relaxed text-paper/75 md:text-base">
           {post.excerpt}
         </p>
         <Meta post={post} />
-        <span className="text-sm font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5">
-          Read article →
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary">
+          Read article
+          <span aria-hidden className="transition-transform duration-150 group-hover:translate-x-0.5">→</span>
         </span>
       </div>
     </Link>
@@ -102,14 +93,14 @@ function PostCard({ post }: { post: BlogPost }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.05]"
+      className="group flex flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3"
     >
       <CardImage post={post} />
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <h3 className="text-lg font-semibold leading-snug text-white">
+      <div className="flex flex-1 flex-col gap-3 p-6">
+        <h3 className="text-lg font-semibold leading-snug text-paper">
           {post.title}
         </h3>
-        <p className="text-sm leading-relaxed text-slate-300">{post.excerpt}</p>
+        <p className="text-sm leading-relaxed text-paper/75">{post.excerpt}</p>
         <div className="mt-auto pt-1">
           <Meta post={post} />
         </div>
@@ -136,114 +127,73 @@ export default async function BlogPage({
   const featuredPost = posts.find((p) => p.featured);
   const regularPosts = posts.filter((p) => p !== featuredPost);
 
+  const pills =
+    categories.length > 1 ? (
+      <div className="flex flex-wrap gap-2">
+        {categories.map((cat) => {
+          const active = cat === selected;
+          return (
+            <Link
+              key={cat}
+              href={cat === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat)}`}
+              aria-current={active ? "page" : undefined}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors duration-150 ${
+                active ? "bg-primary text-ink" : "bg-paper/[0.06] text-paper/75 hover:bg-paper/[0.1] hover:text-paper"
+              }`}
+            >
+              {cat === "all" ? "All" : cat}
+            </Link>
+          );
+        })}
+      </div>
+    ) : undefined;
+
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#050507] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative px-6 pt-36 pb-16 text-center">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 h-[360px] w-[640px] -translate-x-1/2 rounded-full bg-primary/12 blur-[130px]"
-        />
-        <div className="relative mx-auto max-w-3xl">
-          <h1 className="text-balance text-4xl font-bold tracking-[-0.03em] sm:text-5xl md:text-6xl">
-            Stories from the event revolution.
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-slate-300 md:text-lg">
-            Product updates, event tips, community stories, and insights from the
-            team building the future of events.
-          </p>
-        </div>
-      </section>
-
-      {/* Category filter */}
-      {categories.length > 1 && (
-        <section className="px-6 pb-12">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-2.5">
-            {categories.map((cat) => {
-              const active = cat === selected;
-              return (
-                <Link
-                  key={cat}
-                  href={cat === "all" ? "/blog" : `/blog?category=${encodeURIComponent(cat)}`}
-                  className={
-                    active
-                      ? "rounded-full bg-primary px-4 py-2 text-sm font-semibold text-[#050507]"
-                      : "rounded-full border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 transition-colors duration-200 hover:border-white/20 hover:text-white"
-                  }
-                >
-                  {cat === "all" ? "All" : cat}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <PageHero
+        lines={["Notes from running", "events."]}
+        accentFrom={1}
+        size="md"
+        lede="Product updates, event tips and community stories from the team building Unifesto."
+        actions={pills}
+      />
 
       {posts.length === 0 ? (
-        <section className="px-6 pb-24">
-          <div className="mx-auto max-w-3xl rounded-2xl border border-white/10 bg-white/[0.03] p-12 text-center">
-            <h2 className="text-xl font-semibold text-white">No posts yet</h2>
-            <p className="mt-2 text-slate-400">
-              Check back soon for stories and updates from the team.
-            </p>
+        <Section surface="night" pad="tight">
+          <div className="rounded-3xl bg-night-2 p-12 text-center">
+            <h2 className="text-xl font-semibold text-paper">No posts yet</h2>
+            <p className="mt-2 text-paper/65">Check back soon for stories and updates from the team.</p>
           </div>
-        </section>
+        </Section>
       ) : (
         <>
           {featuredPost && (
-            <section className="px-6 pb-12">
-              <div className="mx-auto max-w-6xl">
+            <Section surface="night" pad="tight">
+              <div data-reveal="scale">
                 <FeaturedCard post={featuredPost} />
               </div>
-            </section>
+            </Section>
           )}
-
-          <section className="border-t border-white/5 px-6 py-14">
-            <div className="mx-auto max-w-6xl">
-              <h2 className="text-2xl font-bold tracking-[-0.02em] text-white">
+          {regularPosts.length > 0 && (
+            <Section surface="paper">
+              <h2
+                data-reveal="clip"
+                className="font-display text-[clamp(1.6rem,3vw,2.2rem)] font-bold text-ink"
+                style={{ letterSpacing: "-0.03em" }}
+              >
                 Latest posts
               </h2>
-              <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
                 {regularPosts.map((post) => (
                   <PostCard key={post.id} post={post} />
                 ))}
               </div>
-            </div>
-          </section>
+            </Section>
+          )}
         </>
       )}
-
-      {/* Newsletter */}
-      <section className="border-t border-white/5 px-6 py-20">
-        <div className="mx-auto max-w-3xl">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center md:p-12">
-            <h2 className="text-2xl font-bold tracking-[-0.02em] text-white md:text-3xl">
-              Never miss an update
-            </h2>
-            <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-300 md:text-base">
-              Subscribe for the latest product updates, event tips, and community
-              stories.
-            </p>
-            <form className="mx-auto mt-6 flex max-w-md flex-col items-center gap-3 sm:flex-row">
-              <input
-                type="email"
-                placeholder="your@email.com"
-                required
-                aria-label="Email address"
-                className="w-full rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm text-white placeholder-slate-500 outline-none transition-colors duration-200 hover:border-white/20 focus:border-primary sm:flex-1"
-              />
-              <button
-                type="submit"
-                className="w-full whitespace-nowrap rounded-full bg-primary px-7 py-3 text-sm font-semibold text-[#050507] transition-colors duration-200 hover:bg-[#1f83ff] sm:w-auto"
-              >
-                Subscribe
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
 
       <Footer />
     </main>

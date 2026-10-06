@@ -9,6 +9,12 @@
       "autoPort": true
     },
     {
+      "name": "unifesto-web-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "websites/web", "run", "start", "--", "-p", "3005"],
+      "port": 3005
+    },
+    {
       "name": "unifesto-apex",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "websites/apex", "run", "dev"],

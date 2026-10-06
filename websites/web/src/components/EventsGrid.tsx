@@ -74,27 +74,22 @@ export default function EventsGrid() {
   const preview = events.slice(0, 6);
 
   return (
-    <section id="events" aria-labelledby="events-heading" className="relative bg-canvas py-20 md:py-28 px-6">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 60% 40% at 50% 10%, rgba(52,145,255,0.06) 0%, transparent 70%)" }}
-        aria-hidden="true"
-      />
+    <section id="events" aria-labelledby="events-heading" className="surface-night relative px-5 py-24 sm:px-8 md:py-32">
 
       <div className="relative z-10 max-w-6xl mx-auto">
         {/* Section header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
-            <h2 id="events-heading" className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
-              Explore Events{" "}
-              <span className="text-lg md:text-xl font-medium text-primary">
+            <h2 id="events-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.12] text-paper">
+              What is on next{" "}
+              <span className="mt-2 block font-sans text-lg font-light text-paper/55 md:text-xl">
                 {city ? `in ${city}` : "at Malla Reddy University"}
               </span>
             </h2>
           </div>
           <a
             href="/events"
-            className="text-sm font-semibold text-primary hover:text-white transition-colors duration-200 group flex items-center gap-1 whitespace-nowrap"
+            className="link-draw text-sm font-semibold text-primary transition-colors duration-150 hover:text-primary-bright group flex items-center gap-1 whitespace-nowrap"
           >
             View all events
             <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden="true" />
@@ -114,14 +109,14 @@ export default function EventsGrid() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Quick search..."
-              className="w-full bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 outline-none hover:border-white/20 focus:border-[#3491ff] transition-colors duration-200"
+              className="w-full rounded-full border border-paper/12 bg-paper/[0.05] py-2.5 pl-10 pr-4 text-sm text-paper placeholder-paper/40 outline-none transition-colors duration-150 hover:border-paper/25 focus:border-primary"
             />
           </div>
         </div>
 
         {/* Events grid: show max 6 */}
         {preview.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:gap-6 lg:grid-cols-3" data-stagger="rise">
             {preview.map((event, index) => (
               <EventCard key={event.id} event={event} index={index} />
             ))}
@@ -131,7 +126,7 @@ export default function EventsGrid() {
             <p className="text-slate-400 text-sm">No events match your search.</p>
             <button
               onClick={() => setQuery("")}
-              className="mt-3 text-xs font-medium text-primary transition-colors duration-200 hover:text-white"
+              className="mt-3 text-xs font-medium text-primary transition-colors duration-150 hover:text-primary-bright"
             >
               Clear filters
             </button>

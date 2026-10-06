@@ -28,27 +28,21 @@ export default function ClaimPage() {
   return (
     <>
       <Navbar />
-      <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col items-center justify-center px-6 text-center">
-        <h1 className="mb-3 text-2xl font-extrabold text-white">
-          You&apos;ve been invited
-        </h1>
-        <p className="mb-8 text-sm text-slate-300">
-          Claim your seat in the Unifesto app. If it didn&apos;t open
-          automatically, tap below.
-        </p>
-        <button
-          onClick={() => openAppOrStore(deepLink)()}
-          className="flex w-full max-w-xs items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-black transition-all duration-200 hover:-translate-y-0.5"
-          style={{ background: brandGradient }}
-        >
-          Open in the Unifesto app
-        </button>
-        <a
-          href={storeUrlFor()}
-          className="mt-4 text-xs text-slate-400 underline underline-offset-4"
-        >
-          Don&apos;t have the app? Get it here
-        </a>
+      <main className="flex min-h-[80vh] items-center justify-center bg-canvas px-5 pb-20 pt-32">
+        <div className="animate-pop-in w-full max-w-md rounded-3xl bg-night-2 p-8 text-center sm:p-10">
+          <h1 className="font-display text-3xl font-bold text-paper" style={{ letterSpacing: "-0.03em" }}>
+            You&apos;ve been invited.
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-paper/70">
+            Claim your seat in the Unifesto app. If it didn&apos;t open on its own, tap below.
+          </p>
+          <button onClick={() => openAppOrStore(deepLink)()} className="btn btn-lg btn-primary mt-8 w-full">
+            Open in the Unifesto app
+          </button>
+          <a href={storeUrlFor()} className="link-draw mt-5 inline-block text-sm text-paper/65">
+            Don&apos;t have the app? Get it here
+          </a>
+        </div>
       </main>
       <Footer />
     </>

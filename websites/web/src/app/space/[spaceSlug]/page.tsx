@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
-import { getSpaceBySlug } from "@/lib/api/spaces";
+import { withSocial } from "@/lib/seo";
+import { cache } from "react";
+import { getSpaceBySlug as fetchSpace } from "@/lib/api/spaces";
+import JsonLd from "@/components/site/JsonLd";
+import { SITE } from "@/lib/site";
 import SpaceDetailClient from "./SpaceDetailClient";
+
+// One fetch per request, shared by generateMetadata and the page.
+const getSpaceBySlug = cache(fetchSpace);
 
 interface Props {
   params: Promise<{ spaceSlug: string }>;
@@ -30,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!space) {
     return {
-      title: "Space not found | Unifesto",
+      title: "Space not found",
       robots: { index: false, follow: false },
     };
   }
@@ -45,26 +52,34 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // White-label favicon (already gated server-side); default icon otherwise.
   const faviconUrl = space.branding?.faviconUrl ?? null;
 
-  return {
-    title,
+  return withSocial({
+    title: { absolute: title },
     description,
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      siteName: "Unifesto",
-      url: canonical,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
-  };
+  }, { image: false });
 }
 
-export default function SpacePage({ params }: Props) {
-  return <SpaceDetailClient params={params} />;
+export default async function SpacePage({ params }: Props) {
+  const { spaceSlug } = await params;
+  const space = await getSpaceBySlug(spaceSlug);
+  // A Space is an organisation (club, institution, community) hosting events.
+  const ld = space && {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: space.name,
+    url: `${SITE.url}/space/${space.slug}`,
+    description: toSummary(space.description),
+    logo: space.logo_url,
+    sameAs: space.website ? [space.website] : undefined,
+    address: space.city
+      ? { "@type": "PostalAddress", addressLocality: space.city, addressRegion: space.state, addressCountry: space.country || "IN" }
+      : undefined,
+  };
+  return (
+    <>
+      {ld && <JsonLd data={ld} />}
+      <SpaceDetailClient params={params} />
+    </>
+  );
 }

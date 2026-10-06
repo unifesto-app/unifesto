@@ -1,262 +1,229 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
+import LegalPage, { type LegalSection } from "@/components/site/LegalPage";
+import { LEGAL } from "@/lib/legal";
 
-export const metadata = {
-  title: "Terms & Conditions | Unifesto",
-  description: "Read the terms and conditions for using the Unifesto platform. Understand your rights and responsibilities.",
-  keywords: ["terms and conditions", "terms of service", "user agreement", "unifesto terms", "platform rules"],
-  openGraph: {
-    title: "Terms & Conditions | Unifesto",
-    description: "Read the terms and conditions for using the Unifesto platform.",
-    type: "website",
-    url: "https://www.unifesto.app/terms",
-    siteName: "Unifesto",
+/* Terms of Service. Matches how the product works (sign-in methods,
+   Spaces and roles, Razorpay payments, payouts, refunds, stays, sponsors)
+   and is structured for the IT Act, 2000 and IT (Intermediary Guidelines)
+   Rules, 2021, the Consumer Protection (E-Commerce) Rules, 2020 and the
+   Indian Contract Act, 1872. Have counsel review before publishing. */
+
+export const metadata: Metadata = withSocial({
+  title: "Terms of Service",
+  description:
+    "The terms for using Unifesto as an attendee or organiser: accounts, Spaces, tickets and payments, payouts, refunds, stays, acceptable use, liability and disputes.",
+  alternates: { canonical: "/terms" },
+}, { title: "Unifesto Terms of Service" });
+
+const mail = (e: string) => <a href={`mailto:${e}`}>{e}</a>;
+
+const sections: LegalSection[] = [
+  {
+    id: "agreement",
+    title: "Agreement",
+    body: (
+      <>
+        <p>
+          These Terms are a contract between you and {LEGAL.company} (“Unifesto”, “we”) for using the
+          Unifesto website, app and Space console (the “Services”). By creating an account or using the Services
+          you agree to these Terms, our <a href="/privacy">Privacy Policy</a>, our{" "}
+          <a href="/refund">Refund and Cancellation Policy</a> and <a href="/code-of-conduct">Code of Conduct</a>. If you do not agree, do not use the Services.
+        </p>
+        <p>
+          You must be 18 or older, or use the Services with the consent of a parent or lawful guardian who accepts these
+          Terms on your behalf. If you use the Services for a club, institution or company, you confirm you are allowed to
+          bind it to these Terms.
+        </p>
+      </>
+    ),
   },
-  twitter: {
-    card: "summary",
-    title: "Terms & Conditions | Unifesto",
-    description: "Read the terms and conditions for using the Unifesto platform.",
-    site: "@unifestoapp",
+  {
+    id: "role",
+    title: "What Unifesto is, and is not",
+    body: (
+      <p>
+        Unifesto provides the tools organisers use to publish and run events, and attendees use to find, register for and
+        attend them. Events are organised by the Spaces that publish them, not by Unifesto. The organiser is responsible
+        for the event itself: its content, venue, safety, accuracy of information, and whether it takes place. Unifesto
+        acts as an intermediary under the Information Technology Act, 2000 for content organisers and users publish.
+      </p>
+    ),
   },
-};
+  {
+    id: "accounts",
+    title: "Your account",
+    body: (
+      <ul>
+        <li>You sign in with your mobile number (with a one-time code), email, Google or Apple. Keep access to these secure; you are responsible for activity on your account.</li>
+        <li>Give accurate information, keep it current, and use one account per person.</li>
+        <li>Tell us at {mail(LEGAL.email.support)} if you suspect unauthorised use.</li>
+        <li>You can delete your account at any time (see <a href="/delete-account">Delete your account</a>).</li>
+      </ul>
+    ),
+  },
+  {
+    id: "organisers",
+    title: "Spaces and organisers",
+    body: (
+      <>
+        <p>A Space is created on request and reviewed by Unifesto before it goes live. If you run a Space or an event, you agree to:</p>
+        <ul>
+          <li>describe events, tickets, prices, dates and venues accurately, and honour the registrations you accept;</li>
+          <li>hold any permissions, licences and approvals your event needs, and run it lawfully and safely;</li>
+          <li>use attendee data only to run your event and communicate about it, keep it secure, and not sell it or use it for unrelated marketing without the attendee’s consent;</li>
+          <li>review refund requests in good faith and cancel registrations properly if the event does not happen;</li>
+          <li>give your team only the roles and access they need, and remain responsible for their actions in your Space;</li>
+          <li>for stays, list properties accurately, keep guest photo IDs confidential, and take responsibility for the property, rooms and guest safety;</li>
+          <li>for sponsors, collect leads only through the sponsor tools, where attendees choose to share their details.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "attendees",
+    title: "Registering and attending",
+    body: (
+      <ul>
+        <li>A ticket or pass is a licence to attend that event on the organiser’s terms. It is personal unless the organiser transfers it.</li>
+        <li>Follow the organiser’s rules at the venue. Organisers may refuse entry for misconduct or an invalid pass.</li>
+        <li>For group tickets, the person who buys the seats is responsible for the people they invite.</li>
+        <li>Stay bookings need the event team’s approval and, for online stays, payment within the stated window.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "payments",
+    title: "Payments, fees and payouts",
+    body: (
+      <ul>
+        <li>Payments are processed by Razorpay in Indian rupees. Prices are set by organisers and shown before you pay.</li>
+        <li>Unifesto charges organisers a platform fee on paid tickets, as listed on our <a href="/pricing">pricing page</a>. A processing fee may be shown to attendees at checkout; it is not refundable. Fees exclude GST, which is charged as applicable.</li>
+        <li>Organisers receive payouts to a verified bank account on their Space, after deducting fees and refunds. We may hold or adjust a payout to cover refunds, chargebacks, or suspected fraud.</li>
+        <li>Refunds follow our <a href="/refund">Refund and Cancellation Policy</a>.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "content",
+    title: "Your content",
+    body: (
+      <>
+        <p>
+          You own what you post (event pages, images, profile details, submissions). You give Unifesto a non-exclusive,
+          royalty-free licence to host, display and distribute it within the Services and to promote the events you
+          publish, for as long as it is on the Services.
+        </p>
+        <p>
+          The Unifesto name, logo, apps and software belong to Unifesto. You may not copy, modify or reverse engineer
+          them except as the law allows.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "acceptable-use",
+    title: "Acceptable use",
+    body: (
+      <>
+        <p>You must not use the Services to host, publish or share anything that:</p>
+        <ul>
+          <li>belongs to someone else and you have no right to;</li>
+          <li>is obscene, pornographic, paedophilic, invasive of privacy, or harassing on grounds of gender, caste, religion or ethnicity;</li>
+          <li>is harmful to children, or promotes violence, hatred or unlawful activity;</li>
+          <li>infringes a patent, trademark, copyright or other proprietary right;</li>
+          <li>deceives or misleads, including fake events, false prices or impersonation of a person or organisation;</li>
+          <li>contains malware, or threatens the unity, integrity, security or sovereignty of India or public order;</li>
+          <li>violates any law in force.</li>
+        </ul>
+        <p>
+          You also must not scrape or bulk-collect data, probe or attack our systems, bypass access controls, or resell
+          the Services without our permission.
+        </p>
+        <p>
+          Report content that breaks these rules from the report option in the app or to {mail(LEGAL.grievance.email)}.
+          We act on reports as the IT (Intermediary Guidelines) Rules, 2021 require, and may remove content, suspend
+          events or close accounts that break these Terms.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "termination",
+    title: "Suspension and termination",
+    body: (
+      <p>
+        You may stop using the Services and delete your account at any time. We may suspend or end access for a breach of
+        these Terms, fraud, a legal requirement, or risk to other users, with notice where the law requires and it is
+        practical. Obligations that by their nature should survive (payments owed, records, liability limits, disputes)
+        survive termination.
+      </p>
+    ),
+  },
+  {
+    id: "liability",
+    title: "Disclaimers and liability",
+    body: (
+      <>
+        <p>
+          We work to keep the Services available and accurate, but they are provided “as is”. We do not guarantee
+          that any event will take place as described; that is the organiser’s responsibility.
+        </p>
+        <p>
+          To the extent the law allows, Unifesto is not liable for indirect or consequential loss, or for events,
+          venues, stays or conduct of organisers and attendees. Our total liability to you for any claim is limited to the
+          fees you paid to Unifesto in the 12 months before the claim. Nothing in these Terms limits rights you have under
+          the Consumer Protection Act, 2019 or other law that cannot be excluded.
+        </p>
+        <p>
+          You agree to indemnify Unifesto against claims arising from your breach of these Terms or the law, or, for
+          organisers, from events you run.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "law",
+    title: "Governing law and disputes",
+    body: (
+      <p>
+        These Terms are governed by the laws of India. Before going to court, contact our Grievance Officer so we can try
+        to resolve the issue. Subject to that, the courts at {LEGAL.jurisdiction} have exclusive jurisdiction.
+      </p>
+    ),
+  },
+  {
+    id: "grievance",
+    title: "Grievance Officer",
+    body: (
+      <p>
+        In line with the IT Rules, 2021 and the Consumer Protection (E-Commerce) Rules, 2020, our Grievance Officer is{" "}
+        <strong>{LEGAL.grievance.name}</strong>, reachable at {mail(LEGAL.grievance.email)}. Complaints are acknowledged
+        within 24 hours and resolved within 15 days.
+      </p>
+    ),
+  },
+  {
+    id: "changes",
+    title: "Changes",
+    body: (
+      <p>
+        We may update these Terms as the Services change. The effective date at the top shows the latest version. For
+        material changes we will notify you in the app or by email before they apply; continuing to use the Services
+        after that means you accept them. Questions about these Terms: {mail(LEGAL.email.legal)}.
+      </p>
+    ),
+  },
+];
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-[#050507] overflow-x-hidden text-white">
-      <Navbar />
-
-      {/* Hero */}
-      <section className="relative pt-36 pb-20 px-6 text-center overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-primary/12 blur-[130px]"
-        />
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-[-0.02em] leading-tight mb-5">
-            Terms & Conditions
-          </h1>
-          <p className="text-slate-400 text-sm md:text-base leading-relaxed max-w-2xl mx-auto">
-            Last updated: April 16, 2026
-          </p>
-        </div>
-      </section>
-
-      {/* Content */}
-      <section className="relative px-6 pb-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="prose prose-invert prose-slate max-w-none">
-            {/* Introduction */}
-            <div className="mb-12">
-              <p className="text-slate-300 leading-relaxed mb-4">
-                Welcome to Unifesto. These Terms and Conditions ("Terms") govern your access to and use of the Unifesto platform, website, and services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.
-              </p>
-              <p className="text-slate-300 leading-relaxed">
-                Please read these Terms carefully. If you do not agree with any part of these Terms, you may not use our Services.
-              </p>
-            </div>
-
-            {/* Section 1 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">1. Acceptance of Terms</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                By creating an account, accessing, or using Unifesto, you acknowledge that you have read, understood, and agree to be bound by these Terms, our Privacy Policy, and any additional terms applicable to specific features or services.
-              </p>
-            </div>
-
-            {/* Section 2 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">2. Eligibility</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You must be at least 13 years old to use our Services. If you are under 18, you must have permission from a parent or guardian. By using our Services, you represent and warrant that you meet these eligibility requirements.
-              </p>
-            </div>
-
-            {/* Section 3 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">3. User Accounts</h2>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">3.1 Account Creation</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                To access certain features, you must create an account. You agree to:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Provide accurate, current, and complete information</li>
-                <li>Maintain and update your information</li>
-                <li>Keep your password secure and confidential</li>
-                <li>Notify us immediately of any unauthorized access</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">3.2 Account Responsibility</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You are responsible for all activities that occur under your account. We are not liable for any loss or damage arising from unauthorized use of your account.
-              </p>
-            </div>
-
-            {/* Section 4 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">4. Use of Services</h2>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">4.1 Permitted Use</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You may use our Services for lawful purposes only, including:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Discovering and registering for events</li>
-                <li>Creating and managing events (if you're an organizer)</li>
-                <li>Connecting with other members and spaces</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">4.2 Prohibited Activities</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You agree not to:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Violate any applicable laws or regulations</li>
-                <li>Infringe on intellectual property rights</li>
-                <li>Post false, misleading, or fraudulent content</li>
-                <li>Harass, abuse, or harm other users</li>
-                <li>Distribute spam, malware, or viruses</li>
-                <li>Attempt to gain unauthorized access to our systems</li>
-                <li>Use automated tools to scrape or collect data</li>
-                <li>Impersonate any person or entity</li>
-              </ul>
-            </div>
-
-            {/* Section 5 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">5. Event Organizers</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                If you create events on Unifesto, you additionally agree to:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Provide accurate event information</li>
-                <li>Honor all ticket sales and registrations</li>
-                <li>Comply with applicable laws and regulations</li>
-                <li>Handle attendee data responsibly</li>
-                <li>Respond to attendee inquiries promptly</li>
-                <li>Process refunds according to your stated policy</li>
-              </ul>
-            </div>
-
-            {/* Section 6 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">6. Content and Intellectual Property</h2>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">6.1 Your Content</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You retain ownership of content you post on Unifesto. By posting content, you grant us a worldwide, non-exclusive, royalty-free license to use, display, and distribute your content in connection with our Services.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">6.2 Our Content</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                All content, features, and functionality of our Services (including text, graphics, logos, and software) are owned by Unifesto and protected by copyright, trademark, and other intellectual property laws.
-              </p>
-            </div>
-
-            {/* Section 7 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">7. Payments and Fees</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                For paid events:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>All prices are displayed in the applicable currency</li>
-                <li>Payment is processed securely through our payment partners</li>
-                <li>Platform fees may apply and will be clearly disclosed</li>
-                <li>Refunds are subject to our Refund Policy</li>
-                <li>We reserve the right to change fees with notice</li>
-              </ul>
-            </div>
-
-            {/* Section 8 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">8. Disclaimers and Limitations of Liability</h2>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">8.1 Service Availability</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                Our Services are provided "as is" and "as available." We do not guarantee uninterrupted, secure, or error-free service. We may modify, suspend, or discontinue any part of our Services at any time.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">8.2 Third-Party Events</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                Unifesto is a platform connecting organizers and attendees. We are not responsible for the quality, safety, or legality of events listed on our platform. Event organizers are solely responsible for their events.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">8.3 Limitation of Liability</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                To the maximum extent permitted by law, Unifesto shall not be liable for any indirect, incidental, special, consequential, or punitive damages arising from your use of our Services.
-              </p>
-            </div>
-
-            {/* Section 9 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">9. Indemnification</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You agree to indemnify and hold harmless Unifesto, its affiliates, and their respective officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses arising from your use of our Services or violation of these Terms.
-              </p>
-            </div>
-
-            {/* Section 10 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">10. Termination</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We may suspend or terminate your account at any time for:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Violation of these Terms</li>
-                <li>Fraudulent or illegal activity</li>
-                <li>Prolonged inactivity</li>
-                <li>Any reason at our sole discretion</li>
-              </ul>
-              <p className="text-slate-300 leading-relaxed">
-                You may delete your account at any time through your account settings.
-              </p>
-            </div>
-
-            {/* Section 11 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">11. Governing Law and Disputes</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                These Terms are governed by the laws of India. Any disputes arising from these Terms or your use of our Services shall be subject to the exclusive jurisdiction of the courts in [City], India.
-              </p>
-            </div>
-
-            {/* Section 12 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">12. Changes to Terms</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We reserve the right to modify these Terms at any time. We will notify you of significant changes via email or through a prominent notice on our platform. Your continued use of our Services after changes constitutes acceptance of the updated Terms.
-              </p>
-            </div>
-
-            {/* Section 13 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">13. Miscellaneous</h2>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li><strong className="text-white">Severability:</strong> If any provision is found unenforceable, the remaining provisions remain in effect</li>
-                <li><strong className="text-white">Waiver:</strong> Our failure to enforce any right does not constitute a waiver</li>
-                <li><strong className="text-white">Entire Agreement:</strong> These Terms constitute the entire agreement between you and Unifesto</li>
-                <li><strong className="text-white">Assignment:</strong> You may not assign these Terms without our consent</li>
-              </ul>
-            </div>
-
-            {/* Contact */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">14. Contact Us</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                If you have questions about these Terms:
-              </p>
-              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
-                <p className="text-slate-300 mb-2"><strong className="text-white">Legal:</strong> <a href="mailto:legal@unifesto.app" className="text-primary hover:underline">legal@unifesto.app</a></p>
-                <p className="text-slate-300 mb-2"><strong className="text-white">Support:</strong> <a href="mailto:support@unifesto.app" className="text-primary hover:underline">support@unifesto.app</a></p>
-                <p className="text-slate-300"><strong className="text-white">Company:</strong> Unifesto Private Limited</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+    <LegalPage
+      title="Terms of Service"
+      path="/terms"
+      lines={["Terms of Service"]}
+      lede="The agreement between you and Unifesto, for attendees and organisers alike."
+      sections={sections}
+    />
   );
 }

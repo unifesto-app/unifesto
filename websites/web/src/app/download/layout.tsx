@@ -1,20 +1,13 @@
 import type { Metadata } from 'next';
+import { withSocial } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: 'Download Unifesto App | iOS & Android',
+export const metadata: Metadata = withSocial({
+  alternates: { canonical: "/download" },
+  title: 'Download the Unifesto app',
+  // Store redirect utility; /app is the indexable page for the app.
+  robots: { index: false, follow: true },
   description: 'Download the Unifesto mobile app for iOS and Android. Discover events, manage tickets, and connect with communities on the go.',
-  keywords: ['unifesto app', 'download unifesto', 'event app', 'mobile app', 'ios app', 'android app'],
-  openGraph: {
-    title: 'Download Unifesto App',
-    description: 'Discover events, manage tickets, and connect with communities on the go.',
-    type: 'website',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Download Unifesto App',
-    description: 'Discover events, manage tickets, and connect with communities on the go.',
-  },
-};
+}, { title: 'Download Unifesto App', description: 'Discover events, manage tickets, and connect with communities on the go.' });
 
 export default function DownloadLayout({
   children,

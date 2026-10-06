@@ -5,6 +5,10 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+  // HTTPS only, for a year. No includeSubDomains/preload: those bind every
+  // subdomain and are hard to undo; add them once all subdomains are audited.
+  { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
   {
     key: 'Content-Security-Policy',
     value: "frame-ancestors 'none';",
@@ -17,6 +21,18 @@ const nextConfig: NextConfig = {
   // Ship despite pre-existing type debt (dev never type-checked these).
   // TODO: clean up the type errors and remove this.
   typescript: { ignoreBuildErrors: true },
+  // The site was restructured around audiences: /features and /host merged
+  // into /organisers. Permanent redirects keep old links and rankings.
+  async redirects() {
+    return [
+      { source: '/features', destination: '/organisers', permanent: true },
+      { source: '/host', destination: '/organisers', permanent: true },
+      { source: '/products', destination: '/organisers', permanent: true },
+      // Account pages moved to the app (the website has no sign-in).
+      { source: '/certificates', destination: '/app', permanent: true },
+      { source: '/profile', destination: '/app', permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       // The public API lives in this app as Route Handlers under

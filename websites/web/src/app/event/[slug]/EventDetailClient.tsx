@@ -32,6 +32,8 @@ import { openAppOrStore } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
 import { getEventAdditionalInfo, type AgendaItem, type Speaker, type Prize, type Faq, type Contact } from "@/lib/api/additional-info";
 import { brandGradient } from "@/lib/styles";
+import { motion, useReducedMotion } from "motion/react";
+import { DUR, EASE_IN_OUT_CUBIC } from "@/lib/motion";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -41,6 +43,7 @@ type TabType = "overview" | "subevents" | "agenda" | "speakers" | "rewards" | "f
 
 export default function EventDetailClient({ params }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const reduce = useReducedMotion();
   const [eventSlug, setEventSlug] = useState<string>("");
   const [event, setEvent] = useState<Event | null>(null);
   const [spaceEvents, setSpaceEvents] = useState<Event[]>([]);
@@ -131,21 +134,21 @@ export default function EventDetailClient({ params }: Props) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black">
+      <main className="min-h-screen bg-canvas">
         <Navbar />
         {/* Hero skeleton mirrors the real layout so nothing jumps on load */}
-        <div className="relative min-h-[420px] animate-pulse bg-white/[0.03] pt-20 md:min-h-[520px]" />
+        <div className="relative min-h-[420px] animate-pulse bg-night-2 pt-20 md:min-h-[520px]" />
         <div className="mx-auto max-w-5xl px-6 py-10">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
-              <div className="h-10 w-full animate-pulse rounded-lg bg-white/[0.04]" />
-              <div className="h-4 w-3/4 animate-pulse rounded bg-white/[0.04]" />
-              <div className="h-4 w-2/3 animate-pulse rounded bg-white/[0.04]" />
-              <div className="h-4 w-1/2 animate-pulse rounded bg-white/[0.04]" />
+              <div className="h-10 w-full animate-pulse rounded-lg bg-paper/[0.05]" />
+              <div className="h-4 w-3/4 animate-pulse rounded bg-paper/[0.05]" />
+              <div className="h-4 w-2/3 animate-pulse rounded bg-paper/[0.05]" />
+              <div className="h-4 w-1/2 animate-pulse rounded bg-paper/[0.05]" />
             </div>
             <div className="space-y-4 lg:col-span-1">
-              <div className="h-48 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
-              <div className="h-28 w-full animate-pulse rounded-2xl bg-white/[0.04]" />
+              <div className="h-48 w-full animate-pulse rounded-3xl bg-paper/[0.05]" />
+              <div className="h-28 w-full animate-pulse rounded-3xl bg-paper/[0.05]" />
             </div>
           </div>
         </div>
@@ -155,17 +158,17 @@ export default function EventDetailClient({ params }: Props) {
 
   if (!event) {
     return (
-      <main className="flex min-h-screen flex-col bg-black">
+      <main className="flex min-h-screen flex-col bg-canvas">
         <Navbar />
         <div className="flex flex-1 items-center justify-center px-6 py-20 text-center">
           <div>
             <h1 className="mb-3 text-2xl font-bold text-white">Event not found</h1>
-            <p className="mb-6 text-sm text-slate-300">
+            <p className="mb-6 text-sm text-paper/75">
               This event doesn&apos;t exist or has been removed.
             </p>
             <Link
               href="/events"
-              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_30px_rgba(52,145,255,0.4)]"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-black transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_0_30px_rgb(var(--glow)/0.4)]"
               style={{ background: brandGradient }}
             >
               Browse events
@@ -227,7 +230,7 @@ export default function EventDetailClient({ params }: Props) {
   // (`--primary`, overridden below for white-label), so a poster-less event
   // still reads as part of the system and recolours with the organiser's brand.
   const posterFallback =
-    "radial-gradient(120% 120% at 80% 0%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 60%), #0a0a0d";
+    "radial-gradient(120% 120% at 80% 0%, color-mix(in srgb, var(--primary) 22%, transparent), transparent 60%), var(--night-2)";
 
   // White-label: when the organiser has approved branding, recolour the page
   // to their accent by overriding the `--primary`/`--accent` CSS variables on
@@ -241,96 +244,93 @@ export default function EventDetailClient({ params }: Props) {
 
   return (
     <main
-      className="min-h-screen bg-black overflow-x-hidden pb-24 md:pb-0"
+      className="min-h-screen overflow-x-hidden bg-canvas pb-24 md:pb-0"
       style={brandStyle}
     >
       <Navbar />
 
-      {/* Hero — matches the space banner sizing (aspect-[4/3]) */}
-      <section
-        className="relative mt-20 flex aspect-[4/3] items-end overflow-hidden px-6 pb-10 pt-24 md:mt-24"
-        style={
-          imageUrl
-            ? { backgroundImage: `url(${imageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : { background: posterFallback }
-        }
-      >
-        {/* Overlay to guarantee legible text over any artwork */}
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/70 to-black/20"
-          aria-hidden="true"
-        />
-        <div className="relative z-10 mx-auto w-full max-w-5xl">
-          {/* Breadcrumb */}
-          <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-xs text-white/60">
-            <Link href="/events" className="transition-colors hover:text-white">
-              Events
-            </Link>
-            <CaretRight className="h-3 w-3" aria-hidden="true" />
-            <span className="text-white/80">{event.category || "Event"}</span>
-          </nav>
+      {/* Hero: a compact 4:3 poster beside the facts (never cropped, text
+          beside it rather than over it). Stacks on small screens. */}
+      <section className="px-5 pb-6 pt-28 sm:px-8 md:pt-32">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-12">
+          <div
+            className="enter aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center shadow-[0_32px_64px_-32px_rgba(0,0,0,0.6)]"
+            style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : { background: posterFallback }}
+            role={imageUrl ? "img" : undefined}
+            aria-label={imageUrl ? `${event.title} poster` : undefined}
+          />
+          <div>
+            <nav aria-label="Breadcrumb" className="enter mb-5 flex items-center gap-2 text-xs text-paper/60">
+              <Link href="/events" className="link-draw transition-colors duration-150 hover:text-paper">
+                Events
+              </Link>
+              <CaretRight className="h-3 w-3" aria-hidden="true" />
+              <span className="text-paper/80">{event.category || "Event"}</span>
+            </nav>
 
-          {/* Parent "big event" link — shown only on a sub-event's page */}
-          {event.parent_event && (
-            <div className="mb-4">
-              <ParentEventChip parent={event.parent_event} />
+            {event.parent_event && (
+              <div className="mb-4">
+                <ParentEventChip parent={event.parent_event} />
+              </div>
+            )}
+
+            {(event.is_trending || event.is_featured || (event.tags?.length ?? 0) > 0) && (
+              <div className="enter mb-5 flex flex-wrap items-center gap-2" style={{ ["--d" as string]: "60ms" }}>
+                {event.is_trending && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-ink">
+                    <Star weight="fill" className="h-3 w-3" aria-hidden="true" />
+                    Trending
+                  </span>
+                )}
+                {event.is_featured && (
+                  <span className="rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary">Featured</span>
+                )}
+                {event.tags?.slice(0, 3).map((tag: string) => (
+                  <span key={tag} className="rounded-full bg-paper/[0.07] px-2.5 py-1 text-[11px] font-medium text-paper/80">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <h1
+              className="waterline-load font-display text-[clamp(1.9rem,4.2vw,3.1rem)] font-bold leading-[1.04] text-paper [text-wrap:balance]"
+              style={{ letterSpacing: "-0.035em" }}
+            >
+              <span className="line">
+                <span className="line-inner">{event.title}</span>
+              </span>
+            </h1>
+            <p className="enter mt-3 text-sm text-paper/65" style={{ ["--d" as string]: "200ms" }}>
+              by {organizerName}
+            </p>
+
+            <div className="enter mt-6 flex flex-col gap-2.5 text-sm text-paper/85" style={{ ["--d" as string]: "280ms" }}>
+              <span className="inline-flex items-center gap-2.5">
+                <CalendarBlank className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
+                {formattedDate}
+              </span>
+              <span className="inline-flex items-center gap-2.5">
+                <MapPin className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
+                {location}
+              </span>
+              <span className="inline-flex items-center gap-2.5 font-semibold text-paper">
+                <Tag className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
+                {priceLabel}
+              </span>
             </div>
-          )}
-
-          {/* Badges + tags */}
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {event.is_trending && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2.5 py-1 text-[11px] font-semibold text-amber-200">
-                <Star weight="fill" className="h-3 w-3" aria-hidden="true" />
-                Trending
-              </span>
-            )}
-            {event.is_featured && (
-              <span className="rounded-full border border-primary/40 bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary">
-                Featured
-              </span>
-            )}
-            {event.tags?.slice(0, 3).map((tag: string) => (
-              <span
-                key={tag}
-                className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[11px] font-medium text-white/80 backdrop-blur-sm"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <h1 className="mb-3 max-w-3xl text-3xl font-extrabold leading-tight text-white md:text-5xl">
-            {event.title}
-          </h1>
-          <p className="mb-5 text-sm text-white/70">by {organizerName}</p>
-
-          {/* Fact row: the three things a student decides on at a glance */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/85">
-            <span className="inline-flex items-center gap-2">
-              <CalendarBlank className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
-              {formattedDate}
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <MapPin className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
-              {location}
-            </span>
-            <span className="inline-flex items-center gap-2 font-semibold text-white">
-              <Tag className="h-4 w-4 flex-shrink-0 text-primary" aria-hidden="true" />
-              {priceLabel}
-            </span>
           </div>
         </div>
       </section>
 
       {/* Event Info Section */}
-      <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
             {/* Tabs */}
-            <div className="border-b border-white/10">
-              <div className="flex gap-1 overflow-x-auto" role="tablist" aria-label="Event sections">
+            <div>
+              <div className="flex gap-1 overflow-x-auto rounded-full bg-night-2 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist" aria-label="Event sections">
                 {[
                   { id: "overview", label: "Overview" },
                   ...((event.sub_events?.length ?? 0) > 0
@@ -349,13 +349,19 @@ export default function EventDetailClient({ params }: Props) {
                       role="tab"
                       aria-selected={isActive}
                       onClick={() => setActiveTab(tab.id as TabType)}
-                      className={`-mb-px whitespace-nowrap border-b-2 px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                        isActive
-                          ? "border-primary text-white"
-                          : "border-transparent text-slate-400 hover:text-white"
+                      className={`relative whitespace-nowrap rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-150 ${
+                        isActive ? "text-primary-foreground" : "text-paper/65 hover:text-paper"
                       }`}
                     >
-                      {tab.label}
+                      {isActive && (
+                        <motion.span
+                          layoutId="event-tab"
+                          aria-hidden="true"
+                          className="absolute inset-0 rounded-full bg-primary"
+                          transition={reduce ? { duration: 0 } : { duration: DUR.swap, ease: EASE_IN_OUT_CUBIC }}
+                        />
+                      )}
+                      <span className="relative">{tab.label}</span>
                     </button>
                   );
                 })}
@@ -370,13 +376,13 @@ export default function EventDetailClient({ params }: Props) {
                   {/* About */}
                   <section>
                     <h2 className="mb-3 text-lg font-bold text-white">About this event</h2>
-                    <div className="space-y-3 text-sm leading-relaxed text-slate-300">
+                    <div className="space-y-3 text-sm leading-relaxed text-paper/75">
                       {event.description ? (
                         event.description.split("\n\n").map((para: string, i: number) => (
                           <p key={i}>{para}</p>
                         ))
                       ) : (
-                        <p className="text-slate-400">No description available for this event yet.</p>
+                        <p className="text-paper/65">No description available for this event yet.</p>
                       )}
                     </div>
                   </section>
@@ -384,26 +390,26 @@ export default function EventDetailClient({ params }: Props) {
                   {/* Event Details */}
                   <section>
                     <h2 className="mb-4 text-lg font-bold text-white">Event details</h2>
-                    <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 sm:grid-cols-2">
-                      <div className="flex items-start gap-3 bg-black/40 p-4">
+                    <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="flex items-start gap-3 rounded-2xl bg-night-2 p-5">
                         <CalendarBlank className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
                         <div>
-                          <dt className="text-xs font-medium text-slate-400">Date &amp; time</dt>
+                          <dt className="text-xs font-medium text-paper/65">Date &amp; time</dt>
                           <dd className="mt-0.5 text-sm font-semibold text-white">{formattedDate}</dd>
-                          <dd className="text-sm text-slate-300">{formattedTime}</dd>
+                          <dd className="text-sm text-paper/75">{formattedTime}</dd>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 bg-black/40 p-4">
+                      <div className="flex items-start gap-3 rounded-2xl bg-night-2 p-5">
                         <MapPin className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
                         <div>
-                          <dt className="text-xs font-medium text-slate-400">Location</dt>
+                          <dt className="text-xs font-medium text-paper/65">Location</dt>
                           <dd className="mt-0.5 text-sm font-semibold text-white">{location}</dd>
                         </div>
                       </div>
-                      <div className="flex items-start gap-3 bg-black/40 p-4">
+                      <div className="flex items-start gap-3 rounded-2xl bg-night-2 p-5">
                         <Tag className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" aria-hidden="true" />
                         <div>
-                          <dt className="text-xs font-medium text-slate-400">Price</dt>
+                          <dt className="text-xs font-medium text-paper/65">Price</dt>
                           <dd className="mt-0.5 text-sm font-semibold text-white">{priceLabel}</dd>
                         </div>
                       </div>
@@ -436,16 +442,16 @@ export default function EventDetailClient({ params }: Props) {
               {activeTab === "agenda" && (
                 <div>
                   <h2 className="mb-5 text-lg font-bold text-white">Event agenda</h2>
-                  <ol className="relative space-y-5 border-l border-white/10 pl-6">
+                  <ol className="relative space-y-5 pl-7 before:absolute before:bottom-2 before:left-[7px] before:top-2 before:w-px before:bg-paper/15" data-stagger="rise">
                     {agenda.map((item) => (
                       <li key={item.id} className="relative">
                         <span
-                          className="absolute -left-[27px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-primary bg-black"
+                          className="absolute -left-7 top-5 flex h-4 w-4 items-center justify-center rounded-full bg-primary/25"
                           aria-hidden="true"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                         </span>
-                        <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+                        <div className="rounded-3xl bg-night-2 p-6">
                           <div className="mb-2 inline-flex items-center gap-1.5 text-xs font-semibold text-primary">
                             <Clock className="h-3.5 w-3.5" aria-hidden="true" />
                             {new Date(item.start_time).toLocaleString("en-US", {
@@ -462,10 +468,10 @@ export default function EventDetailClient({ params }: Props) {
                           </div>
                           <h3 className="mb-1.5 text-base font-bold text-white">{item.title}</h3>
                           {item.description && (
-                            <p className="mb-2 text-sm leading-relaxed text-slate-300">{item.description}</p>
+                            <p className="mb-2 text-sm leading-relaxed text-paper/75">{item.description}</p>
                           )}
                           {item.location && (
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                            <div className="flex items-center gap-1.5 text-xs text-paper/65">
                               <MapPin className="h-4 w-4" aria-hidden="true" />
                               <span>{item.location}</span>
                             </div>
@@ -483,7 +489,7 @@ export default function EventDetailClient({ params }: Props) {
                   <h2 className="mb-5 text-lg font-bold text-white">Speakers &amp; guests</h2>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {speakers.map((speaker) => (
-                      <div key={speaker.id} className="rounded-2xl border border-white/8 bg-white/[0.02] p-5">
+                      <div key={speaker.id} className="rounded-3xl bg-night-2 p-6">
                         <div className="flex items-start gap-4">
                           {speaker.profile_image_url ? (
                             <img
@@ -502,9 +508,9 @@ export default function EventDetailClient({ params }: Props) {
                           )}
                           <div className="flex-1">
                             <h3 className="mb-0.5 text-base font-bold text-white">{speaker.name}</h3>
-                            {speaker.title && <p className="mb-2 text-xs text-slate-400">{speaker.title}</p>}
+                            {speaker.title && <p className="mb-2 text-xs text-paper/65">{speaker.title}</p>}
                             {speaker.bio && (
-                              <p className="line-clamp-3 text-sm leading-relaxed text-slate-300">{speaker.bio}</p>
+                              <p className="line-clamp-3 text-sm leading-relaxed text-paper/75">{speaker.bio}</p>
                             )}
                             {speaker.is_featured && (
                               <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-1 text-xs font-semibold text-primary">
@@ -528,7 +534,7 @@ export default function EventDetailClient({ params }: Props) {
                     {prizes.map((prize) => (
                       <div
                         key={prize.id}
-                        className="rounded-2xl border border-amber-400/25 bg-amber-400/[0.06] p-5"
+                        className="rounded-3xl bg-night-2 p-6"
                       >
                         <div className="flex items-start gap-4">
                           <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-amber-400/20">
@@ -552,7 +558,7 @@ export default function EventDetailClient({ params }: Props) {
                             )}
                             <h3 className="mb-1.5 text-base font-bold text-white">{prize.name}</h3>
                             {prize.description && (
-                              <p className="mb-2 text-sm leading-relaxed text-slate-300">{prize.description}</p>
+                              <p className="mb-2 text-sm leading-relaxed text-paper/75">{prize.description}</p>
                             )}
                             {prize.value && (
                               <p className="text-base font-semibold text-amber-300">{prize.value}</p>
@@ -571,11 +577,11 @@ export default function EventDetailClient({ params }: Props) {
                   <h2 className="mb-5 text-lg font-bold text-white">Frequently asked questions</h2>
                   <div className="space-y-3">
                     {faqs.map((faq) => (
-                      <div key={faq.id} className="rounded-2xl border border-white/8 bg-white/[0.02] p-4">
+                      <div key={faq.id} className="rounded-3xl bg-night-2 p-6">
                         <h3 className="mb-1.5 text-sm font-semibold text-white">{faq.question}</h3>
-                        <p className="text-sm leading-relaxed text-slate-300">{faq.answer}</p>
+                        <p className="text-sm leading-relaxed text-paper/75">{faq.answer}</p>
                         {faq.category && (
-                          <span className="mt-2 inline-block rounded bg-white/5 px-2 py-1 text-xs text-slate-400">
+                          <span className="mt-2 inline-block rounded bg-white/5 px-2 py-1 text-xs text-paper/65">
                             {faq.category}
                           </span>
                         )}
@@ -594,11 +600,11 @@ export default function EventDetailClient({ params }: Props) {
                       {contacts.map((contact) => (
                         <div
                           key={contact.id}
-                          className="rounded-2xl border border-white/10 bg-white/[0.02] p-5"
+                          className="rounded-3xl bg-night-2 p-6"
                         >
                           <h3 className="text-base font-bold text-white">{contact.name}</h3>
                           {contact.role && (
-                            <p className="mb-2 text-xs text-slate-400">{contact.role}</p>
+                            <p className="mb-2 text-xs text-paper/65">{contact.role}</p>
                           )}
                           <div className="space-y-1 text-sm">
                             {contact.email && (
@@ -612,7 +618,7 @@ export default function EventDetailClient({ params }: Props) {
                             {contact.phone && (
                               <a
                                 href={`tel:${contact.phone}`}
-                                className="block text-slate-300 transition-colors hover:text-white"
+                                className="block text-paper/75 transition-colors hover:text-white"
                               >
                                 {contact.phone}
                               </a>
@@ -622,9 +628,9 @@ export default function EventDetailClient({ params }: Props) {
                       ))}
                     </div>
                   )}
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                  <div className="rounded-3xl bg-night-2 p-6">
                     <h3 className="mb-2 text-base font-bold text-white">{organizerName}</h3>
-                    <p className="mb-4 text-sm text-slate-300">
+                    <p className="mb-4 text-sm text-paper/75">
                       For questions about this event, reach the organizers through the Unifesto mobile app.
                     </p>
                     <a
@@ -653,12 +659,12 @@ export default function EventDetailClient({ params }: Props) {
                   tickets of its own), registration happens per sub-event, so we
                   point at the hub instead of a misleading "Free · register" CTA. */}
               {bigEventMode === "umbrella" ? (
-                <div className="rounded-2xl border border-primary/30 bg-primary/[0.06] p-5">
+                <div className="rounded-3xl bg-primary/[0.1] p-6">
                   <div className="mb-1 flex items-center gap-2">
                     <Stack weight="fill" className="h-5 w-5 text-primary" aria-hidden="true" />
                     <span className="text-base font-extrabold text-white">Multi-part event</span>
                   </div>
-                  <p className="mb-4 text-xs text-slate-300">
+                  <p className="mb-4 text-xs text-paper/75">
                     {isCompleted
                       ? "This event has ended."
                       : `This event has ${subEventCount} sub-event${subEventCount === 1 ? "" : "s"}. Register for the ones you want to attend.`}
@@ -675,17 +681,17 @@ export default function EventDetailClient({ params }: Props) {
                   )}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-primary/30 bg-primary/[0.06] p-5">
+                <div className="rounded-3xl bg-primary/[0.1] p-6">
                   <div className="mb-1 flex items-baseline gap-2">
                     <span className="text-2xl font-extrabold text-white">{priceLabel}</span>
                     {!isFree && (
-                      <span className="text-xs text-slate-400">per ticket</span>
+                      <span className="text-xs text-paper/65">per ticket</span>
                     )}
                   </div>
                   {bigEventMode === "pass" && (
                     <p className="mb-1 text-xs font-semibold text-primary">Full event pass</p>
                   )}
-                  <p className="mb-4 text-xs text-slate-300">
+                  <p className="mb-4 text-xs text-paper/75">
                     {isCompleted
                       ? "This event has ended."
                       : bigEventMode === "pass"
@@ -712,7 +718,7 @@ export default function EventDetailClient({ params }: Props) {
               {/* Add to calendar — Google / Outlook / .ics. Native <details> so
                   there's no extra state to manage; closes on outside click. */}
               <details className="group [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex cursor-pointer list-none items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/[0.08] px-4 py-3 text-sm font-bold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/[0.14]">
+                <summary className="flex cursor-pointer list-none items-center justify-center gap-2 rounded-full bg-primary/[0.12] px-4 py-3 text-sm font-bold text-primary transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/[0.14]">
                   <CalendarPlus weight="bold" className="h-5 w-5" aria-hidden="true" />
                   Add to calendar
                   <CaretRight
@@ -721,7 +727,7 @@ export default function EventDetailClient({ params }: Props) {
                     aria-hidden="true"
                   />
                 </summary>
-                <div className="mt-2 flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/[0.03] p-2">
+                <div className="animate-pop-in mt-2 flex origin-top flex-col gap-1 rounded-3xl bg-night-2 p-2">
                   {(() => {
                     const cal = {
                       slug: event.slug,
@@ -736,15 +742,15 @@ export default function EventDetailClient({ params }: Props) {
                     return (
                       <>
                         <a href={googleCalendarUrl(cal)} target="_blank" rel="noopener noreferrer" className={item}>
-                          <GoogleLogo weight="bold" className="h-5 w-5 text-slate-300" aria-hidden="true" />
+                          <GoogleLogo weight="bold" className="h-5 w-5 text-paper/75" aria-hidden="true" />
                           Google Calendar
                         </a>
                         <a href={outlookCalendarUrl(cal)} target="_blank" rel="noopener noreferrer" className={item}>
-                          <MicrosoftOutlookLogo weight="bold" className="h-5 w-5 text-slate-300" aria-hidden="true" />
+                          <MicrosoftOutlookLogo weight="bold" className="h-5 w-5 text-paper/75" aria-hidden="true" />
                           Outlook
                         </a>
                         <a href={icsDownloadUrl(event.slug)} className={item}>
-                          <DownloadSimple weight="bold" className="h-5 w-5 text-slate-300" aria-hidden="true" />
+                          <DownloadSimple weight="bold" className="h-5 w-5 text-paper/75" aria-hidden="true" />
                           Apple / Download .ics
                         </a>
                       </>
@@ -754,19 +760,19 @@ export default function EventDetailClient({ params }: Props) {
               </details>
 
               {/* Event Info Card */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+              <div className="rounded-3xl bg-night-2 p-6">
                 <h3 className="mb-4 text-sm font-bold text-white">Event information</h3>
                 <dl className="space-y-3 text-sm">
                   <div>
-                    <dt className="mb-0.5 text-xs text-slate-400">Date</dt>
+                    <dt className="mb-0.5 text-xs text-paper/65">Date</dt>
                     <dd className="font-semibold text-white">{formattedDate}</dd>
                   </div>
                   <div>
-                    <dt className="mb-0.5 text-xs text-slate-400">Time</dt>
+                    <dt className="mb-0.5 text-xs text-paper/65">Time</dt>
                     <dd className="font-semibold text-white">{formattedTime}</dd>
                   </div>
                   <div>
-                    <dt className="mb-0.5 text-xs text-slate-400">Location</dt>
+                    <dt className="mb-0.5 text-xs text-paper/65">Location</dt>
                     <dd className="font-semibold text-white">{location}</dd>
                   </div>
                 </dl>
@@ -774,7 +780,7 @@ export default function EventDetailClient({ params }: Props) {
 
               {/* Organizer Card */}
               {eventSpace && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <div className="rounded-3xl bg-night-2 p-6">
                   <h3 className="mb-4 text-sm font-bold text-white">Organized by</h3>
                   <Link href={`/space/${eventSpace.slug || eventSpace.id}`} className="group block">
                     <div className="flex items-center gap-3">
@@ -797,7 +803,7 @@ export default function EventDetailClient({ params }: Props) {
                         <p className="truncate text-sm font-semibold text-white transition-colors group-hover:text-primary">
                           {organizerName}
                         </p>
-                        <p className="inline-flex items-center gap-1 text-xs text-slate-400">
+                        <p className="inline-flex items-center gap-1 text-xs text-paper/65">
                           View profile
                           <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
                         </p>
@@ -809,7 +815,7 @@ export default function EventDetailClient({ params }: Props) {
 
               {/* More Events */}
               {spaceEvents.length > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5">
+                <div className="rounded-3xl bg-night-2 p-6">
                   <h3 className="mb-4 text-sm font-bold text-white">More from {organizerName}</h3>
                   <div className="space-y-3">
                     {spaceEvents.slice(0, 3).map((e) => (
@@ -832,7 +838,7 @@ export default function EventDetailClient({ params }: Props) {
                             <p className="mb-1 line-clamp-2 text-sm font-semibold text-white transition-colors group-hover:text-primary">
                               {e.title}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-paper/65">
                               {new Date(e.start_date).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",

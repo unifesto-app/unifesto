@@ -1,182 +1,162 @@
-import { gradientText, brandGradient } from "@/lib/styles";
+import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
+import Link from "next/link";
+import { Check, ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import PageHero from "@/components/site/PageHero";
+import Section from "@/components/site/Section";
+import FaqList from "@/components/site/FaqList";
+import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { FAQ_PRICING, LAUNCH_OFFER_ENDS, PLANS, SITE, inr } from "@/lib/site";
 
-export const metadata = {
-  title: "Pricing | Unifesto",
-  description: "Simple, transparent pricing for attendees and event organizers. Free for organizers to create events. No hidden fees.",
-  keywords: ["unifesto pricing", "event pricing", "free event hosting", "event costs", "organizer pricing"],
-  openGraph: {
-    title: "Pricing | Unifesto",
-    description: "Simple, transparent pricing for attendees and event organizers.",
-    type: "website",
-    url: "https://www.unifesto.app/pricing",
-    siteName: "Unifesto",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Pricing | Unifesto",
-    description: "Simple, transparent pricing for attendees and event organizers.",
-    site: "@unifestoapp",
-  },
-};
+export const metadata: Metadata = withSocial({
+  title: "Pricing: free RSVP events, from 1% per paid ticket",
+  description: `Free RSVP events on every plan. Paid tickets from 2.5% on Starter, 1.5% on Pro and 1% on Enterprise at launch pricing, below the 4% to 6% typical in India. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
+  alternates: { canonical: "/pricing" },
+}, { title: "Unifesto pricing", description: "Free RSVP events. Paid tickets from 1%. Launch pricing, locked in." });
 
-const plans = [
-  {
-    name: "Free",
-    price: "₹0",
-    period: "forever",
-    description: "Perfect for student clubs running occasional events.",
-    featured: false,
-    cta: "Get Started Free",
-    ctaHref: "/auth",
-    features: [
-      "Up to 3 events/month",
-      "Unlimited free RSVPs",
-      "Basic event page",
-      "QR check-in (up to 100 attendees)",
-      "Email support",
-    ],
-    missing: ["Ticketing & payments", "Advanced analytics", "Priority listing", "Custom branding"],
-  },
-  {
-    name: "Pro",
-    price: "₹999",
-    period: "per event",
-    description: "For serious organisers who need the full toolkit.",
-    featured: true,
-    cta: "Start with Pro",
-    ctaHref: "/auth",
-    features: [
-      "Unlimited events",
-      "Paid ticketing & RSVP",
-      "QR check-in (unlimited attendees)",
-      "Real-time analytics dashboard",
-      "Priority event listing",
-      "Custom event branding",
-      "Attendee export (CSV)",
-      "Dedicated support",
-    ],
-    missing: [],
-  },
-  {
-    name: "Institution",
-    price: "Custom",
-    period: "per semester",
-    description: "For institutions and organisations running multiple events at scale.",
-    featured: false,
-    cta: "Contact Us",
-    ctaHref: "mailto:support@unifesto.app",
-    features: [
-      "Everything in Pro",
-      "Multi-organiser accounts",
-      "Organisation-wide event calendar",
-      "API access",
-      "White-label option",
-      "Dedicated account manager",
-      "SLA support",
-    ],
-    missing: [],
-  },
+/* What one ₹500 ticket costs the organiser in platform fees. The market
+   band is the 4% to 6% typical of Indian ticketing platforms. */
+const TICKET = 500;
+const COMPARE = [
+  { label: "Typical platform, 6%", fee: 0.06 },
+  { label: "Typical platform, 4%", fee: 0.04 },
+  ...PLANS.map((p) => ({ label: `Unifesto ${p.name}, ${p.fee}%`, fee: p.fee / 100, ours: true })),
 ];
+const MAX = Math.max(...COMPARE.map((c) => c.fee));
+
+const productLd = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: "Unifesto event platform",
+  brand: { "@type": "Brand", name: SITE.name },
+  description: SITE.description,
+  offers: PLANS.filter((p) => p.price !== null).map((p) => ({
+    "@type": "Offer",
+    name: `${p.name} plan`,
+    price: p.price,
+    priceCurrency: "INR",
+    url: `${SITE.url}/pricing`,
+    availability: "https://schema.org/InStock",
+  })),
+};
 
 export default function PricingPage() {
   return (
-    <main className="min-h-screen bg-black overflow-x-hidden">
+    <main className="min-h-screen overflow-x-hidden bg-canvas">
+      <JsonLd data={[productLd, breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative pt-36 pb-16 px-6 text-center overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(52,145,255,0.08) 0%, transparent 70%)" }}
-          aria-hidden="true"
-        />
-        <div className="relative z-10 max-w-2xl mx-auto">
-          <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-4" style={gradientText}>Pricing</p>
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4">
-            Simple,<br />
-            <span style={gradientText}>transparent pricing.</span>
-          </h1>
-          <p className="text-slate-400 text-sm md:text-lg leading-relaxed">
-            No hidden fees. No surprises. Start free and scale when you&apos;re ready.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        lines={["Free events stay free.", "Paid ones cost less."]}
+        accentFrom={1}
+        lede={`Launch pricing: Spaces that join before ${LAUNCH_OFFER_ENDS} keep these prices. Every plan includes the Unifesto app for attendees and Crew.`}
+        size="md"
+      />
 
-      {/* Plans */}
-      <section id="plans" className="px-6 pb-24 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl p-6 md:p-8 flex flex-col transition-all duration-300 ${plan.featured
-                ? "border-0 shadow-[0_0_60px_rgba(37,99,235,0.2)]"
-                : "border border-white/5 bg-white/[0.02] hover:bg-white/[0.04]"
-                }`}
-              style={plan.featured ? { background: "linear-gradient(160deg, #0d1b3e 0%, #0a1628 100%)", border: "1px solid rgba(52,145,255,0.3)" } : {}}
-            >
-              {plan.featured && (
-                <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold text-black px-4 py-1 rounded-full uppercase tracking-widest"
-                  style={{ background: brandGradient }}
-                >
-                  Most Popular
+      <Section pad="tight" id="plans">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3" data-stagger="rise">
+          {PLANS.map((plan) => {
+            const featured = plan.id === "pro";
+            const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
+            return (
+              <article key={plan.id} className={`relative flex flex-col rounded-xl p-7 ${featured ? "bg-primary" : "bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08)]"}`}>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-lg text-paper">{plan.name}</h2>
+                  {off > 0 && <span className="rounded-full bg-ink px-3 py-1 text-[11px] text-[var(--paper-bg)]">{off}% off at launch</span>}
                 </div>
-              )}
+                <p className="mt-2 text-sm text-paper/70">{plan.forWho}</p>
 
-              <div className="mb-6">
-                <h2 className="text-base font-bold text-white mb-1">{plan.name}</h2>
-                <div className="flex items-end gap-1 mb-2">
-                  <span className="text-4xl font-black text-white">{plan.price}</span>
-                  <span className="text-slate-500 text-sm mb-1">/{plan.period}</span>
+                <div className="mt-6 flex items-end gap-2">
+                  {plan.price === null ? (
+                    <span className="font-display text-4xl text-paper">Custom</span>
+                  ) : (
+                    <>
+                      <span className="tabular font-display text-4xl text-paper">{inr(plan.price)}</span>
+                      <span className="mb-1 text-sm text-paper/60">/ month</span>
+                      {off > 0 && <s className="tabular mb-1 text-sm text-paper/45">{inr(plan.standardPrice!)}</s>}
+                    </>
+                  )}
                 </div>
-                <p className="text-xs text-slate-500 leading-relaxed">{plan.description}</p>
-              </div>
+                <p className="mt-1.5 text-xs text-paper/55">
+                  {plan.annualMonthly ? `${inr(plan.annualMonthly)} / month billed yearly` : plan.price === 0 ? "No card needed" : "Quoted per institution"}
+                </p>
 
-              <a
-                href={plan.ctaHref}
-                className="w-full rounded-full py-3 text-sm font-semibold text-center transition-all duration-300 mb-6 block hover:-translate-y-0.5"
-                style={
-                  plan.featured
-                    ? { background: brandGradient, color: "#000" }
-                    : { border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }
-                }
-              >
-                {plan.cta}
-              </a>
+                <p className="mt-5 flex items-baseline gap-2 rounded-md bg-paper/[0.06] px-3 py-2.5 text-sm text-paper">
+                  <span className="tabular font-display">{plan.fee}%</span>
+                  <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
+                  <span className="text-paper/70">per paid ticket</span>
+                </p>
 
-              <ul className="flex flex-col gap-2.5 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5">
-                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: "#3491ff" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="text-xs text-slate-300">{f}</span>
-                  </li>
-                ))}
-                {plan.missing.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 opacity-30">
-                    <svg className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span className="text-xs text-slate-500">{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+                <Link href={plan.cta.href} className={`btn mt-6 w-full ${featured ? "btn-ink" : "btn-secondary"}`}>
+                  {plan.cta.label}
+                  <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
+                </Link>
+
+                <ul className="mt-7 flex flex-1 flex-col gap-2.5">
+                  {plan.includes.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5 text-sm text-paper/85">
+                      <Check className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-paper/60" weight="bold" aria-hidden="true" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            );
+          })}
         </div>
-
-        {/* FAQ note */}
-        <p className="text-center text-xs text-slate-600 mt-10">
-          All prices exclusive of taxes. For custom quotes, reach out to{" "}
-          <a href="mailto:support@unifesto.app" className="text-slate-400 hover:text-white transition-colors">
-            support@unifesto.app
-          </a>
+        <p className="mt-8 text-center text-sm text-paper/55">
+          Prices exclude 18% GST. Razorpay payment gateway charges are separate. Free RSVP events carry no platform fee on any plan.
         </p>
-      </section>
+      </Section>
 
+      <Section surface="paper" aria-labelledby="compare-heading">
+        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
+          <div>
+            <h2 id="compare-heading" data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-ink [text-wrap:balance]">
+              What a {inr(TICKET)} ticket costs you.
+            </h2>
+            <p data-reveal="blur" className="mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-ink/70">
+              Platform fees on one {inr(TICKET)} ticket. Indian ticketing platforms typically charge 4% to 6%. On Unifesto the same ticket costs you a fraction of that, and free events cost nothing.
+            </p>
+          </div>
+          <table className="w-full text-sm">
+            <caption className="sr-only">Platform fee on a {inr(TICKET)} ticket</caption>
+            <tbody>
+              {COMPARE.map((c) => (
+                <tr key={c.label}>
+                  <th scope="row" className={`w-44 py-2.5 pr-4 text-left font-normal ${"ours" in c ? "text-ink" : "text-ink/55"}`}>{c.label}</th>
+                  <td className="py-2.5">
+                    <div className="h-2 rounded-full bg-white/[0.05]">
+                      <div data-reveal="fill" className={`h-full origin-left rounded-full ${"ours" in c ? "bg-primary" : "bg-paper/25"}`} style={{ transform: `scaleX(${c.fee / MAX})` }} />
+                    </div>
+                  </td>
+                  <td className={`tabular w-20 py-2.5 pl-4 text-right ${"ours" in c ? "text-ink" : "text-ink/55"}`}>₹{(TICKET * c.fee).toFixed(2).replace(/\.00$/, "")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      <FaqList faqs={FAQ_PRICING} />
+
+      <Section width="text" innerClassName="text-center">
+        <h2 data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper [text-wrap:balance]">
+          Not sure which plan fits?
+        </h2>
+        <p data-reveal="blur" className="mx-auto mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-paper/65">
+          Start on Starter. Move up from Billing in your Space whenever you need certificates, sponsors or hackathon judging.
+        </p>
+        <div data-reveal="rise" className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link href="/request-space" className="btn btn-lg btn-primary">
+            Request a Space
+            <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
+          </Link>
+          <a href={`mailto:${SITE.email}`} className="btn btn-lg btn-secondary">Talk to us</a>
+        </div>
+      </Section>
       <Footer />
     </main>
   );

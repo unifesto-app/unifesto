@@ -1,222 +1,147 @@
 "use client";
 
-import { useState, useEffect, useRef, useId } from "react";
-import {
-  useScroll,
-  useMotionValueEvent,
-  AnimatePresence,
-  motion,
-  useReducedMotion,
-  type Variants,
-} from "motion/react";
-import { CaretDown, ArrowUpRight } from "@phosphor-icons/react";
+import { useEffect, useId, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, type Variants } from "motion/react";
+import { ArrowRight, CaretDown } from "@phosphor-icons/react";
 import Image from "next/image";
+import Link from "next/link";
+import { useLightSurfaceAt } from "@/lib/surface";
+import ThemeToggle from "@/components/ThemeToggle";
+import { DUR, EASE_IN_OUT_CUBIC, EASE_OUT_QUART } from "@/lib/motion";
 import GooglePlayBadge from "@/app/assets/svg/GetItOnGooglePlay_Badge_Web_color_English.svg";
 import AppStoreBadge from "@/app/assets/svg/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917.svg";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
+/* Information architecture. Organisers get their own menu (the platform and
+   what runs on it), the two directories and pricing sit flat, and one menu
+   holds the company and its resources. On the right, the two actions:
+   students get the app, organisers host. */
+type NavItem = { label: string; href: string; description?: string };
 
-type SubItem = { label: string; href: string; description?: string; image?: any };
-type Column = { title: string; items: SubItem[] };
+const LINKS: readonly NavItem[] = [
+  { label: "Events", href: "/events" },
+  { label: "Spaces", href: "/spaces" },
+  { label: "Pricing", href: "/pricing" },
+];
 
-type NavItem = {
-  label: string;
-  href?: string;
-  columns?: Column[];
-  items?: SubItem[];
-  badges?: SubItem[];
-};
-
-const navItems: NavItem[] = [
+const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
   {
-    label: "Discover",
-    columns: [
-      {
-        title: "Events",
-        items: [
-          { label: "All Events", href: "/events", description: "Browse everything" },
-          { label: "Trending", href: "/events?status=trending", description: "What everyone is talking about" },
-          { label: "Upcoming", href: "/events?status=upcoming", description: "Don't miss what's next" },
-          { label: "Featured", href: "/events?status=featured", description: "Handpicked by the team" },
-        ],
-      },
-      {
-        title: "Spaces",
-        items: [
-          { label: "Browse All", href: "/spaces", description: "Universities, clubs & more" },
-          { label: "Institutions", href: "/spaces?type=university", description: "Top-level institutions" },
-          { label: "Clubs", href: "/spaces?type=club", description: "Clubs, cells & departments" },
-          { label: "Communities", href: "/spaces?type=community", description: "Independent groups" },
-          { label: "Request a Space", href: "/request-space", description: "Run yours on Unifesto" },
-        ],
-      },
-    ],
-  },
-  {
-    label: "Platform",
+    label: "Organisers",
     items: [
-      { label: "Team & access", href: "/features#team", description: "Spaces, five roles, permissions" },
-      { label: "Events", href: "/features#events", description: "RSVP, ticketing, sub-events, sessions" },
-      { label: "The door", href: "/features#door", description: "Multi-point QR check-in" },
-      { label: "Money", href: "/features#money", description: "Payouts, refunds, financials" },
-      { label: "Grow", href: "/features#grow", description: "Certificates, leaderboards, leads" },
+      { label: "Platform", href: "/organisers", description: "Ticketing, check-in, payouts, one Space" },
+      { label: "Hackathons", href: "/hackathons", description: "Teams, judging and help desks" },
+      { label: "Unifesto Stay", href: "/stay", description: "Rooms for your event's guests" },
+      { label: "Request a Space", href: "/request-space", description: "Get your club or institution set up" },
     ],
   },
   {
-    label: "About",
+    label: "Company",
     items: [
-      { label: "About Us", href: "/about", description: "Our story & mission" },
-      { label: "Features", href: "/about#features", description: "What we offer" },
-      { label: "Use Cases", href: "/about#use-cases", description: "Events we support" },
-      { label: "Testimonials", href: "/about#testimonials", description: "What people say" },
-      { label: "Support", href: "/support", description: "Get help & contact us" },
-    ],
-  },
-  {
-    label: "Download",
-    badges: [
-      {
-        label: "App Store",
-        href: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
-        image: AppStoreBadge,
-      },
-      {
-        label: "Google Play",
-        href: "https://play.google.com/store/apps/details?id=com.unifesto.app",
-        image: GooglePlayBadge,
-      },
+      { label: "About", href: "/about", description: "Who builds Unifesto, and why" },
+      { label: "Careers", href: "/careers", description: "Open roles" },
+      { label: "Press", href: "/press", description: "Releases and media kit" },
+      { label: "Blog", href: "/blog", description: "Notes from running events" },
+      { label: "Docs", href: "/docs", description: "Developer reference" },
+      { label: "Support", href: "/support", description: "Help, FAQs and contact" },
     ],
   },
 ];
 
-const panelVariants: Variants = {
-  hidden: { opacity: 0, y: 10, filter: "blur(6px)" },
-  visible: { opacity: 1, y: 0, filter: "blur(0px)", transition: { duration: 0.24, ease: EASE } },
-  exit: { opacity: 0, y: 6, filter: "blur(4px)", transition: { duration: 0.14, ease: EASE } },
-};
+const STORES = [
+  { label: "App Store", href: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496", image: AppStoreBadge },
+  { label: "Google Play", href: "https://play.google.com/store/apps/details?id=com.unifesto.app", image: GooglePlayBadge },
+] as const;
 
-const reducedPanel: Variants = {
+/* Menus pop from their trigger: ease-out-quart, 180ms in, faster out. */
+const panel: Variants = {
+  hidden: { opacity: 0, y: 8, scale: 0.96 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: DUR.swap * 0.75, ease: EASE_OUT_QUART } },
+  exit: { opacity: 0, y: 4, scale: 0.98, transition: { duration: 0.12, ease: EASE_OUT_QUART } },
+};
+const panelReduced: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.12 } },
   exit: { opacity: 0, transition: { duration: 0.1 } },
 };
 
-function SubLink({ sub, onNavigate }: { sub: SubItem; onNavigate?: () => void }) {
-  return (
-    <a
-      href={sub.href}
-      onClick={onNavigate}
-      className="group/link -mx-3 block rounded-lg px-3 py-2.5 transition-colors duration-150 hover:bg-white/[0.06]"
-    >
-      <div className="flex items-center gap-1.5 text-sm font-medium text-white/90 group-hover/link:text-white">
-        {sub.label}
-        <ArrowUpRight
-          className="h-3.5 w-3.5 -translate-x-1 text-primary opacity-0 transition-all duration-200 group-hover/link:translate-x-0 group-hover/link:opacity-100"
-          aria-hidden="true"
-        />
-      </div>
-      {sub.description && <p className="mt-0.5 text-xs leading-snug text-slate-400">{sub.description}</p>}
-    </a>
-  );
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function DesktopItem({
-  item,
-  openLabel,
-  onOpen,
-  onClose,
+function Menu({
+  label,
+  open,
+  setOpen,
+  align = "center",
+  width,
+  children,
+  triggerClassName,
 }: {
-  item: NavItem;
-  openLabel: string | null;
-  onOpen: (label: string) => void;
-  onClose: () => void;
+  label: string;
+  open: boolean;
+  setOpen: (v: boolean) => void;
+  align?: "center" | "right";
+  width: string;
+  children: React.ReactNode;
+  triggerClassName: string;
 }) {
-  const panelId = useId();
+  const id = useId();
+  const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
-  const hasPanel = Boolean(item.columns || item.items || item.badges);
-  const isOpen = openLabel === item.label;
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  if (!hasPanel && item.href) {
-    return (
-      <a
-        href={item.href}
-        className="rounded-full px-4 py-2 text-sm font-medium tracking-wide text-slate-300 transition-colors duration-150 hover:text-white"
-      >
-        {item.label}
-      </a>
-    );
-  }
-
-  const isDownload = Boolean(item.badges);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onDown = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onDown);
+    };
+  }, [open, setOpen]);
 
   return (
-    <div className="relative" onMouseEnter={() => onOpen(item.label)} onMouseLeave={onClose}>
+    <div
+      ref={ref}
+      className="relative"
+      onMouseEnter={() => {
+        clearTimeout(closeTimer.current);
+        setOpen(true);
+      }}
+      onMouseLeave={() => {
+        closeTimer.current = setTimeout(() => setOpen(false), 140);
+      }}
+    >
       <button
         type="button"
-        aria-expanded={isOpen}
-        aria-controls={panelId}
-        onClick={() => (isOpen ? onClose() : onOpen(item.label))}
-        className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium tracking-wide transition-colors duration-150 ${
-          isOpen ? "text-white" : "text-slate-300 hover:text-white"
-        }`}
+        aria-expanded={open}
+        aria-controls={id}
+        onClick={() => setOpen(!open)}
+        className={triggerClassName}
       >
-        <span>{item.label}</span>
+        {label}
         <CaretDown
-          className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180 !text-primary" : ""}`}
+          className={`h-3.5 w-3.5 opacity-60 transition-transform duration-[240ms] ease-[cubic-bezier(.645,.045,.355,1)] ${open ? "rotate-180" : ""}`}
           aria-hidden="true"
         />
       </button>
-
       <AnimatePresence>
-        {isOpen && (
+        {open && (
           <motion.div
-            id={panelId}
-            key="panel"
-            variants={reduce ? reducedPanel : panelVariants}
+            id={id}
+            variants={reduce ? panelReduced : panel}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className={`absolute left-1/2 top-full z-50 mt-3 -translate-x-1/2 overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0d] shadow-[0_24px_80px_rgba(0,0,0,0.7)] ${
-              item.columns ? "w-[560px]" : isDownload ? "w-[380px]" : "w-[320px]"
-            } max-w-[92vw]`}
+            className={`blur-bg-strong absolute top-full z-50 mt-3 overflow-hidden rounded-3xl ${width} max-w-[92vw] ${
+              align === "right" ? "right-0 origin-top-right" : "left-1/2 -translate-x-1/2 origin-top"
+            }`}
           >
-            {item.columns && (
-              <div className="grid grid-cols-2 gap-6 p-5">
-                {item.columns.map((col) => (
-                  <div key={col.title}>
-                    <h3 className="mb-2 border-b border-white/10 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-                      {col.title}
-                    </h3>
-                    <div className="space-y-0.5">
-                      {col.items.map((sub) => (
-                        <SubLink key={sub.label} sub={sub} onNavigate={onClose} />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {item.items && (
-              <div className="space-y-0.5 p-4">
-                {item.items.map((sub) => (
-                  <SubLink key={sub.label} sub={sub} onNavigate={onClose} />
-                ))}
-              </div>
-            )}
-
-            {item.badges && (
-              <div className="p-5">
-                <p className="mb-3 text-xs font-medium text-slate-400">Get Unifesto on your phone</p>
-                <div className="flex flex-row items-center gap-3">
-                  {item.badges.map((sub) => (
-                    <a key={sub.label} href={sub.href} className="block transition-opacity duration-150 hover:opacity-80">
-                      <Image src={sub.image} alt={`Download Unifesto on ${sub.label}`} className="h-11 w-auto object-contain" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
+            {children}
           </motion.div>
         )}
       </AnimatePresence>
@@ -225,188 +150,251 @@ function DesktopItem({
 }
 
 export default function Navbar() {
+  const pathname = usePathname() ?? "/";
+  const reduce = useReducedMotion();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
-  const [openLabel, setOpenLabel] = useState<string | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // One dropdown open at a time. A menu's delayed close only clears itself,
+  // so leaving one trigger for another never shuts the new one.
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const menuState = (key: string) => ({
+    open: openMenu === key,
+    setOpen: (v: boolean) => setOpenMenu((cur) => (v ? key : cur === key ? null : cur)),
+  });
+  const [hovered, setHovered] = useState<string | null>(null);
+  const onLight = useLightSurfaceAt(() => [window.innerWidth / 2, 40]);
 
   const { scrollY } = useScroll();
-  useMotionValueEvent(scrollY, "change", (latest) => {
-    setScrolled(latest > 24);
-  });
+  useMotionValueEvent(scrollY, "change", (y) => setScrolled(y > 24));
 
-  useEffect(() => () => clearTimeout(closeTimer.current), []);
+  // Close the mobile sheet on navigation (adjust state during render when the
+  // route changes, rather than in an effect).
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setMenuOpen(false);
+  }
 
-  const handleOpen = (label: string) => {
-    clearTimeout(closeTimer.current);
-    setOpenLabel(label);
-  };
-  const handleClose = () => {
-    clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpenLabel(null), 140);
-  };
+  const linkClass = (active: boolean) =>
+    `relative z-10 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 ${
+      active ? "text-paper" : "text-paper/70 hover:text-paper"
+    }`;
 
-  const linkItems = navItems.filter((i) => i.label !== "Download");
-  const downloadItem = navItems.find((i) => i.label === "Download");
+  const renderMenu = (m: (typeof MENUS)[number]) => (
+    <Menu
+      key={m.label}
+      label={m.label}
+      {...menuState(m.label)}
+      width="w-[340px]"
+      triggerClassName={linkClass(m.items.some((c) => isActive(pathname, c.href)))}
+    >
+      <ul className="p-2">
+        {m.items.map((c) => (
+          <li key={c.href}>
+            <a
+              href={c.href}
+              aria-current={isActive(pathname, c.href) ? "page" : undefined}
+              onClick={() => setOpenMenu(null)}
+              className="group/c flex items-start justify-between gap-4 rounded-2xl px-4 py-3 transition-colors duration-150 hover:bg-paper/[0.07]"
+            >
+              <span>
+                <span className="block text-sm font-semibold text-paper">{c.label}</span>
+                <span className="mt-0.5 block text-xs text-paper/60">{c.description}</span>
+              </span>
+              <ArrowRight
+                className="mt-1 h-4 w-4 shrink-0 -translate-x-1 text-primary opacity-0 transition-[opacity,transform] duration-150 group-hover/c:translate-x-0 group-hover/c:opacity-100"
+                aria-hidden="true"
+              />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Menu>
+  );
+
+  // Mobile sheet groups: the flat links (plus the app page), then each menu.
+  const SHEET = [
+    { label: null, items: [...LINKS, { label: "The app", href: "/app" }] },
+    ...MENUS,
+  ];
 
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
-        scrolled
-          ? "border-b border-white/10 bg-[#050507]/85 backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent"
-      }`}
-    >
-      <div className="mx-auto max-w-7xl px-6 md:px-10">
-        <nav className="flex h-16 items-center justify-between md:h-20" aria-label="Primary navigation">
-          {/* Logo — Unifesto wordmark */}
-          <a href="/" aria-label="Unifesto home" className="flex items-center">
+    <header className={`fixed inset-x-0 top-0 z-50 ${onLight ? "on-light" : ""}`}>
+      {/* Full-width bar. Transparent over the hero; once scrolled (or with
+          the menu open) a blurred tint fades in behind it (opacity, 240ms). */}
+      <span
+        aria-hidden="true"
+        className={`blur-bg absolute inset-0 -z-10 transition-opacity duration-[240ms] ${
+          scrolled || menuOpen ? "opacity-100" : "opacity-0"
+        }`}
+      />
+      <div className="mx-auto max-w-7xl px-5 sm:px-8">
+        <nav className="relative flex h-16 items-center justify-between md:h-[4.5rem]" aria-label="Primary">
+          <Link href="/" aria-label="Unifesto home" className="flex shrink-0 items-center">
             <Image
               src="/UnifestoAppWordmark.png"
               alt="Unifesto"
               width={640}
               height={200}
               priority
-              className="h-8 w-auto transition-opacity duration-200 hover:opacity-90 md:h-9"
+              className="h-8 w-auto brightness-0 invert md:h-9"
             />
-          </a>
+          </Link>
 
-          {/* Desktop nav */}
-          <div className="hidden items-center gap-1 md:flex">
-            {navItems.map((item) => (
-              <DesktopItem key={item.label} item={item} openLabel={openLabel} onOpen={handleOpen} onClose={handleClose} />
-            ))}
-            <a
-              href="/events"
-              className="ml-3 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-black transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--primary)_85%,black)]"
+          {/* Desktop. A soft pill slides to whichever link is hovered:
+              the same plate moving between items (morph, 240ms). */}
+          <div className="hidden items-center lg:flex" onMouseLeave={() => setHovered(null)}>
+            {MENUS.slice(0, 1).map(renderMenu)}
+            {LINKS.map((l) => {
+              const active = isActive(pathname, l.href);
+              return (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  aria-current={active ? "page" : undefined}
+                  onMouseEnter={() => setHovered(l.href)}
+                  className={linkClass(active)}
+                >
+                  {hovered === l.href && (
+                    <motion.span
+                      layoutId="nav-hover"
+                      aria-hidden="true"
+                      className="absolute inset-0 -z-10 rounded-full bg-paper/[0.08]"
+                      transition={reduce ? { duration: 0 } : { duration: DUR.swap, ease: EASE_IN_OUT_CUBIC }}
+                    />
+                  )}
+                  {l.label}
+                  {active && <span aria-hidden="true" className="h-1 w-1 rounded-full bg-primary" />}
+                </a>
+              );
+            })}
+            {MENUS.slice(1).map(renderMenu)}
+          </div>
+
+          <div className="hidden items-center gap-2 lg:flex">
+            <ThemeToggle />
+            <Menu
+              label="Get the app"
+              {...menuState("app")}
+              align="right"
+              width="w-[300px]"
+              triggerClassName="btn btn-sm btn-secondary"
             >
-              Explore events
-              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              <div className="p-5">
+                <p className="text-sm font-semibold text-paper">Your passes live in the app.</p>
+                <p className="mt-1 text-xs leading-relaxed text-paper/60">
+                  Register in a tap, check in with one scan.
+                </p>
+                <div className="mt-4 flex items-center gap-3">
+                  {STORES.map((s) => (
+                    <a key={s.label} href={s.href} className="transition-opacity duration-150 hover:opacity-80">
+                      <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
+                    </a>
+                  ))}
+                </div>
+                <a
+                  href="/app"
+                  onClick={() => setOpenMenu(null)}
+                  className="link-draw mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-paper/80 hover:text-paper"
+                >
+                  See what&rsquo;s inside
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                </a>
+              </div>
+            </Menu>
+            <a href="/request-space" className="btn btn-sm btn-primary">
+              Host an event
+              <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
             </a>
           </div>
 
-          {/* Mobile toggle */}
+          <ThemeToggle className="ml-auto mr-1 lg:hidden" />
+
+          {/* Mobile toggle: three bars morph into a cross (240ms). */}
           <button
-            className="rounded-lg p-2 text-primary transition-colors md:hidden"
-            onClick={() => setMenuOpen(!menuOpen)}
+            className="relative z-10 flex h-11 w-11 items-center justify-center rounded-full text-paper lg:hidden"
+            onClick={() => setMenuOpen((v) => !v)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
           >
-            <div className="flex w-5 flex-col gap-1.5">
-              <span className={`h-0.5 rounded-full bg-current transition-all duration-300 ${menuOpen ? "translate-y-2 rotate-45" : ""}`} />
-              <span className={`h-0.5 rounded-full bg-current transition-all duration-300 ${menuOpen ? "opacity-0" : ""}`} />
-              <span className={`h-0.5 rounded-full bg-current transition-all duration-300 ${menuOpen ? "-translate-y-2 -rotate-45" : ""}`} />
-            </div>
+            <span className="flex w-5 flex-col gap-1.5">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className={`h-0.5 rounded-full bg-current transition-[transform,opacity] duration-[240ms] ease-[cubic-bezier(.645,.045,.355,1)] ${
+                    menuOpen
+                      ? i === 0
+                        ? "translate-y-2 rotate-45"
+                        : i === 1
+                          ? "opacity-0"
+                          : "-translate-y-2 -rotate-45"
+                      : ""
+                  }`}
+                />
+              ))}
+            </span>
           </button>
         </nav>
 
-        {/* Mobile menu */}
+        {/* Mobile sheet: drops from the capsule, items arrive as a list. */}
         <AnimatePresence>
           {menuOpen && (
             <motion.div
-              key="mobile"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.24, ease: EASE }}
-              className="overflow-hidden md:hidden"
+              key="sheet"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: DUR.swap, ease: EASE_OUT_QUART } }}
+              exit={{ opacity: 0, y: -4, transition: { duration: 0.14 } }}
+              className="blur-bg-strong mb-4 mt-1 origin-top overflow-hidden rounded-3xl lg:hidden"
             >
-              <div className="mb-4 mt-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0d]">
-                <div className="p-2">
-                  {linkItems.map((item) => {
-                    const hasPanel = Boolean(item.columns || item.items);
-                    if (!hasPanel && item.href) {
-                      return (
-                        <a
-                          key={item.label}
-                          href={item.href}
-                          className="block rounded-xl px-3 py-3 text-base font-medium text-slate-300 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white"
-                          onClick={() => setMenuOpen(false)}
+              <motion.ul
+                className="p-3"
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: reduce ? 0 : 0.035 } } }}
+              >
+                {SHEET.flatMap((g) => [
+                  ...(g.label
+                    ? [
+                        <motion.li
+                          key={`h-${g.label}`}
+                          variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+                          className="px-4 pb-1 pt-4 text-xs font-semibold text-paper/45"
                         >
-                          {item.label}
-                        </a>
-                      );
-                    }
-                    const expanded = mobileExpanded === item.label;
-                    return (
-                      <div key={item.label}>
-                        <button
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-base font-medium text-slate-300 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white"
-                          onClick={() => setMobileExpanded(expanded ? null : item.label)}
-                          aria-expanded={expanded}
-                        >
-                          <span>{item.label}</span>
-                          <CaretDown
-                            className={`h-4 w-4 transition-transform duration-200 ${expanded ? "rotate-180 !text-primary" : "text-slate-500"}`}
-                            aria-hidden="true"
-                          />
-                        </button>
-                        <AnimatePresence>
-                          {expanded && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.2, ease: EASE }}
-                              className="overflow-hidden pb-1 pl-3"
-                            >
-                              {item.columns
-                                ? item.columns.map((col) => (
-                                    <div key={col.title} className="mb-3">
-                                      <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
-                                        {col.title}
-                                      </div>
-                                      {col.items.map((sub) => (
-                                        <a
-                                          key={sub.label}
-                                          href={sub.href}
-                                          className="block rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white"
-                                          onClick={() => setMenuOpen(false)}
-                                        >
-                                          {sub.label}
-                                        </a>
-                                      ))}
-                                    </div>
-                                  ))
-                                : item.items?.map((sub) => (
-                                    <a
-                                      key={sub.label}
-                                      href={sub.href}
-                                      className="block rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition-colors duration-150 hover:bg-white/[0.06] hover:text-white"
-                                      onClick={() => setMenuOpen(false)}
-                                    >
-                                      {sub.label}
-                                    </a>
-                                  ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    );
-                  })}
-
-                  <a
-                    href="/events"
-                    className="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-black transition-colors duration-200 hover:bg-[color-mix(in_srgb,var(--primary)_85%,black)]"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    Explore events
-                    <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-                  </a>
-
-                  {downloadItem?.badges && (
-                    <div className="mt-4 flex flex-col items-center gap-3 border-t border-white/10 px-3 pb-5 pt-4">
-                      <p className="text-xs font-medium text-slate-400">Get Unifesto on your phone</p>
-                      <div className="flex items-center gap-4">
-                        {downloadItem.badges.map((sub) => (
-                          <a key={sub.label} href={sub.href} className="transition-opacity duration-150 hover:opacity-80">
-                            <Image src={sub.image} alt={`Download Unifesto on ${sub.label}`} className="h-11 w-auto object-contain" />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                          {g.label}
+                        </motion.li>,
+                      ]
+                    : []),
+                  ...g.items.map((l) => (
+                    <motion.li
+                      key={l.href}
+                      variants={{
+                        hidden: reduce ? { opacity: 0 } : { opacity: 0, y: 6 },
+                        visible: { opacity: 1, y: 0, transition: { duration: DUR.swap, ease: EASE_OUT_QUART } },
+                      }}
+                    >
+                      <a
+                        href={l.href}
+                        aria-current={isActive(pathname, l.href) ? "page" : undefined}
+                        className="flex items-center justify-between rounded-2xl px-4 py-3 text-base font-medium text-paper/85 transition-colors duration-150 hover:bg-paper/[0.07] aria-[current=page]:text-paper"
+                      >
+                        {l.label}
+                        {isActive(pathname, l.href) && <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />}
+                      </a>
+                    </motion.li>
+                  )),
+                ])}
+              </motion.ul>
+              <div className="flex flex-col gap-4 px-6 pb-6 pt-2">
+                <a href="/request-space" className="btn btn-primary w-full">
+                  Host an event
+                  <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
+                </a>
+                <div className="flex items-center justify-center gap-3">
+                  {STORES.map((s) => (
+                    <a key={s.label} href={s.href}>
+                      <Image src={s.image} alt={`Download Unifesto on ${s.label}`} className="h-10 w-auto" />
+                    </a>
+                  ))}
                 </div>
               </div>
             </motion.div>

@@ -5,9 +5,8 @@ import { useState, type FormEvent } from "react";
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 const FIELD =
-  "w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none";
-const CTA =
-  "inline-flex w-full items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-[#050507] transition-colors hover:bg-[#1f83ff] disabled:opacity-50";
+  "w-full rounded-3xl bg-night-2 px-4 py-3 text-sm text-white placeholder:text-paper/55 focus:border-primary/50 focus:outline-none";
+const CTA = "btn btn-primary";
 
 const TYPES = [
   { value: "REGULAR", title: "Regular", body: "A community, club or startup" },
@@ -140,9 +139,9 @@ export default function RequestSpaceClient() {
 
   if (step === "done") {
     return (
-      <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.02] p-8 text-center">
+      <div className="animate-pop-in text-center">
         <h2 className="text-2xl font-bold">Request sent</h2>
-        <p className="mt-2 text-slate-400">
+        <p className="mt-2 text-paper/65">
           We will review <strong className="text-white">{form.spaceName}</strong>. Sign in to the
           Unifesto app with {email} to track your request.
         </p>
@@ -153,9 +152,9 @@ export default function RequestSpaceClient() {
   if (step === "email-otp" || step === "phone-otp") {
     const isEmail = step === "email-otp";
     return (
-      <form onSubmit={isEmail ? verifyEmail : verifyPhone} className="mt-10 space-y-4">
-        <p className="text-sm text-slate-500">Step {isEmail ? 1 : 2} of 2</p>
-        <p className="text-slate-300">
+      <form onSubmit={isEmail ? verifyEmail : verifyPhone} className="space-y-4">
+        <p className="text-sm text-paper/55">Step {isEmail ? 1 : 2} of 2</p>
+        <p className="text-paper/75">
           {isEmail ? "We emailed a code to " : "We sent a WhatsApp code to "}
           <strong className="text-white">{isEmail ? email : `+91 ${form.phone}`}</strong>.
         </p>
@@ -175,7 +174,7 @@ export default function RequestSpaceClient() {
         <button type="submit" disabled={busy} className={CTA}>
           {busy ? "Verifying…" : isEmail ? "Verify email" : "Verify phone and send request"}
         </button>
-        <div className="flex justify-between text-sm text-slate-400">
+        <div className="flex justify-between text-sm text-paper/65">
           <button type="button" onClick={() => goTo("details")} className="hover:text-white">
             Change details
           </button>
@@ -193,7 +192,7 @@ export default function RequestSpaceClient() {
   }
 
   return (
-    <form onSubmit={sendEmailCode} className="mt-10 space-y-4">
+    <form onSubmit={sendEmailCode} className="space-y-4">
       <h2 className="pt-2 text-lg font-bold">Your space</h2>
       <input
         required
@@ -220,7 +219,7 @@ export default function RequestSpaceClient() {
           <label
             key={t.value}
             className={`cursor-pointer rounded-xl border p-4 transition-colors ${
-              form.type === t.value ? "border-primary bg-primary/10" : "border-white/10 bg-white/[0.02]"
+              form.type === t.value ? "border-primary bg-primary/10" : "border-white/10 bg-night-2"
             }`}
           >
             <input
@@ -232,7 +231,7 @@ export default function RequestSpaceClient() {
               className="sr-only"
             />
             <span className="block font-semibold">{t.title}</span>
-            <span className="block text-sm text-slate-400">{t.body}</span>
+            <span className="block text-sm text-paper/65">{t.body}</span>
           </label>
         ))}
       </fieldset>
@@ -253,7 +252,7 @@ export default function RequestSpaceClient() {
       />
 
       <h2 className="pt-4 text-lg font-bold">About you</h2>
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-paper/65">
         We create your Unifesto account with these details. You will run the space from it.
       </p>
       <input
@@ -276,8 +275,8 @@ export default function RequestSpaceClient() {
         placeholder="Email"
         className={FIELD}
       />
-      <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] focus-within:border-primary/50">
-        <span className="pl-4 text-sm text-slate-400">+91</span>
+      <div className="flex items-center rounded-3xl bg-night-2 focus-within:border-primary/50">
+        <span className="pl-4 text-sm text-paper/65">+91</span>
         <input
           required
           type="tel"
@@ -287,7 +286,7 @@ export default function RequestSpaceClient() {
           value={form.phone}
           onChange={(e) => set("phone", e.target.value.replace(/\D/g, "").slice(0, 10))}
           placeholder="Mobile number (WhatsApp)"
-          className="w-full bg-transparent px-3 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-none"
+          className="w-full bg-transparent px-3 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none"
         />
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
