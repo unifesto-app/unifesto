@@ -23,8 +23,8 @@ interface QueryParams {
   limit?: number;
 }
 
-/** How long request logs are kept. */
-const RETENTION_DAYS = 14;
+/** How long request logs are kept. CERT-In Directions (Apr 2022) require 180 days. */
+const RETENTION_DAYS = 180;
 
 @Injectable()
 export class LogsService {

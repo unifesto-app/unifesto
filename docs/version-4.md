@@ -648,6 +648,7 @@ Today: `unifesto.app/terms`, `/privacy`, `/refund` exist as static pages.
 | Cookie Policy (web) | planned |
 | Grievance redressal page (IT Rules 2021) | planned |
 | Versioned legal documents: stored with version + effective date, change log, acceptance recorded per user | planned |
+| CERT-In 180-day logs (api_logs + Caddy access logs) and no OTPs in app logs (2026-10-07 DPDP/CERT-In audit) | built, not deployed |
 
 Flow: drafts by 4 Oct → your lawyer 5–8 Oct (D6).
 
