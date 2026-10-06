@@ -191,7 +191,9 @@ export default function ManageGroupRoute() {
       row.kind === 'filled'
         ? row.isLead
           ? 'Team lead'
-          : 'In the team'
+          : row.appStatus
+            ? `In the team. ${row.appStatus}, so they don't have their own ticket in the app.`
+            : 'In the team'
         : row.kind === 'invited'
           ? `Invited${row.email ? ` · ${row.email}` : ''}, waiting to claim`
           : row.kind === 'released'
@@ -219,7 +221,7 @@ export default function ManageGroupRoute() {
             </View>
           ) : null}
           <SeatActions actions={row.actions} />
-          {row.actions.length === 0 && row.kind === 'filled' && !row.isLead && g.team?.isLead && !g.team.open ? (
+          {row.kind === 'filled' && !row.isLead && g.team?.isLead && !g.team.open ? (
             <Text style={[styles.small, { color: tokens.textMuted, marginTop: spacing[5] }]}>
               {g.team.lockedReason ?? 'Team changes are closed.'} Ask the organiser if you need a change.
             </Text>
@@ -486,7 +488,7 @@ function Row({ row }: { row: GroupRow }) {
 
   const [title, sub, titleColor, subColor] =
     row.kind === 'filled'
-      ? [row.name, row.sub, tokens.text, tokens.textMuted]
+      ? [row.name, row.appStatus ?? row.sub, tokens.text, tokens.textMuted]
       : row.kind === 'invited'
         ? [row.email || row.label, 'Invited, waiting to claim', tokens.text, tokens.accent]
         : row.kind === 'released'
