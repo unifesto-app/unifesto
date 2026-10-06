@@ -36,6 +36,22 @@ const statusMatches = (seatStatus: GroupSeatStatus, cond: any): boolean => {
   return seatStatus === cond;
 };
 
+/** The where-clause shapes the service uses on group_seats, nothing more. */
+const seatMatches = (s: Seat, where: any = {}): boolean =>
+  (where.id === undefined || s.id === where.id) &&
+  (where.inviteToken === undefined || s.inviteToken === where.inviteToken) &&
+  (where.registrationId === undefined || s.registrationId === where.registrationId) &&
+  (where.seatIndex === undefined ||
+    (typeof where.seatIndex === 'object' ? s.seatIndex > where.seatIndex.gt : s.seatIndex === where.seatIndex)) &&
+  (where.claimedByUserId === undefined ||
+    (where.claimedByUserId && typeof where.claimedByUserId === 'object'
+      ? s.claimedByUserId !== null
+      : s.claimedByUserId === where.claimedByUserId)) &&
+  statusMatches(s.status, where.status) &&
+  (where.NOT?.id === undefined || s.id !== where.NOT.id) &&
+  (where.OR === undefined || where.OR.some((w: any) => seatMatches(s, w))) &&
+  (where.AND === undefined || where.AND.every((w: any) => seatMatches(s, w)));
+
 function makeDb(seed: Seat[] = []) {
   const seats: Seat[] = seed.map((s) => ({ ...s }));
   let seq = seats.length;
@@ -60,12 +76,7 @@ function makeDb(seed: Seat[] = []) {
     },
 
     findMany: async ({ where = {}, orderBy }: any) => {
-      let out = seats.filter(
-        (s) =>
-          (where.registrationId === undefined ||
-            s.registrationId === where.registrationId) &&
-          statusMatches(s.status, where.status),
-      );
+      let out = seats.filter((s) => seatMatches(s, where));
       if (orderBy?.seatIndex === 'asc')
         out = [...out].sort((a, b) => a.seatIndex - b.seatIndex);
       return out.map((s) => ({ ...s }));
@@ -88,12 +99,7 @@ function makeDb(seed: Seat[] = []) {
     },
 
     findFirst: async ({ where }: any) => {
-      const hit = seats.find(
-        (s) =>
-          s.claimedByUserId === where.claimedByUserId &&
-          statusMatches(s.status, where.status) &&
-          (where.NOT?.id === undefined || s.id !== where.NOT.id),
-      );
+      const hit = seats.find((s) => s.claimedByUserId === where.claimedByUserId && seatMatches(s, where));
       return hit ? { id: hit.id } : null;
     },
 
@@ -104,14 +110,7 @@ function makeDb(seed: Seat[] = []) {
     },
 
     updateMany: async ({ where, data }: any) => {
-      const matched = seats.filter(
-        (s) =>
-          (where.inviteToken === undefined || s.inviteToken === where.inviteToken) &&
-          (where.registrationId === undefined ||
-            s.registrationId === where.registrationId) &&
-          (where.seatIndex === undefined || s.seatIndex === where.seatIndex) &&
-          statusMatches(s.status, where.status),
-      );
+      const matched = seats.filter((s) => seatMatches(s, where));
       matched.forEach((s) => Object.assign(s, data));
       return { count: matched.length };
     },
@@ -154,7 +153,10 @@ const build = (seed?: Seat[]) => {
   return { svc, prisma, seats, email };
 };
 
-const IDENTITIES = [{ userId: 'user-dinesh', email: 'Dinesh@x.com' }];
+const IDENTITIES = [
+  { userId: 'user-dinesh', email: 'Dinesh@x.com' },
+  { userId: 'user-bimal', email: 'bimal@x.com' },
+];
 
 describe('GroupSeatsService — seats as source of truth', () => {
   it('end to end: seed partial roster → edit → invite → claim → check-in ready', async () => {
@@ -382,6 +384,73 @@ describe('GroupSeatsService — seats as source of truth', () => {
 });
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+describe('GroupSeatsService — linking a typed-in teammate', () => {
+  // Seat 2 was typed in by the lead: CLAIMED (checkable at the door) but no
+  // account holds it, so the hackathon shows them "Not joined yet".
+  const typedTeam = () => [
+    seat(1, GroupSeatStatus.CLAIMED, { claimedByUserId: LEAD }),
+    seat(2, GroupSeatStatus.CLAIMED, {
+      memberDetails: { name: 'Bimal', email: 'bimal@x.com', mobile: '9000000001' },
+    }),
+    seat(3, GroupSeatStatus.OPEN),
+  ];
+
+  it('invites the typed-in seat by number without taking it off the team', async () => {
+    const { svc, seats, email } = build(typedTeam());
+    const { invited } = await svc.invite(REG, LEAD, [{ seatIndex: 2, email: 'Bimal@x.com' }]);
+    expect(invited).toEqual([{ seatIndex: 2, email: 'bimal@x.com' }]);
+    expect(seats[1]).toMatchObject({ status: 'CLAIMED', claimedByUserId: null, inviteEmail: 'bimal@x.com' });
+    expect(seats[1].memberDetails).toMatchObject({ name: 'Bimal' });
+    expect(email.sendRawEmail).toHaveBeenCalledWith('bimal@x.com', expect.any(String), expect.any(String));
+  });
+
+  it('never picks a typed-in seat when no seat number is given', async () => {
+    const { svc, seats } = build(typedTeam());
+    const { invited } = await svc.invite(REG, LEAD, [{ email: 'x@x.com' }]);
+    expect(invited).toEqual([{ seatIndex: 3, email: 'x@x.com' }]);
+    await expect(svc.invite(REG, LEAD, [{ email: 'y@x.com' }])).rejects.toThrow(/no open seats/i);
+    expect(seats[1].inviteEmail).toBeNull();
+  });
+
+  it('refuses to invite seat 1, which is always the lead', async () => {
+    const { svc } = build(typedTeam());
+    await expect(svc.invite(REG, LEAD, [{ seatIndex: 1, email: 'x@x.com' }])).rejects.toThrow(/no open seats/i);
+  });
+
+  it('the invited account claims it: account linked, typed details kept under theirs', async () => {
+    const { svc, seats } = build(typedTeam());
+    await svc.invite(REG, LEAD, [{ seatIndex: 2, email: 'bimal@x.com' }]);
+    const token = seats[1].inviteToken;
+
+    await expect(svc.claim(token, 'user-dinesh', { name: 'Dinesh' })).rejects.toThrow(/different account/);
+    expect((await svc.getClaimInfo(token, 'user-bimal')).seatIndex).toBe(2);
+
+    const res = await svc.claim(token, 'user-bimal', { name: 'Bimal K' });
+    expect(res.ticket.qrCode).toEqual(expect.any(String));
+    expect(seats[1]).toMatchObject({ status: 'CLAIMED', claimedByUserId: 'user-bimal' });
+    expect(seats[1].memberDetails).toMatchObject({ name: 'Bimal K', mobile: '9000000001', email: 'bimal@x.com' });
+
+    // Linked now, so it can't be claimed again.
+    await expect(svc.claim(token, 'user-bimal')).rejects.toThrow(/already been claimed/);
+  });
+
+  it('a typed-in seat nobody invited cannot be claimed, even with its token', async () => {
+    const { svc, seats } = build(typedTeam());
+    await expect(svc.claim(seats[1].inviteToken, 'user-bimal')).rejects.toThrow(/hasn't been sent/);
+    expect(seats[1].claimedByUserId).toBeNull();
+  });
+
+  it('declining only cancels the link: they stay on the team as typed', async () => {
+    const { svc, seats } = build(typedTeam());
+    await svc.invite(REG, LEAD, [{ seatIndex: 2, email: 'bimal@x.com' }]);
+    const token = seats[1].inviteToken;
+    expect(await svc.decline(token, 'user-bimal')).toEqual({ seatIndex: 2, status: 'CLAIMED' });
+    expect(seats[1]).toMatchObject({ status: 'CLAIMED', claimedByUserId: null, inviteEmail: null });
+    expect(seats[1].inviteToken).not.toBe(token);
+    expect(seats[1].memberDetails).toMatchObject({ name: 'Bimal' });
+  });
+});
 
 let tokenSeq = 0;
 function seat(seatIndex: number, status: GroupSeatStatus, extra: Partial<Seat> = {}): Seat {

@@ -57,6 +57,20 @@ const ACTIVE_REGISTRATION = {
   paymentStatus: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] },
 } satisfies Prisma.EventRegistrationWhereInput;
 
+/**
+ * A teammate the lead typed in (at booking or in Manage group): the seat is
+ * CLAIMED so door check-in works, but no account holds it. The lead can send
+ * it an invite so the person links their account (and can open the hackathon)
+ * without the seat ever leaving the team.
+ */
+const TYPED_IN = {
+  status: GroupSeatStatus.CLAIMED,
+  claimedByUserId: null,
+} satisfies Prisma.GroupSeatWhereInput;
+
+const isTypedIn = (seat: { status: GroupSeatStatus; claimedByUserId: string | null; seatIndex: number }) =>
+  seat.status === GroupSeatStatus.CLAIMED && !seat.claimedByUserId && seat.seatIndex !== 1;
+
 /** "dhanush@wegobeyond.in" → "dh•••@wegobeyond.in": enough to recognise, not to harvest. */
 function maskEmail(email: string): string {
   const [user, domain] = email.trim().split('@');
@@ -394,25 +408,43 @@ export class GroupSeatsService {
     });
     const openByIndex = new Map(open.map((s) => [s.seatIndex, s]));
     let nextPool = [...open];
+    // Typed-in teammates are only invited by naming their seat; the "next
+    // open seat" pool never picks one.
+    const typedIn = await this.prisma.groupSeat.findMany({
+      where: { registrationId, ...TYPED_IN, seatIndex: { gt: 1 } },
+    });
+    const typedInByIndex = new Map(typedIn.map((s) => [s.seatIndex, s]));
 
     const results: { seatIndex: number; email: string }[] = [];
     for (const inv of invites) {
       const email = inv.email.trim().toLowerCase();
+      const typed = inv.seatIndex != null ? typedInByIndex.get(inv.seatIndex) : undefined;
       const seat =
-        inv.seatIndex != null
+        typed ??
+        (inv.seatIndex != null
           ? openByIndex.get(inv.seatIndex)
-          : nextPool.shift();
+          : nextPool.shift());
       if (!seat) {
         throw new BadRequestException('No open seats left to invite to');
       }
-      // Consume the chosen seat from both structures.
+      // Consume the chosen seat from every structure.
       openByIndex.delete(seat.seatIndex);
+      typedInByIndex.delete(seat.seatIndex);
       nextPool = nextPool.filter((s) => s.seatIndex !== seat.seatIndex);
 
-      await this.prisma.groupSeat.update({
-        where: { id: seat.id },
-        data: { status: GroupSeatStatus.INVITED, inviteEmail: email },
+      // A typed-in seat stays CLAIMED (still on the team, still checkable at
+      // the door) and only gains the address the link is for. Sending again
+      // to another address simply replaces it: the claim only works for the
+      // account that owns the current email.
+      const linked = await this.prisma.groupSeat.updateMany({
+        where: typed ? { id: seat.id, ...TYPED_IN } : { id: seat.id, status: GroupSeatStatus.OPEN },
+        data: typed
+          ? { inviteEmail: email, reminderSentAt: null }
+          : { status: GroupSeatStatus.INVITED, inviteEmail: email },
       });
+      if (linked.count !== 1) {
+        throw new BadRequestException('That seat just changed. Refresh and try again.');
+      }
       results.push({ seatIndex: seat.seatIndex, email });
 
       // Best-effort invite email.
@@ -799,8 +831,10 @@ export class GroupSeatsService {
 
     const seats = await this.prisma.groupSeat.findMany({
       where: {
-        status: GroupSeatStatus.INVITED,
-        OR: emails.map((e) => ({ inviteEmail: { equals: e, mode: 'insensitive' as const } })),
+        AND: [
+          { OR: [{ status: GroupSeatStatus.INVITED }, TYPED_IN] },
+          { OR: emails.map((e) => ({ inviteEmail: { equals: e, mode: 'insensitive' as const } })) },
+        ],
         registration: {
           userId: { not: userId }, // never my own group's seats
           status: { not: RegistrationStatus.CANCELLED },
@@ -876,7 +910,7 @@ export class GroupSeatsService {
   /** Claim-time info for the claim screen (seat + event). Applies hybrid auth. */
   async getClaimInfo(token: string, claimerUserId: string) {
     const seat = await this.seatByTokenOrThrow(token);
-    if (seat.status === GroupSeatStatus.CLAIMED) {
+    if (seat.status === GroupSeatStatus.CLAIMED && !isTypedIn(seat)) {
       throw new BadRequestException('This seat has already been claimed');
     }
     if (seat.status === GroupSeatStatus.RELEASED) {
@@ -912,7 +946,7 @@ export class GroupSeatsService {
     memberDetails?: Record<string, unknown>,
   ) {
     const seat = await this.seatByTokenOrThrow(token);
-    if (seat.status === GroupSeatStatus.CLAIMED) {
+    if (seat.status === GroupSeatStatus.CLAIMED && !isTypedIn(seat)) {
       throw new BadRequestException('This seat has already been claimed');
     }
     if (seat.status === GroupSeatStatus.RELEASED) {
@@ -948,12 +982,24 @@ export class GroupSeatsService {
     // Without it the lead's roster showed a blank email and the member's
     // details were incomplete.
     const claimerEmail = await this.primaryEmail(claimerUserId, seat.inviteEmail);
-    const details: Record<string, unknown> = { ...(memberDetails ?? {}), ...(claimerEmail ? { email: claimerEmail } : {}) };
+    // A typed-in seat keeps what the lead entered underneath what the member
+    // sends now (e.g. the mobile the lead typed survives if the form skips it).
+    const typedDetails =
+      isTypedIn(seat) && seat.memberDetails && typeof seat.memberDetails === 'object' && !Array.isArray(seat.memberDetails)
+        ? (seat.memberDetails as Record<string, unknown>)
+        : {};
+    const details: Record<string, unknown> = {
+      ...typedDetails,
+      ...(memberDetails ?? {}),
+      ...(claimerEmail ? { email: claimerEmail } : {}),
+    };
 
     const claimed = await this.prisma.groupSeat.updateMany({
       where: {
         inviteToken: token,
-        status: { in: [GroupSeatStatus.OPEN, GroupSeatStatus.INVITED] },
+        // OPEN/INVITED, or a typed-in teammate's seat no account holds yet.
+        // Either way one claimer wins: the next one finds it taken.
+        OR: [{ status: { in: [GroupSeatStatus.OPEN, GroupSeatStatus.INVITED] } }, { ...TYPED_IN, seatIndex: { gt: 1 } }],
       },
       data: {
         status: GroupSeatStatus.CLAIMED,
@@ -1263,6 +1309,16 @@ export class GroupSeatsService {
     const seat = await this.seatByTokenOrThrow(token);
     // Same rule as claiming: only the invited account can turn it down.
     await this.assertHybridAuth(seat.inviteEmail, userId);
+    if (isTypedIn(seat)) {
+      // A typed-in teammate saying no only cancels the link: they stay on the
+      // team as the lead entered them, and a fresh token kills this link.
+      const res = await this.prisma.groupSeat.updateMany({
+        where: { inviteToken: token, ...TYPED_IN },
+        data: { inviteEmail: null, inviteToken: GroupSeatsService.newToken(), reminderSentAt: null },
+      });
+      if (res.count !== 1) throw new BadRequestException('This invite is no longer active');
+      return { seatIndex: seat.seatIndex, status: GroupSeatStatus.CLAIMED };
+    }
     const res = await this.prisma.groupSeat.updateMany({
       where: { inviteToken: token, status: GroupSeatStatus.INVITED },
       data: {

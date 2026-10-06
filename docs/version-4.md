@@ -41,7 +41,9 @@ changes each mobile release depends on.
 |---|---|---|---|---|---|---|---|
 | [4.0.0](#400--stabilize-and-ship) | major | Stabilize, OTA, registration questions, first store build of the redesign | **Sun 27 Sep** | store build | you | shipped (iOS 36, Android 45 approved) | – |
 | [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | shipped (iOS 39, Android 46 live) | 3 Oct |
-| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | rolling out (20%, 4 Oct) | – |
+| [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | shipped (100%, base for 4.1.1) | 4 Oct |
+| [4.1.1](#411--smoother-event-creation) | minor (named patch) | Smoother mobile event creation, multiple categories per event | 4 Oct | OTA | OTA | rolling out (20%, 4 Oct) | – |
+| [4.1.2](#412--typed-in-teammates-can-join) | patch | Teammates the lead typed in can link their account and join the hackathon | after 4.1.1 reaches 100% | backend deploy, then OTA | OTA | in review (#42) | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
 | [4.4.0](#440--event-feedback-and-user-iam) | minor | Event feedback system, user-level IAM | **Mon 5 Oct** | OTA | OTA | planned | – |
@@ -411,7 +413,74 @@ Already built: backend (rounds, panels, judgments, awards), space curator consol
   - iOS: group `6bf9a804-d8e6-4b4d-8bf2-b6da08e40808`, update `01a1033e-ff49-75d1-b308-3a25504b51d5`, runtime `d1776dd1e847165bdd66cfddd6165c836578319d`
   - Android: group `78402f35-dd30-49f4-b951-9b33fbb733ce`, update `01a1033e-ff49-7ae1-9572-7f7389ae3e43`, runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
 - Backend + Space deploy: 3 Oct 16:32 UTC (team changes, Stay gallery; migrations `20261003120000_stay_gallery`, `20261003130000_team_changes`)
+- Rollout to 100%: 4 Oct ~07:30 UTC. Starting the 4.1.1 rollout ended this one's 20% stage and made it the base update, so everyone not in 4.1.1's 20% gets 4.1.0. It had been at 20% for ~12 h; Crashlytics not re-checked at that point.
+---
+
+### 4.1.1 · Smoother event creation
+
+**Type:** minor, published as 4.1.1 · **Ships as:** OTA (4.0.5 runtime) + backend deploy
+
+Why: creating an event on mobile was one long form, buried four taps deep, that lost everything if you left and took ~8 taps from "done" to live.
+
+**Version note:** this adds features, so by the version rules it is a minor release. 4.2.0 was already taken by the Support release, so it went out as 4.1.1.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Create in three steps (Basics / When & where / Tickets), Next checks only the current step, tap back to reached steps; edit stays one page | done |
+| Autosave the create form per space (AsyncStorage), "Picked up where I left off · Start over", cleared once the event exists | done |
+| Inline field errors (`validateEventDraft` returns field + message; jumps to the step with the problem) | done |
+| Pin on map: shared `geocodeVenue` (from `VenueMap`) + map preview; quiet 4 s attempt at save; Android asks for location only on tap | done |
+| Tags as chips (`TagsField`) | done |
+| "Save as draft / Publish now" at the end (default draft); publish waits for the first ticket | done |
+| Cover / ticket / publish follow-ups retryable (Retry / Skip) before opening the event | done |
+| "New event" on Home and the Space tab, Space Admins only (`adminSpaces()`); fixes Curators being sent to a form they can't submit | done |
+| Multiple categories per event (max 3, primary first): `Event.categories` + migration `20261004120000_event_categories` (backfill + GIN index); `category` kept as the primary; single-category clients only swap the primary (`resolveCategories`); listing filter matches any; category counts unnest the list (and skip soft-deleted events) | done |
+| "What's new" entry for 4.1.1 | dropped (would need its own PR; changes are mostly organiser-side) |
+| Space web multi-select categories | planned |
+| Show every category on event detail (mobile + web) | planned |
+| Device run-through of the create flow (all steps, leave and return, Pin on map, Publish now) | planned |
+
+#### Log
+
+- **4 Oct:** Create flow + multiple categories built (#39). Backend `tsc` clean, 74 events/registrations/categories tests pass (new `event-categories.spec.ts`); migration applied on top of main's schema on a local Postgres with zero drift; mobile `tsc` clean + `eventDraft.check.ts` self-check. Not seen on a device.
+- **4 Oct:** Backend with `categories` confirmed live in production (API returns backfilled `categories`) before publishing the OTA, since the backend rejects unknown fields.
+- **4 Oct:** 4.1.1 OTA published to production at 20% from `main` `e87540f` (preflight passed on both 4.0.5 runtimes; `--skip-bundler` recipe). Publishing it promoted 4.1.0 to the base (see 4.1.0 Shipped). Promote to 100% after ~2 h with clean Crashlytics.
+
+#### Shipped
+
+- OTA (4.0.5 runtime), published 4 Oct ~07:30 UTC at 20%:
+  - iOS: group `cb4ee139-14c3-4c9a-9f5a-b982c353fee7`, update `01a105d3-d237-7119-9d8a-8873eabbd1da`, runtime `d1776dd1e847165bdd66cfddd6165c836578319d`
+  - Android: group `16c13122-5047-4e30-9e0a-bff85302b4ef`, update `01a105d3-d237-77b4-a8cf-dcd5c3cd8e0d`, runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
+- Backend (migration `20261004120000_event_categories`): live by 4 Oct ~07:20 UTC (verified through the API; deploy time not recorded here)
 - Rollout to 100%: pending
+---
+
+### 4.1.2 · Typed-in teammates can join
+
+**Type:** patch · **Ships as:** backend deploy **first**, then OTA (4.0.5 runtime, JS-only) · **Branch:** `claude/typed-teammate-invite`
+
+Why: in hackathon teams, members the lead typed in showed "Not joined yet" while Manage group showed every seat as claimed. A typed-in teammate sits on a `CLAIMED` seat with no account (so door check-in works), the hackathon only counts seats with an account, and they had no way to link one (invites only took `OPEN` seats, a claim refused `CLAIMED`). Mid-hackathon the team-change lock also blocked remove + re-invite.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Backend: `invite()` targets a typed-in seat by number (stays `CLAIMED`, gains `inviteEmail`); `claim`/`getClaimInfo` accept it under the same one-winner guard + email-ownership check, keeping the lead's typed details under the member's; Home invites card lists it; `decline` only cancels the link | done (#42) |
+| App: Manage group shows "Not on the app yet" / "App invite sent to …" + "Invite to the app" / "Resend app invite", allowed while team changes are locked | done (#42) |
+| Deploy backend, then publish the OTA (old backend answers "No open seats left to invite to") | planned |
+| Device run-through: lead invites a typed-in teammate, teammate claims from the email and Home card, hackathon shows them joined; decline path | planned |
+| Tell leads of running hackathon teams to tap "Invite to the app" for typed-in members (nothing links automatically) | planned |
+
+#### Log
+
+- **6 Oct:** Built (#42). 6 new `group-seats.service.spec.ts` tests (fake DB now matches `OR`/`AND`/`gt`/null filters); registrations + leaderboard + check-in suites 238 pass; backend + mobile `tsc` clean; mutation check on the claim guard fails the suite. Not seen on a device.
+
+#### Shipped
+
+- Backend deploy: – · OTA update: –
+
 ---
 
 ### 4.2.0 · Support system complete
@@ -649,6 +718,8 @@ Today: `unifesto.app/terms`, `/privacy`, `/refund` exist as static pages.
 | Grievance redressal page (IT Rules 2021) | planned |
 | Versioned legal documents: stored with version + effective date, change log, acceptance recorded per user | planned |
 | CERT-In 180-day logs (api_logs + Caddy access logs) and no OTPs in app logs (2026-10-07 DPDP/CERT-In audit) | built, not deployed |
+| DPDP erasure on account close: scrub personal data on the user's registrations (form answers), group seats + roster entries, stay bookings/guests, sponsor-lead contacts (+ consent off), organiser funnel leads (by verified email, or verified mobile for phone-only leads) and refund reasons, delete their private uploads; money fields kept | in progress: #41 open, needs backend rebuild (no migration) |
+| Privacy Policy "How long we keep it": say organiser-question answers are erased on account close (once the rewritten page and #41 land) | planned |
 
 Flow: drafts by 4 Oct → your lawyer 5–8 Oct (D6).
 
@@ -658,6 +729,17 @@ Company details for every document:
 - **Grievance officer:** Vinay Buddolla · vinay@unifesto.app · +91 93460 95136 → publish 9 Oct with re-acceptance (4.6.0).
 
 **Done when:** a lawyer has signed off on every document and they're live with acceptance tracking.
+
+#### Log
+
+- **6 Oct:** Account-close PII scrub built (#41): `closeAccount` clears the closing user's registration form answers, claimed group seats and their own legacy roster entries, and stay booking/guest details in the close transaction, then deletes referenced `private/form-uploads/` files (best-effort). Other members' data and all money fields untouched. New `users.service.close-account.spec.ts` (5 tests) + registrations/stays suites (85) pass, backend `tsc` clean. Not run against a real DB or S3. Not covered: abandoned-checkout uploads (left to the 180-day purge).
+- **6 Oct:** #41 extended: `SponsorLead` name/email/phone/note cleared (row kept for sponsor counts) and `shareContactWithSponsors` set false on the user's registrations; `RefundRequest.reason` replaced with a placeholder (amounts, status, Razorpay ids, staff notes kept; a request still in review loses its reason too).
+- **6 Oct:** #41: a refund still in review at close now keeps its reason for the reviewers; the curator-reject, admin-reject and approve paths redact it when they decide a closed account's refund (`RefundsService.reasonOnceDecided`). New `refunds.closed-account.spec.ts` (incl. the approve path through settlement, Razorpay stubbed); 97 users/refunds/registrations/stays tests pass, `tsc` clean.
+- **6 Oct:** #41: organiser `Lead` funnel covered. No user link, so leads are matched on the account's verified identity emails (case-insensitive, then confirmed exact in code since Postgres ILIKE treats `_` as a wildcard); name/email/phone/message cleared, source/status kept for funnel counts. Phone not matched. 99 users/refunds/registrations/stays/sponsors tests pass, `tsc` clean.
+- **6 Oct:** #41: phone-only funnel leads (no email) also matched on the account's verified mobile: SQL narrows on the last 10 digits (`regexp_replace` strips formatting, checked on local Postgres 17), then `normalizeMobile` (reused from `leaderboard/hackathon.shared.ts`) confirms the exact E.164 number. Leads with another email but this phone are left (shared numbers); trunk-`0` numbers aren't read by `normalizeMobile` so aren't matched.
+- **6 Oct:** #41: trunk-`0` lead phones (`09876543210`, `0 98765-43210`) now matched too: the scrub retries `normalizeMobile` without the leading `0`. Done locally so the hackathon judges form's validation doesn't change. 243 tests pass, `tsc` clean.
+- **6 Oct:** #41: `00` international prefix (`0091 98765 43210`) matched too. Both retries now live in an exported `leadMobile()` in `users.service.ts` with its own table test. 253 tests pass, `tsc` clean.
+- **6 Oct:** #41: folded the `0`/`00` handling into the shared `normalizeMobile` (`leaderboard/hackathon.shared.ts`) and removed `leadMobile`, so the hackathon judges form also accepts `09876543210` / `0091 98765 43210` (resolves to the same E.164 account, no duplicates). The mobile judge editor only checks non-empty, so backend-only. 253 tests pass, `tsc` clean. Leads a sponsor already exported can't be recalled. 91 users/registrations/stays tests pass, `tsc` clean.
 
 ### W7 · Content system (blogs, careers, pages) · 3 Oct → 8 Oct
 
