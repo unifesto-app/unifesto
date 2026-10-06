@@ -14,6 +14,7 @@ import {
 } from "@phosphor-icons/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PageHero from "@/components/site/PageHero";
 
 interface Career {
   id: string;
@@ -35,11 +36,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-const CTA =
-  "inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-[#050507] transition-colors duration-200 hover:bg-[#1f83ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+const CTA = "btn btn-primary";
 
 const SELECT =
-  "rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-100 outline-none transition-colors duration-200 focus:border-primary [&>option]:bg-[#0a0a0d]";
+  "rounded-xl border border-white/10 bg-night-2 px-4 py-2.5 text-sm text-paper/90 outline-none transition-colors duration-200 focus:border-steel [&>option]:bg-night-2";
 
 export default function CareersPage() {
   const reduce = useReducedMotion();
@@ -73,31 +73,18 @@ export default function CareersPage() {
   const types = [...new Set(careers.map((c) => c.type))];
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#050507] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
 
-      {/* Hero */}
-      <section className="relative px-6 pt-36 pb-12">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 h-[380px] w-[680px] -translate-x-1/2 rounded-full bg-primary/15 blur-[130px]"
-        />
-        <div className="relative mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 text-xs font-medium text-slate-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            We&apos;re hiring across the team
-          </span>
-          <h1 className="mt-6 text-balance text-4xl font-bold tracking-[-0.03em] sm:text-5xl md:text-6xl">
-            Build the <span className="text-primary">events</span> everyone shows up for.
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-slate-300 md:text-lg">
-            We&apos;re a small, product-obsessed team turning scattered events into one place institutions, clubs, communities, and startups trust. Come help us get there.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        lines={["Build the events", "everyone shows up for."]}
+        accentFrom={1}
+        size="md"
+        lede="We're a small, product-obsessed team turning scattered events into one place institutions, clubs, communities and startups trust. Come help us get there."
+      />
 
       {/* Filters + list */}
-      <section className="px-6 pb-24">
+      <section className="px-5 pb-24 pt-14 sm:px-8 md:pt-20">
         <div className="mx-auto max-w-5xl">
           <div className="flex flex-wrap items-center gap-3">
             <select
@@ -127,7 +114,7 @@ export default function CareersPage() {
               ))}
             </select>
             {careers.length > 0 && (
-              <span className="ml-auto text-sm text-slate-400">
+              <span className="ml-auto text-sm text-paper/65">
                 {careers.length} open {careers.length === 1 ? "role" : "roles"}
               </span>
             )}
@@ -136,51 +123,45 @@ export default function CareersPage() {
           <div className="mt-8">
             {loading ? (
               <div className="flex flex-col items-center py-24 text-center">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                <p className="mt-4 text-sm text-slate-400">Loading opportunities…</p>
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-steel border-t-transparent" />
+                <p className="mt-4 text-sm text-paper/65">Loading opportunities…</p>
               </div>
             ) : careers.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] py-20 text-center">
-                <p className="text-lg font-medium text-slate-200">No open positions right now</p>
-                <p className="mt-2 text-sm text-slate-400">
+              <div className="rounded-3xl bg-night-2 px-6 py-20 text-center">
+                <p className="text-lg font-medium text-paper/85">No open positions right now</p>
+                <p className="mt-2 text-sm text-paper/65">
                   Check back soon, or email us at{" "}
-                  <a href="mailto:careers@unifesto.app" className="text-primary hover:underline">
+                  <a href="mailto:careers@unifesto.app" className="text-primary link-draw">
                     careers@unifesto.app
                   </a>
                   .
                 </p>
               </div>
             ) : (
-              <ul className="flex flex-col gap-3">
-                {careers.map((career, i) => (
-                  <motion.li
-                    key={career.id}
-                    initial={reduce ? false : { opacity: 0, y: 16 }}
-                    whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-40px" }}
-                    transition={{ duration: 0.5, ease: EASE, delay: Math.min(i * 0.05, 0.3) }}
-                  >
+              <ul className="flex flex-col gap-3" data-stagger="rise">
+                {careers.map((career) => (
+                  <li key={career.id}>
                     <button
                       onClick={() => setSelectedCareer(career)}
-                      className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-left transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.05] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="group flex w-full items-center gap-4 rounded-3xl bg-night-2 p-7 text-left transition-colors duration-150 hover:bg-night-3"
                     >
                       <div className="min-w-0 flex-1">
                         <h3 className="text-lg font-semibold text-white">{career.title}</h3>
-                        <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+                        <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-paper/75">
                           <span className="inline-flex items-center gap-1.5">
-                            <MapPin size={16} weight="bold" className="text-slate-400" />
+                            <MapPin size={16} weight="bold" className="text-paper/65" />
                             {career.location}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <Briefcase size={16} weight="bold" className="text-slate-400" />
+                            <Briefcase size={16} weight="bold" className="text-paper/65" />
                             {career.department}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <Clock size={16} weight="bold" className="text-slate-400" />
+                            <Clock size={16} weight="bold" className="text-paper/65" />
                             {career.type}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <ChartBar size={16} weight="bold" className="text-slate-400" />
+                            <ChartBar size={16} weight="bold" className="text-paper/65" />
                             {career.experience_level}
                           </span>
                         </div>
@@ -188,10 +169,10 @@ export default function CareersPage() {
                       <CaretRight
                         size={20}
                         weight="bold"
-                        className="shrink-0 text-slate-500 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary"
+                        className="shrink-0 text-paper/55 transition-[transform,color] duration-150 group-hover:translate-x-1 group-hover:text-primary"
                       />
                     </button>
-                  </motion.li>
+                  </li>
                 ))}
               </ul>
             )}
@@ -210,7 +191,7 @@ export default function CareersPage() {
             transition={{ duration: 0.2 }}
             onClick={() => setSelectedCareer(null)}
           >
-            <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" aria-hidden />
+            <div className="absolute inset-0 bg-scrim/70 backdrop-blur-md" aria-hidden />
             <motion.div
               role="dialog"
               aria-modal="true"
@@ -220,28 +201,28 @@ export default function CareersPage() {
               exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 12 }}
               transition={{ duration: 0.25, ease: EASE }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0a0a0d] p-6 sm:p-8"
+              className="relative max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-night-2 p-7 sm:p-10"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <h2 className="text-2xl font-bold tracking-[-0.02em] text-white sm:text-3xl">
                     {selectedCareer.title}
                   </h2>
-                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-paper/75">
                     <span className="inline-flex items-center gap-1.5">
-                      <MapPin size={16} weight="bold" className="text-slate-400" />
+                      <MapPin size={16} weight="bold" className="text-paper/65" />
                       {selectedCareer.location}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Briefcase size={16} weight="bold" className="text-slate-400" />
+                      <Briefcase size={16} weight="bold" className="text-paper/65" />
                       {selectedCareer.department}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <Clock size={16} weight="bold" className="text-slate-400" />
+                      <Clock size={16} weight="bold" className="text-paper/65" />
                       {selectedCareer.type}
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                      <ChartBar size={16} weight="bold" className="text-slate-400" />
+                      <ChartBar size={16} weight="bold" className="text-paper/65" />
                       {selectedCareer.experience_level}
                     </span>
                   </div>
@@ -249,19 +230,19 @@ export default function CareersPage() {
                 <button
                   onClick={() => setSelectedCareer(null)}
                   aria-label="Close"
-                  className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                  className="shrink-0 rounded-full p-2 text-paper/65 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                   <X size={20} weight="bold" />
                 </button>
               </div>
 
               {selectedCareer.salary_range && (
-                <div className="mt-6 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="mt-6 flex items-center gap-3 rounded-2xl bg-night-3 p-5">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
                     <CurrencyInr size={18} weight="bold" />
                   </span>
                   <div>
-                    <p className="text-xs text-slate-400">Compensation</p>
+                    <p className="text-xs text-paper/65">Compensation</p>
                     <p className="text-base font-semibold text-white">{selectedCareer.salary_range}</p>
                   </div>
                 </div>
@@ -270,7 +251,7 @@ export default function CareersPage() {
               <div className="mt-6 space-y-7">
                 <div>
                   <h3 className="text-base font-semibold text-white">About the role</h3>
-                  <p className="mt-2 leading-relaxed text-slate-300">{selectedCareer.description}</p>
+                  <p className="mt-2 leading-relaxed text-paper/75">{selectedCareer.description}</p>
                 </div>
 
                 {selectedCareer.responsibilities.length > 0 && (
@@ -294,7 +275,7 @@ export default function CareersPage() {
                 </button>
                 <button
                   onClick={() => setSelectedCareer(null)}
-                  className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white"
+                  className="btn btn-secondary"
                 >
                   Close
                 </button>
@@ -314,7 +295,7 @@ export default function CareersPage() {
 }
 
 const FIELD =
-  "w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary/50 focus:outline-none";
+  "w-full rounded-xl border border-white/10 bg-night-2 px-4 py-2.5 text-sm text-white placeholder:text-paper/55 focus:border-steel/50 focus:outline-none";
 
 function ApplyModal({
   career,
@@ -374,19 +355,19 @@ function ApplyModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#0a0a0f] p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/70 p-4 backdrop-blur-sm">
+      <div className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-night-2 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-white">
               {done ? "Application received" : "Apply"}
             </h2>
-            <p className="mt-0.5 text-sm text-slate-400">{career.title}</p>
+            <p className="mt-0.5 text-sm text-paper/65">{career.title}</p>
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="text-slate-400 hover:text-white"
+            className="text-paper/65 hover:text-white"
           >
             <X size={20} />
           </button>
@@ -394,7 +375,7 @@ function ApplyModal({
 
         {done ? (
           <div className="mt-6 text-center">
-            <p className="text-slate-300">
+            <p className="text-paper/75">
               Thanks for applying to <strong>{career.title}</strong>. We&apos;ve
               received your application and will be in touch if it&apos;s a match.
             </p>
@@ -427,8 +408,8 @@ function ApplyModal({
             />
 
             <div>
-              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-3 text-sm hover:border-white/25">
-                <span className={resume ? "text-white" : "text-slate-400"}>
+              <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-white/15 bg-night-2 px-4 py-3 text-sm hover:border-white/25">
+                <span className={resume ? "text-white" : "text-paper/65"}>
                   {resume ? resume.name : "Attach resume (PDF or Word, ≤5MB)"}
                 </span>
                 <span className="shrink-0 rounded-lg bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
@@ -485,7 +466,7 @@ function DetailList({ title, items }: { title: string; items: string[] }) {
       <h3 className="text-base font-semibold text-white">{title}</h3>
       <ul className="mt-3 space-y-2.5">
         {items.map((item, idx) => (
-          <li key={idx} className="flex gap-2.5 leading-relaxed text-slate-300">
+          <li key={idx} className="flex gap-2.5 leading-relaxed text-paper/75">
             <CaretRight size={16} weight="bold" className="mt-1 shrink-0 text-primary" />
             <span>{item}</span>
           </li>

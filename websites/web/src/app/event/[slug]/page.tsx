@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
-import { getEventBySlug } from "@/lib/api/events";
+import { withSocial } from "@/lib/seo";
+import { cache } from "react";
+import { getEventBySlug as fetchEvent, type Event } from "@/lib/api/events";
+import JsonLd from "@/components/site/JsonLd";
+import { SITE } from "@/lib/site";
 import EventDetailClient from "./EventDetailClient";
+
+// One fetch per request, shared by generateMetadata and the page.
+const getEventBySlug = cache(fetchEvent);
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -32,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!event) {
     return {
-      title: "Event not found | Unifesto",
+      title: "Event not found",
       robots: { index: false, follow: false },
     };
   }
@@ -52,23 +59,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // the app's default icon when absent.
   const faviconUrl = event.branding?.faviconUrl ?? null;
 
-  return {
-    title,
+  return withSocial({
+    title: { absolute: title },
     description,
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      siteName: "Unifesto",
-      url: canonical,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
     // Safari's App Clip card: opens the native event preview (mobile/targets/clip)
     // without installing the full app. Uses the OG image above as the card art.
     // Hand-written rather than Next's `itunes` field, which can't express the
@@ -76,11 +71,63 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     other: {
       "apple-itunes-app": `app-id=6767165496, app-clip-bundle-id=com.unifesto.app.Clip, app-clip-display=card, app-argument=https://unifesto.app${canonical}`,
     },
+  }, { image: false });
+}
+
+/* schema.org Event, server-rendered, so search engines (event rich results)
+   and AI crawlers that never run the client bundle still read the essentials. */
+function eventLd(event: Event) {
+  const online = /online|virtual/i.test(event.event_type ?? "");
+  const host = event.space ?? event.organization;
+  const image = event.banner_url ?? event.image_url ?? event.thumbnail_url;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    name: event.title,
+    description: toSummary(event.short_description) ?? toSummary(event.description, 500),
+    startDate: event.start_date,
+    endDate: event.end_date || undefined,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: online
+      ? "https://schema.org/OnlineEventAttendanceMode"
+      : "https://schema.org/OfflineEventAttendanceMode",
+    location: online
+      ? { "@type": "VirtualLocation", url: `${SITE.url}/event/${event.slug}` }
+      : {
+          "@type": "Place",
+          name: event.venue || event.city || "Venue to be announced",
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: event.city,
+            addressRegion: event.state,
+            addressCountry: event.country || "IN",
+          },
+        },
+    image: image ? [image] : undefined,
+    url: `${SITE.url}/event/${event.slug}`,
+    organizer: host
+      ? { "@type": "Organization", name: host.name, url: host.slug ? `${SITE.url}/space/${host.slug}` : undefined }
+      : { "@id": `${SITE.url}/#org` },
+    offers: {
+      "@type": "Offer",
+      url: `${SITE.url}/event/${event.slug}`,
+      price: event.is_free || event.has_free_tickets ? 0 : (event.price ?? 0),
+      priceCurrency: event.currency || "INR",
+      availability: "https://schema.org/InStock",
+      validFrom: event.registration_start,
+    },
   };
 }
 
-export default function EventDetailPage({ params }: Props) {
-  // The heavy interactive UI stays a client component; the server layer above
-  // exists only to emit metadata. Forward the same params promise straight down.
-  return <EventDetailClient params={params} />;
+export default async function EventDetailPage({ params }: Props) {
+  // The interactive UI stays a client component; the server layer emits
+  // metadata and structured data. Forward the same params promise down.
+  const { slug } = await params;
+  const event = await getEventBySlug(slug);
+  return (
+    <>
+      {event && <JsonLd data={eventLd(event)} />}
+      <EventDetailClient params={params} />
+    </>
+  );
 }

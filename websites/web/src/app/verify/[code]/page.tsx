@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -18,7 +19,7 @@ export async function generateMetadata({
 
   if (!cert) {
     return {
-      title: "Certificate not found | Unifesto",
+      title: "Certificate not found",
       robots: { index: false, follow: false },
     };
   }
@@ -28,22 +29,11 @@ export async function generateMetadata({
     ? `Verified certificate issued to ${cert.recipientName} by ${cert.issuer} for ${cert.eventTitle}.`
     : `This certificate (${cert.certificateNumber}) has been revoked.`;
 
-  return {
-    title,
+  return withSocial({
+    title: { absolute: title },
     description,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      siteName: "Unifesto",
-      ...(cert.imageUrl ? { images: [{ url: cert.imageUrl }] } : {}),
-    },
-    twitter: {
-      card: cert.imageUrl ? "summary_large_image" : "summary",
-      title,
-      description,
-    },
-  };
+    alternates: { canonical: `/verify/${encodeURIComponent(code)}` },
+  }, { image: false });
 }
 
 function formatDate(dateString: string): string {
@@ -59,34 +49,26 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
   const cert = await verifyCertificate(code).catch(() => null);
 
   return (
-    <main className="min-h-screen bg-black overflow-x-hidden">
+    <main className="min-h-screen bg-canvas overflow-x-hidden">
       <Navbar />
 
-      <section className="relative pt-36 pb-24 px-6 overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 50% at 50% 0%, rgba(52,145,255,0.1) 0%, transparent 70%)",
-          }}
-          aria-hidden="true"
-        />
+      <section className="relative px-5 pb-24 pt-32 sm:px-8 md:pt-40">
 
         <div className="relative z-10 max-w-2xl mx-auto">
           {/* Not found */}
           {!cert ? (
-            <div className="p-10 rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm text-center">
+            <div className="animate-pop-in rounded-3xl bg-night-2 p-10 text-center">
               <StatusIcon variant="unknown" />
               <h1 className="text-2xl font-bold text-white mt-5 mb-2">
                 Certificate not found
               </h1>
-              <p className="text-slate-400 mb-6">
+              <p className="text-paper/65 mb-6">
                 We couldn&apos;t find a certificate for this code. Check that the
                 link was copied in full.
               </p>
               <Link
                 href="/"
-                className="inline-block px-5 py-2.5 rounded-lg border border-white/10 text-white hover:bg-white/[0.04] transition-colors"
+                className="btn btn-secondary"
               >
                 Go home
               </Link>
@@ -95,21 +77,19 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
             <>
               {/* Verdict banner */}
               <div
-                className={`p-6 rounded-2xl border text-center mb-6 ${
-                  cert.valid
-                    ? "border-green-500/20 bg-green-500/[0.04]"
-                    : "border-red-500/20 bg-red-500/[0.04]"
+                className={`animate-pop-in mb-6 rounded-3xl p-8 text-center ${
+                  cert.valid ? "bg-green-500/10" : "bg-red-500/10"
                 }`}
               >
                 <StatusIcon variant={cert.valid ? "valid" : "revoked"} />
                 <h1
-                  className={`text-2xl font-bold mt-4 mb-1 ${
+                  className={`mb-1 mt-4 font-display text-2xl font-bold tracking-[-0.03em] ${
                     cert.valid ? "text-green-400" : "text-red-400"
                   }`}
                 >
                   {cert.valid ? "Verified certificate" : "Certificate revoked"}
                 </h1>
-                <p className="text-slate-400 text-sm">
+                <p className="text-paper/65 text-sm">
                   {cert.valid
                     ? "This certificate is authentic and was issued by Unifesto."
                     : `This certificate was revoked${
@@ -121,7 +101,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
               {/* Preview */}
               {cert.imageUrl && (
                 <div
-                  className={`rounded-2xl border border-white/10 overflow-hidden mb-6 ${
+                  className={`enter mb-6 overflow-hidden rounded-3xl ${
                     cert.valid ? "" : "opacity-60 grayscale"
                   }`}
                 >
@@ -135,7 +115,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
               )}
 
               {/* Details */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] backdrop-blur-sm divide-y divide-white/5">
+              <div className="enter rounded-3xl bg-night-2 px-2 py-2" style={{ ["--d" as string]: "200ms" }}>
                 <DetailRow label="Recipient" value={cert.recipientName} />
                 <DetailRow label="Event" value={cert.eventTitle} />
                 <DetailRow label="Issued by" value={cert.issuer} />
@@ -155,7 +135,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
                     href={cert.pdfUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-block px-6 py-3 rounded-lg text-sm font-semibold text-white bg-[#0062ff] hover:bg-[#0052d6] transition-colors"
+                    className="inline-block px-6 py-3 rounded-lg text-sm font-semibold text-primary-foreground bg-primary hover:bg-primary-bright transition-colors"
                   >
                     Download PDF
                   </a>
@@ -174,7 +154,7 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-5 py-4">
-      <span className="text-sm text-slate-500 shrink-0">{label}</span>
+      <span className="text-sm text-paper/55 shrink-0">{label}</span>
       <span className="text-sm text-white font-medium text-right">{value}</span>
     </div>
   );
@@ -195,7 +175,7 @@ function StatusIcon({
       path: "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z",
     },
     unknown: {
-      ring: "border-white/10 bg-white/[0.03] text-slate-500",
+      ring: "border-white/10 bg-night-2 text-paper/55",
       path: "M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
     },
   }[variant];

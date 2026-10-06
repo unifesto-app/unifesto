@@ -1,8 +1,9 @@
 import { MetadataRoute } from 'next'
 import { getEvents } from '@/lib/api/events'
 import { getSpaces } from '@/lib/api/spaces'
+import { SITE } from '@/lib/site'
 
-const baseUrl = 'https://unifesto.app'
+const baseUrl = SITE.url
 
 // Regenerate the sitemap hourly so newly published events/spaces get indexed
 // without a redeploy. The fetches below make this a dynamic sitemap; without a
@@ -69,115 +70,43 @@ async function getSpaceRoutes(): Promise<MetadataRoute.Sitemap> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const currentDate = new Date()
 
+  // Public, indexable pages only. Private and transactional routes
+  // (/profile, /signup, /claim, /download, register flows) are excluded and
+  // disallowed in robots.ts.
+  const page = (
+    path: string,
+    changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'],
+    priority: number,
+  ) => ({ url: `${baseUrl}${path}`, lastModified: currentDate, changeFrequency, priority })
+
   const staticRoutes: MetadataRoute.Sitemap = [
-    {
-      url: baseUrl,
-      lastModified: currentDate,
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/features`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/events`,
-      lastModified: currentDate,
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/host`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/request-space`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/spaces`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/pricing`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/careers`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/docs`,
-      lastModified: currentDate,
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/support`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/auth`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/profile`,
-      lastModified: currentDate,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: currentDate,
-      changeFrequency: 'yearly',
-      priority: 0.4,
-    },
-    {
-      url: `${baseUrl}/delete-account`,
-      lastModified: currentDate,
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: currentDate,
-      changeFrequency: 'yearly',
-      priority: 0.4,
-    },
-    {
-      url: `${baseUrl}/refund`,
-      lastModified: currentDate,
-      changeFrequency: 'yearly',
-      priority: 0.3,
-    },
+    page('', 'daily', 1),
+    page('/organisers', 'weekly', 0.9),
+    page('/app', 'weekly', 0.9),
+    page('/hackathons', 'weekly', 0.9),
+    page('/stay', 'weekly', 0.8),
+    page('/pricing', 'monthly', 0.9),
+    page('/events', 'daily', 0.9),
+    page('/spaces', 'weekly', 0.8),
+    page('/request-space', 'monthly', 0.7),
+    page('/about', 'monthly', 0.7),
+    page('/blog', 'weekly', 0.7),
+    page('/careers', 'weekly', 0.6),
+    page('/press', 'monthly', 0.5),
+    page('/support', 'monthly', 0.6),
+    page('/docs', 'monthly', 0.5),
+    page('/privacy', 'yearly', 0.3),
+    page('/terms', 'yearly', 0.3),
+    page('/refund', 'yearly', 0.3),
+    page('/privacy-notice', 'yearly', 0.3),
+    page('/cookies', 'yearly', 0.3),
+    page('/code-of-conduct', 'yearly', 0.3),
+    page('/data-rights', 'yearly', 0.3),
+    page('/privacy-requests', 'yearly', 0.3),
+    page('/subprocessors', 'yearly', 0.3),
+    page('/grievance', 'yearly', 0.3),
+    page('/security', 'yearly', 0.3),
+    page('/delete-account', 'yearly', 0.2),
   ]
 
   const [eventRoutes, spaceRoutes] = await Promise.all([

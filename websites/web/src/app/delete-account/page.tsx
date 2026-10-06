@@ -1,108 +1,108 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
+import LegalPage, { type LegalSection } from "@/components/site/LegalPage";
+import { LEGAL } from "@/lib/legal";
 
-// Public account-deletion page. Google Play's Data safety form requires a web
-// link where users can request deletion without the app. Keep it in step with
-// the real flow: DELETE /users/me (30-day grace, cancellable) and the purge job
-// in AccountDeletionSchedulerService.
-export const metadata = {
-  title: "Delete Your Account | Unifesto",
-  description: "How to delete your Unifesto account and what happens to your data.",
-  openGraph: {
-    title: "Delete Your Account | Unifesto",
-    description: "How to delete your Unifesto account and what happens to your data.",
-    type: "website",
-    url: "https://www.unifesto.app/delete-account",
-    siteName: "Unifesto",
+/* Account deletion, as the backend actually does it (users.service:
+   requestAccountDeletion → 30-day grace → purgeDueDeletions/closeAccount).
+   This page is the web deletion URL listed on Google Play and the App
+   Store, so it must stay accurate and reachable without signing in. */
+
+export const metadata: Metadata = withSocial({
+  title: "Delete your account",
+  description:
+    "How to delete your Unifesto account in the app or by email, the 30-day grace period, what data is deleted and what is kept by law.",
+  alternates: { canonical: "/delete-account" },
+}, { title: "Delete your Unifesto account" });
+
+const mail = (e: string, subject?: string) => (
+  <a href={`mailto:${e}${subject ? `?subject=${encodeURIComponent(subject)}` : ""}`}>{e}</a>
+);
+
+const sections: LegalSection[] = [
+  {
+    id: "in-app",
+    title: "Delete in the app",
+    body: (
+      <ol>
+        <li>Open the Unifesto app and sign in.</li>
+        <li>Go to <strong>Profile</strong>, then <strong>Account</strong>.</li>
+        <li>Tap <strong>Delete account</strong> and confirm.</li>
+      </ol>
+    ),
   },
-};
+  {
+    id: "by-email",
+    title: "No access to the app",
+    body: (
+      <p>
+        Write to {mail(LEGAL.email.privacy, "Delete my account")} with the subject “Delete my account”, from the
+        email address or with the mobile number you sign in with. We will confirm it is you and start the deletion within
+        7 days.
+      </p>
+    ),
+  },
+  {
+    id: "grace",
+    title: "The 30-day grace period",
+    body: (
+      <p>
+        Nothing is removed straight away. Your account closes automatically 30 days after you ask. Change your mind before
+        then and you can cancel the deletion from the app and keep your account as it is.
+      </p>
+    ),
+  },
+  {
+    id: "before",
+    title: "Before your account can close",
+    body: (
+      <ul>
+        <li>If you created a Space, transfer its ownership to another member or archive it.</li>
+        <li>If you hold a ticket for an event that has not ended, cancel it or wait until the event is over.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "deleted",
+    title: "What is deleted",
+    body: (
+      <>
+        <p>When your account closes we permanently remove:</p>
+        <ul>
+          <li>your name, username, mobile number, profile photo, bio, gender and social links;</li>
+          <li>every sign-in method (mobile, email, Google, Apple), so the same email or number can be used for a new account;</li>
+          <li>your saved payout bank accounts, notification settings, push devices and saved events;</li>
+          <li>your roles in Spaces, sponsor access and check-in permissions.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "kept",
+    title: "What is kept, and why",
+    body: (
+      <>
+        <ul>
+          <li>Payment, refund, payout and tax records, which the law requires us to keep (up to eight years). They stay attached to a closed account with no name or contact details.</li>
+          <li>Event records such as registrations, check-ins and stay bookings, which the organisers of those events rely on. Answers you gave to an organiser’s questions stay with that event.</li>
+        </ul>
+        <p>
+          To also erase your registration answers and stay details, say so in your email to{" "}
+          {mail(LEGAL.email.privacy, "Delete my account")}. See the <a href="/privacy">Privacy Policy</a> for more.
+        </p>
+      </>
+    ),
+  },
+];
 
 export default function DeleteAccountPage() {
   return (
-    <main className="min-h-screen bg-[#050507] overflow-x-hidden text-white">
-      <Navbar />
-
-      <section className="relative pt-36 pb-20 px-6 text-center overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-primary/12 blur-[130px]"
-        />
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-[-0.02em] leading-tight mb-5">
-            Delete your account
-          </h1>
-          <p className="text-slate-400 text-sm md:text-base leading-relaxed max-w-2xl mx-auto">
-            You can delete your Unifesto account at any time, in the app or by email.
-          </p>
-        </div>
-      </section>
-
-      <section className="relative px-6 pb-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-4">In the app</h2>
-            <ol className="list-decimal list-inside text-slate-300 space-y-2 mb-4 ml-4">
-              <li>Open the Unifesto app and sign in.</li>
-              <li>Go to <strong className="text-white">Profile</strong> and tap <strong className="text-white">Account settings</strong>.</li>
-              <li>Tap <strong className="text-white">Delete account</strong> and confirm.</li>
-            </ol>
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-4">By email</h2>
-            <p className="text-slate-300 leading-relaxed mb-4">
-              No access to the app? Email{" "}
-              <a href="mailto:privacy@unifesto.app?subject=Delete%20my%20account" className="text-primary hover:underline">
-                privacy@unifesto.app
-              </a>{" "}
-              with the subject &quot;Delete my account&quot;, from the email address you sign in with. We&apos;ll confirm
-              it&apos;s you and process the request within 7 days.
-            </p>
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-4">What happens next</h2>
-            <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-              <li>
-                Your account is scheduled for deletion in <strong className="text-white">30 days</strong>. Sign in before
-                then and you can keep it.
-              </li>
-              <li>
-                After 30 days we permanently remove your personal details: name, email, phone number, profile photo,
-                sign-in methods, saved payout accounts and notification settings.
-              </li>
-              <li>
-                Records we must keep by law, such as payment, refund and tax records, stay for the required period with
-                your personal details removed.
-              </li>
-            </ul>
-          </div>
-
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold text-white mb-4">Before you delete</h2>
-            <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-              <li>If you own a space, transfer it to another member or archive it first.</li>
-              <li>If you have a ticket for an upcoming event, cancel it or wait until the event is over.</li>
-            </ul>
-          </div>
-
-          <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
-            <p className="text-slate-300 mb-2">
-              <strong className="text-white">Privacy questions:</strong>{" "}
-              <a href="mailto:privacy@unifesto.app" className="text-primary hover:underline">privacy@unifesto.app</a>
-            </p>
-            <p className="text-slate-300 mb-2">
-              <strong className="text-white">Grievance officer:</strong> Vinay Buddolla,{" "}
-              <a href="mailto:vinay@unifesto.app" className="text-primary hover:underline">vinay@unifesto.app</a>
-            </p>
-            <p className="text-slate-300">
-              <strong className="text-white">Company:</strong> Unifesto Private Limited
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+    <LegalPage
+      title="Delete your account"
+      path="/delete-account"
+      lines={["Delete your", "Unifesto account"]}
+      lede="You can delete your account at any time, in the Unifesto app or by email. Here is exactly what happens."
+      sections={sections}
+    />
   );
 }

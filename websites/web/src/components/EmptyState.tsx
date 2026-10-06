@@ -1,4 +1,4 @@
-import { brandGradient } from "@/lib/styles";
+import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 
 interface EmptyStateProps {
   onClear: () => void;
@@ -7,38 +7,28 @@ interface EmptyStateProps {
 
 const SUGGESTIONS = ["Hackathon", "Workshop", "Cultural", "Entrepreneurship"];
 
+/* No results: say so plainly, offer a way back, and a few doors to try. */
 export default function EmptyState({ onClear, onCategory }: EmptyStateProps) {
   return (
-    <div className="col-span-full flex flex-col items-center justify-center py-24 text-center gap-4">
-      {/* Illustration */}
-      <div className="relative w-20 h-20 mb-2">
-        <div className="absolute inset-0 rounded-full border border-white/5 animate-ping" style={{ animationDuration: "3s" }} />
-        <div className="absolute inset-2 rounded-full border border-white/5" />
-        <div className="absolute inset-4 rounded-full border border-white/5" />
-        <div className="absolute inset-0 flex items-center justify-center text-3xl">🔍</div>
-      </div>
+    <div className="animate-pop-in col-span-full flex flex-col items-center justify-center gap-5 rounded-3xl bg-night-2 px-6 py-20 text-center">
+      <MagnifyingGlass className="h-10 w-10 text-primary" weight="bold" aria-hidden="true" />
       <div>
-        <p className="text-lg font-bold text-white mb-1">No events found</p>
-        <p className="text-sm text-slate-500 max-w-xs">Try a different search or filter. Here are some ideas:</p>
+        <p className="text-lg font-bold text-paper">No events match that.</p>
+        <p className="mx-auto mt-1 max-w-xs text-sm text-paper/60">Try a different search, or one of these:</p>
       </div>
-      {/* Suggestions */}
-      <div className="flex flex-wrap justify-center gap-2 mt-1">
+      <div className="flex flex-wrap justify-center gap-2">
         {SUGGESTIONS.map((cat) => (
           <button
             key={cat}
             onClick={() => onCategory(cat)}
-            className="text-xs font-semibold px-3.5 py-1.5 rounded-full border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all duration-200"
+            className="rounded-full bg-paper/[0.06] px-4 py-1.5 text-xs font-semibold text-paper/75 transition-colors duration-150 hover:bg-paper/[0.1] hover:text-paper"
           >
             {cat}
           </button>
         ))}
       </div>
-      <button
-        onClick={onClear}
-        className="mt-1 text-sm font-semibold px-5 py-2 rounded-full text-black transition-all duration-200 hover:shadow-[0_0_20px_rgba(52,145,255,0.3)]"
-        style={{ background: brandGradient }}
-      >
-        Explore all events
+      <button onClick={onClear} className="btn btn-sm btn-primary">
+        Show all events
       </button>
     </div>
   );

@@ -1,32 +1,30 @@
 import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PageHero from "@/components/site/PageHero";
 import RequestSpaceClient from "./RequestSpaceClient";
 
-export const metadata: Metadata = {
-  title: "Request a Space | Unifesto",
+export const metadata: Metadata = withSocial({
+  alternates: { canonical: "/request-space" },
+  title: "Request a Space",
   description:
     "Run your club, community or institution on Unifesto. Request a Space and our team will review it.",
-  openGraph: {
-    title: "Request a Space | Unifesto",
-    description: "Run your club, community or institution on Unifesto.",
-    type: "website",
-    url: "https://www.unifesto.app/request-space",
-    siteName: "Unifesto",
-  },
-};
+}, { title: "Request a Space on Unifesto", description: "Run your club, community or institution on Unifesto." });
 
 export default function RequestSpacePage() {
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
-      <section className="mx-auto max-w-2xl px-4 pb-24 pt-32 sm:px-6">
-        <h1 className="text-3xl font-extrabold leading-tight md:text-5xl">Request a Space</h1>
-        <p className="mt-4 text-slate-400">
-          A Space is home for your club, community or institution. Your team, events and money live
-          there. Tell us about it and we will review your request.
-        </p>
-        <RequestSpaceClient />
+      <PageHero
+        lines={["Request a Space."]}
+        size="md"
+        lede="A Space is home for your club, community or institution: your team, your events and your money in one place. Tell us about it and we'll review your request, usually within 24–48 hours."
+      />
+      <section className="px-5 pb-24 pt-14 sm:px-8 md:pt-20">
+        <div className="mx-auto max-w-2xl rounded-3xl bg-night-2 p-7 sm:p-10" data-reveal="rise">
+          <RequestSpaceClient />
+        </div>
       </section>
       <Footer />
     </main>

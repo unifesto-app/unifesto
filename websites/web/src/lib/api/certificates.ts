@@ -1,49 +1,14 @@
 /**
- * Certificate API functions.
- *
- * Two very different callers:
- *   - getMyCertificates(): authenticated, the signed-in attendee's own list.
- *   - verifyCertificate():  PUBLIC, used by the /verify/[code] page. No session
- *     is required, so it is a plain fetch usable from the server.
+ * Certificate API for the website: public verification only, used by the
+ * /verify/[code] page. No session is required, so it is a plain fetch usable
+ * from the server. An attendee's own certificate list lives in the app.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
 
-/** Auth headers from the current Supabase session (client-side only). */
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const { createClient } = await import("@/lib/supabase/client");
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error("No active session");
-  }
-
-  return {
-    Authorization: `Bearer ${session.access_token}`,
-    "Content-Type": "application/json",
-  };
-}
-
 // ============================================================================
 // TYPES
 // ============================================================================
-
-export interface MyCertificate {
-  id: string;
-  certificateNumber: string;
-  verificationCode: string;
-  pdfUrl: string | null;
-  imageUrl: string | null;
-  issuedAt: string;
-  event: {
-    id: string;
-    title: string;
-    slug: string;
-  };
-}
 
 export interface CertificateVerification {
   /** True only when status is ISSUED (a revoked certificate resolves but is invalid). */
@@ -63,22 +28,6 @@ export interface CertificateVerification {
 // ============================================================================
 // AUTHENTICATED
 // ============================================================================
-
-/** The signed-in attendee's certificates across every event. */
-export async function getMyCertificates(): Promise<MyCertificate[]> {
-  const headers = await getAuthHeaders();
-  const response = await fetch(`${API_URL}/certificates/mine`, {
-    method: "GET",
-    headers,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || "Failed to load certificates");
-  }
-
-  return response.json();
-}
 
 // ============================================================================
 // PUBLIC

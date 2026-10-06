@@ -6,38 +6,95 @@
 
 /* ─── Unifesto Design Tokens ─────────────────────────────────────────── */
 :root {
-  /* Off-black canvas: reads as black on-device, but keeps depth and avoids
-     the flat, hollow feel of pure #000. Surfaces step up from here. */
-  --background: #050507;
-  --foreground: #ffffff;
-  --card: #0a0a0d;
-  --card-foreground: #ffffff;
-  --popover: #0a0a0d;
-  --popover-foreground: #ffffff;
-  --primary: #3491ff;
-  --primary-bright: #0062ff;
-  --primary-foreground: #050507;
-  --secondary: #0a0a0d;
-  --secondary-foreground: #ffffff;
-  --muted: #0a0a0d;
-  --muted-foreground: #ffffff;
-  --accent: #3491ff;
-  --accent-foreground: #050507;
-  --destructive: #3491ff;
-  --border: rgba(52, 145, 255, 0.3);
-  --input: rgba(52, 145, 255, 0.2);
-  --ring: #3491ff;
-  --radius: 0.75rem;
+  /* Monochrome cosmos: everything is night. "Paper" sections are the
+     charcoal step above black (no light sections anymore), "ink" is the
+     light text that sits on them, and the one accent is starlight silver. */
+  --night: #000000;
+  --night-2: #0a0a0b;
+  --night-3: #141416;
+  --paper: #ececee; /* light text on dark ground */
+  --paper-bg: #070708; /* "paper" surface role, now a charcoal band */
+  --paper-2: #111113;
+  --sand: #1a1a1d;
+  --ink: #ececee;
+  --void: #000000; /* dark text on the silver accent */
+  /* RGB channels for translucent light-on-ground glows / ground tints,
+     so rgb(var(--glow) / .1) flips with the theme. */
+  --glow: 255 255 255;
+  --ground: 0 0 0;
+
+  --background: var(--night);
+  --foreground: var(--paper);
+  --card: var(--night-2);
+  --card-foreground: var(--paper);
+  --popover: var(--night-2);
+  --popover-foreground: var(--paper);
+  --primary: #e8e8ea;
+  --primary-bright: #ffffff;
+  --primary-foreground: var(--void);
+  --secondary: var(--night-2);
+  --secondary-foreground: var(--paper);
+  --muted: var(--night-2);
+  --muted-foreground: #8a8a90;
+  --accent: #e8e8ea;
+  --accent-foreground: var(--void);
+  --destructive: #ff6b6b;
+  --border: rgb(var(--glow) / 0.1);
+  --input: rgb(var(--glow) / 0.18);
+  --ring: #e8e8ea;
+  --radius: 0.375rem;
 
   /* Canvas token for opaque section surfaces (use `bg-canvas`). */
-  --canvas: #050507;
+  --canvas: var(--night);
 
   /* Legacy vars for backward compat */
-  --bg: #050507;
-  --panel: #0a0a0d;
-  --text: #ffffff;
-  --text-muted: #ffffff;
+  --bg: var(--night);
+  --panel: var(--night-2);
+  --text: var(--paper);
+  --text-muted: #8a8a90;
+
+  /* Motion tokens (motion-design skill). Ease-out for things entering,
+     ease-in-out for things already on screen, plain ease for hovers. */
+  --ease-out-quart: cubic-bezier(.165, .84, .44, 1);
+  --ease-out-expo: cubic-bezier(.19, 1, .22, 1);
+  --ease-in-out-cubic: cubic-bezier(.645, .045, .355, 1);
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
+  --dur-cinema: 1600ms; /* hero entrances: low-frequency, illustrative */
 }
+
+/* ─── Light theme ────────────────────────────────────────────────────── */
+/* Same roles, inverted: night is the paper ground, "paper" is the ink that
+   sits on it, and primary becomes a near-black accent with white type.
+   Set by the no-flash script in layout.tsx (system preference or the
+   stored choice from ThemeToggle). */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --night: #ffffff;
+  --night-2: #f4f4f5;
+  --night-3: #e9e9ec;
+  --paper: #111113;
+  --paper-bg: #f7f7f8;
+  --paper-2: #ededf0;
+  --sand: #e4e4e7;
+  --ink: #111113;
+  --void: #ffffff;
+  --glow: 17 17 19;
+  --ground: 255 255 255;
+
+  --primary: #111113;
+  --primary-bright: #000000;
+  --accent: #111113;
+  --muted-foreground: #63636a;
+  --destructive: #d93636;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: rgba(0, 0, 0, 0.18);
+  --ring: #111113;
+  --text-muted: #63636a;
+}
+/* The wordmark is drawn white via brightness-0 + invert; keep it black. */
+:root[data-theme="light"] .invert { --tw-invert: invert(0%); }
 
 /* ─── Base Reset ─────────────────────────────────────────────────────── */
 *,
@@ -55,7 +112,7 @@ body {
   min-height: 100dvh;
   background-color: var(--canvas);
   color: var(--foreground);
-  font-family: var(--font-agrandir), system-ui, sans-serif;
+  font-family: var(--font-hanken), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -71,7 +128,8 @@ body {
 
 /* ─── Tailwind v4 Theme Mapping ──────────────────────────────────────── */
 @theme inline {
-  --font-sans: var(--font-agrandir);
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
+  --font-mono: var(--font-martian), ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -88,15 +146,48 @@ body {
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
+
+  /* Palette. Tailwind's white is remapped to paper, so no utility paints
+     pure #fff; black is true black. */
+  --color-white: var(--paper);
+  --color-black: var(--void); /* flips: "type on primary" */
+  --color-scrim: #000000; /* never flips: image scrims, modal backdrops */
+  --color-night: var(--night);
+  --color-night-2: var(--night-2);
+  --color-night-3: var(--night-3);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-sand: var(--sand);
+  --color-ink: var(--ink);
+  --color-primary-deep: var(--primary);
+  --color-ivory: #fffff0;
+  --color-steel: var(--muted-foreground);
+  --color-beige: #dccfc0;
+  --color-signal: var(--primary);
+  --color-line-ink: var(--border);
+
+  /* Slate retinted to the steel family, so every text-slate-* /
+     border-slate-* in the app picks up the palette without edits. */
+
+  --color-slate-100: #f1f1f2;
+  --color-slate-200: #dededf;
+  --color-slate-300: #bcbcc0;
+  --color-slate-400: #8a8a90;
+  --color-slate-500: #6a6a70;
+  --color-slate-600: #4c4c51;
+  --color-slate-700: #333336;
+  --color-slate-800: #1e1e20;
+  --color-slate-900: #121214;
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-canvas: var(--canvas);
-  --radius-sm: calc(var(--radius) * 0.5);
-  --radius-md: calc(var(--radius) * 0.75);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.5);
-  --radius-2xl: calc(var(--radius) * 2);
-  --radius-3xl: calc(var(--radius) * 3);
+  /* Instrument-panel radii: near-square, tops out at 12px. */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
 }
 
 /* ─── Marquee Animation ──────────────────────────────────────────────── */
@@ -121,11 +212,11 @@ body {
 
   0%,
   100% {
-    box-shadow: 0 0 20px rgba(52, 145, 255, 0.4), 0 0 40px rgba(52, 145, 255, 0.15);
+    box-shadow: 0 0 20px rgb(var(--glow) / 0.4), 0 0 40px rgb(var(--glow) / 0.15);
   }
 
   50% {
-    box-shadow: 0 0 30px rgba(0, 98, 255, 0.6), 0 0 60px rgba(0, 98, 255, 0.25);
+    box-shadow: 0 0 30px rgb(var(--glow) / 0.6), 0 0 60px rgb(var(--glow) / 0.25);
   }
 }
 
@@ -156,7 +247,7 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: fade-in-up 0.7s var(--ease-out-expo) both;
 }
 
 .animate-delay-100 {
@@ -193,15 +284,442 @@ body {
   }
 }
 
-/* ─── Agrandir Font Class ────────────────────────────────────────────── */
-/* Use font-agrandir in className; control weight with Tailwind font-*    */
-/* e.g. <h1 className="font-agrandir font-bold">                         */
+/* ─── Display Font Class ─────────────────────────────────────────────── */
+/* Michroma: wide, single-weight, engineered. It ships one weight, so any
+   font-bold on a heading is pinned back to 400 (no faux bold), and the
+   tight negative tracking from the old face is opened up. */
+.font-display {
+  font-family: var(--font-michroma), "Eurostile", sans-serif;
+  font-weight: 400 !important;
+  letter-spacing: 0.01em !important;
+}
 
-.font-agrandir {
-  font-family: var(--font-agrandir);
+/* Tracked caps label: the "I N T R O D U C I N G" voice. */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  color: rgb(var(--glow) / 0.7);
+}
+.eyebrow-rule::before {
+  content: "";
+  display: block;
+  width: 3.5rem;
+  height: 1px;
+  margin-bottom: 1.75rem;
+  background: rgb(var(--glow) / 0.7);
+  transform-origin: left;
+  animation: draw-x 1200ms var(--ease-out-expo) 200ms both;
+}
+@keyframes draw-x { from { transform: scaleX(0); } }
+
+
+/* ─── Pop-in (popovers) ─────────────────────────────────────────────── */
+/* Enter: ease-out-quart, 180ms, from 0.96 (never from 0). Set
+   transform-origin on the element to match its trigger. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in var(--dur-2) var(--ease-out-quart) both;
+}
+
+/* ─── Blur surfaces ──────────────────────────────────────────────────── */
+/* No glass effects: where chrome floats over content (the scrolled navbar,
+   menus, labels on images) it gets a tinted backdrop blur so text stays
+   readable, and nothing more. The tint flips to paper over light sections.
+   In @layer components so utilities (absolute, rounded-*) still win. */
+@layer components {
+  .blur-bg {
+    background: rgb(var(--ground) / 0.6);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+  }
+  .blur-bg-strong {
+    background: rgb(var(--ground) / 0.88);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.55);
+  }
+
+}
+
+/* ─── One ground ─────────────────────────────────────────────────────── */
+/* Every surface is dark now, so nothing flips. .bg-white / .bg-paper are
+   kept as charcoal panels for older markup. */
+.bg-white, .bg-paper {
+  background-color: var(--paper-bg) !important;
+  color: var(--ink);
+}
+
+/* Solid silver panels (bg-primary) are the one light island: text tokens
+   resolve dark inside them, and chips cut out of them (bg-ink) go black
+   with silver type. */
+.bg-primary, .surface-silver {
+  --ink: var(--void);
+  --paper: var(--void);
+  --paper-bg: var(--primary);
+  color: var(--void);
+}
+
+/* ─── Browser surfaces ───────────────────────────────────────────────── */
+/* The parts nobody draws still carry the design. */
+::selection {
+  background: rgb(var(--glow) / 0.35);
+  color: var(--paper);
+}
+html {
+  caret-color: var(--primary);
+  scrollbar-color: rgb(var(--glow) / 0.2) var(--night);
+  scrollbar-width: thin;
+  -webkit-tap-highlight-color: transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--night); }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--glow) / 0.18);
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
+.tabular, table { font-variant-numeric: tabular-nums; }
+
+/* ─── Components: buttons + links ────────────────────────────────────── */
+/* One vocabulary for every action on the site. Press is a 0.97 scale at
+   120ms (feedback), hover is colour/light only at 150ms ease: the hovered
+   element never moves, so the cursor never falls off its hit area. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 120ms var(--ease-out-quart);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; pointer-events: none; }
+  .btn-lg { min-height: 3.25rem; padding: 1rem 2rem; font-size: 0.75rem; }
+  .btn-sm { min-height: 2.25rem; padding: 0.55rem 1.1rem; font-size: 0.6875rem; letter-spacing: 0.18em; }
+
+  /* Primary is starlight: silver fill, black type, a soft halo on hover.
+     Secondary is a hairline (inset shadow, so the borderless rule holds). */
+  .btn-primary { background: var(--primary); color: var(--void); }
+  .btn-ink { background: var(--primary); color: var(--void); }
+  .btn-secondary { background: transparent; color: var(--paper); box-shadow: inset 0 0 0 1px rgb(var(--glow) / 0.28); }
+  :is(.bg-primary, .surface-silver) :is(.btn-primary, .btn-ink) { background: var(--void); color: var(--accent); }
+  @media (hover: hover) {
+    .btn-primary:hover, .btn-ink:hover { background: var(--primary-bright); box-shadow: 0 0 32px -4px rgb(var(--glow) / 0.45); }
+    .btn-secondary:hover { background: rgb(var(--glow) / 0.06); box-shadow: inset 0 0 0 1px rgb(var(--glow) / 0.6); }
+    :is(.bg-primary, .surface-silver) :is(.btn-primary, .btn-ink):hover { background: var(--sand); box-shadow: none; }
+  }
+  /* Trailing arrow nudges on hover: a child moves, not the button. */
+  .btn .btn-arrow { transition: transform 150ms var(--ease-out-quart); }
+  @media (hover: hover) { .btn:hover .btn-arrow { transform: translateX(3px); } }
+
+  /* Text link whose underline draws in from the left (scaleX on a
+     pseudo-element, transform only). */
+  .link-draw {
+    position: relative;
+    text-decoration: none;
+  }
+  .link-draw::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.15em;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 240ms var(--ease-out-quart);
+  }
+  @media (hover: hover) {
+    .link-draw:hover::after { transform: scaleX(1); transform-origin: left; }
+  }
+  .link-draw:focus-visible::after { transform: scaleX(1); }
+}
+
+/* ─── Surfaces ───────────────────────────────────────────────────────── */
+.surface-night { background: var(--night); color: var(--paper); }
+.surface-night-2 { background: var(--night-2); color: var(--paper); }
+.surface-paper { background: var(--paper-bg); color: var(--ink); box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.06); }
+/* The old blue CTA band becomes a horizon: black with light rising from
+   the bottom edge, the same glow as the hero floor. */
+.surface-blue {
+  background:
+    radial-gradient(60% 55% at 50% 100%, rgb(var(--glow) / 0.16), transparent 70%),
+    linear-gradient(to bottom, var(--night) 40%, var(--night-2));
+  color: var(--paper);
+  box-shadow: inset 0 1px 0 rgb(var(--glow) / 0.08);
+}
+
+/* Light sections arrive as sheets: rounded top edge and a hair of inset
+   that settle flat as the section scrolls into place. Scroll-driven, so it
+   tracks the hand, not a timer; static fallback where unsupported. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet {
+      animation: sheet-settle linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 100%;
+    }
+  }
+}
+@keyframes sheet-settle {
+  from {
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    clip-path: inset(0 2.5% 0 2.5% round 24px 24px 0 0);
+  }
+  to {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    clip-path: inset(0 0 0 0 round 0);
+  }
+}
+
+/* ─── Reveal ─────────────────────────────────────────────────────────── */
+/* Scroll reveals run in MotionRuntime on the Web Animations API (no class
+   or attribute writes, so no hydration mismatch). The clip reveal animates
+   toward this resting mask, which overhangs the box so Michroma's
+   descenders (g, j, p, y) are never cut off. */
+[data-reveal="clip"] { clip-path: inset(-0.2em -0.1em -0.35em -0.1em); }
+.waterline .line { display: block; overflow: hidden; padding-bottom: 0.22em; margin-bottom: -0.22em; }
+.waterline .line-inner { display: block; }
+
+/* Load-time entrances (first viewport only): CSS keyframes, so they play
+   before hydration and need no script. Lines carry --l, blocks carry --d. */
+.waterline-load .line { display: block; overflow: hidden; padding-bottom: 0.22em; margin-bottom: -0.22em; }
+.waterline-load .line-inner {
+  display: block;
+  animation: rise-line 1000ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--l, 0) * 90ms + 80ms);
+}
+@keyframes rise-line {
+  from { transform: translateY(105%); opacity: 0; }
+}
+.enter {
+  animation: enter-blur 900ms var(--ease-out-expo) both;
+  animation-delay: var(--d, 0ms);
+}
+@keyframes enter-blur {
+  from { opacity: 0; transform: translateY(14px); filter: blur(8px); }
+}
+
+/* A rail drawing itself (progress: linear) and a node arriving. */
+.draw-y { animation: draw-y 320ms linear both; animation-delay: var(--d, 0ms); }
+@keyframes draw-y { from { transform: scaleY(0); } }
+.pop { animation: pop 600ms var(--ease-out-expo) both; animation-delay: var(--d, 0ms); }
+@keyframes pop { from { opacity: 0; transform: scale(0.8); } }
+
+/* Success: one ring of light spreads from the badge, once. */
+.success-ring {
+  box-shadow: 0 0 0 2px var(--primary);
+  animation: success-ring 900ms var(--ease-out-expo) 260ms both;
+}
+@keyframes success-ring {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(2.2); opacity: 0; }
+}
+
+/* QR scan sweep (ScanVisual): eases both ways, loops. */
+.scan-sweep {
+  filter: drop-shadow(0 0 6px rgb(var(--glow) / 0.9));
+  animation: scan-sweep 2.2s cubic-bezier(.77, 0, .175, 1) infinite alternate;
+}
+@keyframes scan-sweep { to { transform: translateY(56px); } }
+
+/* ─── Cosmos (hero backdrop) ─────────────────────────────────────────── */
+/* Motion map. Entrances: ease-out-expo, long (low-frequency, cinematic),
+   staggered so the scene assembles back to front: stars → planet → horizon
+   → monoliths → type. Loops that show time (floor travel,
+   orbit drift, highlight orbit) are linear; breathing loops ease in-out.
+   Scroll parallax is scroll-driven CSS, so it tracks the hand. Only
+   transform/opacity/filter animate (compositor-only), except the floor's
+   background-position. */
+.cosmos { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+
+.cosmos-stars {
+  position: absolute; inset: -10%;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgb(var(--glow) / .7), transparent 60%),
+    radial-gradient(1px 1px at 68% 8%, rgb(var(--glow) / .55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 82% 42%, rgb(var(--glow) / .5), transparent 60%),
+    radial-gradient(1px 1px at 34% 52%, rgb(var(--glow) / .35), transparent 60%),
+    radial-gradient(1px 1px at 54% 28%, rgb(var(--glow) / .45), transparent 60%),
+    radial-gradient(1px 1px at 92% 74%, rgb(var(--glow) / .3), transparent 60%),
+    radial-gradient(1px 1px at 22% 80%, rgb(var(--glow) / .25), transparent 60%);
+  background-size: 420px 420px;
+  animation: fade-in 2400ms var(--ease-out-expo) both, twinkle 7s ease-in-out 2400ms infinite alternate;
+}
+.cosmos-stars-far { background-size: 260px 260px; opacity: .5; animation-delay: 300ms, 3s; }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes twinkle { to { opacity: .45; } }
+
+/* Planet: a black disc whose lower-left limb catches the light. */
+.cosmos-parallax-slow { position: absolute; inset: 0; }
+.cosmos-planet {
+  position: absolute; top: -66vmax; right: -54vmax;
+  width: 100vmax; height: 100vmax; border-radius: 50%;
+  background: radial-gradient(circle at 62% 38%, var(--night) 62%, var(--night-2) 70%, var(--sand) 71.6%, transparent 71.7%);
+  box-shadow:
+    inset 3vmax -2.4vmax 4vmax -2.2vmax rgb(var(--glow) / .34),
+    -3vmax 3vmax 12vmax -6vmax rgb(var(--glow) / .09);
+  animation: planet-in 2600ms var(--ease-out-expo) 150ms both;
+}
+@keyframes planet-in { from { opacity: 0; transform: translate(4%, -4%) scale(.98); } }
+
+/* Orbits: hairline ellipses, drifting so slowly you feel rather than see it. */
+.cosmos-orbit {
+  position: absolute; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(var(--glow) / .07);
+  animation: fade-in 2000ms var(--ease-out-expo) 600ms both, orbit 140s linear infinite;
+}
+.cosmos-orbit-a { width: 150vmax; height: 150vmax; top: -88vmax; right: -66vmax; }
+.cosmos-orbit-b { width: 180vmax; height: 120vmax; left: -60vmax; bottom: -96vmax; animation-duration: 2000ms, 200s; animation-direction: normal, reverse; }
+@keyframes orbit { to { transform: rotate(360deg); } }
+
+/* Frame: faint vertical rules near each edge, like the deck's margins. */
+.cosmos-frame { position: absolute; inset: 0 2.5rem; box-shadow: inset 1px 0 rgb(var(--glow) / .06), inset -1px 0 rgb(var(--glow) / .06); animation: fade-in 1600ms ease 800ms both; }
+
+/* Horizon: a line of light with a soft bloom, drawn outward from centre. */
+.cosmos-horizon {
+  position: absolute; left: 0; right: 0; top: 70%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(var(--glow) / .18) 25%, rgb(var(--glow) / .6) 50%, rgb(var(--glow) / .18) 75%, transparent);
+  transform-origin: center;
+  animation: horizon-in var(--dur-cinema) var(--ease-out-expo) 350ms both;
+}
+.cosmos-horizon::after {
+  content: ""; position: absolute; left: 10%; right: 10%; top: -90px; height: 180px;
+  background: radial-gradient(50% 50% at 50% 50%, rgb(var(--glow) / .1), transparent 70%);
+  animation: breathe 9s ease-in-out 2s infinite alternate;
+}
+@keyframes horizon-in { from { transform: scaleX(0); opacity: 0; } }
+@keyframes breathe { to { opacity: .6; } }
+
+/* Monoliths: glass bars standing on the horizon on the right. */
+.cosmos-monoliths { display: none; position: absolute; right: 8%; bottom: 30%; height: 34%; width: 9rem; align-items: flex-end; gap: 1.6rem; }
+.cosmos-monoliths span {
+  width: 3px; height: var(--h);
+  background: linear-gradient(to top, rgb(var(--glow) / .4), rgb(var(--glow) / .02));
+  box-shadow: 0 0 14px rgb(var(--glow) / .08);
+  transform-origin: bottom;
+  animation: rise-bar 1400ms var(--ease-out-expo) var(--d) both;
+}
+.cosmos-monoliths span:first-child { width: 8px; }
+@keyframes rise-bar { from { transform: scaleY(0); opacity: 0; } }
+
+@media (min-width: 768px) { .cosmos-monoliths { display: flex; } }
+
+/* Scroll parallax: the planet sinks slower than the page, the horizon
+   faster, so the scene has depth as you leave it. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .cosmos-parallax-slow { animation-timeline: scroll(root); animation-range: 0 100vh; animation-fill-mode: both; animation-timing-function: linear; }
+    .cosmos-parallax-slow { animation-name: drift-slow; }
+    @keyframes drift-slow { to { transform: translateY(18vh); } }
+  }
+}
+
+/* Scrim: a soft dark pool behind the copy column, so the scene can never
+   out-shine the words. Sits above every backdrop layer, below content. */
+.cosmos::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(70% 60% at 22% 45%, rgb(var(--ground) / .72), rgb(var(--ground) / .35) 55%, transparent 80%);
+}
+
+/* Pointer depth (CosmosPointer sets --mx/--my in -0.5..0.5 and --px/--py).
+   Nearer layers travel further, so the sky has depth. The individual
+   `translate` property composes with each layer's transform animation;
+   the transition gives the drift inertia, and retargets smoothly. */
+.cosmos-stars-far { translate: calc(var(--mx, 0) * -10px) calc(var(--my, 0) * -8px); }
+.cosmos-stars:not(.cosmos-stars-far) { translate: calc(var(--mx, 0) * -22px) calc(var(--my, 0) * -16px); }
+.cosmos-orbit { translate: calc(var(--mx, 0) * -30px) calc(var(--my, 0) * -22px); }
+.cosmos-parallax-slow > .cosmos-planet { translate: calc(var(--mx, 0) * -48px) calc(var(--my, 0) * -34px); }
+.cosmos-stars, .cosmos-orbit, .cosmos-planet { transition: translate 900ms var(--ease-out-quart); }
+
+/* A soft light that follows the pointer: one fixed-size disc moved by
+   translate, never a repainted full-screen gradient. Fades in on first
+   move, out when the pointer leaves. */
+.cosmos-glow {
+  position: absolute; left: 0; top: 0; width: 56rem; height: 56rem; margin: -28rem 0 0 -28rem;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--glow) / .07), rgb(var(--glow) / .02) 55%, transparent);
+  translate: var(--px, 50vw) var(--py, 40vh);
+  opacity: 0;
+  transition: translate 500ms var(--ease-out-quart), opacity 600ms ease;
+}
+.cosmos[data-live] .cosmos-glow { opacity: 1; }
+
+/* Hero horizon (HorizonFloor): a zero-height strip pinned to the hero's
+   bottom edge. The line sits on the edge, its bloom rises into the hero,
+   and the monoliths stand on it. */
+.cosmos-anchor { position: absolute; left: 0; right: 0; bottom: 0; height: 0; pointer-events: none; }
+.cosmos-anchor .cosmos-horizon { top: auto; bottom: 0; }
+.cosmos-anchor .cosmos-monoliths { bottom: 0; height: 14rem; right: 2.5%; }
+
+/* Inner pages: the same sky, quieter. */
+.cosmos-page .cosmos-horizon { top: auto; bottom: 0; }
+.cosmos-page .cosmos-planet { top: -78vmax; right: -58vmax; }
+
+
+/* ─── Legal prose ────────────────────────────────────────────────────── */
+/* Body copy inside LegalPage sections: a readable measure and rhythm for
+   long policy text, without pulling in a typography plugin. */
+.legal p, .legal li { font-size: 15px; line-height: 1.75; color: rgb(var(--glow) / 0.75); }
+.legal p + p, .legal p + ul, .legal ul + p, .legal p + ol, .legal ol + p { margin-top: 0.9rem; }
+.legal ul, .legal ol { padding-left: 1.25rem; }
+.legal ul { list-style: disc; }
+.legal ol { list-style: decimal; }
+.legal li + li { margin-top: 0.4rem; }
+.legal li::marker { color: rgb(var(--glow) / 0.35); }
+.legal strong { color: var(--paper); font-weight: 500; }
+.legal h3 { margin: 1.4rem 0 0.5rem; font-size: 15px; color: var(--paper); }
+.legal a:not([class]) { color: var(--paper); text-decoration: underline; text-decoration-color: rgb(var(--glow) / 0.35); }
+.legal table { width: 100%; font-size: 14px; border-collapse: collapse; }
+.legal th, .legal td { text-align: left; vertical-align: top; padding: 0.6rem 0.75rem 0.6rem 0; box-shadow: inset 0 -1px 0 rgb(var(--glow) / 0.08); }
+.legal th { color: var(--paper); font-weight: 500; }
+.legal td { color: rgb(var(--glow) / 0.7); overflow-wrap: anywhere; }
+
+/* ─── Borderless ─────────────────────────────────────────────────────── */
+/* No outline borders anywhere: surfaces separate by fill, shadow and space.
+   Kept: form fields (some have no fill, the border is the affordance) and
+   spinners (the ring is drawn with a border). Focus rings are box-shadows,
+   so they still show. */
+*:not(input, textarea, select, .animate-spin),
+*::before,
+*::after {
+  border-width: 0 !important;
 }
 
 /* ─── Reduced Motion ─────────────────────────────────────────────────── */
+/* Reveals keep a short opacity crossfade (meaningful, not spatial). */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal="clip"] { clip-path: none !important; }
+}
+
 /* Respect users who ask for less motion: keep content visible, kill loops */
 @media (prefers-reduced-motion: reduce) {
 
@@ -219,7 +737,18 @@ body {
   }
 
   .animate-fade-in-up,
-  .animate-marquee {
+  .animate-pop-in,
+  .animate-marquee,
+  .enter,
+  .draw-y,
+  .pop,
+  .scan-sweep,
+  .success-ring,
+  .eyebrow-rule::before,
+  .cosmos *,
+  .cosmos-anchor *,
+  .cosmos-stars,
+  .waterline-load .line-inner {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

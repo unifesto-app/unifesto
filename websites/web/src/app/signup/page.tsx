@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { DeviceMobile } from '@phosphor-icons/react';
 import { openAppOrStore, detectMobilePlatform } from '@/lib/appLinks';
 
 function SignupRedirect() {
@@ -26,43 +27,35 @@ function SignupRedirect() {
   }, [appScheme]);
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col">
+    <main className="flex min-h-screen flex-col bg-canvas">
       <Navbar />
-
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center mt-20">
-        <div className="max-w-md w-full bg-zinc-900/50 p-8 rounded-2xl border border-zinc-800 backdrop-blur-xl">
-          <div className="w-20 h-20 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-2xl mx-auto mb-6 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-          </div>
-
-          <h1 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">
-            Open in App
+      <div className="flex flex-1 items-center justify-center px-5 pb-20 pt-32">
+        <div className="animate-pop-in w-full max-w-md rounded-3xl bg-night-2 p-8 text-center sm:p-10">
+          <DeviceMobile className="mx-auto h-12 w-12 text-primary" weight="bold" aria-hidden="true" />
+          <h1 className="mt-6 font-display text-3xl font-bold text-paper" style={{ letterSpacing: '-0.03em' }}>
+            Open in the app
           </h1>
-
-          <p className="text-zinc-400 mb-8 text-lg">
-            This signup link is designed to be opened in the Unifesto mobile app.
+          <p className="mt-3 text-base leading-relaxed text-paper/70">
+            This signup link is meant to be opened in the Unifesto app.
           </p>
-
           <a
             href={appScheme}
             onClick={(e) => {
               e.preventDefault();
               openAppOrStore(appScheme);
             }}
-            className="block w-full py-4 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-all mb-4"
+            className="btn btn-lg btn-primary mt-8 w-full"
           >
-            Open App Now
+            Open the app
           </a>
-
-          <div className="text-sm text-zinc-500 mt-6">
-            Don't have the app yet? <br />
-            <a href="/download" className="text-blue-400 hover:text-blue-300 underline mt-2 inline-block">Download Unifesto</a>
-          </div>
+          <p className="mt-6 text-sm text-paper/60">
+            Don&apos;t have it yet?{' '}
+            <a href="/download" className="link-draw font-semibold text-primary">
+              Get Unifesto
+            </a>
+          </p>
         </div>
       </div>
-
       <Footer />
     </main>
   );

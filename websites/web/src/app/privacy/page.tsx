@@ -1,194 +1,239 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
+import LegalPage, { type LegalSection } from "@/components/site/LegalPage";
+import { LEGAL, PROCESSORS } from "@/lib/legal";
 
-export const metadata = {
-  title: "Privacy Policy | Unifesto",
-  description: "Learn how Unifesto collects, uses, and protects your personal information. Your privacy is our priority.",
-  keywords: ["privacy policy", "data protection", "user privacy", "unifesto privacy", "data security"],
-  openGraph: {
-    title: "Privacy Policy | Unifesto",
-    description: "Learn how Unifesto collects, uses, and protects your personal information.",
-    type: "website",
-    url: "https://www.unifesto.app/privacy",
-    siteName: "Unifesto",
+/* Privacy Policy. Written against what the product actually collects and
+   where it goes (verified in backend, space app and mobile code), and
+   structured for India's Digital Personal Data Protection Act, 2023, the
+   DPDP Rules, 2025 and the IT (Reasonable Security Practices) Rules, 2011.
+   Have counsel review before publishing changes. */
+
+export const metadata: Metadata = withSocial({
+  title: "Privacy Policy",
+  description:
+    "What personal data Unifesto collects, why, who it is shared with, where it is stored, how long it is kept, and your rights under India's Digital Personal Data Protection Act, 2023.",
+  alternates: { canonical: "/privacy" },
+}, { title: "Unifesto Privacy Policy" });
+
+const mail = (e: string) => <a href={`mailto:${e}`}>{e}</a>;
+
+const sections: LegalSection[] = [
+  {
+    id: "who-we-are",
+    title: "Who we are",
+    body: (
+      <>
+        <p>
+          Unifesto is operated by {LEGAL.company} (CIN {LEGAL.cin}), {LEGAL.address} (“Unifesto”,
+          “we”, “us”). This policy covers the Unifesto website, the Unifesto app for iOS and Android,
+          and the Unifesto Space console (together, the “Services”).
+        </p>
+        <p>
+          For personal data you give us to use the Services, Unifesto is the <strong>Data Fiduciary</strong> under
+          India’s Digital Personal Data Protection Act, 2023 (“DPDP Act”). When you register for an event,
+          the organiser of that event also receives your registration details and is responsible for how they use them
+          (see section 5).
+        </p>
+      </>
+    ),
   },
-  twitter: {
-    card: "summary",
-    title: "Privacy Policy | Unifesto",
-    description: "Learn how Unifesto collects, uses, and protects your personal information.",
-    site: "@unifestoapp",
+  {
+    id: "what-we-collect",
+    title: "What we collect",
+    body: (
+      <>
+        <h3>You give us</h3>
+        <ul>
+          <li><strong>Account:</strong> mobile number, email address (if you sign in with email, Google or Apple), name, username, gender, profile photo, bio and the social links you choose to add.</li>
+          <li><strong>Event registrations:</strong> the ticket you choose, the answers you give to an organiser’s questions (which can include files you upload), and the details of team members you register.</li>
+          <li><strong>Stays:</strong> for accommodation bookings, each guest’s name, phone, email, gender and a photo ID, plus arrival time and an emergency contact.</li>
+          <li><strong>Payments:</strong> payments are made through Razorpay. We receive the order and payment reference, amount and status. We never receive or store your card, UPI PIN or bank login details.</li>
+          <li><strong>Organisers:</strong> Space details, event content, team members, and the bank account you add for payouts.</li>
+          <li><strong>Participation:</strong> check-ins, hackathon teams and submissions, judging scores, help desk queries, live session participation, support requests, and messages you send to our WhatsApp business number.</li>
+        </ul>
+        <h3>Collected automatically</h3>
+        <ul>
+          <li><strong>Device and app:</strong> app version, platform, a push notification subscription ID and the time you were last active.</li>
+          <li><strong>Usage and crashes:</strong> in the app, Google Firebase records which screens are used and crash reports, to fix problems and improve the app.</li>
+          <li><strong>Page views:</strong> when an event or Space page is opened, we record an anonymous visitor ID, the platform and any campaign (UTM) tags on the link, so organisers can see where visitors came from.</li>
+          <li><strong>Location (optional):</strong> if you allow it, the app reads an approximate location while you use it and converts it to your city on your device. Only the city name is sent to us, to show nearby events. We do not collect precise or background location.</li>
+        </ul>
+        <p>
+          The app asks for the camera (to scan QR passes and take photos), microphone (to speak in live sessions), photo
+          library and notifications only when you use a feature that needs them. You can change these permissions in
+          your device settings at any time.
+        </p>
+      </>
+    ),
   },
-};
+  {
+    id: "why",
+    title: "Why we use it",
+    body: (
+      <>
+        <ul>
+          <li>To create and secure your account and sign you in, including one-time codes sent over WhatsApp.</li>
+          <li>To register you for events, issue passes and tickets, check you in, and send confirmations, reminders and updates about events you joined.</li>
+          <li>To process payments, refunds and payouts, and keep the records tax and accounting law requires.</li>
+          <li>To run the features you use: stays, live sessions, hackathons, certificates and support.</li>
+          <li>To show nearby and relevant events, and to keep the Services reliable, secure and free of fraud and abuse.</li>
+          <li>To send product announcements and campaigns, which you can turn off in Notification settings.</li>
+        </ul>
+        <p>
+          We process your data on the basis of your consent, given when you sign up or use a feature, and for the
+          legitimate uses the DPDP Act allows, such as performing a transaction you asked for or complying with the law.
+          You can withdraw consent at any time (section 8); this does not affect processing already done.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "public",
+    title: "What other people can see",
+    body: (
+      <p>
+        Your public profile (name, username, photo, bio, social links, the Spaces you follow and the public events you
+        are going to or have been to) can be seen by other Unifesto users. Your mobile number, email address and
+        registration answers are never shown on your profile. Certificates you earn have a verification link that
+        anyone with the link can open.
+      </p>
+    ),
+  },
+  {
+    id: "sharing",
+    title: "Who we share it with",
+    body: (
+      <>
+        <ul>
+          <li><strong>Event organisers:</strong> when you register for an event, its organisers (the Space team and any co-hosting Space) receive your name, contact details, ticket, registration answers and check-in status, to run that event. For stays, the event team receives guest details and photo IDs.</li>
+          <li><strong>Sponsors:</strong> only if you let a sponsor scan your pass at their booth or send them an enquiry yourself.</li>
+          <li><strong>Hackathon judges and volunteers:</strong> your team, submission and help desk queries, for that hackathon.</li>
+          <li><strong>Service providers</strong> who process data for us under contract, listed below.</li>
+          <li><strong>Authorities,</strong> when the law requires it or to protect the rights and safety of users and the public.</li>
+          <li><strong>A successor,</strong> if Unifesto is merged or acquired, under the same protections.</li>
+        </ul>
+        <p>We do not sell your personal data, and we do not share it with advertisers.</p>
+        <table>
+          <caption className="sr-only">Service providers that process personal data</caption>
+          <thead>
+            <tr><th scope="col">Provider</th><th scope="col">Purpose</th><th scope="col">Location</th></tr>
+          </thead>
+          <tbody>
+            {PROCESSORS.map((p) => (
+              <tr key={p.name}><td>{p.name}</td><td>{p.purpose}</td><td>{p.location}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </>
+    ),
+  },
+  {
+    id: "storage",
+    title: "Where it is stored and how it is protected",
+    body: (
+      <>
+        <p>
+          Our servers and database run on Amazon Web Services in India (Mumbai). Some providers above process data
+          outside India; such transfers are made as permitted under the DPDP Act and under contracts that require them
+          to protect it.
+        </p>
+        <ul>
+          <li>All traffic to the Services is encrypted in transit (HTTPS/TLS).</li>
+          <li>Uploaded files such as photo IDs and registration documents are kept in private storage and are available only to the people who need them for that event.</li>
+          <li>Access inside organiser teams is limited by role, and Unifesto staff access is restricted and logged.</li>
+          <li>Payments are handled by Razorpay, a PCI-DSS compliant payment processor.</li>
+        </ul>
+        <p>
+          If a personal data breach occurs, we will inform the Data Protection Board of India and affected users as the
+          DPDP Act and Rules require.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "retention",
+    title: "How long we keep it",
+    body: (
+      <ul>
+        <li><strong>Your account:</strong> until you delete it. Deletion closes the account after a 30-day grace period and removes your personal details (see <a href="/delete-account">Delete your account</a>).</li>
+        <li><strong>Payment, refund, payout and tax records:</strong> for as long as tax and accounting laws require, which can be up to eight years, with your name and contact details removed once your account is closed.</li>
+        <li><strong>Event records</strong> such as registrations, check-ins and stay bookings: kept as part of that event’s records. When your account is closed they are no longer linked to your name or contact details, but answers you gave to an organiser’s questions stay with that event. To have those erased too, write to {mail(LEGAL.email.privacy)}.</li>
+        <li><strong>Server and security logs:</strong> kept for a limited period to keep the Services secure and investigate problems.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "rights",
+    title: "Your rights",
+    body: (
+      <>
+        <p>Under the DPDP Act you have the right to:</p>
+        <ul>
+          <li>get a summary of the personal data we hold about you and how it is processed;</li>
+          <li>correct, complete or update it (most of it you can edit yourself in the app);</li>
+          <li>have it erased, by deleting your account or writing to us;</li>
+          <li>withdraw consent and turn off optional processing such as campaigns and location;</li>
+          <li>nominate another person to exercise these rights if you die or become incapacitated;</li>
+          <li>have your grievances addressed (section 10).</li>
+        </ul>
+        <p>
+          Use the <a href="/privacy-requests">Privacy Request Center</a> or write to {mail(LEGAL.email.privacy)} from
+          the email or phone number on your account. We may verify your identity before acting; the{" "}
+          <a href="/data-rights">Data Principal Rights Policy</a> explains how we handle each request.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "children",
+    title: "Children",
+    body: (
+      <p>
+        The Services are meant for people aged 18 and over. Anyone under 18 may use them only with the verifiable
+        consent of a parent or lawful guardian. We do not knowingly track, profile or target advertising at children.
+        If you believe a child has given us personal data without that consent, write to {mail(LEGAL.email.privacy)} and
+        we will delete it.
+      </p>
+    ),
+  },
+  {
+    id: "grievance",
+    title: "Grievance Officer",
+    body: (
+      <>
+        <p>
+          If you have a complaint about how your personal data is handled, contact our Grievance Officer,{" "}
+          <strong>{LEGAL.grievance.name}</strong>, at {mail(LEGAL.grievance.email)}. We acknowledge complaints within 24
+          hours and aim to resolve them within 15 days.
+        </p>
+        <p>
+          If you are not satisfied with our response, you may approach the Data Protection Board of India once it
+          accepts complaints under the DPDP Act.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "changes",
+    title: "Changes to this policy",
+    body: (
+      <p>
+        We will update this policy when our practices change and show the new effective date at the top. For material
+        changes we will tell you in the app or by email before they take effect.
+      </p>
+    ),
+  },
+];
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-[#050507] overflow-x-hidden text-white">
-      <Navbar />
-
-      {/* Hero */}
-      <section className="relative pt-36 pb-20 px-6 text-center overflow-hidden">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-72 w-[36rem] rounded-full bg-primary/12 blur-[130px]"
-        />
-        <div className="relative z-10 max-w-4xl mx-auto">
-          <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-[-0.02em] leading-tight mb-5">
-            Privacy Policy
-          </h1>
-          <p className="text-slate-400 text-sm md:text-base leading-relaxed max-w-2xl mx-auto">
-            Last updated: April 16, 2026
-          </p>
-        </div>
-      </section>
-
-      {/* Content */}
-      <section className="relative px-6 pb-20">
-        <div className="max-w-4xl mx-auto">
-          <div className="prose prose-invert prose-slate max-w-none">
-            {/* Introduction */}
-            <div className="mb-12">
-              <p className="text-slate-300 leading-relaxed mb-4">
-                At Unifesto Private Limited ("Unifesto", "we", "us", or "our"), we are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.
-              </p>
-            </div>
-
-            {/* Section 1 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">1. Information We Collect</h2>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">1.1 Information You Provide</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We collect information that you voluntarily provide when you:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Create an account (name, email, phone number, organisation)</li>
-                <li>Register for events (personal details, preferences)</li>
-                <li>Host events (space information, event details)</li>
-                <li>Contact our support team</li>
-                <li>Subscribe to our newsletter</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-white mb-3 mt-6">1.2 Automatically Collected Information</h3>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                When you use our platform, we automatically collect:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Device information (IP address, browser type, operating system)</li>
-                <li>Usage data (pages visited, features used, time spent)</li>
-                <li>Location data (with your permission)</li>
-                <li>Cookies and similar tracking technologies</li>
-              </ul>
-            </div>
-
-            {/* Section 2 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">2. How We Use Your Information</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We use the collected information to:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Provide, maintain, and improve our services</li>
-                <li>Process event registrations and ticket purchases</li>
-                <li>Send event reminders and updates</li>
-                <li>Personalize your experience and recommendations</li>
-                <li>Communicate with you about our services</li>
-                <li>Analyze usage patterns and optimize platform performance</li>
-                <li>Prevent fraud and ensure platform security</li>
-                <li>Comply with legal obligations</li>
-              </ul>
-            </div>
-
-            {/* Section 3 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">3. Information Sharing and Disclosure</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We do not sell your personal information. We may share your information with:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li><strong className="text-white">Event Organizers:</strong> When you register for an event, we share necessary information with the organizer</li>
-                <li><strong className="text-white">Service Providers:</strong> Third-party vendors who help us operate our platform (payment processors, email services, analytics)</li>
-                <li><strong className="text-white">Legal Requirements:</strong> When required by law or to protect our rights</li>
-                <li><strong className="text-white">Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets</li>
-              </ul>
-            </div>
-
-            {/* Section 4 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">4. Data Security</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We implement appropriate technical and organizational measures to protect your personal information, including:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Encryption of data in transit and at rest</li>
-                <li>Regular security assessments and updates</li>
-                <li>Access controls and authentication measures</li>
-                <li>Employee training on data protection</li>
-              </ul>
-              <p className="text-slate-300 leading-relaxed">
-                However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
-              </p>
-            </div>
-
-            {/* Section 5 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">5. Your Rights and Choices</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                You have the right to:
-              </p>
-              <ul className="list-disc list-inside text-slate-300 space-y-2 mb-4 ml-4">
-                <li>Access and review your personal information</li>
-                <li>Correct inaccurate or incomplete data</li>
-                <li>Delete your account and associated data</li>
-                <li>Opt-out of marketing communications</li>
-                <li>Restrict or object to certain data processing</li>
-                <li>Data portability (receive your data in a structured format)</li>
-              </ul>
-              <p className="text-slate-300 leading-relaxed">
-                To exercise these rights, contact us at <a href="mailto:privacy@unifesto.app" className="text-primary hover:underline">privacy@unifesto.app</a>
-              </p>
-            </div>
-
-            {/* Section 6 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">6. Cookies and Tracking</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We use cookies and similar technologies to enhance your experience. You can control cookies through your browser settings, but disabling them may affect platform functionality.
-              </p>
-            </div>
-
-            {/* Section 7 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">7. Children's Privacy</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                Our services are intended for users aged 13 and above. We do not knowingly collect information from children under 13. If you believe we have collected such information, please contact us immediately.
-              </p>
-            </div>
-
-            {/* Section 8 */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">8. Changes to This Policy</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                We may update this Privacy Policy from time to time. We will notify you of significant changes by email or through a prominent notice on our platform. Your continued use of our services after changes constitutes acceptance of the updated policy.
-              </p>
-            </div>
-
-            {/* Contact */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-white mb-4">9. Contact Us</h2>
-              <p className="text-slate-300 leading-relaxed mb-4">
-                If you have questions or concerns about this Privacy Policy, please contact us:
-              </p>
-              <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-6">
-                <p className="text-slate-300 mb-2"><strong className="text-white">Email:</strong> <a href="mailto:privacy@unifesto.app" className="text-primary hover:underline">privacy@unifesto.app</a></p>
-                <p className="text-slate-300 mb-2"><strong className="text-white">Support:</strong> <a href="mailto:support@unifesto.app" className="text-primary hover:underline">support@unifesto.app</a></p>
-                <p className="text-slate-300"><strong className="text-white">Company:</strong> Unifesto Private Limited</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
-    </main>
+    <LegalPage
+      title="Privacy Policy"
+      path="/privacy"
+      lines={["Privacy Policy"]}
+      lede="What we collect, why, who sees it, where it lives, how long we keep it, and the rights you have over it. In plain language."
+      sections={sections}
+    />
   );
 }

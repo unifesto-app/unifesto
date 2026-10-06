@@ -1,59 +1,111 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import { withSocial } from "@/lib/seo";
+import Link from "next/link";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import MarqueeBar from "@/components/MarqueeBar";
-import PlatformShowcase from "@/components/PlatformShowcase";
 import EventsGrid from "@/components/EventsGrid";
-import HowItWorksSection from "@/components/HowItWorksSection";
-import OrganizerPitchSection from "@/components/OrganizerPitchSection";
-import SocialProofSection from "@/components/SocialProofSection";
 import FinalCTASection from "@/components/FinalCTASection";
 import Footer from "@/components/Footer";
+import Section from "@/components/site/Section";
+import FeatureRow from "@/components/site/FeatureRow";
+import FaqList from "@/components/site/FaqList";
+import { PassScreen, ManageScreen } from "@/components/visuals/AppScreens";
+import { PILLAR_VISUALS } from "@/components/visuals/Product";
+import { LeaderboardVisual } from "@/components/visuals/Hackathon";
+import { FAQ_HOME, PILLARS, PROOF } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Unifesto - The Operating System for Running Events in India",
+export const metadata: Metadata = withSocial({
+  title: { absolute: "Unifesto: Event ticketing, QR check-in and payouts for India" },
   description:
-    "Unifesto runs the whole event, not just the ticket page. Spaces for your team with role-based access, RSVP and paid ticketing, multi-point QR check-in, Razorpay payouts, cash-accurate financials, certificates, hackathon leaderboards and sponsor leads. 10,000+ attendees across 25+ events. Built by organisers who lived the chaos.",
-  keywords: [
-    "event management platform India",
-    "college fest management software",
-    "QR check-in events",
-    "event ticketing India",
-    "hackathon leaderboard platform",
-    "community event platform",
-    "event payouts Razorpay",
-    "student club event software",
-    "event certificates platform",
-  ],
-  openGraph: {
-    title: "Unifesto - Run the whole event, not just the ticket page",
-    description:
-      "One Space for your team: role-based access, ticketing, multi-point QR check-in, payouts, financials, certificates, leaderboards and sponsor leads. Built for clubs, communities, institutions and startups. 10K+ attendees, 25+ events.",
-    type: "website",
-    url: "https://www.unifesto.app",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Unifesto - The event operating system",
-    description:
-      "Team, tickets, the door, the money and the debrief, in one Space. Multi-point QR check-in, Razorpay payouts, certificates, leaderboards. 10K+ attendees. Built by organisers who lived the chaos.",
-  },
-  alternates: {
-    canonical: "/",
-  },
-};
+    "Run your whole event on Unifesto: tickets and RSVPs, multi-point QR check-in, Razorpay payouts, certificates, sponsors and hackathon judging. Free for RSVP events. Attendees get the free Unifesto app for iOS and Android.",
+  alternates: { canonical: "/" },
+}, { title: "Unifesto: Run the whole event, not just the ticket page", description: "Tickets, QR check-in, payouts, certificates, sponsors and hackathons for clubs, communities and institutions in India." });
+
+const HIGHLIGHTS = ["tickets", "door", "money"] as const;
 
 export default function Home() {
+  const pillars = HIGHLIGHTS.map((id) => PILLARS.find((p) => p.id === id)!);
   return (
-    <main className="min-h-[100dvh] bg-canvas overflow-x-hidden">
+    <main className="min-h-[100dvh] overflow-x-hidden bg-canvas">
       <Navbar />
       <Hero />
       <MarqueeBar />
-      <PlatformShowcase />
-      <HowItWorksSection />
+
+      {/* Two audiences, one event. Each side gets its own picture. */}
+      <Section surface="paper" aria-labelledby="sides-heading">
+        <h2 id="sides-heading" data-reveal="clip" className="max-w-3xl font-display text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.12] text-ink [text-wrap:balance]">
+          One event, two sides of the door.
+        </h2>
+        <div className="mt-14 grid gap-16 md:grid-cols-2 md:gap-12">
+          <article className="flex flex-col">
+            <PassScreen />
+            <h3 className="mt-10 text-xl text-ink">For people going</h3>
+            <p className="mt-3 max-w-[48ch] text-[15px] font-light leading-relaxed text-ink/70">
+              Find events near you, register in a few taps, and walk in with the pass on your phone. The Unifesto app is
+              free on iOS and Android.
+            </p>
+            <Link href="/app" className="link-draw mt-5 inline-flex w-fit items-center gap-2 text-sm text-ink">
+              See the app <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+            </Link>
+          </article>
+          <article className="flex flex-col">
+            <ManageScreen />
+            <h3 className="mt-10 text-xl text-ink">For people running it</h3>
+            <p className="mt-3 max-w-[48ch] text-[15px] font-light leading-relaxed text-ink/70">
+              Your club or institution gets a Space for the team, every event, the door and the money. Run the day from
+              the Unifesto app: scan tickets, check numbers live, request the payout.
+            </p>
+            <Link href="/organisers" className="link-draw mt-5 inline-flex w-fit items-center gap-2 text-sm text-ink">
+              See the platform <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+            </Link>
+          </article>
+        </div>
+      </Section>
+
+      {/* The three jobs every organiser has, shown, not listed. */}
+      <Section aria-labelledby="run-heading">
+        <h2 id="run-heading" data-reveal="clip" className="max-w-3xl font-display text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.12] text-paper [text-wrap:balance]">
+          Sell it, staff the door, settle the money.
+        </h2>
+        <p data-reveal="blur" className="mt-5 max-w-[56ch] text-base font-light leading-relaxed text-paper/65">
+          The three jobs every event has, in one place instead of a form, a spreadsheet and a group chat.
+        </p>
+        {pillars.map((p, i) => {
+          const Visual = PILLAR_VISUALS[p.id];
+          return <FeatureRow key={p.id} title={p.title} lede={p.lede} points={p.points.slice(0, 3)} visual={<Visual />} flip={i % 2 === 1} />;
+        })}
+        <Link href="/organisers" className="btn btn-lg btn-secondary mt-4">
+          Everything organisers get
+          <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
+        </Link>
+      </Section>
+
+      <Section surface="paper" aria-labelledby="hack-heading">
+        <FeatureRow
+          as="h2"
+          id="hack-heading"
+          title="Hackathons, judged properly."
+          lede="Teams, problem statements, rounds with weighted rubrics, judge panels, a help desk and a live leaderboard. The whole hackathon, from registration to certificates, in the same Space."
+          visual={<LeaderboardVisual />}
+        >
+          <Link href="/hackathons" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
+            How hackathons run on Unifesto <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+          </Link>
+        </FeatureRow>
+      </Section>
+
       <EventsGrid />
-      <OrganizerPitchSection />
-      <SocialProofSection />
+
+      <Section surface="paper" pad="tight" width="mid" innerClassName="text-center">
+        <p data-reveal="blur" className="mx-auto max-w-[44ch] font-display text-[clamp(1.1rem,2.2vw,1.6rem)] leading-[1.4] text-ink [text-wrap:balance]">
+          {PROOF.attendees} people checked in across {PROOF.events} events and {PROOF.spacesLive} Spaces, starting at{" "}
+          {PROOF.firstCampus}.
+        </p>
+      </Section>
+
+      <FaqList faqs={FAQ_HOME} />
       <FinalCTASection />
       <Footer />
     </main>

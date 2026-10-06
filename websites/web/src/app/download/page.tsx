@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Ticket, Lightning, DeviceMobile, CircleNotch } from '@phosphor-icons/react';
+import PageHero from '@/components/site/PageHero';
+import Section from '@/components/site/Section';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import Image from 'next/image';
@@ -52,84 +54,55 @@ export default function DownloadPage() {
     window.open(url, '_blank');
   };
 
+  const badges = (
+    <>
+      <button onClick={() => handleDownload('ios')} className="transition-opacity duration-150 hover:opacity-85 active:scale-[0.97]">
+        <Image src={AppStoreBadge} alt="Download on the App Store" className="h-14 w-auto" />
+      </button>
+      <button onClick={() => handleDownload('android')} className="transition-opacity duration-150 hover:opacity-85 active:scale-[0.97]">
+        <Image src={GooglePlayBadge} alt="Get it on Google Play" className="h-14 w-auto" />
+      </button>
+    </>
+  );
+
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header */}
+    <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
 
-      {/* Main Content */}
-      <main className="flex-1 flex items-center justify-center px-4 py-56">
-        <div className="max-w-3xl w-full text-center">
+      <PageHero
+        lines={['Your passes live', 'in the app.']}
+        accentFrom={1}
+        lede={
+          <>
+            Discover and register for events, keep every ticket in one place, and get in with one scan.
+            {redirecting && platform !== 'unknown' && (
+              <span role="status" className="mt-6 flex items-center gap-2 text-sm font-semibold text-primary">
+                <CircleNotch className="h-4 w-4 animate-spin" weight="bold" aria-hidden="true" />
+                Opening the {platform === 'ios' ? 'App Store' : 'Play Store'}…
+              </span>
+            )}
+          </>
+        }
+        actions={badges}
+      />
 
-          {/* Title */}
-          <h1 className="text-4xl md:text-5xl mb-4 bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent">
-            Download Unifesto
-          </h1>
+      <Section surface="paper" pad="tight">
+        <ul className="grid gap-10 md:grid-cols-3" data-stagger="rise">
+          {[
+            { icon: Lightning, title: 'Register in a tap', body: 'Most events take a couple of taps, with your details filled in.' },
+            { icon: Ticket, title: 'Every pass, one place', body: 'Your QR passes, sorted by what is next.' },
+            { icon: DeviceMobile, title: 'iPhone and Android', body: 'The same app on both, free on each store.' },
+          ].map(({ icon: Icon, title, body }) => (
+            <li key={title}>
+              <Icon className="h-7 w-7 text-primary-deep" weight="bold" aria-hidden="true" />
+              <h2 className="mt-4 text-lg font-bold text-ink">{title}</h2>
+              <p className="mt-1.5 text-[15px] leading-relaxed text-ink/70">{body}</p>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-          {/* Description */}
-          <p className="text-lg text-gray-400 mb-8 max-w-xl mx-auto">
-            Discover and register for events, manage your tickets, and connect with communities, all in one app.
-          </p>
-
-          {/* Auto-redirect message */}
-          {redirecting && platform !== 'unknown' && (
-            <div className="mb-8 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-              <div className="flex items-center justify-center gap-2 text-blue-400">
-                <Download className="w-5 h-5 animate-bounce" />
-                <p>Redirecting to {platform === 'ios' ? 'App Store' : 'Play Store'}...</p>
-              </div>
-            </div>
-          )}
-
-          {/* Download Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            {/* iOS Button */}
-            <button
-              onClick={() => handleDownload('ios')}
-              className="hover:scale-105 transition-transform duration-300"
-            >
-              <Image
-                src={AppStoreBadge}
-                alt="Download on the App Store"
-                className="h-16 w-auto object-contain"
-              />
-            </button>
-
-            {/* Android Button */}
-            <button
-              onClick={() => handleDownload('android')}
-              className="hover:scale-105 transition-transform duration-300"
-            >
-              <Image
-                src={GooglePlayBadge}
-                alt="Get it on Google Play"
-                className="h-16 w-auto object-contain"
-              />
-            </button>
-          </div>
-
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div className="p-6 rounded-xl bg-white/5 border border-white/10">
-              <h3 className="font-semibold mb-2">Easy Registration</h3>
-              <p className="text-sm text-gray-400">Register for events with just a few taps</p>
-            </div>
-
-            <div className="p-6 rounded-xl bg-white/5 border border-white/10">
-              <h3 className="font-semibold mb-2">Digital Tickets</h3>
-              <p className="text-sm text-gray-400">Access all your tickets in one place</p>
-            </div>
-
-            <div className="p-6 rounded-xl bg-white/5 border border-white/10">
-              <h3 className="font-semibold mb-2">Cross-Platform</h3>
-              <p className="text-sm text-gray-400">Available on iOS and Android</p>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
       <Footer />
-    </div>
+    </main>
   );
 }

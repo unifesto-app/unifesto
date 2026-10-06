@@ -52,7 +52,7 @@ export default function LeadCaptureForm({
 
   if (done) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="rounded-3xl bg-night-2 p-6">
         <div className="flex items-center gap-2 text-white">
           <CheckCircle className="h-5 w-5 text-emerald-400" />
           <p className="font-semibold">{successText}</p>
@@ -62,17 +62,18 @@ export default function LeadCaptureForm({
   }
 
   return (
-    <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+    <form onSubmit={submit} className="rounded-3xl bg-night-2 p-6">
       <h3 className="text-lg font-bold text-white">{title}</h3>
-      <p className="mt-1 text-sm text-slate-400">{description}</p>
+      <p className="mt-1 text-sm text-paper/65">{description}</p>
 
       <div className="mt-4 space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your name (optional)"
-          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+          className="w-full rounded-lg border border-white/10 bg-paper/[0.05] px-3 py-2.5 text-sm text-white placeholder:text-paper/55 focus:border-steel focus:outline-none"
         />
         <input
           type="email"
@@ -80,22 +81,23 @@ export default function LeadCaptureForm({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="Email address"
           required
-          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+          className="w-full rounded-lg border border-white/10 bg-paper/[0.05] px-3 py-2.5 text-sm text-white placeholder:text-paper/55 focus:border-steel focus:outline-none"
         />
+        </div>
         {withMessage && (
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Your message"
             rows={3}
-            className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-slate-500 focus:border-primary focus:outline-none"
+            className="w-full rounded-lg border border-white/10 bg-paper/[0.05] px-3 py-2.5 text-sm text-white placeholder:text-paper/55 focus:border-steel focus:outline-none"
           />
         )}
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button
           type="submit"
           disabled={busy || !email.trim()}
-          className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-lg bg-primary px-6 sm:w-auto py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {busy ? "Submitting…" : cta}
         </button>

@@ -53,12 +53,12 @@ export function SubEventHub({
         <Stack className="h-5 w-5 text-primary" aria-hidden="true" />
         <h2 className="text-lg font-bold text-white">
           Sub-events
-          <span className="ml-2 text-sm font-medium text-slate-400">
+          <span className="ml-2 text-sm font-medium text-paper/65">
             {subEvents.length}
           </span>
         </h2>
       </div>
-      <p className="mb-5 text-sm text-slate-400">
+      <p className="mb-5 text-sm text-paper/65">
         {mode === "pass"
           ? "Your event pass covers the overall event. Each sub-event below has its own schedule — some may need separate registration."
           : "This is a multi-part event. Each sub-event below has its own schedule and registration — pick the ones you want to attend."}
@@ -69,7 +69,7 @@ export function SubEventHub({
           <Link
             key={sub.id}
             href={`/event/${sub.slug}`}
-            className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="group flex flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {sub.banner_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -79,7 +79,7 @@ export function SubEventHub({
                 className="aspect-[16/9] w-full object-cover"
               />
             ) : (
-              <div className="aspect-[16/9] w-full bg-gradient-to-br from-primary/20 to-black" />
+              <div className="aspect-[16/9] w-full bg-gradient-to-br from-primary/20 to-night-3" />
             )}
 
             <div className="flex flex-1 flex-col p-4">
@@ -87,7 +87,7 @@ export function SubEventHub({
                 {sub.title}
               </h3>
 
-              <div className="mt-auto space-y-1.5 text-xs text-slate-400">
+              <div className="mt-auto space-y-1.5 text-xs text-paper/65">
                 <span className="flex items-center gap-1.5">
                   <CalendarBlank className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                   {formatDate(sub.start_date)}
@@ -132,7 +132,7 @@ export function ParentEventChip({ parent }: { parent: SubEventSummary }) {
   return (
     <Link
       href={`/event/${parent.slug}`}
-      className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur-sm transition-colors hover:border-primary/40 hover:text-white"
+      className="inline-flex items-center gap-2 rounded-full bg-paper/[0.08] px-3 py-1.5 text-xs font-semibold text-paper/90 backdrop-blur-sm transition-colors hover:text-white"
     >
       <Stack className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
       Part of {parent.title}

@@ -26,7 +26,7 @@ import {
   PRICE_FILTERS,
   type Event,
 } from "@/lib/api/events";
-import { brandGradient } from "@/lib/styles";
+import PageHero from "@/components/site/PageHero";
 
 type PriceKey = "all" | "free" | "paid";
 type DateKey = "all" | "today" | "week" | "upcoming";
@@ -74,51 +74,51 @@ function FeatureCard({ event }: { event: Event }) {
           router.push(href);
         }
       }}
-      className="group relative flex h-full w-[300px] flex-shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] transition-colors duration-200 hover:border-primary/40 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:w-[360px]"
+      className="group relative flex h-full w-[300px] flex-shrink-0 cursor-pointer flex-col overflow-hidden rounded-3xl bg-night-2 transition-colors duration-150 hover:bg-night-3 sm:w-[360px]"
     >
-      <div
-        className="relative h-44 overflow-hidden bg-[#0a0a0d]"
-        style={
-          image
-            ? { backgroundImage: `url(${image})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : undefined
-        }
-      >
+      <div className="relative h-44 overflow-hidden bg-night-3">
+        {image && (
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] ease-[cubic-bezier(.19,1,.22,1)] group-hover:scale-[1.04]"
+            style={{ backgroundImage: `url(${image})` }}
+          />
+        )}
         <div
           aria-hidden
           className={
             image
-              ? "absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent"
-              : "absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgba(52,145,255,0.22),transparent_60%)]"
+              ? "absolute inset-0 bg-gradient-to-t from-scrim via-scrim/30 to-transparent"
+              : "absolute inset-0 bg-[radial-gradient(120%_120%_at_80%_0%,rgb(var(--glow)/0.22),transparent_60%)]"
           }
         />
-        <span className="absolute left-4 top-4 rounded-full border border-primary/40 bg-black/40 px-2.5 py-1 text-[11px] font-semibold text-primary backdrop-blur-sm">
+        <span className="absolute left-4 top-4 rounded-full bg-primary px-2.5 py-1 text-[11px] font-semibold text-ink">
           {event.is_trending ? "Trending" : "Featured"}
         </span>
       </div>
-      <div className="flex flex-1 flex-col gap-2.5 p-5">
-        <h3 className="text-lg font-bold leading-snug text-white line-clamp-2">{event.title}</h3>
-        <p className="truncate text-xs font-medium text-slate-400">{organizer}</p>
-        <div className="mt-1 flex flex-col gap-1.5 text-xs text-slate-400">
+      <div className="flex flex-1 flex-col gap-2.5 p-6">
+        <h3 className="text-lg font-bold leading-snug text-paper line-clamp-2">{event.title}</h3>
+        <p className="truncate text-xs font-medium text-paper/60">{organizer}</p>
+        <div className="mt-1 flex flex-col gap-1.5 text-xs text-paper/65">
           <span className="flex items-center gap-1.5">
-            <CalendarBlank className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" aria-hidden="true" />
+            <CalendarBlank className="h-3.5 w-3.5 flex-shrink-0 text-primary/80" aria-hidden="true" />
             {formatFeatureDate(event.start_date)}
           </span>
           <span className="flex items-center gap-1.5">
-            <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/70" aria-hidden="true" />
+            <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-primary/80" aria-hidden="true" />
             <span className="truncate">{location}</span>
           </span>
         </div>
-        <div className="mt-auto flex items-center justify-between border-t border-white/8 pt-3">
+        <div className="mt-auto flex items-center justify-between pt-3">
           <span className="flex flex-col">
             <span className="text-sm font-bold text-white">{price}</span>
             {freeAvailable && (
-              <span className="text-[10px] font-medium text-primary/80">Free tickets available</span>
+              <span className="text-[10px] font-medium text-primary">Free tickets available</span>
             )}
           </span>
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-all duration-200 group-hover:gap-2">
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
             View
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            <ArrowRight className="h-3.5 w-3.5 transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </div>
       </div>
@@ -140,7 +140,7 @@ function FilterGroup({
 }) {
   return (
     <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+      <p className="mb-2 text-xs font-semibold text-paper/60">
         {label}
       </p>
       <div className="flex flex-wrap gap-1.5">
@@ -150,12 +150,10 @@ function FilterGroup({
             <button
               key={opt.key}
               onClick={() => onChange(opt.key)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors duration-200 ${
-                active
-                  ? "text-black"
-                  : "border border-white/10 text-slate-300 hover:border-white/20 hover:text-white"
+              aria-pressed={active}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-150 ${
+                active ? "bg-primary text-ink" : "bg-paper/[0.06] text-paper/75 hover:bg-paper/[0.1] hover:text-paper"
               }`}
-              style={active ? { background: brandGradient } : undefined}
             >
               {opt.label}
             </button>
@@ -260,32 +258,26 @@ function EventsContent() {
     chips.push({ label: activePriceLabel, onClear: () => setPrice("all") });
 
   return (
-    <main className="min-h-screen bg-black overflow-x-hidden">
+    <main className="min-h-screen overflow-x-hidden bg-canvas">
       <Navbar />
 
-      {/* Page header */}
-      <section className="relative px-6 pt-28 pb-8">
-        <div className="mx-auto max-w-6xl">
-          <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-5xl">
-            Events at Malla Reddy University
-          </h1>
-          <p className="mt-3 max-w-xl text-sm text-slate-300 md:text-base">
-            Hackathons, workshops, fests and talks — find something worth your evening and
-            register in seconds.
-          </p>
-        </div>
-      </section>
+      <PageHero
+        lines={["Find something", "worth your evening."]}
+        accentFrom={1}
+        size="md"
+        lede="Hackathons, workshops, fests and talks at Malla Reddy University. Register in seconds."
+      />
+      {/* Same gap below the hero's horizon line as above it */}
+      <div className="h-14 md:h-20" aria-hidden />
 
       {/* Featured strip: only on the clean view so it never fights the filters */}
       {!hasFilters && (featuredEvents.length > 0 || loading) && (
-        <section className="px-6 pb-4">
-          <div className="mx-auto max-w-6xl">
+        <section className="px-5 pb-6 sm:px-8">
+          <div className="mx-auto max-w-7xl">
             <div className="mb-4 flex items-baseline justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                Featured &amp; trending
-              </h2>
+              <h2 className="text-lg font-semibold text-paper">Featured and trending</h2>
             </div>
-            <div className="-mx-6 flex gap-4 overflow-x-auto px-6 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="-mx-5 flex gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:px-8 [&::-webkit-scrollbar]:hidden" data-stagger="rise">
               {loading
                 ? Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="w-[300px] flex-shrink-0 sm:w-[360px]">
@@ -299,13 +291,13 @@ function EventsContent() {
       )}
 
       {/* Sticky command bar: search + status + filter toggle stay in reach */}
-      <div className="sticky top-16 z-30 border-y border-white/5 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-6xl px-6 py-3">
+      <div className="blur-bg sticky top-16 z-30 md:top-[4.5rem]">
+        <div className="mx-auto max-w-7xl px-5 py-3 sm:px-8">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             {/* Search */}
             <div className="relative flex-1 md:max-w-sm">
               <MagnifyingGlass
-                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-paper/50"
                 aria-hidden="true"
               />
               <input
@@ -315,7 +307,7 @@ function EventsContent() {
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search events, organizers…"
                 aria-label="Search events"
-                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none transition-colors duration-200 focus:border-primary focus:bg-white/[0.07]"
+                className="w-full rounded-full bg-paper/[0.07] py-2.5 pl-11 pr-4 text-sm text-paper placeholder:text-paper/50 outline-none transition-colors duration-150 focus:bg-paper/[0.11]"
               />
             </div>
 
@@ -323,7 +315,7 @@ function EventsContent() {
             <div
               role="tablist"
               aria-label="Event status"
-              className="flex items-center gap-1 overflow-x-auto rounded-xl border border-white/5 bg-white/5 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex items-center gap-1 overflow-x-auto rounded-full bg-paper/[0.06] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {STATUS_TABS.map((tab) => {
                 const active = status === tab.key;
@@ -333,10 +325,9 @@ function EventsContent() {
                     role="tab"
                     aria-selected={active}
                     onClick={() => setStatus(tab.key)}
-                    className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-colors duration-200 ${
-                      active ? "text-black" : "text-slate-400 hover:text-white"
+                    className={`whitespace-nowrap rounded-full px-4 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                      active ? "bg-primary text-ink" : "text-paper/65 hover:text-paper"
                     }`}
-                    style={active ? { background: brandGradient } : undefined}
                   >
                     {tab.label}
                   </button>
@@ -348,10 +339,8 @@ function EventsContent() {
             <button
               onClick={() => setFiltersOpen((o) => !o)}
               aria-expanded={filtersOpen}
-              className={`inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors duration-200 md:ml-auto ${
-                filtersOpen || category !== "All" || dateRange !== "all" || price !== "all"
-                  ? "border-primary/50 bg-primary/10 text-white"
-                  : "border-white/10 bg-white/5 text-slate-300 hover:text-white"
+              className={`btn btn-sm md:ml-auto ${
+                filtersOpen || category !== "All" || dateRange !== "all" || price !== "all" ? "btn-primary" : "btn-secondary"
               }`}
             >
               <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
@@ -361,7 +350,7 @@ function EventsContent() {
 
           {/* Expandable filter panel */}
           {filtersOpen && (
-            <div className="mt-3 grid gap-4 rounded-xl border border-white/10 bg-white/[0.02] p-4 sm:grid-cols-3">
+            <div className="animate-pop-in mt-3 grid origin-top gap-5 rounded-3xl bg-night-2 p-6 sm:grid-cols-3">
               <FilterGroup
                 label="Category"
                 options={ALL_CATEGORIES.map((c) => ({ key: c, label: c }))}
@@ -390,7 +379,7 @@ function EventsContent() {
                 <button
                   key={`${chip.label}-${i}`}
                   onClick={chip.onClear}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 py-1 pl-3 pr-2 text-xs font-medium text-white transition-colors duration-200 hover:bg-primary/20"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 py-1 pl-3 pr-2 text-xs font-medium text-paper transition-colors duration-150 hover:bg-primary/25"
                 >
                   {chip.label}
                   <X className="h-3 w-3" aria-hidden="true" />
@@ -399,7 +388,7 @@ function EventsContent() {
               ))}
               <button
                 onClick={clearAll}
-                className="text-xs font-medium text-slate-400 transition-colors duration-200 hover:text-white"
+                className="link-draw text-xs font-medium text-paper/60 transition-colors duration-150 hover:text-paper"
               >
                 Clear all
               </button>
@@ -409,8 +398,8 @@ function EventsContent() {
       </div>
 
       {/* Grid */}
-      <div ref={gridTopRef} className="mx-auto max-w-6xl scroll-mt-40 px-6 py-8">
-        <p className="mb-5 text-xs text-slate-400" aria-live="polite">
+      <div ref={gridTopRef} className="mx-auto max-w-7xl scroll-mt-40 px-5 py-10 sm:px-8">
+        <p className="mb-6 text-sm text-paper/60" aria-live="polite">
           {loading
             ? "Loading events…"
             : filteredEvents.length === 0
@@ -427,7 +416,7 @@ function EventsContent() {
             ))}
           </div>
         ) : events.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
             {events.map((event, i) => (
               <EventCard key={event.id} event={event} index={startIndex + i} />
             ))}
@@ -451,13 +440,13 @@ function EventsContent() {
         {!loading && totalPages > 1 && (
           <nav
             aria-label="Pagination"
-            className="mt-10 flex items-center justify-center gap-2 border-t border-white/5 pt-8"
+            className="mt-14 flex items-center justify-center gap-2"
           >
             <button
               onClick={() => goToPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
               aria-label="Previous page"
-              className="inline-flex h-10 items-center gap-1 rounded-xl border border-white/10 px-3 text-sm font-medium text-white transition-colors duration-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-30"
+              className="btn btn-sm btn-secondary disabled:cursor-not-allowed disabled:opacity-30"
             >
               <CaretLeft className="h-4 w-4" aria-hidden="true" />
               Prev
@@ -473,7 +462,7 @@ function EventsContent() {
 
                 if (showEllipsis)
                   return (
-                    <span key={page} className="px-2 text-slate-500">
+                    <span key={page} className="px-2 text-paper/50">
                       …
                     </span>
                   );
@@ -485,12 +474,9 @@ function EventsContent() {
                     key={page}
                     onClick={() => goToPage(page)}
                     aria-current={active ? "page" : undefined}
-                    className={`h-10 w-10 rounded-xl text-sm font-medium transition-colors duration-200 ${
-                      active
-                        ? "text-black"
-                        : "border border-white/10 text-slate-300 hover:bg-white/5"
+                    className={`tabular h-10 w-10 rounded-full text-sm font-medium transition-colors duration-150 ${
+                      active ? "bg-primary text-ink" : "text-paper/70 hover:bg-paper/[0.07]"
                     }`}
-                    style={active ? { background: brandGradient } : undefined}
                   >
                     {page}
                   </button>
@@ -502,7 +488,7 @@ function EventsContent() {
               onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
               aria-label="Next page"
-              className="inline-flex h-10 items-center gap-1 rounded-xl border border-white/10 px-3 text-sm font-medium text-white transition-colors duration-200 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-30"
+              className="btn btn-sm btn-secondary disabled:cursor-not-allowed disabled:opacity-30"
             >
               Next
               <CaretRight className="h-4 w-4" aria-hidden="true" />
@@ -518,7 +504,7 @@ function EventsContent() {
 
 export default function EventsPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+    <Suspense fallback={<div className="min-h-screen bg-canvas" />}>
       <EventsContent />
     </Suspense>
   );
