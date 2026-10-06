@@ -50,7 +50,18 @@ export interface SeatAction {
 
 /** One person-slot in the list. Tapping it opens its page, where its actions live. */
 export type GroupRow =
-  | { key: string; kind: 'filled'; isLead: boolean; name: string; sub: string | null; editable: boolean; onOpen: () => void; actions: SeatAction[] }
+  | {
+      key: string;
+      kind: 'filled';
+      isLead: boolean;
+      name: string;
+      sub: string | null;
+      /** Set for a teammate the lead typed in: no app account holds the seat yet. */
+      appStatus: string | null;
+      editable: boolean;
+      onOpen: () => void;
+      actions: SeatAction[];
+    }
   | { key: string; kind: 'invited'; isLead: boolean; label: string; email: string | null; onOpen: () => void; actions: SeatAction[] }
   | { key: string; kind: 'open'; isLead: boolean; label: string; onOpen: () => void; actions: SeatAction[] }
   | { key: string; kind: 'released'; isLead: boolean; label: string; onOpen: () => void; actions: SeatAction[] };
@@ -316,7 +327,29 @@ export function useManageGroup(registrationId: string) {
         });
         break;
       default:
-        if (!teamOpen) return [];
+        // A teammate the lead typed in has no app account on the seat, so
+        // they can't open their ticket (or a hackathon). Inviting them keeps
+        // them on the team, so it's allowed even while team changes are closed.
+        if (!s.claimedByUserId) {
+          const to = s.inviteEmail || (typeof s.memberDetails?.email === 'string' ? s.memberDetails.email.trim() : '');
+          out.push({
+            key: 'link',
+            label: s.inviteEmail ? 'Resend app invite' : 'Invite to the app',
+            onPress: () =>
+              to
+                ? confirmThen(
+                    `Invite ${name} to the app?`,
+                    `We'll email ${to} a link. Once they accept, they get their own ticket and stay in the team.`,
+                    'Send invite',
+                    async () => {
+                      await inviteSeats(registrationId, [{ seatIndex: i, email: to }]);
+                    },
+                    false,
+                  )
+                : inviteInto(i),
+          });
+        }
+        if (!teamOpen) return out;
         if (s.claimedByUserId && !team?.leadTransfer) {
           out.push({
             key: 'lead',
@@ -522,6 +555,12 @@ export function useManageGroup(registrationId: string) {
                 isLead,
                 name: md.name || label,
                 sub: md.email ?? null,
+                appStatus:
+                  isLead || s.claimedByUserId
+                    ? null
+                    : s.inviteEmail
+                      ? `App invite sent to ${s.inviteEmail}`
+                      : 'Not on the app yet',
                 editable: canEdit,
                 actions,
                 // With a roster, the member's page is the member editor; without
@@ -544,6 +583,7 @@ export function useManageGroup(registrationId: string) {
                 isLead: i === 0,
                 name,
                 sub: m?.email?.trim() || null,
+                appStatus: null,
                 editable: true,
                 actions: [],
                 onOpen: () => {

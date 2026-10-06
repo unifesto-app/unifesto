@@ -43,6 +43,7 @@ changes each mobile release depends on.
 | [4.0.5](#405--fix-what-failed-in-400) | patch | Fix everything that failed in 4.0.0 (build, upload, QA, review) | after 4.0.0 QA | **store build** | you | shipped (iOS 39, Android 46 live) | 3 Oct |
 | [4.1.0](#410--hackathon-event-day) | minor | Hackathon event day, public winners, OTA complete, sponsor/partner quick wins | **Tue 29 Sep** | OTA | OTA | shipped (100%, base for 4.1.1) | 4 Oct |
 | [4.1.1](#411--smoother-event-creation) | minor (named patch) | Smoother mobile event creation, multiple categories per event | 4 Oct | OTA | OTA | rolling out (20%, 4 Oct) | – |
+| [4.1.2](#412--typed-in-teammates-can-join) | patch | Teammates the lead typed in can link their account and join the hackathon | after 4.1.1 reaches 100% | backend deploy, then OTA | OTA | in review (#42) | – |
 | [4.2.0](#420--support-system-complete) | minor | Support system complete | **Thu 1 Oct** | OTA | OTA | planned | – |
 | [4.3.0](#430--sponsor-partner-and-hackathon-complete) | minor | Sponsor + partner complete, hackathon submissions | **Sat 3 Oct** | OTA | OTA | planned | – |
 | [4.4.0](#440--event-feedback-and-user-iam) | minor | Event feedback system, user-level IAM | **Mon 5 Oct** | OTA | OTA | planned | – |
@@ -454,6 +455,32 @@ Why: creating an event on mobile was one long form, buried four taps deep, that 
   - Android: group `16c13122-5047-4e30-9e0a-bff85302b4ef`, update `01a105d3-d237-77b4-a8cf-dcd5c3cd8e0d`, runtime `d379e9cc368ba7d4f39257b5aa89cfeddbb7f95b`
 - Backend (migration `20261004120000_event_categories`): live by 4 Oct ~07:20 UTC (verified through the API; deploy time not recorded here)
 - Rollout to 100%: pending
+---
+
+### 4.1.2 · Typed-in teammates can join
+
+**Type:** patch · **Ships as:** backend deploy **first**, then OTA (4.0.5 runtime, JS-only) · **Branch:** `claude/typed-teammate-invite`
+
+Why: in hackathon teams, members the lead typed in showed "Not joined yet" while Manage group showed every seat as claimed. A typed-in teammate sits on a `CLAIMED` seat with no account (so door check-in works), the hackathon only counts seats with an account, and they had no way to link one (invites only took `OPEN` seats, a claim refused `CLAIMED`). Mid-hackathon the team-change lock also blocked remove + re-invite.
+
+#### Plan
+
+| Item | Status |
+|---|---|
+| Backend: `invite()` targets a typed-in seat by number (stays `CLAIMED`, gains `inviteEmail`); `claim`/`getClaimInfo` accept it under the same one-winner guard + email-ownership check, keeping the lead's typed details under the member's; Home invites card lists it; `decline` only cancels the link | done (#42) |
+| App: Manage group shows "Not on the app yet" / "App invite sent to …" + "Invite to the app" / "Resend app invite", allowed while team changes are locked | done (#42) |
+| Deploy backend, then publish the OTA (old backend answers "No open seats left to invite to") | planned |
+| Device run-through: lead invites a typed-in teammate, teammate claims from the email and Home card, hackathon shows them joined; decline path | planned |
+| Tell leads of running hackathon teams to tap "Invite to the app" for typed-in members (nothing links automatically) | planned |
+
+#### Log
+
+- **6 Oct:** Built (#42). 6 new `group-seats.service.spec.ts` tests (fake DB now matches `OR`/`AND`/`gt`/null filters); registrations + leaderboard + check-in suites 238 pass; backend + mobile `tsc` clean; mutation check on the claim guard fails the suite. Not seen on a device.
+
+#### Shipped
+
+- Backend deploy: – · OTA update: –
+
 ---
 
 ### 4.2.0 · Support system complete
