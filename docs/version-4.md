@@ -717,6 +717,7 @@ Today: `unifesto.app/terms`, `/privacy`, `/refund` exist as static pages.
 | Cookie Policy (web) | planned |
 | Grievance redressal page (IT Rules 2021) | planned |
 | Versioned legal documents: stored with version + effective date, change log, acceptance recorded per user | planned |
+| CERT-In 180-day logs (api_logs + Caddy access logs) and no OTPs in app logs (2026-10-07 DPDP/CERT-In audit) | built, not deployed |
 | DPDP erasure on account close: scrub personal data on the user's registrations (form answers), group seats + roster entries, stay bookings/guests, sponsor-lead contacts (+ consent off), organiser funnel leads (by verified email, or verified mobile for phone-only leads) and refund reasons, delete their private uploads; money fields kept | in progress: #41 open, needs backend rebuild (no migration) |
 | Privacy Policy "How long we keep it": say organiser-question answers are erased on account close (once the rewritten page and #41 land) | planned |
 

@@ -6,6 +6,16 @@
 
 (cf_origin) {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+	# Access logs, kept 180 days for CERT-In. Written under /data (the
+	# caddy_data volume) so they survive redeploys; deploy.sh's rsync --delete
+	# would wipe a bind-mounted ./logs. Caddy redacts Authorization and Cookie
+	# by default; the real client IP is the Cf-Connecting-Ip request header.
+	log {
+		output file /data/logs/access.log {
+			roll_size 100MiB
+			roll_keep_for 4320h
+		}
+	}
 }
 
 api.unifesto.app {

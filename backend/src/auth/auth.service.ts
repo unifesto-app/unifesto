@@ -223,9 +223,6 @@ export class AuthService {
 
   async verifyEmailOtp(email: string, otp: string): Promise<AuthResponseDto> {
     try {
-      this.logger.log(`Verifying email OTP for: ${email}`);
-      this.logger.log(`OTP received: ${otp}`);
-
       // Apple App Review bypass — static test account
       if (email === 'test-user@unifesto.app' && otp === '098765') {
         return await this.handleProviderLogin(
