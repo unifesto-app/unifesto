@@ -178,6 +178,182 @@ def powered_by(theme, stacked=False):
     return svg(box + txt + mark, defs, vb=f"0 0 {W:.0f} {H}")
 
 
+# ── Product lockups: the wordmark + product name, one colour family ──
+PRODUCTS = ("Stay", "Huddle", "Sprint")
+LOCKUP_FILLS = {"silver": None, "ink": "#111113", "white": "#ffffff", "black": "#111113"}
+
+
+def _silver_band(id, y0, y1):
+    """Vertical silver gradient pinned to a y-band, so it runs across a whole lockup."""
+    return (f'<linearGradient id="{id}" gradientUnits="userSpaceOnUse" x1="0" y1="{y0:.1f}" x2="0" y2="{y1:.1f}">'
+            '<stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#e4e4e8"/>'
+            '<stop offset="1" stop-color="#a6a6ad"/></linearGradient>')
+
+
+def _lockup_group(product, x, base, h, fill):
+    """unifesto + product name on one baseline; returns (svg, width). h = wordmark height."""
+    mark, mw = _wm_group(x, base, h, fill)
+    txt, tw = label(product, h * 76 / 72, x + mw + h * 26 / 72, base, fill)
+    return mark + txt, mw + h * 26 / 72 + tw
+
+
+def lockup(product, fill_kind):
+    """The product lockup on its own; the name is set in the badge font."""
+    pad, h, base = 24, 72, 96
+    defs, fill = "", LOCKUP_FILLS[fill_kind]
+    if fill is None:
+        defs, fill = _silver_band("lk", base - h, base), "url(#lk)"
+    body, w = _lockup_group(product, pad, base, h, fill)
+    # wordmark has no descenders; leave room for "y"/"p" in the product name
+    return svg(body, defs, vb=f"0 0 {w + 2 * pad:.0f} {base + pad + 18}")
+
+
+# ── Usage examples: the lockups on 1080x1350 posters (sample content) ──
+PW, PH = 1080, 1350
+
+
+def _text(t, size, x, base, fill, anchor="start"):
+    if anchor != "start":
+        _, w = label(t, size, 0, 0, fill)
+        x -= w / 2 if anchor == "middle" else w
+    return label(t, size, x, base, fill)[0]
+
+
+def _ground(dark):
+    """Poster ground: black sky with the horizon, or plain paper."""
+    if not dark:
+        return '<rect width="1080" height="1350" fill="#f4f4f6"/>'
+    R, hz = 2400, 1130
+    return ('<radialGradient id="psky" cx=".5" cy=".35" r=".75"><stop offset="0" stop-color="#141417"/>'
+            '<stop offset="1" stop-color="#000"/></radialGradient>'
+            '<rect width="1080" height="1350" fill="url(#psky)"/>'
+            + "".join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="#fff" opacity="{o}"/>' for x, y, r, o in
+                      [(140, 260, 2.4, .6), (930, 190, 2, .5), (860, 520, 1.6, .35), (210, 700, 1.4, .3), (700, 90, 1.6, .4)])
+            + f'<circle cx="540" cy="{hz + R}" r="{R}" fill="#050506" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>')
+
+
+def _logo_slot(x, y, w, h, dark):
+    """Dashed placeholder where the organiser's own logo goes."""
+    c = "#ffffff" if dark else "#111113"
+    return (f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="14" fill="none" stroke="{c}" '
+            f'stroke-opacity=".4" stroke-width="2" stroke-dasharray="10 8"/>'
+            + _text("Your logo", 26, x + w / 2, y + h / 2 + 9, "#8a8a90", "middle"))
+
+
+def poster(product, layout):
+    dark = layout != "light"
+    fg, muted = ("url(#pt)", "#8a8a90") if dark else ("#111113", "#63636a")
+    lk_fill = "url(#plk)" if dark else "#111113"
+    defs, body = "", _ground(dark)
+
+    def lk(x, base, h, anchor="start"):
+        nonlocal defs
+        if dark:
+            defs += _silver_band("plk", base - h, base)
+        if anchor == "middle":
+            x -= _lockup_group(product, 0, 0, h, lk_fill)[1] / 2
+        return _lockup_group(product, x, base, h, lk_fill)[0]
+
+    if dark:
+        defs += SILVER.format(id="pt").replace('x2=".6" y2="1"', 'x2="0" y2="1"')
+    L = 90
+    if product == "Huddle" and layout == "header":      # lockup as the masthead
+        body += lk(L, 150, 40)
+        body += _text("Live session", 30, L, 470, muted)
+        body += _text("Design systems", 104, L, 600, fg) + _text("that scale", 104, L, 720, fg)
+        body += _text("with Aarav Mehta, Product Designer", 34, L, 800, muted)
+        body += _text("Sat 18 Oct · 7:00 PM IST", 36, L, 1010, fg) + _text("Online · 60 min", 30, L, 1060, muted)
+    elif product == "Huddle" and layout == "signoff":   # content first, lockup as the sign-off
+        body += _text("Sat 18 Oct · 7:00 PM IST", 32, PW / 2, 200, muted, "middle")
+        body += _text("Pitching to", 110, PW / 2, 520, fg, "middle") + _text("your first", 110, PW / 2, 645, fg, "middle")
+        body += _text("investor", 110, PW / 2, 770, fg, "middle")
+        body += _text("with Riya Sen, Founder", 34, PW / 2, 860, muted, "middle")
+        body += _text("Join live on", 26, PW / 2, 1205, muted, "middle") + lk(PW / 2, 1270, 34, "middle")
+    elif product == "Huddle":                            # light: ink lockup, top centre
+        body += lk(PW / 2, 170, 40, "middle")
+        body += f'<line x1="{L}" y1="250" x2="{PW - L}" y2="250" stroke="#111113" stroke-opacity=".12" stroke-width="2"/>'
+        body += _text("Workshop", 30, PW / 2, 470, muted, "middle")
+        body += _text("Shooting on", 110, PW / 2, 600, fg, "middle") + _text("your phone", 110, PW / 2, 725, fg, "middle")
+        body += _text("with Kabir Rao, Filmmaker", 34, PW / 2, 815, muted, "middle")
+        body += _text("Sun 26 Oct · 11:00 AM IST · Online", 32, PW / 2, 1190, fg, "middle")
+    elif layout == "header":                             # Sprint as the headline
+        body += _text("Hackathon", 30, PW / 2, 260, muted, "middle")
+        body += lk(PW / 2, 400, 86, "middle")
+        body += _text("Build Night 2026", 70, PW / 2, 560, fg, "middle")
+        body += _text("36 hours · 12–13 Dec · Hyderabad", 34, PW / 2, 650, muted, "middle")
+        body += _text("Teams of 2–4 · Mentors · Prizes", 32, PW / 2, 1020, fg, "middle")
+    elif layout == "signoff":                            # co-branded with the host
+        body += _logo_slot(L, 100, 260, 100, True)
+        body += _text("×", 40, L + 310, 164, muted, "middle")
+        body += lk(L + 360, 168, 38)
+        body += _text("Hack the", 120, L, 560, fg) + _text("campus", 120, L, 690, fg)
+        body += _text("24 hours to build what your college needs.", 32, L, 780, muted)
+        body += _text("Fri 21 Nov · 9:00 AM", 36, L, 1010, fg) + _text("Main auditorium", 30, L, 1060, muted)
+    else:                                                # light: lockup in the footer strip
+        body += _text("Open innovation challenge", 30, L, 200, muted)
+        body += _text("Climate", 130, L, 420, fg) + _text("Code Sprint", 130, L, 560, fg)
+        body += _text("48 hours · 6–7 Dec · Bengaluru", 34, L, 660, muted)
+        body += f'<rect x="0" y="1110" width="{PW}" height="240" fill="#ffffff"/>'
+        body += '<line x1="0" y1="1110" x2="1080" y2="1110" stroke="#111113" stroke-opacity=".12" stroke-width="2"/>'
+        body += _text("Registrations on", 24, L, 1200, muted) + lk(L, 1262, 36)
+        body += _logo_slot(PW - L - 220, 1170, 220, 100, False)
+    return svg(body, defs, vb=f"0 0 {PW} {PH}")
+
+
+POSTERS = [(p, l) for p in ("Huddle", "Sprint") for l in ("header", "signoff", "light")]
+
+
+def _badge(theme, stacked, x, y, w):
+    """A Powered by badge nested at (x, y), `w` wide."""
+    b = powered_by(theme, stacked)
+    vb = re.search(r'viewBox="([^"]+)"', b)[1]
+    _, _, vw, vh = map(float, vb.split())
+    return f'<svg x="{x:.0f}" y="{y:.0f}" width="{w}" height="{w * vh / vw:.1f}" viewBox="{vb}">{b[b.index(">") + 1:-6]}</svg>'
+
+
+def organiser_poster(kind):
+    """An organiser's own poster (their colours, sample content) carrying the badge."""
+    L, C = 90, PW / 2
+    if kind == "photo":        # busy image: boxed dark badge, bottom-right corner
+        body = ('<filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="90"/></filter>'
+                '<rect width="1080" height="1350" fill="#120a2a"/>'
+                '<circle cx="260" cy="380" r="330" fill="#e0399a" opacity=".75" filter="url(#soft)"/>'
+                '<circle cx="840" cy="620" r="360" fill="#ff8a3d" opacity=".6" filter="url(#soft)"/>'
+                '<circle cx="480" cy="1050" r="300" fill="#4b3cff" opacity=".7" filter="url(#soft)"/>')
+        body += _text("Live music · Open air", 32, L, 200, "#ffffff")
+        body += _text("Neon", 190, L, 520, "#ffffff") + _text("Nights", 190, L, 700, "#ffffff")
+        body += _text("Sat 15 Nov · 6 PM onwards · Gachibowli", 34, L, 800, "#ffffff")
+        body += _badge("dark", False, PW - L - 360, PH - L - 81, 360)
+    elif kind == "colour":     # plain brand colour: one-colour white badge in the footer
+        body = '<rect width="1080" height="1350" fill="#3c5a8c"/>'
+        body += _text("Monthly meetup", 32, C, 300, "#c9d6ee", "middle")
+        body += _text("Founders", 140, C, 520, "#ffffff", "middle") + _text("& Friends", 140, C, 670, "#ffffff", "middle")
+        body += _text("Thu 30 Oct · 7 PM · HITEC City", 34, C, 780, "#ffffff", "middle")
+        body += '<line x1="90" y1="1150" x2="990" y2="1150" stroke="#ffffff" stroke-opacity=".25" stroke-width="2"/>'
+        body += _badge("white", False, C - 170, 1190, 340)
+    elif kind == "light":      # light colour: one-colour black badge beside sponsors
+        body = '<rect width="1080" height="1350" fill="#f8d478"/>'
+        body += _text("Campus", 170, L, 380, "#111113") + _text("Food Fest", 170, L, 560, "#111113")
+        body += _text("40 stalls · Live cooking · 22–23 Nov", 36, L, 660, "#3a3320")
+        body += _text("Supported by", 24, L, 1120, "#3a3320")
+        for i in range(3):
+            body += (f'<rect x="{L + i * 200}" y="1145" width="170" height="90" rx="12" fill="none" stroke="#111113" '
+                     f'stroke-opacity=".35" stroke-width="2" stroke-dasharray="10 8"/>')
+        body += _badge("black", True, PW - L - 230, 1110, 230)
+    else:                      # square-ish space: stacked light badge, top-right
+        body = ('<linearGradient id="pale" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9eef7"/>'
+                '<stop offset="1" stop-color="#c7d3ea"/></linearGradient><rect width="1080" height="1350" fill="url(#pale)"/>')
+        body += _badge("light", True, PW - L - 260, L, 260)
+        body += _text("Department of CSE", 30, L, 520, "#3a4560")
+        body += _text("Annual Tech", 130, L, 680, "#111113") + _text("Symposium", 130, L, 820, "#111113")
+        body += _text("Talks · Workshops · Project expo", 34, L, 920, "#3a4560")
+        body += _text("5 Dec · Main Block", 40, L, 1220, "#111113")
+    return svg(body, vb=f"0 0 {PW} {PH}")
+
+
+ORGANISER_POSTERS = ("photo", "colour", "light", "stacked")
+
+
 def favicon():
     """Tab icon: black tile + silver u, legible at 16px (no stars/horizon)."""
     defs = SILVER.format(id="f")
@@ -238,6 +414,9 @@ if __name__ == "__main__":
         "wordmark-black.svg": wordmark("black"),
         **{f"powered-by-{t}{'-stacked' if st else ''}.svg": powered_by(t, st)
            for t in BADGE_THEMES for st in (False, True)},
+        **{f"lockup-{p.lower()}-{c}.svg": lockup(p, c) for p in PRODUCTS for c in LOCKUP_FILLS},
+        **{f"poster-{p.lower()}-{l}.svg": poster(p, l) for p, l in POSTERS},
+        **{f"poster-powered-by-{k}.svg": organiser_poster(k) for k in ORGANISER_POSTERS},
     }
     for name, content in files.items():
         open(os.path.join(out, name), "w").write(content)

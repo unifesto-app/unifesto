@@ -58,6 +58,21 @@ const ASSETS = [
   },
 ] as const;
 
+/* Product lockups: the wordmark plus the product name, silver on black. */
+const PRODUCTS = ["Stay", "Huddle", "Sprint"] as const;
+
+/* Sample posters showing where each lockup sits. Content on them is made up. */
+const POSTER_SETS = [
+  { product: "Huddle", title: "Unifesto Huddle on session posters" },
+  { product: "Sprint", title: "Unifesto Sprint on hackathon posters" },
+] as const;
+
+const POSTER_LAYOUTS = [
+  { id: "header", Huddle: "Masthead: lockup top left", Sprint: "Headline: lockup as the title" },
+  { id: "signoff", Huddle: "Sign-off: Join live on, at the foot", Sprint: "Co-brand: your logo × Sprint" },
+  { id: "light", Huddle: "Light: ink lockup, top centre", Sprint: "Light: lockup in the footer strip" },
+] as const;
+
 /* "Powered by" badges for organisers. Grounds show where each one belongs. */
 const BADGES = [
   { theme: "dark", label: "Dark badge", ground: "bg-[#1c1c1f]" },
@@ -69,6 +84,14 @@ const BADGES = [
 const BADGE_LAYOUTS = [
   { title: "Side by side", suffix: "", width: "78%" },
   { title: "Stacked: Powered by on top, unifesto below", suffix: "-stacked", width: "52%" },
+] as const;
+
+/* Sample organiser posters carrying the badge. Content on them is made up. */
+const BADGE_POSTERS = [
+  { id: "photo", label: "On a photo: boxed dark badge, corner" },
+  { id: "colour", label: "On a plain colour: white, footer" },
+  { id: "light", label: "On a light colour: black, beside sponsors" },
+  { id: "stacked", label: "Square space: stacked, top corner" },
 ] as const;
 
 /* Paste-in snippet: links back with UTM so badge traffic shows up in analytics. */
@@ -122,7 +145,7 @@ export default function PressPage() {
               Brand kit
             </h2>
             <p className="mt-4 max-w-[56ch] text-[15px] font-light leading-relaxed text-ink/70">
-              Logo, symbol, app icon and favicon in SVG and PNG, with the guidelines. Please use the files as they are: no
+              Logo, symbol, product lockups, app icon and favicon in SVG and PNG, with the guidelines. Please use the files as they are: no
               recolouring, stretching or retyping.
             </p>
           </div>
@@ -161,6 +184,62 @@ export default function PressPage() {
           ))}
         </ul>
 
+        <div id="products" className="mt-20 scroll-mt-28">
+          <h3 className="text-xl text-ink">Products</h3>
+          <p className="mt-3 max-w-[60ch] text-[15px] font-light leading-relaxed text-ink/70">
+            Unifesto Stay, Unifesto Huddle and Unifesto Sprint. Silver on dark, ink on light, same rules as the logo.
+          </p>
+          <ul data-stagger="rise" className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {PRODUCTS.map((p) => {
+              const file = `/press/lockup-${p.toLowerCase()}`;
+              return (
+                <li key={p} className="flex flex-col overflow-hidden rounded-2xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.1)]">
+                  <div className="grid aspect-[16/9] place-items-center bg-[#000]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={`${file}-silver.svg`} alt={`Unifesto ${p} logo`} className="w-[78%]" loading="lazy" />
+                  </div>
+                  <div className="flex items-end justify-between gap-3 p-5">
+                    <span className="text-[14px] text-ink">Unifesto {p}</span>
+                    <div className="flex shrink-0 gap-3">
+                      <a href={`${file}-silver.svg`} download className="link-draw text-[13px] text-ink">Silver</a>
+                      <a href={`${file}-ink.svg`} download className="link-draw text-[13px] text-ink">Ink</a>
+                      <a href={`${file}-silver.png`} download className="link-draw text-[13px] text-ink">PNG</a>
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div id="posters" className="mt-20 scroll-mt-28">
+          <h3 className="text-xl text-ink">On posters</h3>
+          <p className="mt-3 max-w-[60ch] text-[15px] font-light leading-relaxed text-ink/70">
+            Put the lockup at the top as a masthead, at the foot as a sign-off, or beside your own logo. Give it room, keep
+            it on a plain ground, and never smaller than the poster&apos;s body text.
+          </p>
+          {POSTER_SETS.map((set) => (
+            <div key={set.product} className="mt-10">
+              <h4 className="text-[13px] text-ink/55">{set.title}</h4>
+              <ul data-stagger="rise" className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {POSTER_LAYOUTS.map((l) => {
+                  const file = `/press/poster-${set.product.toLowerCase()}-${l.id}.png`;
+                  return (
+                    <li key={l.id} className="flex flex-col overflow-hidden rounded-2xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.1)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={file} alt={`Sample poster with Unifesto ${set.product}: ${l[set.product]}`} width={1080} height={1350} className="aspect-[4/5] w-full" loading="lazy" />
+                      <div className="flex items-end justify-between gap-3 p-5">
+                        <span className="text-[14px] text-ink">{l[set.product]}</span>
+                        <a href={file} download className="link-draw shrink-0 text-[13px] text-ink">PNG</a>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+
         <div id="powered-by" className="mt-20 scroll-mt-28">
           <h3 className="text-xl text-ink">Powered by Unifesto</h3>
           <p className="mt-3 max-w-[60ch] text-[15px] font-light leading-relaxed text-ink/70">
@@ -192,6 +271,24 @@ export default function PressPage() {
               </ul>
             </div>
           ))}
+          <div className="mt-10">
+            <h4 className="text-[13px] text-ink/55">On organiser posters</h4>
+            <ul data-stagger="rise" className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {BADGE_POSTERS.map((p) => {
+                const file = `/press/poster-powered-by-${p.id}.png`;
+                return (
+                  <li key={p.id} className="flex flex-col overflow-hidden rounded-2xl shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.1)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={file} alt={`Sample organiser poster with the Powered by Unifesto badge: ${p.label}`} width={1080} height={1350} className="aspect-[4/5] w-full" loading="lazy" />
+                    <div className="flex items-end justify-between gap-3 p-5">
+                      <span className="text-[14px] text-ink">{p.label}</span>
+                      <a href={file} download className="link-draw shrink-0 text-[13px] text-ink">PNG</a>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
           <p className="mt-8 text-[13px] text-ink/55">For your website, paste this where the badge should appear:</p>
           <pre className="mt-3 overflow-x-auto rounded-2xl p-5 font-mono text-[12px] leading-relaxed text-ink/85 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.12)]">
             <code>{BADGE_SNIPPET}</code>
