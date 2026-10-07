@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowRight } from 'phosphor-react-native';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
-import { cosmosFont, cosmosRadius, useCosmos } from './cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface AuthButtonProps {
   label: string;

@@ -1,7 +1,7 @@
 import React, { forwardRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
-import { cosmosFont, cosmosRadius, useCosmos } from './cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface AuthFieldProps extends TextInputProps {
   label: string;

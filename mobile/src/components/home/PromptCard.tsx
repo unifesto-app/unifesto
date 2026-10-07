@@ -1,10 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CaretRight } from 'phosphor-react-native';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { CardBackdrop } from '../ui/CardSurface';
 
@@ -17,7 +16,7 @@ interface PromptCardProps {
 
 /** One-line nudge (sign in, set a username, finish profile). Never more than one at a time. */
 export default function PromptCard({ icon, title, body, onPress }: PromptCardProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={{ paddingHorizontal: GUTTER }}>
       <Pressable
@@ -32,10 +31,10 @@ export default function PromptCard({ icon, title, body, onPress }: PromptCardPro
         <CardBackdrop shape={styles.card} />
         <View style={styles.icon}>{icon}</View>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: tokens.text }]}>{title}</Text>
-          <Text style={[styles.body, { color: tokens.textMuted }]}>{body}</Text>
+          <Text style={[styles.title, { color: c.text }]}>{title}</Text>
+          <Text style={[styles.body, { color: c.muted }]}>{body}</Text>
         </View>
-        <CaretRight size={16} color={tokens.textMuted} weight="bold" />
+        <CaretRight size={16} color={c.muted} weight="bold" />
       </Pressable>
     </View>
   );
@@ -47,9 +46,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     padding: spacing[4],
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
   },
   icon: { width: 28, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: typography.fontSize.base, ...font('semibold') },
-  body: { fontSize: typography.fontSize.sm, marginTop: 2, ...font() },
+  title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  body: { fontSize: typography.fontSize.sm, marginTop: 2, ...cosmosFont.body },
 });

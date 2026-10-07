@@ -10,13 +10,13 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTokens } from '../../context/ThemeContext';
 import type { Event } from '../../lib/api/events';
 import Skeleton from '../Skeleton';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
+import { CoverTag } from './PosterCard';
 import { relativeWhen, shortPrice } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
@@ -38,7 +38,7 @@ interface HeroCarouselProps {
  * shared scroll value on the UI thread, so it stays smooth on low-end phones.
  */
 function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const { width: screenW } = useWindowDimensions();
   const cardW = Math.round(screenW * CARD_RATIO);
   const coverH = Math.round((cardW * 3) / 4);
@@ -58,8 +58,8 @@ function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
   if (loading) {
     return (
       <View style={styles.skeletonRow}>
-        <Skeleton width={cardW} height={coverH + 64} borderRadius={borderRadius.xl} />
-        <Skeleton width={cardW} height={coverH + 64} borderRadius={borderRadius.xl} />
+        <Skeleton width={cardW} height={coverH + 64} borderRadius={cosmosCardRadius} />
+        <Skeleton width={cardW} height={coverH + 64} borderRadius={cosmosCardRadius} />
       </View>
     );
   }
@@ -68,8 +68,8 @@ function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
     return (
       <View style={[styles.empty, { marginHorizontal: GUTTER }]}>
         <CardBackdrop shape={styles.empty} />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>Nothing on the calendar yet</Text>
-        <Text style={[styles.emptyText, { color: tokens.textMuted }]}>New events land here first. Pull to refresh.</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing on the calendar yet</Text>
+        <Text style={[styles.emptyText, { color: c.muted }]}>New events land here first. Pull to refresh.</Text>
       </View>
     );
   }
@@ -126,9 +126,10 @@ interface SlideProps {
 // Memoised so a Home refresh (tickets, invites, workspace) doesn't re-render
 // every slide mid-swipe; the swipe itself never re-renders (UI-thread styles).
 const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, coverH, onPressEvent }: SlideProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const place = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : null);
+  const tag = event.categories?.[0] || event.category;
 
   // Distance from focus in "cards": 0 = centred, 1 = one card away.
   const animated = useAnimatedStyle(() => {
@@ -142,7 +143,7 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
   return (
     <Animated.View style={[{ width: cardW }, animated]}>
       <Pressable onPress={() => onPressEvent(event)} accessibilityRole="button" accessibilityLabel={event.title}>
-        <View style={[styles.cover, { height: coverH, backgroundColor: tokens.elevated }]}>
+        <View style={[styles.cover, { height: coverH, backgroundColor: c.card }]}>
           {coverOr(defaults, event.id, event.coverImageUrl) ? (
             <Image
               source={{ uri: coverOr(defaults, event.id, event.coverImageUrl) ?? undefined }}
@@ -154,15 +155,16 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
               recyclingKey={event.id}
             />
           ) : (
-            <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}
+          {tag ? <CoverTag label={tag} style={styles.tag} /> : null}
         </View>
 
-        <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>{event.title}</Text>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{event.title}</Text>
         <Text style={styles.meta} numberOfLines={1}>
-          <Text style={{ color: tokens.accent }}>{relativeWhen(event.startDateTime)}</Text>
-          <Text style={{ color: tokens.textSecondary }}>{`  ·  ${shortPrice(event)}`}</Text>
-          {place ? <Text style={{ color: tokens.textMuted }}>{`  ·  ${place}`}</Text> : null}
+          <Text style={{ color: c.primary }}>{relativeWhen(event.startDateTime)}</Text>
+          <Text style={{ color: c.soft }}>{`  ·  ${shortPrice(event)}`}</Text>
+          {place ? <Text style={{ color: c.muted }}>{`  ·  ${place}`}</Text> : null}
         </Text>
       </Pressable>
     </Animated.View>
@@ -172,7 +174,7 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
 export default React.memo(HeroCarousel);
 
 function Dot({ index, scrollX, snap }: { index: number; scrollX: SharedValue<number>; snap: number }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   // The focused dot stretches into a pill and lights up in accent. Scaled with
   // a transform, not width, so swiping never triggers a layout pass.
   const animated = useAnimatedStyle(() => {
@@ -180,28 +182,29 @@ function Dot({ index, scrollX, snap }: { index: number; scrollX: SharedValue<num
     const t = interpolate(d, [0, 1], [1, 0], Extrapolation.CLAMP);
     return { opacity: 0.25 + t * 0.75, transform: [{ scaleX: 0.3 + t * 0.7 }] };
   });
-  return <Animated.View style={[styles.dot, { backgroundColor: tokens.accent }, animated]} />;
+  return <Animated.View style={[styles.dot, { backgroundColor: c.primary }, animated]} />;
 }
 
 const styles = StyleSheet.create({
   skeletonRow: { flexDirection: 'row', gap: GAP, paddingHorizontal: GUTTER, overflow: 'hidden' },
-  cover: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  cover: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  tag: { position: 'absolute', left: spacing[3], bottom: spacing[3] },
   title: {
     marginTop: spacing[3],
     fontSize: typography.fontSize.lg,
     letterSpacing: -0.2,
-    ...font('heading'),
+    ...cosmosFont.strong,
   },
-  meta: { marginTop: 3, fontSize: typography.fontSize.sm, ...font('medium') },
+  meta: { marginTop: 3, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 1, marginTop: spacing[4] },
   dot: { width: 20, height: 6, borderRadius: 3 },
   empty: {
-    borderRadius: borderRadius['2xl'],
+    borderRadius: cosmosCardRadius,
     paddingVertical: spacing[10],
     paddingHorizontal: spacing[6],
     alignItems: 'center',
     gap: 6,
   },
-  emptyTitle: { fontSize: typography.fontSize.lg, ...font('heading') },
-  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
 });

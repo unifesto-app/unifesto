@@ -35,10 +35,10 @@ import { useAuth } from '../context/AuthContext';
 import { Image } from 'expo-image';
 import AuthButton from '../components/auth/AuthButton';
 import AuthField from '../components/auth/AuthField';
-import CosmosBackdrop from '../components/auth/CosmosBackdrop';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import OtpCodeInput from '../components/auth/OtpCodeInput';
 import SocialAuthButton from '../components/auth/SocialAuthButton';
-import { cosmosFont, useCosmos } from '../components/auth/cosmos';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type LoginStep = 'email' | 'email-otp' | 'mobile' | 'mobile-otp';
 

@@ -60,6 +60,19 @@ export function shortPrice(event: { isFree?: boolean; ticketTypes?: { price: str
   return getEventCardPrice(event as Parameters<typeof getEventCardPrice>[0]).price.replace(/^Starting from /, 'From ');
 }
 
+/**
+ * This weekend, local time: Saturday 00:00 up to Monday 00:00. On a Sunday it
+ * is the weekend already under way, so "this weekend" never jumps a week ahead.
+ */
+export function weekendWindow(now: Date = new Date()) {
+  const start = startOfDay(now);
+  const dow = start.getDay(); // 0 = Sunday … 6 = Saturday
+  start.setDate(start.getDate() + (dow === 0 ? -1 : 6 - dow));
+  const end = new Date(start);
+  end.setDate(start.getDate() + 2);
+  return { start, end };
+}
+
 /** "Good morning" / "Good afternoon" / "Good evening" / "Up late". */
 export function greeting(now: Date = new Date()) {
   const h = now.getHours();

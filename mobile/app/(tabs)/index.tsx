@@ -3,9 +3,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { IdentificationCard, Sparkle, UserCircle } from 'phosphor-react-native';
-import { useTokens } from '../../src/context/ThemeContext';
 import { useStableTopInset } from '../../src/components/CustomHeader';
-import BrandGlow from '../../src/components/ui/BrandGlow';
+import CosmosBackdrop from '../../src/components/ui/CosmosBackdrop';
+import { useCosmos } from '../../src/theme/cosmos';
 import { useHomeData } from '../../src/hooks/useHomeData';
 import { useHomeSearch } from '../../src/hooks/useHomeSearch';
 import type { Event } from '../../src/lib/api/events';
@@ -24,6 +24,8 @@ import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import PosterCard, { PosterCardSkeleton } from '../../src/components/home/PosterCard';
 import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import { CircleRow, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
+import TrendingList from '../../src/components/home/TrendingList';
+import HostCta from '../../src/components/home/HostCta';
 import BeyondFeature, { BeyondFeatureSkeleton } from '../../src/components/home/BeyondFeature';
 import SearchSheet from '../../src/components/home/SearchSheet';
 import { relativeWhen, shortPrice } from '../../src/utils/eventFormat';
@@ -31,7 +33,7 @@ import { spacing } from '../../src/theme/spacing';
 
 export default function HomeTab() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topInset = useStableTopInset();
   const data = useHomeData();
   // Group-seat invites waiting for me (refetched on focus).
@@ -61,7 +63,9 @@ export default function HomeTab() {
       title={e.title}
       imageUrl={e.coverImageUrl}
       when={relativeWhen(e.startDateTime)}
-      where={e.venueName || e.city || e.space?.name}
+      where={e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null)}
+      host={e.space?.name}
+      tag={e.categories?.[0] || e.category}
       price={shortPrice(e)}
       onPress={() => openEvent(e)}
     />
@@ -75,7 +79,8 @@ export default function HomeTab() {
         title={s.title}
         imageUrl={s.coverImageUrl}
         when={relativeWhen(s.startDateTime)}
-        where={s.space?.name}
+        host={s.space?.name}
+        where="Online"
         price={price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'}
         onPress={() => openSession(s)}
       />
@@ -86,11 +91,11 @@ export default function HomeTab() {
 
   // At most one nudge, in priority order: sign in → username → full name.
   const prompt = !user
-    ? { icon: <Sparkle size={20} color={tokens.accent} weight="fill" />, title: 'Sign in to get tickets', body: 'Save events and keep every pass here.', to: '/login' as const }
+    ? { icon: <Sparkle size={20} color={c.text} weight="fill" />, title: 'Sign in to get tickets', body: 'Save events and keep every pass here.', to: '/login' as const }
     : profile && !profile.username
-      ? { icon: <IdentificationCard size={20} color={tokens.accent} weight="fill" />, title: 'Pick a username', body: 'So friends and organisers can find you.', to: '/account' as const }
+      ? { icon: <IdentificationCard size={20} color={c.text} weight="fill" />, title: 'Pick a username', body: 'So friends and organisers can find you.', to: '/account' as const }
       : profile && !profile.fullName
-        ? { icon: <UserCircle size={20} color={tokens.accent} weight="fill" />, title: 'Finish your profile', body: 'Add your name before you register.', to: '/edit-profile' as const }
+        ? { icon: <UserCircle size={20} color={c.text} weight="fill" />, title: 'Finish your profile', body: 'Add your name before you register.', to: '/edit-profile' as const }
         : null;
 
   const nextTicket = data.upcomingTickets[0];
@@ -101,8 +106,8 @@ export default function HomeTab() {
   // scrollable: that stops the native tab host from auto-adding the safe-area
   // top inset on top of the header's own spacing (see mobile-tab-top-spacing).
   return (
-    <View style={[styles.container, { backgroundColor: tokens.bg }]}>
-      <BrandGlow />
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
       <ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="never"
@@ -116,8 +121,8 @@ export default function HomeTab() {
               workspace.refresh();
               data.onRefresh();
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topInset}
           />
         }
@@ -135,6 +140,12 @@ export default function HomeTab() {
         {myInvites.invites.length > 0 ? (
           <View style={styles.block}>
             <InviteCards invites={myInvites.invites} onOpen={(t) => router.push(`/claim/${t}`)} onDecline={myInvites.decline} />
+          </View>
+        ) : null}
+
+        {prompt ? (
+          <View style={styles.block}>
+            <PromptCard icon={prompt.icon} title={prompt.title} body={prompt.body} onPress={() => router.push(prompt.to)} />
           </View>
         ) : null}
 
@@ -163,6 +174,107 @@ export default function HomeTab() {
           </View>
         ) : null}
 
+
+
+        <Section title={data.detectedCity ? 'Happening near you' : 'Happening soon'} onSeeAll={() => router.push('/events')}>
+          <HeroCarousel events={data.heroEvents} loading={data.isLoadingHero} onPressEvent={openEvent} />
+        </Section>
+
+        {/* Under three it isn't much of a ranking. */}
+        {data.trendingEvents.length >= 3 ? (
+          <Section title="Trending now" subtitle="What people are booking this week" onSeeAll={() => router.push('/events')}>
+            <TrendingList events={data.trendingEvents} onPress={openEvent} />
+          </Section>
+        ) : null}
+
+        {data.isLoadingCategories || data.categories.length > 0 ? (
+          <Section title="Find your vibe" onSeeAll={() => router.push('/events')}>
+            {data.isLoadingCategories && data.categories.length === 0 ? (
+              <VibeRailSkeleton />
+            ) : (
+              <VibeRail categories={data.categories} onPressCategory={openCategory} />
+            )}
+          </Section>
+        ) : null}
+
+        {/* Themed rails slice events Home already loaded (see useHomeData's
+            eventPool), so they appear once that's in and never skeleton. */}
+        {data.weekendEvents.length > 0 ? (
+          <Section title="This weekend" subtitle="Plans for Saturday and Sunday">
+            <Rail>{data.weekendEvents.map(eventPoster)}</Rail>
+          </Section>
+        ) : null}
+
+        {user && (data.isLoadingFavorites || data.favoriteEvents.length > 0) ? (
+          <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
+            <Rail>{data.isLoadingFavorites ? posterSkeletons : data.favoriteEvents.map(eventPoster)}</Rail>
+          </Section>
+        ) : null}
+
+        {user && (data.isLoadingMySpaces || data.mySpaces.length > 0) ? (
+          <Section title="My circles" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
+            <CircleRow
+              spaces={data.mySpaces}
+              loading={data.isLoadingMySpaces}
+              onPress={openSpace}
+              onFindMore={() => router.push('/spaces')}
+            />
+          </Section>
+        ) : null}
+
+        {data.freeEvents.length > 0 ? (
+          <Section title="Free to attend" subtitle="No ticket price, just show up">
+            <Rail>{data.freeEvents.map(eventPoster)}</Rail>
+          </Section>
+        ) : null}
+
+        {data.onlineEvents.length > 0 ? (
+          <Section title="Online, from anywhere" subtitle="Join from your phone or laptop">
+            <Rail>{data.onlineEvents.map(eventPoster)}</Rail>
+          </Section>
+        ) : null}
+
+        {data.isLoadingSessions || data.sessions.length > 0 ? (
+          <Section title="Live sessions" subtitle="Online talks and workshops" onSeeAll={() => router.push('/sessions')}>
+            <Rail>{data.isLoadingSessions ? posterSkeletons : data.sessions.map(sessionPoster)}</Rail>
+          </Section>
+        ) : null}
+
+        {data.isLoadingBeyond || data.beyondEvents.length > 0 ? (
+          <Section title="Beyond by Unifesto" subtitle="Curated by the Unifesto team">
+            {data.beyondSpace ? (
+              <BeyondFeature space={data.beyondSpace} onPress={() => openSpace(data.beyondSpace!)} />
+            ) : data.isLoadingBeyond ? (
+              <BeyondFeatureSkeleton />
+            ) : null}
+            <View style={{ marginTop: spacing[4] }}>
+              <Rail>{data.isLoadingBeyond ? posterSkeletons : data.beyondEvents.map(eventPoster)}</Rail>
+            </View>
+          </Section>
+        ) : null}
+
+        {data.isLoadingDiscoverSpaces || data.discoverSpaces.length > 0 ? (
+          <Section
+            title={data.showNearbySpaces ? 'Spaces near you' : 'Explore spaces'}
+            subtitle="Clubs, communities and organisers"
+            onSeeAll={() => router.push('/spaces')}
+          >
+            <Rail>
+              {data.isLoadingDiscoverSpaces
+                ? [0, 1, 2].map((i) => <SpaceCardSkeleton key={i} />)
+                : data.discoverSpaces.map((s) => <SpaceCard key={s.id} space={s} onPress={() => openSpace(s)} />)}
+            </Rail>
+          </Section>
+        ) : null}
+
+        {!workspace.showSpace ? (
+          <View style={{ marginTop: spacing[12] }}>
+            <HostCta onPress={() => router.push(user ? '/space-request' : '/login')} />
+          </View>
+        ) : null}
+
+        {/* The other side of the door: tools for people running events. They also
+            have their own tabs, so they follow discovery instead of leading it. */}
         {workspace.showSpace ? (
           <Section title="My space" onSeeAll={() => router.navigate('/space')}>
             <SpacePanel
@@ -200,71 +312,6 @@ export default function HomeTab() {
               loading={workspace.loadingApex}
               onOpenNeed={(n) => router.push(n.to)}
             />
-          </Section>
-        ) : null}
-
-        {prompt ? (
-          <View style={styles.block}>
-            <PromptCard icon={prompt.icon} title={prompt.title} body={prompt.body} onPress={() => router.push(prompt.to)} />
-          </View>
-        ) : null}
-
-        <Section title={data.detectedCity ? 'Happening near you' : 'Happening soon'} onSeeAll={() => router.push('/events')}>
-          <HeroCarousel events={data.heroEvents} loading={data.isLoadingHero} onPressEvent={openEvent} />
-        </Section>
-
-        {data.isLoadingCategories || data.categories.length > 0 ? (
-          <Section title="Find your vibe" onSeeAll={() => router.push('/events')}>
-            {data.isLoadingCategories && data.categories.length === 0 ? (
-              <VibeRailSkeleton />
-            ) : (
-              <VibeRail categories={data.categories} onPressCategory={openCategory} />
-            )}
-          </Section>
-        ) : null}
-
-        {user && (data.isLoadingFavorites || data.favoriteEvents.length > 0) ? (
-          <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
-            <Rail>{data.isLoadingFavorites ? posterSkeletons : data.favoriteEvents.map(eventPoster)}</Rail>
-          </Section>
-        ) : null}
-
-        {user && (data.isLoadingMySpaces || data.mySpaces.length > 0) ? (
-          <Section title="My circles" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
-            <CircleRow spaces={data.mySpaces} loading={data.isLoadingMySpaces} onPress={openSpace} />
-          </Section>
-        ) : null}
-
-        {data.isLoadingSessions || data.sessions.length > 0 ? (
-          <Section title="Live sessions" subtitle="Online talks and workshops" onSeeAll={() => router.push('/sessions')}>
-            <Rail>{data.isLoadingSessions ? posterSkeletons : data.sessions.map(sessionPoster)}</Rail>
-          </Section>
-        ) : null}
-
-        {data.isLoadingBeyond || data.beyondEvents.length > 0 ? (
-          <Section title="Beyond by Unifesto" subtitle="Curated by the Unifesto team">
-            {data.beyondSpace ? (
-              <BeyondFeature space={data.beyondSpace} onPress={() => openSpace(data.beyondSpace!)} />
-            ) : data.isLoadingBeyond ? (
-              <BeyondFeatureSkeleton />
-            ) : null}
-            <View style={{ marginTop: spacing[4] }}>
-              <Rail>{data.isLoadingBeyond ? posterSkeletons : data.beyondEvents.map(eventPoster)}</Rail>
-            </View>
-          </Section>
-        ) : null}
-
-        {data.isLoadingDiscoverSpaces || data.discoverSpaces.length > 0 ? (
-          <Section
-            title={data.showNearbySpaces ? 'Spaces near you' : 'Explore spaces'}
-            subtitle="Clubs, communities and organisers"
-            onSeeAll={() => router.push('/spaces')}
-          >
-            <Rail>
-              {data.isLoadingDiscoverSpaces
-                ? [0, 1, 2].map((i) => <SpaceCardSkeleton key={i} />)
-                : data.discoverSpaces.map((s) => <SpaceCard key={s.id} space={s} onPress={() => openSpace(s)} />)}
-            </Rail>
           </Section>
         ) : null}
       </ScrollView>

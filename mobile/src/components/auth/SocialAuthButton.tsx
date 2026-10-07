@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 import AuthButton from './AuthButton';
-import { useCosmos } from './cosmos';
+import { useCosmos } from '../../theme/cosmos';
 
 type Provider = 'apple' | 'google';
 

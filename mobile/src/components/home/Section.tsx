@@ -1,10 +1,9 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { CaretRight } from 'phosphor-react-native';
-import { useTokens } from '../../context/ThemeContext';
+import { ArrowRight } from 'phosphor-react-native';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /** Horizontal page gutter shared by every home section. */
 export const GUTTER = spacing[6];
@@ -19,14 +18,19 @@ interface SectionProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/**
+ * Home section in the web's voice: a short silver rule (the web's
+ * .eyebrow-rule), a Michroma title, a quiet subtitle and a "See all →" link.
+ */
 export function Section({ title, subtitle, onSeeAll, children, style }: SectionProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={[styles.section, style]}>
+      <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: tokens.text }]}>{title}</Text>
-          {subtitle ? <Text style={[styles.subtitle, { color: tokens.textMuted }]}>{subtitle}</Text> : null}
+          <Text style={[styles.title, { color: c.text }]}>{title}</Text>
+          {subtitle ? <Text style={[styles.subtitle, { color: c.muted }]}>{subtitle}</Text> : null}
         </View>
         {onSeeAll ? (
           <Pressable
@@ -36,8 +40,8 @@ export function Section({ title, subtitle, onSeeAll, children, style }: SectionP
             accessibilityLabel={`See all ${title}`}
             style={({ pressed }) => [styles.seeAll, { opacity: pressed ? 0.6 : 1 }]}
           >
-            <Text style={[styles.seeAllText, { color: tokens.textSecondary }]}>See all</Text>
-            <CaretRight size={12} color={tokens.textSecondary} weight="bold" />
+            <Text style={[styles.seeAllText, { color: c.text }]}>See all</Text>
+            <ArrowRight size={13} color={c.text} />
           </Pressable>
         ) : null}
       </View>
@@ -63,7 +67,8 @@ export function Rail({ children, snap }: { children: React.ReactNode; snap?: num
 }
 
 const styles = StyleSheet.create({
-  section: { marginTop: spacing[10] },
+  section: { marginTop: spacing[12] },
+  rule: { width: 40, height: 1, marginLeft: GUTTER, marginBottom: spacing[4] },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -71,9 +76,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
     gap: spacing[3],
   },
-  title: { fontSize: typography.fontSize.xl, letterSpacing: -0.3, ...font('heading') },
-  subtitle: { fontSize: typography.fontSize.sm, marginTop: 2, ...font() },
-  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 2 },
-  seeAllText: { fontSize: typography.fontSize.sm, ...font('medium') },
+  // Michroma runs wide: a size below the old xl reads the same weight.
+  title: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  subtitle: { fontSize: typography.fontSize.sm, marginTop: 4, ...cosmosFont.body },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingBottom: 3 },
+  seeAllText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   rail: { paddingHorizontal: GUTTER, gap: RAIL_GAP },
 });
