@@ -48,7 +48,7 @@ export default function PosterCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${when}`}
+      accessibilityLabel={[title, host, when, where, price].filter(Boolean).join(', ')}
       style={({ pressed }) => [styles.card, { width, backgroundColor: c.raised, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
       <View style={[styles.cover, { backgroundColor: c.card }]}>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { MagnifyingGlass, MapPin, NavigationArrow } from 'phosphor-react-native';
+import { MagnifyingGlass, MapPin, NavigationArrow, UserCircle } from 'phosphor-react-native';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
@@ -17,7 +17,7 @@ const MARK_H = Math.round((MARK_W * 551) / 2400);
 const AVATAR = 36;
 
 interface HomeHeaderProps {
-  /** First name when signed in; null for guests (no avatar, plain greeting). */
+  /** First name when signed in ('' if none yet); null for guests (no avatar). */
   firstName: string | null;
   avatarUrl?: string | null;
   city: string | null;
@@ -65,6 +65,7 @@ export default function HomeHeader({
           ) : locationStatus === 'denied' ? (
             <Pressable
               onPress={onEnableLocation}
+              hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="Use my location"
               // Scale, not opacity: opacity breaks Liquid Glass.
@@ -76,7 +77,7 @@ export default function HomeHeader({
             </Pressable>
           ) : null}
 
-          {firstName ? (
+          {firstName !== null ? (
             <Pressable
               onPress={onPressAvatar}
               hitSlop={6}
@@ -86,8 +87,10 @@ export default function HomeHeader({
             >
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
-              ) : (
+              ) : firstName ? (
                 <Text style={[styles.avatarText, { color: c.text }]}>{firstName.charAt(0).toUpperCase()}</Text>
+              ) : (
+                <UserCircle size={22} color={c.text} />
               )}
             </Pressable>
           ) : null}

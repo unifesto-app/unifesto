@@ -260,7 +260,7 @@ export default function TicketDetailScreen() {
             {t.hackathon && t.eventId ? (
               <SettingsRow
                 icon={<Trophy size={24} color={accent} />}
-                label="Hackathon"
+                label="Unifesto Sprint"
                 value={t.hackathon.cancelled ? 'Cancelled' : t.hackathon.teamCode ?? undefined}
                 onPress={() => router.push(`/hackathon/${t.eventId}` as never)}
               />

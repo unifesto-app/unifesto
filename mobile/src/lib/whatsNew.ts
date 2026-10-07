@@ -19,7 +19,7 @@ export const WHATS_NEW: WhatsNewEntry[] = [
     id: '4.1.0',
     title: 'What’s new',
     items: [
-      'Hackathons: your team hub, rooms, problem statements, judging, results and a help desk, all in the app.',
+      'Unifesto Sprint: your hackathon team hub, rooms, problem statements, judging, results and a help desk, all in the app.',
       'Team leads can add or remove members and hand over the lead, while the organiser allows it.',
       'Organisers: the attendee list now has pages, and stays can have a photo gallery.',
       'Hiding a seat invite from Home now declines it, so your team lead knows.',

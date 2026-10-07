@@ -5,7 +5,7 @@ import HackathonHubScreen from '../../../src/screens/HackathonHubScreen';
 export default function Route() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Hackathon', headerShown: true }} />
+      <Stack.Screen options={{ title: 'Unifesto Sprint', headerShown: true }} />
       <HackathonHubScreen />
     </>
   );

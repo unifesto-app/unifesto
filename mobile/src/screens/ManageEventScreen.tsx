@@ -262,7 +262,7 @@ export default function ManageEventScreen() {
           {h.access.hosts ? (
             <SettingsRow
               icon={icon(Trophy)}
-              label="Hackathon"
+              label="Unifesto Sprint"
               onPress={() => router.push(`/manage/event/${e.id}/hackathon`)}
             />
           ) : null}

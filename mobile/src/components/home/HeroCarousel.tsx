@@ -19,6 +19,7 @@ import { GUTTER } from './Section';
 import { CoverTag } from './PosterCard';
 import { relativeWhen, shortPrice } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import AuthButton from '../auth/AuthButton';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 const GAP = spacing[3];
@@ -29,6 +30,9 @@ const CARD_RATIO = 0.74;
 interface HeroCarouselProps {
   events: Event[];
   loading: boolean;
+  /** The feed request failed: offer a retry instead of claiming there's nothing on. */
+  failed?: boolean;
+  onRetry?: () => void;
   onPressEvent: (event: Event) => void;
 }
 
@@ -37,7 +41,7 @@ interface HeroCarouselProps {
  * size while its neighbours shrink and dim as you swipe. All driven by one
  * shared scroll value on the UI thread, so it stays smooth on low-end phones.
  */
-function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
+function HeroCarousel({ events, loading, failed, onRetry, onPressEvent }: HeroCarouselProps) {
   const c = useCosmos();
   const { width: screenW } = useWindowDimensions();
   const cardW = Math.round(screenW * CARD_RATIO);
@@ -68,8 +72,18 @@ function HeroCarousel({ events, loading, onPressEvent }: HeroCarouselProps) {
     return (
       <View style={[styles.empty, { marginHorizontal: GUTTER }]}>
         <CardBackdrop shape={styles.empty} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing on the calendar yet</Text>
-        <Text style={[styles.emptyText, { color: c.muted }]}>New events land here first. Pull to refresh.</Text>
+        {failed ? (
+          <>
+            <Text style={[styles.emptyTitle, { color: c.text }]}>Couldn't load events</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>Check your connection and try again.</Text>
+            {onRetry ? <AuthButton label="Try again" variant="secondary" onPress={onRetry} style={styles.retry} /> : null}
+          </>
+        ) : (
+          <>
+            <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing on the calendar yet</Text>
+            <Text style={[styles.emptyText, { color: c.muted }]}>New events land here first. Pull to refresh.</Text>
+          </>
+        )}
       </View>
     );
   }
@@ -207,4 +221,5 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  retry: { marginTop: spacing[4] },
 });
