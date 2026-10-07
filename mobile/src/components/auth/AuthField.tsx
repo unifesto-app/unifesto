@@ -1,10 +1,7 @@
 import React, { forwardRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
+import { cosmosFont, cosmosRadius, useCosmos } from './cosmos';
 
 interface AuthFieldProps extends TextInputProps {
   label: string;
@@ -17,35 +14,26 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
   { label, prefix, error = false, onFocus, onBlur, style, ...rest },
   ref,
 ) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [focused, setFocused] = useState(false);
 
-  const borderColor = error ? tokens.danger : focused ? tokens.accent : tokens.border;
+  const borderColor = error ? c.danger : focused ? c.primary : c.input;
 
   return (
     <View>
-      <Text style={[styles.label, { color: tokens.textSecondary }]}>{label}</Text>
-      <View
-        style={[
-          styles.field,
-          {
-            borderColor,
-            borderWidth: focused || error ? 1.5 : 1,
-            // Liquid Glass paints the fill; the border still carries focus / error.
-            backgroundColor: LIQUID_GLASS ? undefined : focused ? tokens.elevated : tokens.surface,
-          },
-        ]}
-      >
-        <GlassFill radius={borderRadius.lg} />
+      <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
+      {/* iOS 26+ paints Liquid Glass; the border still carries focus / error. */}
+      <View style={[styles.field, { borderColor, backgroundColor: LIQUID_GLASS ? undefined : c.card }]}>
+        <GlassFill radius={cosmosRadius} />
         {prefix ? (
-          <View style={[styles.prefix, { borderRightColor: tokens.border }]}>
-            <Text style={[styles.prefixText, { color: tokens.text }]}>{prefix}</Text>
+          <View style={[styles.prefix, { borderRightColor: c.border }]}>
+            <Text style={[styles.prefixText, { color: c.text }]}>{prefix}</Text>
           </View>
         ) : null}
         <TextInput
           ref={ref}
-          placeholderTextColor={tokens.textMuted}
-          selectionColor={tokens.accent}
+          placeholderTextColor={c.muted}
+          selectionColor={c.primary}
           onFocus={(e) => {
             setFocused(true);
             onFocus?.(e);
@@ -54,7 +42,7 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
             setFocused(false);
             onBlur?.(e);
           }}
-          style={[styles.input, { color: tokens.text }, style]}
+          style={[styles.input, { color: c.text }, style]}
           {...rest}
         />
       </View>
@@ -65,30 +53,22 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
 export default AuthField;
 
 const styles = StyleSheet.create({
-  label: {
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing[2],
-    ...font('medium'),
-  },
+  label: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing[4],
+    height: 54,
+    borderWidth: 1,
+    borderRadius: cosmosRadius,
+    paddingHorizontal: 16,
   },
   prefix: {
-    paddingRight: spacing[3],
-    marginRight: spacing[3],
+    paddingRight: 12,
+    marginRight: 12,
     borderRightWidth: 1,
     alignSelf: 'stretch',
     justifyContent: 'center',
   },
-  prefixText: { fontSize: typography.fontSize.base, ...font('semibold') },
-  input: {
-    flex: 1,
-    height: '100%',
-    fontSize: typography.fontSize.base,
-    ...font('medium'),
-  },
+  prefixText: { fontSize: 16, ...cosmosFont.strong },
+  input: { flex: 1, height: '100%', fontSize: 16, ...cosmosFont.body },
 });

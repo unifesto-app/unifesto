@@ -1,10 +1,7 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import AuthButton from './AuthButton';
+import { useCosmos } from './cosmos';
 
 type Provider = 'apple' | 'google';
 
@@ -15,51 +12,23 @@ interface SocialAuthButtonProps {
 }
 
 /**
- * Full-width provider button. Apple follows its HIG (solid white on dark,
- * black mark); Google sits on a neutral surface with its four-colour G.
+ * Full-width provider button on the brand's hairline outline, so the silver
+ * fill stays reserved for the one primary action. Apple's mark follows the
+ * text colour; Google keeps its four-colour G.
  */
 export default function SocialAuthButton({ provider, onPress, disabled }: SocialAuthButtonProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const isApple = provider === 'apple';
-  const background = isApple ? '#ffffff' : tokens.surface;
-  const foreground = isApple ? '#000000' : tokens.text;
-
   return (
-    <Pressable
+    <AuthButton
+      variant="secondary"
+      label={`Continue with ${isApple ? 'Apple' : 'Google'}`}
+      icon={isApple ? <AppleLogo color={c.text} /> : <GoogleLogo />}
       onPress={onPress}
       disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={`Continue with ${isApple ? 'Apple' : 'Google'}`}
-      style={({ pressed }) => [
-        styles.button,
-        {
-          backgroundColor: background,
-          borderColor: isApple ? background : tokens.border,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
-          transform: [{ scale: pressed ? 0.985 : 1 }],
-        },
-      ]}
-    >
-      {isApple ? <AppleLogo color={foreground} /> : <GoogleLogo />}
-      <Text style={[styles.label, { color: foreground }]}>
-        Continue with {isApple ? 'Apple' : 'Google'}
-      </Text>
-    </Pressable>
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  button: {
-    height: 54,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[3],
-  },
-  label: { fontSize: typography.fontSize.base, ...font('semibold') },
-});
 
 function GoogleLogo() {
   return (

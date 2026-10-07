@@ -202,6 +202,10 @@ export default function RootLayout() {
           'DMSans-SemiBold': require('../assets/fonts/dm-sans/static/dm-sans-latin-600-normal.ttf'),
           'DMSans-Bold': require('../assets/fonts/dm-sans/static/dm-sans-latin-700-normal.ttf'),
           'PlusJakartaSans-Medium': require('../assets/fonts/plus-jakarta-sans/static/PlusJakartaSans_500Medium.ttf'),
+          // 2026 web brand (login screen): Michroma display + Hanken Grotesk text.
+          'Michroma': require('../assets/fonts/michroma/Michroma-Regular.ttf'),
+          'HankenGrotesk': require('../assets/fonts/hanken-grotesk/HankenGrotesk-Regular.ttf'),
+          'HankenGrotesk-SemiBold': require('../assets/fonts/hanken-grotesk/HankenGrotesk-SemiBold.ttf'),
         });
       } catch (e) {
         console.error('[RootLayout] Font loading error:', e);
