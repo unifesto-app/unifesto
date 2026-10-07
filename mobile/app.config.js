@@ -32,10 +32,10 @@ module.exports = () => {
     userInterfaceStyle: "automatic",
     scheme: "unifesto",
     icon: "./assets/app-icon-dark.png",
-    // Plain charcoal launch screen (matches dark tokens.bg): the animated JS splash (src/screens/SplashScreen.tsx)
+    // Plain black launch screen (the brand night): the animated JS splash (src/screens/SplashScreen.tsx)
     // brings the wordmark in, so a native logo here would blink out and back.
     splash: {
-      backgroundColor: "#0b0b0d"
+      backgroundColor: "#000000"
     },
     assetBundlePatterns: [
       "**/*"

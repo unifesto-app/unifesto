@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   Easing,
@@ -14,19 +14,17 @@ import Animated, {
 import MaskedView from '@react-native-masked-view/masked-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { useTokens } from '../context/ThemeContext';
-import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import CosmosBackdrop from '../components/auth/CosmosBackdrop';
+import { cosmosFont, useCosmos } from '../components/auth/cosmos';
 
 interface SplashScreenProps {
   onAnimationComplete?: () => void;
   shouldExit?: boolean;
 }
 
-// Wordmark PNG is 1285×402; render it at a fixed, calm size.
-const MARK_W = 188;
-const MARK_H = Math.round((MARK_W * 402) / 1285);
+// Brand wordmark PNG is 2400×551; render it at a fixed, calm size.
+const MARK_W = 176;
+const MARK_H = Math.round((MARK_W * 551) / 2400);
 const TRACK_W = 56;
 /**
  * Minimum time on screen, even if auth resolves instantly: long enough for the
@@ -37,21 +35,20 @@ const MIN_VISIBLE_MS = 2600;
 const ease = Easing.out(Easing.cubic);
 
 /**
- * Launch splash: a blue glow breathes up behind the wordmark, the wordmark
- * rises in with a light sweeping across it, and a thin line runs underneath
- * while auth loads. Leaves with a short fade, not a zoom.
+ * Launch splash in the 2026 brand (same night sky as the login): stars fade
+ * in and the horizon rises into place, the silver wordmark lifts in with a
+ * light sweeping across it, and a thin silver line runs while auth loads.
+ * Leaves with a short fade, not a zoom.
  */
 export default function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenProps) {
   // Follows the active theme. The native launch frame before it follows the OS
   // (iOS systemBackgroundColor, Android values/values-night launch_background).
-  const tokens = useTokens();
-  const isDark = tokens.scheme === 'dark';
-  const { width, height } = useWindowDimensions();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const mountedAt = useRef(Date.now());
   const [ready, setReady] = useState(false);
 
-  const glow = useSharedValue(0);
+  const sky = useSharedValue(0);
   const mark = useSharedValue(0);
   const tagline = useSharedValue(0);
   const sweep = useSharedValue(-1);
@@ -60,7 +57,7 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
 
   // ── Intro ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    glow.value = withTiming(1, { duration: 1600, easing: ease });
+    sky.value = withTiming(1, { duration: 1600, easing: ease });
     mark.value = withDelay(200, withTiming(1, { duration: 900, easing: ease }));
     tagline.value = withDelay(650, withTiming(1, { duration: 700, easing: ease }));
     // A light passes across the wordmark, then again every so often while we wait.
@@ -92,9 +89,10 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
 
   // ── Styles ───────────────────────────────────────────────────────────────
   const rootStyle = useAnimatedStyle(() => ({ opacity: 1 - exit.value }));
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glow.value * 0.9,
-    transform: [{ scale: 0.75 + glow.value * 0.25 }],
+  // The whole sky drifts up 48pt as it fades in, so the horizon "rises".
+  const skyStyle = useAnimatedStyle(() => ({
+    opacity: sky.value,
+    transform: [{ translateY: (1 - sky.value) * 48 }],
   }));
   const markStyle = useAnimatedStyle(() => ({
     opacity: mark.value,
@@ -112,24 +110,22 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
     transform: [{ translateX: -TRACK_W / 2 + progress.value * TRACK_W * 1.5 - TRACK_W / 4 }],
   }));
 
-  const glowSize = Math.min(width, height) * 1.2;
   const wordmark = (
-    <Image source={require('../../assets/UnifestoAppWordmark.png')} style={styles.mark} contentFit="contain" />
+    <Image
+      source={
+        c.scheme === 'dark'
+          ? require('../../assets/brand/wordmark-silver.png')
+          : require('../../assets/brand/wordmark-ink.png')
+      }
+      style={styles.mark}
+      contentFit="contain"
+    />
   );
 
   return (
-    <Animated.View style={[styles.container, { backgroundColor: tokens.bg }, rootStyle]}>
-      <Animated.View pointerEvents="none" style={[styles.glow, { width: glowSize, height: glowSize }, glowStyle]}>
-        <Svg width="100%" height="100%">
-          <Defs>
-            <RadialGradient id="splashGlow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={tokens.accent} stopOpacity={isDark ? 0.28 : 0.12} />
-              <Stop offset="0.5" stopColor={tokens.accentStrong} stopOpacity={isDark ? 0.08 : 0.03} />
-              <Stop offset="1" stopColor={tokens.bg} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Rect width="100%" height="100%" fill="url(#splashGlow)" />
-        </Svg>
+    <Animated.View style={[styles.container, { backgroundColor: c.bg }, rootStyle]}>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, skyStyle]}>
+        <CosmosBackdrop />
       </Animated.View>
 
       <Animated.View style={markStyle}>
@@ -147,16 +143,16 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
         </MaskedView>
       </Animated.View>
 
-      <Animated.Text style={[styles.tagline, { color: tokens.textSecondary }, taglineStyle]}>
+      <Animated.Text style={[styles.tagline, { color: c.muted }, taglineStyle]}>
         Every fest. One app.
       </Animated.Text>
 
-      <Animated.View style={[styles.track, { backgroundColor: tokens.fill }, trackStyle]}>
-        <Animated.View style={[styles.runner, { backgroundColor: tokens.accent }, runnerStyle]} />
+      <Animated.View style={[styles.track, { backgroundColor: c.border }, trackStyle]}>
+        <Animated.View style={[styles.runner, { backgroundColor: c.primary }, runnerStyle]} />
       </Animated.View>
 
       <Animated.Text
-        style={[styles.footer, { color: tokens.textMuted, bottom: insets.bottom + 28 }, taglineStyle]}
+        style={[styles.footer, { color: c.muted, bottom: insets.bottom + 28 }, taglineStyle]}
       >
         Built by Organisers Who Lived the Chaos
       </Animated.Text>
@@ -166,10 +162,9 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
 
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  glow: { position: 'absolute' },
   mark: { width: MARK_W, height: MARK_H },
   sweep: { width: MARK_W * 0.6, height: '100%' },
-  tagline: { marginTop: 14, fontSize: typography.fontSize.sm, letterSpacing: 0.2, ...font('medium') },
+  tagline: { marginTop: 18, fontSize: 12, ...cosmosFont.display },
   track: {
     position: 'absolute',
     bottom: '14%',
@@ -184,7 +179,7 @@ const styles = StyleSheet.create({
     left: 24,
     right: 24,
     textAlign: 'center',
-    fontSize: typography.fontSize.xs,
-    ...font('medium'),
+    fontSize: 12,
+    ...cosmosFont.body,
   },
 });
