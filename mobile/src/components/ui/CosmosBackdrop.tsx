@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, RadialGradient, Stop } from 'react-native-svg';
-import { useCosmos } from './cosmos';
+import { useCosmos } from '../../theme/cosmos';
 
 // Star field lifted from the app icon (marketing/brand-2026/svg/app-icon-dark.svg),
 // as fractions of the screen: [x, y, radius, opacity].
@@ -21,8 +21,9 @@ const STARS: [number, number, number, number][] = [
  * The brand's night sky behind the login flow: scattered starlight, a soft halo
  * up top, and a planet horizon with a silver rim along the bottom. Light mode
  * keeps only the horizon, drawn in ink. Decorative, never touchable.
+ * `horizon={false}` keeps just the sky, for scrolling screens like Home.
  */
-export default function CosmosBackdrop() {
+export default function CosmosBackdrop({ horizon = true }: { horizon?: boolean }) {
   const c = useCosmos();
   const { width, height } = useWindowDimensions();
   const isDark = c.scheme === 'dark';
@@ -54,16 +55,20 @@ export default function CosmosBackdrop() {
           STARS.map(([x, y, sr, o], i) => (
             <Circle key={i} cx={x * width} cy={y * height} r={sr} fill="#ffffff" opacity={o} />
           ))}
-        <Ellipse cx={width * 0.5} cy={cy - r} rx={width * 0.75} ry={40} fill="url(#rimGlow)" />
-        <Circle
-          cx={width * 0.5}
-          cy={cy}
-          r={r}
-          fill="url(#planet)"
-          stroke={`rgb(${c.glow})`}
-          strokeOpacity={isDark ? 0.42 : 0.18}
-          strokeWidth={1.25}
-        />
+        {horizon && (
+          <>
+            <Ellipse cx={width * 0.5} cy={cy - r} rx={width * 0.75} ry={40} fill="url(#rimGlow)" />
+            <Circle
+              cx={width * 0.5}
+              cy={cy}
+              r={r}
+              fill="url(#planet)"
+              stroke={`rgb(${c.glow})`}
+              strokeOpacity={isDark ? 0.42 : 0.18}
+              strokeWidth={1.25}
+            />
+          </>
+        )}
       </Svg>
     </View>
   );

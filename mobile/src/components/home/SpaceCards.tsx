@@ -2,32 +2,35 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTokens } from '../../context/ThemeContext';
 import type { Space } from '../../lib/api/spaces';
 import Skeleton from '../Skeleton';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
+import { ArrowRight } from 'phosphor-react-native';
+import { SPACE_ROLE_LABEL } from '../manage/MemberRow';
 
 const CARD_W = 148;
-const AVATAR = 64;
 // Space banners are 4:3; logos are 1:1.
 const LOGO = 44;
 const RING = 3;
+// My circles tiles.
+const TILE_W = 164;
+const TILE_LOGO = 48;
 
 function Monogram({ name, size, radius }: { name: string; size: number; radius: number }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <LinearGradient
-      colors={tokens.accentGradient}
+      colors={c.fallback}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{ width: size, height: size, borderRadius: radius, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Text style={{ fontSize: size * 0.4, color: '#fff', ...font('heading') }}>{name.charAt(0).toUpperCase()}</Text>
+      <Text style={{ fontSize: size * 0.36, color: c.text, ...cosmosFont.display }}>{name.charAt(0).toUpperCase()}</Text>
     </LinearGradient>
   );
 }
@@ -46,7 +49,7 @@ interface SpaceCardProps {
  * lower edge in a page-coloured ring, name, place · visibility, bare stats.
  */
 export function SpaceCard({ space, onPress, width = CARD_W, context }: SpaceCardProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const banner = coverOr(defaults, space.id, spaceBanner(space));
   const logo = logoOr(defaults, space.id, spaceLogo(space));
@@ -66,33 +69,33 @@ export function SpaceCard({ space, onPress, width = CARD_W, context }: SpaceCard
       accessibilityLabel={space.name}
       style={({ pressed }) => [{ width, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
-      <View style={[styles.banner, { height: bannerH, backgroundColor: tokens.elevated }]}>
+      <View style={[styles.banner, { height: bannerH, backgroundColor: c.card }]}>
         {banner ? (
           <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
-          <LinearGradient colors={[tokens.accent, tokens.accentStrong]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         )}
       </View>
-      <View style={[styles.logoWrap, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.logoWrap, { backgroundColor: c.bg }]}>
         {logo ? (
-          <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: tokens.elevated }]} contentFit="cover" />
+          <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: c.card }]} contentFit="cover" />
         ) : (
           <Monogram name={space.name} size={LOGO} radius={borderRadius.md} />
         )}
       </View>
 
-      <Text style={[styles.name, { color: tokens.text }]} numberOfLines={2}>{space.name}</Text>
-      <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>{meta}</Text>
+      <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
+      <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
       {context ? (
-        <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>{context}</Text>
+        <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{context}</Text>
       ) : null}
 
       {/* Numbers: bare, no tiles — same as the detail header */}
       <View style={styles.stats}>
         {stats.map((st) => (
           <View key={st.label}>
-            <Text style={[styles.statValue, { color: tokens.text }]}>{compact(st.value)}</Text>
-            <Text style={[styles.statLabel, { color: tokens.textMuted }]}>{st.label}</Text>
+            <Text style={[styles.statValue, { color: c.text }]}>{compact(st.value)}</Text>
+            <Text style={[styles.statLabel, { color: c.muted }]}>{st.label}</Text>
           </View>
         ))}
       </View>
@@ -110,7 +113,7 @@ function compact(n: number): string {
 export function SpaceCardSkeleton({ width = CARD_W }: { width?: number }) {
   return (
     <View style={{ width }}>
-      <Skeleton width={width} height={Math.round((width * 3) / 4)} borderRadius={borderRadius.xl} />
+      <Skeleton width={width} height={Math.round((width * 3) / 4)} borderRadius={cosmosCardRadius} />
       <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.md} style={{ marginTop: -LOGO / 2, marginLeft: spacing[3] }} />
       <Skeleton width={width * 0.8} height={14} borderRadius={6} style={{ marginTop: spacing[2] }} />
       <Skeleton width={width * 0.5} height={11} borderRadius={6} style={{ marginTop: 6 }} />
@@ -119,48 +122,102 @@ export function SpaceCardSkeleton({ width = CARD_W }: { width?: number }) {
   );
 }
 
-/** Story-style row of circular logos for the spaces you belong to. */
-export function CircleRow({ spaces, loading, onPress }: { spaces: Space[]; loading: boolean; onPress: (space: Space) => void }) {
-  const tokens = useTokens();
+/** My role in a space, when it's more than plain membership. */
+function roleOf(space: Space): string | null {
+  // /users/me/spaces sends a flat { code, name }; the type still models the nested one.
+  const r = space.userRole as { code?: string; role?: { code?: string } } | null | undefined;
+  const code = r?.code ?? r?.role?.code;
+  return code && code !== 'MEMBER' ? (SPACE_ROLE_LABEL[code] ?? null) : null;
+}
+
+/**
+ * "My circles": a rail of membership tiles. Logo and my role up top, then the
+ * name, place · members, and the event count in Michroma, closing with a
+ * dashed "Find more circles" tile so the row always leads somewhere.
+ */
+export function CircleRow({
+  spaces,
+  loading,
+  onPress,
+  onFindMore,
+}: {
+  spaces: Space[];
+  loading: boolean;
+  onPress: (space: Space) => void;
+  onFindMore: () => void;
+}) {
+  const c = useCosmos();
   const defaults = useDefaultImages();
+
+  if (loading && spaces.length === 0) {
+    return (
+      <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
+        {[0, 1].map((i) => (
+          <View key={i} style={[styles.tile, { backgroundColor: c.raised }]}>
+            <Skeleton width={TILE_LOGO} height={TILE_LOGO} borderRadius={14} />
+            <Skeleton width={TILE_W * 0.7} height={14} borderRadius={6} style={{ marginTop: spacing[4] }} />
+            <Skeleton width={TILE_W * 0.5} height={11} borderRadius={6} style={{ marginTop: 8 }} />
+            <Skeleton width={TILE_W * 0.35} height={14} borderRadius={6} style={{ marginTop: spacing[5] }} />
+          </View>
+        ))}
+      </ScrollView>
+    );
+  }
+
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.circleRow}>
-      {loading
-        ? [0, 1, 2, 3].map((i) => (
-            <View key={i} style={styles.circleItem}>
-              <Skeleton width={AVATAR} height={AVATAR} borderRadius={AVATAR / 2} />
-              <Skeleton width={52} height={10} borderRadius={5} style={{ marginTop: 8 }} />
-            </View>
-          ))
-        : spaces.map((space) => {
-            const logo = logoOr(defaults, space.id, spaceLogo(space));
-            return (
-              <Pressable
-                key={space.id}
-                onPress={() => onPress(space)}
-                accessibilityRole="button"
-                accessibilityLabel={space.name}
-                style={({ pressed }) => [styles.circleItem, { opacity: pressed ? 0.7 : 1 }]}
-              >
-                <View style={[styles.ring, { borderColor: tokens.borderStrong }]}>
-                  {logo ? (
-                    <Image source={{ uri: logo }} style={styles.circleImg} contentFit="cover" />
-                  ) : (
-                    <Monogram name={space.name} size={AVATAR - 8} radius={(AVATAR - 8) / 2} />
-                  )}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
+      {spaces.map((space) => {
+        const logo = logoOr(defaults, space.id, spaceLogo(space));
+        const role = roleOf(space);
+        const members = spaceMembers(space);
+        const events = space._count?.events ?? space.event_count ?? 0;
+        const meta = [space.city, `${compact(members)} ${members === 1 ? 'member' : 'members'}`].filter(Boolean).join(' · ');
+        return (
+          <Pressable
+            key={space.id}
+            onPress={() => onPress(space)}
+            accessibilityRole="button"
+            accessibilityLabel={role ? `${space.name}, ${role}` : space.name}
+            style={({ pressed }) => [styles.tile, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+          >
+            <View style={styles.tileTop}>
+              {logo ? (
+                <Image source={{ uri: logo }} style={[styles.tileLogo, { backgroundColor: c.card }]} contentFit="cover" />
+              ) : (
+                <Monogram name={space.name} size={TILE_LOGO} radius={14} />
+              )}
+              {role ? (
+                <View style={[styles.role, { backgroundColor: c.tint }]}>
+                  <Text style={[styles.roleText, { color: c.text }]}>{role}</Text>
                 </View>
-                <Text style={[styles.circleName, { color: tokens.textSecondary }]} numberOfLines={1}>
-                  {space.name}
-                </Text>
-              </Pressable>
-            );
-          })}
+              ) : null}
+            </View>
+            <Text style={[styles.tileName, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
+            <Text style={[styles.tileMeta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
+            <View style={styles.tileFoot}>
+              <Text style={[styles.tileCount, { color: c.text }]}>{compact(events)}</Text>
+              <Text style={[styles.tileMeta, { color: c.muted }]}>{events === 1 ? 'event' : 'events'}</Text>
+            </View>
+          </Pressable>
+        );
+      })}
+
+      <Pressable
+        onPress={onFindMore}
+        accessibilityRole="button"
+        accessibilityLabel="Find more circles"
+        style={({ pressed }) => [styles.tile, styles.more, { borderColor: c.outline, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+      >
+        <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
+        <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs and communities near you</Text>
+        <ArrowRight size={18} color={c.text} style={{ marginTop: spacing[4] }} />
+      </Pressable>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  banner: { width: '100%', borderRadius: borderRadius.xl, overflow: 'hidden' },
+  banner: { width: '100%', borderRadius: cosmosCardRadius, overflow: 'hidden' },
   logoWrap: {
     marginTop: -LOGO / 2 - RING,
     marginLeft: spacing[3],
@@ -173,22 +230,23 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     fontSize: typography.fontSize.base,
     lineHeight: typography.fontSize.base * 1.2,
-    ...font('heading'),
+    ...cosmosFont.strong,
   },
-  meta: { marginTop: 2, fontSize: typography.fontSize.xs, ...font() },
+  meta: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   stats: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
-  statValue: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.15, ...font('heading') },
-  statLabel: { fontSize: typography.fontSize.xs, ...font() },
-  circleRow: { paddingHorizontal: GUTTER, gap: spacing[4] },
-  circleItem: { width: AVATAR + 8, alignItems: 'center' },
-  ring: {
-    width: AVATAR + 4,
-    height: AVATAR + 4,
-    borderRadius: (AVATAR + 4) / 2,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  circleImg: { width: AVATAR - 4, height: AVATAR - 4, borderRadius: (AVATAR - 4) / 2 },
-  circleName: { marginTop: 6, fontSize: typography.fontSize.xs, textAlign: 'center', ...font('medium') },
+  statValue: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.display },
+  statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  tileRow: { paddingHorizontal: GUTTER, gap: spacing[3] },
+  tile: { width: TILE_W, borderRadius: cosmosCardRadius, padding: spacing[4] },
+  tileTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
+  tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: 14, overflow: 'hidden' },
+  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, flexShrink: 1 },
+  roleText: { fontSize: 11, ...cosmosFont.strong },
+  tileName: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
+  tileMeta: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  // Pinned to the bottom so counts line up across tiles with one- and two-line names.
+  tileFoot: { marginTop: 'auto', paddingTop: spacing[4], flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  tileCount: { fontSize: 16, ...cosmosFont.display },
+  more: { borderWidth: 1, borderStyle: 'dashed', justifyContent: 'center' },
+  moreTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

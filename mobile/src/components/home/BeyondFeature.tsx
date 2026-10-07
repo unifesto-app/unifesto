@@ -3,11 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CaretRight } from 'phosphor-react-native';
-import { useTokens } from '../../context/ThemeContext';
 import type { Space } from '../../lib/api/spaces';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import Skeleton from '../Skeleton';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
@@ -22,7 +21,7 @@ const LOGO = 34;
 
 /** Featured partner row ("Beyond by Unifesto"), accent-tinted to stand apart. */
 export default function BeyondFeature({ space, onPress }: { space: Space; onPress: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const banner = spaceBanner(space);
   const logo = logoOr(defaults, space.id, spaceLogo(space));
@@ -39,36 +38,36 @@ export default function BeyondFeature({ space, onPress }: { space: Space; onPres
       >
         <CardBackdrop shape={styles.card} />
         <LinearGradient
-          colors={['rgba(52,145,255,0.16)', 'rgba(0,98,255,0.02)']}
+          colors={[c.tint, 'transparent']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
         <View>
-          <View style={[styles.banner, { backgroundColor: tokens.elevated }]}>
+          <View style={[styles.banner, { backgroundColor: c.card }]}>
             {banner ? (
               <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
-              <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}
           </View>
-          <View style={[styles.logo, { borderColor: tokens.elevated, backgroundColor: tokens.surface }]}>
+          <View style={[styles.logo, { borderColor: c.card, backgroundColor: c.card }]}>
             {logo ? (
               <Image source={{ uri: logo }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
-              <LinearGradient colors={tokens.accentGradient} style={[StyleSheet.absoluteFill, styles.center]}>
-                <Text style={styles.logoText}>{space.name.charAt(0).toUpperCase()}</Text>
+              <LinearGradient colors={c.fallback} style={[StyleSheet.absoluteFill, styles.center]}>
+                <Text style={[styles.logoText, { color: c.text }]}>{space.name.charAt(0).toUpperCase()}</Text>
               </LinearGradient>
             )}
           </View>
         </View>
 
         <View style={{ flex: 1, gap: 3 }}>
-          <Text style={[styles.eyebrow, { color: tokens.accent }]}>Featured space</Text>
-          <Text style={[styles.name, { color: tokens.text }]} numberOfLines={2}>{space.name}</Text>
-          <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>{meta}</Text>
+          <Text style={[styles.eyebrow, { color: c.primary }]}>Featured space</Text>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>{space.name}</Text>
+          <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
         </View>
-        <CaretRight size={16} color={tokens.textSecondary} weight="bold" />
+        <CaretRight size={16} color={c.soft} weight="bold" />
       </Pressable>
     </View>
   );
@@ -98,7 +97,7 @@ const styles = StyleSheet.create({
     gap: spacing[4],
     padding: spacing[3],
     paddingRight: spacing[4],
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
     overflow: 'hidden',
   },
   banner: { width: BANNER_W, height: BANNER_H, borderRadius: borderRadius.md, overflow: 'hidden' },
@@ -113,8 +112,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   center: { alignItems: 'center', justifyContent: 'center' },
-  logoText: { fontSize: 14, color: '#fff', ...font('heading') },
-  eyebrow: { fontSize: typography.fontSize.xs, ...font('semibold') },
-  name: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.2, ...font('heading') },
-  meta: { fontSize: typography.fontSize.xs, ...font() },
+  logoText: { fontSize: 13, ...cosmosFont.display },
+  eyebrow: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  name: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.2, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

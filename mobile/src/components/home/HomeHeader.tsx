@@ -2,20 +2,22 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MagnifyingGlass, MapPin, NavigationArrow } from 'phosphor-react-native';
-import { GlassView } from 'expo-glass-effect';
-import { useTheme } from '../../context/ThemeContext';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { useStableTopInset } from '../CustomHeader';
-import UnifestoAppWordmark from '../UnifestoAppWordmark';
 import type { LocationStatus } from '../../hooks/useHomeData';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { greeting } from '../../utils/eventFormat';
 
+// Brand wordmark PNG is 2400×551.
+const MARK_W = 112;
+const MARK_H = Math.round((MARK_W * 551) / 2400);
+const AVATAR = 36;
+
 interface HomeHeaderProps {
-  /** First name when signed in; null for guests (shows the wordmark instead). */
+  /** First name when signed in; null for guests (no avatar, plain greeting). */
   firstName: string | null;
   avatarUrl?: string | null;
   city: string | null;
@@ -26,8 +28,9 @@ interface HomeHeaderProps {
 }
 
 /**
- * Personal header for Home: who you are + where you are on one line, then a
- * big search entry point. Scrolls inline with the page (not sticky).
+ * Home masthead in the web's layout: wordmark left with place + me on the
+ * right (like the site's navbar), then a Michroma headline and the search
+ * field. Scrolls inline with the page (not sticky).
  */
 export default function HomeHeader({
   firstName,
@@ -38,61 +41,63 @@ export default function HomeHeader({
   onPressAvatar,
   onPressSearch,
 }: HomeHeaderProps) {
-  const { tokens, isDark } = useTheme();
+  const c = useCosmos();
   const topInset = useStableTopInset();
+  const chip = [styles.chip, LIQUID_GLASS ? null : { borderWidth: 1, borderColor: c.border, backgroundColor: c.card }];
 
   return (
     <View style={{ paddingTop: topInset + spacing[3], paddingHorizontal: GUTTER }}>
-      <View style={styles.row}>
-        {firstName ? (
-          <Pressable
-            onPress={onPressAvatar}
-            style={styles.identity}
-            accessibilityRole="button"
-            accessibilityLabel="Open profile"
-          >
-            <View style={[styles.avatar, { backgroundColor: tokens.elevated, borderColor: tokens.border }]}>
+      <View style={styles.bar}>
+        <Image
+          source={c.scheme === 'dark' ? require('../../../assets/brand/wordmark-silver.png') : require('../../../assets/brand/wordmark-ink.png')}
+          style={{ width: MARK_W, height: MARK_H }}
+          contentFit="contain"
+          accessibilityLabel="Unifesto"
+        />
+
+        <View style={styles.barRight}>
+          {city ? (
+            <View style={chip}>
+              <GlassFill />
+              <MapPin size={13} color={c.text} weight="fill" />
+              <Text style={[styles.chipText, { color: c.text }]} numberOfLines={1}>{city}</Text>
+            </View>
+          ) : locationStatus === 'denied' ? (
+            <Pressable
+              onPress={onEnableLocation}
+              accessibilityRole="button"
+              accessibilityLabel="Use my location"
+              // Scale, not opacity: opacity breaks Liquid Glass.
+              style={({ pressed }) => [chip, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+            >
+              <GlassFill interactive />
+              <NavigationArrow size={13} color={c.muted} weight="fill" />
+              <Text style={[styles.chipText, { color: c.muted }]}>Set location</Text>
+            </Pressable>
+          ) : null}
+
+          {firstName ? (
+            <Pressable
+              onPress={onPressAvatar}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
+              style={({ pressed }) => [styles.avatar, { borderColor: c.outline, backgroundColor: c.card, transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+            >
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
               ) : (
-                <Text style={[styles.avatarText, { color: tokens.text }]}>{firstName.charAt(0).toUpperCase()}</Text>
+                <Text style={[styles.avatarText, { color: c.text }]}>{firstName.charAt(0).toUpperCase()}</Text>
               )}
-            </View>
-            <View style={{ flexShrink: 1 }}>
-              <Text style={[styles.greeting, { color: tokens.textMuted }]}>{greeting()}</Text>
-              <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>{firstName}</Text>
-            </View>
-          </Pressable>
-        ) : (
-          <UnifestoAppWordmark width={124} height={38} />
-        )}
-
-        {city ? (
-          <View style={[styles.locationPill, LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
-            <GlassFill />
-            <MapPin size={13} color={tokens.accent} weight="fill" />
-            <Text style={[styles.locationText, { color: tokens.text }]} numberOfLines={1}>{city}</Text>
-          </View>
-        ) : locationStatus === 'denied' ? (
-          <Pressable
-            onPress={onEnableLocation}
-            accessibilityRole="button"
-            accessibilityLabel="Use my location"
-            style={({ pressed }) => [
-              styles.locationPill,
-              LIQUID_GLASS
-                ? { borderWidth: 0, transform: [{ scale: pressed ? 0.96 : 1 }] }
-                : { backgroundColor: tokens.surface, borderColor: tokens.border, opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <GlassFill interactive />
-            <NavigationArrow size={13} color={tokens.textSecondary} weight="fill" />
-            <Text style={[styles.locationText, { color: tokens.textSecondary }]}>Set location</Text>
-          </Pressable>
-        ) : null}
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
-      <Text style={[styles.headline, { color: tokens.text }]}>
+      <Text style={[styles.greeting, { color: c.muted }]}>
+        {firstName ? `${greeting()}, ${firstName}` : greeting()}
+      </Text>
+      <Text style={[styles.headline, { color: c.text }]}>
         What's on{city ? ` in ${city}` : ''}?
       </Text>
 
@@ -102,32 +107,30 @@ export default function HomeHeader({
         accessibilityLabel="Search events and spaces"
         style={({ pressed }) => [
           styles.search,
-          LIQUID_GLASS
-            ? { borderWidth: 0, transform: [{ scale: pressed ? 0.98 : 1 }] } // opacity would break the glass
-            : { backgroundColor: tokens.surface, borderColor: tokens.border, opacity: pressed ? 0.85 : 1 },
+          { borderColor: c.input, backgroundColor: LIQUID_GLASS ? undefined : c.card, transform: [{ scale: pressed ? 0.985 : 1 }] },
         ]}
       >
-        {LIQUID_GLASS ? (
-          <GlassView
-            glassEffectStyle="regular"
-            colorScheme={isDark ? 'dark' : 'light'}
-            isInteractive
-            style={[StyleSheet.absoluteFill, { borderRadius: borderRadius.full }]}
-            pointerEvents="none"
-          />
-        ) : null}
-        <MagnifyingGlass size={20} color={tokens.textSecondary} />
-        <Text style={[styles.searchText, { color: tokens.textMuted }]}>Search events, spaces, vibes</Text>
+        <GlassFill radius={cosmosRadius} interactive />
+        <MagnifyingGlass size={18} color={c.muted} />
+        <Text style={[styles.searchText, { color: c.muted }]}>Search events, spaces, vibes</Text>
       </Pressable>
     </View>
   );
 }
 
-const AVATAR = 42;
-
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, gap: spacing[3] },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], flexShrink: 1 },
+  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 44, gap: spacing[3] },
+  barRight: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], flexShrink: 1 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    height: 32,
+    borderRadius: borderRadius.full,
+    maxWidth: 150,
+  },
+  chipText: { fontSize: typography.fontSize.sm, flexShrink: 1, ...cosmosFont.strong },
   avatar: {
     width: AVATAR,
     height: AVATAR,
@@ -137,36 +140,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 18, ...font('heading') },
-  greeting: { fontSize: typography.fontSize.sm, ...font() },
-  name: { fontSize: typography.fontSize.lg, ...font('semibold') },
-  locationPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    height: 34,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    maxWidth: 160,
-  },
-  locationText: { fontSize: typography.fontSize.sm, ...font('medium') },
-  headline: {
-    marginTop: spacing[6],
-    fontSize: typography.fontSize['4xl'],
-    lineHeight: typography.fontSize['4xl'] * 1.1,
-    letterSpacing: -0.8,
-    ...font('heading'),
-  },
+  avatarText: { fontSize: 15, ...cosmosFont.strong },
+  greeting: { marginTop: spacing[8], fontSize: typography.fontSize.base, ...cosmosFont.body },
+  // Michroma has one weight and runs wide: 28px fits "What's on in Hyderabad?" in two lines.
+  headline: { marginTop: spacing[2], fontSize: 28, lineHeight: 36, ...cosmosFont.display },
   search: {
-    marginTop: spacing[5],
-    height: 54,
-    borderRadius: borderRadius.full,
+    marginTop: spacing[6],
+    height: 52,
+    borderRadius: cosmosRadius,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    paddingHorizontal: spacing[5],
+    paddingHorizontal: spacing[4],
   },
-  searchText: { fontSize: typography.fontSize.base, ...font() },
+  searchText: { fontSize: typography.fontSize.base, ...cosmosFont.body },
 });

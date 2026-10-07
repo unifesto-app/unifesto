@@ -14,8 +14,8 @@ import Animated, {
 import MaskedView from '@react-native-masked-view/masked-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import CosmosBackdrop from '../components/auth/CosmosBackdrop';
-import { cosmosFont, useCosmos } from '../components/auth/cosmos';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 interface SplashScreenProps {
   onAnimationComplete?: () => void;

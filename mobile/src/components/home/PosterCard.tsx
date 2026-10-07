@@ -2,100 +2,139 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTokens } from '../../context/ThemeContext';
+import { CalendarBlank, MapPin } from 'phosphor-react-native';
 import Skeleton from '../Skeleton';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
-export const POSTER_WIDTH = 196;
+export const POSTER_WIDTH = 220;
 
 export interface PosterCardProps {
   title: string;
   imageUrl?: string | null;
-  /** First metadata line, e.g. "Sat · 6:30 PM". */
+  /** Date line, e.g. "Sat · 6:30 PM". */
   when: string;
-  /** Second metadata line, e.g. venue, platform or host. */
+  /** Venue, city or platform. */
   where?: string | null;
+  /** Who runs it (space name), under the title. */
+  host?: string | null;
+  /** Tag on the cover's bottom-left, e.g. the primary category. */
+  tag?: string | null;
   price?: string;
   width?: number;
   onPress: () => void;
 }
 
 /**
- * The one card for anything with a date: events, sessions, shortlist items.
- * Clean 4:3 cover, then title → when → where, price last in accent.
+ * The one card for anything with a date, modelled on the web's EventCard:
+ * a raised card with the 4:3 cover on top (category tag in its corner), then
+ * title, host, date and place with icons, and the price last.
  */
 export default function PosterCard({
   title,
   imageUrl,
   when,
   where,
+  host,
+  tag,
   price,
   width = POSTER_WIDTH,
   onPress,
 }: PosterCardProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${when}`}
-      style={({ pressed }) => [{ width, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      style={({ pressed }) => [styles.card, { width, backgroundColor: c.raised, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
-      <View style={[styles.cover, { backgroundColor: tokens.elevated }]}>
+      <View style={[styles.cover, { backgroundColor: c.card }]}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
-          <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Text style={styles.fallbackText}>{title.charAt(0).toUpperCase()}</Text>
+          <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.fallback]}>
+            <Text style={[styles.fallbackText, { color: c.muted }]}>{title.charAt(0).toUpperCase()}</Text>
           </LinearGradient>
         )}
+        {tag ? <CoverTag label={tag} style={styles.tag} /> : null}
       </View>
 
       <View style={styles.body}>
-        <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>
-          {title}
-        </Text>
-        <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
-          {when}
-        </Text>
-        {where ? (
-          <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
-            {where}
-          </Text>
-        ) : null}
-        {price ? <Text style={[styles.price, { color: tokens.accent }]}>{price}</Text> : null}
+        <View>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text>
+          {host ? <Text style={[styles.host, { color: c.muted }]} numberOfLines={1}>{host}</Text> : null}
+        </View>
+        <View style={styles.metaBlock}>
+          <MetaLine icon={<CalendarBlank size={13} color={c.soft} />} text={when} />
+          {where ? <MetaLine icon={<MapPin size={13} color={c.soft} />} text={where} /> : null}
+        </View>
+        {price ? <Text style={[styles.price, { color: c.text }]}>{price}</Text> : null}
       </View>
     </Pressable>
   );
 }
 
-export function PosterCardSkeleton({ width = POSTER_WIDTH }: { width?: number }) {
+function MetaLine({ icon, text }: { icon: React.ReactNode; text: string }) {
+  const c = useCosmos();
   return (
-    <View style={{ width }}>
-      <Skeleton width={width} height={(width * 3) / 4} borderRadius={borderRadius.xl} />
+    <View style={styles.metaLine}>
+      {icon}
+      <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * Small label sitting on a cover image (the web's blur-bg pill). A solid
+ * scrim, not glass: glass on event banners was tried and rejected.
+ */
+export function CoverTag({ label, style }: { label: string; style?: object }) {
+  return (
+    <View style={[styles.coverTag, style]}>
+      <Text style={styles.coverTagText} numberOfLines={1}>{label}</Text>
+    </View>
+  );
+}
+
+export function PosterCardSkeleton({ width = POSTER_WIDTH }: { width?: number }) {
+  const c = useCosmos();
+  return (
+    <View style={[styles.card, { width, backgroundColor: c.raised }]}>
+      <Skeleton width={width} height={(width * 3) / 4} borderRadius={0} />
       <View style={styles.body}>
-        <Skeleton width={width * 0.85} height={16} borderRadius={6} />
-        <Skeleton width={width * 0.55} height={12} borderRadius={6} style={{ marginTop: 8 }} />
-        <Skeleton width={width * 0.4} height={12} borderRadius={6} style={{ marginTop: 6 }} />
+        <Skeleton width={width * 0.8} height={16} borderRadius={6} />
+        <Skeleton width={width * 0.45} height={11} borderRadius={6} />
+        <Skeleton width={width * 0.6} height={12} borderRadius={6} />
+        <Skeleton width={width * 0.3} height={12} borderRadius={6} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  cover: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-  },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  cover: { width: '100%', aspectRatio: 4 / 3, overflow: 'hidden' },
   fallback: { alignItems: 'center', justifyContent: 'center' },
-  fallbackText: { fontSize: 40, color: '#ffffff', ...font('heading') },
-  body: { paddingTop: spacing[3], paddingHorizontal: 2, gap: 3 },
-  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, marginBottom: 2, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.sm, ...font() },
-  price: { fontSize: typography.fontSize.sm, marginTop: 3, ...font('semibold') },
+  fallbackText: { fontSize: 36, ...cosmosFont.display },
+  tag: { position: 'absolute', left: spacing[3], bottom: spacing[3] },
+  coverTag: {
+    alignSelf: 'flex-start',
+    maxWidth: 160,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+  },
+  coverTagText: { fontSize: 11, color: '#ffffff', ...cosmosFont.strong },
+  body: { flex: 1, padding: spacing[4], gap: spacing[3] },
+  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
+  host: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  metaBlock: { gap: 5 },
+  metaLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  meta: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  // Pinned to the bottom so prices line up across a rail of uneven titles.
+  price: { marginTop: 'auto', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

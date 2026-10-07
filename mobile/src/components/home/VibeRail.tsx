@@ -2,10 +2,9 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import Skeleton from '../Skeleton';
 import { GUTTER } from './Section';
 
@@ -20,7 +19,7 @@ interface VibeRailProps {
 
 /** One-row strip of 4:3 category tiles ("Find your vibe"). */
 export default function VibeRail({ categories, onPressCategory }: VibeRailProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {categories.map((cat) => (
@@ -31,13 +30,13 @@ export default function VibeRail({ categories, onPressCategory }: VibeRailProps)
           accessibilityLabel={cat.name}
           style={({ pressed }) => [
             styles.tile,
-            { backgroundColor: tokens.elevated, transform: [{ scale: pressed ? 0.96 : 1 }] },
+            { backgroundColor: c.card, transform: [{ scale: pressed ? 0.96 : 1 }] },
           ]}
         >
           {cat.bannerUrl ? (
             <Image source={{ uri: cat.bannerUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
-            <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           )}
           <LinearGradient
             colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']}
@@ -72,5 +71,5 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: spacing[2] + 2,
   },
-  name: { fontSize: typography.fontSize.sm, color: '#ffffff', ...font('semibold') },
+  name: { fontSize: typography.fontSize.sm, color: '#ffffff', ...cosmosFont.strong },
 });

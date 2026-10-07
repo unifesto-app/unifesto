@@ -5,7 +5,7 @@ import { CalendarBlank, CaretRight, Gavel, Handshake, Plus, QrCode } from 'phosp
 import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { CardBackdrop } from '../ui/CardSurface';
 import { Badge } from '../ui';
 import Skeleton from '../Skeleton';
@@ -42,7 +42,8 @@ const plural = (n: number, one: string) => `${n.toLocaleString('en-IN')} ${one}$
  */
 export default function SpacePanel(p: SpacePanelProps) {
   const tokens = useTokens();
-  const glyph = { size: 24, color: tokens.accent, weight: 'fill' as const };
+  const c = useCosmos();
+  const glyph = { size: 24, color: c.primary, weight: 'fill' as const };
 
   return (
     <View style={styles.wrap}>
@@ -61,13 +62,13 @@ export default function SpacePanel(p: SpacePanelProps) {
               <View style={[styles.dot, { backgroundColor: tokens.success }]} />
               <Text style={[styles.eyebrow, { color: tokens.success }]}>Check-in live</Text>
             </View>
-            <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>{e.title}</Text>
-            <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{e.title}</Text>
+            <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
               {plural(e._count.registrations, 'registration')}
             </Text>
           </View>
-          <View style={[styles.cta, { backgroundColor: tokens.accent }]}>
-            <Text style={[styles.ctaText, { color: tokens.accentFg }]}>Scan</Text>
+          <View style={[styles.cta, { backgroundColor: c.primary }]}>
+            <Text style={[styles.ctaText, { color: c.primaryFg }]}>Scan</Text>
           </View>
         </Pressable>
       ))}
@@ -92,7 +93,7 @@ export default function SpacePanel(p: SpacePanelProps) {
             <EventRow key={e.id} event={e} onPress={() => p.onOpenEvent(e)} />
           ))}
           {p.canCreate ? (
-            <LinkRow icon={<Plus size={22} color={tokens.accent} weight="bold" />} title="New event" meta="Set it up in three steps" onPress={p.onCreateEvent} />
+            <LinkRow icon={<Plus size={22} color={c.primary} weight="bold" />} title="New event" meta="Set it up in three steps" onPress={p.onCreateEvent} />
           ) : null}
         </View>
       ) : p.hosting ? (
@@ -104,12 +105,12 @@ export default function SpacePanel(p: SpacePanelProps) {
           <CardBackdrop shape={styles.card} />
           <CalendarBlank {...glyph} />
           <View style={{ flex: 1 }}>
-            <Text style={[styles.title, { color: tokens.text }]}>No upcoming events</Text>
-            <Text style={[styles.meta, { color: tokens.textMuted }]}>
+            <Text style={[styles.title, { color: c.text }]}>No upcoming events</Text>
+            <Text style={[styles.meta, { color: c.muted }]}>
               {p.canCreate ? 'Create the next one.' : 'Plan the next one from my space.'}
             </Text>
           </View>
-          <CaretRight size={16} color={tokens.textMuted} weight="bold" />
+          <CaretRight size={16} color={c.muted} weight="bold" />
         </Pressable>
       ) : null}
 
@@ -144,6 +145,7 @@ export default function SpacePanel(p: SpacePanelProps) {
 
 function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => void }) {
   const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const going = e.attendees?.total ?? e._count?.registrations ?? 0;
   const fill = e.capacity ? Math.min(1, going / e.capacity) : null;
@@ -157,23 +159,23 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
       {coverOr(defaults, e.id, e.coverImageUrl) ? (
         <Image source={{ uri: coverOr(defaults, e.id, e.coverImageUrl) ?? undefined }} style={styles.thumb} contentFit="cover" />
       ) : (
-        <View style={[styles.thumb, { backgroundColor: tokens.fill }]} />
+        <View style={[styles.thumb, { backgroundColor: c.border }]} />
       )}
       <View style={{ flex: 1, gap: 2 }}>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, { color: tokens.text, flexShrink: 1 }]} numberOfLines={1}>{e.title}</Text>
+          <Text style={[styles.title, { color: c.text, flexShrink: 1 }]} numberOfLines={1}>{e.title}</Text>
           {e.status === 'DRAFT' ? <Badge label="Draft" tone="neutral" /> : null}
         </View>
-        <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
+        <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
           {relativeWhen(e.startDateTime)} · {e.spaceName}
         </Text>
         <View style={styles.fillRow}>
           {fill !== null ? (
-            <View style={[styles.track, { backgroundColor: tokens.fill }]}>
-              <View style={[styles.bar, { width: `${fill * 100}%`, backgroundColor: fill >= 1 ? tokens.warning : tokens.accent }]} />
+            <View style={[styles.track, { backgroundColor: c.border }]}>
+              <View style={[styles.bar, { width: `${fill * 100}%`, backgroundColor: fill >= 1 ? tokens.warning : c.primary }]} />
             </View>
           ) : null}
-          <Text style={[styles.count, { color: tokens.textSecondary }]}>
+          <Text style={[styles.count, { color: c.soft }]}>
             {e.capacity ? `${going.toLocaleString('en-IN')}/${e.capacity.toLocaleString('en-IN')}` : `${going.toLocaleString('en-IN')} going`}
           </Text>
         </View>
@@ -183,36 +185,36 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
 }
 
 function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode; title: string; meta: string; onPress: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}>
       <View style={styles.icon}>{icon}</View>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>{title}</Text>
-        <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>{meta}</Text>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{title}</Text>
+        <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
       </View>
-      <CaretRight size={16} color={tokens.textMuted} weight="bold" />
+      <CaretRight size={16} color={c.muted} weight="bold" />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: GUTTER, gap: spacing[3] },
-  card: { borderRadius: borderRadius.xl, padding: spacing[4] },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[4] },
   list: { gap: spacing[4] },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   icon: { width: 64, alignItems: 'center' },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  eyebrow: { fontSize: typography.fontSize.xs, ...font('semibold') },
+  eyebrow: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  title: { fontSize: typography.fontSize.base, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.sm, ...font() },
+  title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   thumb: { width: 64, height: 48, borderRadius: borderRadius.md },
   fillRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: 4 },
   track: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
   bar: { height: 4, borderRadius: 2 },
-  count: { fontSize: typography.fontSize.xs, ...font('medium') },
-  cta: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  ctaText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  count: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  cta: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: cosmosRadius },
+  ctaText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

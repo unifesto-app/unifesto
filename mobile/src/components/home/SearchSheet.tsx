@@ -12,7 +12,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CaretLeft, ClockCounterClockwise, MagnifyingGlass, X } from 'phosphor-react-native';
 import { GlassView } from 'expo-glass-effect';
-import { useTheme } from '../../context/ThemeContext';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { useStableTopInset } from '../CustomHeader';
 import Skeleton from '../Skeleton';
@@ -20,7 +19,7 @@ import type { Event } from '../../lib/api/events';
 import type { HomeSearch } from '../../hooks/useHomeSearch';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { relativeWhen, shortPrice, spaceLogo } from '../../utils/eventFormat';
 
 interface SearchSheetProps {
@@ -44,7 +43,8 @@ export default function SearchSheet({
   onOpenCategory,
   onSubmit,
 }: SearchSheetProps) {
-  const { tokens, isDark } = useTheme();
+  const c = useCosmos();
+  const isDark = c.scheme === 'dark';
   const topInset = useStableTopInset();
   const s = search;
 
@@ -58,23 +58,23 @@ export default function SearchSheet({
   const Row = ({ title, sub, meta, image, shape, onPress }: { title: string; sub?: string | null; meta?: string | null; image?: string | null; shape: 'banner' | 'logo'; onPress: () => void }) => (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? tokens.surface : 'transparent' }]}
+      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.card : 'transparent' }]}
       accessibilityRole="button"
       accessibilityLabel={title}
     >
-      <View style={[shape === 'banner' ? styles.thumbBanner : styles.thumbLogo, { backgroundColor: tokens.elevated }]}>
+      <View style={[shape === 'banner' ? styles.thumbBanner : styles.thumbLogo, { backgroundColor: c.card }]}>
         {image ? (
           <Image source={{ uri: image }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
-          <LinearGradient colors={tokens.accentGradient} style={[StyleSheet.absoluteFill, styles.center]}>
-            <Text style={styles.thumbText}>{title.charAt(0).toUpperCase()}</Text>
+          <LinearGradient colors={c.fallback} style={[StyleSheet.absoluteFill, styles.center]}>
+            <Text style={[styles.thumbText, { color: c.muted }]}>{title.charAt(0).toUpperCase()}</Text>
           </LinearGradient>
         )}
       </View>
       <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[styles.rowTitle, { color: tokens.text }]} numberOfLines={1}>{title}</Text>
-        {sub ? <Text style={[styles.rowSub, { color: tokens.textSecondary }]} numberOfLines={1}>{sub}</Text> : null}
-        {meta ? <Text style={[styles.rowSub, { color: tokens.textMuted }]} numberOfLines={1}>{meta}</Text> : null}
+        <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={1}>{title}</Text>
+        {sub ? <Text style={[styles.rowSub, { color: c.soft }]} numberOfLines={1}>{sub}</Text> : null}
+        {meta ? <Text style={[styles.rowSub, { color: c.muted }]} numberOfLines={1}>{meta}</Text> : null}
       </View>
     </Pressable>
   );
@@ -116,19 +116,19 @@ export default function SearchSheet({
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
-        LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: tokens.surface, borderColor: tokens.border },
+        LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: c.card, borderColor: c.border },
         { transform: [{ scale: pressed ? 0.96 : 1 }] },
       ]}
     >
       <GlassFill interactive />
       {icon}
-      <Text style={[styles.chipText, { color: tokens.text }]} numberOfLines={1}>{label}</Text>
+      <Text style={[styles.chipText, { color: c.text }]} numberOfLines={1}>{label}</Text>
     </Pressable>
   );
 
   const BlockTitle = ({ title, action }: { title: string; action?: React.ReactNode }) => (
     <View style={styles.blockHeader}>
-      <Text style={[styles.blockTitle, { color: tokens.textSecondary }]}>{title}</Text>
+      <Text style={[styles.blockTitle, { color: c.soft }]}>{title}</Text>
       {action}
     </View>
   );
@@ -137,27 +137,27 @@ export default function SearchSheet({
 
   return (
     <Modal visible={s.open} animationType="slide" onRequestClose={s.closeSheet} statusBarTranslucent>
-      <View style={[styles.container, { backgroundColor: tokens.bg, paddingTop: topInset + spacing[2] }]}>
+      <View style={[styles.container, { backgroundColor: c.bg, paddingTop: topInset + spacing[2] }]}>
         <View style={styles.header}>
           <Pressable onPress={s.closeSheet} hitSlop={10} style={styles.back} accessibilityLabel="Close search">
-            <CaretLeft size={22} color={tokens.text} weight="bold" />
+            <CaretLeft size={22} color={c.text} weight="bold" />
           </Pressable>
-          <View style={[styles.field, LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: tokens.surface, borderColor: tokens.border }]}>
+          <View style={[styles.field, LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: c.card, borderColor: c.border }]}>
             {LIQUID_GLASS ? (
               <GlassView
                 glassEffectStyle="regular"
                 colorScheme={isDark ? 'dark' : 'light'}
-                style={[StyleSheet.absoluteFill, { borderRadius: borderRadius.full }]}
+                style={[StyleSheet.absoluteFill, { borderRadius: cosmosRadius }]}
                 pointerEvents="none"
               />
             ) : null}
-            <MagnifyingGlass size={18} color={tokens.textMuted} />
+            <MagnifyingGlass size={18} color={c.muted} />
             <TextInput
               ref={s.inputRef}
-              style={[styles.input, { color: tokens.text }]}
+              style={[styles.input, { color: c.text }]}
               placeholder={s.type === 'events' ? 'Search events' : 'Search spaces'}
-              placeholderTextColor={tokens.textMuted}
-              selectionColor={tokens.accent}
+              placeholderTextColor={c.muted}
+              selectionColor={c.primary}
               value={s.query}
               onChangeText={s.onChangeQuery}
               onSubmitEditing={() => onSubmit(s.query)}
@@ -166,14 +166,14 @@ export default function SearchSheet({
               autoFocus
             />
             {s.query !== '' && (
-              <Pressable onPress={s.clear} hitSlop={10} style={[styles.clear, { backgroundColor: tokens.textMuted }]} accessibilityLabel="Clear search">
-                <X size={11} color={tokens.bg} weight="bold" />
+              <Pressable onPress={s.clear} hitSlop={10} style={[styles.clear, { backgroundColor: c.muted }]} accessibilityLabel="Clear search">
+                <X size={11} color={c.bg} weight="bold" />
               </Pressable>
             )}
           </View>
         </View>
 
-        <View style={[styles.segment, { backgroundColor: LIQUID_GLASS ? undefined : tokens.surface }]}>
+        <View style={[styles.segment, { backgroundColor: LIQUID_GLASS ? undefined : c.card }]}>
           <GlassFill interactive />
           {(['events', 'spaces'] as const).map((t) => {
             const active = s.type === t;
@@ -182,11 +182,11 @@ export default function SearchSheet({
               <Pressable
                 key={t}
                 onPress={() => s.setType(t)}
-                style={[styles.segmentBtn, active && { backgroundColor: tokens.elevated }]}
+                style={[styles.segmentBtn, active && { backgroundColor: c.card }]}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
               >
-                <Text style={[styles.segmentText, { color: active ? tokens.text : tokens.textMuted }]}>
+                <Text style={[styles.segmentText, { color: active ? c.text : c.muted }]}>
                   {t === 'events' ? 'Events' : 'Spaces'}
                   {s.isSearching && !s.loading && count > 0 ? `  ${count}` : ''}
                 </Text>
@@ -210,7 +210,7 @@ export default function SearchSheet({
                     title="Recent"
                     action={
                       <Pressable onPress={s.clearRecentSearches} hitSlop={10}>
-                        <Text style={[styles.blockAction, { color: tokens.textSecondary }]}>Clear</Text>
+                        <Text style={[styles.blockAction, { color: c.soft }]}>Clear</Text>
                       </Pressable>
                     }
                   />
@@ -219,7 +219,7 @@ export default function SearchSheet({
                       <Chip
                         key={term}
                         label={term}
-                        icon={<ClockCounterClockwise size={13} color={tokens.textMuted} />}
+                        icon={<ClockCounterClockwise size={13} color={c.muted} />}
                         onPress={() => s.runTerm(term)}
                       />
                     ))}
@@ -269,7 +269,7 @@ export default function SearchSheet({
                 action={
                   s.type === 'events' ? (
                     <Pressable onPress={() => onSubmit(s.query)} hitSlop={10}>
-                      <Text style={[styles.blockAction, { color: tokens.accent }]}>View all</Text>
+                      <Text style={[styles.blockAction, { color: c.primary }]}>View all</Text>
                     </Pressable>
                   ) : undefined
                 }
@@ -279,10 +279,10 @@ export default function SearchSheet({
           ) : (
             <View style={styles.empty}>
               <View style={styles.emptyIcon}>
-                <MagnifyingGlass size={36} color={tokens.textMuted} />
+                <MagnifyingGlass size={36} color={c.muted} />
               </View>
-              <Text style={[styles.emptyTitle, { color: tokens.text }]}>No matches for “{s.query.trim()}”</Text>
-              <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
+              <Text style={[styles.emptyTitle, { color: c.text }]}>No matches for “{s.query.trim()}”</Text>
+              <Text style={[styles.emptyText, { color: c.muted }]}>
                 {s.type === 'events' ? 'Try a different word, or browse a vibe.' : 'Try a different name or city.'}
               </Text>
               {s.type === 'events' && categories.length > 0 && (
@@ -307,29 +307,29 @@ const styles = StyleSheet.create({
   field: {
     flex: 1,
     height: 48,
-    borderRadius: borderRadius.full,
+    borderRadius: cosmosRadius,
     borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
     paddingHorizontal: spacing[4],
   },
-  input: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
+  input: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
   clear: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   segment: {
     flexDirection: 'row',
     marginHorizontal: spacing[5],
     marginTop: spacing[4],
     padding: 4,
-    borderRadius: borderRadius.full,
+    borderRadius: cosmosRadius + 4,
   },
-  segmentBtn: { flex: 1, height: 36, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
-  segmentText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  segmentBtn: { flex: 1, height: 36, borderRadius: cosmosRadius, alignItems: 'center', justifyContent: 'center' },
+  segmentText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   body: { paddingHorizontal: spacing[5], paddingTop: spacing[4], paddingBottom: spacing[16] },
   block: { marginBottom: spacing[6] },
   blockHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3] },
-  blockTitle: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  blockAction: { fontSize: typography.fontSize.sm, ...font('medium') },
+  blockTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  blockAction: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
     flexDirection: 'row',
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxWidth: '100%',
   },
-  chipText: { fontSize: typography.fontSize.sm, ...font('medium') },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -354,11 +354,11 @@ const styles = StyleSheet.create({
   thumbBanner: { width: 72, height: 54, borderRadius: borderRadius.md, overflow: 'hidden' },
   thumbLogo: { width: 54, height: 54, borderRadius: borderRadius.md, overflow: 'hidden', marginHorizontal: 9 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  thumbText: { fontSize: 20, color: '#fff', ...font('heading') },
-  rowTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  rowSub: { fontSize: typography.fontSize.sm, ...font() },
+  thumbText: { fontSize: 18, ...cosmosFont.display },
+  rowTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  rowSub: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: spacing[4] },
   emptyIcon: { marginBottom: spacing[4] },
-  emptyTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...font('heading') },
-  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', marginTop: 6, ...font() },
+  emptyTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
+  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', marginTop: 6, ...cosmosFont.body },
 });

@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
-import { cosmosFont, cosmosRadius, useCosmos } from './cosmos';
+import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface OtpCodeInputProps {
   value: string;

@@ -2,9 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CheckCircle } from 'phosphor-react-native';
 import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { CardBackdrop } from '../ui/CardSurface';
 import Skeleton from '../Skeleton';
 import ManageStats from '../manage/ManageStats';
@@ -23,6 +23,7 @@ interface ApexPanelProps {
 /** Platform-staff snapshot on Home: headline numbers + every queue waiting on me, one tap each. */
 export default function ApexPanel({ overview, needs, loading, onOpenNeed }: ApexPanelProps) {
   const tokens = useTokens();
+  const c = useCosmos();
   const ov = overview;
 
   return (
@@ -39,14 +40,14 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
       {loading && needs.length === 0 ? (
         <View style={styles.grid}>
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} width="31%" height={64} borderRadius={borderRadius.xl} />
+            <Skeleton key={i} width="31%" height={64} borderRadius={cosmosCardRadius} />
           ))}
         </View>
       ) : needs.length === 0 ? (
         <View style={[styles.clear]}>
           <CardBackdrop shape={styles.clear} />
           <CheckCircle size={24} color={tokens.success} weight="fill" />
-          <Text style={[styles.clearText, { color: tokens.text }]}>All clear, nothing waiting on me</Text>
+          <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
         </View>
       ) : (
         <View style={styles.grid}>
@@ -60,7 +61,7 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
             >
               <CardBackdrop shape={styles.need} />
               <Text style={[styles.needCount, { color: tokens.warning }]}>{n.count.toLocaleString('en-IN')}</Text>
-              <Text style={[styles.needLabel, { color: tokens.textSecondary }]} numberOfLines={1}>
+              <Text style={[styles.needLabel, { color: c.soft }]} numberOfLines={1}>
                 {n.label}
               </Text>
             </Pressable>
@@ -78,19 +79,19 @@ const styles = StyleSheet.create({
     // Three per row inside the gutter.
     width: '31%',
     flexGrow: 1,
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
     gap: 2,
   },
-  needCount: { fontSize: typography.fontSize['2xl'], ...font('heading') },
-  needLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
+  needCount: { fontSize: typography.fontSize.xl, lineHeight: 30, ...cosmosFont.display },
+  needLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   clear: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     padding: spacing[4],
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
   },
-  clearText: { fontSize: typography.fontSize.sm, ...font('medium') },
+  clearText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

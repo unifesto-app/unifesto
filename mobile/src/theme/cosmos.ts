@@ -1,12 +1,16 @@
 // "Monochrome cosmos": the 2026 web brand (websites/web/src/app/globals.css),
-// ported for the login flow. Black ground, light type, one silver accent; the
+// ported for the login, splash and Home. Black ground, light type, one silver accent; the
 // light set flips the same roles exactly like the web's [data-theme="light"].
-import { useTokens } from '../../context/ThemeContext';
+import { useTokens } from '../context/ThemeContext';
 
 const dark = {
   bg: '#000000',
   card: '#0a0a0b',
+  /** Event / content cards (the web's night-3). */
+  raised: '#141416',
   text: '#ececee',
+  /** Secondary text, between text and muted (the web's paper/65). */
+  soft: '#b4b4ba',
   muted: '#8a8a90',
   primary: '#e8e8ea',
   primaryFg: '#000000',
@@ -15,13 +19,19 @@ const dark = {
   outline: 'rgba(255, 255, 255, 0.28)',
   danger: '#ff6b6b',
   glow: '255, 255, 255',
+  /** Faint silver wash for highlighted cards (the web's rgb(var(--glow) / 0.06)). */
+  tint: 'rgba(255, 255, 255, 0.06)',
+  /** Cover placeholder when an image is missing: the web's night-3 field. */
+  fallback: ['#1c1c20', '#0a0a0b'] as [string, string],
   scheme: 'dark' as 'dark' | 'light',
 };
 
 const light: typeof dark = {
   bg: '#ffffff',
   card: '#f4f4f5',
+  raised: '#f4f4f5',
   text: '#111113',
+  soft: '#3f3f46',
   muted: '#63636a',
   primary: '#111113',
   primaryFg: '#ffffff',
@@ -30,6 +40,8 @@ const light: typeof dark = {
   outline: 'rgba(0, 0, 0, 0.28)',
   danger: '#d93636',
   glow: '17, 17, 19',
+  tint: 'rgba(0, 0, 0, 0.04)',
+  fallback: ['#e4e4e7', '#f4f4f5'],
   scheme: 'light',
 };
 
@@ -46,5 +58,7 @@ export const cosmosFont = {
   strong: { fontFamily: 'HankenGrotesk-SemiBold' },
 } as const;
 
-/** Web "instrument-panel" radii: near-square, never pills. */
-export const cosmosRadius = 6;
+/** Controls (fields, buttons, segments): soft, rounded corners. Never square boxes. */
+export const cosmosRadius = 14;
+/** Cards and covers. */
+export const cosmosCardRadius = 20;

@@ -13,14 +13,13 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { CaretRight, Trophy } from 'phosphor-react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { getMyHackathon, type HackathonHub } from '../../lib/api/hackathon';
 import type { UpcomingTicket } from '../../hooks/useHomeData';
 import { useBannerAccent } from '../../hooks/useBannerPalette';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { CardBackdrop } from '../ui/CardSurface';
 
@@ -159,12 +158,12 @@ interface HackathonCardProps {
  * team should do next.
  */
 export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const team = hub.team!;
   const cover = coverOr(defaults, hub.eventId, hub.event.coverImageUrl);
   // Same banner colour the space / event pages wash with, used only on elements.
-  const accent = useBannerAccent(cover, { event: hub.eventId }) ?? tokens.accent;
+  const accent = useBannerAccent(cover, { event: hub.eventId }) ?? c.primary;
 
   const now = useNow();
   const start = new Date(hub.event.startDateTime).getTime();
@@ -194,20 +193,20 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
             <View style={{ flex: 1 }}>
               <View style={styles.pill}>
                 {live ? <LiveDot color={accent} /> : null}
-                <Text style={[styles.pillText, { color: live ? accent : tokens.textMuted }]} numberOfLines={1}>
+                <Text style={[styles.pillText, { color: live ? accent : c.muted }]} numberOfLines={1}>
                   {live ? 'Live' : 'Hackathon'} · {hub.event.title}
                 </Text>
               </View>
-              <Text style={[styles.team, { color: tokens.text }]} numberOfLines={1}>{team.name}</Text>
+              <Text style={[styles.team, { color: c.text }]} numberOfLines={1}>{team.name}</Text>
             </View>
             <View style={styles.clockCol}>
-              <Text style={[styles.clock, { color: tokens.text }]}>{countdown((live ? end : start) - now)}</Text>
-              <Text style={[styles.clockLabel, { color: tokens.textMuted }]}>{live ? 'left' : 'to kickoff'}</Text>
+              <Text style={[styles.clock, { color: c.text }]}>{countdown((live ? end : start) - now)}</Text>
+              <Text style={[styles.clockLabel, { color: c.muted }]}>{live ? 'left' : 'to kickoff'}</Text>
             </View>
           </View>
           {live ? <TimeBar progress={progress} color={accent} /> : null}
           <View style={styles.bottomRow}>
-            <Text style={[styles.status, { color: tokens.textSecondary }]} numberOfLines={1}>{statusLine(team, hub.unreadCount)}</Text>
+            <Text style={[styles.status, { color: c.soft }]} numberOfLines={1}>{statusLine(team, hub.unreadCount)}</Text>
             <CaretRight size={14} color={accent} weight="bold" />
           </View>
         </Animated.View>
@@ -217,18 +216,18 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: { padding: spacing[4], borderRadius: borderRadius.xl },
+  card: { padding: spacing[4], borderRadius: cosmosCardRadius },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pillText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...font('semibold') },
+  pillText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   dotWrap: { width: 8, height: 8, alignItems: 'center', justifyContent: 'center' },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  team: { fontSize: typography.fontSize.lg, marginTop: 2, ...font('heading') },
+  team: { fontSize: typography.fontSize.lg, marginTop: 2, ...cosmosFont.strong },
   clockCol: { alignItems: 'flex-end' },
-  clock: { fontSize: typography.fontSize.lg, fontVariant: ['tabular-nums'], ...font('heading') },
-  clockLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
+  clock: { fontSize: typography.fontSize.base, lineHeight: 24, fontVariant: ['tabular-nums'], ...cosmosFont.display },
+  clockLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   track: { height: 3, borderRadius: 2, marginTop: spacing[3], overflow: 'hidden', backgroundColor: 'rgba(127,127,127,0.25)' },
   sweep: { position: 'absolute', top: 0, bottom: 0, width: 60 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
-  status: { flex: 1, fontSize: typography.fontSize.sm, ...font('medium') },
+  status: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
