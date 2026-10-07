@@ -1,27 +1,14 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-// Fallback when the API is unreachable, so the band never renders empty.
-const FALLBACK = [
-  "Malla Reddy University",
-  "Innovation & Entrepreneurship Cell",
-  "StudLYF",
-  "GDGon Campus MRUH",
-  "Marquee Film Club",
-  "MUN Club MRUH",
-  "Alan Turing Club",
-  "AWS Cloud Clubs MRUH",
-];
-
 // Every ACTIVE public space, re-read at most every 10 minutes (ISR).
 async function activeSpaceNames(): Promise<string[]> {
   try {
     const res = await fetch(`${API_URL}/spaces?status=ACTIVE&limit=100`, { next: { revalidate: 600 } });
-    if (!res.ok) return FALLBACK;
+    if (!res.ok) return [];
     const { spaces } = (await res.json()) as { spaces?: { name: string }[] };
-    const names = (spaces ?? []).map((s) => s.name.trim()).filter(Boolean);
-    return names.length ? names : FALLBACK;
+    return (spaces ?? []).map((s) => s.name.trim()).filter(Boolean);
   } catch {
-    return FALLBACK;
+    return [];
   }
 }
 
@@ -33,6 +20,8 @@ const Node = () => (
    ticker is time-based motion, so it runs linear (see .animate-marquee). */
 export default async function MarqueeBar() {
   const partners = await activeSpaceNames();
+  // No hardcoded fallback: it would list inactive/archived spaces. Hide instead.
+  if (!partners.length) return null;
   // Second copy only closes the loop; hidden from assistive tech.
   const marqueeItems = [...partners, ...partners];
   return (
