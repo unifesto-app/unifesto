@@ -198,7 +198,6 @@ export async function getSpaceById(id: string): Promise<Space | null> {
  * Get space by slug
  */
 export async function getSpaceBySlug(slug: string): Promise<Space | null> {
-  try {
     const response = await fetchWithTimeout(`${API_URL}/spaces/slug/${slug}`, {
       method: 'GET',
       headers: {
@@ -206,18 +205,15 @@ export async function getSpaceBySlug(slug: string): Promise<Space | null> {
       },
     }, 10000);
 
+    // Only a 404 means "no such space"; other failures throw (see getEventBySlug).
+    if (response.status === 404) return null;
     if (!response.ok) {
-      console.error('[API] Error fetching space:', response.status, response.statusText);
-      return null;
+      throw new Error(`Error fetching space: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     // Backend returns the space object unwrapped.
     return mapSpace(data?.id ? data : null);
-  } catch (error) {
-    console.error('[API] Error fetching space:', error);
-    return null;
-  }
 }
 
 /**

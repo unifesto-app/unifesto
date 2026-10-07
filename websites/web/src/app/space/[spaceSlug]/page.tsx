@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { withSocial } from "@/lib/seo";
 import { cache } from "react";
 import { getSpaceBySlug as fetchSpace } from "@/lib/api/spaces";
@@ -35,12 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { spaceSlug } = await params;
   const space = await getSpaceBySlug(spaceSlug);
 
-  if (!space) {
-    return {
-      title: "Space not found",
-      robots: { index: false, follow: false },
-    };
-  }
+  if (!space) notFound();
 
   const title = `${space.name} | Unifesto`;
   const description =
@@ -63,8 +59,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function SpacePage({ params }: Props) {
   const { spaceSlug } = await params;
   const space = await getSpaceBySlug(spaceSlug);
+  if (!space) notFound();
   // A Space is an organisation (club, institution, community) hosting events.
-  const ld = space && {
+  const ld = {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: space.name,
@@ -78,7 +75,7 @@ export default async function SpacePage({ params }: Props) {
   };
   return (
     <>
-      {ld && <JsonLd data={ld} />}
+      <JsonLd data={ld} />
       <SpaceDetailClient params={params} />
     </>
   );
