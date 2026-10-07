@@ -135,7 +135,7 @@ export const PILLARS: Pillar[] = [
   },
 ];
 
-/* ── Hackathons ─────────────────────────────────────────────────────── */
+/* ── Unifesto Sprint (hackathons) ─────────────────────────────────────────────────────── */
 
 export const HACKATHON_STAGES = [
   {
@@ -194,6 +194,44 @@ export const FAQ_STAY: Faq[] = [
   {
     q: "Can organisers separate rooms by gender?",
     a: "Yes. Each room option can be open to anyone, men only or women only, and every guest's gender is recorded with the request.",
+  },
+];
+
+/* ── Unifesto Huddle (online sessions) ────────────────────────────────── */
+/* Checked against backend/src/sessions: Space-owned online sessions, one
+   price (0 = free), hosted in-app on LiveKit or on Meet/Zoom/Teams, join
+   gated to paid registrants from 15 min before start, T-24h and T-15m
+   reminders, co-hosts, interactive or broadcast, recording, cancel-refunds.
+   Plan-gated (hasSessions, Pro). */
+
+export const HUDDLE_STEPS = [
+  { title: "Find the session", body: "Sessions show up on the Space's page and in the app, with the host, time and price." },
+  { title: "Register or pay", body: "Free sessions confirm in a tap. Paid ones take a single payment through Razorpay." },
+  { title: "Get reminded", body: "A reminder a day before and again 15 minutes before start, with a link straight to the session." },
+  { title: "Join in the app", body: "The Join button opens 15 minutes before start. There is no link to forward, only your own seat." },
+  { title: "Catch the recording", body: "If the host records, the recording is added to the session afterwards." },
+] as const;
+
+export const FAQ_HUDDLE: Faq[] = [
+  {
+    q: "What is Unifesto Huddle?",
+    a: "Unifesto Huddle is online sessions for Spaces: talks, workshops, AMAs and office hours. Hosts schedule a session, attendees register or pay in the Unifesto app, and everyone joins a video room inside Unifesto, or on Google Meet, Zoom or Teams if the host prefers.",
+  },
+  {
+    q: "How is it different from an event?",
+    a: "Events are in person, with tickets, QR passes and check-in. A session is online only and deliberately simpler: one price, no ticket tiers or forms, and attendance is recorded when someone joins.",
+  },
+  {
+    q: "Can people share the joining link?",
+    a: "Not for sessions hosted in Unifesto. Each attendee gets a personal pass into the room that expires, so there is no link to forward, and one account can only be in the room once at a time.",
+  },
+  {
+    q: "What happens if a session is cancelled?",
+    a: "Everyone who paid is queued for a refund automatically. Attendees do not have to ask.",
+  },
+  {
+    q: "Which plan includes it?",
+    a: "Unifesto Huddle is part of the Pro plan. Free sessions carry no fee; paid sessions use the same platform fee as tickets.",
   },
 ];
 
@@ -280,8 +318,8 @@ export const PLANS: Plan[] = [
       "Waitlists and recurring event series",
       "Certificates with public verification",
       "Sponsors, sponsor portal and lead capture",
-      "Hackathon judging and leaderboards",
-      "Live online sessions",
+      "Unifesto Sprint for hackathons",
+      "Unifesto Huddle online sessions",
       "WhatsApp blasts, analytics and PDF reports",
       "Bulk attendee export",
     ],
@@ -327,7 +365,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Can Unifesto run a hackathon?",
-    a: "Yes. Unifesto handles hackathon teams, problem statements, rounds with weighted rubrics, judge panels, rooms with volunteers, a help desk, submissions, a live leaderboard, results and certificates.",
+    a: "Yes, with Unifesto Sprint. It handles hackathon teams, problem statements, rounds with weighted rubrics, judge panels, rooms with volunteers, a help desk, submissions, a live leaderboard, results and certificates.",
   },
   {
     q: "How do organisers get paid?",

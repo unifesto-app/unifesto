@@ -90,8 +90,8 @@ export default function Home() {
           lede="Teams, problem statements, rounds with weighted rubrics, judge panels, a help desk and a live leaderboard. The whole hackathon, from registration to certificates, in the same Space."
           visual={<LeaderboardVisual />}
         >
-          <Link href="/hackathons" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
-            How hackathons run on Unifesto <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+          <Link href="/sprint" className="link-draw mt-6 inline-flex items-center gap-2 text-sm text-paper">
+            How hackathons run on Unifesto Sprint <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
           </Link>
         </FeatureRow>
       </Section>

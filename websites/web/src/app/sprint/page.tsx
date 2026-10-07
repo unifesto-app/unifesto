@@ -14,26 +14,26 @@ import { LeaderboardVisual, RubricVisual, HelpDeskVisual } from "@/components/vi
 import { FAQ_HACKATHONS, HACKATHON_STAGES } from "@/lib/site";
 
 export const metadata: Metadata = withSocial({
-  title: "Hackathon management: teams, judging and leaderboards",
+  title: "Unifesto Sprint: hackathon management, judging and leaderboards",
   description:
-    "Run a hackathon end to end on Unifesto: team registration, problem statements, rounds with weighted rubrics, judge panels, rooms and a help desk, submissions, a live leaderboard and certificates.",
-  alternates: { canonical: "/hackathons" },
-}, { title: "Hackathons on Unifesto", description: "Teams, rubrics, judge panels, a help desk and a live leaderboard, in one Space." });
+    "Unifesto Sprint runs a hackathon end to end: team registration, problem statements, rounds with weighted rubrics, judge panels, rooms and a help desk, submissions, a live leaderboard and certificates.",
+  alternates: { canonical: "/sprint" },
+}, { title: "Unifesto Sprint", description: "Teams, rubrics, judge panels, a help desk and a live leaderboard, in one Space." });
 
-export default function HackathonsPage() {
+export default function SprintPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
-      <JsonLd data={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Hackathons", path: "/hackathons" }])} />
+      <JsonLd data={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Unifesto Sprint", path: "/sprint" }])} />
       <Navbar />
 
       <PageHero
         lines={["Hackathons,", "judged properly."]}
         accentFrom={1}
-        lede="From the first team registration to the last certificate. Organisers run the event from the Space console, while participants and judges do everything from the Unifesto app."
+        lede="Unifesto Sprint runs hackathons, ideathons and build weekends, from the first team registration to the last certificate. Organisers run the event from the Space console, while participants and judges do everything from the Unifesto app."
         actions={
           <>
             <Link href="/request-space" className="btn btn-lg btn-primary">
-              Host a hackathon
+              Host a sprint
               <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
             </Link>
             <Link href="/pricing" className="btn btn-lg btn-secondary">

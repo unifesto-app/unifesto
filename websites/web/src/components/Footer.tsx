@@ -48,8 +48,9 @@ const COLUMNS = [
     title: "Organisers",
     links: [
       { label: "Platform", href: "/organisers" },
-      { label: "Hackathons", href: "/hackathons" },
+      { label: "Unifesto Sprint", href: "/sprint" },
       { label: "Unifesto Stay", href: "/stay" },
+      { label: "Unifesto Huddle", href: "/huddle" },
       { label: "Pricing", href: "/pricing" },
       { label: "Request a Space", href: "/request-space" },
     ],
