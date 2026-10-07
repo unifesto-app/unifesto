@@ -32,6 +32,42 @@ export interface PlatformOverview {
 /** GET /admin/analytics/overview — the numbers on Apex's dashboard home. */
 export const getPlatformOverview = () => call<PlatformOverview>('/admin/analytics/overview');
 
+/** Backend buckets in IST; `today` is hourly, `7d`/`1m` daily, longer ranges monthly. */
+export type AnalyticsRange = 'today' | '7d' | '1m' | '6m' | '12m' | '24m';
+
+export interface FinancialPoint {
+  period: string;
+  label: string;
+  collected: number;
+  processingFees: number;
+  refunded: number;
+  netRevenue: number;
+  registrations: number;
+}
+
+/** GET /admin/analytics/financial-timeseries — money per bucket, zeros back-filled. */
+export const getFinancialTimeseries = (range: AnalyticsRange = '6m') =>
+  call<{ months: FinancialPoint[] }>(`/admin/analytics/financial-timeseries?range=${range}`);
+
+export interface GrowthPoint {
+  period: string;
+  label: string;
+  newUsers: number;
+  cumulativeUsers: number;
+  newSpaces: number;
+  newEvents: number;
+  newRegistrations: number;
+}
+
+/** GET /admin/analytics/growth-timeseries — new + running totals per bucket. */
+export const getGrowthTimeseries = (range: AnalyticsRange = '6m') =>
+  call<{
+    months: GrowthPoint[];
+    /** Point-in-time snapshots, not bucketed. */
+    eventsByStatus: { status: string; count: number }[];
+    spacesByStatus: { status: string; count: number }[];
+  }>(`/admin/analytics/growth-timeseries?range=${range}`);
+
 // ── Approval queues (raw shapes; normalised in lib/apexQueues.ts) ────────────
 
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';

@@ -601,6 +601,7 @@ _Nothing yet._
 
 #### Log
 
+- **2026-10-08** · Mobile Apex tab rebuilt as one page: status beside the title, Liquid Glass tool search, Waiting on me rail, Pulse charts with a 7D/1M/6M/12M range switch (revenue area, money split, users/registrations/new spaces/new events bars, active/published rings, events & spaces by status, 30-day views, top events/spaces) and press-and-drag readouts, then tool sections as 3-column tiles. New mobile tools at web parity: Plans (feature switches, limits, prices), Subscriptions (per-space billing), Sessions, Logs, Blog, Careers (+ applications). Existing endpoints only, no backend change. SVG charts in `src/components/apex/MiniCharts.tsx`. JS only (OTA)
 - **2026-10-08** · Mobile v4 polish: splash, login and Home in the web's cosmos theme (more Home sections, My shortlist/circles first, error + location-settings states); Unifesto Sprint/Stay/Huddle names in mobile. JS via OTA; the black native launch background lands with the next store build
 - **2026-10-02** · Public Request a Space page on web (`/request-space`) with inline email + WhatsApp OTP signup; linked from the Spaces menu and sitemap. Web deploy only, no backend change
 
