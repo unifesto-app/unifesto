@@ -67,5 +67,11 @@ space.unifesto.app {
 # unifesto.app -> www.unifesto.app, so Caddy must NOT redirect here.
 unifesto.app, www.unifesto.app {
 	import cf_origin
-	reverse_proxy web:3000
+	# One web container: while a deploy recreates it, hold requests and retry
+	# the dial instead of answering 502 (Search Console counted those as
+	# "server connectivity" failures). Next boots in ~1s; 15s covers stop+start.
+	reverse_proxy web:3000 {
+		lb_try_duration 15s
+		lb_try_interval 250ms
+	}
 }

@@ -18,6 +18,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Emit a self-contained server bundle for lean Docker images.
   output: "standalone",
+  // S3 uploads (banners, posters) go through the optimizer via lib/img.ts.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "unifesto-storage-bucket.s3.ap-south-1.amazonaws.com" }],
+  },
   // Ship despite pre-existing type debt (dev never type-checked these).
   // TODO: clean up the type errors and remove this.
   typescript: { ignoreBuildErrors: true },
