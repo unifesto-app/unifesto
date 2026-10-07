@@ -394,7 +394,6 @@ export async function getEventById(id: string): Promise<Event | null> {
  * Get event by slug
  */
 export async function getEventBySlug(slug: string): Promise<Event | null> {
-  try {
     const response = await fetchWithTimeout(`${API_URL}/events/${slug}`, {
       method: 'GET',
       headers: {
@@ -402,17 +401,16 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
       },
     }, 10000);
 
+    // Only a 404 means "no such event". Anything else (5xx, timeout) throws, so
+    // the server page errors out instead of telling crawlers to noindex a live
+    // event during an API blip.
+    if (response.status === 404) return null;
     if (!response.ok) {
-      console.error('[API] Error fetching event by slug:', response.status, response.statusText);
-      return null;
+      throw new Error(`Error fetching event by slug: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     return mapEvent(data?.id ? data : null);
-  } catch (error) {
-    console.error('[API] Error fetching event by slug:', error);
-    return null;
-  }
 }
 
 /**

@@ -31,6 +31,11 @@ const nextConfig: NextConfig = {
       // Account pages moved to the app (the website has no sign-in).
       { source: '/certificates', destination: '/app', permanent: true },
       { source: '/profile', destination: '/app', permanent: true },
+      // Legacy URLs Search Console still crawls (old site's routes).
+      { source: '/terms-and-conditions', destination: '/terms', permanent: true },
+      { source: '/refund-policy', destination: '/refund', permanent: true },
+      { source: '/org/:slug', destination: '/space/:slug', permanent: true },
+      { source: '/events/:space', destination: '/space/:space', permanent: true },
     ];
   },
   async rewrites() {

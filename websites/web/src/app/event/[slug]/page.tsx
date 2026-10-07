@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
 import { cache } from "react";
+import { notFound } from "next/navigation";
 import { getEventBySlug as fetchEvent, type Event } from "@/lib/api/events";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
@@ -8,6 +9,10 @@ import EventDetailClient from "./EventDetailClient";
 
 // One fetch per request, shared by generateMetadata and the page.
 const getEventBySlug = cache(fetchEvent);
+
+/** Same rule as EventDetailClient: drafts and space-only events aren't public. */
+const isPublic = (e: Event | null): e is Event =>
+  !!e && e.status !== "DRAFT" && e.visibility !== "SPACE_ONLY";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -37,12 +42,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
 
-  if (!event) {
-    return {
-      title: "Event not found",
-      robots: { index: false, follow: false },
-    };
-  }
+  // A real 404 (not a 200 + noindex soft-404) so Google drops deleted events.
+  if (!isPublic(event)) notFound();
 
   const hostName = event.space?.name ?? event.organization?.name;
   const title = `${event.title} | Unifesto`;
@@ -124,9 +125,10 @@ export default async function EventDetailPage({ params }: Props) {
   // metadata and structured data. Forward the same params promise down.
   const { slug } = await params;
   const event = await getEventBySlug(slug);
+  if (!isPublic(event)) notFound();
   return (
     <>
-      {event && <JsonLd data={eventLd(event)} />}
+      <JsonLd data={eventLd(event)} />
       <EventDetailClient params={params} />
     </>
   );
