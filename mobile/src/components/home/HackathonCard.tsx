@@ -194,7 +194,7 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
               <View style={styles.pill}>
                 {live ? <LiveDot color={accent} /> : null}
                 <Text style={[styles.pillText, { color: live ? accent : c.muted }]} numberOfLines={1}>
-                  {live ? 'Live' : 'Hackathon'} · {hub.event.title}
+                  {live ? 'Live' : 'Unifesto Sprint'} · {hub.event.title}
                 </Text>
               </View>
               <Text style={[styles.team, { color: c.text }]} numberOfLines={1}>{team.name}</Text>

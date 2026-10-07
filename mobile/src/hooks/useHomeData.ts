@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppState } from 'react-native';
 import { onReconnect } from '../lib/offline/connectivity';
 import * as Location from 'expo-location';
 import { useAuth } from '../context/AuthContext';
@@ -117,6 +118,10 @@ export function useHomeData() {
   const [trendingEvents, setTrendingEvents] = useState<Event[]>([]);
   const [popularEvents, setPopularEvents] = useState<Event[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  // Set when the event feeds fail, so Home says "couldn't load" instead of "nothing on".
+  const [eventsFailed, setEventsFailed] = useState(false);
+  // False once the OS stops showing the prompt: "Set location" then opens Settings.
+  const [canAskLocation, setCanAskLocation] = useState(true);
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
@@ -210,9 +215,11 @@ export function useHomeData() {
       const upcomingList = upcoming?.data || upcoming?.events || [];
       setTrendingEvents(trending);
       setPopularEvents(buildPopularEvents(featured, trending, upcomingList));
+      setEventsFailed(false);
     } catch {
       setTrendingEvents([]);
       setPopularEvents([]);
+      setEventsFailed(true);
     } finally {
       setIsLoadingEvents(false);
     }
@@ -295,9 +302,10 @@ export function useHomeData() {
   const loadLocation = useCallback(async () => {
     try {
       setLocationStatus('loading');
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setLocationStatus('denied');
+        setCanAskLocation(canAskAgain);
         return;
       }
       const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
@@ -349,6 +357,15 @@ export function useHomeData() {
     }
   }, [loadProfile, loadUpcomingTickets, loadMySpaces, loadAllSpaces, loadEvents, loadSessions, loadBeyond, loadFavorites, loadNearby, detectedCity]);
 
+  // Back from Settings with location switched on: pick the city up without a restart.
+  useEffect(() => {
+    if (locationStatus !== 'denied') return;
+    const sub = AppState.addEventListener('change', async (st) => {
+      if (st === 'active' && (await Location.getForegroundPermissionsAsync()).granted) void loadLocation();
+    });
+    return () => sub.remove();
+  }, [locationStatus, loadLocation]);
+
   // Screens showing saved copies while offline catch up once we're back.
   useEffect(() => onReconnect(() => void onRefresh()), [onRefresh]);
 
@@ -399,6 +416,7 @@ export function useHomeData() {
     trendingEvents,
     popularEvents,
     isLoadingEvents,
+    eventsFailed,
     weekendEvents,
     freeEvents,
     onlineEvents,
@@ -426,6 +444,7 @@ export function useHomeData() {
     detectedCity,
     locationStatus,
     loadLocation,
+    canAskLocation,
   };
 }
 

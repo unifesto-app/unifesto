@@ -79,7 +79,7 @@ export default function SessionsListScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
-      <Stack.Screen options={{ title: 'Sessions', headerShown: true }} />
+      <Stack.Screen options={{ title: 'Unifesto Huddle', headerShown: true }} />
       <ScrollView
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[12] }}
         showsVerticalScrollIndicator={false}

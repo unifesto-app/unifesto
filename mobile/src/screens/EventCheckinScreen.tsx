@@ -147,7 +147,7 @@ export default function EventCheckinScreen() {
 
       {openQueries !== null ? (
         <View style={styles.gutter}>
-          <SettingsGroup title="Hackathon">
+          <SettingsGroup title="Unifesto Sprint">
             <SettingsRow
               icon={<Lifebuoy size={24} color={tokens.accent} weight="fill" />}
               label="Help desk"

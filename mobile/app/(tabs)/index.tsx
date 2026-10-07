@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { RefreshControl } from '../../src/components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { IdentificationCard, Sparkle, UserCircle } from 'phosphor-react-native';
@@ -43,8 +43,9 @@ export default function HomeTab() {
   const workspace = useWorkspaceCards();
   const { user, profile } = data;
 
+  // '' when signed in without a name yet: plain greeting, icon avatar (never "there" / "T").
   const firstName = user
-    ? (profile?.fullName || user.fullName || profile?.username || user.username || '').split(' ')[0] || 'there'
+    ? (profile?.fullName || user.fullName || profile?.username || user.username || '').split(' ')[0]
     : null;
 
   // ── Navigation ──────────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export default function HomeTab() {
           avatarUrl={profile?.avatarUrl}
           city={data.detectedCity}
           locationStatus={data.locationStatus}
-          onEnableLocation={data.loadLocation}
+          onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
           onPressAvatar={() => router.navigate('/profile')}
           onPressSearch={search.openSheet}
         />
@@ -174,10 +175,32 @@ export default function HomeTab() {
           </View>
         ) : null}
 
+        {/* Mine first, then discovery. */}
+        {user && (data.isLoadingFavorites || data.favoriteEvents.length > 0) ? (
+          <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
+            <Rail>{data.isLoadingFavorites ? posterSkeletons : data.favoriteEvents.map(eventPoster)}</Rail>
+          </Section>
+        ) : null}
 
+        {user && (data.isLoadingMySpaces || data.mySpaces.length > 0) ? (
+          <Section title="My circles" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
+            <CircleRow
+              spaces={data.mySpaces}
+              loading={data.isLoadingMySpaces}
+              onPress={openSpace}
+              onFindMore={() => router.push('/spaces')}
+            />
+          </Section>
+        ) : null}
 
         <Section title={data.detectedCity ? 'Happening near you' : 'Happening soon'} onSeeAll={() => router.push('/events')}>
-          <HeroCarousel events={data.heroEvents} loading={data.isLoadingHero} onPressEvent={openEvent} />
+          <HeroCarousel
+            events={data.heroEvents}
+            loading={data.isLoadingHero}
+            failed={data.eventsFailed}
+            onRetry={data.onRefresh}
+            onPressEvent={openEvent}
+          />
         </Section>
 
         {/* Under three it isn't much of a ranking. */}
@@ -205,23 +228,6 @@ export default function HomeTab() {
           </Section>
         ) : null}
 
-        {user && (data.isLoadingFavorites || data.favoriteEvents.length > 0) ? (
-          <Section title="My shortlist" onSeeAll={() => router.push('/favorites')}>
-            <Rail>{data.isLoadingFavorites ? posterSkeletons : data.favoriteEvents.map(eventPoster)}</Rail>
-          </Section>
-        ) : null}
-
-        {user && (data.isLoadingMySpaces || data.mySpaces.length > 0) ? (
-          <Section title="My circles" onSeeAll={() => router.push({ pathname: '/spaces', params: { mine: 'true' } })}>
-            <CircleRow
-              spaces={data.mySpaces}
-              loading={data.isLoadingMySpaces}
-              onPress={openSpace}
-              onFindMore={() => router.push('/spaces')}
-            />
-          </Section>
-        ) : null}
-
         {data.freeEvents.length > 0 ? (
           <Section title="Free to attend" subtitle="No ticket price, just show up">
             <Rail>{data.freeEvents.map(eventPoster)}</Rail>
@@ -235,7 +241,7 @@ export default function HomeTab() {
         ) : null}
 
         {data.isLoadingSessions || data.sessions.length > 0 ? (
-          <Section title="Live sessions" subtitle="Online talks and workshops" onSeeAll={() => router.push('/sessions')}>
+          <Section title="Unifesto Huddle" subtitle="Live online sessions and workshops" onSeeAll={() => router.push('/sessions')}>
             <Rail>{data.isLoadingSessions ? posterSkeletons : data.sessions.map(sessionPoster)}</Rail>
           </Section>
         ) : null}

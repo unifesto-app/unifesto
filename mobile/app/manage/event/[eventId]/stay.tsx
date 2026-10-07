@@ -5,7 +5,7 @@ import StayEditorScreen from '../../../../src/screens/StayEditorScreen';
 export default function Route() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Stay', headerShown: true }} />
+      <Stack.Screen options={{ title: 'Unifesto Stay', headerShown: true }} />
       <StayEditorScreen />
     </>
   );

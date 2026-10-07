@@ -5,7 +5,7 @@ import HackathonSettingsScreen from '../../../../../src/screens/HackathonSetting
 export default function Route() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Hackathon settings', headerShown: true }} />
+      <Stack.Screen options={{ title: 'Sprint settings', headerShown: true }} />
       <HackathonSettingsScreen />
     </>
   );

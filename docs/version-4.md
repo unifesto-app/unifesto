@@ -601,6 +601,7 @@ _Nothing yet._
 
 #### Log
 
+- **2026-10-08** · Mobile v4 polish: splash, login and Home in the web's cosmos theme (more Home sections, My shortlist/circles first, error + location-settings states); Unifesto Sprint/Stay/Huddle names in mobile. JS via OTA; the black native launch background lands with the next store build
 - **2026-10-02** · Public Request a Space page on web (`/request-space`) with inline email + WhatsApp OTP signup; linked from the Spaces menu and sitemap. Web deploy only, no backend change
 
 ---

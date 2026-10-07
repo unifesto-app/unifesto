@@ -34,7 +34,12 @@ export default function UpNextCard({ ticket, moreCount, onOpenTicket, onSeeAllTi
       <View style={styles.labelRow}>
         <Text style={[styles.label, { color: c.soft }]}>Up next</Text>
         {moreCount > 0 ? (
-          <Pressable onPress={onSeeAllTickets} hitSlop={10}>
+          <Pressable
+            onPress={onSeeAllTickets}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={`See all my tickets, ${moreCount} more`}
+          >
             <Text style={[styles.more, { color: c.soft }]}>+{moreCount} more</Text>
           </Pressable>
         ) : null}
