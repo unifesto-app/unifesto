@@ -7,11 +7,8 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
+import { cosmosFont, cosmosRadius, useCosmos } from './cosmos';
 
 interface OtpCodeInputProps {
   value: string;
@@ -36,7 +33,7 @@ export default function OtpCodeInput({
   error = false,
   disabled = false,
 }: OtpCodeInputProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(true);
 
@@ -58,30 +55,20 @@ export default function OtpCodeInput({
         {Array.from({ length }).map((_, i) => {
           const char = value[i] ?? '';
           const isActive = focused && !disabled && i === activeIndex && value.length < length;
-          const borderColor = error
-            ? tokens.danger
-            : isActive
-              ? tokens.accent
-              : char
-                ? tokens.borderStrong
-                : tokens.border;
+          const borderColor = error ? c.danger : isActive ? c.primary : char ? c.outline : c.input;
           return (
             <View
               key={i}
               style={[
                 styles.cell,
-                {
-                  borderColor,
-                  backgroundColor: LIQUID_GLASS ? undefined : char ? tokens.elevated : tokens.surface,
-                  borderWidth: isActive || error ? 1.5 : 1,
-                },
+                { borderColor, backgroundColor: LIQUID_GLASS ? undefined : c.card },
               ]}
             >
-              <GlassFill radius={borderRadius.lg} />
+              <GlassFill radius={cosmosRadius} />
               {char ? (
-                <Animated.Text style={[styles.digit, { color: tokens.text }]}>{char}</Animated.Text>
+                <Animated.Text style={[styles.digit, { color: c.text }]}>{char}</Animated.Text>
               ) : isActive ? (
-                <Caret color={tokens.accent} />
+                <Caret color={c.primary} />
               ) : null}
             </View>
           );
@@ -125,11 +112,12 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: 56,
     aspectRatio: 0.82,
-    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderRadius: cosmosRadius,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  digit: { fontSize: typography.fontSize['2xl'], ...font('heading') },
+  digit: { fontSize: 22, ...cosmosFont.display },
   caret: { width: 2, height: 24, borderRadius: 1 },
   // Kept on screen (not display:none) so autofill and focus still work.
   hiddenInput: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.011, color: 'transparent' },

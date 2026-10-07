@@ -32,16 +32,13 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
-import { useTokens } from '../context/ThemeContext';
-import UnifestoAppWordmark from '../components/UnifestoAppWordmark';
-import { Button } from '../components/ui';
-import BrandGlow from '../components/ui/BrandGlow';
+import { Image } from 'expo-image';
+import AuthButton from '../components/auth/AuthButton';
 import AuthField from '../components/auth/AuthField';
+import CosmosBackdrop from '../components/auth/CosmosBackdrop';
 import OtpCodeInput from '../components/auth/OtpCodeInput';
 import SocialAuthButton from '../components/auth/SocialAuthButton';
-import { spacing, borderRadius } from '../theme/spacing';
-import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../components/auth/cosmos';
 
 type LoginStep = 'email' | 'email-otp' | 'mobile' | 'mobile-otp';
 
@@ -64,7 +61,7 @@ const formatCountdown = (s: number) => `0:${String(s).padStart(2, '0')}`;
 const formatMobile = (n: string) => (n.length === 10 ? `${n.slice(0, 5)} ${n.slice(5)}` : n);
 
 export default function NewLoginScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // Where to land after sign-in, e.g. a claim link opened while signed out.
@@ -377,129 +374,86 @@ export default function NewLoginScreen() {
 
   // ── Styles ─────────────────────────────────────────────────────────────────
   const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: tokens.bg },
+    container: { flex: 1, backgroundColor: c.bg },
     scroll: {
       flexGrow: 1,
-      paddingHorizontal: spacing[6],
-      paddingTop: insets.top + spacing[2],
-      paddingBottom: insets.bottom + spacing[6],
+      paddingHorizontal: 24,
+      paddingTop: insets.top + 8,
+      paddingBottom: insets.bottom + 24,
     },
     topBar: {
       height: 44,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginBottom: spacing[8],
+      marginBottom: 28,
     },
     iconButton: {
       width: 40,
       height: 40,
-      marginLeft: -spacing[2],
+      marginLeft: -8,
       alignItems: 'flex-start',
       justifyContent: 'center',
     },
     stepPill: {
-      paddingHorizontal: spacing[3],
-      paddingVertical: 6,
-      borderRadius: borderRadius.full,
-      backgroundColor: 'rgba(52, 145, 255, 0.12)',
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: c.outline,
     },
-    stepPillText: { fontSize: typography.fontSize.xs, color: tokens.accent, ...font('semibold') },
+    stepPillText: { fontSize: 12, color: c.text, ...cosmosFont.strong },
 
-    hero: { marginBottom: spacing[8] },
-    wordmark: { marginBottom: spacing[8], marginLeft: -spacing[1] },
-    display: {
-      fontSize: typography.fontSize['4xl'],
-      lineHeight: typography.fontSize['4xl'] * 1.1,
-      letterSpacing: -0.8,
-      color: tokens.text,
-      ...font('heading'),
-    },
-    displayAccent: { color: tokens.accent },
-    title: {
-      fontSize: typography.fontSize['3xl'],
-      lineHeight: typography.fontSize['3xl'] * 1.15,
-      letterSpacing: -0.5,
-      color: tokens.text,
-      ...font('heading'),
-    },
-    lead: {
-      marginTop: spacing[3],
-      fontSize: typography.fontSize.base,
-      lineHeight: typography.fontSize.base * 1.5,
-      color: tokens.textSecondary,
-      ...font(),
-    },
-    leadStrong: { color: tokens.text, ...font('semibold') },
-    badge: { marginBottom: spacing[5] },
+    hero: { marginBottom: 32 },
+    wordmark: { width: 116, height: 27, marginBottom: 40 },
+    display: { fontSize: 28, lineHeight: 36, color: c.text, ...cosmosFont.display },
+    displayMuted: { color: c.muted },
+    title: { fontSize: 22, lineHeight: 30, color: c.text, ...cosmosFont.display },
+    lead: { marginTop: 14, fontSize: 16, lineHeight: 24, color: c.muted, ...cosmosFont.body },
+    leadStrong: { color: c.text, ...cosmosFont.strong },
+    badge: { marginBottom: 20 },
     destination: {
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      marginTop: spacing[3],
-      gap: spacing[2],
+      marginTop: 10,
+      gap: 10,
     },
     editLink: {
-      paddingHorizontal: spacing[3],
-      paddingVertical: 4,
-      borderRadius: borderRadius.full,
+      paddingHorizontal: 10,
+      paddingVertical: 3,
+      borderRadius: 4,
       borderWidth: 1,
-      borderColor: tokens.border,
+      borderColor: c.outline,
     },
-    editLinkText: { fontSize: typography.fontSize.sm, color: tokens.text, ...font('medium') },
+    editLinkText: { fontSize: 13, color: c.text, ...cosmosFont.strong },
 
-    stack: { gap: spacing[3] },
-    divider: { flexDirection: 'row', alignItems: 'center', marginVertical: spacing[6] },
-    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: tokens.border },
-    dividerText: {
-      marginHorizontal: spacing[3],
-      fontSize: typography.fontSize.sm,
-      color: tokens.textMuted,
-      ...font('medium'),
-    },
-    cta: { marginTop: spacing[5] },
+    stack: { gap: 12 },
+    divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
+    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: c.input },
+    dividerText: { marginHorizontal: 12, fontSize: 13, color: c.muted, ...cosmosFont.body },
+    cta: { marginTop: 20 },
 
-    message: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-      marginTop: spacing[3],
-    },
-    messageText: { flex: 1, fontSize: typography.fontSize.sm, ...font('medium') },
+    message: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+    messageText: { flex: 1, fontSize: 14, ...cosmosFont.strong },
 
     resendRow: {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: spacing[6],
-      gap: spacing[1],
+      marginTop: 24,
+      gap: 4,
     },
-    resendText: { fontSize: typography.fontSize.sm, color: tokens.textMuted, ...font() },
-    resendAction: { fontSize: typography.fontSize.sm, color: tokens.accent, ...font('semibold') },
-    resendTimer: {
-      fontSize: typography.fontSize.sm,
-      color: tokens.textSecondary,
-      fontVariant: ['tabular-nums'],
-      ...font('semibold'),
-    },
+    resendText: { fontSize: 14, color: c.muted, ...cosmosFont.body },
+    resendAction: { fontSize: 14, color: c.text, textDecorationLine: 'underline', ...cosmosFont.strong },
+    resendTimer: { fontSize: 14, color: c.text, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
 
-    hint: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-      marginTop: spacing[4],
-    },
-    hintText: { flex: 1, fontSize: typography.fontSize.sm, color: tokens.textMuted, ...font() },
+    hint: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16 },
+    hintText: { flex: 1, fontSize: 14, color: c.muted, ...cosmosFont.body },
 
-    footer: { flex: 1, justifyContent: 'flex-end', paddingTop: spacing[10] },
-    legal: {
-      fontSize: typography.fontSize.xs,
-      lineHeight: typography.fontSize.xs * 1.6,
-      color: tokens.textMuted,
-      textAlign: 'center',
-      ...font(),
-    },
-    legalLink: { color: tokens.textSecondary, textDecorationLine: 'underline' },
+    footer: { flex: 1, justifyContent: 'flex-end', paddingTop: 40 },
+    legal: { fontSize: 12, lineHeight: 19, color: c.muted, textAlign: 'center', ...cosmosFont.body },
+    legalLink: { color: c.text, textDecorationLine: 'underline' },
   });
 
   // ── Pieces ─────────────────────────────────────────────────────────────────
@@ -507,16 +461,16 @@ export default function NewLoginScreen() {
     if (error) {
       return (
         <Animated.View entering={FadeIn.duration(160)} style={styles.message} accessibilityLiveRegion="polite">
-          <WarningCircle size={16} color={tokens.danger} weight="fill" />
-          <Text style={[styles.messageText, { color: tokens.danger }]}>{error}</Text>
+          <WarningCircle size={16} color={c.danger} weight="fill" />
+          <Text style={[styles.messageText, { color: c.danger }]}>{error}</Text>
         </Animated.View>
       );
     }
     if (notice) {
       return (
         <Animated.View entering={FadeIn.duration(160)} style={styles.message} accessibilityLiveRegion="polite">
-          <CheckCircle size={16} color={tokens.success} weight="fill" />
-          <Text style={[styles.messageText, { color: tokens.success }]}>{notice}</Text>
+          <CheckCircle size={16} color={c.text} weight="fill" />
+          <Text style={[styles.messageText, { color: c.text }]}>{notice}</Text>
         </Animated.View>
       );
     }
@@ -545,12 +499,19 @@ export default function NewLoginScreen() {
   const renderEmailStep = () => (
     <>
       <View style={styles.hero}>
-        <View style={styles.wordmark}>
-          <UnifestoAppWordmark width={132} height={40} />
-        </View>
+        <Image
+          source={
+            c.scheme === 'dark'
+              ? require('../../assets/brand/wordmark-silver.png')
+              : require('../../assets/brand/wordmark-ink.png')
+          }
+          style={styles.wordmark}
+          contentFit="contain"
+          accessibilityLabel="Unifesto"
+        />
         <Text style={styles.display}>
           Every fest.{'\n'}
-          <Text style={styles.displayAccent}>One app.</Text>
+          <Text style={styles.displayMuted}>One app.</Text>
         </Text>
         <Text style={styles.lead}>
           Sign in to grab tickets, save events and keep every pass in one place.
@@ -592,12 +553,11 @@ export default function NewLoginScreen() {
       </Animated.View>
       {renderMessage()}
 
-      <Button
+      <AuthButton
         label="Continue with email"
         onPress={handleSendEmailOtp}
         loading={isLoading}
-        size="lg"
-        fullWidth
+        arrow
         style={styles.cta}
       />
     </>
@@ -614,9 +574,9 @@ export default function NewLoginScreen() {
         <View style={styles.hero}>
           <View style={styles.badge}>
             {isEmail ? (
-              <EnvelopeSimple size={36} color={tokens.accent} weight="duotone" />
+              <EnvelopeSimple size={40} color={c.text} weight="light" />
             ) : (
-              <WhatsappLogo size={36} color={tokens.accent} weight="duotone" />
+              <WhatsappLogo size={40} color={c.text} weight="light" />
             )}
           </View>
           <Text style={styles.title}>{isEmail ? 'Check your inbox' : 'Check WhatsApp'}</Text>
@@ -645,13 +605,12 @@ export default function NewLoginScreen() {
         </Animated.View>
         {renderMessage()}
 
-        <Button
+        <AuthButton
           label={isEmail ? 'Verify' : 'Verify and finish'}
           onPress={() => verify()}
           loading={isLoading}
           disabled={value.length !== 6}
-          size="lg"
-          fullWidth
+          arrow
           style={styles.cta}
         />
 
@@ -664,7 +623,7 @@ export default function NewLoginScreen() {
     <>
       <View style={styles.hero}>
         <View style={styles.badge}>
-          <WhatsappLogo size={36} color={tokens.accent} weight="duotone" />
+          <WhatsappLogo size={40} color={c.text} weight="light" />
         </View>
         <Text style={styles.title}>Add your number</Text>
         <Text style={styles.lead}>
@@ -695,12 +654,11 @@ export default function NewLoginScreen() {
       </Animated.View>
       {renderMessage()}
 
-      <Button
+      <AuthButton
         label="Send code on WhatsApp"
         onPress={handleSendMobileOtp}
         loading={isLoading}
-        size="lg"
-        fullWidth
+        arrow
         style={styles.cta}
       />
 
@@ -717,7 +675,7 @@ export default function NewLoginScreen() {
 
   return (
     <View style={styles.container}>
-      <BrandGlow />
+      <CosmosBackdrop />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -735,9 +693,9 @@ export default function NewLoginScreen() {
               accessibilityLabel={step === 'email' ? 'Close' : 'Back'}
             >
               {step === 'email' ? (
-                <X size={22} color={tokens.text} weight="bold" />
+                <X size={22} color={c.text} />
               ) : (
-                <CaretLeft size={22} color={tokens.text} weight="bold" />
+                <CaretLeft size={22} color={c.text} />
               )}
             </Pressable>
           ) : (
