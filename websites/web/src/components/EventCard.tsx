@@ -1,5 +1,6 @@
 "use client";
 
+import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarBlank, MapPin, ArrowRight } from "@phosphor-icons/react";
@@ -139,7 +140,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
           <div
             aria-hidden
             className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] ease-[cubic-bezier(.19,1,.22,1)] group-hover:scale-[1.04]"
-            style={{ backgroundImage: `url(${imageUrl})` }}
+            style={{ backgroundImage: `url(${optimized(imageUrl, 750)})` }}
           />
         )}
         <div

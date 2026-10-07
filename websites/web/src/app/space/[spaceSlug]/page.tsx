@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { optimized } from "@/lib/img";
 import { notFound } from "next/navigation";
+import { preload } from "react-dom";
 import { withSocial } from "@/lib/seo";
 import { cache } from "react";
 import { getSpaceBySlug as fetchSpace } from "@/lib/api/spaces";
@@ -60,6 +62,8 @@ export default async function SpacePage({ params }: Props) {
   const { spaceSlug } = await params;
   const space = await getSpaceBySlug(spaceSlug);
   if (!space) notFound();
+  // Banner is the LCP element; start its download from the server HTML.
+  if (space.banner_url) preload(optimized(space.banner_url), { as: "image", fetchPriority: "high" });
   // A Space is an organisation (club, institution, community) hosting events.
   const ld = {
     "@context": "https://schema.org",
@@ -76,7 +80,7 @@ export default async function SpacePage({ params }: Props) {
   return (
     <>
       <JsonLd data={ld} />
-      <SpaceDetailClient params={params} />
+      <SpaceDetailClient params={params} initialSpace={space} />
     </>
   );
 }

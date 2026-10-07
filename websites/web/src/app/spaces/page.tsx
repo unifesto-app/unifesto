@@ -1,5 +1,6 @@
 "use client";
 
+import { optimized } from "@/lib/img";
 import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { MagnifyingGlass, Buildings, UsersThree, CaretRight, ArrowRight } from "@phosphor-icons/react";
@@ -73,7 +74,7 @@ function SpaceCard({ space, childCount }: { space: Space; childCount: number }) 
           <div
             aria-hidden
             className="absolute inset-0 bg-cover bg-center transition-transform duration-[600ms] ease-[cubic-bezier(.19,1,.22,1)] group-hover:scale-[1.04]"
-            style={{ backgroundImage: `url(${space.banner_url})` }}
+            style={{ backgroundImage: `url(${optimized(space.banner_url, 750)})` }}
           />
         )}
         <div

@@ -27,18 +27,18 @@ export default function Hero() {
               className="waterline-load font-display text-[clamp(1.75rem,3vw,2.75rem)] leading-[1.12] text-paper"
             >
               {LINES.map((line, i) => (
-                <span key={line} className="line" style={{ ["--l" as string]: i + 8 }}>
+                <span key={line} className="line" style={{ ["--l" as string]: i }}>
                   <span className={`line-inner ${i > 0 ? "text-paper/60" : ""}`}>{line}</span>
                 </span>
               ))}
             </h1>
 
-            <p className="enter mt-7 max-w-[34rem] text-[15px] leading-relaxed text-paper/75 md:text-[17px]" style={{ ["--d" as string]: "1250ms" }}>
+            <p className="mt-7 max-w-[34rem] text-[15px] leading-relaxed text-paper/75 md:text-[17px]" style={{ ["--d" as string]: "300ms" }}>
               The team, the tickets, the door, the money and the debrief, in one Space that outlives any single event.
               10,000+ checked in across 25+ events. Free to start.
             </p>
 
-            <div className="enter mt-9 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ ["--d" as string]: "1400ms" }}>
+            <div className="enter mt-9 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ ["--d" as string]: "420ms" }}>
               <Link id="hero-host-event" href="/organisers" className="btn btn-lg btn-primary">
                 Host an event
                 <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
@@ -52,10 +52,10 @@ export default function Hero() {
           {/* The two sides of the door: the attendee's pass, the Crew's count
               in front of it. Desktop only; phones meet these screens on /app. */}
           <div className="relative hidden h-[32rem] lg:block">
-            <div className="enter absolute bottom-0 right-0 origin-bottom-right scale-[0.9]" style={{ ["--d" as string]: "1500ms" }}>
+            <div className="enter absolute bottom-0 right-0 origin-bottom-right scale-[0.9]" style={{ ["--d" as string]: "500ms" }}>
               <PassScreen />
             </div>
-            <div className="enter absolute bottom-[10%] left-[-6%] z-10 w-[18rem]" style={{ ["--d" as string]: "1650ms" }}>
+            <div className="enter absolute bottom-[10%] left-[-6%] z-10 w-[18rem]" style={{ ["--d" as string]: "640ms" }}>
               <DoorVisual />
             </div>
           </div>

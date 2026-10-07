@@ -248,6 +248,7 @@ export default function Navbar() {
               width={640}
               height={200}
               priority
+              sizes="116px"
               className="h-8 w-auto brightness-0 invert md:h-9"
             />
           </Link>

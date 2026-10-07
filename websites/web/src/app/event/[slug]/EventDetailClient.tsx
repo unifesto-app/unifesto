@@ -1,5 +1,6 @@
 "use client";
 
+import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useState, useEffect, type CSSProperties } from "react";
 import {
@@ -37,17 +38,21 @@ import { DUR, EASE_IN_OUT_CUBIC } from "@/lib/motion";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  /** Fetched by the server page; lets the hero render in the initial HTML. */
+  initialEvent?: Event | null;
 }
 
 type TabType = "overview" | "subevents" | "agenda" | "speakers" | "rewards" | "faq" | "contact";
 
-export default function EventDetailClient({ params }: Props) {
-  const [activeTab, setActiveTab] = useState<TabType>("overview");
+export default function EventDetailClient({ params, initialEvent = null }: Props) {
+  const [activeTab, setActiveTab] = useState<TabType>(
+    (initialEvent?.sub_events?.length ?? 0) > 0 ? "subevents" : "overview"
+  );
   const reduce = useReducedMotion();
-  const [eventSlug, setEventSlug] = useState<string>("");
-  const [event, setEvent] = useState<Event | null>(null);
+  const [eventSlug, setEventSlug] = useState<string>(initialEvent?.slug ?? "");
+  const [event, setEvent] = useState<Event | null>(initialEvent);
   const [spaceEvents, setSpaceEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialEvent);
   const [isDiscussionOpen, setIsDiscussionOpen] = useState(false);
   
   // Additional info state
@@ -63,9 +68,8 @@ export default function EventDetailClient({ params }: Props) {
       try {
         const { slug } = await params;
         setEventSlug(slug);
-        setLoading(true);
-        
-        const eventData = await getEventBySlug(slug);
+
+        const eventData = initialEvent ?? (await getEventBySlug(slug));
         // The public site only shows events that have been published and are
         // publicly viewable. Unpublished (draft) events and space-only events
         // are treated as not-found; private events stay reachable by direct link.
@@ -79,6 +83,9 @@ export default function EventDetailClient({ params }: Props) {
           return;
         }
         setEvent(eventData);
+        // Render the page now; agenda/speakers/related events fill in after,
+        // instead of holding the whole page (and its LCP) behind 3 requests.
+        setLoading(false);
 
         // For a "big event" (a parent with sub-events) the hub is the point of
         // the page, so land on it rather than the generic overview.
@@ -106,17 +113,16 @@ export default function EventDetailClient({ params }: Props) {
           // Filter out current event
           setSpaceEvents(events.filter((e: Event) => e.slug !== slug));
         }
-        
-        setLoading(false);
       } catch (error) {
         console.error('Error loading event:', error);
-        setEvent(null);
+        // A failed side fetch must not blank an event we already have.
+        if (!initialEvent) setEvent(null);
         setLoading(false);
       }
     };
     
     loadEvent();
-  }, [params]);
+  }, [params, initialEvent]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -255,7 +261,7 @@ export default function EventDetailClient({ params }: Props) {
         <div className="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] md:gap-12">
           <div
             className="enter aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center shadow-[0_32px_64px_-32px_rgba(0,0,0,0.6)]"
-            style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : { background: posterFallback }}
+            style={imageUrl ? { backgroundImage: `url(${optimized(imageUrl)})` } : { background: posterFallback }}
             role={imageUrl ? "img" : undefined}
             aria-label={imageUrl ? `${event.title} poster` : undefined}
           />
@@ -826,7 +832,7 @@ export default function EventDetailClient({ params }: Props) {
                             style={
                               e.banner_url || e.thumbnail_url || e.image_url
                                 ? {
-                                    backgroundImage: `url(${e.banner_url || e.thumbnail_url || e.image_url})`,
+                                    backgroundImage: `url(${optimized(e.banner_url || e.thumbnail_url || e.image_url || "", 128)})`,
                                     backgroundSize: "cover",
                                     backgroundPosition: "center",
                                   }

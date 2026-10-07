@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { optimized } from "@/lib/img";
 import { withSocial } from "@/lib/seo";
 import { cache } from "react";
 import { notFound } from "next/navigation";
+import { preload } from "react-dom";
 import { getEventBySlug as fetchEvent, type Event } from "@/lib/api/events";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
@@ -126,10 +128,14 @@ export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!isPublic(event)) notFound();
+  // The poster is the LCP element but only appears after the client fetch;
+  // preloading it from the server HTML starts the download immediately.
+  const poster = event.banner_url || event.thumbnail_url || event.image_url;
+  if (poster) preload(optimized(poster), { as: "image", fetchPriority: "high" });
   return (
     <>
       <JsonLd data={eventLd(event)} />
-      <EventDetailClient params={params} />
+      <EventDetailClient params={params} initialEvent={event} />
     </>
   );
 }

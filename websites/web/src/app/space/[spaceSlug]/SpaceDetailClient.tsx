@@ -1,5 +1,6 @@
 "use client";
 
+import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useState, useEffect, type CSSProperties } from "react";
 import { Buildings, UsersThree, CalendarBlank, CaretRight, ArrowUUpLeft, DeviceMobile } from "@phosphor-icons/react";
@@ -8,6 +9,7 @@ import Footer from "@/components/Footer";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { submitSpaceInquiry } from "@/lib/api/leads";
 import EventCard from "@/components/EventCard";
+import EventCardSkeleton from "@/components/EventCardSkeleton";
 import { brandGradient } from "@/lib/styles";
 import { openAppOrStore } from "@/lib/appLinks";
 import { getSpaceBySlug, getSpaceById, getSpaceEvents, getSubSpaces, type Space } from "@/lib/api/spaces";
@@ -16,6 +18,8 @@ import type { Event } from "@/lib/api/events";
 
 interface Props {
   params: Promise<{ spaceSlug: string }>;
+  /** Fetched by the server page; lets the hero render in the initial HTML. */
+  initialSpace?: Space | null;
 }
 
 /* ── Helpers (shared vocabulary with the spaces listing page) ─────────── */
@@ -92,26 +96,30 @@ function SpaceDetailSkeleton() {
 
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
-export default function SpaceDetailClient({ params }: Props) {
-  const [space, setSpace] = useState<Space | null>(null);
+export default function SpaceDetailClient({ params, initialSpace = null }: Props) {
+  const [space, setSpace] = useState<Space | null>(initialSpace);
   const [parentSpace, setParentSpace] = useState<Space | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [subSpaces, setSubSpaces] = useState<Space[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialSpace);
+  // Events/team/sub-spaces arrive after the hero is already on screen.
+  const [detailsLoading, setDetailsLoading] = useState(true);
 
   useEffect(() => {
     const loadSpace = async () => {
       try {
         const { spaceSlug: slug } = await params;
-        setLoading(true);
 
-        const spaceData = await getSpaceBySlug(slug);
+        const spaceData = initialSpace ?? (await getSpaceBySlug(slug));
         if (!spaceData) {
           setSpace(null);
           setLoading(false);
           return;
         }
         setSpace(spaceData);
+        // Show the page now rather than holding it (and its LCP) behind the
+        // four detail requests below.
+        setLoading(false);
 
         // The slug endpoint does not include the organiser team; the by-id
         // endpoint does. Fetch the full space by id (like the mobile app) so we
@@ -129,16 +137,18 @@ export default function SpaceDetailClient({ params }: Props) {
         setEvents(eventsData?.events || []);
         setParentSpace(parentSpaceData || null);
         setSubSpaces(subSpacesData || []);
-        setLoading(false);
       } catch (error) {
         console.error("Error loading space:", error);
-        setSpace(null);
+        // A failed side fetch must not blank a space we already have.
+        if (!initialSpace) setSpace(null);
         setLoading(false);
+      } finally {
+        setDetailsLoading(false);
       }
     };
 
     loadSpace();
-  }, [params]);
+  }, [params, initialSpace]);
 
   if (loading) return <SpaceDetailSkeleton />;
 
@@ -228,7 +238,7 @@ export default function SpaceDetailClient({ params }: Props) {
             className="enter aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center shadow-[0_32px_64px_-32px_rgba(0,0,0,0.6)]"
             style={
               space.banner_url
-                ? { backgroundImage: `url(${space.banner_url})` }
+                ? { backgroundImage: `url(${optimized(space.banner_url)})` }
                 : { background: "radial-gradient(120% 120% at 20% -10%, color-mix(in srgb, var(--primary) 26%, transparent), transparent 60%), var(--night-2)" }
             }
             role={space.banner_url ? "img" : undefined}
@@ -400,10 +410,16 @@ export default function SpaceDetailClient({ params }: Props) {
         <section>
           <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-paper/75">
             Events
-            <span className="font-normal text-paper/55">({topLevelEvents.length})</span>
+            {!detailsLoading && <span className="font-normal text-paper/55">({topLevelEvents.length})</span>}
           </h2>
 
-          {topLevelEvents.length > 0 ? (
+          {detailsLoading ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <EventCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : topLevelEvents.length > 0 ? (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {topLevelEvents.map((e, i) => (
                 <EventCard key={e.id} event={e} index={i} />
