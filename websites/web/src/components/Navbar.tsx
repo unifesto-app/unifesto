@@ -175,6 +175,17 @@ export default function Navbar() {
     setMenuOpen(false);
   }
 
+  // Lock the page behind the open sheet so swipes scroll the sheet, not home.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const root = document.documentElement;
+    const prev = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = prev;
+    };
+  }, [menuOpen]);
+
   const linkClass = (active: boolean) =>
     `relative z-10 flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors duration-150 ${
       active ? "text-paper" : "text-paper/70 hover:text-paper"
@@ -344,7 +355,7 @@ export default function Navbar() {
               initial={reduce ? { opacity: 0 } : { opacity: 0, y: -8, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: DUR.swap, ease: EASE_OUT_QUART } }}
               exit={{ opacity: 0, y: -4, transition: { duration: 0.14 } }}
-              className="blur-bg-strong mb-4 mt-1 origin-top overflow-hidden rounded-3xl lg:hidden"
+              className="blur-bg-strong mb-4 mt-1 max-h-[calc(100dvh-5rem)] origin-top overflow-y-auto overscroll-contain rounded-3xl lg:hidden"
             >
               <motion.ul
                 className="p-3"
