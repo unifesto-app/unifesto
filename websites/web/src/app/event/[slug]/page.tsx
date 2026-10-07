@@ -67,12 +67,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description,
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
-    // Safari's App Clip card: opens the native event preview (mobile/targets/clip)
-    // without installing the full app. Uses the OG image above as the card art.
-    // Hand-written rather than Next's `itunes` field, which can't express the
-    // app-clip keys and would emit a second, conflicting apple-itunes-app tag.
+    // Safari Smart App Banner; app-argument opens this event if installed.
     other: {
-      "apple-itunes-app": `app-id=6767165496, app-clip-bundle-id=com.unifesto.app.Clip, app-clip-display=card, app-argument=https://unifesto.app${canonical}`,
+      "apple-itunes-app": `app-id=6767165496, app-argument=https://unifesto.app${canonical}`,
     },
   }, { image: false });
 }

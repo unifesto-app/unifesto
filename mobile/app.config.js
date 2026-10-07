@@ -65,13 +65,6 @@ module.exports = () => {
         "applinks:unifesto.app",
         "applinks:www.unifesto.app"
       ],
-      // Pairs the app with its App Clip (targets/clip, com.unifesto.app.Clip).
-      // The clip's own entitlements live in targets/clip/expo-target.config.js.
-      entitlements: {
-        "com.apple.developer.associated-appclip-app-identifiers": [
-          "$(AppIdentifierPrefix)com.unifesto.app.Clip"
-        ]
-      },
       usesAppleSignIn: true
     },
     android: {
@@ -166,8 +159,6 @@ module.exports = () => {
     },
     plugins: [
       "expo-router",
-      // Native targets under targets/ (the App Clip in targets/clip).
-      "@bacons/apple-targets",
       "expo-font",
       "expo-web-browser",
       "expo-image",
@@ -196,10 +187,6 @@ module.exports = () => {
           motionUsagePermission: "Unifesto doesn't use motion or fitness data. This is only declared by a location component the app includes."
         }
       ],
-      // Undoes onesignal-expo-plugin's aliased Xcode sections (see the file) or
-      // @bacons/apple-targets can't parse the project. Must be listed BEFORE
-      // OneSignal: Xcode mods run in reverse plugin order, so this runs after it.
-      "./plugins/withXcodeDependencyProxyFix",
       [
         "onesignal-expo-plugin",
         {
