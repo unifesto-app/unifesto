@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
       { source: '/refund-policy', destination: '/refund', permanent: true },
       { source: '/org/:slug', destination: '/space/:slug', permanent: true },
       { source: '/events/:space', destination: '/space/:space', permanent: true },
+      // Hackathons were renamed Unifesto Sprint.
+      { source: '/hackathons', destination: '/sprint', permanent: true },
     ];
   },
   async rewrites() {

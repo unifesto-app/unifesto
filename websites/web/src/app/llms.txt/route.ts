@@ -2,7 +2,7 @@ import {
   APP_FEATURES,
   FAQ_HOME,
   FAQ_PRICING,
-  FAQ_STAY,
+  FAQ_STAY, FAQ_HUDDLE, HUDDLE_STEPS,
   STAY_STEPS,
   HACKATHON_STAGES,
   LAUNCH_OFFER_ENDS,
@@ -33,8 +33,9 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Home](${SITE.url}/): overview for attendees and organisers
 - [For organisers](${SITE.url}/organisers): the full platform for clubs, communities and institutions
 - [The Unifesto app](${SITE.url}/app): the free attendee app for iOS and Android
-- [Hackathons](${SITE.url}/hackathons): teams, judging, help desk and leaderboards
+- [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
+- [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
 - [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
@@ -45,7 +46,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 
 ${PILLARS.map((p) => `### ${p.title}\n${p.lede}\n${p.points.map((x) => `- ${x}`).join("\n")}`).join("\n\n")}
 
-## Hackathons
+## Unifesto Sprint (hackathons)
 
 ${HACKATHON_STAGES.map((s) => `- ${s.title}: ${s.body}`).join("\n")}
 
@@ -54,6 +55,12 @@ ${HACKATHON_STAGES.map((s) => `- ${s.title}: ${s.body}`).join("\n")}
 ${STAY_STEPS.map((s, i) => `${i + 1}. ${s.title}: ${s.body}`).join("\n")}
 
 ${FAQ_STAY.map((f) => `- ${f.q} ${f.a}`).join("\n")}
+
+## Unifesto Huddle (online sessions)
+
+${HUDDLE_STEPS.map((s, i) => `${i + 1}. ${s.title}: ${s.body}`).join("\n")}
+
+${FAQ_HUDDLE.map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## The attendee app
 

@@ -29,8 +29,9 @@ const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
     label: "Organisers",
     items: [
       { label: "Platform", href: "/organisers", description: "Ticketing, check-in, payouts, one Space" },
-      { label: "Hackathons", href: "/hackathons", description: "Teams, judging and help desks" },
+      { label: "Unifesto Sprint", href: "/sprint", description: "Hackathons: teams, judging and help desks" },
       { label: "Unifesto Stay", href: "/stay", description: "Rooms for your event's guests" },
+      { label: "Unifesto Huddle", href: "/huddle", description: "Online sessions for your Space" },
       { label: "Request a Space", href: "/request-space", description: "Get your club or institution set up" },
     ],
   },
