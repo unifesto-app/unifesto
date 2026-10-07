@@ -26,7 +26,6 @@
     "version:major": "node scripts/version.js major"
   },
   "dependencies": {
-    "@bacons/apple-targets": "^5.0.0",
     "@expo/ui": "~57.0.21",
     "@expo/vector-icons": "^15.0.2",
     "@hugeicons/core-free-icons": "^4.3.5",
