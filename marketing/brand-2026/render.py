@@ -23,6 +23,7 @@ JOBS = [
     ("favicon.svg", "favicon-32.png", 32, 32, None),
     ("favicon.svg", "favicon-16.png", 16, 16, None),
     ("app-icon-dark.svg", "social-avatar-1080.png", 1080, 1080, "#000"),
+    ("linkedin-banner.svg", "linkedin-banner-2256x382.png", 2256, 382, "#000"),
     ("symbol-silver.svg", "symbol-silver-1024.png", 1024, 1024, None),
     ("symbol-ink.svg", "symbol-ink-1024.png", 1024, 1024, None),
     ("symbol-white.svg", "symbol-white-1024.png", 1024, 1024, None),
@@ -53,7 +54,8 @@ if __name__ == "__main__":
         shot(*job)
     # opaque icons must not carry an alpha channel (App Store rejects it)
     for name in ("app-icon-dark-1024.png", "app-icon-light-1024.png", "android-foreground-1024.png",
-                 "apple-touch-icon-180.png", "social-avatar-1080.png"):
+                 "apple-touch-icon-180.png", "social-avatar-1080.png",
+                 "linkedin-banner-2256x382.png"):
         p = os.path.join(OUT, name)
         Image.open(p).convert("RGB").save(p)
     Image.open(os.path.join(OUT, "favicon-48.png")).save(

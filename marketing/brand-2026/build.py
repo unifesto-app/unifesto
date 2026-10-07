@@ -187,6 +187,34 @@ def favicon():
     return svg(body, defs)
 
 
+def linkedin_banner():
+    """1128x191 LinkedIn cover: the app icon's sky + horizon, stretched wide. Content stays
+    centred: LinkedIn's logo covers the bottom-left and mobile crops the sides."""
+    W, H, R = 1128, 191, 2600
+    hz = 150                                         # horizon top at the centre
+    defs = (SILVER.format(id="b").replace('x2=".6" y2="1"', 'x2="0" y2="1"')
+            .replace("<linearGradient", '<linearGradient gradientUnits="userSpaceOnUse"')
+            .replace('x1="0" y1="0" x2="0" y2="1"', 'x1="0" y1="52" x2="0" y2="100"')
+            + '<radialGradient id="skyb" cx=".5" cy=".45" r=".6"><stop offset="0" stop-color="#16161a"/>'
+              '<stop offset="1" stop-color="#000"/></radialGradient>'
+              '<linearGradient id="planetb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1c20"/>'
+              '<stop offset=".02" stop-color="#050506"/></linearGradient>'
+              '<filter id="blurb" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>')
+    stars = [(96, 38, 1.6, .7), (214, 112, 1.2, .45), (330, 30, 1.0, .4), (402, 128, 1.3, .35),
+             (742, 26, 1.2, .5), (812, 118, 1.0, .35), (918, 44, 1.6, .65), (1036, 96, 1.2, .45),
+             (1088, 30, 1.0, .4), (160, 66, 0.9, .3), (980, 140, 0.9, .3), (612, 18, 0.9, .3)]
+    body = (f'<rect width="{W}" height="{H}" fill="url(#skyb)"/>'
+            + "".join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="#fff" opacity="{o}"/>' for x, y, r, o in stars)
+            + f'<ellipse cx="564" cy="{hz + 4}" rx="460" ry="16" fill="#fff" opacity=".14" filter="url(#blurb)"/>'
+            + f'<circle cx="564" cy="{hz + R}" r="{R}" fill="url(#planetb)"/>'
+            + f'<circle cx="564" cy="{hz + R}" r="{R}" fill="none" stroke="#fff" stroke-opacity=".4" stroke-width="1.2"/>')
+    mark, mw = _wm_group(0, 0, 48, "url(#b)")
+    mark, _ = _wm_group((W - mw) / 2, 100, 48, "url(#b)")
+    _, tw = label("Optimize. Organize. Elevate.", 15, 0, 0, "#8a8a90")
+    tag, _ = label("Optimize. Organize. Elevate.", 15, (W - tw) / 2, 130, "#8a8a90")
+    return svg(body + mark + tag, defs, vb=f"0 0 {W} {H}")
+
+
 if __name__ == "__main__":
     out = os.path.join(HERE, "svg")
     os.makedirs(out, exist_ok=True)
@@ -199,6 +227,7 @@ if __name__ == "__main__":
         "android-foreground.svg": app_icon("dark", u_width=330, u_cy=505, horizon_top=760),
         "android-monochrome.svg": svg(u_path(512, 512, 330, "#ffffff")),
         "favicon.svg": favicon(),
+        "linkedin-banner.svg": linkedin_banner(),
         "symbol-silver.svg": symbol("silver"),
         "symbol-ink.svg": symbol("ink"),
         "symbol-white.svg": symbol("white"),
