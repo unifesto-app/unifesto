@@ -83,13 +83,9 @@ export async function checkForAppUpdate(
 ): Promise<void> {
   const { manual = false } = options;
 
-  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return;
-
-  const installed = Application.nativeApplicationVersion;
-  if (!installed) return;
-
-  const policy = await getAppVersion();
-  if (!policy) {
+  const res = await getStoreUpdate();
+  if (res === null) return;
+  if (res === 'unreachable') {
     if (manual) {
       AppAlert.alert(
         'Couldn’t check for updates',
@@ -99,15 +95,47 @@ export async function checkForAppUpdate(
     return;
   }
 
-  const info = Platform.OS === 'ios' ? policy.ios : policy.android;
-  if (!info?.latestVersion) return;
-
-  // Below the supported floor → force. Otherwise, behind latest → offer.
-  if (info.minimumVersion && compareVersions(installed, info.minimumVersion) < 0) {
-    promptForcedUpdate(info);
-  } else if (compareVersions(installed, info.latestVersion) < 0) {
-    promptOptionalUpdate(info);
-  } else if (manual) {
-    AppAlert.alert('You’re up to date', `You’re on the latest version (${installed}).`);
+  if (res.kind === 'force') promptForcedUpdate(res.info);
+  else if (res.kind === 'optional') promptOptionalUpdate(res.info);
+  else if (manual) {
+    AppAlert.alert('You’re up to date', `You’re on the latest version (${res.installed}).`);
   }
+}
+
+export interface StoreUpdate {
+  /** force = below the supported floor; optional = behind latest. */
+  kind: 'force' | 'optional' | 'current';
+  installed: string;
+  info: PlatformVersionInfo;
+}
+
+/**
+ * Where this install stands against the backend version policy, without
+ * prompting. null when there is nothing to compare (web, unknown version, no
+ * policy for this platform); 'unreachable' when the policy can't be fetched.
+ */
+export async function getStoreUpdate(): Promise<StoreUpdate | 'unreachable' | null> {
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') return null;
+
+  const installed = Application.nativeApplicationVersion;
+  if (!installed) return null;
+
+  const policy = await getAppVersion();
+  if (!policy) return 'unreachable';
+
+  const info = Platform.OS === 'ios' ? policy.ios : policy.android;
+  if (!info?.latestVersion) return null;
+
+  const kind =
+    info.minimumVersion && compareVersions(installed, info.minimumVersion) < 0
+      ? 'force'
+      : compareVersions(installed, info.latestVersion) < 0
+        ? 'optional'
+        : 'current';
+  return { kind, installed, info };
+}
+
+/** Open the store listing for this platform. */
+export function openStoreListing(info: PlatformVersionInfo): void {
+  openStore(info.storeUrl);
 }
