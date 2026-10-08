@@ -1,5 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
@@ -8,10 +8,14 @@ import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowCounterClockwise,
+  ArrowUpRight,
   Bed,
-  CalendarBlank,
+  CalendarPlus,
+  CaretRight,
   CheckCircle,
   Export,
+  Globe,
+  MapPin,
   ShareNetwork,
   Ticket as TicketIcon,
   Trophy,
@@ -25,47 +29,70 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
 import { useEventStays } from '../hooks/useEventStays';
+import { useBannerAccent } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
+import { GUTTER } from '../components/home/Section';
 import { useTokens } from '../context/ThemeContext';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
+const ICON = 24;
 const NOTCH = 22;
+const STUB = 56;
 // Event banners are 4:3.
 const THUMB_W = 88;
 const THUMB_H = 66;
 
+type TicketDetail = ReturnType<typeof useTicketDetail>;
+
 /**
- * The entry pass: one ticket card (event, when/where, ticket type, tear line,
- * big QR stub), then grouped actions — share, calendar, group, WhatsApp,
- * check-in history, and refund/cancel at the bottom.
+ * The entry pass, in the fusion cosmos look of the event page: the sky lit by
+ * the banner's hue, a pass (event, tear line, big QR stub), a facts card (when,
+ * where, ticket type, view event), then grouped actions with refund/cancel last.
  */
 export default function TicketDetailScreen() {
+  const params = useLocalSearchParams<{ id: string; ticket?: string }>();
+  const t = useTicketDetail(params.ticket);
+  const hue = useBannerAccent(t.cover, t.eventSlug ? { event: t.eventSlug } : null);
+  return (
+    <CosmosWash active={!!hue}>
+      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
+        <TicketDetailView t={t} hue={hue} />
+      </CardSurfaceProvider>
+    </CosmosWash>
+  );
+}
+
+function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
+  const c = useCosmos();
   const tokens = useTokens();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ id: string; ticket?: string }>();
-  const t = useTicketDetail(params.ticket);
   const [reportOpen, setReportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
 
-  const accent = t.brandColor || tokens.accent;
   const cancelled = t.status === 'cancelled';
   const qrSize = Math.min(220, width - GUTTER * 2 - spacing[16]);
 
   const start = t.startIso ? new Date(t.startIso) : null;
-  const dateLabel = start ? start.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'TBA';
-  const timeLabel = start ? formatTime(start) : 'TBA';
   const upcoming = !!start && start.getTime() > Date.now();
+  const when = start
+    ? {
+        month: start.toLocaleDateString('en-IN', { month: 'short' }),
+        day: String(start.getDate()),
+        weekday: start.toLocaleDateString('en-IN', { weekday: 'long' }),
+        time: formatTime(start),
+      }
+    : { month: '', day: '–', weekday: 'Date to be announced', time: 'Time TBA' };
 
   const openEvent = () => t.eventSlug && router.push(`/event/${t.eventSlug}`);
 
@@ -103,27 +130,28 @@ export default function TicketDetailScreen() {
 
   if (!t.ticket) {
     return (
-      <View style={[styles.flex, styles.center, { backgroundColor: tokens.bg }]}>
-        <TicketIcon size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>Ticket not found</Text>
-        <Text style={[styles.link, { color: accent }]} onPress={() => router.back()}>
-          Go back
-        </Text>
+      <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <TicketIcon size={48} color={c.muted} />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>Ticket not found</Text>
+        <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
   }
 
   const badge =
     t.status === 'cancelled'
-      ? { text: 'Cancelled', color: tokens.danger, bg: 'rgba(239,68,68,0.14)' }
+      ? { text: 'Cancelled', color: c.danger }
       : t.status === 'checkedIn'
-        ? { text: 'Checked in', color: tokens.success, bg: 'rgba(16,185,129,0.14)' }
-        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: accent, bg: 'rgba(52,145,255,0.14)' };
+        ? { text: 'Checked in', color: tokens.success }
+        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.primary };
 
   const price = Number.isNaN(t.listPrice) ? null : t.listPrice === 0 ? 'Free' : `₹${t.listPrice.toLocaleString('en-IN')}`;
+  const canCalendar = !!t.eventSlug && upcoming && !cancelled;
 
   return (
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} hue={hue} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
@@ -131,77 +159,102 @@ export default function TicketDetailScreen() {
           <RefreshControl
             refreshing={t.refreshing}
             onRefresh={t.refresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
       >
-        {/* ── The pass ── */}
-        <View style={[styles.pass]}>
-          <CardBackdrop shape={styles.pass} />
+        {/* ── The pass: what it's for, then the stub that gets scanned ── */}
+        <View style={[styles.pass, { backgroundColor: c.raised }]}>
           <View style={styles.passTop}>
-            <View style={styles.headRow}>
-              <View style={[styles.thumb, { backgroundColor: tokens.surface }]}>
-                {t.cover ? (
-                  <Image source={{ uri: t.cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                ) : (
-                  <LinearGradient colors={[accent, tokens.accentStrong]} style={StyleSheet.absoluteFill} />
-                )}
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                  <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
-                </View>
-                <Text style={[styles.title, { color: tokens.text }]} numberOfLines={3}>{t.title}</Text>
-              </View>
+            <View style={[styles.thumb, { backgroundColor: c.card }]}>
+              {t.cover ? (
+                <Image source={{ uri: t.cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
+              )}
             </View>
-
-            <View style={styles.facts}>
-              {[
-                { label: 'Date', value: dateLabel },
-                { label: 'Time', value: timeLabel },
-                { label: t.isOnline ? 'Access' : 'Venue', value: t.venue },
-              ].map((f, i) => (
-                <View key={f.label} style={[styles.fact, i === 2 && { flex: 1.4 }]}>
-                  <Text style={[styles.factLabel, { color: tokens.textMuted }]}>{f.label}</Text>
-                  <Text style={[styles.factValue, { color: tokens.text }]} numberOfLines={2}>{f.value}</Text>
-                </View>
-              ))}
-            </View>
-
-            {t.ticketTypeName ? (
-              <View style={[styles.typeRow, { backgroundColor: tokens.fill }]}>
-                <TicketIcon size={18} color={tokens.textSecondary} />
-                <Text style={[styles.typeName, { color: tokens.text }]} numberOfLines={1}>{t.ticketTypeName}</Text>
-                {price ? <Text style={[styles.typePrice, { color: accent }]}>{price}</Text> : null}
+            <View style={styles.flex}>
+              <View style={[styles.badge, { backgroundColor: c.tint }]}>
+                <View style={[styles.badgeDot, { backgroundColor: badge.color }]} />
+                <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
               </View>
-            ) : null}
+              <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>{t.title}</Text>
+            </View>
           </View>
 
           {/* Tear line with notches bitten out of both edges */}
           <View style={styles.perfRow}>
-            <View style={[styles.notch, styles.notchLeft, { backgroundColor: tokens.bg }]} />
-            <View style={[styles.perf, { borderColor: tokens.border }]} />
-            <View style={[styles.notch, styles.notchRight, { backgroundColor: tokens.bg }]} />
+            <View style={[styles.notch, styles.notchLeft, { backgroundColor: c.bg }]} />
+            <View style={[styles.perf, { borderColor: c.border }]} />
+            <View style={[styles.notch, styles.notchRight, { backgroundColor: c.bg }]} />
           </View>
 
-          {/* The stub: what gets scanned at the door */}
           <View style={styles.stub}>
             <View style={[styles.qr, cancelled && { opacity: 0.12 }]}>
               <QRCode value={t.qrValue} size={qrSize} color="#000000" backgroundColor="#ffffff" />
             </View>
             {cancelled ? (
               <View style={[StyleSheet.absoluteFill, styles.center]}>
-                <XCircle size={40} color={tokens.danger} weight="fill" />
-                <Text style={[styles.voidText, { color: tokens.danger }]}>This ticket was cancelled</Text>
+                <XCircle size={40} color={c.danger} weight="fill" />
+                <Text style={[styles.voidText, { color: c.danger }]}>This ticket was cancelled</Text>
               </View>
             ) : null}
-            {t.code ? <Text style={[styles.code, { color: tokens.text }]}>{t.code}</Text> : null}
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>
+            {t.code ? <Text style={[styles.code, { color: c.text }]}>{t.code}</Text> : null}
+            <Text style={[styles.hint, { color: c.muted }]}>
               {t.status === 'checkedIn' ? 'You are checked in. Enjoy the event.' : 'Show this at the entrance'}
             </Text>
           </View>
+        </View>
+
+        {/* ── Facts: a date stub, then where, then what I hold ── */}
+        <View style={[styles.facts, { backgroundColor: c.raised }]}>
+          <Pressable
+            onPress={canCalendar ? t.addToCalendar : undefined}
+            disabled={!canCalendar}
+            accessibilityRole="button"
+            accessibilityLabel={`${when.weekday}, ${when.time}${canCalendar ? '. Add to calendar' : ''}`}
+            style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+          >
+            <View style={[styles.dateStub, { borderColor: c.border }]}>
+              <Text style={[styles.stubMonth, { color: c.muted }]}>{when.month}</Text>
+              <Text style={[styles.stubDay, { color: c.text }]}>{when.day}</Text>
+            </View>
+            <View style={styles.flex}>
+              <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.weekday}</Text>
+              <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{when.time}</Text>
+            </View>
+            {canCalendar ? <CalendarPlus size={ICON} color={c.text} /> : null}
+          </Pressable>
+          <Divider />
+          <Fact
+            icon={t.isOnline ? <Globe size={ICON} color={c.text} /> : <MapPin size={ICON} color={c.text} />}
+            title={t.venue}
+            sub={t.isOnline ? 'Online' : null}
+          />
+          {t.ticketTypeName ? (
+            <>
+              <Divider />
+              <Fact icon={<TicketIcon size={ICON} color={c.text} />} title={t.ticketTypeName} sub={price} />
+            </>
+          ) : null}
+          {t.eventSlug ? (
+            <>
+              <Divider />
+              <Pressable
+                onPress={openEvent}
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+              >
+                <View style={styles.factIcon}>
+                  <ArrowUpRight size={ICON} color={c.text} />
+                </View>
+                <Text style={[styles.factTitle, styles.flex, { color: c.text }]}>View event</Text>
+                <CaretRight size={15} color={c.muted} />
+              </Pressable>
+            </>
+          ) : null}
         </View>
 
         {/* Why it was cancelled, when there's something worth saying */}
@@ -217,8 +270,8 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.cancellation.reason ? (
               <View style={styles.reason}>
-                <Text style={[styles.reasonLabel, { color: tokens.textMuted }]}>Reason</Text>
-                <Text style={[styles.reasonText, { color: tokens.text }]}>{t.cancellation.reason}</Text>
+                <Text style={[styles.reasonLabel, { color: c.muted }]}>Reason</Text>
+                <Text style={[styles.reasonText, { color: c.text }]}>{t.cancellation.reason}</Text>
               </View>
             ) : null}
           </SettingsGroup>
@@ -228,16 +281,13 @@ export default function TicketDetailScreen() {
         {!cancelled ? (
           <SettingsGroup>
             <SettingsRow
-              icon={<ShareNetwork size={24} color={accent} />}
+              icon={<ShareNetwork size={24} color={c.text} />}
               label="Share that I'm going"
               onPress={() => setShareOpen(true)}
             />
-            {t.eventSlug && t.startIso && upcoming ? (
-              <SettingsRow icon={<CalendarBlank size={24} color={accent} />} label="Add to calendar" onPress={t.addToCalendar} />
-            ) : null}
             {t.canManageGroup ? (
               <SettingsRow
-                icon={<UsersThree size={24} color={accent} />}
+                icon={<UsersThree size={24} color={c.text} />}
                 label="Manage group"
                 onPress={() => router.push(`/group/${t.registrationId}` as never)}
               />
@@ -245,7 +295,7 @@ export default function TicketDetailScreen() {
             {/* Group leads edit everything from Manage group. */}
             {t.canEditDetails && !t.canManageGroup ? (
               <SettingsRow
-                icon={<PencilSimple size={24} color={accent} />}
+                icon={<PencilSimple size={24} color={c.text} />}
                 label="Edit my details"
                 value={
                   t.editDetailsUntil
@@ -259,7 +309,7 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.hackathon && t.eventId ? (
               <SettingsRow
-                icon={<Trophy size={24} color={accent} />}
+                icon={<Trophy size={24} color={c.text} />}
                 label="Unifesto Sprint"
                 value={t.hackathon.cancelled ? 'Cancelled' : t.hackathon.teamCode ?? undefined}
                 onPress={() => router.push(`/hackathon/${t.eventId}` as never)}
@@ -267,7 +317,7 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.competition && t.eventId ? (
               <SettingsRow
-                icon={<Trophy size={24} color={accent} />}
+                icon={<Trophy size={24} color={c.text} />}
                 label="Competition"
                 value={t.competition.status}
                 onPress={() => router.push(`/competition/${t.eventId}` as never)}
@@ -275,14 +325,11 @@ export default function TicketDetailScreen() {
             ) : null}
             {stay ? (
               <SettingsRow
-                icon={<Bed size={24} color={accent} />}
+                icon={<Bed size={24} color={c.text} />}
                 label={stay.label}
                 value={stay.value}
                 onPress={() => router.push(stay.href as never)}
               />
-            ) : null}
-            {t.eventSlug ? (
-              <SettingsRow icon={<TicketIcon size={24} color={accent} />} label="View event" onPress={openEvent} />
             ) : null}
           </SettingsGroup>
         ) : null}
@@ -385,49 +432,66 @@ export default function TicketDetailScreen() {
   );
 }
 
+function Divider() {
+  const c = useCosmos();
+  return <View style={[styles.divider, { backgroundColor: c.border }]} />;
+}
+
+/** One line of the facts card: bare icon, title, optional quieter line under it. */
+function Fact({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string | null }) {
+  const c = useCosmos();
+  return (
+    <View style={styles.factRow}>
+      <View style={styles.factIcon}>{icon}</View>
+      <View style={styles.flex}>
+        <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={2}>{title}</Text>
+        {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{sub}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
-  reasonLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...font() },
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  pass: { borderRadius: borderRadius['2xl'], overflow: 'hidden' },
-  passTop: { padding: spacing[5], gap: spacing[5] },
-  headRow: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start' },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
-  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: borderRadius.full },
-  badgeText: { fontSize: 12, ...font('semibold') },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...font('heading') },
-  facts: { flexDirection: 'row', gap: spacing[3] },
-  fact: { flex: 1, gap: 3 },
-  factLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  factValue: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.3, ...font('semibold') },
-  typeRow: {
+  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  passTop: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start', padding: spacing[5] },
+  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: 12, overflow: 'hidden' },
+  badge: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[3],
-    borderRadius: borderRadius.lg,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
   },
-  typeName: { flex: 1, fontSize: typography.fontSize.sm, ...font('semibold') },
-  typePrice: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: 12, ...cosmosFont.strong },
+  // Michroma runs wide: 17 here reads like a 21.
+  title: { marginTop: spacing[2], fontSize: 17, lineHeight: 25, ...cosmosFont.display },
   perfRow: { height: NOTCH, justifyContent: 'center' },
-  perf: { marginHorizontal: NOTCH, borderTopWidth: 1.5, borderStyle: 'dashed' },
+  perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
   notch: { position: 'absolute', width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2 },
   notchLeft: { left: -NOTCH / 2 },
   notchRight: { right: -NOTCH / 2 },
   stub: { alignItems: 'center', paddingTop: spacing[4], paddingBottom: spacing[6], paddingHorizontal: spacing[5] },
-  qr: { padding: 14, borderRadius: borderRadius.xl, backgroundColor: '#ffffff' },
-  voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  code: {
-    marginTop: spacing[4],
-    fontSize: typography.fontSize.xl,
-    letterSpacing: 2,
-    fontVariant: ['tabular-nums'],
-    ...font('heading'),
-  },
-  hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
-  link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...font('semibold') },
+  qr: { padding: 14, borderRadius: cosmosCardRadius, backgroundColor: '#ffffff' },
+  voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  code: { marginTop: spacing[4], fontSize: 18, fontVariant: ['tabular-nums'], ...cosmosFont.display, letterSpacing: 2 },
+  hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  facts: { marginTop: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
+  // Same column as the date stub, so every line's text starts at one edge.
+  factIcon: { width: STUB, alignItems: 'center' },
+  dateStub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stubMonth: { fontSize: 11, ...cosmosFont.strong },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  factSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
+  reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
+  reasonLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
+  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
 });
