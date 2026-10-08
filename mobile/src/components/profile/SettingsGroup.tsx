@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
-import { CardBackdrop } from '../ui/CardSurface';
+import { CardBackdrop, LIQUID_GLASS } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
@@ -29,7 +29,7 @@ interface SettingsGroupProps {
   action?: { label: string; onPress: () => void };
   /** Rows have no leading icon: dividers start at the card's inner edge. */
   plain?: boolean;
-  /** A flat fill instead of the card backdrop, e.g. a cosmos card on a fusion page. */
+  /** A flat fill instead of the card backdrop below iOS 26 (Liquid Glass still wins there). */
   surface?: string;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
@@ -51,8 +51,8 @@ export function SettingsGroup({ title, action, plain, surface, style, children }
           ) : null}
         </View>
       ) : null}
-      <View style={[styles.card, surface ? { backgroundColor: surface } : null]}>
-        {surface ? null : <CardBackdrop />}
+      <View style={[styles.card, surface && !LIQUID_GLASS ? { backgroundColor: surface } : null]}>
+        {surface && !LIQUID_GLASS ? null : <CardBackdrop shape={styles.card} />}
         {rows.map((row, i) => (
           <View key={i}>
             {row}

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Confetti, Hourglass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import type { MyWaitlistEntry } from '../../lib/api/registrations';
 import AuthButton from '../auth/AuthButton';
 import { borderRadius, spacing } from '../../theme/spacing';
@@ -44,7 +45,8 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
   const place = entry.event.venueName || entry.event.city;
 
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
+      <GlassFill radius={cosmosCardRadius} />
       {offered ? (
         <LinearGradient
           colors={[`rgba(${c.glow}, 0.14)`, `rgba(${c.glow}, 0)`]}

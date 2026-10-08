@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, QrCode, UsersThree, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import type { MyTicket } from '../../hooks/useMyTickets';
 import Skeleton from '../Skeleton';
 import { borderRadius, spacing } from '../../theme/spacing';
@@ -76,8 +77,9 @@ export default function TicketCard({
       accessibilityRole="button"
       accessibilityLabel={`Ticket for ${ticket.title}`}
       accessibilityHint={onLongPress ? 'Long press to delete this ticket' : undefined}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
+      <GlassFill radius={cosmosCardRadius} />
       <View style={[styles.main, !live && { opacity: 0.62 }]}>
         <View style={[styles.thumb, { backgroundColor: c.card }]}>
           {coverOr(defaults, ticket.id, ticket.coverImageUrl) ? (
@@ -128,7 +130,8 @@ export default function TicketCard({
 export function TicketCardSkeleton() {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
+      <GlassFill radius={cosmosCardRadius} />
       <View style={styles.main}>
         <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
         <View style={[styles.info, { gap: 8 }]}>

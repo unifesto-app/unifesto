@@ -35,7 +35,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { useTokens } from '../context/ThemeContext';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
@@ -216,7 +216,8 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         </View>
 
         {/* ── Facts: a date stub, then where, then what I hold ── */}
-        <View style={[styles.facts, { backgroundColor: c.raised }]}>
+        <View style={[styles.facts, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
+          <GlassFill radius={cosmosCardRadius} />
           <Pressable
             onPress={canCalendar ? t.addToCalendar : undefined}
             disabled={!canCalendar}

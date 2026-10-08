@@ -70,8 +70,10 @@ export function CosmosWash({ active, children }: { active: boolean; children: Re
     if (!active) return null;
     const ink = scheme === 'dark' ? '255, 255, 255' : '0, 0, 0';
     return {
-      card: `rgba(255, 255, 255, ${scheme === 'dark' ? 0.05 : 0.45})`,
-      raised: `rgba(255, 255, 255, ${scheme === 'dark' ? 0.08 : 0.6})`,
+      // Light: an ink veil, not white: the ground is white wherever the hue fades,
+      // so a white card there merges into the page.
+      card: scheme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.035)',
+      raised: scheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
       soft: `rgba(${ink}, 0.78)`,
       muted: `rgba(${ink}, 0.6)`,
       tint: `rgba(${ink}, 0.06)`,
