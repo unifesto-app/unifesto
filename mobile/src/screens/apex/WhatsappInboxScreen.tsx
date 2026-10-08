@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { RefreshControl } from "../../components/ui/RefreshControl";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { MagnifyingGlass, Megaphone } from "phosphor-react-native";
+import { MagnifyingGlass, Megaphone } from "@unifesto/unicon/react-native";
 import {
   HeaderActions,
   HeaderIconButton,

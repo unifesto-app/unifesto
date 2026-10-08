@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { MagnifyingGlass, UserPlus, X } from 'phosphor-react-native';
+import { MagnifyingGlass, UserPlus, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useAuth } from '../context/AuthContext';

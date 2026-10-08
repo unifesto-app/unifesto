@@ -13,7 +13,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
-import { IdentificationCard, Paperclip, Plus, X } from 'phosphor-react-native';
+import { IdentificationCard, Paperclip, Plus, X } from '@unifesto/unicon/react-native';
 import CustomFieldInput from '../components/CustomFieldInput';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import { BlockTitle } from '../components/manage/FormFields';

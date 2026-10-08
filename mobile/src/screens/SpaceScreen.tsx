@@ -3,8 +3,8 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from '
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Buildings, Globe, Plus } from 'phosphor-react-native';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { Buildings, Globe, Plus } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
@@ -55,7 +55,7 @@ export default function SpaceScreen() {
   };
 
   const now = new Date();
-  const unicon = (name: React.ComponentProps<typeof UnIcon>['name']) => <UnIcon name={name} size={ICON} />;
+  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
   const checkin = activeEvents(checkinEvents, now);
   const judging = activeEvents(judgingEvents, now);
 
@@ -104,12 +104,12 @@ export default function SpaceScreen() {
   const checkinGroup = (
     <SettingsGroup key="checkin" title="Check-in">
       {checkin.length === 0 ? (
-        <SettingsRow icon={unicon('qr')} label="No events to check in right now" />
+        <SettingsRow icon={unicon('qr-code')} label="No events to check in right now" />
       ) : (
         checkin.map((ev) => (
           <SettingsRow
             key={ev.id}
-            icon={unicon('qr')}
+            icon={unicon('qr-code')}
             label={ev.title}
             value={relativeWhen(ev.startDateTime, now)}
             onPress={() =>

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Lifebuoy, MagnifyingGlass, QrCode } from 'phosphor-react-native';
+import { Lifebuoy, MagnifyingGlass, QrCode } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useCheckinHub } from '../hooks/useCheckinHub';

@@ -12,7 +12,7 @@ import {
   SignOut,
   Warning,
   XCircle,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { FieldRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';

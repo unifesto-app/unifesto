@@ -2,7 +2,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, CircleDashed, Pause, Play, Plus, Stop, Trash, XCircle } from 'phosphor-react-native';
+import { CheckCircle, CircleDashed, Pause, Play, Plus, Stop, Trash, XCircle } from '@unifesto/unicon/react-native';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import ChipPicker from '../components/manage/ChipPicker';

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { Plus } from 'phosphor-react-native';
+import { Plus } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';

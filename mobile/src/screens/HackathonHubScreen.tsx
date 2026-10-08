@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from 'phosphor-react-native';
+import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';

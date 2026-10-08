@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PaperPlaneRight } from 'phosphor-react-native';
+import { PaperPlaneRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CaretLeft, ClockCounterClockwise, MagnifyingGlass, X } from 'phosphor-react-native';
+import { CaretLeft, ClockCounterClockwise, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
 import { GlassView } from 'expo-glass-effect';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { useStableTopInset } from '../CustomHeader';

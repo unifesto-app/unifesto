@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CaretRight } from 'phosphor-react-native';
+import { CaretRight } from '@unifesto/unicon/react-native';
 import type { Space } from '../../lib/api/spaces';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

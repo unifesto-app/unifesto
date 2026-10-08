@@ -4,7 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, Trash } from 'phosphor-react-native';
+import { Plus, Trash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventTicketTypes } from '../hooks/useEventTicketTypes';
 import useTopSpacing from '../hooks/useTopSpacing';

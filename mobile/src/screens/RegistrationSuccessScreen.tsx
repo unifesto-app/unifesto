@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt } from 'phosphor-react-native';
+import { CalendarPlus, CaretRight, CheckCircle, PaperPlaneTilt } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import BrandGlow from '../components/ui/BrandGlow';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';

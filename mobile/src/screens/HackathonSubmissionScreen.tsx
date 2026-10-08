@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinkSimple, Plus, X } from 'phosphor-react-native';
+import { LinkSimple, Plus, X } from '@unifesto/unicon/react-native';
 import SaveBar from '../components/manage/SaveBar';
 import ChipPicker from '../components/manage/ChipPicker';
 import { CardBackdrop } from '../components/ui/CardSurface';

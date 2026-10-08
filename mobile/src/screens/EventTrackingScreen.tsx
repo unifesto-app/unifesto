@@ -3,7 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, Scissors, WhatsappLogo } from 'phosphor-react-native';
+import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, Scissors, WhatsappLogo } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';

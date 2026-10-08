@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
-import { Check, DeviceMobile, Moon, Sun } from 'phosphor-react-native';
+import { Check, DeviceMobile, Moon, Sun } from '@unifesto/unicon/react-native';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import useTopSpacing from '../hooks/useTopSpacing';

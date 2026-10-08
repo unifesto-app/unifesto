@@ -41,7 +41,7 @@ import {
   WhatsappLogo,
   X,
   type Icon,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';

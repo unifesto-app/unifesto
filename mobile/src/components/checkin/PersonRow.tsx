@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CheckCircle } from 'phosphor-react-native';
+import { CheckCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { initials } from '../../utils/checkinFormat';
 import { borderRadius, spacing } from '../../theme/spacing';

@@ -11,7 +11,7 @@ import {
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { Handshake } from 'phosphor-react-native';
+import { Handshake } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';

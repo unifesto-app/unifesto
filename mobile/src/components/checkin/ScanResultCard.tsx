@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
-import { CheckCircle, ClockCounterClockwise, XCircle } from 'phosphor-react-native';
+import { CheckCircle, ClockCounterClockwise, XCircle } from '@unifesto/unicon/react-native';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';

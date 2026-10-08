@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Confetti, Hourglass } from 'phosphor-react-native';
+import { Confetti, Hourglass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import type { MyWaitlistEntry } from '../../lib/api/registrations';
 import { Button } from '../ui';

@@ -4,7 +4,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { CopySimple, Eye, ShareNetwork } from 'phosphor-react-native';
+import { CopySimple, Eye, ShareNetwork } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';

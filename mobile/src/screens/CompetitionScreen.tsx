@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CheckCircle, CircleDashed, Quotes, Trophy, XCircle } from 'phosphor-react-native';
+import { CheckCircle, CircleDashed, Quotes, Trophy, XCircle } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useTokens } from '../context/ThemeContext';

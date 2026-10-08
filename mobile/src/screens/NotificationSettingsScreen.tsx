@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Switch } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UnIcon, IconName } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -167,9 +167,9 @@ export default function NotificationSettingsScreen() {
   }, [commit]);
 
   // One toggle row: bare icon, label, native switch in the accent colour.
-  const row = (icon: IconName, label: string, value: boolean, onToggle: () => void) => (
+  const row = (icon: GlyphName, label: string, value: boolean, onToggle: () => void) => (
     <SettingsRow
-      icon={<UnIcon name={icon} size={28} />}
+      icon={<UnGlyph name={icon} size={28} color={tokens.text} />}
       label={label}
       trailing={
         <Switch
@@ -191,17 +191,17 @@ export default function NotificationSettingsScreen() {
       showsVerticalScrollIndicator={false}
     >
       <SettingsGroup title="Channels">
-        {row('notification', 'Push notifications', notifs.pushEnabled, handlePushToggle)}
-        {row('mail', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
+        {row('bell', 'Push notifications', notifs.pushEnabled, handlePushToggle)}
+        {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
       </SettingsGroup>
 
       <SettingsGroup title="Events">
-        {row('calendar', 'Event reminders', notifs.eventReminders, () => toggle('eventReminders'))}
+        {row('calendar-blank', 'Event reminders', notifs.eventReminders, () => toggle('eventReminders'))}
         {row('megaphone', 'New events', notifs.newEvents, () => toggle('newEvents'))}
       </SettingsGroup>
 
       <SettingsGroup title="From Unifesto">
-        {row('update', 'Product updates', notifs.productUpdates, () => toggle('productUpdates'))}
+        {row('arrows-clockwise', 'Product updates', notifs.productUpdates, () => toggle('productUpdates'))}
         {row('tag', 'Promotions', notifs.promotions, () => toggle('promotions'))}
       </SettingsGroup>
     </ScrollView>

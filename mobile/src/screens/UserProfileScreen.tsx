@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTokens } from '../context/ThemeContext';
 import * as AuthAPI from '../lib/api/auth';
@@ -19,12 +19,12 @@ import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 import { AppAlert } from '../components/ui/AppAlert';
 
-type IconName = React.ComponentProps<typeof UnIcon>['name'];
+type IconName = GlyphName;
 
 const LINKS: { key: keyof AuthAPI.User; icon: IconName; label: string }[] = [
-  { key: 'linkedinUrl', icon: 'linkedin', label: 'LinkedIn' },
-  { key: 'instagramUrl', icon: 'instagram', label: 'Instagram' },
-  { key: 'githubUrl', icon: 'github', label: 'GitHub' },
+  { key: 'linkedinUrl', icon: 'linkedin-logo', label: 'LinkedIn' },
+  { key: 'instagramUrl', icon: 'instagram-logo', label: 'Instagram' },
+  { key: 'githubUrl', icon: 'github-logo', label: 'GitHub' },
   { key: 'websiteUrl', icon: 'globe', label: 'Website' },
 ];
 
@@ -167,7 +167,7 @@ export default function UserProfileScreen() {
                 accessibilityLabel={l.label}
                 style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
               >
-                <UnIcon name={l.icon} size={30} />
+                <UnGlyph name={l.icon} size={30} color={tokens.text} />
               </Pressable>
             ))}
           </View>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X } from 'phosphor-react-native';
+import { X } from '@unifesto/unicon/react-native';
 import type { MyInvite } from '../../lib/api/registrations';
 import { relativeWhen } from '../../utils/eventFormat';
 import { borderRadius, spacing } from '../../theme/spacing';

@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Camera, Flashlight, UsersThree } from 'phosphor-react-native';
+import { Camera, Flashlight, UsersThree } from '@unifesto/unicon/react-native';
 import { boothScan, getPortalLeads } from '../lib/api/sponsorPortal';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';

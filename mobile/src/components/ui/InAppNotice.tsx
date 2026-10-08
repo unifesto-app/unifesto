@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BellRinging } from 'phosphor-react-native';
+import { BellRinging } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';

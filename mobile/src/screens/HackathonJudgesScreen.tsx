@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ChatsCircle, Coffee, Gavel, Plus, UsersFour } from 'phosphor-react-native';
+import { ChatsCircle, Coffee, Gavel, Plus, UsersFour } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

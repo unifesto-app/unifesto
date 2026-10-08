@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle } from 'phosphor-react-native';
+import { CheckCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

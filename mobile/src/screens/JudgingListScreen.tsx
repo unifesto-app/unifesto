@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { CaretRight, Gavel, CalendarBlank, Broadcast, MapPin } from 'phosphor-react-native';
+import { CaretRight, Gavel, CalendarBlank, Broadcast, MapPin } from '@unifesto/unicon/react-native';
 import { useTheme } from '../context/ThemeContext';
 import { getMyJudgingEvents, JudgingEvent } from '../lib/api/leaderboard';
 import { spacing, borderRadius, font } from '../theme';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { ArrowUpRight, CaretRight } from 'phosphor-react-native';
+import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';

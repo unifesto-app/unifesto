@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { VideoCamera } from 'phosphor-react-native';
+import { VideoCamera } from '@unifesto/unicon/react-native';
 import { useTokens } from '../src/context/ThemeContext';
 import { CardBackdrop } from '../src/components/ui/CardSurface';
 import useTopSpacing from '../src/hooks/useTopSpacing';

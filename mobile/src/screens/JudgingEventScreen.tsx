@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { CaretRight, CheckCircle, CircleDashed, Lock } from 'phosphor-react-native';
+import { CaretRight, CheckCircle, CircleDashed, Lock } from '@unifesto/unicon/react-native';
 import { useTheme } from '../context/ThemeContext';
 import {
   getMyAssignments,

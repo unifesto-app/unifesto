@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { BellRinging, CheckCircle, EnvelopeSimple, User, X } from 'phosphor-react-native';
+import { BellRinging, CheckCircle, EnvelopeSimple, User, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { Button } from '../ui';
 import { SettingsGroup } from '../profile/SettingsGroup';

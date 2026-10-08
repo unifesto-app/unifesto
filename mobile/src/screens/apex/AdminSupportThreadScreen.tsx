@@ -3,7 +3,7 @@ import { buildLabel, type BuildInfo } from '../../lib/appBuild';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PaperPlaneRight } from 'phosphor-react-native';
+import { PaperPlaneRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';

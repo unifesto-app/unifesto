@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, WifiSlash } from 'phosphor-react-native';
+import { CheckCircle, WifiSlash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useIsOffline } from '../../lib/offline/connectivity';
 import { Text } from './Text';

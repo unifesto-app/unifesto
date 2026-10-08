@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { CaretDown, CheckCircle } from 'phosphor-react-native';
+import { CaretDown, CheckCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { CardBackdrop } from '../ui/CardSurface';
 import type { AgendaItem, Contact, Faq, Prize, Speaker } from '../../lib/api/additional-info';

@@ -3,7 +3,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Phone, PlusCircle, WhatsappLogo, X } from 'phosphor-react-native';
+import { Phone, PlusCircle, WhatsappLogo, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';

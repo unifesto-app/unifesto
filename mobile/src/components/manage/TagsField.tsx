@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { X } from 'phosphor-react-native';
+import { X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { splitTags } from '../../lib/eventDraft';
 import { borderRadius, spacing } from '../../theme/spacing';

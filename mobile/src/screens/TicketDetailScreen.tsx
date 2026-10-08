@@ -19,7 +19,7 @@ import {
   WhatsappLogo,
   XCircle,
   PencilSimple,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import AttendingShareModal from '../components/AttendingShareModal';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';

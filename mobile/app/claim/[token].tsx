@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretRight, CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User, UserSwitch } from 'phosphor-react-native';
+import { CaretRight, CheckCircle, EnvelopeSimple, GenderIntersex, LinkBreak, Phone, Ticket, User, UserSwitch } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../src/context/ThemeContext';
 import { useAuth } from '../../src/context/AuthContext';
 import useTopSpacing from '../../src/hooks/useTopSpacing';

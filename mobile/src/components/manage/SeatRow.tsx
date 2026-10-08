@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { CaretDown, CaretRight } from 'phosphor-react-native';
+import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { displayFieldValue } from '../../hooks/useEventRegistration';
 import { displayAnswer, isFileAnswer } from '../../utils/formQuestions';

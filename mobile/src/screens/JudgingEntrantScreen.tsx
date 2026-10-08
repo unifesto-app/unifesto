@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Lock, LockSimple, SealCheck } from 'phosphor-react-native';
+import { Lock, LockSimple, SealCheck } from '@unifesto/unicon/react-native';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 import {

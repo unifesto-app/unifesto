@@ -13,7 +13,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { CheckCircle, CircleDashed, Info, XCircle } from 'phosphor-react-native';
+import { CheckCircle, CircleDashed, Info, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../src/context/ThemeContext';
 import useTopSpacing from '../../src/hooks/useTopSpacing';
 import Skeleton from '../../src/components/Skeleton';

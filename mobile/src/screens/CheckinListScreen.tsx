@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { QrCode } from 'phosphor-react-native';
+import { QrCode } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { getMyCheckinEvents, type CheckinEvent } from '../lib/api/checkin';
 import CheckinEventCard from '../components/checkin/CheckinEventCard';

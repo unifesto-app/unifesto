@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import * as DocumentPicker from 'expo-document-picker';
-import { CaretDown, Check, CheckCircle, MagnifyingGlass, Paperclip, X } from 'phosphor-react-native';
+import { CaretDown, Check, CheckCircle, MagnifyingGlass, Paperclip, X } from '@unifesto/unicon/react-native';
 import { CustomField, uploadFormFieldFile } from '../lib/api/tickets';
 import { useTokens } from '../context/ThemeContext';
 import { borderRadius, spacing } from '../theme/spacing';

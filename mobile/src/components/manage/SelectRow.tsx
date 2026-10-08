@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretDown, Check, MagnifyingGlass } from 'phosphor-react-native';
+import { CaretDown, Check, MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

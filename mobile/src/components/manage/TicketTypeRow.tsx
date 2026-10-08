@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTokens } from '../../context/ThemeContext';
-import { ArrowDown, ArrowUp } from 'phosphor-react-native';
+import { ArrowDown, ArrowUp } from '@unifesto/unicon/react-native';
 import { isOffSale, saleStatus, SALE_STATUS_LABEL, type ManagedTicketType } from '../../lib/api/ticketTypes';
 import { Badge } from '../ui/Badge';
 import { borderRadius, spacing } from '../../theme/spacing';

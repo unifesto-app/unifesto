@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform, StatusBar, TouchableOpacity, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-context';
-import { MapPin } from 'phosphor-react-native';
+import { MapPin } from '@unifesto/unicon/react-native';
 import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { spacing, borderRadius, typography } from '../theme';
 import { useTheme } from '../context/ThemeContext';

@@ -13,7 +13,7 @@ import {
   Ticket as TicketIcon,
   User,
   XCircle,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import AttendeeForm from '../AttendeeForm';
 import CustomFieldInput from '../CustomFieldInput';

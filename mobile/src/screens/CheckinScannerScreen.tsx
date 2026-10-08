@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { Camera, CaretRight, Flashlight, MagnifyingGlass, MapPin } from 'phosphor-react-native';
+import { Camera, CaretRight, Flashlight, MagnifyingGlass, MapPin } from '@unifesto/unicon/react-native';
 import {
   CheckinNetworkError,
   getCheckinStats,

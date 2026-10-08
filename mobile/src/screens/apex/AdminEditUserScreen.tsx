@@ -6,8 +6,8 @@ import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { At, Camera, Trash } from 'phosphor-react-native';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { At, Camera, Trash } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
@@ -166,7 +166,7 @@ export default function AdminEditUserScreen() {
     );
   }
 
-  const unicon = (name: React.ComponentProps<typeof UnIcon>['name']) => <UnIcon name={name} size={ICON} />;
+  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
 
   return (
     <KeyboardAvoidingView style={[styles.container, { backgroundColor: tokens.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -209,7 +209,7 @@ export default function AdminEditUserScreen() {
         </View>
 
         <SettingsGroup title="Profile">
-          <FormRow icon={unicon('profile')} value={fields.fullName} onChangeText={set('fullName')} placeholder="Full name" />
+          <FormRow icon={unicon('user')} value={fields.fullName} onChangeText={set('fullName')} placeholder="Full name" />
           <FormRow
             icon={<At size={22} color={tokens.text} weight="bold" />}
             value={fields.username}
@@ -226,9 +226,9 @@ export default function AdminEditUserScreen() {
 
         <SettingsGroup title="Links">
           {([
-            ['linkedin', 'linkedinUrl', 'https://linkedin.com/in/…'],
-            ['instagram', 'instagramUrl', 'https://instagram.com/…'],
-            ['github', 'githubUrl', 'https://github.com/…'],
+            ['linkedin-logo', 'linkedinUrl', 'https://linkedin.com/in/…'],
+            ['instagram-logo', 'instagramUrl', 'https://instagram.com/…'],
+            ['github-logo', 'githubUrl', 'https://github.com/…'],
             ['globe', 'websiteUrl', 'https://…'],
           ] as const).map(([iconName, key, placeholder]) => (
             <FormRow

@@ -3,7 +3,7 @@ import { Image as RNImage, Pressable, ScrollView, Share, StyleSheet, Text, View 
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import * as WebBrowser from 'expo-web-browser';
-import { Certificate as CertificateIcon, Export, FilePdf } from 'phosphor-react-native';
+import { Certificate as CertificateIcon, Export, FilePdf } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import Skeleton from '../components/Skeleton';

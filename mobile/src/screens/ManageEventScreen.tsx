@@ -31,7 +31,7 @@ import {
   UsersThree,
   Wallet,
   WhatsappLogo,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useManageEvent } from '../hooks/useManageEvent';
 import { getTeamStays } from '../lib/api/stays';

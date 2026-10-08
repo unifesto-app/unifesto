@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowSquareOut, Bell, CaretLeft, Envelope, LinkSimple, Star } from 'phosphor-react-native';
+import { ArrowSquareOut, Bell, CaretLeft, Envelope, LinkSimple, Star } from '@unifesto/unicon/react-native';
 import { useTheme } from '../context/ThemeContext';
 import { spacing, typography, borderRadius, shadows } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';

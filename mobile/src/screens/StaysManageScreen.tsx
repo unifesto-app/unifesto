@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bed, ClipboardText, House, Plus, QrCode } from 'phosphor-react-native';
+import { Bed, ClipboardText, House, Plus, QrCode } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

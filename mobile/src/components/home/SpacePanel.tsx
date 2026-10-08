@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarBlank, CaretRight, Gavel, Handshake, Plus, QrCode } from 'phosphor-react-native';
+import { CalendarBlank, CaretRight, Gavel, Handshake, Plus, QrCode } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

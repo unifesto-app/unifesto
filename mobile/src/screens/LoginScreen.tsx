@@ -24,7 +24,7 @@ import {
   WarningCircle,
   WhatsappLogo,
   X,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { cognitoDiscovery, COGNITO_REDIRECT_URI, exchangeCognitoCode } from '../lib/api/cognito';
 import * as AuthSession from 'expo-auth-session';

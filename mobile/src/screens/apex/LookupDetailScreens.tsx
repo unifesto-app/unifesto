@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from 'phosphor-react-native';
+import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';

@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { CheckCircle, Trash } from 'phosphor-react-native';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { CheckCircle, Trash } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTokens } from '../context/ThemeContext';
 import * as AuthAPI from '../lib/api/auth';
@@ -19,12 +19,12 @@ import { AppAlert } from '../components/ui/AppAlert';
 const GUTTER = spacing[6];
 const ICON = 28;
 
-type IconName = React.ComponentProps<typeof UnIcon>['name'];
+type IconName = GlyphName;
 
 const PROVIDER: Record<AuthAPI.UserIdentity['provider'], { label: string; icon: IconName }> = {
-  GOOGLE: { label: 'Google', icon: 'google' },
-  APPLE: { label: 'Apple', icon: 'apple' },
-  EMAIL: { label: 'Email', icon: 'mail' },
+  GOOGLE: { label: 'Google', icon: 'google-logo' },
+  APPLE: { label: 'Apple', icon: 'apple-logo' },
+  EMAIL: { label: 'Email', icon: 'envelope-simple' },
 };
 
 /** "+919876543210" → "+91 98765 43210"; anything else is shown as-is. */
@@ -164,7 +164,7 @@ export default function AccountSettingsScreen() {
     );
   }
 
-  const unicon = (name: IconName) => <UnIcon name={name} size={ICON} />;
+  const unicon = (name: IconName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
   const groups = groupByEmail(identities);
 
   return (
@@ -188,7 +188,7 @@ export default function AccountSettingsScreen() {
         action={groups.length > 0 ? { label: managing ? 'Done' : 'Manage', onPress: () => setManaging((v) => !v) } : undefined}
       >
         {groups.length === 0 ? (
-          <SettingsRow icon={unicon('mail')} label="No linked sign-ins" />
+          <SettingsRow icon={unicon('envelope-simple')} label="No linked sign-ins" />
         ) : (
           groups.map((group) => {
             const first = group.identities[0];
@@ -203,8 +203,8 @@ export default function AccountSettingsScreen() {
             const icon =
               group.identities.length > 1 ? (
                 <View style={styles.iconPair}>
-                  <UnIcon name={PROVIDER[first.provider].icon} size={20} />
-                  <UnIcon name={PROVIDER[group.identities[1].provider].icon} size={16} />
+                  <UnGlyph name={PROVIDER[first.provider].icon} size={20} color={tokens.text} />
+                  <UnGlyph name={PROVIDER[group.identities[1].provider].icon} size={16} color={tokens.text} />
                 </View>
               ) : (
                 unicon(PROVIDER[first.provider].icon)

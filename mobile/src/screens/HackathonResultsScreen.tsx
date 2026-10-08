@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } from 'phosphor-react-native';
+import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';

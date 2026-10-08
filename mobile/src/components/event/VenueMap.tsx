@@ -4,7 +4,7 @@ import { WebView } from 'react-native-webview';
 import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { MapPin, NavigationArrow } from 'phosphor-react-native';
+import { MapPin, NavigationArrow } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';

@@ -23,7 +23,7 @@ import {
   Ticket,
   WhatsappLogo,
   XCircle,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import FavoriteButton from '../components/FavoriteButton';
 import Skeleton from '../components/Skeleton';
 import AttendingShareModal from '../components/AttendingShareModal';

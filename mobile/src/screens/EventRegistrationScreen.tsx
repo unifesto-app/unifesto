@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarX, Ticket as TicketIcon, Timer } from 'phosphor-react-native';
+import { CalendarX, Ticket as TicketIcon, Timer } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventRegistration } from '../hooks/useEventRegistration';
 import { isWaitlistOnly } from '../lib/api/tickets';

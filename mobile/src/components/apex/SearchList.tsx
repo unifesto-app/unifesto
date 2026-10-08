@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../ui/RefreshControl';
-import { MagnifyingGlass } from 'phosphor-react-native';
+import { MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import type { Result } from '../../lib/api/apex';

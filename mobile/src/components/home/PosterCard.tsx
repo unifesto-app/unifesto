@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarBlank, MapPin } from 'phosphor-react-native';
+import { CalendarBlank, MapPin } from '@unifesto/unicon/react-native';
 import Skeleton from '../Skeleton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';

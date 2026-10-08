@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { FileCsv, MagnifyingGlass } from 'phosphor-react-native';
+import { FileCsv, MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
