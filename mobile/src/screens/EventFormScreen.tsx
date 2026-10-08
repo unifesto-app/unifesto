@@ -456,6 +456,8 @@ export default function EventFormScreen() {
   const paid = isPaid(draft);
   const errorFor = (f: DraftField) => (problem?.field === f ? problem.message : undefined);
   const whenError = errorFor('end') ?? errorFor('recurrence');
+  /** Imports often come from last year's edition; warn until the dates move forward (not a blocker). */
+  const pastImport = creating && !!imported && draft.start.getTime() < Date.now();
   /** Create shows one step at a time; edit shows everything. */
   const on = (s: number) => !creating || step === s;
   const atEnd = !creating || step === LAST_STEP;
@@ -482,7 +484,7 @@ export default function EventFormScreen() {
         {creating && !starting && step === 0 && (imported || restored || parentId) ? (
           <Notice>
             {imported
-              ? `Imported from ${imported.source === 'Website' ? 'the event page' : imported.source}. Check each step before creating. `
+              ? `Imported from ${imported.source === 'Website' ? 'the event page' : imported.source}. Check each step before creating.${pastImport ? ' Its dates have passed, so set new ones under When & where.' : ''} `
               : restored
                 ? 'Picked up where I left off. '
                 : ''}
@@ -583,6 +585,11 @@ export default function EventFormScreen() {
               <DateTimeRow label="Ends" value={draft.end} minimumDate={draft.start} onChange={(d) => set({ end: d })} />
             </SettingsGroup>
             {whenError ? <Text style={[styles.note, styles.errorNote, { color: tokens.danger }]}>{whenError}</Text> : null}
+            {!whenError && pastImport ? (
+              <Text style={[styles.note, styles.errorNote, { color: tokens.danger }]}>
+                These imported dates have passed. Set new ones before creating.
+              </Text>
+            ) : null}
 
             {/* A series can't be a sub-event; on edit only an existing series changes its rule. */}
             {(creating && !parentId) || original?.isRecurring ? (
