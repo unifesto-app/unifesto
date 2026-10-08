@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import Svg, { Path } from 'react-native-svg';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
@@ -53,13 +54,15 @@ type TicketDetail = ReturnType<typeof useTicketDetail>;
 
 /**
  * The entry pass, in the fusion cosmos look of the event page: the sky lit by
- * the banner's hue, a pass (event, tear line, big QR stub), a facts card (when,
+ * the event's colour (white-label, else the banner's hue), a pass (event, tear line, big QR stub), a facts card (when,
  * where, ticket type, view event), then grouped actions with refund/cancel last.
  */
 export default function TicketDetailScreen() {
   const params = useLocalSearchParams<{ id: string; ticket?: string }>();
   const t = useTicketDetail(params.ticket);
-  const hue = useBannerAccent(t.cover, t.eventSlug ? { event: t.eventSlug } : null);
+  const coverHue = useBannerAccent(t.cover, t.eventSlug ? { event: t.eventSlug } : null);
+  // An approved white-label colour wins over the cover's hue.
+  const hue = t.brandColor || coverHue;
   return (
     <CosmosWash active={!!hue}>
       <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
@@ -78,6 +81,9 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   const { width } = useWindowDimensions();
   const [reportOpen, setReportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // The pass outline is drawn to its measured size; notchY = centre of the tear line.
+  const [passSize, setPassSize] = useState<{ width: number; height: number } | null>(null);
+  const [notchY, setNotchY] = useState<number | null>(null);
   const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
 
   const cancelled = t.status === 'cancelled';
@@ -102,7 +108,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         <HeaderActions>
           {!cancelled ? (
             <HeaderIconButton onPress={() => setShareOpen(true)} label="Share that I'm going">
-              <Export size={24} color={tokens.text} />
+              <Export size={24} color={c.text} />
             </HeaderIconButton>
           ) : null}
           <HeaderMenu
@@ -126,7 +132,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, tokens.text]);
+  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, c.text]);
 
   if (!t.ticket) {
     return (
@@ -166,8 +172,11 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         }
       >
         {/* ── The pass: what it's for, then the stub that gets scanned ── */}
-        <View style={[styles.pass, { backgroundColor: c.raised }]}>
-          <View style={styles.passTop}>
+        <View onLayout={(e) => setPassSize(e.nativeEvent.layout)}>
+          {passSize && notchY != null ? (
+            <PassShape width={passSize.width} height={passSize.height} notchY={notchY} fill={c.raised} />
+          ) : null}
+          <View style={styles.passTop} onLayout={(e) => setNotchY(e.nativeEvent.layout.height + NOTCH / 2)}>
             <View style={[styles.thumb, { backgroundColor: c.card }]}>
               {t.cover ? (
                 <Image source={{ uri: t.cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -184,11 +193,9 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             </View>
           </View>
 
-          {/* Tear line with notches bitten out of both edges */}
+          {/* Tear line between the notches PassShape cuts out of both edges */}
           <View style={styles.perfRow}>
-            <View style={[styles.notch, styles.notchLeft, { backgroundColor: c.bg }]} />
-            <View style={[styles.perf, { borderColor: c.border }]} />
-            <View style={[styles.notch, styles.notchRight, { backgroundColor: c.bg }]} />
+            <View style={[styles.perf, { borderColor: c.outline }]} />
           </View>
 
           <View style={styles.stub}>
@@ -259,7 +266,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* Why it was cancelled, when there's something worth saying */}
         {cancelled && (t.cancellation.reason || t.cancellation.byOrganiser || t.cancelledAt) ? (
-          <SettingsGroup title="Cancellation" plain>
+          <SettingsGroup title="Cancellation" plain surface={c.raised}>
             {t.cancelledAt ? (
               <SettingsRow
                 label={t.cancellation.byOrganiser ? 'Cancelled by the organiser' : 'Cancelled'}
@@ -279,7 +286,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
         {/* ── Actions ── */}
         {!cancelled ? (
-          <SettingsGroup>
+          <SettingsGroup surface={c.raised}>
             <SettingsRow
               icon={<ShareNetwork size={24} color={c.text} />}
               label="Share that I'm going"
@@ -335,7 +342,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {!cancelled && t.waGroup?.inviteUrl ? (
-          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`}>
+          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`} surface={c.raised}>
             <SettingsRow
               icon={<WhatsappLogo size={24} color="#25D366" weight="fill" />}
               label={`Join the ${t.waGroup.isCommunity ? 'community' : 'group'}`}
@@ -360,7 +367,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {t.checkins.length > 0 ? (
-          <SettingsGroup title="Check-ins">
+          <SettingsGroup title="Check-ins" surface={c.raised}>
             {t.checkins.map((c) => {
               const at = new Date(c.checkedInAt);
               const when = `${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${formatTime(at)}`;
@@ -377,7 +384,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         ) : null}
 
         {t.canRefund || t.canCancelFree ? (
-          <SettingsGroup>
+          <SettingsGroup surface={c.raised}>
             {t.canRefund ? (
               <SettingsRow
                 icon={<ArrowCounterClockwise size={24} color={tokens.danger} />}
@@ -451,10 +458,31 @@ function Fact({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?
   );
 }
 
+/**
+ * The pass card's fill as one path: rounded corners plus a semicircle bitten
+ * out of each edge at the tear line. Real cut-outs, so whatever is behind the
+ * pass (the banner nebula) shows through the notches instead of a painted disc.
+ */
+function PassShape({ width: w, height: h, notchY: y, fill }: { width: number; height: number; notchY: number; fill: string }) {
+  const r = cosmosCardRadius;
+  const n = NOTCH / 2;
+  const d = [
+    `M ${r} 0 H ${w - r} A ${r} ${r} 0 0 1 ${w} ${r}`,
+    `V ${y - n} A ${n} ${n} 0 0 0 ${w} ${y + n}`,
+    `V ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} H ${r} A ${r} ${r} 0 0 1 0 ${h - r}`,
+    `V ${y + n} A ${n} ${n} 0 0 0 0 ${y - n}`,
+    `V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`,
+  ].join(' ');
+  return (
+    <Svg width={w} height={h} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Path d={d} fill={fill} />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   passTop: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start', padding: spacing[5] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: 12, overflow: 'hidden' },
   badge: {
@@ -472,10 +500,8 @@ const styles = StyleSheet.create({
   title: { marginTop: spacing[2], fontSize: 17, lineHeight: 25, ...cosmosFont.display },
   perfRow: { height: NOTCH, justifyContent: 'center' },
   perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
-  notch: { position: 'absolute', width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2 },
-  notchLeft: { left: -NOTCH / 2 },
-  notchRight: { right: -NOTCH / 2 },
   stub: { alignItems: 'center', paddingTop: spacing[4], paddingBottom: spacing[6], paddingHorizontal: spacing[5] },
+  // The QR keeps its white field: scanners need the contrast.
   qr: { padding: 14, borderRadius: cosmosCardRadius, backgroundColor: '#ffffff' },
   voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   code: { marginTop: spacing[4], fontSize: 18, fontVariant: ['tabular-nums'], ...cosmosFont.display, letterSpacing: 2 },
