@@ -52,7 +52,7 @@ export interface WorkspaceData {
   /** Non-zero Apex queues, busiest first. Empty + loaded ⇒ all clear. */
   needs: ApexNeed[];
   loadingApex: boolean;
-  refresh: () => void;
+  refresh: () => Promise<void>;
 }
 
 /**
@@ -158,8 +158,8 @@ export function useWorkspaceCards(): WorkspaceData {
   );
 
   const refresh = useCallback(() => {
-    void access.refresh();
     load(true);
+    return access.refresh();
   }, [access, load]);
 
   const now = new Date();

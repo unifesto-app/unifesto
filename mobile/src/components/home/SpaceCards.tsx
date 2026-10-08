@@ -21,7 +21,7 @@ const RING = 3;
 const TILE_W = 164;
 const TILE_LOGO = 48;
 
-function Monogram({ name, size, radius }: { name: string; size: number; radius: number }) {
+export function Monogram({ name, size, radius }: { name: string; size: number; radius: number }) {
   const c = useCosmos();
   return (
     <LinearGradient
