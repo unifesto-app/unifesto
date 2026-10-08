@@ -6,7 +6,7 @@ import {
   Trophy,
   Phone,
   Question,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { SectionEditor, type FieldDef } from "./SectionEditor";
 import {
   createAgenda,

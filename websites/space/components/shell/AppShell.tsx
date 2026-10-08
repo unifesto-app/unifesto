@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { List, MagnifyingGlass } from "@phosphor-icons/react";
+import { List, MagnifyingGlass } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import {
   MobileNavProvider,

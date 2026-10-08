@@ -3,7 +3,7 @@
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 
-import { Money, ArrowRight, CheckCircle, Clock } from "@phosphor-icons/react";
+import { Money, ArrowRight, CheckCircle, Clock } from "@unifesto/unicon/react";
 import {
   getSpacePayouts,
   getEventPayoutSummary,

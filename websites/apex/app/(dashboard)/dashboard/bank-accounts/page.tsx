@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bank, CheckCircle, XCircle, Clock } from "@phosphor-icons/react";
+import { Bank, CheckCircle, XCircle, Clock } from "@unifesto/unicon/react";
 import {
   getAllBankAccounts,
   updateBankAccountStatus,

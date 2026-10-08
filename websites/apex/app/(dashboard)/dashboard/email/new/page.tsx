@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PaperPlaneTilt, Eye, Flask, ArrowLeft } from "@phosphor-icons/react";
+import { PaperPlaneTilt, Eye, Flask, ArrowLeft } from "@unifesto/unicon/react";
 import {
   createCampaign,
   previewBody,

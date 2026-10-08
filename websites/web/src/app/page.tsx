@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import MarqueeBar from "@/components/MarqueeBar";

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight } from "@unifesto/unicon/react";
 import CosmicBackdrop, { HorizonFloor } from "@/components/site/CosmicBackdrop";
 import CosmosPointer from "@/components/site/CosmosPointer";
 import { PassScreen } from "@/components/visuals/AppScreens";

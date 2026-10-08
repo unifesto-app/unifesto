@@ -9,7 +9,7 @@ import {
   LinkBreak,
   CalendarX,
   Info,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getEventById,
   getSeriesOccurrences,

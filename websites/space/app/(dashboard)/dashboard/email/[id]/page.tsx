@@ -11,7 +11,7 @@ import {
   ArrowLeft,
   WarningCircle,
   Trophy,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import {
   getCampaign,

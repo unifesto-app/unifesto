@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
-import { ArrowRight, DownloadSimple } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight, DownloadSimple } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";

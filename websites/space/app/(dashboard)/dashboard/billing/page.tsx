@@ -7,7 +7,7 @@ import {
   Buildings,
   Check,
   Lock,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { can } from "@/lib/types/rbac";

@@ -3,7 +3,7 @@
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 
-import { CaretDown, CaretRight } from "@phosphor-icons/react";
+import { CaretDown, CaretRight } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { WhiteLabelSection } from "@/components/white-label/WhiteLabelSection";

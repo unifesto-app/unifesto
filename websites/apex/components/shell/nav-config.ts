@@ -1,4 +1,4 @@
-import type { Icon } from "@phosphor-icons/react";
+import type { Icon } from "@unifesto/unicon/react";
 import {
   SquaresFour,
   Users,
@@ -33,7 +33,7 @@ import {
   Megaphone,
   LinkBreak,
   Flag,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import type { AppRole } from "@/lib/types/rbac";
 
 export interface NavItem {

@@ -1,6 +1,6 @@
 import { DownloadQr } from "@/components/visuals/DownloadQr";
 import type { ReactNode } from "react";
-import { MagnifyingGlass, House, Ticket, UsersThree, User, CalendarPlus, ShareNetwork, WhatsappLogo, Bed, VideoCamera, Certificate, Scan, Receipt, Bank, CaretRight, Plus, CellSignalFull, WifiHigh, BatteryFull } from "@phosphor-icons/react/dist/ssr";
+import { MagnifyingGlass, House, Ticket, UsersThree, User, CalendarPlus, ShareNetwork, WhatsappLogo, Bed, VideoCamera, Certificate, Scan, Receipt, Bank, CaretRight, Plus, CellSignalFull, WifiHigh, BatteryFull } from "@unifesto/unicon/react";
 
 /* The attendee app, drawn in HTML: a phone frame around real screens
    (Home feed, a ticket pass, the event-adjacent extras). No image bytes,

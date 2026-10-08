@@ -9,7 +9,7 @@ import {
   Lock,
   Check,
   CircleNotch,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

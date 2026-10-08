@@ -8,7 +8,7 @@ import {
   CheckCircle,
   XCircle,
   Buildings,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   createSpaceRequest,
   getMySpaceRequests,

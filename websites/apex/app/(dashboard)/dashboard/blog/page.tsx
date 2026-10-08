@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Article, Plus, PencilSimple, Trash, Star } from "@phosphor-icons/react";
+import { Article, Plus, PencilSimple, Trash, Star } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ImageUploadCard } from "@/components/shared/ImageUploadCard";

@@ -10,7 +10,7 @@ import {
   Users,
   CalendarBlank,
   Clock,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import {
   createCampaign,

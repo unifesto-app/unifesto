@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle, Circle, ArrowRight } from "@phosphor-icons/react";
+import { CheckCircle, Circle, ArrowRight } from "@unifesto/unicon/react";
 import type { Event } from "@/lib/api/events-api";
 import {
   Card,

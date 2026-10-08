@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Plus, PencilSimple, Trash, X, Spinner } from "@phosphor-icons/react";
+import { Plus, PencilSimple, Trash, X, Spinner } from "@unifesto/unicon/react";
 import {
   Card,
   CardContent,

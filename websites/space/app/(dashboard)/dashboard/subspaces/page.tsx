@@ -10,7 +10,7 @@ import {
   Ticket,
   ChatsCircle,
   Coins,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import {
   getSubSpaceAnalytics,

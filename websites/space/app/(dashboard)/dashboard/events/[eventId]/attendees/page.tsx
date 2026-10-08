@@ -12,7 +12,7 @@ import {
   Plus,
   UploadSimple,
   WhatsappLogo,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getEventById } from "@/lib/api/events-api";
 import {
   getEventRegistrations,

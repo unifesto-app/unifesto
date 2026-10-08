@@ -1,5 +1,5 @@
 import { DownloadQr } from "@/components/visuals/DownloadQr";
-import { Bed, Check, IdentificationCard, WifiHigh, Drop, ForkKnife, Clock } from "@phosphor-icons/react/dist/ssr";
+import { Bed, Check, IdentificationCard, WifiHigh, Drop, ForkKnife, Clock } from "@unifesto/unicon/react";
 import { Panel } from "@/components/visuals/Product";
 import { Phone } from "@/components/visuals/AppScreens";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash, PencilSimple, ArrowBendDownRight } from "@phosphor-icons/react";
+import { Plus, Trash, PencilSimple, ArrowBendDownRight } from "@unifesto/unicon/react";
 import {
   createFormField,
   updateFormField,

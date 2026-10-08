@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Paperclip, X } from "@phosphor-icons/react";
+import { Paperclip, X } from "@unifesto/unicon/react";
 import {
   uploadFormFieldFile,
   type EventFormField,

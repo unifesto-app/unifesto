@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ImageSquare, Spinner, Check } from "@phosphor-icons/react";
+import { ImageSquare, Spinner, Check } from "@unifesto/unicon/react";
 import Cropper, { Point, Area } from "react-easy-crop";
 import {
   Card,

@@ -18,7 +18,7 @@ import {
   Trash,
   CircleNotch,
   X,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getUser,
   updateUser,

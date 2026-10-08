@@ -10,7 +10,7 @@ import {
   CheckCircle,
   XCircle,
   Lightning,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";

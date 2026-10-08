@@ -12,7 +12,7 @@ import {
   Receipt,
   Ticket,
   User as UserIcon,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getAdminTransaction,
   reconcileTransaction,

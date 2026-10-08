@@ -3,7 +3,7 @@
    channels only (email + WhatsApp). */
 
 import type { ReactNode } from "react";
-import { ArrowUpRight } from "@phosphor-icons/react";
+import { ArrowUpRight } from "@unifesto/unicon/react";
 import { SITE } from "@/lib/site";
 
 export const whatsappHref = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hi Unifesto Support")}`;

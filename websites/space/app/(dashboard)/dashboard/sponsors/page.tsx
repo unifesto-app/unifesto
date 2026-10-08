@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Handshake } from "@phosphor-icons/react";
+import { Handshake } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";

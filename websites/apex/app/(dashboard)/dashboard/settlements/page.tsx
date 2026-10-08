@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bank, Confetti, Clock, Wallet } from "@phosphor-icons/react";
+import { Bank, Confetti, Clock, Wallet } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import {
   getMyPayoutsUnpaginated,

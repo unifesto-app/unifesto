@@ -1,4 +1,4 @@
-import { Microphone, VideoCamera, ChatCircle, PhoneDisconnect, Record, LockSimple, BellRinging } from "@phosphor-icons/react/dist/ssr";
+import { Microphone, VideoCamera, ChatCircle, PhoneDisconnect, Record, LockSimple, BellRinging } from "@unifesto/unicon/react";
 import { Panel } from "@/components/visuals/Product";
 import { Phone } from "@/components/visuals/AppScreens";
 

@@ -3,7 +3,7 @@
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft } from "@unifesto/unicon/react";
 import { LiveKitRoom, VideoConference } from "@livekit/components-react";
 import "@livekit/components-styles";
 import { joinSession } from "@/lib/api/sessions-api";

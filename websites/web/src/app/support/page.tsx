@@ -10,7 +10,7 @@ import {
   FileText,
   ShieldCheck,
   Receipt,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SupportGroup, SupportRow, supportMailto, whatsappHref } from "@/components/support";

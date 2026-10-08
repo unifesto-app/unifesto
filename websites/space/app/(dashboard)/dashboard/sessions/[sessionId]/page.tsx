@@ -16,7 +16,7 @@ import {
   Trash,
   EyeSlash,
   ArrowCounterClockwise,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getSpaceSessionById,
   getSessionAttendees,

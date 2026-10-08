@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, PencilSimple, Trash, Buildings, ArrowsClockwise, UsersThree } from "@phosphor-icons/react";
+import { Plus, PencilSimple, Trash, Buildings, ArrowsClockwise, UsersThree } from "@unifesto/unicon/react";
 import {
   listSponsors,
   createSponsor,

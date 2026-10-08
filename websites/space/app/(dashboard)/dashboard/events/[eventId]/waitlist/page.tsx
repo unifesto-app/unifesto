@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Hourglass, MagnifyingGlass } from "@phosphor-icons/react";
+import { Hourglass, MagnifyingGlass } from "@unifesto/unicon/react";
 import {
   getEventWaitlist,
   getWaitlistSummary,

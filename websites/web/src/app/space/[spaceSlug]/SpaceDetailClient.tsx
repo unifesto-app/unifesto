@@ -3,7 +3,7 @@
 import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useState, useEffect, type CSSProperties } from "react";
-import { Buildings, UsersThree, CalendarBlank, CaretRight, ArrowUUpLeft, DeviceMobile } from "@phosphor-icons/react";
+import { Buildings, UsersThree, CalendarBlank, CaretRight, ArrowUUpLeft, DeviceMobile } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LeadCaptureForm from "@/components/LeadCaptureForm";

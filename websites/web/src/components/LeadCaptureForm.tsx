@@ -7,7 +7,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle } from "@unifesto/unicon/react";
 import type { LeadCapture } from "@/lib/api/leads";
 
 interface LeadCaptureFormProps {

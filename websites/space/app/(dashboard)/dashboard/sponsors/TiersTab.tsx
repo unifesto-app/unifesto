@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, PencilSimple, Trash, Stack } from "@phosphor-icons/react";
+import { Plus, PencilSimple, Trash, Stack } from "@unifesto/unicon/react";
 import {
   listTiers,
   createTier,

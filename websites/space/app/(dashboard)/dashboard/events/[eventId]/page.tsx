@@ -11,7 +11,7 @@ import {
   PencilSimple,
   Trash,
   CheckCircle,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getEventById, publishEvent, deleteEvent } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
 import { getCheckinStats, getAttendeeStats } from "@/lib/api/registrations-api";

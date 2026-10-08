@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle, WarningCircle } from "@phosphor-icons/react";
+import { ArrowLeft, CheckCircle, WarningCircle } from "@unifesto/unicon/react";
 import { getEventById } from "@/lib/api/events-api";
 import type { Event, EventTicketType, EventFormField } from "@/lib/api/events-api";
 import {

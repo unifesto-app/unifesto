@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check } from "@phosphor-icons/react/dist/ssr";
+import { Check } from "@unifesto/unicon/react";
 
 /* One idea, half words and half picture. Rows alternate sides so a run of
    them reads as a sequence, not a template. The heading level is a prop so

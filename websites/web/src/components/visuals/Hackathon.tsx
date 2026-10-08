@@ -1,4 +1,4 @@
-import { Trophy, Lifebuoy, Check } from "@phosphor-icons/react/dist/ssr";
+import { Trophy, Lifebuoy, Check } from "@unifesto/unicon/react";
 import { Panel } from "@/components/visuals/Product";
 
 /* Hackathon fragments: the live leaderboard, a judge's rubric, the help

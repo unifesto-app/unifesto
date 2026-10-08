@@ -3,7 +3,7 @@
 import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarBlank, MapPin, ArrowRight } from "@phosphor-icons/react";
+import { CalendarBlank, MapPin, ArrowRight } from "@unifesto/unicon/react";
 import type { Event } from "@/lib/api/events";
 
 interface EventCardProps {

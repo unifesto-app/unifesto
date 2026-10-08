@@ -1,4 +1,4 @@
-import type { Icon } from "@phosphor-icons/react";
+import type { Icon } from "@unifesto/unicon/react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils/cn";
 

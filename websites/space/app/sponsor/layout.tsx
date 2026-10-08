@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Handshake, SignOut } from "@phosphor-icons/react";
+import { Handshake, SignOut } from "@unifesto/unicon/react";
 import { clearAuthToken } from "@/lib/utils/auth";
 import { Button } from "@/components/ui/button";
 

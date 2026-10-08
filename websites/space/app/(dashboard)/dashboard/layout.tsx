@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { X, CaretLeft, CaretRight } from "@phosphor-icons/react";
+import { X, CaretLeft, CaretRight } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { useMobileNav } from "@/lib/context/MobileNavContext";
 import { useDrawerBehavior } from "@/lib/hooks/useDrawerBehavior";

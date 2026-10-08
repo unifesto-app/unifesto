@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowsClockwise, CheckCircle, XCircle, Clock, ArrowRight } from "@phosphor-icons/react";
+import { ArrowsClockwise, CheckCircle, XCircle, Clock, ArrowRight } from "@unifesto/unicon/react";
 import {
   getCuratorRefundQueue,
   curatorReviewRefund,

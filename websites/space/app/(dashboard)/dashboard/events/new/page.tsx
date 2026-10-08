@@ -9,7 +9,7 @@ import {
   Check,
   Plus,
   Trash,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useSession } from "@/lib/context/SessionContext";
 import { can } from "@/lib/types/rbac";

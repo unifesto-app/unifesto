@@ -12,7 +12,7 @@ import {
   Clock,
   ArrowCounterClockwise,
   Receipt,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getEventById } from "@/lib/api/events-api";
 import {
   getAllEventRegistrations,

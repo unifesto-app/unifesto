@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { MagnifyingGlass, Users as UsersIcon } from "@phosphor-icons/react";
+import { MagnifyingGlass, Users as UsersIcon } from "@unifesto/unicon/react";
 import { getUsers, type User } from "@/lib/api/admin-users-api";
 import { formatLastSeen, lastSeenTitle } from "@/lib/utils/last-seen";
 import { Input } from "@/components/ui/input";

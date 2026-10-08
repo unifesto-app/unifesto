@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, type Variants } from "motion/react";
-import { ArrowRight, CaretDown } from "@phosphor-icons/react";
+import { ArrowRight, CaretDown } from "@unifesto/unicon/react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLightSurfaceAt } from "@/lib/surface";

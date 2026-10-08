@@ -10,7 +10,7 @@ import {
   User,
   Clock,
   CurrencyInr,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getAllSessionsAdmin,
   PLATFORM_LABELS,

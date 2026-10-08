@@ -8,7 +8,7 @@ import {
   PaperPlaneTilt,
   Spinner,
   Check,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getEventWhatsappConfig,
   updateEvent,

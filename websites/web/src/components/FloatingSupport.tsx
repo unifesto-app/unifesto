@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChatCircleDots, EnvelopeSimple, Lifebuoy, WhatsappLogo, X } from "@phosphor-icons/react";
+import { ChatCircleDots, EnvelopeSimple, Lifebuoy, WhatsappLogo, X } from "@unifesto/unicon/react";
 import { useLightSurfaceAt } from "@/lib/surface";
 import { SITE } from "@/lib/site";
 import { SupportRow, supportMailto, whatsappHref } from "@/components/support";

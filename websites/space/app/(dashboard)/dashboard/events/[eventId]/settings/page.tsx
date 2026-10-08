@@ -9,7 +9,7 @@ import {
   Spinner,
   EyeSlash,
   ArrowCounterClockwise,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getEventById,
   cancelEvent,

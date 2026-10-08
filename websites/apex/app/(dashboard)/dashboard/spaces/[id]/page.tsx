@@ -34,7 +34,7 @@ import {
   PencilSimple,
   FloppyDisk,
   X,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import {
   getSpace,

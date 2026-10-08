@@ -14,7 +14,7 @@ import {
   ArrowDown,
   Eye,
   EyeSlash,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getManageTicketTypes,
   createTicketType,
