@@ -3,7 +3,7 @@
 // mail says. Copy rules: sentence case, no em dashes, crisp and specific.
 import {
   APEX, SPACE_APP, SUPPORT, WEB,
-  button, code, details, esc, greet, h1, inr, layout, link, list, note, p, qr, small, strong,
+  button, code, details, esc, faint, greet, h1, inr, layout, link, list, note, p, qr, small, strong,
 } from './layout';
 
 export interface Email {
@@ -265,7 +265,7 @@ export function eventUpdatedEmail(d: EventUpdatedData): Email {
   const rows = d.changes.map(
     (c): [string, string] => [
       c.field,
-      `<span style="text-decoration:line-through;color:#63636a;">${esc(c.oldValue)}</span><br>${esc(c.newValue)}`,
+      `${faint(`<s>${esc(c.oldValue)}</s>`)}<br>${esc(c.newValue)}`,
     ],
   );
   return {
@@ -760,7 +760,7 @@ export function weeklyReportEmail(d: WeeklyReportData): Email {
     html: layout(
       `${h1('Weekly report')}
       ${small(`Week of ${esc(d.weekStarting)}`)}
-      ${details(d.metrics.map((m): [string, string] => [m.label, `${esc(m.value)} <span style="color:#63636a;">(${esc(m.change)})</span>`]))}
+      ${details(d.metrics.map((m): [string, string] => [m.label, `${esc(m.value)} ${faint(`(${esc(m.change)})`)}`]))}
       ${button('Open analytics', `${APEX}/dashboard`)}`,
     ),
   };
