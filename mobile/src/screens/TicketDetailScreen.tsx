@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useState } from 'react';
+import Svg, { Path } from 'react-native-svg';
 import { ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
@@ -24,16 +25,19 @@ import AttendingShareModal from '../components/AttendingShareModal';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
+import { useBannerAccent } from '../hooks/useBannerPalette';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
 import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { useTokens } from '../context/ThemeContext';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 
 const GUTTER = spacing[6];
 const NOTCH = 22;
@@ -42,23 +46,40 @@ const THUMB_W = 88;
 const THUMB_H = 66;
 
 /**
- * The entry pass: one ticket card (event, when/where, ticket type, tear line,
- * big QR stub), then grouped actions — share, calendar, group, WhatsApp,
- * check-in history, and refund/cancel at the bottom.
+ * The entry pass, in the same fusion look as the event page: the cosmos sky
+ * lit by the event's colour (an approved white-label colour, else the cover's
+ * hue). One ticket card (event, when/where, ticket type, tear line, big QR
+ * stub), then grouped actions — share, calendar, group, WhatsApp, check-in
+ * history, and refund/cancel at the bottom.
  */
 export default function TicketDetailScreen() {
+  const params = useLocalSearchParams<{ id: string; ticket?: string }>();
+  const t = useTicketDetail(params.ticket);
+  const coverHue = useBannerAccent(t.cover, t.eventSlug ? { event: t.eventSlug } : null);
+  const hue = t.brandColor || coverHue;
+  return (
+    <CosmosWash active={!!hue}>
+      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
+        <TicketDetailView t={t} hue={hue} />
+      </CardSurfaceProvider>
+    </CosmosWash>
+  );
+}
+
+function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; hue: string | null }) {
+  const c = useCosmos();
   const tokens = useTokens();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ id: string; ticket?: string }>();
-  const t = useTicketDetail(params.ticket);
   const [reportOpen, setReportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // The pass outline is drawn to its measured size; notchY = centre of the tear line.
+  const [passSize, setPassSize] = useState<{ width: number; height: number } | null>(null);
+  const [notchY, setNotchY] = useState<number | null>(null);
   const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
 
-  const accent = t.brandColor || tokens.accent;
   const cancelled = t.status === 'cancelled';
   const qrSize = Math.min(220, width - GUTTER * 2 - spacing[16]);
 
@@ -75,7 +96,7 @@ export default function TicketDetailScreen() {
         <HeaderActions>
           {!cancelled ? (
             <HeaderIconButton onPress={() => setShareOpen(true)} label="Share that I'm going">
-              <Export size={24} color={tokens.text} />
+              <Export size={24} color={c.text} />
             </HeaderIconButton>
           ) : null}
           <HeaderMenu
@@ -99,16 +120,15 @@ export default function TicketDetailScreen() {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, tokens.text]);
+  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, c.text]);
 
   if (!t.ticket) {
     return (
-      <View style={[styles.flex, styles.center, { backgroundColor: tokens.bg }]}>
-        <TicketIcon size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>Ticket not found</Text>
-        <Text style={[styles.link, { color: accent }]} onPress={() => router.back()}>
-          Go back
-        </Text>
+      <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <TicketIcon size={48} color={c.muted} />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>Ticket not found</Text>
+        <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
   }
@@ -118,12 +138,13 @@ export default function TicketDetailScreen() {
       ? { text: 'Cancelled', color: tokens.danger, bg: 'rgba(239,68,68,0.14)' }
       : t.status === 'checkedIn'
         ? { text: 'Checked in', color: tokens.success, bg: 'rgba(16,185,129,0.14)' }
-        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: accent, bg: 'rgba(52,145,255,0.14)' };
+        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.text, bg: c.tint };
 
   const price = Number.isNaN(t.listPrice) ? null : t.listPrice === 0 ? 'Free' : `₹${t.listPrice.toLocaleString('en-IN')}`;
 
   return (
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} hue={hue} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
@@ -131,29 +152,31 @@ export default function TicketDetailScreen() {
           <RefreshControl
             refreshing={t.refreshing}
             onRefresh={t.refresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
       >
         {/* ── The pass ── */}
-        <View style={[styles.pass]}>
-          <CardBackdrop shape={styles.pass} />
-          <View style={styles.passTop}>
+        <View onLayout={(e) => setPassSize(e.nativeEvent.layout)}>
+          {passSize && notchY != null ? (
+            <PassShape width={passSize.width} height={passSize.height} notchY={notchY} fill={c.raised} />
+          ) : null}
+          <View style={styles.passTop} onLayout={(e) => setNotchY(e.nativeEvent.layout.height + NOTCH / 2)}>
             <View style={styles.headRow}>
-              <View style={[styles.thumb, { backgroundColor: tokens.surface }]}>
+              <View style={[styles.thumb, { backgroundColor: c.card }]}>
                 {t.cover ? (
                   <Image source={{ uri: t.cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
                 ) : (
-                  <LinearGradient colors={[accent, tokens.accentStrong]} style={StyleSheet.absoluteFill} />
+                  <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
                 )}
               </View>
               <View style={{ flex: 1, gap: 6 }}>
                 <View style={[styles.badge, { backgroundColor: badge.bg }]}>
                   <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
                 </View>
-                <Text style={[styles.title, { color: tokens.text }]} numberOfLines={3}>{t.title}</Text>
+                <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>{t.title}</Text>
               </View>
             </View>
 
@@ -164,26 +187,24 @@ export default function TicketDetailScreen() {
                 { label: t.isOnline ? 'Access' : 'Venue', value: t.venue },
               ].map((f, i) => (
                 <View key={f.label} style={[styles.fact, i === 2 && { flex: 1.4 }]}>
-                  <Text style={[styles.factLabel, { color: tokens.textMuted }]}>{f.label}</Text>
-                  <Text style={[styles.factValue, { color: tokens.text }]} numberOfLines={2}>{f.value}</Text>
+                  <Text style={[styles.factLabel, { color: c.muted }]}>{f.label}</Text>
+                  <Text style={[styles.factValue, { color: c.text }]} numberOfLines={2}>{f.value}</Text>
                 </View>
               ))}
             </View>
 
             {t.ticketTypeName ? (
-              <View style={[styles.typeRow, { backgroundColor: tokens.fill }]}>
-                <TicketIcon size={18} color={tokens.textSecondary} />
-                <Text style={[styles.typeName, { color: tokens.text }]} numberOfLines={1}>{t.ticketTypeName}</Text>
-                {price ? <Text style={[styles.typePrice, { color: accent }]}>{price}</Text> : null}
+              <View style={[styles.typeRow, { backgroundColor: c.tint }]}>
+                <TicketIcon size={18} color={c.soft} />
+                <Text style={[styles.typeName, { color: c.text }]} numberOfLines={1}>{t.ticketTypeName}</Text>
+                {price ? <Text style={[styles.typePrice, { color: c.text }]}>{price}</Text> : null}
               </View>
             ) : null}
           </View>
 
-          {/* Tear line with notches bitten out of both edges */}
+          {/* Tear line between the notches PassShape cuts out of both edges */}
           <View style={styles.perfRow}>
-            <View style={[styles.notch, styles.notchLeft, { backgroundColor: tokens.bg }]} />
-            <View style={[styles.perf, { borderColor: tokens.border }]} />
-            <View style={[styles.notch, styles.notchRight, { backgroundColor: tokens.bg }]} />
+            <View style={[styles.perf, { borderColor: c.outline }]} />
           </View>
 
           {/* The stub: what gets scanned at the door */}
@@ -193,12 +214,12 @@ export default function TicketDetailScreen() {
             </View>
             {cancelled ? (
               <View style={[StyleSheet.absoluteFill, styles.center]}>
-                <XCircle size={40} color={tokens.danger} weight="fill" />
-                <Text style={[styles.voidText, { color: tokens.danger }]}>This ticket was cancelled</Text>
+                <XCircle size={40} color={c.danger} weight="fill" />
+                <Text style={[styles.voidText, { color: c.danger }]}>This ticket was cancelled</Text>
               </View>
             ) : null}
-            {t.code ? <Text style={[styles.code, { color: tokens.text }]}>{t.code}</Text> : null}
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>
+            {t.code ? <Text style={[styles.code, { color: c.text }]}>{t.code}</Text> : null}
+            <Text style={[styles.hint, { color: c.muted }]}>
               {t.status === 'checkedIn' ? 'You are checked in. Enjoy the event.' : 'Show this at the entrance'}
             </Text>
           </View>
@@ -206,7 +227,7 @@ export default function TicketDetailScreen() {
 
         {/* Why it was cancelled, when there's something worth saying */}
         {cancelled && (t.cancellation.reason || t.cancellation.byOrganiser || t.cancelledAt) ? (
-          <SettingsGroup title="Cancellation" plain>
+          <SettingsGroup title="Cancellation" plain surface={c.raised}>
             {t.cancelledAt ? (
               <SettingsRow
                 label={t.cancellation.byOrganiser ? 'Cancelled by the organiser' : 'Cancelled'}
@@ -217,8 +238,8 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.cancellation.reason ? (
               <View style={styles.reason}>
-                <Text style={[styles.reasonLabel, { color: tokens.textMuted }]}>Reason</Text>
-                <Text style={[styles.reasonText, { color: tokens.text }]}>{t.cancellation.reason}</Text>
+                <Text style={[styles.reasonLabel, { color: c.muted }]}>Reason</Text>
+                <Text style={[styles.reasonText, { color: c.text }]}>{t.cancellation.reason}</Text>
               </View>
             ) : null}
           </SettingsGroup>
@@ -226,18 +247,18 @@ export default function TicketDetailScreen() {
 
         {/* ── Actions ── */}
         {!cancelled ? (
-          <SettingsGroup>
+          <SettingsGroup surface={c.raised}>
             <SettingsRow
-              icon={<ShareNetwork size={24} color={accent} />}
+              icon={<ShareNetwork size={24} color={c.text} />}
               label="Share that I'm going"
               onPress={() => setShareOpen(true)}
             />
             {t.eventSlug && t.startIso && upcoming ? (
-              <SettingsRow icon={<CalendarBlank size={24} color={accent} />} label="Add to calendar" onPress={t.addToCalendar} />
+              <SettingsRow icon={<CalendarBlank size={24} color={c.text} />} label="Add to calendar" onPress={t.addToCalendar} />
             ) : null}
             {t.canManageGroup ? (
               <SettingsRow
-                icon={<UsersThree size={24} color={accent} />}
+                icon={<UsersThree size={24} color={c.text} />}
                 label="Manage group"
                 onPress={() => router.push(`/group/${t.registrationId}` as never)}
               />
@@ -245,7 +266,7 @@ export default function TicketDetailScreen() {
             {/* Group leads edit everything from Manage group. */}
             {t.canEditDetails && !t.canManageGroup ? (
               <SettingsRow
-                icon={<PencilSimple size={24} color={accent} />}
+                icon={<PencilSimple size={24} color={c.text} />}
                 label="Edit my details"
                 value={
                   t.editDetailsUntil
@@ -259,7 +280,7 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.hackathon && t.eventId ? (
               <SettingsRow
-                icon={<Trophy size={24} color={accent} />}
+                icon={<Trophy size={24} color={c.text} />}
                 label="Unifesto Sprint"
                 value={t.hackathon.cancelled ? 'Cancelled' : t.hackathon.teamCode ?? undefined}
                 onPress={() => router.push(`/hackathon/${t.eventId}` as never)}
@@ -267,7 +288,7 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.competition && t.eventId ? (
               <SettingsRow
-                icon={<Trophy size={24} color={accent} />}
+                icon={<Trophy size={24} color={c.text} />}
                 label="Competition"
                 value={t.competition.status}
                 onPress={() => router.push(`/competition/${t.eventId}` as never)}
@@ -275,20 +296,20 @@ export default function TicketDetailScreen() {
             ) : null}
             {stay ? (
               <SettingsRow
-                icon={<Bed size={24} color={accent} />}
+                icon={<Bed size={24} color={c.text} />}
                 label={stay.label}
                 value={stay.value}
                 onPress={() => router.push(stay.href as never)}
               />
             ) : null}
             {t.eventSlug ? (
-              <SettingsRow icon={<TicketIcon size={24} color={accent} />} label="View event" onPress={openEvent} />
+              <SettingsRow icon={<TicketIcon size={24} color={c.text} />} label="View event" onPress={openEvent} />
             ) : null}
           </SettingsGroup>
         ) : null}
 
         {!cancelled && t.waGroup?.inviteUrl ? (
-          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`}>
+          <SettingsGroup title={`WhatsApp ${t.waGroup.isCommunity ? 'community' : 'group'}`} surface={c.raised}>
             <SettingsRow
               icon={<WhatsappLogo size={24} color="#25D366" weight="fill" />}
               label={`Join the ${t.waGroup.isCommunity ? 'community' : 'group'}`}
@@ -296,7 +317,7 @@ export default function TicketDetailScreen() {
               onPress={t.openWhatsapp}
             />
             <SettingsRow
-              icon={<CheckCircle size={24} color={t.waGroup.joined ? tokens.success : tokens.textMuted} weight={t.waGroup.joined ? 'fill' : 'regular'} />}
+              icon={<CheckCircle size={24} color={t.waGroup.joined ? tokens.success : c.muted} weight={t.waGroup.joined ? 'fill' : 'regular'} />}
               label="I've joined"
               trailing={
                 <Switch
@@ -313,7 +334,7 @@ export default function TicketDetailScreen() {
         ) : null}
 
         {t.checkins.length > 0 ? (
-          <SettingsGroup title="Check-ins">
+          <SettingsGroup title="Check-ins" surface={c.raised}>
             {t.checkins.map((c) => {
               const at = new Date(c.checkedInAt);
               const when = `${at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · ${formatTime(at)}`;
@@ -330,10 +351,10 @@ export default function TicketDetailScreen() {
         ) : null}
 
         {t.canRefund || t.canCancelFree ? (
-          <SettingsGroup>
+          <SettingsGroup surface={c.raised}>
             {t.canRefund ? (
               <SettingsRow
-                icon={<ArrowCounterClockwise size={24} color={tokens.danger} />}
+                icon={<ArrowCounterClockwise size={24} color={c.danger} />}
                 label="Refund and status"
                 danger
                 onPress={() =>
@@ -351,7 +372,7 @@ export default function TicketDetailScreen() {
             ) : null}
             {t.canCancelFree ? (
               <SettingsRow
-                icon={<XCircle size={24} color={tokens.danger} />}
+                icon={<XCircle size={24} color={c.danger} />}
                 label={t.cancelling ? 'Cancelling…' : 'Cancel ticket'}
                 danger
                 onPress={t.confirmCancel}
@@ -385,49 +406,62 @@ export default function TicketDetailScreen() {
   );
 }
 
+/**
+ * The pass card's fill as one path: rounded corners plus a semicircle bitten
+ * out of each edge at the tear line. Real cut-outs, so whatever is behind the
+ * pass (the banner nebula) shows through the notches instead of a painted disc.
+ */
+function PassShape({ width: w, height: h, notchY: y, fill }: { width: number; height: number; notchY: number; fill: string }) {
+  const r = cosmosCardRadius;
+  const n = NOTCH / 2;
+  const d = [
+    `M ${r} 0 H ${w - r} A ${r} ${r} 0 0 1 ${w} ${r}`,
+    `V ${y - n} A ${n} ${n} 0 0 0 ${w} ${y + n}`,
+    `V ${h - r} A ${r} ${r} 0 0 1 ${w - r} ${h} H ${r} A ${r} ${r} 0 0 1 0 ${h - r}`,
+    `V ${y + n} A ${n} ${n} 0 0 0 0 ${y - n}`,
+    `V ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`,
+  ].join(' ');
+  return (
+    <Svg width={w} height={h} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Path d={d} fill={fill} />
+    </Svg>
+  );
+}
+
 const styles = StyleSheet.create({
   reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
-  reasonLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...font() },
+  reasonLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  pass: { borderRadius: borderRadius['2xl'], overflow: 'hidden' },
   passTop: { padding: spacing[5], gap: spacing[5] },
   headRow: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start' },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
-  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: borderRadius.full },
-  badgeText: { fontSize: 12, ...font('semibold') },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...font('heading') },
+  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: 12, overflow: 'hidden' },
+  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  badgeText: { fontSize: 12, ...cosmosFont.strong },
+  // Michroma runs wide: 17 reads like a 20 in a narrower face.
+  title: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   facts: { flexDirection: 'row', gap: spacing[3] },
   fact: { flex: 1, gap: 3 },
-  factLabel: { fontSize: typography.fontSize.xs, ...font('medium') },
-  factValue: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.3, ...font('semibold') },
+  factLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  factValue: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.3, ...cosmosFont.strong },
   typeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
-    borderRadius: borderRadius.lg,
+    borderRadius: 14,
   },
-  typeName: { flex: 1, fontSize: typography.fontSize.sm, ...font('semibold') },
-  typePrice: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  typeName: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  typePrice: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   perfRow: { height: NOTCH, justifyContent: 'center' },
   perf: { marginHorizontal: NOTCH, borderTopWidth: 1.5, borderStyle: 'dashed' },
-  notch: { position: 'absolute', width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2 },
-  notchLeft: { left: -NOTCH / 2 },
-  notchRight: { right: -NOTCH / 2 },
   stub: { alignItems: 'center', paddingTop: spacing[4], paddingBottom: spacing[6], paddingHorizontal: spacing[5] },
-  qr: { padding: 14, borderRadius: borderRadius.xl, backgroundColor: '#ffffff' },
-  voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  code: {
-    marginTop: spacing[4],
-    fontSize: typography.fontSize.xl,
-    letterSpacing: 2,
-    fontVariant: ['tabular-nums'],
-    ...font('heading'),
-  },
-  hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
-  link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...font('semibold') },
+  // The QR keeps its white field: scanners need the contrast.
+  qr: { padding: 14, borderRadius: 16, backgroundColor: '#ffffff' },
+  voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  code: { marginTop: spacing[4], fontSize: 18, ...cosmosFont.display, letterSpacing: 2 },
+  hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
 });
