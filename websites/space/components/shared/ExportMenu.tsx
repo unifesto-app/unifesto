@@ -7,7 +7,7 @@ import {
   CaretDown,
   LockSimple,
   ArrowUpRight,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import type { ExportFormat } from "@/lib/api/registrations-api";
 

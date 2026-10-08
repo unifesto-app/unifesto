@@ -11,7 +11,7 @@ import {
   Globe,
   Envelope,
   Phone,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Briefcase } from "@phosphor-icons/react";
+import { Briefcase } from "@unifesto/unicon/react";
 import {
   deleteApplication,
   getApplications,

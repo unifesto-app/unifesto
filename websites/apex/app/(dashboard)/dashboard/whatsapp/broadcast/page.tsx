@@ -15,7 +15,7 @@ import {
   CheckCircle,
   CaretLeft,
   ArrowClockwise,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Input } from "@/components/ui/input";

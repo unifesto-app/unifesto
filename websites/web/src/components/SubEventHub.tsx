@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarBlank, MapPin, ArrowRight, Stack } from "@phosphor-icons/react";
+import { CalendarBlank, MapPin, ArrowRight, Stack } from "@unifesto/unicon/react";
 import type { SubEventSummary } from "@/lib/api/events";
 
 /* Turn an ISO date into "Mar 16, 2026" without ever risking an Invalid Date. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PaperPlaneRight } from "@phosphor-icons/react";
+import { PaperPlaneRight } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils/cn";

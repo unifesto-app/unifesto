@@ -19,7 +19,7 @@ import {
   GoogleLogo,
   MicrosoftOutlookLogo,
   DownloadSimple,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { SubEventHub, ParentEventChip } from "@/components/SubEventHub";

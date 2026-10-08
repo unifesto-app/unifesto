@@ -12,7 +12,7 @@ import {
   ArrowRight,
   CaretLeft,
   CaretRight,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EventCard from "@/components/EventCard";

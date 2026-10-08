@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { UsersFour, MagnifyingGlass, Plus, Trash } from "@phosphor-icons/react";
+import { UsersFour, MagnifyingGlass, Plus, Trash } from "@unifesto/unicon/react";
 import {
   getEventTeam,
   searchTeamCandidates,

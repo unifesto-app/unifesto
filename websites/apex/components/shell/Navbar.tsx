@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { SignOut, User } from "@phosphor-icons/react";
+import { SignOut, User } from "@unifesto/unicon/react";
 import backendClient from "@/lib/api/backend-client";
 import { clearAuthToken } from "@/lib/utils/auth";
 import { useSession } from "@/lib/context/SessionContext";

@@ -9,7 +9,7 @@ import {
   Spinner,
   CheckCircle,
   Warning,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";

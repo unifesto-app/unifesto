@@ -16,7 +16,7 @@ import {
   X,
   Buildings,
   Clock,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getEventById,
   getManagedSubEvents,

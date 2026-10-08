@@ -1,4 +1,4 @@
-import { Plus } from "@phosphor-icons/react/dist/ssr";
+import { Plus } from "@unifesto/unicon/react";
 import Section from "@/components/site/Section";
 import JsonLd, { faqLd } from "@/components/site/JsonLd";
 import type { Faq } from "@/lib/site";

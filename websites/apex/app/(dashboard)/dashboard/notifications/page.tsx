@@ -10,7 +10,7 @@ import {
   Plus,
   ArrowsClockwise,
   X,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   listPushCampaigns,
   createPushBroadcast,

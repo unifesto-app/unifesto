@@ -8,7 +8,7 @@ import {
   Trophy,
   Phone,
   Question,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getEventById, type Event } from "@/lib/api/events-api";
 import { SectionEditor, type FieldDef } from "@/components/events/SectionEditor";
 import {

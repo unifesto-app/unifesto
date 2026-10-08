@@ -21,8 +21,8 @@ import {
   ArrowsClockwise,
   Tag,
   WhatsappLogo,
-} from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
+import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
 import { cn } from "@/lib/utils/cn";

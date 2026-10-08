@@ -11,7 +11,7 @@ import {
   ArrowRight,
   CaretRight,
   CurrencyInr,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";

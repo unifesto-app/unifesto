@@ -1,4 +1,4 @@
-import { MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
+import { MagnifyingGlass } from "@unifesto/unicon/react";
 
 interface EmptyStateProps {
   onClear: () => void;

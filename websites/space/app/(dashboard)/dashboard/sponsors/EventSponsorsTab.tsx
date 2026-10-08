@@ -9,7 +9,7 @@ import {
   UserPlus,
   CheckCircle,
   Circle,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getSpaceEvents, type Event } from "@/lib/api/events-api";
 import {
   listEventSponsors,

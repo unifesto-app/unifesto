@@ -17,7 +17,7 @@ import {
   CurrencyInr,
   Phone,
   Envelope,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getEventAdmin,
   publishEventAdmin,

@@ -16,7 +16,7 @@ import {
   Check,
   ArrowCounterClockwise,
   Warning,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getRegistrationById,
   requestTransfer,

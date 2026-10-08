@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MagnifyingGlass, X, CircleNotch } from "@phosphor-icons/react";
+import { MagnifyingGlass, X, CircleNotch } from "@unifesto/unicon/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 

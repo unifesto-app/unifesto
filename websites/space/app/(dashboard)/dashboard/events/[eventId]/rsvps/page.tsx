@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Lightning, Plus, Trash, PencilSimple } from "@phosphor-icons/react";
+import { Lightning, Plus, Trash, PencilSimple } from "@unifesto/unicon/react";
 import {
   getEventById,
   createTicketType,

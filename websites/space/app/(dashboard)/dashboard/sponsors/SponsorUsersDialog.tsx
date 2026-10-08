@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Trash, PaperPlaneTilt } from "@phosphor-icons/react";
+import { Trash, PaperPlaneTilt } from "@unifesto/unicon/react";
 import {
   listSponsorUsers,
   inviteSponsorUser,

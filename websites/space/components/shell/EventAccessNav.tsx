@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarBlank } from "@phosphor-icons/react";
+import { CalendarBlank } from "@unifesto/unicon/react";
 import type { EventAccessEntry } from "@/lib/types/rbac";
 import { cn } from "@/lib/utils/cn";
 

@@ -16,7 +16,7 @@ import {
   Plus,
   Ticket,
   CurrencyInr,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getSpaceEvents } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
 import type { SpaceWithHierarchy } from "@/lib/types/rbac";

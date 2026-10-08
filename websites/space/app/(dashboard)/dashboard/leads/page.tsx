@@ -10,8 +10,8 @@ import {
   ChatCircle,
   CheckCircle,
   Archive,
-} from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
+import type { Icon } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import {
   listLeads,

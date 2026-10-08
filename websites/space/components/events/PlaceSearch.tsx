@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MagnifyingGlass, MapPin, CheckCircle, X } from "@phosphor-icons/react";
+import { MagnifyingGlass, MapPin, CheckCircle, X } from "@unifesto/unicon/react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
 import {

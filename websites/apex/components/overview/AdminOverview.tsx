@@ -10,7 +10,7 @@ import {
   CurrencyInr,
   PaperPlaneTilt,
   ArrowRight,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getAnalyticsOverview,
   type AnalyticsOverview,

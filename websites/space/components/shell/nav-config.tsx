@@ -16,8 +16,8 @@ import {
   EnvelopeSimple,
   Handshake,
   Funnel,
-} from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
+import type { Icon } from "@unifesto/unicon/react";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
 
 export interface NavItem {

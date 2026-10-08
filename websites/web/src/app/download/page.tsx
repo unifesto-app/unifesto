@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Ticket, Lightning, DeviceMobile, CircleNotch } from '@phosphor-icons/react';
+import { Ticket, Lightning, DeviceMobile, CircleNotch } from '@unifesto/unicon/react';
 import PageHero from '@/components/site/PageHero';
 import Section from '@/components/site/Section';
 import Navbar from '@/components/Navbar';

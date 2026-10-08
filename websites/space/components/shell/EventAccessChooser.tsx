@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarBlank, CaretRight } from "@phosphor-icons/react";
+import { CalendarBlank, CaretRight } from "@unifesto/unicon/react";
 import type { EventAccessEntry } from "@/lib/types/rbac";
 import { Badge } from "@/components/ui/badge";
 

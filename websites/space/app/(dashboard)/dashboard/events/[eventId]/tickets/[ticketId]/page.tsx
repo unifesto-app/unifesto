@@ -9,7 +9,7 @@ import {
   User,
   CheckCircle,
   ArrowRight,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getEventById,
   getManageTicketTypes,

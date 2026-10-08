@@ -9,7 +9,7 @@ import {
   FlowArrow,
   CaretDown,
   ArrowRight,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   BarChart,
   Bar,

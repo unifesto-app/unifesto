@@ -13,7 +13,7 @@ import {
   Plus,
   Trash,
   MapPin,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getCheckinStats,
   scanQRCode,

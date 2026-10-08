@@ -16,7 +16,7 @@ import {
   CaretUp,
   CaretDown,
   CalendarBlank,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getPlatformFinancials,
   getPlatformFinancialsBreakdown,

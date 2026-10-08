@@ -8,7 +8,7 @@ import {
   QrCode,
   CheckCircle,
   Users,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getAuthToken } from "@/lib/utils/auth";
 import { apexUrl } from "@/lib/types/rbac";
 import {

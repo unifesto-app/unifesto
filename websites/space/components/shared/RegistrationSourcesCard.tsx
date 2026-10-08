@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, LinkSimple } from "@phosphor-icons/react";
+import { Check, LinkSimple } from "@unifesto/unicon/react";
 import {
   Card,
   CardContent,

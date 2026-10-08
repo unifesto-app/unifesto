@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
-import { Check, ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { Check, ArrowRight } from "@unifesto/unicon/react";
 import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
 import FaqList from "@/components/site/FaqList";

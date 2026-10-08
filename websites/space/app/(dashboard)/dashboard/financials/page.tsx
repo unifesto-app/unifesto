@@ -7,7 +7,7 @@ import {
   Money,
   ArrowsClockwise,
   Bank,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OverviewPanel } from "@/components/finance/OverviewPanel";

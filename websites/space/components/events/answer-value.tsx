@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Paperclip } from "@phosphor-icons/react";
+import { Paperclip } from "@unifesto/unicon/react";
 import { getFormUploadUrl } from "@/lib/api/events-api";
 import { formatAnswer, isFileAnswer } from "@/lib/form-questions";
 

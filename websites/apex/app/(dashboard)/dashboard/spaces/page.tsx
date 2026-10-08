@@ -8,7 +8,7 @@ import {
   Users,
   Stack,
   SealCheck,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import {
   getMySpaces,

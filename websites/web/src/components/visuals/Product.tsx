@@ -1,7 +1,7 @@
 import { DownloadQr } from "@/components/visuals/DownloadQr";
 import type { ReactNode } from "react";
 import { SpaceScreen } from "@/components/visuals/AppScreens";
-import { Check, ScanSmiley, WhatsappLogo, Link as LinkIcon, Certificate, Handshake, FilePdf, Bed } from "@phosphor-icons/react/dist/ssr";
+import { Check, ScanSmiley, WhatsappLogo, Link as LinkIcon, Certificate, Handshake, FilePdf, Bed } from "@unifesto/unicon/react";
 
 /* Product fragments for the organiser platform, rebuilt in HTML so they
    cost no image bytes, stay sharp at any density and never shift layout.

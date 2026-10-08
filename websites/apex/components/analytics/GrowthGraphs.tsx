@@ -18,7 +18,7 @@ import {
   Legend,
   type TooltipContentProps,
 } from "recharts";
-import { Users, Buildings, CalendarBlank } from "@phosphor-icons/react";
+import { Users, Buildings, CalendarBlank } from "@unifesto/unicon/react";
 import {
   getGrowthTimeseries,
   type GrowthMonth,

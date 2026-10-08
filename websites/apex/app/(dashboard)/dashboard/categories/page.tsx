@@ -9,7 +9,7 @@ import {
   ArrowUp,
   ArrowDown,
   X,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getCategories,
   createCategory,

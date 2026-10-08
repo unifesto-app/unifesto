@@ -10,7 +10,7 @@ import {
   MagnifyingGlass,
   CheckCircle,
   Info,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { getEventById } from "@/lib/api/events-api";
 import type { Event, EventTicketType } from "@/lib/api/events-api";
 import {

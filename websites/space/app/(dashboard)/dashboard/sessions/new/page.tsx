@@ -3,7 +3,7 @@
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react";
+import { ArrowLeft } from "@unifesto/unicon/react";
 import {
   createSession,
   PLATFORM_LABELS,

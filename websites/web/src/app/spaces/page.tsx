@@ -3,7 +3,7 @@
 import { optimized } from "@/lib/img";
 import { useState, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { MagnifyingGlass, Buildings, UsersThree, CaretRight, ArrowRight } from "@phosphor-icons/react";
+import { MagnifyingGlass, Buildings, UsersThree, CaretRight, ArrowRight } from "@unifesto/unicon/react";
 import PageHero from "@/components/site/PageHero";
 import Section from "@/components/site/Section";
 import Navbar from "@/components/Navbar";

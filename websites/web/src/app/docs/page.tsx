@@ -12,7 +12,7 @@ import {
   Package,
   MagnifyingGlass,
   WarningCircle,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 
 type DocSection = "getting-started" | "api" | "authentication" | "events" | "webhooks" | "sdks";
 

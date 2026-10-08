@@ -10,7 +10,7 @@ import {
   Plus,
   Cards,
   ArrowsClockwise,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   listCampaigns,
   type EmailCampaign,

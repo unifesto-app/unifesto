@@ -8,7 +8,7 @@ import {
   Ticket,
   CurrencyInr,
   Stack,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getAllEventsAdmin,
   type AdminEvent,

@@ -16,7 +16,7 @@ import {
   Stack,
   UsersThree,
   ArrowsClockwise,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { getSpaceEvents } from "@/lib/api/events-api";
 import type { Event, EventStatus } from "@/lib/api/events-api";

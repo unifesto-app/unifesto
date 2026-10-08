@@ -1,5 +1,5 @@
-import type { Icon } from "@phosphor-icons/react";
-import { TrendUp, TrendDown, Minus } from "@phosphor-icons/react";
+import type { Icon } from "@unifesto/unicon/react";
+import { TrendUp, TrendDown, Minus } from "@unifesto/unicon/react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";

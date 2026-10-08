@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Cards, Plus, PencilSimple, Trash, ArrowLeft } from "@phosphor-icons/react";
+import { Cards, Plus, PencilSimple, Trash, ArrowLeft } from "@unifesto/unicon/react";
 import {
   listTemplates,
   createTemplate,

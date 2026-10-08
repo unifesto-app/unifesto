@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { ArrowRight } from "@unifesto/unicon/react";
 import Section from "@/components/site/Section";
 
 /* The page closes on the horizon band: one decision, two doors. */

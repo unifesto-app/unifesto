@@ -8,7 +8,7 @@ import {
   Check,
   CircleNotch,
   ArrowCounterClockwise,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";

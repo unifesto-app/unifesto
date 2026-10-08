@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { DeviceMobile } from '@phosphor-icons/react';
+import { DeviceMobile } from '@unifesto/unicon/react';
 import { openAppOrStore, detectMobilePlatform } from '@/lib/appLinks';
 
 function SignupRedirect() {

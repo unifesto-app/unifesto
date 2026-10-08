@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Percent, Plus, Trash, PencilSimple, Tag } from "@phosphor-icons/react";
+import { Percent, Plus, Trash, PencilSimple, Tag } from "@unifesto/unicon/react";
 import {
   getEventCoupons,
   createCoupon,

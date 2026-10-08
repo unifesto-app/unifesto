@@ -4,7 +4,7 @@ import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { CaretRight } from "@phosphor-icons/react";
+import { CaretRight } from "@unifesto/unicon/react";
 import { getEventById } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
 import { Skeleton } from "@/components/ui/skeleton";

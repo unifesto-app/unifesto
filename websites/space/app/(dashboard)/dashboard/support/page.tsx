@@ -3,7 +3,7 @@
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 
-import { Lifebuoy, Plus, CaretLeft } from "@phosphor-icons/react";
+import { Lifebuoy, Plus, CaretLeft } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";

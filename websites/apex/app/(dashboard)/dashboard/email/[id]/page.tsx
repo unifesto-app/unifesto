@@ -9,7 +9,7 @@ import {
   XCircle,
   ArrowLeft,
   WarningCircle,
-} from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
 import {
   getCampaign,
   cancelCampaign,

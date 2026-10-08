@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash, FloppyDisk, Spinner, TextT, QrCode } from "@phosphor-icons/react";
+import { Plus, Trash, FloppyDisk, Spinner, TextT, QrCode } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

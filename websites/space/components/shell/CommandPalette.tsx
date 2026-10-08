@@ -7,8 +7,8 @@ import {
   ArrowRight,
   Buildings,
   SignOut,
-} from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+} from "@unifesto/unicon/react";
+import type { Icon } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { useCommandPalette } from "@/lib/context/CommandPaletteContext";
 import { clearAuthToken } from "@/lib/utils/auth";

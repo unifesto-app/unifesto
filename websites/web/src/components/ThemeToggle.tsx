@@ -1,6 +1,6 @@
 "use client";
 
-import { Desktop, Moon, Sun } from "@phosphor-icons/react";
+import { Desktop, Moon, Sun } from "@unifesto/unicon/react";
 
 const ORDER = ["system", "light", "dark"] as const;
 

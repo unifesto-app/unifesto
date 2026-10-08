@@ -15,7 +15,7 @@ import {
   Legend,
   type TooltipContentProps,
 } from "recharts";
-import { ChartLineUp } from "@phosphor-icons/react";
+import { ChartLineUp } from "@unifesto/unicon/react";
 import {
   getFinancialTimeseries,
   type FinancialMonth,

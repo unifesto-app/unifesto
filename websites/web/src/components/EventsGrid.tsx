@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { MagnifyingGlass, ArrowRight } from "@phosphor-icons/react";
+import { MagnifyingGlass, ArrowRight } from "@unifesto/unicon/react";
 import EventCard from "./EventCard";
 import { getEvents, filterEvents, type Event } from "@/lib/api/events";
 
