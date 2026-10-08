@@ -1,8 +1,12 @@
-// The Unifesto email shell and its building blocks. Monochrome like the web
-// brand: white card on a pale grey page, near-black type, one dark pill button,
-// the blue wordmark as the only colour. Everything is inline-styled tables
-// because Gmail drops <style> blocks in many contexts and Outlook ignores most
-// layout CSS, so classes and gradients don't survive the trip.
+// The Unifesto email shell and its building blocks, in the web's monochrome
+// cosmos theme: content sits straight on the ground (white in light, black in
+// dark), raised wells for details, one pill button, the wordmark in ink.
+//
+// Light is inline on every element, so clients that strip <style> (Gmail
+// apps, many webmail views) still get a complete light email. Each themed
+// element also carries a token class; the <style> block swaps those to the
+// dark palette under prefers-color-scheme (Apple Mail, iOS, Outlook for Mac,
+// Hey...) and under Outlook.com's [data-ogsc]/[data-ogsb] dark-mode hooks.
 //
 // Helpers take HTML. Anything a person typed (names, titles, reasons) must go
 // through esc() before it reaches them.
@@ -12,21 +16,62 @@ export const SPACE_APP = 'https://space.unifesto.app';
 export const APEX = 'https://apex.unifesto.app';
 export const SUPPORT = 'support@unifesto.app';
 
-const C = {
-  page: '#f4f4f5',
-  card: '#ffffff',
+// Same roles as websites/web globals.css (night / night-3 / paper / muted).
+const LIGHT = {
+  ground: '#ffffff',
   well: '#f4f4f5',
   text: '#111113',
   soft: '#3f3f46',
   muted: '#63636a',
   line: '#e4e4e7',
-  link: '#0062ff',
-  danger: '#b42318',
-  dangerWell: '#fdf0ef',
-  successWell: '#edf7f0',
+  btn: '#111113',
+  btnText: '#ffffff',
+  danger: '#d93636',
+  dangerWell: '#fdf0f0',
+  successWell: '#eef7f1',
 };
-const FONT = `'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
-const LOGO = `${WEB}/UnifestoAppWordmark.png`;
+const DARK: typeof LIGHT = {
+  ground: '#000000',
+  well: '#141416',
+  text: '#ececee',
+  soft: '#b4b4ba',
+  muted: '#8a8a90',
+  line: '#232327',
+  btn: '#e8e8ea',
+  btnText: '#000000',
+  danger: '#ff6b6b',
+  dangerWell: '#2a1315',
+  successWell: '#0f1f16',
+};
+type Token = keyof typeof LIGHT;
+
+/** Inline light colour + the class that flips it in dark mode. */
+const bg = (t: Token) => ({ cls: `b-${t}`, css: `background:${LIGHT[t]};` });
+const fg = (t: Token) => ({ cls: `c-${t}`, css: `color:${LIGHT[t]};` });
+
+const TOKENS = Object.keys(LIGHT) as Token[];
+const darkRules = (scope: string, prop: 'background' | 'color' | 'both') =>
+  TOKENS.flatMap((t) => [
+    ...(prop !== 'color' ? [`${scope}.b-${t}{background:${DARK[t]} !important;}`] : []),
+    ...(prop !== 'background' ? [`${scope}.c-${t}{color:${DARK[t]} !important;}`] : []),
+  ]).join('');
+
+const STYLE = `
+:root{color-scheme:light dark;supported-color-schemes:light dark;}
+.logo-dark{display:none;}
+@media (prefers-color-scheme: dark){
+${darkRules('', 'both')}
+.l-line{border-color:${DARK.line} !important;}
+.logo-light{display:none !important;}
+.logo-dark{display:block !important;max-height:none !important;}
+}
+${darkRules('[data-ogsb] ', 'background')}
+${darkRules('[data-ogsc] ', 'color')}
+`;
+
+const FONT = `'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
+const LOGO_LIGHT = `${WEB}/email/wordmark-black.png`;
+const LOGO_DARK = `${WEB}/email/wordmark-white.png`;
 
 export function esc(value: unknown): string {
   return String(value ?? '')
@@ -43,32 +88,40 @@ export const inr = (n: number) =>
 
 /** A full HTML document around `body`. `preheader` is the inbox preview line. */
 export function layout(body: string, preheader = ''): string {
+  const ground = bg('ground');
+  const soft = fg('soft');
+  const muted = fg('muted');
+  const a = `class="${muted.cls}" style="${muted.css}"`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="light only">
-<meta name="supported-color-schemes" content="light only">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <title>Unifesto</title>
+<style>${STYLE}</style>
 </head>
-<body style="margin:0;padding:0;background:${C.page};-webkit-text-size-adjust:100%;">
+<body class="${ground.cls}" style="margin:0;padding:0;${ground.css}-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}&#8203;</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.page};">
-<tr><td align="center" style="padding:32px 16px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
-    <tr><td style="padding:0 8px 20px;">
-      <a href="${WEB}" style="text-decoration:none;"><img src="${LOGO}" width="112" alt="Unifesto" style="display:block;width:112px;height:auto;border:0;"></a>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="${ground.cls}" style="${ground.css}">
+<tr><td align="center" style="padding:40px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+    <tr><td style="padding:0 0 32px;">
+      <a href="${WEB}" style="text-decoration:none;">
+        <img class="logo-light" src="${LOGO_LIGHT}" width="112" height="16" alt="Unifesto" style="display:block;width:112px;height:16px;border:0;">
+        <!--[if !mso]><!--><div class="logo-dark" style="display:none;max-height:0;overflow:hidden;mso-hide:all;"><img src="${LOGO_DARK}" width="112" height="16" alt="Unifesto" style="display:block;width:112px;height:16px;border:0;"></div><!--<![endif]-->
+      </a>
     </td></tr>
-    <tr><td style="background:${C.card};border-radius:20px;padding:32px 24px;font-family:${FONT};font-size:16px;line-height:1.6;color:${C.soft};">
+    <tr><td class="${soft.cls}" style="font-family:${FONT};font-size:16px;line-height:1.6;${soft.css}">
       ${body}
     </td></tr>
-    <tr><td style="padding:24px 8px 0;font-family:${FONT};font-size:13px;line-height:1.6;color:${C.muted};">
-      Questions? Reply to this email or write to <a href="mailto:${SUPPORT}" style="color:${C.muted};">${SUPPORT}</a>.<br>
-      <a href="${WEB}" style="color:${C.muted};">Unifesto</a> &middot;
-      <a href="${WEB}/privacy" style="color:${C.muted};">Privacy</a> &middot;
-      <a href="${WEB}/terms" style="color:${C.muted};">Terms</a>
+    <tr><td class="l-line ${muted.cls}" style="padding:24px 0 0;border-top:1px solid ${LIGHT.line};font-family:${FONT};font-size:13px;line-height:1.6;${muted.css}">
+      Questions? Reply to this email or write to <a href="mailto:${SUPPORT}" ${a}>${SUPPORT}</a>.<br>
+      <a href="${WEB}" ${a}>Unifesto</a> &middot;
+      <a href="${WEB}/privacy" ${a}>Privacy</a> &middot;
+      <a href="${WEB}/terms" ${a}>Terms</a>
     </td></tr>
   </table>
 </td></tr>
@@ -77,69 +130,83 @@ export function layout(body: string, preheader = ''): string {
 </html>`;
 }
 
+/** Opening tag pieces for a themed element: class attr + inline style. */
+const themed = (tokens: Array<{ cls: string; css: string }>, extra = '') =>
+  `class="${tokens.map((t) => t.cls).join(' ')}" style="${tokens.map((t) => t.css).join('')}${extra}"`;
+
 export const h1 = (html: string) =>
-  `<h1 style="margin:0 0 16px;font-family:${FONT};font-size:24px;line-height:1.3;font-weight:600;color:${C.text};">${html}</h1>`;
+  `<h1 ${themed([fg('text')], `margin:0 0 16px;font-family:${FONT};font-size:26px;line-height:1.25;font-weight:600;letter-spacing:-0.01em;`)}>${html}</h1>`;
 
 export const p = (html: string) => `<p style="margin:0 0 16px;">${html}</p>`;
 
 export const small = (html: string) =>
-  `<p style="margin:0 0 16px;font-size:14px;color:${C.muted};">${html}</p>`;
+  `<p ${themed([fg('muted')], 'margin:0 0 16px;font-size:14px;')}>${html}</p>`;
+
+/** Secondary inline text (old values, deltas). */
+export const faint = (html: string) => `<span ${themed([fg('muted')])}>${html}</span>`;
 
 export const strong = (text: unknown) =>
-  `<strong style="color:${C.text};font-weight:600;">${esc(text)}</strong>`;
+  `<strong ${themed([fg('text')], 'font-weight:600;')}>${esc(text)}</strong>`;
 
 export const link = (label: string, url: string) =>
-  `<a href="${esc(url)}" style="color:${C.link};text-decoration:underline;">${esc(label)}</a>`;
+  `<a href="${esc(url)}" ${themed([fg('text')], 'text-decoration:underline;')}>${esc(label)}</a>`;
 
 /** Bulletproof pill button (a table cell, so Outlook keeps the fill). */
 export const button = (label: string, url: string) => `
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;">
-  <tr><td style="background:${C.text};border-radius:999px;">
-    <a href="${esc(url)}" style="display:inline-block;padding:14px 28px;font-family:${FONT};font-size:15px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:999px;">${esc(label)}</a>
+  <tr><td ${themed([bg('btn')], 'border-radius:999px;')}>
+    <a href="${esc(url)}" ${themed([fg('btnText')], `display:inline-block;padding:14px 28px;font-family:${FONT};font-size:15px;font-weight:600;text-decoration:none;border-radius:999px;`)}>${esc(label)}</a>
   </td></tr>
 </table>`;
 
-/** Label/value rows in a grey well. Rows with an empty value are dropped. */
+const well = (inner: string, tone: Token = 'well', pad = '20px') =>
+  `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" ${themed([bg(tone)], 'margin:8px 0 24px;border-radius:14px;')}>
+<tr><td style="padding:${pad};font-family:${FONT};">${inner}</td></tr></table>`;
+
+/** Label/value rows in a raised well. Rows with an empty value are dropped. */
 export function details(rows: Array<[label: string, valueHtml: string | null | undefined | false]>, title?: string): string {
   const kept = rows.filter(([, v]) => v);
   if (!kept.length && !title) return '';
   const head = title
-    ? `<tr><td colspan="2" style="padding:0 0 ${kept.length ? 12 : 0}px;font-size:17px;line-height:1.4;font-weight:600;color:${C.text};">${title}</td></tr>`
+    ? `<tr><td colspan="2" ${themed([fg('text')], `padding:0 0 ${kept.length ? 12 : 0}px;font-size:17px;line-height:1.4;font-weight:600;`)}>${title}</td></tr>`
     : '';
   const body = kept
     .map(
       ([label, value], i) => `<tr>
-  <td valign="top" style="padding:${i ? 8 : 0}px 16px 0 0;font-size:14px;color:${C.muted};">${esc(label)}</td>
-  <td valign="top" style="padding:${i ? 8 : 0}px 0 0;font-size:15px;color:${C.text};">${value}</td>
+  <td valign="top" ${themed([fg('muted')], `padding:${i ? 8 : 0}px 16px 0 0;font-size:14px;`)}>${esc(label)}</td>
+  <td valign="top" ${themed([fg('text')], `padding:${i ? 8 : 0}px 0 0;font-size:15px;`)}>${value}</td>
 </tr>`,
     )
     .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;background:${C.well};border-radius:14px;">
-<tr><td style="padding:20px;font-family:${FONT};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="word-break:break-word;">${head}${body}</table>
-</td></tr></table>`;
+  return well(
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="word-break:break-word;">${head}${body}</table>`,
+  );
 }
 
 /** A soft callout. `danger` for problems, `success` for good news. */
 export function note(html: string, tone: 'neutral' | 'danger' | 'success' = 'neutral'): string {
-  const bg = tone === 'danger' ? C.dangerWell : tone === 'success' ? C.successWell : C.well;
-  const color = tone === 'danger' ? C.danger : C.soft;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;background:${bg};border-radius:14px;">
-<tr><td style="padding:16px 20px;font-family:${FONT};font-size:15px;line-height:1.6;color:${color};">${html}</td></tr></table>`;
+  const wellTone: Token = tone === 'danger' ? 'dangerWell' : tone === 'success' ? 'successWell' : 'well';
+  const color = fg(tone === 'danger' ? 'danger' : 'soft');
+  return well(`<div ${themed([color], 'font-size:15px;line-height:1.6;')}>${html}</div>`, wellTone, '16px 20px');
 }
 
 /** A one-time code, big and spaced out so it's easy to read and copy. */
 export const code = (value: string) =>
-  `<div style="margin:8px 0 24px;padding:20px;background:${C.well};border-radius:14px;text-align:center;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:32px;font-weight:600;letter-spacing:8px;color:${C.text};">${esc(value)}</div>`;
+  well(
+    `<div ${themed([fg('text')], "text-align:center;font-family:'SF Mono',Menlo,Consolas,monospace;font-size:32px;font-weight:600;letter-spacing:8px;")}>${esc(value)}</div>`,
+  );
 
-/** Check-in QR on a white tile, with the ticket code under it when there is one. */
+/** Check-in QR on a white tile (white in both themes so it always scans). */
 export function qr(data: string, ticketCode?: string): string {
   const src = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(data)}`;
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px;background:${C.well};border-radius:14px;">
-<tr><td align="center" style="padding:20px 16px;font-family:${FONT};">
+  return well(
+    `<div align="center">
   <div style="display:inline-block;padding:12px;background:#ffffff;border-radius:14px;"><img src="${src}" width="180" height="180" alt="Check-in QR code" style="display:block;border:0;"></div>
-  <div style="padding-top:12px;font-size:14px;color:${C.muted};">Show this at check-in${ticketCode ? `<br><span style="font-size:15px;font-weight:600;letter-spacing:1px;color:${C.text};">${esc(ticketCode)}</span>` : ''}</div>
-</td></tr></table>`;
+  <div ${themed([fg('muted')], 'padding-top:12px;font-size:14px;')}>Show this at check-in${ticketCode ? `<br><span ${themed([fg('text')], 'font-size:15px;font-weight:600;letter-spacing:1px;')}>${esc(ticketCode)}</span>` : ''}</div>
+</div>`,
+    'well',
+    '20px 16px',
+  );
 }
 
 export const list = (items: string[]) =>
