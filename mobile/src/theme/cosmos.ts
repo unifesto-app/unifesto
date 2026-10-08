@@ -1,6 +1,7 @@
 // "Monochrome cosmos": the 2026 web brand (websites/web/src/app/globals.css),
 // ported for the login, splash and Home. Black ground, light type, one silver accent; the
 // light set flips the same roles exactly like the web's [data-theme="light"].
+import React, { createContext, useContext, useMemo } from 'react';
 import { useTokens } from '../context/ThemeContext';
 
 const dark = {
@@ -49,8 +50,34 @@ export type Cosmos = typeof dark;
 
 export const cosmosFor = (scheme: 'dark' | 'light'): Cosmos => (scheme === 'dark' ? dark : light);
 
+const WashContext = createContext<Partial<Cosmos> | null>(null);
+
 export function useCosmos(): Cosmos {
-  return cosmosFor(useTokens().scheme);
+  const base = cosmosFor(useTokens().scheme);
+  const wash = useContext(WashContext);
+  return useMemo(() => (wash ? { ...base, ...wash } : base), [base, wash]);
+}
+
+/**
+ * Page lit by a colour (the event banner's nebula, see CosmosBackdrop `hue`).
+ * Cards and secondary text turn translucent so they pick up the light where it
+ * falls instead of sitting on it as grey slabs; the ground, primary text and
+ * the silver accent stay as they are.
+ */
+export function CosmosWash({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const { scheme } = useTokens();
+  const value = useMemo<Partial<Cosmos> | null>(() => {
+    if (!active) return null;
+    const ink = scheme === 'dark' ? '255, 255, 255' : '0, 0, 0';
+    return {
+      card: `rgba(255, 255, 255, ${scheme === 'dark' ? 0.05 : 0.45})`,
+      raised: `rgba(255, 255, 255, ${scheme === 'dark' ? 0.08 : 0.6})`,
+      soft: `rgba(${ink}, 0.78)`,
+      muted: `rgba(${ink}, 0.6)`,
+      tint: `rgba(${ink}, 0.06)`,
+    };
+  }, [active, scheme]);
+  return React.createElement(WashContext.Provider, { value }, children);
 }
 
 /** Families registered in app/_layout.tsx. Michroma has one weight: never bold it. */
