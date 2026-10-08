@@ -155,7 +155,8 @@ export function GlassFill({
       glassEffectStyle={variant}
       colorScheme={isDark ? 'dark' : 'light'}
       isInteractive={interactive}
-      tintColor={tint}
+      // Clear light glass over a white page is invisible; a faint ink tint keeps the card's edge.
+      tintColor={tint ?? (isDark ? undefined : 'rgba(0, 0, 0, 0.04)')}
       style={[StyleSheet.absoluteFill, { borderRadius: radius }]}
       pointerEvents="none"
     />

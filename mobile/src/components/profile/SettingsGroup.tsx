@@ -52,7 +52,7 @@ export function SettingsGroup({ title, action, plain, surface, style, children }
         </View>
       ) : null}
       <View style={[styles.card, surface ? { backgroundColor: surface } : null]}>
-        {surface ? null : <CardBackdrop />}
+        {surface ? null : <CardBackdrop shape={styles.card} />}
         {rows.map((row, i) => (
           <View key={i}>
             {row}
