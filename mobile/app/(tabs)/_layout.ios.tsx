@@ -1,5 +1,5 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useTheme } from '../../src/context/ThemeContext';
+import { useCosmos } from '../../src/theme/cosmos';
 import { useSpaceAccess } from '../../src/context/SpaceAccessContext';
 import usePlatformAdmin from '../../src/hooks/usePlatformAdmin';
 import { FONT_BODY_MEDIUM } from '../../src/theme/typography';
@@ -8,8 +8,8 @@ import { FONT_BODY_MEDIUM } from '../../src/theme/typography';
 // shrinks while scrolling down and returns on scroll up. Icons are plain SF
 // Symbols — no custom backgrounds behind them.
 export default function TabsLayout() {
-  // Status bar + native Appearance are driven by ThemeProvider.
-  const { tokens } = useTheme();
+  // Monochrome cosmos: silver selected, muted idle (matches Home/Tickets/Profile).
+  const c = useCosmos();
   // Operators only (Space Admin, Curator, Co-Curator, Crew, Judge, Mentor).
   const { sections } = useSpaceAccess();
   // Unifesto platform staff only.
@@ -17,11 +17,11 @@ export default function TabsLayout() {
 
   return (
     <NativeTabs
-      tintColor={tokens.accent}
-      iconColor={{ default: tokens.textMuted, selected: tokens.accent }}
+      tintColor={c.primary}
+      iconColor={{ default: c.muted, selected: c.primary }}
       labelStyle={{
-        default: { fontFamily: FONT_BODY_MEDIUM, fontSize: 10, color: tokens.textMuted },
-        selected: { fontFamily: FONT_BODY_MEDIUM, fontSize: 10, color: tokens.accent },
+        default: { fontFamily: FONT_BODY_MEDIUM, fontSize: 10, color: c.muted },
+        selected: { fontFamily: FONT_BODY_MEDIUM, fontSize: 10, color: c.primary },
       }}
       minimizeBehavior="onScrollDown"
     >

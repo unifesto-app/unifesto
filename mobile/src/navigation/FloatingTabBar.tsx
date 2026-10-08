@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { House, ShieldCheck, SquaresFour, Ticket, User, type Icon } from '@unifesto/unicon/react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
 import { useTokens } from '../context/ThemeContext';
+import { useCosmos } from '../theme/cosmos';
 import { borderRadius, spacing } from '../theme/spacing';
 
 export const TAB_META: Record<string, { label: string; icon: Icon }> = {
@@ -15,26 +16,40 @@ export const TAB_META: Record<string, { label: string; icon: Icon }> = {
   profile: { label: 'Profile', icon: User },
 };
 
+const ITEM_W = 64;
+const GAP = spacing[1];
+const INDICATOR_W = 18;
+const SPRING = { damping: 18, stiffness: 240 };
+
 /**
  * Floating tab bar for Android (iOS uses the native Liquid Glass bar).
- * A compact dark capsule off the bottom edge; the active tab is shown by
- * colour, a filled icon and a small dot — no pill or chip behind icons.
+ * An opaque cosmos capsule off the bottom edge; the active tab is a silver,
+ * filled glyph with a short bar that slides between tabs — nothing behind icons.
  */
 export default function FloatingTabBar({
   state,
   navigation,
   hiddenRoutes = [],
 }: BottomTabBarProps & { hiddenRoutes?: string[] }) {
-  const tokens = useTokens();
+  const c = useCosmos();
+  const rippleColor = useTokens().pressed;
   const insets = useSafeAreaInsets();
+
+  const visible = state.routes.filter((r) => TAB_META[r.name] && !hiddenRoutes.includes(r.name));
+  const activeSlot = Math.max(0, visible.findIndex((r) => r.key === state.routes[state.index]?.key));
+
+  const x = useSharedValue(activeSlot * (ITEM_W + GAP));
+  useEffect(() => {
+    x.value = withSpring(activeSlot * (ITEM_W + GAP), SPRING);
+  }, [activeSlot, x]);
+  const indicatorStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, spacing[3]) + 4 }]}>
-      <View style={[styles.bar, { backgroundColor: tokens.scheme === 'dark' ? 'rgba(20,20,20,0.96)' : 'rgba(255,255,255,0.96)' }]}>
-        {state.routes.map((route, index) => {
+      <View style={[styles.bar, { backgroundColor: c.raised }]}>
+        {visible.map((route) => {
           const meta = TAB_META[route.name];
-          if (!meta || hiddenRoutes.includes(route.name)) return null;
-          const focused = state.index === index;
+          const focused = route.key === state.routes[state.index]?.key;
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
@@ -47,11 +62,15 @@ export default function FloatingTabBar({
               focused={focused}
               onPress={onPress}
               onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-              activeColor={tokens.accent}
-              idleColor={tokens.textMuted}
+              color={focused ? c.primary : c.muted}
+              rippleColor={rippleColor}
             />
           );
         })}
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.indicator, { backgroundColor: c.primary }, indicatorStyle]}
+        />
       </View>
     </View>
   );
@@ -63,26 +82,20 @@ function TabItem({
   focused,
   onPress,
   onLongPress,
-  activeColor,
-  idleColor,
+  color,
+  rippleColor,
 }: {
   label: string;
   Icon: Icon;
   focused: boolean;
   onPress: () => void;
   onLongPress: () => void;
-  activeColor: string;
-  idleColor: string;
+  color: string;
+  rippleColor: string;
 }) {
-  const rippleColor = useTokens().pressed;
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(focused ? 1.08 : 1, { damping: 14, stiffness: 220 }) }],
+    transform: [{ scale: withSpring(focused ? 1.06 : 1, SPRING) }],
   }));
-  const dotStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(focused ? 1 : 0, { duration: 160 }),
-    transform: [{ scale: withSpring(focused ? 1 : 0.2, { damping: 14, stiffness: 220 }) }],
-  }));
-  const color = focused ? activeColor : idleColor;
 
   return (
     <Pressable
@@ -91,14 +104,13 @@ function TabItem({
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
       accessibilityLabel={label}
-      android_ripple={{ color: rippleColor, borderless: true, radius: 36 }}
+      android_ripple={{ color: rippleColor, borderless: true, radius: 32 }}
       style={styles.item}
     >
       {/* Icon-only; the label stays as the accessibility name. */}
       <Animated.View style={iconStyle}>
         <Icon size={26} color={color} weight={focused ? 'fill' : 'regular'} />
       </Animated.View>
-      <Animated.View style={[styles.dot, { backgroundColor: activeColor }, dotStyle]} />
     </Pressable>
   );
 }
@@ -108,16 +120,24 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     borderRadius: borderRadius.full,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    gap: spacing[2],
-    // Lifts the capsule off content scrolling beneath it.
+    paddingHorizontal: spacing[2],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[3],
+    gap: GAP,
+    // Tonal elevation: opaque, lifted off content scrolling beneath it.
     shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 16,
+    elevation: 18,
   },
-  item: { width: 64, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, gap: 4 },
-  dot: { width: 4, height: 4, borderRadius: 2, marginTop: 2 },
+  item: { width: ITEM_W, height: 40, alignItems: 'center', justifyContent: 'center' },
+  indicator: {
+    position: 'absolute',
+    bottom: spacing[2],
+    left: spacing[2] + (ITEM_W - INDICATOR_W) / 2,
+    width: INDICATOR_W,
+    height: 3,
+    borderRadius: 2,
+  },
 });
