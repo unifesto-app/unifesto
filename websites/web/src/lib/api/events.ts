@@ -19,6 +19,7 @@ export interface Event {
   registration_start?: string;
   registration_end?: string;
   venue?: string;
+  venue_address?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -63,6 +64,8 @@ export interface Event {
    * still includes it (the backend enforces both).
    */
   branding?: { color: string | null; faviconUrl?: string | null } | null;
+  /** Spaces co-hosting alongside `space` ("by Host & Co-host"). */
+  co_hosts?: { id: string; name: string; slug?: string; logo_url?: string }[];
   /**
    * The parent "big event" this event is a sub-event of, or null/undefined for
    * a top-level event. Present on the event-detail response.
@@ -257,6 +260,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     start_date: (r.startDateTime ?? r.start_date) as string,
     end_date: (r.endDateTime ?? r.end_date) as string,
     venue: (r.venueName ?? r.venue) as string | undefined,
+    venue_address: (r.venueAddress ?? r.venue_address) as string | undefined,
     city: r.city as string | undefined,
     state: r.state as string | undefined,
     country: r.country as string | undefined,
@@ -282,6 +286,12 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     created_at: (r.createdAt ?? r.created_at) as string,
     updated_at: (r.updatedAt ?? r.updated_at) as string,
     branding: (r.branding ?? null) as Event["branding"],
+    co_hosts: ((r.coHosts ?? []) as Array<Record<string, unknown>>).map((h) => ({
+      id: h.id as string,
+      name: h.name as string,
+      slug: h.slug as string | undefined,
+      logo_url: (h.logoUrl ?? undefined) as string | undefined,
+    })),
     parent_event: mapSubEvent(
       (r.parentEvent ?? r.parent_event) as Record<string, unknown> | null,
     ),
