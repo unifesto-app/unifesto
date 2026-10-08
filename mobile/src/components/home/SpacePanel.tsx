@@ -184,7 +184,7 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
   );
 }
 
-function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode; title: string; meta: string; onPress: () => void }) {
+export function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode; title: string; meta: string; onPress: () => void }) {
   const c = useCosmos();
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}>
