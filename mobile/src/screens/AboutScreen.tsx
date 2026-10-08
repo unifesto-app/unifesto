@@ -17,7 +17,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 
 const STORE = Platform.OS === 'ios' ? 'App Store' : 'Play Store';
 
@@ -123,9 +122,7 @@ export default function AboutScreen() {
           </Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-
-          <GlassFill radius={cosmosCardRadius} />
+        <View style={[styles.card, { backgroundColor: c.raised }]}>
           <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
           <Text style={[styles.cardTitle, { color: c.text }]}>{card.title}</Text>
           <Text style={[styles.cardBody, { color: c.soft }]}>{card.body}</Text>

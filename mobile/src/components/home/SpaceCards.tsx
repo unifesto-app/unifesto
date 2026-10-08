@@ -7,7 +7,6 @@ import Skeleton from '../Skeleton';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
@@ -154,8 +153,7 @@ export function CircleRow({
     return (
       <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tileRow}>
         {[0, 1].map((i) => (
-          <View key={i} style={[styles.tile, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-            <GlassFill radius={cosmosCardRadius} />
+          <View key={i} style={[styles.tile, { backgroundColor: c.raised }]}>
             <Skeleton width={TILE_LOGO} height={TILE_LOGO} borderRadius={14} />
             <Skeleton width={TILE_W * 0.7} height={14} borderRadius={6} style={{ marginTop: spacing[4] }} />
             <Skeleton width={TILE_W * 0.5} height={11} borderRadius={6} style={{ marginTop: 8 }} />
@@ -180,9 +178,8 @@ export function CircleRow({
             onPress={() => onPress(space)}
             accessibilityRole="button"
             accessibilityLabel={role ? `${space.name}, ${role}` : space.name}
-            style={({ pressed }) => [styles.tile, { backgroundColor: LIQUID_GLASS ? undefined : c.raised, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+            style={({ pressed }) => [styles.tile, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
           >
-            <GlassFill radius={cosmosCardRadius} />
             <View style={styles.tileTop}>
               {logo ? (
                 <Image source={{ uri: logo }} style={[styles.tileLogo, { backgroundColor: c.card }]} contentFit="cover" />

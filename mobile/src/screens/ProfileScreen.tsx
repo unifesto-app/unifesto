@@ -25,7 +25,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const ICON = 28;
@@ -176,8 +175,7 @@ export default function ProfileScreen() {
         <CosmosBackdrop horizon={false} />
         <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={styles.content}>
           {header}
-          <View style={[styles.guest, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-            <GlassFill radius={cosmosCardRadius} />
+          <View style={[styles.guest, { backgroundColor: c.raised }]}>
             <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
             <Text style={[styles.guestTitle, { color: c.text }]}>Make it yours</Text>
             <Text style={[styles.guestBody, { color: c.soft }]}>

@@ -9,7 +9,6 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
 /**
@@ -42,10 +41,9 @@ export default function InviteCards({
             accessibilityLabel={`Seat invite for ${inv.event.title}`}
             style={({ pressed }) => [
               styles.card,
-              { backgroundColor: LIQUID_GLASS ? undefined : c.tint, transform: [{ scale: pressed ? 0.98 : 1 }] },
+              { backgroundColor: c.tint, transform: [{ scale: pressed ? 0.98 : 1 }] },
             ]}
           >
-            <GlassFill radius={cosmosCardRadius} tint={c.tint} interactive />
             <View style={[styles.cover, { backgroundColor: c.card }]}>
               {coverOr(defaults, (inv.event as { id?: string }).id, inv.event.coverImageUrl) ? (
                 <Image source={{ uri: coverOr(defaults, (inv.event as { id?: string }).id, inv.event.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />

@@ -6,7 +6,6 @@ import AuthButton from '../auth/AuthButton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 export interface IdentityStat {
   label: string;
@@ -48,8 +47,7 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
     : null;
 
   return (
-    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-      <GlassFill radius={cosmosCardRadius} />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <View style={styles.top}>
         <View style={[styles.ring, { borderColor: c.outline }]}>
           <View style={[styles.avatar, { backgroundColor: c.card }]}>
@@ -100,8 +98,7 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
 export function IdentityCardSkeleton() {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-      <GlassFill radius={cosmosCardRadius} />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <View style={styles.top}>
         <Skeleton width={AVATAR + 8} height={AVATAR + 8} borderRadius={(AVATAR + 8) / 2} />
         <View style={[styles.who, { gap: 10 }]}>

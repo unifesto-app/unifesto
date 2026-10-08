@@ -17,7 +17,6 @@ import { formatTime } from '../../utils/eventFormat';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 /** Long agendas start folded to this many slots. */
 const AGENDA_PREVIEW = 4;
@@ -31,8 +30,7 @@ function Card({ children }: { children: React.ReactNode }) {
   const c = useCosmos();
   const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-      <GlassFill radius={cosmosCardRadius} />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       {items.map((child, i) => (
         <View key={i}>
           {child}
@@ -112,8 +110,7 @@ export function SpeakersSection({ items }: { items: Speaker[] }) {
           const role = [s.title || s.designation, s.company].filter(Boolean).join(' · ');
           const featured = s.is_featured || s.isFeatured;
           return (
-            <View key={s.id} style={[styles.speaker, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-              <GlassFill radius={cosmosCardRadius} />
+            <View key={s.id} style={[styles.speaker, { backgroundColor: c.raised }]}>
               <Avatar uri={s.profile_image_url || s.avatarUrl} name={s.name} size={72} />
               <Text style={[styles.speakerName, { color: c.text }]} numberOfLines={2}>{s.name}</Text>
               {role ? <Text style={[styles.speakerRole, { color: c.muted }]} numberOfLines={2}>{role}</Text> : null}

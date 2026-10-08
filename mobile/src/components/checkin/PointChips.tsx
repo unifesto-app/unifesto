@@ -37,11 +37,11 @@ export default function PointChips({ points, value, onChange, allowAll, onCamera
           ? onCamera
             ? '#ffffff'
             : tokens.text
-          : LIQUID_GLASS
-            ? undefined // GlassFill paints it
-            : onCamera
-              ? 'rgba(0, 0, 0, 0.5)'
-              : tokens.fill;
+          : onCamera
+            ? LIQUID_GLASS
+              ? undefined // GlassFill paints it
+              : 'rgba(0, 0, 0, 0.5)'
+            : tokens.fill;
         const fg = on ? (onCamera ? '#000000' : tokens.bg) : onCamera ? 'rgba(255, 255, 255, 0.9)' : tokens.textSecondary;
         return (
           <Pressable
@@ -51,7 +51,7 @@ export default function PointChips({ points, value, onChange, allowAll, onCamera
             accessibilityState={{ selected: on }}
             style={({ pressed }) => [styles.chip, { backgroundColor: bg, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
           >
-            {!on ? <GlassFill variant={onCamera ? 'clear' : 'regular'} interactive /> : null}
+            {!on && onCamera ? <GlassFill variant="clear" interactive /> : null}
             <Text style={[styles.label, { color: fg }]} numberOfLines={1}>
               {p.name}
             </Text>

@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PencilSimple, UserFocus } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import Skeleton from '../Skeleton';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -66,13 +65,9 @@ export default function ProfileHero({ name, username, avatarUrl, bio, memberSinc
           accessibilityRole="button"
           style={({ pressed }) => [
             styles.primary,
-            LIQUID_GLASS
-              ? { transform: [{ scale: pressed ? 0.96 : 1 }] } // opacity would break the glass
-              : { backgroundColor: tokens.text, opacity: pressed ? 0.85 : 1 },
+            { backgroundColor: tokens.text, opacity: pressed ? 0.85 : 1 },
           ]}
         >
-          {/* Tinted with the text colour so it still reads as the primary action. */}
-          <GlassFill interactive tint={tokens.text} />
           <PencilSimple size={15} color={tokens.bg} weight="bold" />
           <Text style={[styles.primaryText, { color: tokens.bg }]}>Edit profile</Text>
         </Pressable>
@@ -82,12 +77,9 @@ export default function ProfileHero({ name, username, avatarUrl, bio, memberSinc
           accessibilityRole="button"
           style={({ pressed }) => [
             styles.secondary,
-            LIQUID_GLASS
-              ? { borderWidth: 0, transform: [{ scale: pressed ? 0.96 : 1 }] }
-              : { backgroundColor: tokens.surface, borderColor: tokens.border, opacity: pressed ? 0.8 : 1 },
+            { backgroundColor: tokens.surface, borderColor: tokens.border, opacity: pressed ? 0.8 : 1 },
           ]}
         >
-          <GlassFill interactive />
           <UserFocus size={15} color={tokens.text} weight="bold" />
           <Text style={[styles.secondaryText, { color: tokens.text }]}>View profile</Text>
         </Pressable>

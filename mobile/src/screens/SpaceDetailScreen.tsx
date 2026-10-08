@@ -25,7 +25,6 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 
 const LOGO = 76;
@@ -50,9 +49,7 @@ export default function SpaceDetailScreen() {
   const hue = s.brandColor || bannerHue;
   return (
     <CosmosWash active={!!hue}>
-      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
-        <SpaceDetailView s={s} hue={hue} />
-      </CardSurfaceProvider>
+      <SpaceDetailView s={s} hue={hue} />
     </CosmosWash>
   );
 }
@@ -212,8 +209,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
           ) : null}
 
           {/* ── Stats card: numbers, then membership and website ── */}
-          <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-            <GlassFill radius={cosmosCardRadius} />
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
             <View style={styles.stats}>
               {stats.map((st) => (
                 <View key={st.label} style={styles.stat}>
@@ -259,8 +255,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
 
         {eventCount === 0 ? (
           <Section title="Events">
-            <View style={[styles.empty, { backgroundColor: LIQUID_GLASS ? undefined : c.raised, marginHorizontal: GUTTER }]}>
-              <GlassFill radius={cosmosCardRadius} />
+            <View style={[styles.empty, { backgroundColor: c.raised, marginHorizontal: GUTTER }]}>
               <CalendarBlank size={32} color={c.muted} />
               <Text style={[styles.emptyText, { color: c.soft }]}>No events yet. Check back soon.</Text>
             </View>

@@ -9,7 +9,6 @@ import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 const MAP_HEIGHT = 180;
 
@@ -177,8 +176,7 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
   const showWeb = !Maps || geocodeFailed;
 
   return (
-    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-      <GlassFill radius={cosmosCardRadius} />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <View style={[styles.map, { backgroundColor: c.card }]} pointerEvents="none">
         {showNative && Maps ? (
           <Maps.default

@@ -5,6 +5,7 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme/spacing';
+import { useCosmos, useWashActive } from '../../theme/cosmos';
 
 /** iOS 26+ renders Apple's Liquid Glass; everything else gets solid / frosted. */
 export const LIQUID_GLASS = isLiquidGlassAvailable();
@@ -14,10 +15,12 @@ export type CardSurfaceKind = 'solid' | 'glass';
 const ANDROID = Platform.OS === 'android';
 
 /**
- * App-wide default: Liquid Glass where the OS has it, and the light veil
- * glass on Android. iOS < 26 stays solid `elevated`.
+ * App-wide default: content cards are solid on every platform (`elevated`; on
+ * a banner-lit page the fill turns translucent, see CardBackdrop). Glass is
+ * only for floating surfaces (alerts, sheets, banners, bars), which opt in with
+ * `CardSurfaceProvider kind="glass"`.
  */
-export const DEFAULT_CARD_SURFACE: CardSurfaceKind = LIQUID_GLASS || ANDROID ? 'glass' : 'solid';
+export const DEFAULT_CARD_SURFACE: CardSurfaceKind = 'solid';
 
 /**
  * Android glass. Android can't live-blur what's behind a view (expo-blur's
@@ -72,10 +75,13 @@ export function CardBackdrop({ shape, style, opaque = false }: {
 }) {
   const kind = useCardSurface();
   const { tokens, isDark } = useTheme();
+  const c = useCosmos();
+  const washed = useWashActive();
   const fill = [StyleSheet.absoluteFill, { borderRadius: borderRadius.xl }, shape ? radiiOf(shape) : null, style];
 
   if (kind === 'solid') {
-    return <View style={[fill, { backgroundColor: tokens.elevated }]} pointerEvents="none" />;
+    // On a banner-lit page the card stays translucent so the light shows through.
+    return <View style={[fill, { backgroundColor: washed ? c.raised : tokens.elevated }]} pointerEvents="none" />;
   }
 
   if (LIQUID_GLASS) {

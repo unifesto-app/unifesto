@@ -7,7 +7,6 @@ import Skeleton from '../Skeleton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 
 export const POSTER_WIDTH = 220;
 
@@ -50,9 +49,8 @@ export default function PosterCard({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[title, host, when, where, price].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.card, { width, backgroundColor: LIQUID_GLASS ? undefined : c.raised, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      style={({ pressed }) => [styles.card, { width, backgroundColor: c.raised, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
     >
-      <GlassFill radius={cosmosCardRadius} />
       <View style={[styles.cover, { backgroundColor: c.card }]}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -104,8 +102,7 @@ export function CoverTag({ label, style }: { label: string; style?: object }) {
 export function PosterCardSkeleton({ width = POSTER_WIDTH }: { width?: number }) {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { width, backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-      <GlassFill radius={cosmosCardRadius} />
+    <View style={[styles.card, { width, backgroundColor: c.raised }]}>
       <Skeleton width={width} height={(width * 3) / 4} borderRadius={0} />
       <View style={styles.body}>
         <Skeleton width={width * 0.8} height={16} borderRadius={6} />

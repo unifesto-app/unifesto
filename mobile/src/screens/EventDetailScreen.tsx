@@ -45,7 +45,6 @@ import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActio
 import VenueMap from '../components/event/VenueMap';
 import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
 import { useBannerAccent } from '../hooks/useBannerPalette';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
@@ -92,9 +91,7 @@ export default function EventDetailScreen() {
   );
   return (
     <CosmosWash active={!!hue}>
-      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
-        <EventDetailView id={id} d={d} hue={hue} />
-      </CardSurfaceProvider>
+      <EventDetailView id={id} d={d} hue={hue} />
     </CosmosWash>
   );
 }
@@ -291,8 +288,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
           ) : null}
 
           {/* ── Facts: a ticket-stub date, then where, entry and stay ── */}
-          <View style={[styles.facts, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-            <GlassFill radius={cosmosCardRadius} />
+          <View style={[styles.facts, { backgroundColor: c.raised }]}>
             <Pressable
               onPress={d.addToCalendar}
               accessibilityRole="button"

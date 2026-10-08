@@ -7,7 +7,6 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface OtpCodeInputProps {
@@ -61,10 +60,9 @@ export default function OtpCodeInput({
               key={i}
               style={[
                 styles.cell,
-                { borderColor, backgroundColor: LIQUID_GLASS ? undefined : c.card },
+                { borderColor, backgroundColor: c.card },
               ]}
             >
-              <GlassFill radius={cosmosRadius} />
               {char ? (
                 <Animated.Text style={[styles.digit, { color: c.text }]}>{char}</Animated.Text>
               ) : isActive ? (

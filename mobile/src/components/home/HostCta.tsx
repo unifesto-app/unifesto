@@ -4,7 +4,6 @@ import AuthButton from '../auth/AuthButton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { GUTTER } from './Section';
 
 /**
@@ -15,8 +14,7 @@ export default function HostCta({ onPress }: { onPress: () => void }) {
   const c = useCosmos();
   return (
     <View style={{ paddingHorizontal: GUTTER }}>
-      <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
-        <GlassFill radius={cosmosCardRadius} />
+      <View style={[styles.card, { backgroundColor: c.raised }]}>
         <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
         <Text style={[styles.title, { color: c.text }]}>Run your own event</Text>
         <Text style={[styles.body, { color: c.soft }]}>
