@@ -50,6 +50,10 @@ export interface SupportTicket {
   updatedAt: string;
   messages?: SupportMessage[];
   _count?: { messages: number };
+  /** Included by the list endpoint. */
+  requester?: SupportAuthor;
+  /** Set when raised on behalf of a space (operator support). */
+  space?: { id: string; name: string; slug: string } | null;
 }
 
 export interface CreateTicketInput {
@@ -76,7 +80,8 @@ export const CATEGORY_LABEL: Record<SupportTicketCategory, string> = {
 
 export const STATUS_LABEL: Record<SupportTicketStatus, string> = {
   OPEN: 'Open',
-  PENDING: 'Awaiting reply',
+  // Requester-side wording: a staff reply sets PENDING, so the ball is with them.
+  PENDING: 'Replied',
   RESOLVED: 'Resolved',
   CLOSED: 'Closed',
 };

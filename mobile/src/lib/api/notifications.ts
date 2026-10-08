@@ -7,6 +7,10 @@ export interface NotificationSettings {
   newEvents: boolean;
   productUpdates: boolean;
   promotions: boolean;
+  /** Tickets, waitlist offers, group and hackathon changes. */
+  registrationUpdates: boolean;
+  /** Messages a host sends to an event's attendees. */
+  organiserAnnouncements: boolean;
 }
 
 export const getNotificationSettings = async (): Promise<NotificationSettings | null> => {

@@ -13,23 +13,26 @@ import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { At, Camera, Check, CheckCircle, WarningCircle } from '@unifesto/unicon/react-native';
-import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { Camera, Check, CheckCircle, WarningCircle } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { GENDER_OPTIONS, useEditProfile } from '../hooks/useEditProfile';
-import { SettingsGroup } from '../components/profile/SettingsGroup';
-import FormRow from '../components/profile/FormRow';
-import { Button } from '../components/ui';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthField from '../components/auth/AuthField';
+import AuthButton from '../components/auth/AuthButton';
+import { GUTTER, Section } from '../components/home/Section';
 import Skeleton from '../components/Skeleton';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
-const AVATAR = 100;
-const ICON = 28;
+const AVATAR = 76;
+
+const LINKS = [
+  { key: 'linkedinUrl', label: 'LinkedIn', placeholder: 'linkedin.com/in/you' },
+  { key: 'instagramUrl', label: 'Instagram', placeholder: 'instagram.com/you' },
+  { key: 'githubUrl', label: 'GitHub', placeholder: 'github.com/you' },
+  { key: 'websiteUrl', label: 'Website', placeholder: 'yourwebsite.com' },
+] as const;
 
 const initials = (name: string) =>
   name
@@ -38,10 +41,16 @@ const initials = (name: string) =>
     .slice(0, 2)
     .map((n) => n[0])
     .join('')
-    .toUpperCase() || '?';
+    .toUpperCase() || '·';
 
+/**
+ * Profile › Edit profile. A live preview of the identity card (photo, name,
+ * handle) on top, then the fields in the order registration cares about:
+ * the basics it requires, the optional bio, then links. Save springs up from
+ * the bottom only when something changed (logic lives in useEditProfile).
+ */
 export default function EditProfileScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const p = useEditProfile();
@@ -64,137 +73,157 @@ export default function EditProfileScreen() {
 
   if (p.loading) {
     return (
-      <View style={[styles.container, { backgroundColor: tokens.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
-        <View style={{ alignItems: 'center' }}>
-          <Skeleton width={AVATAR + 8} height={AVATAR + 8} borderRadius={(AVATAR + 8) / 2} />
-          <Skeleton width={100} height={14} borderRadius={7} style={{ marginTop: spacing[3] }} />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <View style={{ paddingTop: topSpacing, paddingHorizontal: GUTTER }}>
+          <Skeleton width="100%" height={AVATAR + spacing[6] * 2} borderRadius={cosmosCardRadius} />
+          {[2, 1, 4].map((rows, i) => (
+            <Skeleton key={i} width="100%" height={rows * 82} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+          ))}
         </View>
-        {[3, 1, 4].map((rows, i) => (
-          <Skeleton key={i} width="100%" height={rows * 56} borderRadius={borderRadius.xl} style={{ marginTop: spacing[8] }} />
-        ))}
       </View>
     );
   }
 
-  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
   const usernameStatus = p.checkingUsername ? (
-    <ActivityIndicator size="small" color={tokens.textMuted} />
+    <ActivityIndicator size="small" color={c.muted} />
   ) : p.usernameError ? (
-    <WarningCircle size={20} color={tokens.danger} weight="fill" />
+    <WarningCircle size={20} color={c.danger} weight="fill" />
   ) : p.usernameAvailable ? (
-    <CheckCircle size={20} color={tokens.success} weight="fill" />
+    <CheckCircle size={20} color={c.text} weight="fill" />
   ) : null;
 
   const saved = showSaved && !p.isDirty;
+  const displayName = fields.fullName.trim() || 'Your name';
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: tokens.bg }]}
+      style={[styles.container, { backgroundColor: c.bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <CosmosBackdrop horizon={false} />
       <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
       >
-        {/* Photo */}
-        <Pressable onPress={p.pickAvatar} style={styles.avatarWrap} accessibilityRole="button" accessibilityLabel="Change photo">
-          <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ring}>
-            <View style={[styles.avatar, { backgroundColor: tokens.elevated, borderColor: tokens.bg }]}>
+        {/* Live preview: what the Profile tab will show */}
+        <Pressable
+          onPress={p.pickAvatar}
+          accessibilityRole="button"
+          accessibilityLabel="Change photo"
+          style={({ pressed }) => [styles.identity, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.99 : 1 }] }]}
+        >
+          <View style={[styles.ring, { borderColor: c.outline }]}>
+            <View style={[styles.avatar, { backgroundColor: c.card }]}>
               {p.avatarUrl ? (
                 <Image source={{ uri: p.avatarUrl }} style={StyleSheet.absoluteFill} />
               ) : (
-                <Text style={[styles.initials, { color: tokens.text }]}>{initials(fields.fullName || fields.username)}</Text>
+                <Text style={[styles.initials, { color: c.text }]}>{initials(fields.fullName || fields.username)}</Text>
               )}
             </View>
-          </LinearGradient>
-          <View style={styles.changePhotoRow}>
-            <Camera size={16} color={tokens.accent} weight="fill" />
-            <Text style={[styles.changePhoto, { color: tokens.accent }]}>Change photo</Text>
+          </View>
+          <View style={styles.who}>
+            <Text style={[styles.name, { color: fields.fullName.trim() ? c.text : c.muted }]} numberOfLines={2}>
+              {displayName}
+            </Text>
+            {fields.username ? (
+              <Text style={[styles.handle, { color: c.muted }]} numberOfLines={1}>@{fields.username}</Text>
+            ) : null}
+            <View style={styles.changePhoto}>
+              <Camera size={15} color={c.soft} weight="fill" />
+              <Text style={[styles.changePhotoText, { color: c.soft }]}>
+                {p.avatarUrl ? 'Change photo' : 'Add a photo'}
+              </Text>
+            </View>
           </View>
         </Pressable>
 
-        {/* The three fields registration needs */}
-        <SettingsGroup title="About me">
-          <FormRow
-            icon={unicon('user')}
-            value={fields.fullName}
-            onChangeText={set('fullName')}
-            placeholder="Full name"
-            textContentType="name"
-            autoComplete="name"
-          />
-          <FormRow
-            icon={<At size={22} color={tokens.text} weight="bold" />}
-            value={fields.username}
-            onChangeText={p.onChangeUsername}
-            placeholder="username"
-            autoCapitalize="none"
-            autoCorrect={false}
-            textContentType="username"
-            trailing={usernameStatus}
-          />
-        </SettingsGroup>
-        {p.usernameError ? (
-          <Text style={[styles.error, { color: tokens.danger }]}>{p.usernameError}</Text>
-        ) : null}
-
-        <View style={styles.genderBlock}>
-          <Text style={[styles.groupTitle, { color: tokens.textMuted }]}>Gender</Text>
-          <View style={styles.chips}>
-            {GENDER_OPTIONS.map((opt) => {
-              const active = fields.gender === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => set('gender')(opt.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: active }}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                  {active ? <Check size={14} color={tokens.bg} weight="bold" /> : null}
-                  <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{opt.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <SettingsGroup title="Bio">
-          <FormRow
-            icon={unicon('file-text')}
-            value={fields.bio}
-            onChangeText={set('bio')}
-            placeholder="A line or two about you"
-            multiline
-          />
-        </SettingsGroup>
-
-        <SettingsGroup title="Links">
-          {([
-            ['linkedin-logo', 'linkedinUrl', 'linkedin.com/in/you'],
-            ['instagram-logo', 'instagramUrl', 'instagram.com/you'],
-            ['github-logo', 'githubUrl', 'github.com/you'],
-            ['globe', 'websiteUrl', 'yourwebsite.com'],
-          ] as const).map(([iconName, key, placeholder]) => (
-            <FormRow
-              key={key}
-              icon={unicon(iconName)}
-              value={fields[key]}
-              onChangeText={set(key)}
-              placeholder={placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              textContentType="URL"
+        <Section title="The basics" subtitle="Needed to register for events" style={styles.firstSection}>
+          <View style={styles.fields}>
+            <AuthField
+              label="Full name"
+              value={fields.fullName}
+              onChangeText={set('fullName')}
+              placeholder="As it should appear on passes"
+              textContentType="name"
+              autoComplete="name"
             />
-          ))}
-        </SettingsGroup>
+            <View>
+              <AuthField
+                label="Username"
+                prefix="@"
+                value={fields.username}
+                onChangeText={p.onChangeUsername}
+                placeholder="username"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="username"
+                error={!!p.usernameError}
+                trailing={usernameStatus}
+              />
+              {p.usernameError ? (
+                <Text style={[styles.error, { color: c.danger }]}>{p.usernameError}</Text>
+              ) : null}
+            </View>
+            <View>
+              <Text style={[styles.label, { color: c.muted }]}>Gender</Text>
+              <View style={styles.chips} accessibilityRole="radiogroup">
+                {GENDER_OPTIONS.map((opt) => {
+                  const active = fields.gender === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => set('gender')(opt.value)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: active }}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                      ]}
+                    >
+                      {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
+                      <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{opt.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        </Section>
+
+        <Section title="About you" subtitle="Shown on your public profile">
+          <View style={styles.fields}>
+            <AuthField
+              label="Bio"
+              value={fields.bio}
+              onChangeText={set('bio')}
+              placeholder="A line or two about you"
+              multiline
+            />
+          </View>
+        </Section>
+
+        <Section title="Links" subtitle="Where people can find you">
+          <View style={styles.fields}>
+            {LINKS.map((l) => (
+              <AuthField
+                key={l.key}
+                label={l.label}
+                value={fields[l.key]}
+                onChangeText={set(l.key)}
+                placeholder={l.placeholder}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                textContentType="URL"
+              />
+            ))}
+          </View>
+        </Section>
       </ScrollView>
 
       {/* Save bar: slides up only when there is something to save */}
@@ -202,15 +231,13 @@ export default function EditProfileScreen() {
         pointerEvents={barVisible ? 'auto' : 'none'}
         style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}
       >
-        <LinearGradient colors={[`${tokens.bg}00`, tokens.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <Button
+        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <AuthButton
           label={saved ? 'Saved' : 'Save changes'}
-          icon={saved ? <Check size={18} color={tokens.accentFg} weight="bold" /> : undefined}
+          icon={saved ? <Check size={18} color={c.primaryFg} weight="bold" /> : undefined}
           onPress={p.save}
           loading={p.saveStatus === 'saving'}
           disabled={saved}
-          size="lg"
-          fullWidth
         />
       </Animated.View>
     </KeyboardAvoidingView>
@@ -219,34 +246,42 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  avatarWrap: { alignSelf: 'center', alignItems: 'center' },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    marginHorizontal: GUTTER,
+    marginTop: spacing[4],
+    padding: spacing[6],
+    borderRadius: cosmosCardRadius,
+  },
   ring: {
     width: AVATAR + 8,
     height: AVATAR + 8,
     borderRadius: (AVATAR + 8) / 2,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatar: {
-    width: AVATAR + 2,
-    height: AVATAR + 2,
-    borderRadius: (AVATAR + 2) / 2,
-    borderWidth: 3,
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: { fontSize: 34, ...font('heading') },
-  changePhotoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
-  changePhoto: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  error: { marginTop: spacing[2], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
-  genderBlock: { marginTop: spacing[8] },
-  groupTitle: {
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing[3],
-    marginLeft: spacing[1],
-    ...font('semibold'),
-  },
+  initials: { fontSize: 22, ...cosmosFont.display },
+  who: { flex: 1 },
+  name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  handle: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  changePhoto: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
+  changePhotoText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // Section's default top margin is sized for Home; tighter under the card.
+  firstSection: { marginTop: spacing[10] },
+  fields: { paddingHorizontal: GUTTER, gap: spacing[5] },
+  label: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
+  error: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
   chip: {
     flexDirection: 'row',
@@ -254,9 +289,9 @@ const styles = StyleSheet.create({
     gap: 6,
     height: 40,
     paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
+    borderRadius: 999,
   },
-  chipText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: {
     position: 'absolute',
     left: 0,

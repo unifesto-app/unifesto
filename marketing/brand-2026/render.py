@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import tempfile
+import time
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +31,12 @@ JOBS = [
     ("symbol-white.svg", "symbol-white-1024.png", 1024, 1024, None),
     ("symbol-black.svg", "symbol-black-1024.png", 1024, 1024, None),
 ]
+# Alternate app icons: iOS 1024, Android adaptive foreground 1024, in-app preview 180.
+for n in ("night", "day", "aurora", "nebula", "ember", "ocean", "mono"):
+    bg = "#fff" if n == "day" else "#000"
+    JOBS.append((f"alt-icon-{n}.svg", f"alt-icon-{n}-1024.png", 1024, 1024, bg))
+    JOBS.append((f"alt-icon-{n}-android.svg", f"alt-icon-{n}-android-1024.png", 1024, 1024, bg))
+    JOBS.append((f"alt-icon-{n}.svg", f"alt-icon-{n}-180.png", 180, 180, bg))
 for theme in ("dark", "light", "white", "black"):
     JOBS.append((f"powered-by-{theme}.svg", f"powered-by-{theme}.png", 1716, 384, None))
     JOBS.append((f"powered-by-{theme}-stacked.svg", f"powered-by-{theme}-stacked.png", 1527, 660, None))
@@ -50,23 +57,34 @@ def shot(svg_name, png_name, w, h, bg):
             f'<img src="file://{HERE}/svg/{svg_name}" style="display:block;width:{w}px;height:{h}px"></body></html>')
     with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False) as f:
         f.write(page)
-    subprocess.run([CHROME, "--headless=new", "--hide-scrollbars", "--force-device-scale-factor=1",
-                    "--default-background-color=00000000", f"--window-size={w},{h}",
-                    f"--screenshot={OUT}/{png_name}", f"file://{f.name}"],
-                   check=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+    cmd = [CHROME, "--headless=new", "--hide-scrollbars", "--force-device-scale-factor=1",
+           "--default-background-color=00000000", f"--window-size={w},{h}",
+           f"--screenshot={OUT}/{png_name}", f"file://{f.name}"]
+    # Back-to-back headless launches sometimes exit 2 while the last one shuts down.
+    for attempt in range(4):
+        if subprocess.run(cmd, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).returncode == 0:
+            break
+        time.sleep(1 + attempt)
+    else:
+        raise RuntimeError(f"Chrome failed to render {svg_name}")
     os.unlink(f.name)
 
 
 if __name__ == "__main__":
+    import sys
     os.makedirs(OUT, exist_ok=True)
-    for job in JOBS:
+    # `python3 render.py alt-icon` re-renders only jobs whose svg starts with that prefix.
+    only = sys.argv[1] if len(sys.argv) > 1 else ""
+    jobs = [j for j in JOBS if j[0].startswith(only)]
+    for job in jobs:
         shot(*job)
     # opaque icons must not carry an alpha channel (App Store rejects it)
-    for name in ("app-icon-dark-1024.png", "app-icon-light-1024.png", "android-foreground-1024.png",
-                 "apple-touch-icon-180.png", "social-avatar-1080.png",
-                 "linkedin-banner-2256x382.png"):
+    opaque = {"app-icon-dark-1024.png", "app-icon-light-1024.png", "android-foreground-1024.png",
+              "apple-touch-icon-180.png", "social-avatar-1080.png", "linkedin-banner-2256x382.png"}
+    opaque |= {j[1] for j in JOBS if j[0].startswith("alt-icon-")}
+    for name in opaque & {j[1] for j in jobs}:
         p = os.path.join(OUT, name)
         Image.open(p).convert("RGB").save(p)
     Image.open(os.path.join(OUT, "favicon-48.png")).save(
         os.path.join(HERE, "favicon.ico"), sizes=[(16, 16), (32, 32), (48, 48)])
-    print(f"{len(JOBS)} PNGs + favicon.ico")
+    print(f"{len(jobs)} PNGs + favicon.ico")

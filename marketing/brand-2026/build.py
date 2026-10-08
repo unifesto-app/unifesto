@@ -39,17 +39,29 @@ def u_path(cx, cy, width, fill, rim=None):
     return f'<path d="{U}" transform="{t}" fill="{fill}"{stroke}/>'
 
 
-def scene(theme, u_width=495, u_cy=500, horizon_top=842, stars=True, uid="a"):
-    """Full-bleed 1024 artwork: ground, starlight, horizon, the u."""
+# Alternate app-icon colourways: the night scene lit by one nebula colour
+# (the same idea as the app's banner-lit pages). (sky core, nebula, rim light)
+HUES = {
+    "aurora": ("#06241f", "#2dd4bf", "#99f6e4"),
+    "nebula": ("#170d2b", "#8b5cf6", "#c4b5fd"),
+    "ember": ("#2a1005", "#f97316", "#fdba74"),
+    "ocean": ("#07152e", "#3b82f6", "#93c5fd"),
+}
+
+
+def scene(theme, u_width=495, u_cy=500, horizon_top=842, stars=True, uid="a", hue=None):
+    """Full-bleed 1024 artwork: ground, starlight, horizon, the u.
+    `hue` (a HUES key, dark only) tints the sky core, halo and horizon light."""
     dark = theme == "dark"
+    core, glow, rim_light = HUES[hue] if hue else ("#131316", "#fff", "#fff")
     R = 1500
     defs = (SILVER if dark else INK).format(id=f"u{uid}")
     defs += (f'<radialGradient id="sky{uid}" cx=".5" cy=".42" r=".7">'
-             f'<stop offset="0" stop-color="{"#131316" if dark else "#ffffff"}"/>'
+             f'<stop offset="0" stop-color="{core if dark else "#ffffff"}"/>'
              f'<stop offset="1" stop-color="{"#000" if dark else "#f1f1f3"}"/></radialGradient>'
              f'<radialGradient id="halo{uid}" cx=".5" cy=".5" r=".5">'
-             f'<stop offset="0" stop-color="{"#fff" if dark else "#111113"}" stop-opacity="{.13 if dark else .06}"/>'
-             f'<stop offset="1" stop-color="{"#fff" if dark else "#111113"}" stop-opacity="0"/></radialGradient>'
+             f'<stop offset="0" stop-color="{glow if dark else "#111113"}" stop-opacity="{(.34 if hue else .13) if dark else .06}"/>'
+             f'<stop offset="1" stop-color="{glow if dark else "#111113"}" stop-opacity="0"/></radialGradient>'
              f'<linearGradient id="planet{uid}" x1="0" y1="0" x2="0" y2="1">'
              f'<stop offset="0" stop-color="{"#1c1c20" if dark else "#e6e6ea"}"/>'
              f'<stop offset=".18" stop-color="{"#050506" if dark else "#f7f7f8"}"/></linearGradient>'
@@ -59,11 +71,11 @@ def scene(theme, u_width=495, u_cy=500, horizon_top=842, stars=True, uid="a"):
                    for x, y, r, o in STARS) if stars else ""
     halo = f'<ellipse cx="512" cy="{u_cy + 20}" rx="{u_width * .95:.0f}" ry="{u_width * .8:.0f}" fill="url(#halo{uid})"/>'
     cy = horizon_top + R
-    rim_glow = (f'<ellipse cx="512" cy="{horizon_top + 6}" rx="420" ry="34" fill="{"#fff" if dark else "#111113"}" '
-                f'opacity="{.16 if dark else .06}" filter="url(#blur{uid})"/>')
+    rim_glow = (f'<ellipse cx="512" cy="{horizon_top + 6}" rx="420" ry="34" fill="{rim_light if dark else "#111113"}" '
+                f'opacity="{(.3 if hue else .16) if dark else .06}" filter="url(#blur{uid})"/>')
     planet = (f'<circle cx="512" cy="{cy}" r="{R}" fill="url(#planet{uid})"/>'
-              f'<circle cx="512" cy="{cy}" r="{R}" fill="none" stroke="{"#fff" if dark else "#111113"}" '
-              f'stroke-opacity="{.42 if dark else .22}" stroke-width="2.5"/>')
+              f'<circle cx="512" cy="{cy}" r="{R}" fill="none" stroke="{rim_light if dark else "#111113"}" '
+              f'stroke-opacity="{(.6 if hue else .42) if dark else .22}" stroke-width="2.5"/>')
     rim = "rgba(255,255,255,.55)" if dark else None
     mark = u_path(512, u_cy, u_width, f"url(#u{uid})", rim)
     return defs, sky + star + halo + rim_glow + planet + mark
@@ -80,6 +92,21 @@ def app_icon(theme, rounded=False, **kw):
         defs += '<clipPath id="sq"><rect width="1024" height="1024" rx="228"/></clipPath>'
         body = f'<g clip-path="url(#sq)">{body}</g>'
     return svg(body, defs)
+
+
+def mono_icon(u_width=495, u_cy=500):
+    """Alternate icon: no sky, no horizon, just a flat white u on black."""
+    return svg(f'<rect width="1024" height="1024" fill="#000"/>' + u_path(512, u_cy, u_width, "#ffffff"))
+
+
+# Alternate app icons (expo-alternate-app-icons). name → (iOS 1024 svg, Android foreground svg)
+ALT_ICONS = {
+    "night": (lambda: app_icon("dark"), lambda: app_icon("dark", u_width=330, u_cy=505, horizon_top=760)),
+    "day": (lambda: app_icon("light"), lambda: app_icon("light", u_width=330, u_cy=505, horizon_top=760)),
+    **{h: ((lambda h=h: app_icon("dark", hue=h)),
+           (lambda h=h: app_icon("dark", hue=h, u_width=330, u_cy=505, horizon_top=760))) for h in HUES},
+    "mono": (lambda: mono_icon(), lambda: mono_icon(u_width=330, u_cy=512)),
+}
 
 
 def wordmark(fill_kind, pad=24):
@@ -417,6 +444,8 @@ if __name__ == "__main__":
         **{f"lockup-{p.lower()}-{c}.svg": lockup(p, c) for p in PRODUCTS for c in LOCKUP_FILLS},
         **{f"poster-{p.lower()}-{l}.svg": poster(p, l) for p, l in POSTERS},
         **{f"poster-powered-by-{k}.svg": organiser_poster(k) for k in ORGANISER_POSTERS},
+        **{f"alt-icon-{n}.svg": ios() for n, (ios, _) in ALT_ICONS.items()},
+        **{f"alt-icon-{n}-android.svg": fg() for n, (_, fg) in ALT_ICONS.items()},
     }
     for name, content in files.items():
         open(os.path.join(out, name), "w").write(content)

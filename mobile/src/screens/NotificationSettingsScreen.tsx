@@ -1,14 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Switch, Text } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import {
   NotificationSettings,
   getNotificationSettings,
@@ -27,11 +30,19 @@ const DEFAULT_NOTIFS: NotifState = {
   newEvents: true,
   productUpdates: true,
   promotions: false,
+  registrationUpdates: true,
+  organiserAnnouncements: true,
 };
 
+/**
+ * Profile › Notifications. Push is the master switch (the server drops every
+ * push category while it's off), so it leads, and the categories below it go
+ * quiet when it's off. Categories run from what matters most (my tickets) to
+ * what's optional (promotions); email sits last as its own channel.
+ */
 export default function NotificationSettingsScreen() {
   const topSpacing = useTopSpacing();
-  const tokens = useTokens();
+  const c = useCosmos();
   const [notifs, setNotifs] = useState<NotifState>(DEFAULT_NOTIFS);
   const notifsRef = useRef<NotifState>(notifs);
   notifsRef.current = notifs;
@@ -167,52 +178,96 @@ export default function NotificationSettingsScreen() {
     }
   }, [commit]);
 
-  // One toggle row: bare icon, label, native switch in the accent colour.
-  const row = (icon: GlyphName, label: string, value: boolean, onToggle: () => void) => (
-    <SettingsRow
-      icon={<UnGlyph name={icon} size={28} color={tokens.text} />}
-      label={label}
-      trailing={
-        <Switch
-          value={value}
-          onValueChange={onToggle}
-          trackColor={{ false: tokens.fillStrong, true: tokens.accent }}
-          thumbColor="#ffffff"
-          ios_backgroundColor={tokens.fillStrong}
-          accessibilityLabel={label}
-        />
-      }
-    />
+  // One toggle row: bare icon, label, native switch in the cosmos silver.
+  const row = (icon: GlyphName, label: string, value: boolean, onToggle: () => void, disabled = false) => (
+    <View style={disabled && styles.dim}>
+      <SettingsRow
+        icon={<UnGlyph name={icon} size={28} color={c.text} />}
+        label={label}
+        trailing={
+          <Switch
+            value={value}
+            onValueChange={onToggle}
+            disabled={disabled}
+            trackColor={{ false: c.input, true: c.primary }}
+            thumbColor={value ? c.primaryFg : '#ffffff'}
+            ios_backgroundColor={c.input}
+            accessibilityLabel={label}
+          />
+        }
+      />
+    </View>
   );
 
+  const pushOff = !notifs.pushEnabled;
+  const category = (icon: GlyphName, label: string, key: keyof NotifState) =>
+    row(icon, label, notifs[key] && !pushOff, () => toggle(key), pushOff);
+
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <SettingsGroup title="Channels">
-        {row('bell', 'Push notifications', notifs.pushEnabled, handlePushToggle)}
-        {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
-      </SettingsGroup>
-      <Text style={[styles.caption, { color: tokens.textMuted }]}>
-        Tickets, receipts and sign-in codes always arrive by email.
-      </Text>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {pushOff ? (
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+            <Text style={[styles.cardTitle, { color: c.text }]}>Push is off</Text>
+            <Text style={[styles.cardBody, { color: c.soft }]}>
+              You won’t hear about waitlist spots, reminders before your events or changes from hosts.
+            </Text>
+            <AuthButton label="Turn on push" onPress={handlePushToggle} style={{ marginTop: spacing[5] }} />
+          </View>
+        ) : (
+          <View style={styles.firstGroup}>
+            <SettingsGroup style={styles.group}>
+              {row('bell', 'Push notifications', true, handlePushToggle)}
+            </SettingsGroup>
+          </View>
+        )}
 
-      <SettingsGroup title="Events">
-        {row('calendar-blank', 'Event reminders', notifs.eventReminders, () => toggle('eventReminders'))}
-        {row('megaphone', 'New events', notifs.newEvents, () => toggle('newEvents'))}
-      </SettingsGroup>
+        <Section title="Your events" subtitle="Tickets, reminders and word from hosts">
+          <SettingsGroup style={styles.group}>
+            {category('ticket', 'Ticket and waitlist updates', 'registrationUpdates')}
+            {category('calendar-blank', 'Event reminders', 'eventReminders')}
+            {category('megaphone', 'Announcements from hosts', 'organiserAnnouncements')}
+          </SettingsGroup>
+        </Section>
 
-      <SettingsGroup title="From Unifesto">
-        {row('arrows-clockwise', 'Product updates', notifs.productUpdates, () => toggle('productUpdates'))}
-        {row('tag', 'Promotions', notifs.promotions, () => toggle('promotions'))}
-      </SettingsGroup>
-    </ScrollView>
+        <Section title="Discover" subtitle="New events from the circles you follow">
+          <SettingsGroup style={styles.group}>
+            {category('sparkle', 'New events', 'newEvents')}
+          </SettingsGroup>
+        </Section>
+
+        <Section title="From Unifesto">
+          <SettingsGroup style={styles.group}>
+            {category('arrows-clockwise', 'Product updates', 'productUpdates')}
+            {category('tag', 'Offers and promotions', 'promotions')}
+          </SettingsGroup>
+        </Section>
+
+        <Section title="Email" subtitle="Tickets, receipts and sign-in codes always arrive by email.">
+          <SettingsGroup style={styles.group}>
+            {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
+          </SettingsGroup>
+        </Section>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: spacing[6], paddingBottom: 100 },
-  caption: { fontSize: typography.fontSize.sm, marginTop: spacing[2], marginHorizontal: spacing[1] },
+  container: { flex: 1 },
+  // SettingsGroup's own top margin doubles Section's; Section owns spacing.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  firstGroup: { marginTop: spacing[4] },
+  dim: { opacity: 0.45 },
+  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  rule: { width: 40, height: 1, marginBottom: spacing[5] },
+  cardTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  cardBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });

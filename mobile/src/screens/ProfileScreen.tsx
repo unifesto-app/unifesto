@@ -266,14 +266,16 @@ export default function ProfileScreen() {
           </SettingsGroup>
         </Section>
 
-        {/* Hosts get a door into their Space tab; everyone else a way to become one. */}
+        {/* Hosts get a door into their Space tab. Requesting stays for everyone:
+            people who already run a space can still ask for another. */}
         <Section title="Hosting">
           <SettingsGroup style={styles.group}>
-            {hosts ? (
-              <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} />
-            ) : (
-              <SettingsRow icon={icon('plus-circle')} label="Request a space" onPress={() => router.push('/space-request')} />
-            )}
+            {hosts ? <SettingsRow icon={icon('buildings')} label="Open my space" onPress={() => router.navigate('/space')} /> : null}
+            <SettingsRow
+              icon={icon('plus-circle')}
+              label={hosts ? 'Request another space' : 'Request a space'}
+              onPress={() => router.push('/space-request')}
+            />
             {isPartner ? <SettingsRow icon={icon('megaphone')} label="Partner stats" onPress={() => router.push('/partner')} /> : null}
           </SettingsGroup>
         </Section>

@@ -14,42 +14,33 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MagnifyingGlass, UsersThree, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
-import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { SpaceCard, SpaceCardSkeleton } from '../components/home/SpaceCards';
-import { Button } from '../components/ui';
-import { getAllSpaces, getSpaceById, getUserSpaces, Space } from '../lib/api/spaces';
+import { getAllSpaces, getSpaceById, Space } from '../lib/api/spaces';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 
 const GUTTER = spacing[6];
 const GAP = spacing[3];
-/** Spaces fetched per page — shared by the server-paginated catalogue and the
- *  client-paginated "my circles" list. */
+/** Spaces fetched per page. */
 const PAGE_SIZE = 12;
 
 /**
- * Two modes on one screen:
- *  - "My circles" (`?mine=true`): spaces the user belongs to — one fetch,
- *    searched and paged client-side (the endpoint returns an unpaginated array).
- *  - Catalogue: every public space, searched and paged by the server.
- * Both render as a 2-column grid that loads more as you scroll.
+ * The catalogue: every public space, searched and paged by the server, as a
+ * 2-column grid that loads more as you scroll. My circles (`?mine=true`) is
+ * its own screen, MyCirclesScreen.
  */
 export default function SpacesListScreen() {
   const tokens = useTokens();
-  const { token } = useAuth();
   const router = useRouter();
   const topSpacing = useTopSpacing();
   const { width: screenW } = useWindowDimensions();
   const cardW = Math.floor((screenW - GUTTER * 2 - GAP) / 2);
 
-  const { search: paramSearch, mine: paramMine } = useLocalSearchParams<{ search?: string; mine?: string }>();
-  const isMine = paramMine === 'true' || paramMine === '1';
+  const { search: paramSearch } = useLocalSearchParams<{ search?: string }>();
 
   const [searchQuery, setSearchQuery] = useState(paramSearch || '');
-  const mineAllRef = useRef<Space[]>([]);
-  const mineLoadedRef = useRef(false);
   const didInitialLoadRef = useRef(false);
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,28 +79,6 @@ export default function SpacesListScreen() {
         else if (mode === 'more') setLoadingMore(true);
         else setLoading(true);
 
-        if (isMine) {
-          if (!token) {
-            setSpaces([]);
-            setHasMore(false);
-            return;
-          }
-          if (!mineLoadedRef.current || mode === 'refresh') {
-            mineAllRef.current = await getUserSpaces(token);
-            mineLoadedRef.current = true;
-          }
-          const q = searchQuery.trim().toLowerCase();
-          const filtered = q
-            ? mineAllRef.current.filter((s) => s.name?.toLowerCase().includes(q) || s.city?.toLowerCase().includes(q))
-            : mineAllRef.current;
-          const items = filtered.slice(0, pageNum * PAGE_SIZE);
-          setSpaces(items);
-          setPage(pageNum);
-          setHasMore(items.length < filtered.length);
-          fetchParentSpaceNames(items);
-          return;
-        }
-
         const response = await getAllSpaces({
           page: pageNum,
           limit: PAGE_SIZE,
@@ -131,18 +100,14 @@ export default function SpacesListScreen() {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [searchQuery, isMine, token],
+    [searchQuery],
   );
 
-  // Initial load — in "my circles" mode wait for the auth token to resolve
-  // from storage, otherwise it would load empty and never retry.
   useEffect(() => {
-    if (didInitialLoadRef.current) return;
-    if (isMine && !token) return;
     didInitialLoadRef.current = true;
     loadSpaces(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMine, token]);
+  }, []);
 
   // Debounced search.
   useEffect(() => {
@@ -162,7 +127,7 @@ export default function SpacesListScreen() {
       <MagnifyingGlass size={18} color={tokens.textMuted} />
       <TextInput
         style={[styles.searchInput, { color: tokens.text }]}
-        placeholder={isMine ? 'Search my circles' : 'Search spaces'}
+        placeholder="Search spaces"
         placeholderTextColor={tokens.textMuted}
         selectionColor={tokens.accent}
         value={searchQuery}
@@ -180,20 +145,13 @@ export default function SpacesListScreen() {
 
   const empty = (() => {
     const searching = !!searchQuery.trim();
-    const title = searching ? 'No matches' : isMine ? 'No circles yet' : 'No spaces yet';
-    const body = searching
-      ? `Nothing matches “${searchQuery.trim()}”.`
-      : isMine
-        ? 'Spaces you join show up here.'
-        : 'Check back soon for new spaces.';
+    const title = searching ? 'No matches' : 'No spaces yet';
+    const body = searching ? `Nothing matches “${searchQuery.trim()}”.` : 'Check back soon for new spaces.';
     return (
       <View style={styles.empty}>
         <UsersThree size={48} color={tokens.textSecondary} weight="duotone" />
         <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
         <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>{body}</Text>
-        {isMine && !searching ? (
-          <Button label="Explore spaces" onPress={() => router.push('/spaces')} style={{ marginTop: spacing[5], alignSelf: 'center' }} />
-        ) : null}
       </View>
     );
   })();

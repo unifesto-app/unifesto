@@ -7,10 +7,12 @@ interface AuthFieldProps extends TextInputProps {
   /** Fixed leading text inside the field, e.g. a country code. */
   prefix?: string;
   error?: boolean;
+  /** Right-side slot inside the field: spinner, status mark. */
+  trailing?: React.ReactNode;
 }
 
 const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
-  { label, prefix, error = false, onFocus, onBlur, style, ...rest },
+  { label, prefix, error = false, trailing, multiline, onFocus, onBlur, style, ...rest },
   ref,
 ) {
   const c = useCosmos();
@@ -21,7 +23,7 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
   return (
     <View>
       <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
-      <View style={[styles.field, { borderColor, backgroundColor: c.card }]}>
+      <View style={[styles.field, multiline && styles.fieldMultiline, { borderColor, backgroundColor: c.card }]}>
         {prefix ? (
           <View style={[styles.prefix, { borderRightColor: c.border }]}>
             <Text style={[styles.prefixText, { color: c.text }]}>{prefix}</Text>
@@ -39,9 +41,11 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
             setFocused(false);
             onBlur?.(e);
           }}
-          style={[styles.input, { color: c.text }, style]}
+          multiline={multiline}
+          style={[styles.input, multiline && styles.inputMultiline, { color: c.text }, style]}
           {...rest}
         />
+        {trailing}
       </View>
     </View>
   );
@@ -67,5 +71,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   prefixText: { fontSize: 16, ...cosmosFont.strong },
+  fieldMultiline: { height: undefined, minHeight: 110, alignItems: 'flex-start', paddingVertical: 14 },
   input: { flex: 1, height: '100%', fontSize: 16, ...cosmosFont.body },
+  inputMultiline: { height: undefined, minHeight: 82, paddingTop: 0, textAlignVertical: 'top', lineHeight: 22 },
 });

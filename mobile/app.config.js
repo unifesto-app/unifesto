@@ -209,6 +209,21 @@ module.exports = () => {
         }
       ],
       "@livekit/react-native-expo-plugin",
+      // Alternate app icons, picked in Profile › Appearance. Art comes from
+      // marketing/brand-2026 (build.py ALT_ICONS → render.py alt-icon). iOS's
+      // default is Day and Android's is Night, so choosing those resets instead.
+      // Names must match APP_ICONS in src/lib/appIcon.ts. Needs a native rebuild.
+      [
+        "expo-alternate-app-icons",
+        ["Night", "Day", "Aurora", "Nebula", "Ember", "Ocean", "Mono"].map((name) => ({
+          name,
+          ios: `./assets/app-icons/${name.toLowerCase()}.png`,
+          android: {
+            foregroundImage: `./assets/app-icons/${name.toLowerCase()}-android.png`,
+            backgroundColor: name === "Day" ? "#ffffff" : "#000000",
+          },
+        })),
+      ],
       // Native venue maps. iOS uses Apple Maps (no key). Android uses Google
       // Maps and needs GOOGLE_MAPS_ANDROID_API_KEY at build time; without it
       // the app falls back to the embedded web map (see VenueMap).
