@@ -104,7 +104,7 @@ export function SpaceCard({ space, onPress, width = CARD_W, context }: SpaceCard
 }
 
 /** 1.2k-style counts so stats fit a narrow card. */
-function compact(n: number): string {
+export function compact(n: number): string {
   if (n < 1000) return String(n);
   const k = n / 1000;
   return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
@@ -123,7 +123,7 @@ export function SpaceCardSkeleton({ width = CARD_W }: { width?: number }) {
 }
 
 /** My role in a space, when it's more than plain membership. */
-function roleOf(space: Space): string | null {
+export function roleOf(space: Space): string | null {
   // /users/me/spaces sends a flat { code, name }; the type still models the nested one.
   const r = space.userRole as { code?: string; role?: { code?: string } } | null | undefined;
   const code = r?.code ?? r?.role?.code;

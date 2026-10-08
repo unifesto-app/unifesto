@@ -1,34 +1,45 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Heart } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { Event } from '../lib/api/events';
 import { getFavorites } from '../lib/api/favorites';
 import FavoriteButton from '../components/FavoriteButton';
 import Skeleton from '../components/Skeleton';
-import { Button } from '../components/ui';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
+import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { relativeWhen, shortPrice } from '../utils/eventFormat';
+import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
+import { isEventOver } from '../lib/upcomingTickets';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
 
-const GUTTER = spacing[6];
 // Event banners are 4:3.
-const THUMB_W = 96;
-const THUMB_H = 72;
+const THUMB_W = 84;
+const THUMB_H = 63;
+const reflow = LinearTransition.duration(220);
 
+const placeOf = (e: Event) => e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null);
+
+/**
+ * Profile › Saved: the soonest saved event as a full poster ("Up next"), the
+ * rest of what's coming as compact cards, then what's already happened, faded.
+ * Un-hearting removes a card live (FavoritesContext updates ids optimistically).
+ */
 export default function FavoritesScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
+  const { width } = useWindowDimensions();
   const defaults = useDefaultImages();
   const { isAuthenticated } = useAuth();
   const { favoriteIds, refresh } = useFavorites();
@@ -59,146 +70,203 @@ export default function FavoritesScreen() {
     setRefreshing(false);
   }, [load]);
 
-  // Only events still favourited, so un-hearting a row removes it live (the
-  // context updates favoriteIds optimistically). Split by date: what's coming
-  // up (soonest first) and what's already happened (most recent first).
-  const { upcoming, past } = useMemo(() => {
-    const now = Date.now();
+  // Same rule as Tickets: an event stays upcoming until it ends.
+  const { next, later, past } = useMemo(() => {
     const saved = events.filter((e) => favoriteIds.has(e.id));
     const at = (e: Event) => new Date(e.startDateTime).getTime();
+    const upcoming = saved.filter((e) => !isEventOver(e)).sort((a, b) => at(a) - at(b));
     return {
-      upcoming: saved.filter((e) => at(e) >= now).sort((a, b) => at(a) - at(b)),
-      past: saved.filter((e) => at(e) < now).sort((a, b) => at(b) - at(a)),
+      next: upcoming[0] as Event | undefined,
+      later: upcoming.slice(1),
+      past: saved.filter((e) => isEventOver(e)).sort((a, b) => at(b) - at(a)),
     };
   }, [events, favoriteIds]);
 
-  const container = (children: React.ReactNode, center = false) => (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }, center && styles.centerContent]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        isAuthenticated ? (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
-            progressViewOffset={topSpacing}
-          />
-        ) : undefined
-      }
-    >
-      {children}
-    </ScrollView>
+  const openEvent = (e: Event) => router.push(`/event/${e.slug || e.id}`);
+  const posterWidth = width - GUTTER * 2;
+
+  const page = (children: React.ReactNode) => (
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          isAuthenticated ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={c.text}
+              colors={[c.text]}
+              progressViewOffset={topSpacing}
+            />
+          ) : undefined
+        }
+      >
+        {children}
+      </ScrollView>
+    </View>
   );
 
-  const emptyState = (title: string, body: string, cta: { label: string; onPress: () => void }) =>
-    container(
-      <View style={styles.empty}>
-        <Heart size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
-        <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>{body}</Text>
-        <Button label={cta.label} onPress={cta.onPress} style={{ marginTop: spacing[5], alignSelf: 'center' }} />
+  const promptCard = (title: string, body: string, actions: React.ReactNode) =>
+    page(
+      <View style={[styles.prompt, { backgroundColor: c.raised }]}>
+        <Heart size={40} color={c.soft} weight="duotone" />
+        <Text style={[styles.promptTitle, { color: c.text }]}>{title}</Text>
+        <Text style={[styles.promptBody, { color: c.soft }]}>{body}</Text>
+        {actions}
       </View>,
-      true,
     );
-
-  if (loading) {
-    return container(
-      [0, 1, 2, 3].map((i) => (
-        <View key={i} style={styles.row}>
-          <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
-          <View style={{ flex: 1, gap: 8 }}>
-            <Skeleton width="85%" height={14} borderRadius={6} />
-            <Skeleton width="50%" height={12} borderRadius={6} />
-          </View>
-        </View>
-      )),
-    );
-  }
 
   if (!isAuthenticated) {
-    return emptyState('Sign in to save events', 'Heart events to find them later. They sync across your devices.', {
-      label: 'Sign in',
-      onPress: () => router.push('/login'),
-    });
-  }
-
-  if (upcoming.length + past.length === 0) {
-    return emptyState('Nothing saved yet', 'Tap the heart on any event to keep it here.', {
-      label: 'Browse events',
-      onPress: () => router.push('/events'),
-    });
-  }
-
-  const renderRow = (item: Event, isPast: boolean) => {
-    const place = item.venueName || item.city || (item.type === 'ONLINE' ? 'Online' : null);
-    return (
-      <Animated.View key={item.id} entering={FadeIn} exiting={FadeOut.duration(180)} layout={LinearTransition.duration(220)}>
-        <Pressable
-          onPress={() => router.push(`/event/${item.slug || item.id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={item.title}
-          style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
-        >
-          <View style={[styles.thumb, { backgroundColor: tokens.elevated }, isPast && { opacity: 0.55 }]}>
-            {coverOr(defaults, item.id, item.coverImageUrl) ? (
-              <Image source={{ uri: coverOr(defaults, item.id, item.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            ) : (
-              <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-            )}
-          </View>
-          <View style={[styles.info, isPast && { opacity: 0.6 }]}>
-            <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>{item.title}</Text>
-            <Text style={[styles.meta, { color: isPast ? tokens.textMuted : tokens.accent }]} numberOfLines={1}>
-              {relativeWhen(item.startDateTime)}
-            </Text>
-            <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
-              {[place, isPast ? null : shortPrice(item)].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
-          <FavoriteButton eventId={item.id} size={22} />
-        </Pressable>
-      </Animated.View>
+    return promptCard(
+      'Keep events for later',
+      'Sign in and tap the heart on any event. Saved events sync across your devices.',
+      <>
+        <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={{ marginTop: spacing[6] }} />
+        <AuthButton label="Browse events" variant="secondary" onPress={() => router.push('/events')} style={{ marginTop: spacing[3] }} />
+      </>,
     );
-  };
+  }
 
-  return container(
+  if (loading) {
+    return page(
+      <View style={styles.pad}>
+        <PosterCardSkeleton width={posterWidth} />
+        <View style={[styles.list, { marginTop: spacing[8] }]}>
+          {[0, 1].map((i) => <SavedCardSkeleton key={i} />)}
+        </View>
+      </View>,
+    );
+  }
+
+  if (!next && past.length === 0) {
+    return promptCard(
+      'Nothing saved yet',
+      'Tap the heart on any event and it lands here, soonest first.',
+      <AuthButton label="Browse events" arrow onPress={() => router.push('/events')} style={{ marginTop: spacing[6] }} />,
+    );
+  }
+
+  return page(
     <>
-      {upcoming.length > 0 ? (
-        <Animated.View layout={LinearTransition.duration(220)}>
-          <Text style={[styles.section, { color: tokens.textMuted }]}>Upcoming</Text>
-          {upcoming.map((e) => renderRow(e, false))}
+      {next ? (
+        <Animated.View key={next.id} entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow} style={styles.pad}>
+          <View style={styles.eyebrowRow}>
+            <Text style={[styles.eyebrow, { color: c.muted }]}>Up next</Text>
+            <FavoriteButton eventId={next.id} size={20} color={c.soft} />
+          </View>
+          <PosterCard
+            width={posterWidth}
+            title={next.title}
+            imageUrl={coverOr(defaults, next.id, next.coverImageUrl)}
+            when={relativeWhen(next.startDateTime)}
+            where={placeOf(next)}
+            host={next.space?.name}
+            tag={countdownLabel(next.startDateTime)}
+            price={shortPrice(next)}
+            onPress={() => openEvent(next)}
+          />
         </Animated.View>
       ) : null}
+
+      {later.length > 0 ? (
+        <Animated.View layout={reflow}>
+          <Section title="Coming up" subtitle={`${later.length} more saved`} style={next ? undefined : styles.firstSection}>
+            <View style={[styles.list, styles.pad]}>
+              {later.map((e) => <SavedCard key={e.id} event={e} onPress={() => openEvent(e)} />)}
+            </View>
+          </Section>
+        </Animated.View>
+      ) : null}
+
       {past.length > 0 ? (
-        <Animated.View layout={LinearTransition.duration(220)} style={upcoming.length > 0 && { marginTop: spacing[6] }}>
-          <Text style={[styles.section, { color: tokens.textMuted }]}>Past</Text>
-          {past.map((e) => renderRow(e, true))}
+        <Animated.View layout={reflow}>
+          <Section title="Been and gone" subtitle="Saved events that have ended" style={next || later.length ? undefined : styles.firstSection}>
+            <View style={[styles.list, styles.pad]}>
+              {past.map((e) => <SavedCard key={e.id} event={e} past onPress={() => openEvent(e)} />)}
+            </View>
+          </Section>
         </Animated.View>
       ) : null}
     </>,
   );
 }
 
+/** Compact saved card: 4:3 thumb, title, host, when · where, price, heart. */
+function SavedCard({ event, past = false, onPress }: { event: Event; past?: boolean; onPress: () => void }) {
+  const c = useCosmos();
+  const defaults = useDefaultImages();
+  const cover = coverOr(defaults, event.id, event.coverImageUrl);
+  const meta = [relativeWhen(event.startDateTime), placeOf(event)].filter(Boolean).join(' · ');
+
+  return (
+    <Animated.View entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={[event.title, event.space?.name, meta].filter(Boolean).join(', ')}
+        style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      >
+        <View style={[styles.cardMain, past && { opacity: 0.62 }]}>
+          <View style={[styles.thumb, { backgroundColor: c.card }]}>
+            {cover ? (
+              <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : (
+              <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
+            )}
+          </View>
+          <View style={styles.info}>
+            <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{event.title}</Text>
+            {event.space?.name ? (
+              <Text style={[styles.host, { color: c.muted }]} numberOfLines={1}>{event.space.name}</Text>
+            ) : null}
+            <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
+            {past ? null : <Text style={[styles.price, { color: c.text }]}>{shortPrice(event)}</Text>}
+          </View>
+        </View>
+        <FavoriteButton eventId={event.id} size={20} color={c.soft} style={styles.cardHeart} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function SavedCardSkeleton() {
+  const c = useCosmos();
+  return (
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
+      <View style={styles.cardMain}>
+        <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
+        <View style={[styles.info, { gap: 8 }]}>
+          <Skeleton width="85%" height={14} borderRadius={6} />
+          <Skeleton width="55%" height={12} borderRadius={6} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  centerContent: { flexGrow: 1, justifyContent: 'center' },
-  section: { fontSize: typography.fontSize.sm, marginTop: spacing[4], marginBottom: spacing[2], ...font('semibold') },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[2] },
+  container: { flex: 1 },
+  content: { paddingBottom: 100 },
+  pad: { paddingHorizontal: GUTTER },
+  // Section brings its own large top margin; trim it when nothing sits above.
+  firstSection: { marginTop: spacing[4] },
+  eyebrowRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[4], marginBottom: spacing[3] },
+  eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  list: { gap: spacing[3] },
+  card: { flexDirection: 'row', alignItems: 'center', borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  cardMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3] },
+  cardHeart: { paddingRight: spacing[4], paddingLeft: spacing[1] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
   info: { flex: 1, gap: 3 },
-  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.sm, ...font() },
-  empty: { alignItems: 'center', paddingHorizontal: spacing[4], paddingBottom: spacing[16] },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, textAlign: 'center', ...font('heading') },
-  emptyBody: {
-    marginTop: 6,
-    fontSize: typography.fontSize.sm,
-    lineHeight: typography.fontSize.sm * 1.5,
-    textAlign: 'center',
-    maxWidth: 300,
-    ...font(),
-  },
+  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
+  host: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  price: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });

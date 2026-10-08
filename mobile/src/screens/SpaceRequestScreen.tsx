@@ -1,54 +1,61 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { Buildings, CheckCircle, UsersThree } from '@unifesto/unicon/react-native';
+import { Buildings, CheckCircle, Circle, UsersThree } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { createSpaceRequest, getMySpaceRequests, type SpaceRequest } from '../lib/api/spaces';
-import { SettingsGroup } from '../components/profile/SettingsGroup';
-import FormRow from '../components/profile/FormRow';
-import { ActionBar } from '../components/event/EventOverlays';
 import Skeleton from '../components/Skeleton';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthField from '../components/auth/AuthField';
+import AuthButton from '../components/auth/AuthButton';
+import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop } from '../components/ui/CardSurface';
-
-const SELECTED_TINT = 'rgba(52,145,255,0.16)';
-
-const GUTTER = spacing[6];
 
 const SPACE_TYPES = [
-  { value: 'REGULAR', title: 'Regular', body: 'A community, club or startup', Icon: UsersThree },
-  { value: 'SUPER', title: 'Super', body: 'A university, college or institution', Icon: Buildings },
+  { value: 'REGULAR', title: 'Community', body: 'A club, collective or startup', Icon: UsersThree },
+  { value: 'SUPER', title: 'Institution', body: 'A university or college, with spaces inside it', Icon: Buildings },
 ] as const;
 
 const CITIES = ['Hyderabad', 'Bangalore', 'Mumbai', 'Delhi', 'Chennai', 'Pune', 'Kolkata', 'Other'];
 
+/** What a space gets you, said once at the top. */
+const PERKS: { icon: GlyphName; text: string }[] = [
+  { icon: 'calendar-blank', text: 'Events with tickets, check-in and payouts' },
+  { icon: 'users-three', text: 'Members and a team with their own roles' },
+  { icon: 'chart-bar', text: 'Analytics, certificates and sponsors' },
+];
+
 const STATUS = {
-  PENDING: { label: 'Under review', tone: 'warning' },
-  APPROVED: { label: 'Approved', tone: 'success' },
-  REJECTED: { label: 'Not approved', tone: 'danger' },
+  PENDING: 'Under review',
+  APPROVED: 'Approved',
+  REJECTED: 'Not approved',
 } as const;
 
-/** Request a new space. One request can be under review at a time. */
+/** Requests shown before "Load more", and how many each tap adds. */
+const PAGE = 3;
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/**
+ * Request a new space. The pitch first, then either the request under review
+ * (only one can be pending at a time) or the form: the space, its kind, its
+ * city. Past requests sit last, a few at a time; a turned-down one can be edited and resent.
+ */
 export default function SpaceRequestScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing(8);
+  const topSpacing = useTopSpacing();
+  const scroll = useRef<ScrollView>(null);
 
   const [requests, setRequests] = useState<SpaceRequest[]>([]);
+  const [shown, setShown] = useState(PAGE);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -73,15 +80,10 @@ export default function SpaceRequestScreen() {
     load();
   }, [load]);
 
+  const ready = name.trim().length > 0 && description.trim().length > 0;
+
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      AppAlert.alert('Name needed', 'Please enter a name for your space.');
-      return;
-    }
-    if (!description.trim()) {
-      AppAlert.alert('Description needed', 'Please tell us what your space is about.');
-      return;
-    }
+    if (!ready) return;
     // "Other" means the city is typed in; send what they typed, not the word "Other".
     const cityValue = city === 'Other' ? otherCity.trim() : city;
     setSubmitting(true);
@@ -99,6 +101,7 @@ export default function SpaceRequestScreen() {
       setOtherCity('');
       setWebsiteUrl('');
       await load();
+      scroll.current?.scrollTo({ y: 0, animated: true });
     } catch (e: any) {
       AppAlert.alert('Could not send', e.message || 'Please try again.');
     } finally {
@@ -106,167 +109,226 @@ export default function SpaceRequestScreen() {
     }
   };
 
+  /** Load a turned-down request back into the form to fix and resend. */
+  const editAndResend = (r: SpaceRequest) => {
+    setName(r.name);
+    setDescription(r.description ?? '');
+    setType(r.type === 'SUPER' ? 'SUPER' : 'REGULAR');
+    const known = r.city && CITIES.includes(r.city);
+    setCity(r.city ? (known ? r.city : 'Other') : '');
+    setOtherCity(r.city && !known ? r.city : '');
+    setWebsiteUrl(r.websiteUrl ?? '');
+    scroll.current?.scrollTo({ y: 0, animated: true });
+  };
+
   const pending = requests.find((r) => r.status === 'PENDING');
-  const toneColor = (tone: 'warning' | 'success' | 'danger') => tokens[tone];
 
   if (loading) {
     return (
-      <View style={[styles.flex, { backgroundColor: tokens.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER, gap: spacing[4] }]}>
-        <Skeleton width="80%" height={28} borderRadius={8} />
-        <Skeleton width="100%" height={180} borderRadius={borderRadius.xl} />
-        <Skeleton width="100%" height={120} borderRadius={borderRadius.xl} />
+      <View style={[styles.flex, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <View style={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, gap: spacing[4] }}>
+          <Skeleton width="100%" height={230} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[4] }} />
+          <Skeleton width="100%" height={260} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[8] }} />
+        </View>
       </View>
     );
   }
 
-  const unicon = (n: GlyphName) => <UnGlyph name={n} size={28} color={tokens.text} />;
-
   return (
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          ref={scroll}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: (pending ? spacing[10] : 140) + insets.bottom }}
+          contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: (pending ? spacing[10] : 150) + insets.bottom }}
           contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
         >
-          <Text style={[styles.title, { color: tokens.text }]}>Run events for your community</Text>
-          <Text style={[styles.lead, { color: tokens.textSecondary }]}>
-            A space is your home on Unifesto: your events, members and team in one place.
-          </Text>
+          {/* The pitch */}
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+            <Text style={[styles.title, { color: c.text }]}>Run events for your community</Text>
+            <Text style={[styles.lead, { color: c.soft }]}>
+              A space is your home on Unifesto: your events, members and team in one place.
+            </Text>
+            <View style={styles.perks}>
+              {PERKS.map((p) => (
+                <View key={p.text} style={styles.perk}>
+                  <UnGlyph name={p.icon} size={22} color={c.text} />
+                  <Text style={[styles.perkText, { color: c.soft }]}>{p.text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
 
           {pending ? (
-            <View style={[styles.card, { marginTop: spacing[6] }]}>
-              <CardBackdrop shape={styles.card} />
-              <View style={styles.pendingHead}>
-                <LiveDot color={tokens.warning} />
-                <Text style={[styles.pendingLabel, { color: tokens.warning }]}>Under review</Text>
+            <Section title="Your request" style={styles.tightSection}>
+              <View style={[styles.card, { backgroundColor: c.raised }]}>
+                <View style={styles.pendingHead}>
+                  <LiveDot color={c.text} />
+                  <Text style={[styles.pendingLabel, { color: c.text }]}>Under review</Text>
+                </View>
+                <Text style={[styles.pendingName, { color: c.text }]}>{pending.name}</Text>
+                <Text style={[styles.lead, { color: c.soft, marginTop: spacing[2] }]}>
+                  Sent {formatDate(pending.createdAt)}. We’ll get back to you within 2 to 3 business days, and you can
+                  only have one request under review at a time.
+                </Text>
               </View>
-              <Text style={[styles.pendingName, { color: tokens.text }]}>{pending.name}</Text>
-              <Text style={[styles.body, { color: tokens.textSecondary }]}>
-                We'll get back to you within 2 to 3 business days.
-              </Text>
-            </View>
+            </Section>
           ) : (
             <>
-              <SettingsGroup title="About the space">
-                <FormRow icon={unicon('user')} value={name} onChangeText={setName} placeholder="Space name" maxLength={255} />
-                <FormRow
-                  icon={unicon('file-text')}
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="What is it about, and who is it for?"
-                  multiline
-                  maxLength={2000}
-                />
-                <FormRow
-                  icon={unicon('globe')}
-                  value={websiteUrl}
-                  onChangeText={setWebsiteUrl}
-                  placeholder="Website (optional)"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                />
-              </SettingsGroup>
-
-              <Text style={[styles.groupTitle, { color: tokens.textMuted }]}>Type</Text>
-              <View style={styles.typeRow}>
-                {SPACE_TYPES.map(({ value, title, body, Icon }) => {
-                  const active = type === value;
-                  return (
-                    <Pressable
-                      key={value}
-                      onPress={() => setType(value)}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: active }}
-                      style={({ pressed }) => [
-                        styles.typeCard,
-                        // Selected = accent tint, never an outline (borderless cards).
-                        {
-                          backgroundColor: active ? SELECTED_TINT : undefined,
-                          transform: [{ scale: pressed ? 0.97 : 1 }],
-                        },
-                      ]}
-                    >
-                      {active ? null : <CardBackdrop shape={styles.typeCard} />}
-                      <View style={styles.typeHead}>
-                        <Icon size={26} color={active ? tokens.accent : tokens.textSecondary} weight={active ? 'fill' : 'regular'} />
-                        {active ? <CheckCircle size={20} color={tokens.accent} weight="fill" /> : null}
-                      </View>
-                      <Text style={[styles.typeTitle, { color: tokens.text }]}>{title}</Text>
-                      <Text style={[styles.small, { color: tokens.textMuted }]}>{body}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              <Text style={[styles.groupTitle, { color: tokens.textMuted }]}>City</Text>
-              <View style={styles.chips}>
-                {CITIES.map((c) => {
-                  const active = city === c;
-                  return (
-                    <Pressable
-                      key={c}
-                      onPress={() => setCity(active ? '' : c)}
-                      style={({ pressed }) => [
-                        styles.chip,
-                        { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                      ]}
-                    >
-                      {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                      <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{c}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {city === 'Other' ? (
-                <View style={{ marginTop: spacing[3] }}>
-                  <View style={[styles.card, { padding: 0 }]}>
-                    <CardBackdrop shape={styles.card} />
-                    <FormRow icon={unicon('map-pin')} value={otherCity} onChangeText={setOtherCity} placeholder="Which city?" autoFocus />
-                  </View>
+              <Section title="Your space" subtitle="What people will see" style={styles.tightSection}>
+                <View style={styles.fields}>
+                  <AuthField label="Name" value={name} onChangeText={setName} placeholder="e.g. Hyderabad Runners" maxLength={255} />
+                  <AuthField
+                    label="About"
+                    value={description}
+                    onChangeText={setDescription}
+                    placeholder="What is it about, and who is it for?"
+                    multiline
+                    maxLength={2000}
+                  />
+                  <AuthField
+                    label="Website (optional)"
+                    value={websiteUrl}
+                    onChangeText={setWebsiteUrl}
+                    placeholder="yourspace.com"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                  />
                 </View>
-              ) : null}
+              </Section>
+
+              <Section title="Kind of space">
+                <View style={[styles.pad, styles.types]} accessibilityRole="radiogroup">
+                  {SPACE_TYPES.map(({ value, title, body, Icon }) => {
+                    const active = type === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        onPress={() => setType(value)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: active }}
+                        style={({ pressed }) => [
+                          styles.type,
+                          // Selected = silver fill, never an outline (borderless cards).
+                          { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.97 : 1 }] },
+                        ]}
+                      >
+                        <View style={styles.typeHead}>
+                          <Icon size={26} color={active ? c.primaryFg : c.text} weight={active ? 'fill' : 'regular'} />
+                          {active ? <CheckCircle size={20} color={c.primaryFg} weight="fill" /> : <Circle size={20} color={c.muted} />}
+                        </View>
+                        <Text style={[styles.typeTitle, { color: active ? c.primaryFg : c.text }]}>{title}</Text>
+                        <Text style={[styles.typeBody, { color: active ? c.primaryFg : c.muted }]}>{body}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </Section>
+
+              <Section title="City" subtitle="Where most of your events happen">
+                <View style={[styles.pad, styles.chips]}>
+                  {CITIES.map((name_) => {
+                    const active = city === name_;
+                    return (
+                      <Pressable
+                        key={name_}
+                        onPress={() => setCity(active ? '' : name_)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: active }}
+                        style={({ pressed }) => [
+                          styles.chip,
+                          { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                        ]}
+                      >
+                        <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{name_}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                {city === 'Other' ? (
+                  <View style={[styles.pad, { marginTop: spacing[4] }]}>
+                    <AuthField label="Which city?" value={otherCity} onChangeText={setOtherCity} placeholder="City" autoFocus />
+                  </View>
+                ) : null}
+              </Section>
             </>
           )}
 
           {requests.length > 0 ? (
-            <View style={{ marginTop: spacing[8] }}>
-              <Text style={[styles.groupTitle, { color: tokens.textMuted, marginTop: 0 }]}>My requests</Text>
-              <View style={[styles.card, { paddingVertical: spacing[1] }]}>
-                <CardBackdrop shape={styles.card} />
-                {requests.map((r, i) => {
-                  const st = STATUS[r.status];
+            <Section title="My requests" subtitle={requests.length > PAGE ? `${requests.length} sent` : undefined}>
+              <View style={[styles.pad, styles.list]}>
+                {requests.slice(0, shown).map((r, i, visible) => {
+                  // The last card fades into the page while more are tucked away below it.
+                  const faded = shown < requests.length && i === visible.length - 1;
                   return (
-                    <View key={r.id}>
-                      <View style={styles.reqRow}>
+                    <View key={r.id} style={[styles.request, { backgroundColor: c.raised }]}>
+                      <View style={styles.requestHead}>
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.reqName, { color: tokens.text }]} numberOfLines={1}>{r.name}</Text>
-                          <Text style={[styles.small, { color: tokens.textMuted }]}>
-                            {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </Text>
+                          <Text style={[styles.requestName, { color: c.text }]} numberOfLines={1}>{r.name}</Text>
+                          <Text style={[styles.small, { color: c.muted }]}>{formatDate(r.createdAt)}</Text>
                         </View>
-                        <Text style={[styles.reqStatus, { color: toneColor(st.tone) }]}>{st.label}</Text>
+                        <View style={[styles.pill, { backgroundColor: r.status === 'REJECTED' ? 'rgba(239,68,68,0.14)' : c.tint }]}>
+                          <Text style={[styles.pillText, { color: r.status === 'REJECTED' ? c.danger : c.text }]}>{STATUS[r.status]}</Text>
+                        </View>
                       </View>
                       {r.status === 'REJECTED' && r.reviewNote ? (
-                        <Text style={[styles.note, { color: tokens.textSecondary }]}>“{r.reviewNote}”</Text>
+                        <Text style={[styles.note, { color: c.soft }]}>“{r.reviewNote}”</Text>
                       ) : null}
-                      {i < requests.length - 1 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
+                      {r.status === 'REJECTED' && !pending && !faded ? (
+                        <RowAction label="Edit and resend" onPress={() => editAndResend(r)} />
+                      ) : null}
+                      {faded ? (
+                        <LinearGradient
+                          colors={[`${c.bg}00`, c.bg]}
+                          locations={[0, 0.85]}
+                          style={StyleSheet.absoluteFill}
+                          pointerEvents="none"
+                        />
+                      ) : null}
                     </View>
                   );
                 })}
+                {shown < requests.length ? (
+                  <Pressable
+                    onPress={() => setShown((n) => n + PAGE)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Load ${Math.min(PAGE, requests.length - shown)} more requests`}
+                    style={({ pressed }) => [styles.loadMore, { opacity: pressed ? 0.6 : 1 }]}
+                  >
+                    <Text style={[styles.rowActionText, { color: c.text }]}>Load more</Text>
+                    <Text style={[styles.small, { color: c.muted, marginTop: 0 }]}>{requests.length - shown} more</Text>
+                  </Pressable>
+                ) : null}
               </View>
-            </View>
+            </Section>
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
       {!pending ? (
-        <ActionBar info={null} label="Send request" loading={submitting} accent={tokens.accent} onPress={handleSubmit} />
+        <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
+          <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+          <AuthButton label="Send request" arrow loading={submitting} disabled={!ready} onPress={handleSubmit} />
+          {!ready ? <Text style={[styles.hint, { color: c.muted }]}>Add a name and what it’s about to send</Text> : null}
+        </View>
       ) : null}
     </View>
+  );
+}
+
+function RowAction({ label, onPress }: { label: string; onPress: () => void }) {
+  const c = useCosmos();
+  return (
+    <Pressable onPress={onPress} hitSlop={8} accessibilityRole="button" style={({ pressed }) => [styles.rowAction, { opacity: pressed ? 0.6 : 1 }]}>
+      <Text style={[styles.rowActionText, { color: c.text }]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -287,28 +349,43 @@ function LiveDot({ color }: { color: string }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  title: { fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.2, letterSpacing: -0.4, ...font('heading') },
-  lead: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
-  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  small: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  card: { borderRadius: borderRadius.xl, padding: spacing[5], overflow: 'hidden' },
+  pad: { paddingHorizontal: GUTTER },
+  // Section's default top margin is sized for Home; tighter under the pitch.
+  tightSection: { marginTop: spacing[10] },
+  card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  rule: { width: 40, height: 1, marginBottom: spacing[5] },
+  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  lead: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
+  perks: { marginTop: spacing[5], gap: spacing[3] },
+  perk: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  perkText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   pendingHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  pendingLabel: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  pendingName: { marginTop: spacing[3], marginBottom: 4, fontSize: typography.fontSize.lg, ...font('heading') },
+  pendingLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  pendingName: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   liveWrap: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 12, height: 12, borderRadius: 6 },
   liveDot: { width: 9, height: 9, borderRadius: 5 },
-  groupTitle: { marginTop: spacing[8], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('semibold') },
-  typeRow: { flexDirection: 'row', gap: spacing[3] },
-  typeCard: { flex: 1, borderRadius: borderRadius.xl, padding: spacing[4], gap: 4 },
-  typeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[2] },
-  typeTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
+  fields: { paddingHorizontal: GUTTER, gap: spacing[5] },
+  types: { flexDirection: 'row', gap: spacing[3] },
+  type: { flex: 1, borderRadius: cosmosCardRadius, padding: spacing[4], gap: 4 },
+  typeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3] },
+  typeTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  typeBody: { fontSize: typography.fontSize.xs, lineHeight: 17, ...cosmosFont.body },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { height: 38, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
-  chipText: { fontSize: typography.fontSize.sm, ...font('medium') },
-  reqRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[3] },
-  reqName: { fontSize: typography.fontSize.base, ...font('semibold') },
-  reqStatus: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: -spacing[1], marginBottom: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
-  divider: { height: StyleSheet.hairlineWidth },
+  chip: { height: 40, paddingHorizontal: spacing[4], borderRadius: 999, justifyContent: 'center' },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  list: { gap: spacing[3] },
+  request: { borderRadius: cosmosCardRadius, padding: spacing[4], overflow: 'hidden' },
+  // Pulled up under the faded card so the two read as one.
+  loadMore: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: spacing[2], marginTop: -spacing[2], paddingVertical: spacing[2] },
+  requestHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  requestName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  small: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  pillText: { fontSize: 11, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
+  rowAction: { alignSelf: 'flex-start', marginTop: spacing[3] },
+  rowActionText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
+  hint: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

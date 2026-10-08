@@ -4,19 +4,20 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { CheckCircle, Trash } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
-import { useTokens } from '../context/ThemeContext';
 import * as AuthAPI from '../lib/api/auth';
 import { setPrimaryIdentity, removeIdentity } from '../lib/api/auth';
 import { cancelAccountDeletion, deleteAccount } from '../lib/api/profile';
 import Skeleton from '../components/Skeleton';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 type IconName = GlyphName;
@@ -49,9 +50,13 @@ function groupByEmail(identities: AuthAPI.UserIdentity[]) {
   return groups;
 }
 
+/**
+ * Profile › Account: a pending deletion first (it's the one thing with a
+ * deadline), then who I am here, how I sign in, and finally how to leave.
+ */
 export default function AccountSettingsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const { user, token, logout, updateUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -156,122 +161,167 @@ export default function AccountSettingsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: tokens.bg, paddingTop: topSpacing }]}>
-        {[2, 2, 1].map((rows, i) => (
-          <Skeleton key={i} width="100%" height={rows * 56} borderRadius={borderRadius.xl} style={{ marginTop: spacing[8] }} />
-        ))}
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <View style={{ paddingTop: topSpacing, paddingHorizontal: GUTTER }}>
+          {[4, 2, 2].map((rows, i) => (
+            <Skeleton key={i} width="100%" height={rows * 56} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+          ))}
+        </View>
       </View>
     );
   }
 
-  const unicon = (name: IconName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
+  const unicon = (name: IconName) => <UnGlyph name={name} size={ICON} color={c.text} />;
   const groups = groupByEmail(identities);
+  const since = profile?.createdAt
+    ? new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
+    : null;
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-    >
-      <SettingsGroup title="Account">
-        <SettingsRow
-          icon={unicon('at')}
-          label="Username"
-          value={profile?.username ? `@${profile.username}` : 'Not set'}
-          onPress={() => router.push('/edit-profile')}
-        />
-        <SettingsRow icon={unicon('phone')} label="Phone" value={formatPhone(profile?.mobileNumber)} />
-      </SettingsGroup>
-
-      <SettingsGroup
-        title="Sign-in methods"
-        action={groups.length > 0 ? { label: managing ? 'Done' : 'Manage', onPress: () => setManaging((v) => !v) } : undefined}
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
       >
-        {groups.length === 0 ? (
-          <SettingsRow icon={unicon('envelope-simple')} label="No linked sign-ins" />
-        ) : (
-          groups.map((group) => {
-            const first = group.identities[0];
-            const primaryIdentity = group.identities.find((i) => i.isPrimary) || first;
-            const isPrimary = group.identities.some((i) => i.isPrimary);
-            const isVerified = group.identities.some((i) => i.emailVerified);
-            const isPrivateRelay = !!group.email?.includes('privaterelay.appleid.com');
-            const canMakePrimary = !isPrimary && !!group.email && !isPrivateRelay;
-            const canRemove = groups.length > 1;
-
-            // Two providers on one email: both marks, side by side, no framing.
-            const icon =
-              group.identities.length > 1 ? (
-                <View style={styles.iconPair}>
-                  <UnGlyph name={PROVIDER[first.provider].icon} size={20} color={tokens.text} />
-                  <UnGlyph name={PROVIDER[group.identities[1].provider].icon} size={16} color={tokens.text} />
-                </View>
-              ) : (
-                unicon(PROVIDER[first.provider].icon)
-              );
-
-            const trailing = managing ? (
-              <View style={styles.trailing}>
-                {canMakePrimary ? (
-                  <Pressable onPress={() => makePrimary(primaryIdentity.id)} hitSlop={8} accessibilityRole="button">
-                    <Text style={[styles.inlineAction, { color: tokens.accent }]}>Make primary</Text>
-                  </Pressable>
-                ) : null}
-                {canRemove ? (
-                  <Pressable onPress={() => confirmRemove(group)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Remove">
-                    <Trash size={20} color={tokens.danger} />
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : (
-              <View style={styles.trailing}>
-                {isPrimary ? <Text style={[styles.tag, { color: tokens.accent }]}>Primary</Text> : null}
-                {isVerified ? <CheckCircle size={18} color={tokens.success} weight="fill" /> : null}
-              </View>
-            );
-
-            return (
-              <SettingsRow
-                key={group.email || first.id}
-                icon={icon}
-                label={group.email || PROVIDER[first.provider].label}
-                trailing={trailing}
-              />
-            );
-          })
-        )}
-      </SettingsGroup>
-
-      <SettingsGroup>
         {profile?.deletionScheduledFor ? (
-          <SettingsRow
-            icon={<Trash size={24} color={tokens.danger} />}
-            label={`Deleting on ${formatDeletionDate(profile.deletionScheduledFor)}`}
-            danger
-            trailing={
-              <Pressable onPress={handleCancelDeletion} hitSlop={8} accessibilityRole="button" accessibilityLabel="Cancel deletion">
-                <Text style={[styles.inlineAction, { color: tokens.accent }]}>Cancel</Text>
+          <View style={[styles.card, styles.alert, { backgroundColor: c.raised }]}>
+            <Text style={[styles.cardTitle, { color: c.danger }]}>Deleting on {formatDeletionDate(profile.deletionScheduledFor)}</Text>
+            <Text style={[styles.cardBody, { color: c.soft }]}>
+              Until then everything is still here. Keep your account and nothing is lost.
+            </Text>
+            <AuthButton label="Keep my account" onPress={handleCancelDeletion} style={{ marginTop: spacing[5] }} />
+          </View>
+        ) : null}
+
+        <Section title="Your details" subtitle="Change these in Edit profile" style={styles.firstSection}>
+          <SettingsGroup style={styles.group}>
+            <SettingsRow icon={unicon('user')} label="Name" value={profile?.fullName || 'Not set'} onPress={() => router.push('/edit-profile')} />
+            <SettingsRow
+              icon={unicon('at')}
+              label="Username"
+              value={profile?.username ? `@${profile.username}` : 'Not set'}
+              onPress={() => router.push('/edit-profile')}
+            />
+            <SettingsRow icon={unicon('phone')} label="Phone" value={formatPhone(profile?.mobileNumber)} />
+            {since ? <SettingsRow icon={unicon('calendar-blank')} label="Member since" value={since} /> : null}
+          </SettingsGroup>
+        </Section>
+
+        <Section title="Sign-in methods" subtitle="Ways you can get into Unifesto">
+          <SettingsGroup
+            style={styles.group}
+            action={groups.length > 0 ? { label: managing ? 'Done' : 'Manage', onPress: () => setManaging((v) => !v) } : undefined}
+          >
+            {groups.length === 0 ? (
+              <SettingsRow icon={unicon('envelope-simple')} label="No linked sign-ins" />
+            ) : (
+              groups.map((group) => {
+                const first = group.identities[0];
+                const primaryIdentity = group.identities.find((i) => i.isPrimary) || first;
+                const isPrimary = group.identities.some((i) => i.isPrimary);
+                const isVerified = group.identities.some((i) => i.emailVerified);
+                const isPrivateRelay = !!group.email?.includes('privaterelay.appleid.com');
+                const canMakePrimary = !isPrimary && !!group.email && !isPrivateRelay;
+                const canRemove = groups.length > 1;
+
+                // Two providers on one email: both marks, side by side, no framing.
+                const icon =
+                  group.identities.length > 1 ? (
+                    <View style={styles.iconPair}>
+                      <UnGlyph name={PROVIDER[first.provider].icon} size={20} color={c.text} />
+                      <UnGlyph name={PROVIDER[group.identities[1].provider].icon} size={16} color={c.text} />
+                    </View>
+                  ) : (
+                    unicon(PROVIDER[first.provider].icon)
+                  );
+
+                const trailing = managing ? (
+                  <View style={styles.trailing}>
+                    {canMakePrimary ? (
+                      <Pressable onPress={() => makePrimary(primaryIdentity.id)} hitSlop={8} accessibilityRole="button">
+                        <Text style={[styles.inlineAction, { color: c.text }]}>Make primary</Text>
+                      </Pressable>
+                    ) : null}
+                    {canRemove ? (
+                      <Pressable onPress={() => confirmRemove(group)} hitSlop={10} accessibilityRole="button" accessibilityLabel="Remove">
+                        <Trash size={20} color={c.danger} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : (
+                  <View style={styles.trailing}>
+                    {isPrimary ? <Text style={[styles.tag, { color: c.soft }]}>Primary</Text> : null}
+                    {isVerified ? <CheckCircle size={18} color={c.text} weight="fill" /> : null}
+                  </View>
+                );
+
+                return (
+                  <SettingsRow
+                    key={group.email || first.id}
+                    icon={icon}
+                    label={group.email || PROVIDER[first.provider].label}
+                    trailing={trailing}
+                  />
+                );
+              })
+            )}
+          </SettingsGroup>
+          {managing && groups.length === 1 ? (
+            <Text style={[styles.note, { color: c.muted }]}>Add another sign-in before removing this one.</Text>
+          ) : null}
+        </Section>
+
+        {profile?.deletionScheduledFor ? null : (
+          <Section title="Delete account">
+            <View style={[styles.card, { backgroundColor: c.raised }]}>
+              <Text style={[styles.cardBody, { color: c.soft, marginTop: 0 }]}>
+                You get 30 days to change your mind: sign in before then and cancel. After that your profile and
+                sign-ins are gone for good.
+              </Text>
+              <Pressable
+                onPress={handleDeleteAccount}
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.danger, { borderColor: c.danger, opacity: pressed ? 0.6 : 1 }]}
+              >
+                <Trash size={18} color={c.danger} />
+                <Text style={[styles.dangerText, { color: c.danger }]}>Delete my account</Text>
               </Pressable>
-            }
-          />
-        ) : (
-          <SettingsRow
-            icon={<Trash size={24} color={tokens.danger} />}
-            label="Delete account"
-            danger
-            onPress={handleDeleteAccount}
-          />
+            </View>
+          </Section>
         )}
-      </SettingsGroup>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: GUTTER },
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
+  container: { flex: 1 },
+  // Section's default top margin is sized for Home; tighter at the top of a page.
+  firstSection: { marginTop: spacing[6] },
+  // SettingsGroup's own top margin doubles Section's; Section owns spacing.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
+  alert: { marginTop: spacing[4] },
+  cardTitle: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  cardBody: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: GUTTER, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   iconPair: { flexDirection: 'row', alignItems: 'flex-end', gap: 1 },
   trailing: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  tag: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  inlineAction: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  tag: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  inlineAction: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  danger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    height: 48,
+    marginTop: spacing[5],
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  dangerText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

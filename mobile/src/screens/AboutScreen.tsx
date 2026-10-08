@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { CaretDown, CaretUp } from '@unifesto/unicon/react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Updates from 'expo-updates';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -8,6 +9,7 @@ import { buildInfo, buildLabel } from '../lib/appBuild';
 import { checkForOtaNow, restartIntoUpdate } from '../lib/otaUpdate';
 import { getStoreUpdate, openStoreListing, type StoreUpdate } from '../lib/appUpdate';
 import { WHATS_NEW } from '../lib/whatsNew';
+import { openStoreReview } from '../utils/storeReview';
 import BrandWordmark from '../components/BrandWordmark';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
@@ -19,6 +21,8 @@ import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const STORE = Platform.OS === 'ios' ? 'App Store' : 'Play Store';
+/** The web's download page: sends each phone to its own store. */
+const APP_LINK = 'https://unifesto.app/app';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -28,9 +32,10 @@ type Status =
   | { kind: 'store'; update: StoreUpdate };
 
 /**
- * Profile › About and updates: one card that says where this install stands
- * and offers the single next step (check, restart, open the store), then the
- * release notes, then the exact build details for support.
+ * Profile › About and updates: the version up top, one card that
+ * says where this install stands with the single next step (check, restart,
+ * open the store), the latest release notes (older ones folded away), ways to
+ * pass Unifesto on, then the exact build details for support.
  */
 export default function AboutScreen() {
   const c = useCosmos();
@@ -39,6 +44,7 @@ export default function AboutScreen() {
   // expo-updates' own state: also true when a foreground check downloaded one.
   const { isUpdatePending } = Updates.useUpdates();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [showEarlier, setShowEarlier] = useState(false);
 
   useAnalyticsScreenTracking('About');
 
@@ -114,7 +120,7 @@ export default function AboutScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <BrandWordmark width={176} />
+          <BrandWordmark width={150} />
           <Text style={[styles.version, { color: c.text }]}>Version {info.version ?? '–'}</Text>
           <Text style={[styles.build, { color: c.muted }]}>
             {info.build ? `Build ${info.build}` : ''}
@@ -130,11 +136,11 @@ export default function AboutScreen() {
         </View>
 
         {WHATS_NEW.length ? (
-          <Section title="What’s new">
+          <Section title="What’s new" subtitle={`In ${WHATS_NEW[0].id}`}>
             <View style={styles.notes}>
-              {WHATS_NEW.map((entry, i) => (
+              {(showEarlier ? WHATS_NEW : WHATS_NEW.slice(0, 1)).map((entry, i) => (
                 <View key={entry.id} style={[styles.release, i === 0 ? { paddingTop: 0 } : { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
-                  <Text style={[styles.releaseId, { color: i === 0 ? c.text : c.muted }]}>{entry.id}</Text>
+                  {i > 0 ? <Text style={[styles.releaseId, { color: c.muted }]}>{entry.id}</Text> : null}
                   {entry.items.map((item) => (
                     <View key={item} style={styles.item}>
                       <Text style={[styles.bullet, { color: c.muted }]}>•</Text>
@@ -143,9 +149,34 @@ export default function AboutScreen() {
                   ))}
                 </View>
               ))}
+              {WHATS_NEW.length > 1 ? (
+                <Pressable
+                  onPress={() => setShowEarlier((v) => !v)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: showEarlier }}
+                  style={({ pressed }) => [styles.toggle, { opacity: pressed ? 0.6 : 1 }]}
+                >
+                  <Text style={[styles.toggleText, { color: c.text }]}>
+                    {showEarlier ? 'Hide earlier releases' : `Earlier releases (${WHATS_NEW.length - 1})`}
+                  </Text>
+                  {showEarlier ? <CaretUp size={14} color={c.text} /> : <CaretDown size={14} color={c.text} />}
+                </Pressable>
+              ) : null}
             </View>
           </Section>
         ) : null}
+
+        <Section title="Spread the word" subtitle="Know someone who’d like this?">
+          <SettingsGroup plain style={styles.group}>
+            <SettingsRow
+              label="Share Unifesto"
+              onPress={() => Share.share({ message: `Find events and the people going on Unifesto: ${APP_LINK}`, url: APP_LINK }).catch(() => {})}
+            />
+            <SettingsRow label={`Rate on the ${STORE}`} external onPress={() => openStoreReview().catch(() => {})} />
+            <SettingsRow label="unifesto.app" external onPress={() => Linking.openURL('https://unifesto.app').catch(() => {})} />
+          </SettingsGroup>
+        </Section>
 
         <Section title="For support" subtitle="Share these if something isn’t working.">
           <SettingsGroup plain style={styles.group} action={{ label: 'Copy all', onPress: () => void copyDetails() }}>
@@ -157,6 +188,7 @@ export default function AboutScreen() {
             {info.emergencyLaunch ? <SettingsRow label="Recovered from a failed update" value="Yes" /> : null}
           </SettingsGroup>
         </Section>
+        <Text style={[styles.footer, { color: c.muted }]}>© {new Date().getFullYear()} Unifesto</Text>
       </ScrollView>
     </View>
   );
@@ -166,7 +198,7 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 80 },
   hero: { alignItems: 'center', paddingHorizontal: GUTTER, paddingTop: spacing[6], paddingBottom: spacing[8] },
-  version: { marginTop: spacing[5], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  version: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   build: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[6] },
   rule: { width: 40, height: 1, marginBottom: spacing[5] },
@@ -178,6 +210,9 @@ const styles = StyleSheet.create({
   item: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
   bullet: { fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
   itemText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
+  toggle: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingTop: spacing[4] },
+  toggleText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  footer: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
   // The SettingsGroup default top margin doubles Section's; Section owns spacing.
   group: { marginTop: 0, marginHorizontal: GUTTER },
 });
