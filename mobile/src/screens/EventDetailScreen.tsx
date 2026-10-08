@@ -43,14 +43,16 @@ import { RegisterBar, useActionBarSpace } from '../components/event/EventOverlay
 import NotifySheet from '../components/event/NotifySheet';
 import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import VenueMap from '../components/event/VenueMap';
-import { useEventDetail } from '../hooks/useEventDetail';
+import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
+import { useBannerAccent } from '../hooks/useBannerPalette';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import type { SubEvent } from '../lib/api/events';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
@@ -80,6 +82,24 @@ function orderSubEvents(subs: SubEvent[]): SubEvent[] {
 }
 
 export default function EventDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const d = useEventDetail(id);
+  // Fusion: the cosmos sky lit by the banner's most frequent hue. Null (plain
+  // sky) until extracted, or for a banner that's only white / black / grey.
+  const hue = useBannerAccent(
+    d.event?.coverImageUrl,
+    d.event ? { event: d.event.slug ?? d.event.id } : null,
+  );
+  return (
+    <CosmosWash active={!!hue}>
+      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
+        <EventDetailView id={id} d={d} hue={hue} />
+      </CardSurfaceProvider>
+    </CosmosWash>
+  );
+}
+
+function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: string | null }) {
   const c = useCosmos();
   const defaults = useDefaultImages();
   const router = useRouter();
@@ -90,8 +110,6 @@ export default function EventDetailScreen() {
   const scrollRef = useRef<ScrollView>(null);
   // Y of the "Events inside" rail, so an umbrella's CTA lands on it.
   const subEventsY = useRef<number | null>(null);
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const d = useEventDetail(id);
   const [reportOpen, setReportOpen] = useState(false);
   const { event } = d;
   const [descExpanded, setDescExpanded] = useState(false);
@@ -209,7 +227,7 @@ export default function EventDetailScreen() {
 
   return (
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
-      <CosmosBackdrop horizon={false} />
+      <CosmosBackdrop horizon={false} hue={hue} />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}

@@ -25,12 +25,16 @@ const STARS: [number, number, number, number][] = [
  * up top, and a planet horizon with a silver rim along the bottom. Light mode
  * keeps only the horizon, drawn in ink. Decorative, never touchable.
  * `horizon={false}` keeps just the sky, for scrolling screens like Home.
+ * `hue` fuses a page colour in (the event banner's): the halo becomes a wide
+ * nebula of that colour behind the stars, fading to the plain ground below.
  */
 export default function CosmosBackdrop({
   horizon = true,
   scheme,
+  hue,
 }: {
   horizon?: boolean;
+  hue?: string | null;
   /** Override the app theme (the splash follows the OS instead). */
   scheme?: 'dark' | 'light';
 }) {
@@ -38,6 +42,7 @@ export default function CosmosBackdrop({
   const c = scheme ? cosmosFor(scheme) : appCosmos;
   const { width, height } = useWindowDimensions();
   const isDark = c.scheme === 'dark';
+  const haloCore = hue ? (isDark ? 0.42 : 0.22) : isDark ? 0.09 : 0;
 
   // A huge circle whose top edge peeks ~18% up from the bottom of the screen.
   const r = width * 1.6;
@@ -48,8 +53,10 @@ export default function CosmosBackdrop({
       <Svg width={width} height={height}>
         <Defs>
           <RadialGradient id="halo" cx="50%" cy="50%" rx="50%" ry="50%">
-            <Stop offset="0" stopColor="#ffffff" stopOpacity={isDark ? 0.09 : 0} />
-            <Stop offset="1" stopColor="#ffffff" stopOpacity={0} />
+            <Stop offset="0" stopColor={hue ?? '#ffffff'} stopOpacity={haloCore} />
+            {/* Plain sky: the midpoint of a straight fade. Nebula: a longer tail. */}
+            <Stop offset="0.55" stopColor={hue ?? '#ffffff'} stopOpacity={hue ? (isDark ? 0.14 : 0.08) : haloCore * 0.45} />
+            <Stop offset="1" stopColor={hue ?? '#ffffff'} stopOpacity={0} />
           </RadialGradient>
           {/* Centred on the planet, so the glow follows the curve: clear inside the
               rim, brightest at it, fading out GLOW pt above. */}
@@ -63,7 +70,14 @@ export default function CosmosBackdrop({
           </LinearGradient>
         </Defs>
 
-        <Ellipse cx={width * 0.5} cy={height * 0.18} rx={width * 0.9} ry={height * 0.28} fill="url(#halo)" />
+        {/* A hue nebula reaches further down: behind the banner, title and facts. */}
+        <Ellipse
+          cx={width * 0.5}
+          cy={height * (hue ? 0.12 : 0.18)}
+          rx={width * (hue ? 1.3 : 0.9)}
+          ry={height * (hue ? 0.55 : 0.28)}
+          fill="url(#halo)"
+        />
         {isDark &&
           STARS.map(([x, y, sr, o], i) => (
             <Circle key={i} cx={x * width} cy={y * height} r={sr} fill="#ffffff" opacity={o} />
