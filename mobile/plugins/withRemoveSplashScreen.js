@@ -82,7 +82,7 @@ const withRemoveSplashScreen = (config) => {
     return config;
   });
 
-  // Launch frame colour per OS theme — matches lightTokens.bg / darkTokens.bg.
+  // Launch frame colour per OS theme — matches the splash (cosmos light/dark bg).
   const setLaunchBackground = (resources, value) => {
     const colors = (resources.color || []).filter(
       (color) => color.$?.name !== 'launch_background'
@@ -100,7 +100,7 @@ const withRemoveSplashScreen = (config) => {
         (color) => color.$?.name !== 'splashscreen_background'
       );
     }
-    setLaunchBackground(config.modResults.resources, '#f2f2f5');
+    setLaunchBackground(config.modResults.resources, '#ffffff');
     return config;
   });
 
