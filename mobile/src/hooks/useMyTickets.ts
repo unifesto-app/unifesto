@@ -19,7 +19,8 @@ import { AppAlert } from '../components/ui/AppAlert';
 
 export type TicketTab = 'upcoming' | 'past' | 'waitlist' | 'cancelled';
 
-export const ALL_TABS: TicketTab[] = ['upcoming', 'past', 'waitlist', 'cancelled'];
+// Live things first: what's coming, then what you're queued for, then history.
+export const ALL_TABS: TicketTab[] = ['upcoming', 'waitlist', 'past', 'cancelled'];
 type ListTab = Exclude<TicketTab, 'waitlist'>;
 
 const PAGE_SIZE = 20;
@@ -126,8 +127,10 @@ export function useMyTickets() {
       const now = new Date();
       const filtered = [...memberEvents, ...ownEvents].filter((event: any) => {
         if (isCancelledTab) return true; // past and future alike
+        // Upcoming until the event ends, not when it starts (same as Home and
+        // the widgets), so the pass is still up front while you're at the door.
         // A completed or cancelled event is history even if its date hasn't come.
-        const upcoming = new Date(event.startDateTime) >= now && !isEventOver(event, +now);
+        const upcoming = !isEventOver(event, +now);
         return key === 'upcoming' ? upcoming : !upcoming;
       });
       // Soonest first for what's coming; most recent first for history.

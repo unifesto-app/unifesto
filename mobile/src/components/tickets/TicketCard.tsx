@@ -4,13 +4,12 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, QrCode, UsersThree, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import type { MyTicket } from '../../hooks/useMyTickets';
 import Skeleton from '../Skeleton';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { countdownLabel, dateChip, formatTime } from '../../utils/eventFormat';
-import { CardBackdrop } from '../ui/CardSurface';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 import { isEventOver } from '../../lib/upcomingTickets';
 
@@ -29,7 +28,8 @@ type Status =
 function statusOf(ticket: MyTicket): Status {
   if (ticket.registrationStatus === 'CANCELLED') return { kind: 'cancelled' };
   if (ticket.registrationStatus === 'ATTENDED') return { kind: 'checkedIn' };
-  if (new Date(ticket.startDateTime) < new Date() || isEventOver(ticket)) return { kind: 'ended' };
+  // Same rule as the Upcoming list: a pass stays live until its event ends.
+  if (isEventOver(ticket)) return { kind: 'ended' };
   return { kind: 'countdown', label: countdownLabel(ticket.startDateTime) };
 }
 
@@ -48,6 +48,7 @@ export default function TicketCard({
   onLongPress?: () => void;
 }) {
   const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const status = statusOf(ticket);
   const live = status.kind === 'countdown';
@@ -58,13 +59,13 @@ export default function TicketCard({
   const badge = (() => {
     switch (status.kind) {
       case 'countdown':
-        return { text: status.label, color: tokens.accent, bg: 'rgba(52,145,255,0.14)', icon: null };
+        return { text: status.label, color: c.primary, bg: c.tint, icon: <View style={[styles.dot, { backgroundColor: c.primary }]} /> };
       case 'checkedIn':
         return { text: 'Checked in', color: tokens.success, bg: 'rgba(16,185,129,0.14)', icon: <CheckCircle size={11} color={tokens.success} weight="fill" /> };
       case 'cancelled':
-        return { text: 'Cancelled', color: tokens.danger, bg: 'rgba(239,68,68,0.14)', icon: <XCircle size={11} color={tokens.danger} weight="fill" /> };
+        return { text: 'Cancelled', color: c.danger, bg: 'rgba(239,68,68,0.14)', icon: <XCircle size={11} color={c.danger} weight="fill" /> };
       default:
-        return { text: 'Ended', color: tokens.textMuted, bg: tokens.fill, icon: null };
+        return { text: 'Ended', color: c.muted, bg: c.tint, icon: null };
     }
   })();
 
@@ -75,15 +76,14 @@ export default function TicketCard({
       accessibilityRole="button"
       accessibilityLabel={`Ticket for ${ticket.title}`}
       accessibilityHint={onLongPress ? 'Long press to delete this ticket' : undefined}
-      style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
-      <CardBackdrop shape={styles.card} />
       <View style={[styles.main, !live && { opacity: 0.62 }]}>
-        <View style={[styles.thumb, { backgroundColor: tokens.surface }]}>
+        <View style={[styles.thumb, { backgroundColor: c.card }]}>
           {coverOr(defaults, ticket.id, ticket.coverImageUrl) ? (
             <Image source={{ uri: coverOr(defaults, ticket.id, ticket.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
-            <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
           )}
         </View>
 
@@ -92,43 +92,43 @@ export default function TicketCard({
             {badge.icon}
             <Text style={[styles.badgeText, { color: badge.color }]} numberOfLines={1}>{badge.text}</Text>
           </View>
-          <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>{ticket.title}</Text>
-          <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{ticket.title}</Text>
+          <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
             {formatTime(new Date(ticket.startDateTime))} · {venue}
           </Text>
           {ticket.isGroupMember ? (
             <View style={styles.groupRow}>
-              <UsersThree size={12} color={tokens.textMuted} weight="fill" />
-              <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
+              <UsersThree size={12} color={c.muted} weight="fill" />
+              <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
                 In {ticket.leadName ? `${ticket.leadName}'s` : 'a'} group
               </Text>
             </View>
           ) : typeName ? (
-            <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>{typeName}</Text>
+            <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{typeName}</Text>
           ) : null}
         </View>
       </View>
 
       {/* Tear line with notches bitten out of the top and bottom edges */}
       <View style={styles.perfColumn}>
-        <View style={[styles.notch, styles.notchTop, { backgroundColor: tokens.bg }]} />
-        <View style={[styles.perf, { borderColor: tokens.border }]} />
-        <View style={[styles.notch, styles.notchBottom, { backgroundColor: tokens.bg }]} />
+        <View style={[styles.notch, styles.notchTop, { backgroundColor: c.bg }]} />
+        <View style={[styles.perf, { borderColor: c.border }]} />
+        <View style={[styles.notch, styles.notchBottom, { backgroundColor: c.bg }]} />
       </View>
 
       <View style={[styles.stub, !live && { opacity: 0.62 }]}>
-        <Text style={[styles.stubDay, { color: live ? tokens.text : tokens.textSecondary }]}>{chip.day}</Text>
-        <Text style={[styles.stubMonth, { color: live ? tokens.accent : tokens.textMuted }]}>{chip.month}</Text>
-        {live ? <QrCode size={18} color={tokens.textSecondary} style={{ marginTop: 8 }} /> : null}
+        <Text style={[styles.stubDay, { color: live ? c.text : c.soft }]}>{chip.day}</Text>
+        <Text style={[styles.stubMonth, { color: live ? c.soft : c.muted }]}>{chip.month}</Text>
+        {live ? <QrCode size={18} color={c.soft} style={{ marginTop: 8 }} /> : null}
       </View>
     </Pressable>
   );
 }
 
 export function TicketCardSkeleton() {
+  const c = useCosmos();
   return (
-    <View style={[styles.card]}>
-      <CardBackdrop shape={styles.card} />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <View style={styles.main}>
         <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
         <View style={[styles.info, { gap: 8 }]}>
@@ -145,7 +145,7 @@ export function TicketCardSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  card: { flexDirection: 'row', borderRadius: borderRadius.xl, overflow: 'hidden' },
+  card: { flexDirection: 'row', borderRadius: cosmosCardRadius, overflow: 'hidden' },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
   info: { flex: 1, gap: 3 },
@@ -159,9 +159,10 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     marginBottom: 2,
   },
-  badgeText: { fontSize: 11, ...font('semibold') },
-  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.xs, ...font() },
+  dot: { width: 5, height: 5, borderRadius: 3 },
+  badgeText: { fontSize: 11, ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   perfColumn: { width: 1, alignItems: 'center' },
   perf: { flex: 1, borderLeftWidth: 1, borderStyle: 'dashed', marginVertical: NOTCH / 2 + 2 },
@@ -169,6 +170,6 @@ const styles = StyleSheet.create({
   notchTop: { top: -NOTCH / 2 },
   notchBottom: { bottom: -NOTCH / 2 },
   stub: { width: STUB_W, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing[3] },
-  stubDay: { fontSize: 26, lineHeight: 28, ...font('heading') },
-  stubMonth: { fontSize: 12, ...font('semibold') },
+  stubDay: { fontSize: 22, lineHeight: 28, ...cosmosFont.display },
+  stubMonth: { fontSize: 12, ...cosmosFont.strong },
 });
