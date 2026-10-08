@@ -8,6 +8,7 @@ import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccoun
 import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
+import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
 
 /** Round a rupee figure to 2 dp, avoiding binary float drift in comparisons. */
 function round2(n: number): number {
@@ -153,16 +154,11 @@ export class PayoutsService {
         this.emailService
           .sendRawEmail(
             email,
-            'Payout method verified — Unifesto',
-            `
-            <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-              <h2 style="color:#16a34a">Payout Method Verified ✓</h2>
-              <p>Hi ${userName},</p>
-              <p>Your ${isUpi ? 'UPI' : 'bank account'} <strong>${refLabel}</strong>${isUpi ? '' : ` at <strong>${methodLabel}</strong>`} has been verified successfully.</p>
-              <p>You are now eligible to receive payouts for your events on Unifesto.</p>
-              <a href="https://apex.unifesto.app/dashboard/payouts" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#16a34a;color:white;text-decoration:none;border-radius:8px">View Payouts</a>
-            </div>
-          `,
+            'Your payout account is verified',
+            h1('Payout account verified') +
+              greet(userName) +
+              p(`Your ${isUpi ? 'UPI ID' : 'bank account'} ${strong(refLabel)}${isUpi ? '' : ` at ${strong(methodLabel)}`} is verified. Payouts for your events can now reach you.`) +
+              button('View payouts', `${SPACE_APP}/dashboard/payouts`),
           )
           .catch((err) =>
             this.logger.error('Failed to send bank account verified email', err),

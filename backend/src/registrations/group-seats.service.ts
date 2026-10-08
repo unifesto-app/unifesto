@@ -21,6 +21,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { teamChangeWindow } from './attendee-details.service';
+import { button, h1, p, small, strong } from '../email/layout';
 
 export interface CreateSeatsParams {
   registrationId: string;
@@ -698,7 +699,8 @@ export class GroupSeatsService {
         .sendRawEmail(
           oldEmail,
           `Your seat for ${reg.event.title} was given to someone else`,
-          `<p>Your team's seat for <strong>${reg.event.title}</strong> has been given to someone else, so your ticket is no longer valid. If you think this is a mistake, contact your team lead.</p>`,
+          h1('Your seat went to someone else') +
+            p(`Your team's seat for ${strong(reg.event.title)} was given to someone else, so your ticket is no longer valid. If you think this is a mistake, contact your team lead.`),
         )
         .catch((err) => this.logger.error(`Replacement notice failed to ${oldEmail}`, err));
     }
@@ -1347,7 +1349,8 @@ export class GroupSeatsService {
           .sendRawEmail(
             identity.email,
             `A seat re-opened for ${lead.event.title}`,
-            `<p>An invited member declined their seat for <strong>${lead.event.title}</strong>. The seat is open again — you can invite someone else from your registration.</p>`,
+            h1('A seat is open again') +
+              p(`An invited member declined their seat for ${strong(lead.event.title)}. You can invite someone else from your ticket in the Unifesto app.`),
           )
           .catch(() => undefined);
       }
@@ -1379,7 +1382,8 @@ export class GroupSeatsService {
         .sendRawEmail(
           email,
           `Your seat for ${eventTitle} was cancelled`,
-          `<p>The organiser of your group booking cancelled the registration for <strong>${eventTitle}</strong>, so your ticket is no longer valid. If you believe this is a mistake, please contact the person who invited you.</p>`,
+          h1('Your seat was cancelled') +
+            p(`The group booking for ${strong(eventTitle)} was cancelled, so your ticket is no longer valid. If you think this is a mistake, contact the person who invited you.`),
         )
         .catch((err) => this.logger.error(`Group-cancel email failed to ${email}`, err));
     }
@@ -1447,10 +1451,11 @@ export class GroupSeatsService {
   }
 
   inviteHtml(eventTitle: string, claimUrl: string): string {
-    return [
-      `<p>You've been invited to join <strong>${eventTitle}</strong> on Unifesto.</p>`,
-      `<p><a href="${claimUrl}" style="display:inline-block;padding:12px 20px;background:#3491ff;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">Claim your seat</a></p>`,
-      `<p style="color:#6b7280;font-size:12px">If you weren't expecting this, you can ignore this email.</p>`,
-    ].join('');
+    return (
+      h1("You're invited") +
+      p(`You have a seat in a team going to ${strong(eventTitle)}. Claim it to get your own ticket.`) +
+      button('Claim my seat', claimUrl) +
+      small("If you weren't expecting this, you can ignore this email.")
+    );
   }
 }

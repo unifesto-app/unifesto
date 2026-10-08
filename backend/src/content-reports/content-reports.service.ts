@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { CONTENT_REPORT_REASONS } from './content-report-reasons';
 import { CreateContentReportDto, UpdateContentReportDto } from './dto';
+import { APEX, button, details as detailsCard, esc, h1 } from '../email/layout';
 
 const ACTIVE = [ContentReportStatus.OPEN, ContentReportStatus.REVIEWING];
 
@@ -87,13 +88,16 @@ export class ContentReportsService {
   ) {
     const to = process.env.CONTENT_REPORTS_EMAIL;
     if (!to) return;
-    const esc = (v: string) => v.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
     try {
       await this.email.sendRawEmail(
         to,
         `New report: ${type.toLowerCase()} · ${reason}`,
-        `<p><strong>${esc(label)}</strong></p><p>Type: ${type}<br/>Reason: ${esc(reason)}<br/>Report id: ${id}</p>` +
-          (details ? `<p>${esc(details)}</p>` : ''),
+        h1('New content report') +
+          detailsCard(
+            [['Type', type], ['Reason', esc(reason)], ['Report id', id], ['Details', details && esc(details)]],
+            esc(label),
+          ) +
+          button('Review in Apex', `${APEX}/dashboard/content-reports`),
       );
     } catch (err) {
       this.logger.warn(`Couldn't email report ${id}: ${(err as Error).message}`);

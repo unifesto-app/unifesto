@@ -30,6 +30,7 @@ import {
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
+import { esc, h1, small, strong } from '../email/layout';
 
 /** Round to 2 decimal places (money). */
 function money(n: number): number {
@@ -153,13 +154,9 @@ export class RefundsService {
     };
   }
 
+  /** Body fragment; EmailService.sendRawEmail wraps it in the branded layout. */
   private emailHtml(heading: string, body: string): string {
-    return `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-        <h2 style="margin:0 0 12px">${heading}</h2>
-        ${body}
-        <p style="margin-top:24px;color:#6b7280;font-size:12px">Unifesto</p>
-      </div>`;
+    return h1(esc(heading)) + body;
   }
 
   private notifyEmail(email: string | null, subject: string, html: string): void {
@@ -271,28 +268,28 @@ export class RefundsService {
       const attendee = await this.userContact(registration.userId);
       this.notifyEmail(
         attendee.email,
-        `Refund request received — ${eventTitle}`,
+        `Refund request received: ${eventTitle}`,
         this.emailHtml(
           'We received your refund request',
-          `<p>Hi ${attendee.name}, your refund request for <strong>${eventTitle}</strong> has been sent to the organiser for review. We'll email you once there's an update.</p>`,
+          `<p>Hi ${esc(attendee.name)}, your refund request for ${strong(eventTitle)} has been sent to the organiser for review. We'll email you once there's an update.</p>`,
         ),
       );
       const organiser = await this.userContact(registration.event.createdBy);
       this.notifyEmail(
         organiser.email,
-        `Refund request needs review — ${eventTitle}`,
+        `Refund request needs review: ${eventTitle}`,
         this.emailHtml(
           'A refund request needs your review',
-          `<p>An attendee requested a refund for <strong>${eventTitle}</strong>.</p><p>Reason: &ldquo;${dto.reason}&rdquo;</p><p>Review it in your dashboard to forward it to admin or reject it.</p>`,
+          `<p>An attendee requested a refund for ${strong(eventTitle)}.</p><p>Reason: &ldquo;${esc(dto.reason)}&rdquo;</p><p>Review it in the Space dashboard to forward it to Unifesto or reject it.</p>`,
         ),
       );
     } else {
       // Organiser-initiated goes straight to admin.
       this.notifyAdmin(
-        `Refund request needs a decision — ${eventTitle}`,
+        `Refund request needs a decision: ${eventTitle}`,
         this.emailHtml(
           'A refund request needs an admin decision',
-          `<p>An organiser raised a refund for <strong>${eventTitle}</strong>.</p><p>Reason: &ldquo;${dto.reason}&rdquo;</p>`,
+          `<p>An organiser raised a refund for ${strong(eventTitle)}.</p><p>Reason: &ldquo;${esc(dto.reason)}&rdquo;</p>`,
         ),
       );
     }
@@ -335,11 +332,11 @@ export class RefundsService {
     const eventTitle = request.event.title;
     if (dto.action === 'FORWARD') {
       this.notifyAdmin(
-        `Refund forwarded for decision — ${eventTitle}`,
+        `Refund forwarded for decision: ${eventTitle}`,
         this.emailHtml(
           'A refund request needs an admin decision',
-          `<p>An organiser verified and forwarded a refund for <strong>${eventTitle}</strong>.</p>${
-            dto.note?.trim() ? `<p>Organiser note: &ldquo;${dto.note.trim()}&rdquo;</p>` : ''
+          `<p>An organiser verified and forwarded a refund for ${strong(eventTitle)}.</p>${
+            dto.note?.trim() ? `<p>Organiser note: &ldquo;${esc(dto.note.trim())}&rdquo;</p>` : ''
           }`,
         ),
       );
@@ -347,11 +344,11 @@ export class RefundsService {
       const payer = await this.userContact(request.registration.userId);
       this.notifyEmail(
         payer.email,
-        `Refund request declined — ${eventTitle}`,
+        `Refund request declined: ${eventTitle}`,
         this.emailHtml(
           'Your refund request was declined',
-          `<p>Hi ${payer.name}, the organiser reviewed your refund request for <strong>${eventTitle}</strong> and was unable to approve it.</p>${
-            dto.note?.trim() ? `<p>Reason: &ldquo;${dto.note.trim()}&rdquo;</p>` : ''
+          `<p>Hi ${esc(payer.name)}, the organiser reviewed your refund request for ${strong(eventTitle)} and was unable to approve it.</p>${
+            dto.note?.trim() ? `<p>Reason: &ldquo;${esc(dto.note.trim())}&rdquo;</p>` : ''
           }`,
         ),
       );
@@ -394,11 +391,11 @@ export class RefundsService {
       const payer = await this.userContact(request.registration.userId);
       this.notifyEmail(
         payer.email,
-        `Refund request declined — ${request.registration.event.title}`,
+        `Refund request declined: ${request.registration.event.title}`,
         this.emailHtml(
           'Your refund request was declined',
-          `<p>Hi ${payer.name}, after review your refund request for <strong>${request.registration.event.title}</strong> could not be approved.</p>${
-            dto.note?.trim() ? `<p>Reason: &ldquo;${dto.note.trim()}&rdquo;</p>` : ''
+          `<p>Hi ${esc(payer.name)}, after review your refund request for ${strong(request.registration.event.title)} could not be approved.</p>${
+            dto.note?.trim() ? `<p>Reason: &ldquo;${esc(dto.note.trim())}&rdquo;</p>` : ''
           }`,
         ),
       );
@@ -605,12 +602,12 @@ export class RefundsService {
         : '';
     this.notifyEmail(
       payer.email,
-      `Refund approved — ${eventTitle}`,
+      `Refund approved: ${eventTitle}`,
       this.emailHtml(
         'Your refund has been approved',
-        `<p>Hi ${payer.name}, your refund of <strong>${money(refundedNow)}</strong> for <strong>${eventTitle}</strong> has been approved.</p>${cashLine}${
+        `<p>Hi ${esc(payer.name)}, your refund of ${strong(`₹${money(refundedNow)}`)} for ${strong(eventTitle)} has been approved.</p>${cashLine}${
           fullyRefunded ? '<p>Your registration has been cancelled.</p>' : ''
-        }<p style="color:#6b7280;font-size:12px">The booking processing fee is non-refundable.</p>`,
+        }${small('The booking processing fee is non-refundable.')}`,
       ),
     );
     this.events.emit(NotificationEvents.RegistrationUpdate, {
@@ -650,10 +647,10 @@ export class RefundsService {
         const who = await this.userContact(userId);
         this.notifyEmail(
           who.email,
-          `A refund is coming back to you — ${eventTitle}`,
+          `A refund is coming back to you: ${eventTitle}`,
           this.emailHtml(
             'A refund is on its way to you',
-            `<p>Hi ${who.name}, your team's booking for <strong>${eventTitle}</strong> was refunded. ₹${cash} goes back to the card or account you paid with, within 5–7 business days.</p>`,
+            `<p>Hi ${esc(who.name)}, your team's booking for ${strong(eventTitle)} was refunded. ₹${cash} goes back to the card or account you paid with, within 5–7 business days.</p>`,
           ),
         );
       }

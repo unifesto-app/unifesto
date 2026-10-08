@@ -32,6 +32,7 @@ import {
   UpdateSessionDto,
   VerifySessionPaymentDto,
 } from './dto';
+import { h1, p, strong } from '../email/layout';
 
 @Injectable()
 export class SessionsService {
@@ -463,7 +464,7 @@ export class SessionsService {
     await this.email.sendRawEmail(
       email,
       `Cancelled: ${title}`,
-      `<p>The session "<strong>${title}</strong>" has been cancelled by the organiser.${money}</p>`,
+      h1('Session cancelled') + p(`${strong(title)} was cancelled by the organiser.${money}`),
     );
   }
 
