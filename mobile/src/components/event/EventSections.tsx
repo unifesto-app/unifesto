@@ -323,25 +323,28 @@ export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpac
   );
 }
 
-/** A titled list of people: round avatar, name, role underneath. Used by the space page. */
+/** A titled card of people: round avatar, name, role underneath. Used by the space page. */
 export function PeopleBlock({ title, people }: {
   title: string;
   people: { id: string; name: string; avatarUrl: string | null; role: string }[];
 }) {
   const c = useCosmos();
   return (
-    <View style={{ gap: spacing[3] }}>
-      <Text style={[styles.blockTitle, { color: c.text }]}>{title}</Text>
-      {people.map((p) => (
-        <View key={p.id} style={styles.rowTight}>
-          <Avatar uri={p.avatarUrl} name={p.name} size={40} />
-          <View style={styles.flex}>
-            <Text style={[styles.itemTitle, { color: c.text }]} numberOfLines={1}>{p.name}</Text>
-            <Text style={[styles.itemMeta, { color: c.muted }]}>{p.role}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
+    <Section title={title} subtitle={countLabel(people.length, 'person', 'people')}>
+      <View style={styles.gutter}>
+        <Card>
+          {people.map((p) => (
+            <View key={p.id} style={[styles.row, styles.center]}>
+              <Avatar uri={p.avatarUrl} name={p.name} size={44} />
+              <View style={styles.flex}>
+                <Text style={[styles.itemTitle, { color: c.text }]} numberOfLines={1}>{p.name}</Text>
+                <Text style={[styles.itemMeta, { color: c.muted }]}>{p.role}</Text>
+              </View>
+            </View>
+          ))}
+        </Card>
+      </View>
+    </Section>
   );
 }
 
@@ -354,7 +357,6 @@ const styles = StyleSheet.create({
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: spacing[4] },
   row: { flexDirection: 'row', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   rowTight: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  blockTitle: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   itemTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
   itemBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   itemMeta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },

@@ -222,3 +222,5 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     visitWebsite,
   };
 }
+
+export type SpaceDetail = ReturnType<typeof useSpaceDetail>;

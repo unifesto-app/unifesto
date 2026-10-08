@@ -123,25 +123,3 @@ export function useBannerAccent(uri?: string | null, source?: PaletteSource | nu
   const [h, sat, l] = rgbToHsl(color);
   return toHex(hslToRgb([h, Math.max(sat, 0.5), isDark ? Math.max(l, 0.62) : Math.min(l, 0.42)]));
 }
-
-/**
- * A light → dark gradient of the banner's single most frequent colour: lighter
- * and darker versions of that same hue (no fade to white or black).
- * Null until extracted (or when there is no banner). `source` names the event
- * (slug or id) or space (id) for the backend's ranked palette; without it the
- * colour is picked on-device.
- */
-export function useBannerPalette(uri?: string | null, source?: PaletteSource | null): [string, string, string] | null {
-  const { isDark } = useTheme();
-  const color = toRgb(useBannerTop(uri, source) ?? '');
-  if (!color) return null;
-  // Same hue and saturation, only lightness changes: a lighter version of the
-  // colour at the top → a darker version at the bottom. The lightness bands
-  // stay dark enough for white text in dark mode, light enough for dark text in
-  // light mode. Kept gentle on purpose: saturation capped low and a narrow
-  // lightness range, so it reads as a soft wash of the colour, not a paint job.
-  const [h, sat] = rgbToHsl(color);
-  const s = Math.min(sat, isDark ? 0.4 : 0.45);
-  const lightness = isDark ? [0.3, 0.21, 0.13] : [0.95, 0.9, 0.85];
-  return lightness.map((l) => toHex(hslToRgb([h, s, l]))) as [string, string, string];
-}
