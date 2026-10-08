@@ -58,6 +58,9 @@ export function useCosmos(): Cosmos {
   return useMemo(() => (wash ? { ...base, ...wash } : base), [base, wash]);
 }
 
+/** True inside an active CosmosWash (a banner-lit page). */
+export const useWashActive = () => useContext(WashContext) != null;
+
 /**
  * Page lit by a colour (the event banner's nebula, see CosmosBackdrop `hue`).
  * Cards and secondary text turn translucent so they pick up the light where it

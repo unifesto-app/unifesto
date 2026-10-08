@@ -35,7 +35,6 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { GUTTER } from '../components/home/Section';
 import { useTokens } from '../context/ThemeContext';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
@@ -65,9 +64,7 @@ export default function TicketDetailScreen() {
   const hue = t.brandColor || coverHue;
   return (
     <CosmosWash active={!!hue}>
-      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
-        <TicketDetailView t={t} hue={hue} />
-      </CardSurfaceProvider>
+      <TicketDetailView t={t} hue={hue} />
     </CosmosWash>
   );
 }

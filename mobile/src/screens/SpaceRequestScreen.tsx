@@ -23,7 +23,7 @@ import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import { CardBackdrop } from '../components/ui/CardSurface';
 
 const SELECTED_TINT = 'rgba(52,145,255,0.16)';
 
@@ -183,19 +183,14 @@ export default function SpaceRequestScreen() {
                       accessibilityState={{ selected: active }}
                       style={({ pressed }) => [
                         styles.typeCard,
-                        // Selected = accent tint, never an outline (borderless cards). Scale, not
-                        // opacity, for press: opacity breaks the glass.
+                        // Selected = accent tint, never an outline (borderless cards).
                         {
-                          backgroundColor: active && !LIQUID_GLASS ? SELECTED_TINT : undefined,
+                          backgroundColor: active ? SELECTED_TINT : undefined,
                           transform: [{ scale: pressed ? 0.97 : 1 }],
                         },
                       ]}
                     >
-                      {active ? (
-                        <GlassFill radius={borderRadius.xl} interactive tint={SELECTED_TINT} />
-                      ) : (
-                        <CardBackdrop shape={styles.typeCard} />
-                      )}
+                      {active ? null : <CardBackdrop shape={styles.typeCard} />}
                       <View style={styles.typeHead}>
                         <Icon size={26} color={active ? tokens.accent : tokens.textSecondary} weight={active ? 'fill' : 'regular'} />
                         {active ? <CheckCircle size={20} color={tokens.accent} weight="fill" /> : null}

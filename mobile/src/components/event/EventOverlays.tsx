@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../context/ThemeContext';
-import { androidGlassVeil, CardBackdrop, CardSurfaceProvider, useCardSurface } from '../ui/CardSurface';
+import { androidGlassVeil, CardBackdrop, CardSurfaceProvider } from '../ui/CardSurface';
 import type { RegisterMode } from '../../hooks/useEventDetail';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -86,9 +86,9 @@ export function ActionBar({ info, label, onPress, accent, tone = 'accent', disab
   const { tokens, isDark } = useTheme();
   const bottomPad = useBarBottomPad();
   const neutral = tone === 'neutral';
-  // Android can't live-blur what scrolls under the bar (only a flat tint), so it
-  // always uses the frosted branch below instead of CardBackdrop.
-  const glass = useCardSurface() === 'glass' && Platform.OS !== 'android';
+  // iOS: glass (Liquid Glass on 26+, frosted below). Android can't live-blur what
+  // scrolls under the bar, so it uses the frosted branch below.
+  const glass = Platform.OS === 'ios';
   return (
     <View
       style={[

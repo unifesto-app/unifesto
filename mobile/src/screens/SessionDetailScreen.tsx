@@ -16,7 +16,6 @@ import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER, Section } from '../components/home/Section';
 import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { googleCalendarUrl, outlookCalendarUrl } from '../lib/calendar';
 import { countdownLabel } from '../utils/eventFormat';
@@ -80,9 +79,7 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
   const hue = useBannerAccent(data.session?.coverImageUrl, null);
   return (
     <CosmosWash active={!!hue}>
-      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
-        <SessionDetailView data={data} hue={hue} />
-      </CardSurfaceProvider>
+      <SessionDetailView data={data} hue={hue} />
     </CosmosWash>
   );
 }

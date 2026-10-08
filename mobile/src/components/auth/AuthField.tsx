@@ -1,6 +1,5 @@
 import React, { forwardRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface AuthFieldProps extends TextInputProps {
@@ -22,9 +21,7 @@ const AuthField = forwardRef<TextInput, AuthFieldProps>(function AuthField(
   return (
     <View>
       <Text style={[styles.label, { color: c.muted }]}>{label}</Text>
-      {/* iOS 26+ paints Liquid Glass; the border still carries focus / error. */}
-      <View style={[styles.field, { borderColor, backgroundColor: LIQUID_GLASS ? undefined : c.card }]}>
-        <GlassFill radius={cosmosRadius} />
+      <View style={[styles.field, { borderColor, backgroundColor: c.card }]}>
         {prefix ? (
           <View style={[styles.prefix, { borderRightColor: c.border }]}>
             <Text style={[styles.prefixText, { color: c.text }]}>{prefix}</Text>

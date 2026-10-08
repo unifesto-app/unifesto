@@ -25,7 +25,6 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 
 const LOGO = 76;
@@ -50,9 +49,7 @@ export default function SpaceDetailScreen() {
   const hue = s.brandColor || bannerHue;
   return (
     <CosmosWash active={!!hue}>
-      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
-        <SpaceDetailView s={s} hue={hue} />
-      </CardSurfaceProvider>
+      <SpaceDetailView s={s} hue={hue} />
     </CosmosWash>
   );
 }

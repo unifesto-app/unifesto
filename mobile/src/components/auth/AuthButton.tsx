@@ -1,7 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowRight } from '@unifesto/unicon/react-native';
-import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 interface AuthButtonProps {
@@ -34,9 +33,6 @@ export default function AuthButton({
   const isPrimary = variant === 'primary';
   const fg = isPrimary ? c.primaryFg : c.text;
   const inactive = disabled || loading;
-  // Secondary sits on Liquid Glass on iOS 26+. Glass breaks under opacity < 1,
-  // so it dims via the label instead and presses with scale only.
-  const glass = !isPrimary && LIQUID_GLASS;
 
   return (
     <Pressable
@@ -49,8 +45,8 @@ export default function AuthButton({
         styles.button,
         isPrimary
           ? { backgroundColor: c.primary }
-          : { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed && !glass ? c.border : 'transparent' },
-        { opacity: glass ? 1 : disabled ? 0.45 : pressed && isPrimary ? 0.88 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
+          : { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed ? c.border : 'transparent' },
+        { opacity: disabled ? 0.45 : pressed && isPrimary ? 0.88 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
         style,
       ]}
     >
@@ -58,9 +54,8 @@ export default function AuthButton({
         <ActivityIndicator color={fg} />
       ) : (
         <>
-          {glass && <GlassFill radius={cosmosRadius} interactive />}
           {icon}
-          <Text style={[styles.label, { color: fg, opacity: glass && disabled ? 0.45 : 1 }]}>{label}</Text>
+          <Text style={[styles.label, { color: fg, opacity: 1 }]}>{label}</Text>
           {arrow && <ArrowRight size={16} color={fg} weight="bold" />}
         </>
       )}

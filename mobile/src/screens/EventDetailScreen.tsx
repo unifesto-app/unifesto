@@ -45,7 +45,6 @@ import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActio
 import VenueMap from '../components/event/VenueMap';
 import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
 import { useBannerAccent } from '../hooks/useBannerPalette';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
@@ -92,9 +91,7 @@ export default function EventDetailScreen() {
   );
   return (
     <CosmosWash active={!!hue}>
-      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
-        <EventDetailView id={id} d={d} hue={hue} />
-      </CardSurfaceProvider>
+      <EventDetailView id={id} d={d} hue={hue} />
     </CosmosWash>
   );
 }
