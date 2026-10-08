@@ -22,6 +22,13 @@ interface ThemeContextType {
   tokens: Tokens;
 }
 
+/**
+ * The OS scheme at launch, read before ThemeProvider pins Appearance to the
+ * user's choice. The native launch frame can only follow this, so the JS
+ * splash uses it too and the handoff never flashes.
+ */
+export const launchScheme: ActiveTheme = Appearance.getColorScheme() === 'light' ? 'light' : 'dark';
+
 const STORAGE_KEY = 'unifesto.themePreference';
 const DEFAULT_PREFERENCE: ThemePreference = 'system';
 

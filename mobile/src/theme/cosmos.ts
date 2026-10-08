@@ -47,8 +47,10 @@ const light: typeof dark = {
 
 export type Cosmos = typeof dark;
 
+export const cosmosFor = (scheme: 'dark' | 'light'): Cosmos => (scheme === 'dark' ? dark : light);
+
 export function useCosmos(): Cosmos {
-  return useTokens().scheme === 'dark' ? dark : light;
+  return cosmosFor(useTokens().scheme);
 }
 
 /** Families registered in app/_layout.tsx. Michroma has one weight: never bold it. */

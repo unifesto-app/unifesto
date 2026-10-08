@@ -15,7 +15,8 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosFont, cosmosFor } from '../theme/cosmos';
+import { launchScheme } from '../context/ThemeContext';
 
 interface SplashScreenProps {
   onAnimationComplete?: () => void;
@@ -26,6 +27,7 @@ interface SplashScreenProps {
 const MARK_W = 176;
 const MARK_H = Math.round((MARK_W * 551) / 2400);
 const TRACK_W = 56;
+const RUNNER_W = TRACK_W / 2;
 /**
  * Minimum time on screen, even if auth resolves instantly: long enough for the
  * intro to settle and the light to cross the wordmark once (ends ~2.1s).
@@ -41,9 +43,12 @@ const ease = Easing.out(Easing.cubic);
  * Leaves with a short fade, not a zoom.
  */
 export default function SplashScreen({ onAnimationComplete, shouldExit = false }: SplashScreenProps) {
-  // Follows the active theme. The native launch frame before it follows the OS
-  // (iOS systemBackgroundColor, Android values/values-night launch_background).
-  const c = useCosmos();
+  // Follows the OS, not the in-app theme: the native launch frame before it can
+  // only follow the OS (iOS systemBackgroundColor, Android values/values-night
+  // launch_background), so matching it is what keeps the handoff seamless. The
+  // fade-out then reveals the app in the user's chosen theme.
+  const c = cosmosFor(launchScheme);
+  const isDark = c.scheme === 'dark';
   const insets = useSafeAreaInsets();
   const mountedAt = useRef(Date.now());
   const [ready, setReady] = useState(false);
@@ -107,13 +112,14 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   }));
   const trackStyle = useAnimatedStyle(() => ({ opacity: tagline.value }));
   const runnerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -TRACK_W / 2 + progress.value * TRACK_W * 1.5 - TRACK_W / 4 }],
+    // Enters fully off the left edge and exits fully off the right, so the loop never pops.
+    transform: [{ translateX: -RUNNER_W + progress.value * (TRACK_W + RUNNER_W) }],
   }));
 
   const wordmark = (
     <Image
       source={
-        c.scheme === 'dark'
+        isDark
           ? require('../../assets/brand/wordmark-silver.png')
           : require('../../assets/brand/wordmark-ink.png')
       }
@@ -125,22 +131,27 @@ export default function SplashScreen({ onAnimationComplete, shouldExit = false }
   return (
     <Animated.View style={[styles.container, { backgroundColor: c.bg }, rootStyle]}>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, skyStyle]}>
-        <CosmosBackdrop />
+        <CosmosBackdrop scheme={c.scheme} />
       </Animated.View>
 
       <Animated.View style={markStyle}>
-        {/* The wordmark is the mask; the light only shows where the letters are. */}
-        <MaskedView style={styles.mark} maskElement={wordmark}>
-          {wordmark}
-          <Animated.View style={[StyleSheet.absoluteFill, sweepStyle]}>
-            <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
-              start={{ x: 0, y: 0.2 }}
-              end={{ x: 1, y: 0.8 }}
-              style={styles.sweep}
-            />
-          </Animated.View>
-        </MaskedView>
+        {/* The wordmark is the mask; the light only shows where the letters are.
+            Silver only: a white sweep over the ink wordmark reads as a grey smear. */}
+        {isDark ? (
+          <MaskedView style={styles.mark} maskElement={wordmark}>
+            {wordmark}
+            <Animated.View style={[StyleSheet.absoluteFill, sweepStyle]}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
+                start={{ x: 0, y: 0.2 }}
+                end={{ x: 1, y: 0.8 }}
+                style={styles.sweep}
+              />
+            </Animated.View>
+          </MaskedView>
+        ) : (
+          wordmark
+        )}
       </Animated.View>
 
       <Animated.Text style={[styles.tagline, { color: c.muted }, taglineStyle]}>
@@ -173,7 +184,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     overflow: 'hidden',
   },
-  runner: { width: TRACK_W / 2, height: 3, borderRadius: 2 },
+  runner: { width: RUNNER_W, height: 3, borderRadius: 2 },
   footer: {
     position: 'absolute',
     left: 24,
