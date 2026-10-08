@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import { CaretDown, CaretUp } from '@unifesto/unicon/react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Updates from 'expo-updates';
@@ -9,6 +10,7 @@ import { buildInfo, buildLabel } from '../lib/appBuild';
 import { checkForOtaNow, restartIntoUpdate } from '../lib/otaUpdate';
 import { getStoreUpdate, openStoreListing, type StoreUpdate } from '../lib/appUpdate';
 import { WHATS_NEW } from '../lib/whatsNew';
+import { currentAppIconPreview } from '../lib/appIcon';
 import { openStoreReview } from '../utils/storeReview';
 import BrandWordmark from '../components/BrandWordmark';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
@@ -21,6 +23,7 @@ import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const STORE = Platform.OS === 'ios' ? 'App Store' : 'Play Store';
+const ICON = 88;
 /** The web's download page: sends each phone to its own store. */
 const APP_LINK = 'https://unifesto.app/app';
 
@@ -32,7 +35,7 @@ type Status =
   | { kind: 'store'; update: StoreUpdate };
 
 /**
- * Profile › About and updates: the version up top, one card that
+ * Profile › About and updates: my app icon and version up top, one card that
  * says where this install stands with the single next step (check, restart,
  * open the store), the latest release notes (older ones folded away), ways to
  * pass Unifesto on, then the exact build details for support.
@@ -45,6 +48,7 @@ export default function AboutScreen() {
   const { isUpdatePending } = Updates.useUpdates();
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [showEarlier, setShowEarlier] = useState(false);
+  const icon = useMemo(currentAppIconPreview, []);
 
   useAnalyticsScreenTracking('About');
 
@@ -120,6 +124,7 @@ export default function AboutScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
+          <Image source={icon} style={styles.icon} accessibilityLabel="Your Unifesto app icon" />
           <BrandWordmark width={150} />
           <Text style={[styles.version, { color: c.text }]}>Version {info.version ?? '–'}</Text>
           <Text style={[styles.build, { color: c.muted }]}>
@@ -198,6 +203,8 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 80 },
   hero: { alignItems: 'center', paddingHorizontal: GUTTER, paddingTop: spacing[6], paddingBottom: spacing[8] },
+  // Same corner share as an iOS home-screen icon (~22%).
+  icon: { width: ICON, height: ICON, borderRadius: ICON * 0.22, marginBottom: spacing[5] },
   version: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
   build: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[6] },

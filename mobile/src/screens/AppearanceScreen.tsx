@@ -1,10 +1,13 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { CheckCircle, Circle } from '@unifesto/unicon/react-native';
 import { useTheme, type ThemePreference } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { GUTTER, Section } from '../components/home/Section';
+import { AppAlert } from '../components/ui/AppAlert';
+import { APP_ICONS, appIconsSupported, currentAppIcon, setAppIcon, type AppIconName } from '../lib/appIcon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFor, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
@@ -15,10 +18,13 @@ const OPTIONS: { key: ThemePreference; label: string }[] = [
   { key: 'dark', label: 'Dark' },
 ];
 
+const ICON_COLUMNS = 4;
+
 /**
  * Profile › Appearance: pick a theme by what it looks like. Each option is a
  * miniature screen drawn in that theme's own cosmos colours; System shows both
- * halves, since it follows the phone.
+ * halves, since it follows the phone. Below it, the home-screen icon (only on
+ * builds that carry the alternate-icons module).
  */
 export default function AppearanceScreen() {
   const { theme, activeTheme, setTheme } = useTheme();
@@ -76,8 +82,58 @@ export default function AppearanceScreen() {
               : `Always ${theme}, whatever your phone is set to.`}
           </Text>
         </Section>
+
+        {appIconsSupported() ? <AppIconPicker /> : null}
       </ScrollView>
     </View>
+  );
+}
+
+/** Grid of home-screen icons; the current one wears the silver selection frame. */
+function AppIconPicker() {
+  const c = useCosmos();
+  const { width } = useWindowDimensions();
+  const [current, setCurrent] = useState<AppIconName>(currentAppIcon);
+  const gap = spacing[4];
+  const tile = Math.floor((width - GUTTER * 2 - gap * (ICON_COLUMNS - 1)) / ICON_COLUMNS);
+  const radius = (tile - 6) * 0.22;
+
+  const choose = async (name: AppIconName) => {
+    if (name === current) return;
+    const previous = current;
+    setCurrent(name);
+    try {
+      await setAppIcon(name);
+    } catch {
+      setCurrent(previous);
+      AppAlert.alert('Couldn’t change the icon', 'Please try again.');
+    }
+  };
+
+  return (
+    <Section title="App icon" subtitle="Pick the one on your home screen">
+      <View style={[styles.icons, { gap }]} accessibilityRole="radiogroup">
+        {APP_ICONS.map((icon) => {
+          const selected = current === icon.name;
+          return (
+            <Pressable
+              key={icon.name}
+              onPress={() => choose(icon.name)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${icon.label} app icon`}
+              style={({ pressed }) => [{ width: tile, alignItems: 'center', transform: [{ scale: pressed ? 0.95 : 1 }] }]}
+            >
+              {/* iOS-style rounded square (~22% of the side); the frame hugs it 3pt out. */}
+              <View style={[styles.iconFrame, { borderRadius: radius + 3, backgroundColor: selected ? c.primary : 'transparent' }]}>
+                <Image source={icon.preview} style={{ width: tile - 6, height: tile - 6, borderRadius: radius }} />
+              </View>
+              <Text style={[styles.iconLabel, { color: selected ? c.text : c.soft }]} numberOfLines={1}>{icon.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </Section>
   );
 }
 
@@ -122,6 +178,9 @@ const styles = StyleSheet.create({
   cover: { width: '100%', aspectRatio: 4 / 3, borderRadius: 8 },
   line: { height: 6, borderRadius: 3 },
   button: { marginTop: 'auto', height: 14, borderRadius: 7 },
+  icons: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: GUTTER },
+  iconFrame: { padding: 3 },
+  iconLabel: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing[3] },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   note: {
