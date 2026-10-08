@@ -29,12 +29,14 @@ interface SettingsGroupProps {
   action?: { label: string; onPress: () => void };
   /** Rows have no leading icon: dividers start at the card's inner edge. */
   plain?: boolean;
+  /** A flat fill instead of the card backdrop, e.g. a cosmos card on a fusion page. */
+  surface?: string;
   style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
 
 /** Inset-grouped list: title, rows on one rounded surface. */
-export function SettingsGroup({ title, action, plain, style, children }: SettingsGroupProps) {
+export function SettingsGroup({ title, action, plain, surface, style, children }: SettingsGroupProps) {
   const tokens = useTokens();
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
@@ -49,8 +51,8 @@ export function SettingsGroup({ title, action, plain, style, children }: Setting
           ) : null}
         </View>
       ) : null}
-      <View style={styles.card}>
-        <CardBackdrop />
+      <View style={[styles.card, surface ? { backgroundColor: surface } : null]}>
+        {surface ? null : <CardBackdrop />}
         {rows.map((row, i) => (
           <View key={i}>
             {row}
