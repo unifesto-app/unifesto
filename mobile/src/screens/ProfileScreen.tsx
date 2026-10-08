@@ -4,6 +4,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import * as Application from 'expo-application';
+import * as Updates from 'expo-updates';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
@@ -12,12 +13,11 @@ import { getMyRegisteredEvents } from '../lib/api/events';
 import { getUserSpaces } from '../lib/api/spaces';
 import { getMyPartnerLinks } from '../lib/api/tracking';
 import { openStoreReview } from '../utils/storeReview';
-import { buildLabel } from '../lib/appBuild';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
-import UnifestoAppWordmark from '../components/UnifestoAppWordmark';
+import BrandWordmark from '../components/BrandWordmark';
 import { GUTTER, Section } from '../components/home/Section';
 import PromptCard from '../components/home/PromptCard';
 import IdentityCard, { IdentityCardSkeleton } from '../components/profile/IdentityCard';
@@ -137,6 +137,8 @@ export default function ProfileScreen() {
   };
 
   const version = Application.nativeApplicationVersion;
+  // A downloaded OTA waiting for a restart: point people at About to apply it.
+  const { isUpdatePending } = Updates.useUpdates();
   const icon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={c.text} />;
 
   const header = (
@@ -150,7 +152,7 @@ export default function ProfileScreen() {
     <Section title="Help and more">
       <SettingsGroup style={styles.group}>
         <SettingsRow icon={icon('lifebuoy')} label="Contact support" onPress={() => router.push('/support')} />
-        <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
+        <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
         <SettingsRow icon={icon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
         <SettingsRow icon={icon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
         <SettingsRow icon={icon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/HeyUnifesto', 'X')} />
@@ -160,12 +162,9 @@ export default function ProfileScreen() {
 
   const footer = (
     <View style={styles.footer}>
-      <UnifestoAppWordmark width={112} height={34} />
-      {version ? (
-        <Text style={[styles.version, { color: c.muted }]} onPress={() => router.push('/about')}>
-          Version {buildLabel()}
-        </Text>
-      ) : null}
+      <Pressable onPress={() => router.push('/about')} accessibilityRole="button" accessibilityLabel="About and updates" hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+        <BrandWordmark width={104} />
+      </Pressable>
     </View>
   );
 
@@ -321,6 +320,5 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   signOutText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  footer: { alignItems: 'center', marginTop: spacing[10], gap: 4, opacity: 0.7 },
-  version: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  footer: { alignItems: 'center', marginTop: spacing[12] },
 });
