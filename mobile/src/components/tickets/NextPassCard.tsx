@@ -7,6 +7,7 @@ import type { MyTicket } from '../../hooks/useMyTickets';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
+import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import Skeleton from '../Skeleton';
 import { countdownLabel, relativeWhen } from '../../utils/eventFormat';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
@@ -27,8 +28,9 @@ export default function NextPassCard({ ticket, onPress }: { ticket: MyTicket; on
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`Open ticket for ${ticket.title}`}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      style={({ pressed }) => [styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
     >
+      <GlassFill radius={cosmosCardRadius} />
       <View style={[styles.cover, { backgroundColor: c.card }]}>
         {cover ? (
           <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -80,7 +82,8 @@ export default function NextPassCard({ ticket, onPress }: { ticket: MyTicket; on
 export function NextPassCardSkeleton() {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
+      <GlassFill radius={cosmosCardRadius} />
       <View style={[styles.cover, { backgroundColor: c.card }]} />
       <View style={[styles.body, { gap: 10 }]}>
         <Skeleton width={84} height={20} borderRadius={borderRadius.full} />

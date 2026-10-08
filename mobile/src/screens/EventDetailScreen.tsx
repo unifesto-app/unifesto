@@ -45,7 +45,7 @@ import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActio
 import VenueMap from '../components/event/VenueMap';
 import { useEventDetail, type EventDetail } from '../hooks/useEventDetail';
 import { useBannerAccent } from '../hooks/useBannerPalette';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
@@ -291,7 +291,8 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
           ) : null}
 
           {/* ── Facts: a ticket-stub date, then where, entry and stay ── */}
-          <View style={[styles.facts, { backgroundColor: c.raised }]}>
+          <View style={[styles.facts, { backgroundColor: LIQUID_GLASS ? undefined : c.raised }]}>
+            <GlassFill radius={cosmosCardRadius} />
             <Pressable
               onPress={d.addToCalendar}
               accessibilityRole="button"
