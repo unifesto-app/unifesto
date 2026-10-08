@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { CardBackdrop } from '../ui/CardSurface';
@@ -29,15 +29,16 @@ interface SettingsGroupProps {
   action?: { label: string; onPress: () => void };
   /** Rows have no leading icon: dividers start at the card's inner edge. */
   plain?: boolean;
+  style?: StyleProp<ViewStyle>;
   children: React.ReactNode;
 }
 
 /** Inset-grouped list: title, rows on one rounded surface. */
-export function SettingsGroup({ title, action, plain, children }: SettingsGroupProps) {
+export function SettingsGroup({ title, action, plain, style, children }: SettingsGroupProps) {
   const tokens = useTokens();
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
-    <View style={styles.group}>
+    <View style={[styles.group, style]}>
       {title || action ? (
         <View style={styles.titleRow}>
           {title ? <Text style={[styles.title, { color: tokens.textMuted }]}>{title}</Text> : <View />}
