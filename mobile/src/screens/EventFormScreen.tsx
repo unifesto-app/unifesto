@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { pickImageAtAspect } from '../utils/pickImage';
+import * as FileSystem from 'expo-file-system/legacy';
+import { cropToAspect, pickImageAtAspect } from '../utils/pickImage';
 import { ImageSquare, MapPin } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -40,6 +41,9 @@ import {
   type DraftProblem,
   type EventDraft,
 } from '../lib/eventDraft';
+import { defaultRecurrence } from '../lib/recurrence';
+import type { ImportedEvent, ImportSource } from '../lib/eventImport';
+import EventStartPanel from '../components/manage/EventStartPanel';
 import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import RecurrenceEditor from '../components/manage/RecurrenceEditor';
@@ -53,12 +57,15 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
 const LAST_STEP = CREATE_STEPS.length - 1;
+/** One line under each create step's title. */
+const STEP_HINT = ['What it is and how it looks.', 'Dates, and the venue or joining link.', 'How people get in, and who can see it.'];
 
 const TYPE_TABS = [
   { key: 'IN_PERSON' as const, label: 'In person' },
@@ -163,6 +170,7 @@ export default function EventFormScreen() {
   const creating = !eventId;
   const router = useRouter();
   const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const scrollRef = useRef<ScrollView>(null);
@@ -183,6 +191,9 @@ export default function EventFormScreen() {
   // Create only: autosave waits for the stored draft to load so it can't overwrite it.
   const [hydrated, setHydrated] = useState(!creating);
   const [restored, setRestored] = useState(false);
+  /** Create opens on "import or start fresh"; a restored draft skips it. */
+  const [phase, setPhase] = useState<'start' | 'form'>(creating ? 'start' : 'form');
+  const [imported, setImported] = useState<{ source: ImportSource; url: string } | null>(null);
   /** Set once the event exists, so autosave stops for good. */
   const created = useRef(false);
   const storeKey = draftKey(spaceId, parentId);
@@ -221,6 +232,7 @@ export default function EventFormScreen() {
         setStep(s);
         setReached(s);
         setRestored(true);
+        setPhase('form');
       })
       .catch(() => {})
       .finally(() => setHydrated(true));
@@ -254,6 +266,8 @@ export default function EventFormScreen() {
           setReached(0);
           setProblem(null);
           setRestored(false);
+          setImported(null);
+          setPhase('start');
         },
       },
     ]);
@@ -285,6 +299,30 @@ export default function EventFormScreen() {
       return null;
     });
     if (uri) setCoverUri(uri);
+  };
+
+  const startFresh = () => {
+    setPhase('form');
+    goTo(0);
+  };
+
+  /** Fill a fresh form from the other site, then have the poster framed at 4:3 for the cover. */
+  const applyImport = async (e: ImportedEvent) => {
+    const d = { ...emptyEventDraft(), ...e.patch };
+    setDraft({ ...d, recurrence: defaultRecurrence(d.start.getDay()) });
+    setCoverUri(null);
+    setProblem(null);
+    setImported({ source: e.source, url: e.url });
+    startFresh();
+    if (!e.imageUrl) return;
+    try {
+      const local = await FileSystem.downloadAsync(e.imageUrl, `${FileSystem.cacheDirectory}import-${Date.now()}`);
+      if (local.status !== 200) return;
+      const uri = await cropToAspect(local.uri, [4, 3]);
+      if (uri) setCoverUri(uri);
+    } catch {
+      // No poster is fine: the cover row still offers to add one.
+    }
   };
 
   const pinOnMap = async () => {
@@ -421,11 +459,13 @@ export default function EventFormScreen() {
   /** Create shows one step at a time; edit shows everything. */
   const on = (s: number) => !creating || step === s;
   const atEnd = !creating || step === LAST_STEP;
+  const starting = creating && phase === 'start';
   const primaryLabel = !atEnd ? 'Next' : !creating ? 'Save changes' : launch === 'publish' ? 'Create and publish' : 'Create draft';
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <Stack.Screen options={{ title }} />
+      {/* The start panel carries its own big title. */}
+      <Stack.Screen options={{ title: starting ? '' : title }} />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
@@ -433,24 +473,27 @@ export default function EventFormScreen() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
-        {creating ? <StepHeader step={step} reached={reached} onPick={goTo} /> : null}
-
-        {restored && step === 0 ? (
-          <Text style={[styles.note, { color: tokens.textSecondary, marginBottom: spacing[5] }]}>
-            Picked up where I left off.{' '}
-            <Text style={{ color: tokens.accent, ...font('semibold') }} onPress={startOver}>
-              Start over
-            </Text>
-          </Text>
+        {starting ? (
+          <EventStartPanel parentTitle={parentId ? parentTitle || 'the main event' : undefined} onImported={applyImport} onScratch={startFresh} />
         ) : null}
 
-        {parentId && step === 0 ? (
-          <Text style={[styles.note, { color: tokens.textSecondary, marginBottom: spacing[5] }]}>
-            Part of {parentTitle || 'the main event'}. People register for it on its own.
-          </Text>
+        {creating && !starting ? <StepHeader step={step} reached={reached} onPick={goTo} /> : null}
+
+        {creating && !starting && step === 0 && (imported || restored || parentId) ? (
+          <Notice>
+            {imported
+              ? `Imported from ${imported.source === 'Website' ? 'the event page' : imported.source}. Check each step before creating. `
+              : restored
+                ? 'Picked up where I left off. '
+                : ''}
+            {parentId ? `Part of ${parentTitle || 'the main event'}. People register for it on its own. ` : ''}
+            {imported ? <NoticeLink label="View original" onPress={() => void Linking.openURL(imported.url)} /> : null}
+            {imported ? '   ' : null}
+            {imported || restored ? <NoticeLink label="Start over" onPress={startOver} /> : null}
+          </Notice>
         ) : null}
 
-        {on(0) ? (
+        {!starting && on(0) ? (
           <>
             {/* Compact 4:3 cover, never cropped off-ratio */}
             <View style={styles.coverRow}>
@@ -466,7 +509,7 @@ export default function EventFormScreen() {
               </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.coverTitle, { color: tokens.text }]}>Cover</Text>
-                <Text style={[styles.change, { color: tokens.accent }]} onPress={pickCover}>
+                <Text style={[styles.change, { color: c.text }]} onPress={pickCover}>
                   {cover ? 'Change cover' : 'Add a cover'}
                 </Text>
                 <Text style={[styles.coverHint, { color: tokens.textMuted }]}>4:3 works best</Text>
@@ -482,7 +525,7 @@ export default function EventFormScreen() {
                 placeholder="What's it called?"
                 maxLength={150}
                 error={errorFor('title')}
-                autoFocus={creating && !restored}
+                autoFocus={creating && !restored && !imported}
                 returnKeyType="next"
               />
               {!creating ? (
@@ -525,7 +568,7 @@ export default function EventFormScreen() {
           </>
         ) : null}
 
-        {on(1) ? (
+        {!starting && on(1) ? (
           <>
             <SettingsGroup title="When" plain>
               <DateTimeRow
@@ -584,9 +627,9 @@ export default function EventFormScreen() {
                 accessibilityRole="button"
                 style={({ pressed }) => [styles.pinRow, { opacity: pressed || pinning ? 0.6 : 1 }]}
               >
-                {pinning ? <ActivityIndicator size="small" color={tokens.accent} /> : <MapPin size={20} color={tokens.accent} weight="fill" />}
+                {pinning ? <ActivityIndicator size="small" color={c.text} /> : <MapPin size={20} color={c.text} weight="fill" />}
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.pinTitle, { color: tokens.accent }]}>{pinning ? 'Finding it…' : 'Pin on map'}</Text>
+                  <Text style={[styles.pinTitle, { color: c.text }]}>{pinning ? 'Finding it…' : 'Pin on map'}</Text>
                   <Text style={[styles.coverHint, { color: tokens.textMuted }]}>So attendees get exact directions.</Text>
                 </View>
               </Pressable>
@@ -611,7 +654,7 @@ export default function EventFormScreen() {
           </>
         ) : null}
 
-        {on(2) ? (
+        {!starting && on(2) ? (
           <>
             <View style={[styles.block, creating && styles.firstBlock]}>
               <BlockTitle>Registration</BlockTitle>
@@ -663,7 +706,7 @@ export default function EventFormScreen() {
       </ScrollView>
 
       <SaveBar
-        visible={dirty}
+        visible={dirty && !starting}
         label={primaryLabel}
         onPress={atEnd ? save : next}
         loading={saving}
@@ -674,34 +717,53 @@ export default function EventFormScreen() {
   );
 }
 
-/** "Basics · When & where · Tickets" with a bar each; steps already reached can be tapped. */
+/** "Step 1 of 3", the step's name and what it covers, over one bar per step; steps already reached can be tapped. */
 function StepHeader({ step, reached, onPick }: { step: number; reached: number; onPick: (s: number) => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
-    <View style={styles.steps} accessibilityRole="tablist">
-      {CREATE_STEPS.map((label, i) => {
-        const open = i <= reached;
-        return (
-          <Pressable
-            key={label}
-            onPress={() => open && onPick(i)}
-            disabled={!open}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: i === step, disabled: !open }}
-            accessibilityLabel={`Step ${i + 1} of ${CREATE_STEPS.length}, ${label}`}
-            style={styles.stepItem}
-          >
-            <View style={[styles.stepBar, { backgroundColor: i <= step ? tokens.accent : tokens.fill }]} />
-            <Text
-              style={[styles.stepLabel, { color: i === step ? tokens.text : open ? tokens.textSecondary : tokens.textMuted }]}
-              numberOfLines={1}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        );
-      })}
+    <View style={styles.stepHead}>
+      <View style={styles.steps} accessibilityRole="tablist">
+        {CREATE_STEPS.map((label, i) => {
+          const open = i <= reached;
+          return (
+            <Pressable
+              key={label}
+              onPress={() => open && onPick(i)}
+              disabled={!open}
+              hitSlop={{ top: 12, bottom: 12 }}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: i === step, disabled: !open }}
+              accessibilityLabel={`Step ${i + 1} of ${CREATE_STEPS.length}, ${label}`}
+              style={[styles.stepBar, { backgroundColor: i <= step ? c.primary : c.tint }]}
+            />
+          );
+        })}
+      </View>
+      <Text style={[styles.stepCount, { color: c.muted }]}>
+        Step {step + 1} of {CREATE_STEPS.length}
+      </Text>
+      <Text style={[styles.stepTitle, { color: c.text }]}>{CREATE_STEPS[step]}</Text>
+      <Text style={[styles.stepHint, { color: c.soft }]}>{STEP_HINT[step]}</Text>
     </View>
+  );
+}
+
+/** Quiet tinted line above the form: where the draft came from and how to undo it. */
+function Notice({ children }: { children: React.ReactNode }) {
+  const c = useCosmos();
+  return (
+    <View style={[styles.notice, { backgroundColor: c.tint }]}>
+      <Text style={[styles.noticeText, { color: c.soft }]}>{children}</Text>
+    </View>
+  );
+}
+
+function NoticeLink({ label, onPress }: { label: string; onPress: () => void }) {
+  const c = useCosmos();
+  return (
+    <Text style={{ color: c.text, ...cosmosFont.strong }} onPress={onPress} accessibilityRole="link">
+      {label}
+    </Text>
   );
 }
 
@@ -709,18 +771,22 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  steps: { flexDirection: 'row', gap: spacing[2], marginBottom: spacing[6] },
-  stepItem: { flex: 1, gap: spacing[2] },
-  stepBar: { height: 3, borderRadius: 2 },
-  stepLabel: { fontSize: typography.fontSize.xs, ...font('semibold') },
+  stepHead: { marginBottom: spacing[6] },
+  steps: { flexDirection: 'row', gap: spacing[2] },
+  stepBar: { flex: 1, height: 4, borderRadius: 2 },
+  stepCount: { marginTop: spacing[5], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  stepTitle: { marginTop: spacing[1], fontSize: 24, lineHeight: 32, ...cosmosFont.display },
+  stepHint: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  notice: { borderRadius: cosmosRadius, paddingHorizontal: spacing[4], paddingVertical: spacing[3], marginBottom: spacing[6] },
+  noticeText: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   coverRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  cover: { width: 144, height: 108, borderRadius: borderRadius.lg, overflow: 'hidden' },
+  cover: { width: 144, height: 108, borderRadius: cosmosCardRadius, overflow: 'hidden' },
   coverEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  coverTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  change: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font('semibold') },
+  coverTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  change: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   coverHint: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[3], marginHorizontal: spacing[1] },
-  pinTitle: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  pinTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   block: { marginTop: spacing[8] },
   firstBlock: { marginTop: 0 },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
