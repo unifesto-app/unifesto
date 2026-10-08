@@ -20,6 +20,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GroupSeatsService } from './group-seats.service';
+import { esc, h1, p, strong } from '../email/layout';
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
@@ -287,7 +288,8 @@ export class TeamChangesService {
         .sendRawEmail(
           memberEmail,
           `You've been removed from your team for ${reg.event.title}`,
-          `<p>Your team lead or the organiser removed you from your team for <strong>${reg.event.title}</strong>, so your ticket is no longer valid. If you think this is a mistake, contact your team lead.</p>`,
+          h1('You were removed from your team') +
+            p(`Your team lead or the organiser removed you from your team for ${strong(reg.event.title)}, so your ticket is no longer valid. If you think this is a mistake, contact your team lead.`),
         )
         .catch((err) => this.logger.error(`Removal notice failed to ${memberEmail}`, err));
     }
@@ -558,7 +560,9 @@ export class TeamChangesService {
         .sendRawEmail(
           to,
           `${leadName} wants you to lead your team for ${reg.event.title}`,
-          `<p>${leadName} asked you to take over as team lead for <strong>${reg.event.title}</strong>. As lead you manage the team and its booking, including refunds. Open your ticket in the Unifesto app and go to Manage group to accept or decline.</p>`,
+          h1('Lead your team?') +
+            p(`${esc(leadName)} asked you to take over as team lead for ${strong(reg.event.title)}. As lead you manage the team and its booking, including refunds.`) +
+            p('Open your ticket in the Unifesto app and go to Manage group to accept or decline.'),
         )
         .catch((err) => this.logger.error(`Lead transfer email failed to ${to}`, err));
     }

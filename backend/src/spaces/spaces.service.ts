@@ -38,6 +38,7 @@ import {
 } from '@prisma/client';
 import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
 @Injectable()
 export class SpacesService {
@@ -1472,31 +1473,20 @@ export class SpacesService {
     // Send email notification
     const email = req.user.identities[0]?.email;
     if (email) {
-      if (dto.status === 'APPROVED') {
-        this.emailService.sendRawEmail(
+      const approved = dto.status === 'APPROVED';
+      this.emailService
+        .sendRawEmail(
           email,
-          `Space status updated to ${req.requestedStatus} — Unifesto`,
-          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-            <h2 style="color:#16a34a">Status Change Approved ✓</h2>
-            <p>Hi ${req.user.fullName || req.user.username || 'there'},</p>
-            <p>Your request to change <strong>${req.space.name}</strong>'s status to <strong>${req.requestedStatus}</strong> has been approved.</p>
-            ${dto.reviewNote ? `<p><strong>Note from admin:</strong> ${dto.reviewNote}</p>` : ''}
-            <a href="https://apex.unifesto.app/dashboard/spaces/${req.spaceId}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#7c3aed;color:white;text-decoration:none;border-radius:8px">View Space</a>
-          </div>`,
-        ).catch(() => {});
-      } else {
-        this.emailService.sendRawEmail(
-          email,
-          `Space status change request rejected — Unifesto`,
-          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-            <h2 style="color:#dc2626">Status Change Request Rejected</h2>
-            <p>Hi ${req.user.fullName || req.user.username || 'there'},</p>
-            <p>Your request to change <strong>${req.space.name}</strong>'s status to <strong>${req.requestedStatus}</strong> has been rejected.</p>
-            ${dto.reviewNote ? `<p><strong>Reason:</strong> ${dto.reviewNote}</p>` : ''}
-            <a href="https://apex.unifesto.app/dashboard/spaces/${req.spaceId}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#7c3aed;color:white;text-decoration:none;border-radius:8px">View Space</a>
-          </div>`,
-        ).catch(() => {});
-      }
+          approved
+            ? `${req.space.name} is now ${req.requestedStatus}`
+            : `Status change for ${req.space.name} not approved`,
+          h1(approved ? 'Status change approved' : 'Status change not approved') +
+            greet(req.user.fullName || req.user.username) +
+            p(`Your request to change ${strong(req.space.name)} to ${strong(req.requestedStatus)} was ${approved ? 'approved' : 'not approved'}.`) +
+            (dto.reviewNote ? note(`${approved ? 'Note from Unifesto' : 'Reason'}: ${esc(dto.reviewNote)}`, approved ? 'neutral' : 'danger') : '') +
+            button('Open my space', `${SPACE_APP}/dashboard`),
+        )
+        .catch(() => {});
     }
 
     return updated;
@@ -1777,23 +1767,14 @@ export class SpacesService {
     dto: ReviewSpaceOwnershipRequestDto,
   ) {
     const approved = dto.status === 'APPROVED';
-    const link = `https://apex.unifesto.app/dashboard/spaces/${req.space.id}`;
-    const note = dto.reviewNote
-      ? `<p><strong>${approved ? 'Note from admin' : 'Reason'}:</strong> ${dto.reviewNote}</p>`
+    const reason = dto.reviewNote
+      ? note(`${approved ? 'Note from Unifesto' : 'Reason'}: ${esc(dto.reviewNote)}`)
       : '';
 
     const send = (email: string | null | undefined, subject: string, body: string) => {
       if (!email) return;
       this.emailService
-        .sendRawEmail(
-          email,
-          subject,
-          `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-            ${body}
-            ${note}
-            <a href="${link}" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#7c3aed;color:white;text-decoration:none;border-radius:8px">View Space</a>
-          </div>`,
-        )
+        .sendRawEmail(email, subject, body + reason + button('Open my space', `${SPACE_APP}/dashboard`))
         .catch(() => {});
     };
 
@@ -1803,25 +1784,25 @@ export class SpacesService {
     if (approved) {
       send(
         req.requester.identities[0]?.email,
-        `Ownership of ${req.space.name} transferred — Unifesto`,
-        `<h2 style="color:#16a34a">Transfer Approved</h2>
-         <p>Hi ${requesterName},</p>
-         <p><strong>${req.space.name}</strong> now belongs to ${newOwnerName}. You remain in the space as a Co-Organiser.</p>`,
+        `${req.space.name} has a new owner`,
+        h1('Handover approved') +
+          greet(requesterName) +
+          p(`${strong(req.space.name)} now belongs to ${esc(newOwnerName)}. You stay on as a Space Admin.`),
       );
       send(
         req.newOwner.identities[0]?.email,
-        `You now own ${req.space.name} — Unifesto`,
-        `<h2 style="color:#16a34a">You're the Owner</h2>
-         <p>Hi ${newOwnerName},</p>
-         <p>${requesterName} has handed <strong>${req.space.name}</strong> to you, and an admin has approved it. The space now bills to your account and you have full control of it.</p>`,
+        `You now own ${req.space.name}`,
+        h1("You're the owner now") +
+          greet(newOwnerName) +
+          p(`${esc(requesterName)} handed ${strong(req.space.name)} to you and Unifesto approved it. The space bills to your account and you have full control of it.`),
       );
     } else {
       send(
         req.requester.identities[0]?.email,
-        `Ownership transfer rejected — Unifesto`,
-        `<h2 style="color:#dc2626">Transfer Rejected</h2>
-         <p>Hi ${requesterName},</p>
-         <p>Your request to hand <strong>${req.space.name}</strong> to ${newOwnerName} was not approved. Nothing has changed.</p>`,
+        `Handover of ${req.space.name} not approved`,
+        h1('Handover not approved') +
+          greet(requesterName) +
+          p(`Your request to hand ${strong(req.space.name)} to ${esc(newOwnerName)} wasn't approved. Nothing has changed.`),
       );
     }
   }
@@ -2152,33 +2133,16 @@ export class SpacesService {
     if (email) {
       const name =
         request.user.fullName || request.user.username || 'there';
-      if (approved) {
-        this.emailService
-          .sendRawEmail(
-            email,
-            `Your sub-space request was approved — Unifesto`,
-            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-              <h2 style="color:#16a34a">Sub-Space Request Approved</h2>
-              <p>Hi ${name},</p>
-              <p>Your request related to <strong>${request.targetSpace.name}</strong> has been approved.</p>
-              ${dto.reviewNote ? `<p><strong>Note:</strong> ${dto.reviewNote}</p>` : ''}
-            </div>`,
-          )
-          .catch(() => {});
-      } else {
-        this.emailService
-          .sendRawEmail(
-            email,
-            `Your sub-space request was rejected — Unifesto`,
-            `<div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-              <h2 style="color:#dc2626">Sub-Space Request Rejected</h2>
-              <p>Hi ${name},</p>
-              <p>Your request related to <strong>${request.targetSpace.name}</strong> has been rejected.</p>
-              ${dto.reviewNote ? `<p><strong>Reason:</strong> ${dto.reviewNote}</p>` : ''}
-            </div>`,
-          )
-          .catch(() => {});
-      }
+      this.emailService
+        .sendRawEmail(
+          email,
+          `Your sub-space request was ${approved ? 'approved' : 'not approved'}`,
+          h1(approved ? 'Sub-space request approved' : 'Sub-space request not approved') +
+            greet(name) +
+            p(`Your request about ${strong(request.targetSpace.name)} was ${approved ? 'approved' : 'not approved'}.`) +
+            (dto.reviewNote ? note(`${approved ? 'Note' : 'Reason'}: ${esc(dto.reviewNote)}`) : ''),
+        )
+        .catch(() => {});
     }
 
     return updated;

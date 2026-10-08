@@ -6,6 +6,7 @@ import { RedisService } from '../redis/redis.service';
 import { PaymentStatus, RegistrationStatus, SessionStatus } from '@prisma/client';
 import { JOIN_GRACE_MINUTES_AFTER_END } from './session-policy';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { button, details, esc, greet, h1, small } from '../email/layout';
 
 /**
  * Time-driven jobs for sessions. For an online session the reminder *is* the
@@ -130,12 +131,13 @@ export class SessionSchedulerService {
     // token. Emailing the raw URL would hand out a forwardable credential — and
     // for the T-24h reminder, a full day early.
     const joinUrl = `https://unifesto.app/session/${session.slug}`;
-    return `
-      <p>Hi ${name},</p>
-      <p>${lead === 'Tomorrow' ? 'Your session is tomorrow.' : 'Your session is starting soon.'}</p>
-      <p><strong>${session.title}</strong><br/>${when}</p>
-      <p><a href="${joinUrl}">Open the session</a> — the Join button unlocks shortly before it starts.</p>
-    `;
+    return (
+      h1(lead === 'Tomorrow' ? 'Your session is tomorrow' : 'Your session starts soon') +
+      greet(name) +
+      details([['When', esc(when)]], esc(session.title)) +
+      button('Open the session', joinUrl) +
+      small('The Join button unlocks shortly before it starts.')
+    );
   }
 
   /**
