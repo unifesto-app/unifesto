@@ -5,60 +5,49 @@ import { useNavigation } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { CalendarBlank, CaretRight, CheckCircle, Clock, Ticket, UsersThree, VideoCamera, XCircle } from '@unifesto/unicon/react-native';
+import { CalendarPlus, CaretRight, CheckCircle, Clock, Ticket, UsersThree, VideoCamera, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { isPaidSessionBlocked, PAID_SESSION_IOS_NOTE, useSessionRegistration } from '../hooks/useSessionRegistration';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { useBannerAccent } from '../hooks/useBannerPalette';
 import Skeleton from '../components/Skeleton';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { ActionBar } from '../components/event/EventOverlays';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import { GUTTER, Section } from '../components/home/Section';
+import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { googleCalendarUrl, outlookCalendarUrl } from '../lib/calendar';
-import { formatTime } from '../utils/eventFormat';
+import { countdownLabel } from '../utils/eventFormat';
 import { getSessionBySlug, getMySessions, joinSession, PLATFORM_LABELS, type Session } from '../lib/api/sessions';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 
-const GUTTER = spacing[6];
+const ICON = 24;
+const STUB = 56;
+const LIVE_RED = '#ef4444';
 
-/** "Sat, 12 Oct · 6:30 PM", in the session's own time zone. */
-function formatWhen(iso: string, timezone: string): string {
-  return new Date(iso).toLocaleString('en-IN', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: timezone,
-  });
+/** Date and time parts in the session's own time zone. */
+function whenParts(iso: string, timeZone: string) {
+  const d = new Date(iso);
+  const part = (o: Intl.DateTimeFormatOptions) => d.toLocaleString('en-IN', { ...o, timeZone });
+  return {
+    month: part({ month: 'short' }),
+    day: part({ day: 'numeric' }),
+    weekday: part({ weekday: 'long' }),
+    time: part({ hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase(),
+  };
 }
 
-/**
- * Online session page — mirrors event details: inset 4:3 cover, title and
- * host, a facts card, about, and the shared bottom action bar (sign in /
- * register / join / watch recording).
- */
-export default function SessionDetailScreen({ slug }: { slug: string }) {
-  const tokens = useTokens();
+/** The session, whether I'm registered, and a reload. */
+function useSessionData(slug: string) {
   const { user } = useAuth();
-  const router = useRouter();
-  const navigation = useNavigation();
-  const topSpacing = useTopSpacing(8);
-  const { width } = useWindowDimensions();
-  const { register, loading: registering } = useSessionRegistration();
-
   const [session, setSession] = useState<Session | null>(null);
   const [registered, setRegistered] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [joining, setJoining] = useState(false);
-  const [descExpanded, setDescExpanded] = useState(false);
-
-  const bannerW = width - GUTTER * 2;
-  const bannerH = Math.round((bannerW * 3) / 4);
 
   const load = useCallback(async () => {
     const s = await getSessionBySlug(slug);
@@ -74,6 +63,45 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  return { user, session, registered, setRegistered, loading, load };
+}
+
+type SessionData = ReturnType<typeof useSessionData>;
+
+/**
+ * Online session page, same fusion look as the event page: the cosmos sky lit
+ * by the cover's hue, a 4:3 cover, title and host, a facts card, about, and
+ * the shared bottom action bar (sign in / register / join / watch recording).
+ */
+export default function SessionDetailScreen({ slug }: { slug: string }) {
+  const data = useSessionData(slug);
+  // No backend palette for sessions: the colour is picked on-device.
+  const hue = useBannerAccent(data.session?.coverImageUrl, null);
+  return (
+    <CosmosWash active={!!hue}>
+      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
+        <SessionDetailView data={data} hue={hue} />
+      </CardSurfaceProvider>
+    </CosmosWash>
+  );
+}
+
+function SessionDetailView({ data, hue }: { data: SessionData; hue: string | null }) {
+  const c = useCosmos();
+  const tokens = useTokens();
+  const router = useRouter();
+  const navigation = useNavigation();
+  const topSpacing = useTopSpacing(8);
+  const barSpace = useActionBarSpace();
+  const { width } = useWindowDimensions();
+  const { register, loading: registering } = useSessionRegistration();
+  const { user, session, registered, setRegistered, loading, load } = data;
+  const [joining, setJoining] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
+
+  const bannerW = width - GUTTER * 2;
+  const bannerH = Math.round((bannerW * 3) / 4);
 
   const addToCalendar = useCallback(() => {
     if (!session) return;
@@ -159,20 +187,22 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <View style={[styles.flex, { backgroundColor: tokens.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
-        <Skeleton width={bannerW} height={bannerH} borderRadius={borderRadius.xl} />
-        <Skeleton width="80%" height={28} borderRadius={8} style={{ marginTop: spacing[5] }} />
-        <Skeleton width="100%" height={168} borderRadius={borderRadius.xl} style={{ marginTop: spacing[6] }} />
+      <View style={[styles.flex, { backgroundColor: c.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
+        <CosmosBackdrop horizon={false} />
+        <Skeleton width={bannerW} height={bannerH} borderRadius={cosmosCardRadius} />
+        <Skeleton width="80%" height={26} borderRadius={8} style={{ marginTop: spacing[6] }} />
+        <Skeleton width="100%" height={196} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[6] }} />
       </View>
     );
   }
 
   if (!session) {
     return (
-      <View style={[styles.flex, styles.center, { backgroundColor: tokens.bg }]}>
-        <VideoCamera size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>Session not found</Text>
-        <Text style={[styles.link, { color: tokens.accent }]} onPress={() => router.back()}>Go back</Text>
+      <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <VideoCamera size={48} color={c.muted} />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>Session not found</Text>
+        <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
   }
@@ -182,10 +212,13 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
   const isCancelled = session.status === 'CANCELLED';
   const isCompleted = session.status === 'COMPLETED';
   const platform = session.platform === 'OTHER' ? session.platformOther || 'Online' : PLATFORM_LABELS[session.platform];
+  const minutes = session.durationMinutes || 60;
   const startMs = new Date(session.startDateTime).getTime();
-  const live = !isCancelled && Date.now() >= startMs && Date.now() < startMs + (session.durationMinutes || 60) * 60000;
+  const live = !isCancelled && Date.now() >= startMs && Date.now() < startMs + minutes * 60000;
   const spotsLeft = session.capacity != null ? Math.max(0, session.capacity - session.registeredCount) : null;
   const description = session.description?.trim();
+  const when = whenParts(session.startDateTime, session.timezone);
+  const countdown = upcoming && !live ? countdownLabel(session.startDateTime) : null;
   // iOS can't sell paid online sessions (App Store 3.1.1); see useSessionRegistration.
   const purchaseBlocked = !registered && !isCancelled && !isCompleted && isPaidSessionBlocked(session);
 
@@ -194,111 +227,136 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
     ? null
     : isCompleted
       ? session.recordingUrl
-        ? { label: 'Watch recording', onPress: () => Linking.openURL(session.recordingUrl!), neutral: false }
+        ? { label: 'Watch recording', onPress: () => Linking.openURL(session.recordingUrl!) }
         : null
       : registered
-        ? { label: live ? 'Join now' : 'Join session', onPress: handleJoin, neutral: false }
+        ? { label: live ? 'Join now' : 'Join session', onPress: handleJoin }
         : !user
-          ? { label: 'Sign in to register', onPress: handleRegister, neutral: false }
+          ? { label: 'Sign in to register', onPress: handleRegister }
           : spotsLeft === 0 || purchaseBlocked
             ? null
-            : { label: price > 0 ? 'Register' : 'Register free', onPress: handleRegister, neutral: false };
+            : { label: price > 0 ? 'Register' : 'Register free', onPress: handleRegister };
 
   return (
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 150 }}>
-        {/* Cover (4:3), kept clean: date and platform live in the facts below */}
-        <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: tokens.elevated }]}>
-          {session.coverImageUrl ? (
-            <Image source={{ uri: session.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : (
-            <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
-              <VideoCamera size={48} color="#ffffff" weight="fill" />
-            </LinearGradient>
-          )}
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} hue={hue} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: bar ? barSpace : spacing[12] }}>
+        <View style={{ paddingHorizontal: GUTTER }}>
+          {/* Cover (4:3), kept clean: date and platform live in the facts below */}
+          <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: c.card }]}>
+            {session.coverImageUrl ? (
+              <Image source={{ uri: session.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : (
+              <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
+                <VideoCamera size={48} color={c.muted} />
+              </LinearGradient>
+            )}
+          </View>
+
+          {live ? (
+            <View style={styles.liveRow}>
+              <LiveDot color={LIVE_RED} />
+              <Text style={[styles.liveText, { color: LIVE_RED }]}>Live now</Text>
+            </View>
+          ) : null}
+
+          <Text style={[styles.title, { color: c.text }, !live && { marginTop: spacing[6] }]}>{session.title}</Text>
+
+          {session.space ? (
+            <Pressable
+              onPress={() => router.push(`/space/${session.space!.id}`)}
+              style={({ pressed }) => [styles.host, { opacity: pressed ? 0.6 : 1 }]}
+              accessibilityRole="link"
+            >
+              {session.space.logoUrl ? (
+                <Image source={{ uri: session.space.logoUrl }} style={[styles.hostLogo, { backgroundColor: c.card }]} />
+              ) : (
+                <View style={[styles.hostLogo, styles.center, { backgroundColor: c.card }]}>
+                  <Text style={[styles.hostInitial, { color: c.muted }]}>{session.space.name.charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={[styles.hostText, { color: c.muted }]} numberOfLines={1}>
+                by <Text style={{ color: c.text, ...cosmosFont.strong }}>{session.space.name}</Text>
+              </Text>
+              <CaretRight size={12} color={c.muted} />
+            </Pressable>
+          ) : null}
+
+          {registered && !isCancelled ? (
+            <View style={styles.note}>
+              <CheckCircle size={18} color={tokens.success} weight="fill" />
+              <Text style={[styles.noteText, { color: tokens.success }]}>
+                {isCompleted ? 'You attended this session' : "You're registered. Join opens shortly before the start."}
+              </Text>
+            </View>
+          ) : null}
+
+          {purchaseBlocked ? <Text style={[styles.blockedNote, { color: c.muted }]}>{PAID_SESSION_IOS_NOTE}</Text> : null}
+
+          {/* ── Facts: a ticket-stub date, then length and platform, spots, entry ── */}
+          <View style={[styles.facts, { backgroundColor: c.raised }]}>
+            <Pressable
+              onPress={upcoming ? addToCalendar : undefined}
+              disabled={!upcoming}
+              accessibilityRole="button"
+              accessibilityLabel={`${when.weekday}, ${when.time}${upcoming ? '. Add to calendar' : ''}`}
+              style={({ pressed }) => [styles.whenRow, pressed && { backgroundColor: c.tint }]}
+            >
+              <View style={[styles.stub, { borderColor: c.border }]}>
+                <Text style={[styles.stubMonth, { color: c.muted }]}>{when.month}</Text>
+                <Text style={[styles.stubDay, { color: c.text }]}>{when.day}</Text>
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.weekday}</Text>
+                <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{when.time}</Text>
+                {countdown ? <Text style={[styles.factSub, { color: c.muted }]}>{countdown}</Text> : null}
+              </View>
+              {upcoming ? <CalendarPlus size={ICON} color={c.text} /> : null}
+            </Pressable>
+
+            <Divider />
+            <Fact icon={<Clock size={ICON} color={c.text} />} title={`${minutes} min`} sub={`On ${platform}`} />
+
+            {spotsLeft != null && upcoming ? (
+              <>
+                <Divider />
+                <Fact
+                  icon={<UsersThree size={ICON} color={spotsLeft === 0 ? c.danger : c.text} />}
+                  title={spotsLeft === 0 ? 'Fully booked' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
+                  danger={spotsLeft === 0}
+                />
+              </>
+            ) : null}
+
+            <Divider />
+            {isCancelled ? (
+              <Fact
+                icon={<XCircle size={ICON} color={c.danger} />}
+                title="This session was cancelled"
+                sub={session.cancellationReason}
+                danger
+              />
+            ) : isCompleted ? (
+              <Fact icon={<Ticket size={ICON} color={c.muted} />} title="This session has ended" />
+            ) : (
+              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLabel} />
+            )}
+          </View>
         </View>
 
-        <Text style={[styles.title, { color: tokens.text }]}>{session.title}</Text>
-
-        {live ? (
-          <View style={styles.liveRow}>
-            <LiveDot color="#ef4444" />
-            <Text style={[styles.liveText, { color: '#ef4444' }]}>Live now</Text>
-          </View>
-        ) : null}
-
-        {session.space ? (
-          <Pressable onPress={() => router.push(`/space/${session.space!.id}`)} style={styles.host} accessibilityRole="link">
-            {session.space.logoUrl ? (
-              <Image source={{ uri: session.space.logoUrl }} style={[styles.hostLogo, { backgroundColor: tokens.elevated }]} />
-            ) : (
-              <View style={[styles.hostLogo, styles.center, { backgroundColor: tokens.elevated }]}>
-                <Text style={{ color: tokens.textSecondary, ...font('heading') }}>{session.space.name.charAt(0).toUpperCase()}</Text>
-              </View>
-            )}
-            <Text style={[styles.hostText, { color: tokens.textSecondary }]} numberOfLines={1}>
-              by <Text style={{ color: tokens.text, ...font('semibold') }}>{session.space.name}</Text>
-            </Text>
-            <CaretRight size={12} color={tokens.textMuted} weight="bold" />
-          </Pressable>
-        ) : null}
-
-        {registered && !isCancelled ? (
-          <View style={styles.registered}>
-            <CheckCircle size={18} color={tokens.success} weight="fill" />
-            <Text style={[styles.registeredText, { color: tokens.success }]}>
-              {isCompleted ? 'You attended this session' : "You're registered. Join opens shortly before the start."}
-            </Text>
-          </View>
-        ) : null}
-
-        {purchaseBlocked ? (
-          <Text style={[styles.blockedNote, { color: tokens.textMuted }]}>{PAID_SESSION_IOS_NOTE}</Text>
-        ) : null}
-
-        {isCancelled ? (
-          <View style={[styles.cancelled, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
-            <XCircle size={22} color={tokens.danger} weight="fill" />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.cancelledTitle, { color: tokens.danger }]}>This session was cancelled</Text>
-              {session.cancellationReason ? (
-                <Text style={[styles.body, { color: tokens.textSecondary }]}>{session.cancellationReason}</Text>
+        {description ? (
+          <Section title="About">
+            <View style={{ paddingHorizontal: GUTTER }}>
+              <Text style={[styles.body, { color: c.soft }]} numberOfLines={descExpanded ? undefined : 6}>
+                {description}
+              </Text>
+              {description.length > 240 ? (
+                <Pressable onPress={() => setDescExpanded((v) => !v)} hitSlop={8} accessibilityRole="button">
+                  <Text style={[styles.link, { color: c.text }]}>{descExpanded ? 'Show less' : 'Read more'}</Text>
+                </Pressable>
               ) : null}
             </View>
-          </View>
-        ) : null}
-
-        <SettingsGroup>
-          <SettingsRow
-            icon={<CalendarBlank size={24} color={tokens.accent} weight="duotone" />}
-            label={formatWhen(session.startDateTime, session.timezone)}
-            onPress={upcoming ? addToCalendar : undefined}
-          />
-          <SettingsRow
-            icon={<Clock size={24} color={tokens.accent} weight="duotone" />}
-            label={`${session.durationMinutes || 60} min on ${platform}`}
-          />
-          {spotsLeft != null && upcoming ? (
-            <SettingsRow
-              icon={<UsersThree size={24} color={spotsLeft === 0 ? tokens.danger : tokens.accent} weight="duotone" />}
-              label={spotsLeft === 0 ? 'Fully booked' : `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`}
-            />
-          ) : null}
-          <SettingsRow icon={<Ticket size={24} color={tokens.accent} weight="duotone" />} label={priceLabel} />
-        </SettingsGroup>
-
-        {description ? (
-          <View style={{ marginTop: spacing[8] }}>
-            <Text style={[styles.blockTitle, { color: tokens.text }]}>About</Text>
-            <Text style={[styles.body, { color: tokens.textSecondary, fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.55 }]} numberOfLines={descExpanded ? undefined : 6}>
-              {description}
-            </Text>
-            {description.length > 240 ? (
-              <Text style={[styles.link, { color: tokens.accent }]} onPress={() => setDescExpanded((v) => !v)}>
-                {descExpanded ? 'Show less' : 'Read more'}
-              </Text>
-            ) : null}
-          </View>
+          </Section>
         ) : null}
       </ScrollView>
 
@@ -307,10 +365,33 @@ export default function SessionDetailScreen({ slug }: { slug: string }) {
           info={registered ? null : { label: 'Price', value: priceLabel }}
           label={bar.label}
           loading={registering || joining}
-          accent={tokens.accent}
+          // Silver, the cosmos primary, like the event and space pages.
+          tone="neutral"
+          accent={c.primary}
           onPress={bar.onPress}
+          backdropImage={session.coverImageUrl}
+          backdropColor={c.bg}
         />
       ) : null}
+    </View>
+  );
+}
+
+function Divider() {
+  const c = useCosmos();
+  return <View style={[styles.divider, { backgroundColor: c.border }]} />;
+}
+
+/** One line of the facts card: bare icon, title, optional quieter line under it. */
+function Fact({ icon, title, sub, danger }: { icon: React.ReactNode; title: string; sub?: string | null; danger?: boolean }) {
+  const c = useCosmos();
+  return (
+    <View style={styles.factRow}>
+      <View style={styles.factIcon}>{icon}</View>
+      <View style={styles.flex}>
+        <Text style={[styles.factTitle, { color: danger ? c.danger : c.text }]} numberOfLines={1}>{title}</Text>
+        {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={3}>{sub}</Text> : null}
+      </View>
     </View>
   );
 }
@@ -332,29 +413,33 @@ function LiveDot({ color }: { color: string }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  banner: { borderRadius: borderRadius.xl, overflow: 'hidden' },
-  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing[2] },
-  liveText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  banner: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing[6] },
+  liveText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   liveWrap: { width: 10, height: 10, alignItems: 'center', justifyContent: 'center' },
   liveRing: { position: 'absolute', width: 8, height: 8, borderRadius: 4 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
-  title: {
-    marginTop: spacing[5],
-    fontSize: typography.fontSize['3xl'],
-    lineHeight: typography.fontSize['3xl'] * 1.15,
-    letterSpacing: -0.5,
-    ...font('heading'),
-  },
+  // Michroma runs wide: 24 reads like a 30 in a narrower face.
+  title: { marginTop: spacing[2], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
-  hostText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font() },
-  registered: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
-  blockedNote: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...font('medium') },
-  registeredText: { flex: 1, fontSize: typography.fontSize.sm, ...font('semibold') },
-  cancelled: { flexDirection: 'row', gap: spacing[3], padding: spacing[4], borderRadius: borderRadius.xl, marginTop: spacing[5] },
-  cancelledTitle: { fontSize: typography.fontSize.base, marginBottom: 2, ...font('semibold') },
-  blockTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], ...font('heading') },
-  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  link: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
+  hostInitial: { fontSize: 11, ...cosmosFont.display },
+  hostText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[4] },
+  noteText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  blockedNote: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
+  stub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stubMonth: { fontSize: 11, ...cosmosFont.strong },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  // Same column as the date stub, so every line's text starts at one edge.
+  factIcon: { width: STUB, alignItems: 'center' },
+  factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  factSub: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
+  link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
 });
