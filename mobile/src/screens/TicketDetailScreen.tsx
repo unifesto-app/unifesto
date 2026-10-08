@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useState } from 'react';
 import Svg, { Path } from 'react-native-svg';
-import { ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
@@ -9,10 +9,14 @@ import QRCode from 'react-native-qrcode-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowCounterClockwise,
+  ArrowUpRight,
   Bed,
-  CalendarBlank,
+  CalendarPlus,
+  CaretRight,
   CheckCircle,
   Export,
+  Globe,
+  MapPin,
   ShareNetwork,
   Ticket as TicketIcon,
   Trophy,
@@ -25,37 +29,39 @@ import AttendingShareModal from '../components/AttendingShareModal';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
-import { useBannerAccent } from '../hooks/useBannerPalette';
-import CosmosBackdrop from '../components/ui/CosmosBackdrop';
-import AuthButton from '../components/auth/AuthButton';
 import { useEventStays } from '../hooks/useEventStays';
+import { useBannerAccent } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
+import { GUTTER } from '../components/home/Section';
 import { useTokens } from '../context/ThemeContext';
 import { countdownLabel, formatTime } from '../utils/eventFormat';
-import { spacing } from '../theme/spacing';
+import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
-import { AppAlert } from '../components/ui/AppAlert';
-import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 
-const GUTTER = spacing[6];
+const ICON = 24;
 const NOTCH = 22;
+const STUB = 56;
 // Event banners are 4:3.
 const THUMB_W = 88;
 const THUMB_H = 66;
 
+type TicketDetail = ReturnType<typeof useTicketDetail>;
+
 /**
- * The entry pass, in the same fusion look as the event page: the cosmos sky
- * lit by the event's colour (an approved white-label colour, else the cover's
- * hue). One ticket card (event, when/where, ticket type, tear line, big QR
- * stub), then grouped actions — share, calendar, group, WhatsApp, check-in
- * history, and refund/cancel at the bottom.
+ * The entry pass, in the fusion cosmos look of the event page: the sky lit by
+ * the event's colour (white-label, else the banner's hue), a pass (event, tear line, big QR stub), a facts card (when,
+ * where, ticket type, view event), then grouped actions with refund/cancel last.
  */
 export default function TicketDetailScreen() {
   const params = useLocalSearchParams<{ id: string; ticket?: string }>();
   const t = useTicketDetail(params.ticket);
   const coverHue = useBannerAccent(t.cover, t.eventSlug ? { event: t.eventSlug } : null);
+  // An approved white-label colour wins over the cover's hue.
   const hue = t.brandColor || coverHue;
   return (
     <CosmosWash active={!!hue}>
@@ -66,7 +72,7 @@ export default function TicketDetailScreen() {
   );
 }
 
-function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; hue: string | null }) {
+function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   const c = useCosmos();
   const tokens = useTokens();
   const router = useRouter();
@@ -84,9 +90,15 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
   const qrSize = Math.min(220, width - GUTTER * 2 - spacing[16]);
 
   const start = t.startIso ? new Date(t.startIso) : null;
-  const dateLabel = start ? start.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : 'TBA';
-  const timeLabel = start ? formatTime(start) : 'TBA';
   const upcoming = !!start && start.getTime() > Date.now();
+  const when = start
+    ? {
+        month: start.toLocaleDateString('en-IN', { month: 'short' }),
+        day: String(start.getDate()),
+        weekday: start.toLocaleDateString('en-IN', { weekday: 'long' }),
+        time: formatTime(start),
+      }
+    : { month: '', day: '–', weekday: 'Date to be announced', time: 'Time TBA' };
 
   const openEvent = () => t.eventSlug && router.push(`/event/${t.eventSlug}`);
 
@@ -135,12 +147,13 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
 
   const badge =
     t.status === 'cancelled'
-      ? { text: 'Cancelled', color: tokens.danger, bg: 'rgba(239,68,68,0.14)' }
+      ? { text: 'Cancelled', color: c.danger }
       : t.status === 'checkedIn'
-        ? { text: 'Checked in', color: tokens.success, bg: 'rgba(16,185,129,0.14)' }
-        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.text, bg: c.tint };
+        ? { text: 'Checked in', color: tokens.success }
+        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.primary };
 
   const price = Number.isNaN(t.listPrice) ? null : t.listPrice === 0 ? 'Free' : `₹${t.listPrice.toLocaleString('en-IN')}`;
+  const canCalendar = !!t.eventSlug && upcoming && !cancelled;
 
   return (
     <View style={[styles.flex, { backgroundColor: c.bg }]}>
@@ -152,54 +165,32 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
           <RefreshControl
             refreshing={t.refreshing}
             onRefresh={t.refresh}
-            tintColor={c.text}
-            colors={[c.text]}
+            tintColor={c.primary}
+            colors={[c.primary]}
             progressViewOffset={topSpacing}
           />
         }
       >
-        {/* ── The pass ── */}
+        {/* ── The pass: what it's for, then the stub that gets scanned ── */}
         <View onLayout={(e) => setPassSize(e.nativeEvent.layout)}>
           {passSize && notchY != null ? (
             <PassShape width={passSize.width} height={passSize.height} notchY={notchY} fill={c.raised} />
           ) : null}
           <View style={styles.passTop} onLayout={(e) => setNotchY(e.nativeEvent.layout.height + NOTCH / 2)}>
-            <View style={styles.headRow}>
-              <View style={[styles.thumb, { backgroundColor: c.card }]}>
-                {t.cover ? (
-                  <Image source={{ uri: t.cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                ) : (
-                  <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
-                )}
-              </View>
-              <View style={{ flex: 1, gap: 6 }}>
-                <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                  <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
-                </View>
-                <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>{t.title}</Text>
-              </View>
+            <View style={[styles.thumb, { backgroundColor: c.card }]}>
+              {t.cover ? (
+                <Image source={{ uri: t.cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
+              )}
             </View>
-
-            <View style={styles.facts}>
-              {[
-                { label: 'Date', value: dateLabel },
-                { label: 'Time', value: timeLabel },
-                { label: t.isOnline ? 'Access' : 'Venue', value: t.venue },
-              ].map((f, i) => (
-                <View key={f.label} style={[styles.fact, i === 2 && { flex: 1.4 }]}>
-                  <Text style={[styles.factLabel, { color: c.muted }]}>{f.label}</Text>
-                  <Text style={[styles.factValue, { color: c.text }]} numberOfLines={2}>{f.value}</Text>
-                </View>
-              ))}
-            </View>
-
-            {t.ticketTypeName ? (
-              <View style={[styles.typeRow, { backgroundColor: c.tint }]}>
-                <TicketIcon size={18} color={c.soft} />
-                <Text style={[styles.typeName, { color: c.text }]} numberOfLines={1}>{t.ticketTypeName}</Text>
-                {price ? <Text style={[styles.typePrice, { color: c.text }]}>{price}</Text> : null}
+            <View style={styles.flex}>
+              <View style={[styles.badge, { backgroundColor: c.tint }]}>
+                <View style={[styles.badgeDot, { backgroundColor: badge.color }]} />
+                <Text style={[styles.badgeText, { color: badge.color }]}>{badge.text}</Text>
               </View>
-            ) : null}
+              <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>{t.title}</Text>
+            </View>
           </View>
 
           {/* Tear line between the notches PassShape cuts out of both edges */}
@@ -207,7 +198,6 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
             <View style={[styles.perf, { borderColor: c.outline }]} />
           </View>
 
-          {/* The stub: what gets scanned at the door */}
           <View style={styles.stub}>
             <View style={[styles.qr, cancelled && { opacity: 0.12 }]}>
               <QRCode value={t.qrValue} size={qrSize} color="#000000" backgroundColor="#ffffff" />
@@ -223,6 +213,55 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
               {t.status === 'checkedIn' ? 'You are checked in. Enjoy the event.' : 'Show this at the entrance'}
             </Text>
           </View>
+        </View>
+
+        {/* ── Facts: a date stub, then where, then what I hold ── */}
+        <View style={[styles.facts, { backgroundColor: c.raised }]}>
+          <Pressable
+            onPress={canCalendar ? t.addToCalendar : undefined}
+            disabled={!canCalendar}
+            accessibilityRole="button"
+            accessibilityLabel={`${when.weekday}, ${when.time}${canCalendar ? '. Add to calendar' : ''}`}
+            style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+          >
+            <View style={[styles.dateStub, { borderColor: c.border }]}>
+              <Text style={[styles.stubMonth, { color: c.muted }]}>{when.month}</Text>
+              <Text style={[styles.stubDay, { color: c.text }]}>{when.day}</Text>
+            </View>
+            <View style={styles.flex}>
+              <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.weekday}</Text>
+              <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{when.time}</Text>
+            </View>
+            {canCalendar ? <CalendarPlus size={ICON} color={c.text} /> : null}
+          </Pressable>
+          <Divider />
+          <Fact
+            icon={t.isOnline ? <Globe size={ICON} color={c.text} /> : <MapPin size={ICON} color={c.text} />}
+            title={t.venue}
+            sub={t.isOnline ? 'Online' : null}
+          />
+          {t.ticketTypeName ? (
+            <>
+              <Divider />
+              <Fact icon={<TicketIcon size={ICON} color={c.text} />} title={t.ticketTypeName} sub={price} />
+            </>
+          ) : null}
+          {t.eventSlug ? (
+            <>
+              <Divider />
+              <Pressable
+                onPress={openEvent}
+                accessibilityRole="link"
+                style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+              >
+                <View style={styles.factIcon}>
+                  <ArrowUpRight size={ICON} color={c.text} />
+                </View>
+                <Text style={[styles.factTitle, styles.flex, { color: c.text }]}>View event</Text>
+                <CaretRight size={15} color={c.muted} />
+              </Pressable>
+            </>
+          ) : null}
         </View>
 
         {/* Why it was cancelled, when there's something worth saying */}
@@ -253,9 +292,6 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
               label="Share that I'm going"
               onPress={() => setShareOpen(true)}
             />
-            {t.eventSlug && t.startIso && upcoming ? (
-              <SettingsRow icon={<CalendarBlank size={24} color={c.text} />} label="Add to calendar" onPress={t.addToCalendar} />
-            ) : null}
             {t.canManageGroup ? (
               <SettingsRow
                 icon={<UsersThree size={24} color={c.text} />}
@@ -302,9 +338,6 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
                 onPress={() => router.push(stay.href as never)}
               />
             ) : null}
-            {t.eventSlug ? (
-              <SettingsRow icon={<TicketIcon size={24} color={c.text} />} label="View event" onPress={openEvent} />
-            ) : null}
           </SettingsGroup>
         ) : null}
 
@@ -317,7 +350,7 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
               onPress={t.openWhatsapp}
             />
             <SettingsRow
-              icon={<CheckCircle size={24} color={t.waGroup.joined ? tokens.success : c.muted} weight={t.waGroup.joined ? 'fill' : 'regular'} />}
+              icon={<CheckCircle size={24} color={t.waGroup.joined ? tokens.success : tokens.textMuted} weight={t.waGroup.joined ? 'fill' : 'regular'} />}
               label="I've joined"
               trailing={
                 <Switch
@@ -354,7 +387,7 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
           <SettingsGroup surface={c.raised}>
             {t.canRefund ? (
               <SettingsRow
-                icon={<ArrowCounterClockwise size={24} color={c.danger} />}
+                icon={<ArrowCounterClockwise size={24} color={tokens.danger} />}
                 label="Refund and status"
                 danger
                 onPress={() =>
@@ -372,7 +405,7 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
             ) : null}
             {t.canCancelFree ? (
               <SettingsRow
-                icon={<XCircle size={24} color={c.danger} />}
+                icon={<XCircle size={24} color={tokens.danger} />}
                 label={t.cancelling ? 'Cancelling…' : 'Cancel ticket'}
                 danger
                 onPress={t.confirmCancel}
@@ -406,6 +439,25 @@ function TicketDetailView({ t, hue }: { t: ReturnType<typeof useTicketDetail>; h
   );
 }
 
+function Divider() {
+  const c = useCosmos();
+  return <View style={[styles.divider, { backgroundColor: c.border }]} />;
+}
+
+/** One line of the facts card: bare icon, title, optional quieter line under it. */
+function Fact({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string | null }) {
+  const c = useCosmos();
+  return (
+    <View style={styles.factRow}>
+      <View style={styles.factIcon}>{icon}</View>
+      <View style={styles.flex}>
+        <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={2}>{title}</Text>
+        {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{sub}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
 /**
  * The pass card's fill as one path: rounded corners plus a semicircle bitten
  * out of each edge at the tear line. Real cut-outs, so whatever is behind the
@@ -429,39 +481,43 @@ function PassShape({ width: w, height: h, notchY: y, fill }: { width: number; he
 }
 
 const styles = StyleSheet.create({
-  reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
-  reasonLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  passTop: { padding: spacing[5], gap: spacing[5] },
-  headRow: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start' },
+  passTop: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-start', padding: spacing[5] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: 12, overflow: 'hidden' },
-  badge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  badgeText: { fontSize: 12, ...cosmosFont.strong },
-  // Michroma runs wide: 17 reads like a 20 in a narrower face.
-  title: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
-  facts: { flexDirection: 'row', gap: spacing[3] },
-  fact: { flex: 1, gap: 3 },
-  factLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  factValue: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.3, ...cosmosFont.strong },
-  typeRow: {
+  badge: {
+    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[2],
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[3],
-    borderRadius: 14,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
   },
-  typeName: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  typePrice: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeText: { fontSize: 12, ...cosmosFont.strong },
+  // Michroma runs wide: 17 here reads like a 21.
+  title: { marginTop: spacing[2], fontSize: 17, lineHeight: 25, ...cosmosFont.display },
   perfRow: { height: NOTCH, justifyContent: 'center' },
-  perf: { marginHorizontal: NOTCH, borderTopWidth: 1.5, borderStyle: 'dashed' },
+  perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
   stub: { alignItems: 'center', paddingTop: spacing[4], paddingBottom: spacing[6], paddingHorizontal: spacing[5] },
   // The QR keeps its white field: scanners need the contrast.
-  qr: { padding: 14, borderRadius: 16, backgroundColor: '#ffffff' },
+  qr: { padding: 14, borderRadius: cosmosCardRadius, backgroundColor: '#ffffff' },
   voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  code: { marginTop: spacing[4], fontSize: 18, ...cosmosFont.display, letterSpacing: 2 },
+  code: { marginTop: spacing[4], fontSize: 18, fontVariant: ['tabular-nums'], ...cosmosFont.display, letterSpacing: 2 },
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  facts: { marginTop: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
+  // Same column as the date stub, so every line's text starts at one edge.
+  factIcon: { width: STUB, alignItems: 'center' },
+  dateStub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  stubMonth: { fontSize: 11, ...cosmosFont.strong },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  factSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
+  reason: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
+  reasonLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  reasonText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
 });
