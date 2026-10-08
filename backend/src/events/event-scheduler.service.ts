@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { NOT_DELETED } from '../common/soft-delete';
+import { emailOptedOutUserIds } from '../email/email-preferences';
 
 @Injectable()
 export class EventSchedulerService {
@@ -73,8 +74,15 @@ export class EventSchedulerService {
         },
       });
 
+      const optedOut = await emailOptedOutUserIds(
+        this.prisma,
+        registrations.map((r) => r.userId),
+      );
+
       for (const reg of registrations) {
-        const email = reg.user.identities[0]?.email;
+        const email = optedOut.has(reg.userId)
+          ? undefined
+          : reg.user.identities[0]?.email;
 
         // Email reminder
         if (email) {
@@ -156,8 +164,15 @@ export class EventSchedulerService {
         },
       });
 
+      const optedOut = await emailOptedOutUserIds(
+        this.prisma,
+        registrations.map((r) => r.userId),
+      );
+
       for (const reg of registrations) {
-        const email = reg.user.identities[0]?.email;
+        const email = optedOut.has(reg.userId)
+          ? undefined
+          : reg.user.identities[0]?.email;
         if (email) {
           this.emailService
             .sendEventStartingSoon({
@@ -266,8 +281,15 @@ export class EventSchedulerService {
         },
       });
 
+      const optedOut = await emailOptedOutUserIds(
+        this.prisma,
+        attendees.map((r) => r.userId),
+      );
+
       for (const reg of attendees) {
-        const email = reg.user.identities[0]?.email;
+        const email = optedOut.has(reg.userId)
+          ? undefined
+          : reg.user.identities[0]?.email;
         if (email) {
           this.emailService
             .sendEventSummary({

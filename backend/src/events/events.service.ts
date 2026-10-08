@@ -16,6 +16,7 @@ import {
 } from '../auth/authorization';
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
+import { emailOptedOutUserIds } from '../email/email-preferences';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { resolveBranding, resolveSpaceSurfaces } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
@@ -2571,9 +2572,14 @@ export class EventsService {
       },
     });
 
+    const optedOut = await emailOptedOutUserIds(
+      this.prisma,
+      spaceMembers.map((m) => m.userId),
+    );
+
     for (const member of spaceMembers) {
       const memberEmail = member.user.identities[0]?.email;
-      if (memberEmail) {
+      if (memberEmail && !optedOut.has(member.userId)) {
         this.emailService
           .sendEventPublished({
             email: memberEmail,

@@ -5,6 +5,7 @@ import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { PaymentStatus, RegistrationStatus, SessionStatus } from '@prisma/client';
 import { JOIN_GRACE_MINUTES_AFTER_END } from './session-policy';
+import { emailOptedOutUserIds } from '../email/email-preferences';
 
 /**
  * Time-driven jobs for sessions. For an online session the reminder *is* the
@@ -87,9 +88,14 @@ export class SessionSchedulerService {
         },
       });
 
+      const optedOut = await emailOptedOutUserIds(
+        this.prisma,
+        registrations.map((r) => r.userId),
+      );
+
       for (const reg of registrations) {
         const email = reg.user.identities[0]?.email;
-        if (!email) continue;
+        if (!email || optedOut.has(reg.userId)) continue;
         const name = reg.user.fullName || reg.user.username || 'there';
         this.email
           .sendRawEmail(
