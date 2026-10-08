@@ -40,16 +40,25 @@ export async function pickImageAtAspect(aspect: [number, number], quality = 0.85
   if (res.canceled || !res.assets[0]) return null;
   if (square) return res.assets[0].uri;
 
+  return cropToAspect(res.assets[0].uri, aspect, quality);
+}
+
+/**
+ * Let the user frame a local image at exactly `aspect` in our cropper and cut
+ * it. Also used for imported posters, which arrive at whatever ratio the other
+ * site used. Returns the local URI of the result, or null if cancelled.
+ */
+export async function cropToAspect(uri: string, aspect: [number, number], quality = 0.85): Promise<string | null> {
   const mod = loadManipulator();
   if (!mod) {
     // Stale build without the native module: no way to crop, so say so rather than upload a huge original.
     throw new Error('Update the app to crop images');
   }
 
-  const ctx = mod.ImageManipulator.manipulate(res.assets[0].uri);
+  const ctx = mod.ImageManipulator.manipulate(uri);
   // Render once for the true (EXIF-oriented) pixel size the crop rect is measured in.
   const original = await ctx.renderAsync();
-  const rect = await openImageCropper(res.assets[0].uri, original.width, original.height, aspect[0] / aspect[1]);
+  const rect = await openImageCropper(uri, original.width, original.height, aspect[0] / aspect[1]);
   if (!rect) return null;
 
   ctx.crop(rect);
