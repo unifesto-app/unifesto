@@ -807,7 +807,7 @@ Why: Phosphor was ~30% of the mobile JS bundle (all ~1,500 icons shipped, 165 us
 | Unicon 2.0.0: PNG tile system removed (`UnIcon`, 35 PNGs, manifest); glyph-only, 170 glyphs | published 8 Oct |
 | Mobile: 187 files repointed `phosphor-react-native` → `@unifesto/unicon/react-native`, Phosphor uninstalled; 9 screens moved from PNG `UnIcon` to glyphs; tsc clean; iOS bundle 14.6 MB → 8.9 MB | done (mobile on ^2.0.0, tsc clean), not committed, not seen on device |
 | Unicon 2.1.0: +47 web glyphs (217), one module per glyph so Next.js tree-shakes | published 8 Oct |
-| Websites (apex 60, space 79, web 36 files) off `@phosphor-icons/react` + web's `lucide-react` → `@unifesto/unicon/react`; tsc + `next build` green on all three; unused glyphs verified absent from client chunks | done, PR #59 |
+| Websites (apex 60, space 79, web 36 files) off `@phosphor-icons/react` + web's `lucide-react` → `@unifesto/unicon/react`; tsc + `next build` green on all three; unused glyphs verified absent from client chunks | done, PR #60 |
 | Redraw glyphs in our own style, tab bar + Home first | planned |
 
 ---
