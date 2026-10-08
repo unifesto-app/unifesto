@@ -12,7 +12,17 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  ChatCircleDots,
+  type Icon,
+  Microphone,
+  MicrophoneSlash,
+  PaperPlaneRight,
+  PhoneDisconnect,
+  VideoCamera,
+  VideoCameraSlash,
+  X,
+} from '@unifesto/unicon/react-native';
 import { useRouter } from 'expo-router';
 // Import @livekit/react-native before livekit-client so its DOMException
 // polyfill is installed first. Globals are also registered at the app entry
@@ -199,19 +209,19 @@ function RoomView({
         {canPublish && (
           <>
             <CallControl
-              icon={isMicrophoneEnabled ? 'mic' : 'mic-off'}
+              icon={isMicrophoneEnabled ? Microphone : MicrophoneSlash}
               label={isMicrophoneEnabled ? 'Mute microphone' : 'Unmute microphone'}
               onPress={() => localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled)}
             />
             <CallControl
-              icon={isCameraEnabled ? 'videocam' : 'videocam-off'}
+              icon={isCameraEnabled ? VideoCamera : VideoCameraSlash}
               label={isCameraEnabled ? 'Turn camera off' : 'Turn camera on'}
               onPress={() => localParticipant.setCameraEnabled(!isCameraEnabled)}
             />
           </>
         )}
-        <CallControl icon="chatbubble-ellipses" label="Open chat" onPress={() => setChatOpen(true)} />
-        <CallControl icon="call" label="Leave session" onPress={onLeave} danger />
+        <CallControl icon={ChatCircleDots} label="Open chat" onPress={() => setChatOpen(true)} />
+        <CallControl icon={PhoneDisconnect} label="Leave session" onPress={onLeave} danger />
       </View>
 
       <ChatPanel visible={chatOpen} onClose={() => setChatOpen(false)} />
@@ -250,7 +260,7 @@ function ChatPanel({
         <View style={styles.chatHeader}>
           <Text style={styles.chatTitle}>Chat</Text>
           <TouchableOpacity onPress={onClose}>
-            <Ionicons name="close" size={26} color="#fff" />
+            <X size={26} color="#fff" weight="bold" />
           </TouchableOpacity>
         </View>
 
@@ -282,7 +292,7 @@ function ChatPanel({
             returnKeyType="send"
           />
           <TouchableOpacity style={styles.chatSend} onPress={handleSend}>
-            <Ionicons name="send" size={20} color="#fff" />
+            <PaperPlaneRight size={20} color="#fff" weight="fill" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -295,12 +305,12 @@ const CONTROL_TINT = 'rgba(42, 42, 42, 0.55)';
 
 /** Round call control: Liquid Glass on iOS 26+, flat dark disc elsewhere; Leave stays solid red. */
 function CallControl({
-  icon,
+  icon: IconGlyph,
   label,
   onPress,
   danger = false,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: Icon;
   label: string;
   onPress: () => void;
   danger?: boolean;
@@ -319,7 +329,7 @@ function CallControl({
       ]}
     >
       {glass ? <GlassFill radius={28} tint={CONTROL_TINT} interactive /> : null}
-      <Ionicons name={icon} size={24} color="#fff" />
+      <IconGlyph size={24} color="#fff" weight="fill" />
     </Pressable>
   );
 }

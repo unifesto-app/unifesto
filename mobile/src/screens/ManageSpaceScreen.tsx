@@ -19,7 +19,7 @@ import {
   TreeStructure,
   UsersThree,
   Wallet,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useManageSpace, type ManageTab } from '../hooks/useManageSpace';
 import useTopSpacing from '../hooks/useTopSpacing';

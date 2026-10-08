@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
-import { Heart } from 'phosphor-react-native';
+import { Heart } from '@unifesto/unicon/react-native';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';

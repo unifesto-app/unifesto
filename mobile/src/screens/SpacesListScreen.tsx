@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MagnifyingGlass, UsersThree, X } from 'phosphor-react-native';
+import { MagnifyingGlass, UsersThree, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useAuth } from '../context/AuthContext';

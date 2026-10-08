@@ -13,7 +13,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { pickImageAtAspect } from '../../utils/pickImage';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowDown, ArrowUp, Camera, Plus, Tag, TextAa, TextAlignLeft } from 'phosphor-react-native';
+import { ArrowDown, ArrowUp, Camera, Plus, Tag, TextAa, TextAlignLeft } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';

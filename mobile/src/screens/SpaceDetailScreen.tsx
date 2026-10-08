@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarBlank, CaretRight, Export, UsersThree } from 'phosphor-react-native';
+import { CalendarBlank, CaretRight, Export, UsersThree } from '@unifesto/unicon/react-native';
 import Skeleton from '../components/Skeleton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
 import PosterCard from '../components/home/PosterCard';

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { CaretLeft, Timer, X } from 'phosphor-react-native';
+import { CaretLeft, Timer, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { STEPS, type StepType } from '../../hooks/useEventRegistration';
 import { spacing } from '../../theme/spacing';

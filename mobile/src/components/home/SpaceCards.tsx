@@ -10,7 +10,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
-import { ArrowRight } from 'phosphor-react-native';
+import { ArrowRight } from '@unifesto/unicon/react-native';
 import { SPACE_ROLE_LABEL } from '../manage/MemberRow';
 
 const CARD_W = 148;

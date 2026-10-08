@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CheckCircle, CircleIcon as Circle } from 'phosphor-react-native';
+import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../ui/CardSurface';
 import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';

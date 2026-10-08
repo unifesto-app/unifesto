@@ -1,7 +1,7 @@
 import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, CircleIcon as Circle } from 'phosphor-react-native';
+import { CheckCircle, CircleIcon as Circle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import type { GroupScanResult } from '../../lib/api/checkin';
 import { Button } from '../ui';

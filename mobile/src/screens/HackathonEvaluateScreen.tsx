@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { CheckCircle, Coffee, Gavel, MapPin, UsersThree, VideoCamera } from 'phosphor-react-native';
+import { CheckCircle, Coffee, Gavel, MapPin, UsersThree, VideoCamera } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';

@@ -5,7 +5,7 @@ import { useNavigation } from 'expo-router/react-navigation';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { CalendarBlank, CaretRight, CheckCircle, Clock, Ticket, UsersThree, VideoCamera, XCircle } from 'phosphor-react-native';
+import { CalendarBlank, CaretRight, CheckCircle, Clock, Ticket, UsersThree, VideoCamera, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { isPaidSessionBlocked, PAID_SESSION_IOS_NOTE, useSessionRegistration } from '../hooks/useSessionRegistration';

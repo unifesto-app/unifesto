@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Timer } from 'phosphor-react-native';
+import { Timer } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useNow } from '../../hooks/useHackathonSocket';
 import { formatClock, secondsUntil } from '../../lib/hackathon';

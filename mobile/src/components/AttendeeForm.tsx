@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-import { Envelope, Phone, User } from 'phosphor-react-native';
+import { Envelope, Phone, User } from '@unifesto/unicon/react-native';
 import { spacing, typography, borderRadius } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';
 import { useTheme } from '../context/ThemeContext';

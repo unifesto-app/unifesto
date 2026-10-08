@@ -796,6 +796,19 @@ Today: UTM capture + partner links exist (registration sources). No short links 
 | External backlink monitoring: Google Search Console API import (linking sites, top pages), weekly | planned |
 | Apex dashboard + space dashboard for their own links | in progress: in the mobile app (Space › Tracking, Apex › Traffic) in 4.0.5 |
 
+### W11 · Unicon glyphs (own icon pack) · 8 Oct →
+
+Why: Phosphor was ~30% of the mobile JS bundle (all ~1,500 icons shipped, 165 used; Metro doesn't tree-shake). Decision: fork the used Phosphor shapes (MIT) into `@unifesto/unicon` as SVG glyphs, then redraw them in our own style over time.
+
+| Item | Status |
+|---|---|
+| Removed unused `lucide-react-native` + `@expo/vector-icons` from mobile (LiveSession → Phosphor) | done |
+| Unicon 1.1.0: `glyphs/<weight>/<name>.svg` source + validated build → `UnGlyph` + Phosphor-compatible named exports (regular/light/bold/fill/duotone), MIT notice in LICENSE | published 8 Oct |
+| Unicon 2.0.0: PNG tile system removed (`UnIcon`, 35 PNGs, manifest); glyph-only, 170 glyphs | published 8 Oct |
+| Mobile: 187 files repointed `phosphor-react-native` → `@unifesto/unicon/react-native`, Phosphor uninstalled; 9 screens moved from PNG `UnIcon` to glyphs; tsc clean; iOS bundle 14.6 MB → 8.9 MB | done (mobile on ^2.0.0, tsc clean), not committed, not seen on device |
+| Websites (space, apex, web) off `@phosphor-icons/react` (+ apex `lucide-react`) | planned |
+| Redraw glyphs in our own style, tab bar + Home first | planned |
+
 ---
 
 ## Release template

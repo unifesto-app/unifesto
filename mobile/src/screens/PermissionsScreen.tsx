@@ -3,8 +3,8 @@ import { AppState, Linking, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { RefreshControl } from '../components/ui/RefreshControl';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import { CaretRight } from 'phosphor-react-native';
-import { UnIcon, IconName } from '@unifesto/unicon/react-native';
+import { CaretRight } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -20,7 +20,7 @@ type ExpoPermission = { status: string };
 const PERMISSIONS: {
   key: PermKey;
   label: string;
-  icon: IconName;
+  icon: GlyphName;
   get: () => Promise<ExpoPermission>;
   request: () => Promise<ExpoPermission>;
 }[] = [
@@ -34,14 +34,14 @@ const PERMISSIONS: {
   {
     key: 'mediaLibrary',
     label: 'Photos',
-    icon: 'photo',
+    icon: 'image-square',
     get: ImagePicker.getMediaLibraryPermissionsAsync,
     request: ImagePicker.requestMediaLibraryPermissionsAsync,
   },
   {
     key: 'location',
     label: 'Location',
-    icon: 'maps',
+    icon: 'map-pin',
     get: Location.getForegroundPermissionsAsync,
     request: Location.requestForegroundPermissionsAsync,
   },
@@ -126,7 +126,7 @@ export default function PermissionsScreen() {
           return (
             <SettingsRow
               key={perm.key}
-              icon={<UnIcon name={perm.icon} size={28} />}
+              icon={<UnGlyph name={perm.icon} size={28} color={tokens.text} />}
               label={perm.label}
               onPress={() => handlePress(perm)}
               trailing={

@@ -12,7 +12,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { CaretRight, Trophy } from 'phosphor-react-native';
+import { CaretRight, Trophy } from '@unifesto/unicon/react-native';
 import { getMyHackathon, type HackathonHub } from '../../lib/api/hackathon';
 import type { UpcomingTicket } from '../../hooks/useHomeData';
 import { useBannerAccent } from '../../hooks/useBannerPalette';

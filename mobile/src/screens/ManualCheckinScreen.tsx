@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { MagnifyingGlass, UserFocus, XCircle } from 'phosphor-react-native';
+import { MagnifyingGlass, UserFocus, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { CheckinNetworkError, manualCheckin, searchAttendees, type AttendeeSearchResult } from '../lib/api/checkin';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';

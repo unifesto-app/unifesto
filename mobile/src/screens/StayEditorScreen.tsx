@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Camera, Plus, Question, Trash } from 'phosphor-react-native';
+import { Camera, Plus, Question, Trash } from '@unifesto/unicon/react-native';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import DateTimeRow from '../components/manage/DateTimeRow';
 import ChipPicker from '../components/manage/ChipPicker';

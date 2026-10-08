@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { MagnifyingGlass, MapPin, NavigationArrow, UserCircle } from 'phosphor-react-native';
+import { MagnifyingGlass, MapPin, NavigationArrow, UserCircle } from '@unifesto/unicon/react-native';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';

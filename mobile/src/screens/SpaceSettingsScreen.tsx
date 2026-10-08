@@ -5,7 +5,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { pickImageAtAspect } from '../utils/pickImage';
-import { Buildings, ImageSquare } from 'phosphor-react-native';
+import { Buildings, ImageSquare } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';

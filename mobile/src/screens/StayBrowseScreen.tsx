@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Bed, CaretRight, House, MapPin, Moon } from 'phosphor-react-native';
+import { Bed, CaretRight, House, MapPin, Moon } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';

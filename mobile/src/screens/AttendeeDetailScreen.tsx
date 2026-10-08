@@ -3,7 +3,7 @@ import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from '
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, Phone, Receipt, User, XCircle } from 'phosphor-react-native';
+import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, Phone, Receipt, User, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';

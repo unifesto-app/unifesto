@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowsLeftRight, Crown, MagnifyingGlass } from 'phosphor-react-native';
+import { ArrowsLeftRight, Crown, MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarBlank } from 'phosphor-react-native';
+import { CalendarBlank } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import type { ManagedEvent } from '../../lib/api/manageSpace';
 import { relativeWhen } from '../../utils/eventFormat';

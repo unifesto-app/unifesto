@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Heart } from 'phosphor-react-native';
+import { Heart } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';

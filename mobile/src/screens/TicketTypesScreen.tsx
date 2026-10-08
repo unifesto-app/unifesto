@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Plus } from 'phosphor-react-native';
+import { Plus } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventTicketTypes } from '../hooks/useEventTicketTypes';
 import useTopSpacing from '../hooks/useTopSpacing';

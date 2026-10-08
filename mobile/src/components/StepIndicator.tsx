@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Check } from 'phosphor-react-native';
+import { Check } from '@unifesto/unicon/react-native';
 import { spacing, typography, borderRadius } from '../theme';
 import { getFontFamily } from '../theme/fontHelpers';
 import { useTheme } from '../context/ThemeContext';

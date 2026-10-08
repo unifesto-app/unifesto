@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
-import { Certificate, Handshake, Heart, SignOut, User, UsersThree } from 'phosphor-react-native';
+import { Certificate, Handshake, Heart, SignOut, User, UsersThree } from '@unifesto/unicon/react-native';
 import * as Application from 'expo-application';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
@@ -128,7 +128,7 @@ export default function ProfileScreen() {
   }
 
   // ── Signed in ────────────────────────────────────────────────────────────
-  const unicon = (name: React.ComponentProps<typeof UnIcon>['name']) => <UnIcon name={name} size={ICON} />;
+  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
 
   // A plain View wraps the ScrollView so the native tab host doesn't add its
   // own safe-area inset on top of the header's (see mobile-tab-top-spacing).
@@ -179,11 +179,11 @@ export default function ProfileScreen() {
         </View>
 
         <SettingsGroup title="Account">
-          <SettingsRow icon={unicon('account')} label="Account settings" onPress={() => router.push('/account')} />
-          <SettingsRow icon={unicon('notification')} label="Notifications" onPress={() => router.push('/notification-settings')} />
-          <SettingsRow icon={unicon('permission')} label="Permissions" onPress={() => router.push('/permissions')} />
+          <SettingsRow icon={unicon('user-circle')} label="Account settings" onPress={() => router.push('/account')} />
+          <SettingsRow icon={unicon('bell')} label="Notifications" onPress={() => router.push('/notification-settings')} />
+          <SettingsRow icon={unicon('lock-simple')} label="Permissions" onPress={() => router.push('/permissions')} />
           <SettingsRow
-            icon={unicon('appearance')}
+            icon={unicon('circle-half')}
             label="Appearance"
             value={theme === 'system' ? 'System' : theme === 'light' ? 'Light' : 'Dark'}
             onPress={() => router.push('/appearance')}
@@ -192,7 +192,7 @@ export default function ProfileScreen() {
 
         {/* Check-in and Judging live in the Space tab (operators only). */}
         <SettingsGroup title="For organisers">
-          <SettingsRow icon={unicon('plus')} label="Request a space" onPress={() => router.push('/space-request')} />
+          <SettingsRow icon={unicon('plus-circle')} label="Request a space" onPress={() => router.push('/space-request')} />
           {isPartner ? (
             <SettingsRow
               icon={<Handshake size={ICON} color={tokens.accent} weight="fill" />}
@@ -203,16 +203,16 @@ export default function ProfileScreen() {
         </SettingsGroup>
 
         <SettingsGroup title="Help and more">
-          <SettingsRow icon={unicon('support')} label="Contact support" onPress={() => router.push('/support')} />
+          <SettingsRow icon={unicon('lifebuoy')} label="Contact support" onPress={() => router.push('/support')} />
           <SettingsRow
-            icon={unicon('update')}
+            icon={unicon('arrows-clockwise')}
             label="About and updates"
             value={version ? `v${version}` : undefined}
             onPress={() => router.push('/about')}
           />
-          <SettingsRow icon={unicon('rate')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
-          <SettingsRow icon={unicon('instagram')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
-          <SettingsRow icon={unicon('x')} label="X" external onPress={() => openExternal('https://x.com/HeyUnifesto', 'X')} />
+          <SettingsRow icon={unicon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
+          <SettingsRow icon={unicon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
+          <SettingsRow icon={unicon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/HeyUnifesto', 'X')} />
         </SettingsGroup>
 
         <Pressable

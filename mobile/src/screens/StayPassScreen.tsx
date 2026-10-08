@@ -15,7 +15,7 @@ import {
   Ticket,
   UsersThree,
   XCircle,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';

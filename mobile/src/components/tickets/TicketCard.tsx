@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle, QrCode, UsersThree, XCircle } from 'phosphor-react-native';
+import { CheckCircle, QrCode, UsersThree, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import type { MyTicket } from '../../hooks/useMyTickets';
 import Skeleton from '../Skeleton';

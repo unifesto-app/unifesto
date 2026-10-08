@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
-import { Buildings, CheckCircle, UsersThree } from 'phosphor-react-native';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { Buildings, CheckCircle, UsersThree } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { createSpaceRequest, getMySpaceRequests, type SpaceRequest } from '../lib/api/spaces';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
@@ -119,7 +119,7 @@ export default function SpaceRequestScreen() {
     );
   }
 
-  const unicon = (n: React.ComponentProps<typeof UnIcon>['name']) => <UnIcon name={n} size={28} />;
+  const unicon = (n: GlyphName) => <UnGlyph name={n} size={28} color={tokens.text} />;
 
   return (
     <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
@@ -151,7 +151,7 @@ export default function SpaceRequestScreen() {
           ) : (
             <>
               <SettingsGroup title="About the space">
-                <FormRow icon={unicon('profile')} value={name} onChangeText={setName} placeholder="Space name" maxLength={255} />
+                <FormRow icon={unicon('user')} value={name} onChangeText={setName} placeholder="Space name" maxLength={255} />
                 <FormRow
                   icon={unicon('file-text')}
                   value={description}
@@ -230,7 +230,7 @@ export default function SpaceRequestScreen() {
                 <View style={{ marginTop: spacing[3] }}>
                   <View style={[styles.card, { padding: 0 }]}>
                     <CardBackdrop shape={styles.card} />
-                    <FormRow icon={unicon('maps')} value={otherCity} onChangeText={setOtherCity} placeholder="Which city?" autoFocus />
+                    <FormRow icon={unicon('map-pin')} value={otherCity} onChangeText={setOtherCity} placeholder="Which city?" autoFocus />
                   </View>
                 </View>
               ) : null}

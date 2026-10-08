@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { Broadcast, Coffee, Gavel, Hourglass, LockOpen, UsersFour, WifiSlash } from 'phosphor-react-native';
+import { Broadcast, Coffee, Gavel, Hourglass, LockOpen, UsersFour, WifiSlash } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

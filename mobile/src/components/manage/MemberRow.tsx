@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { User } from 'phosphor-react-native';
+import { User } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { memberEmail, type MemberUser } from '../../lib/api/spaceMembers';
 import { spacing } from '../../theme/spacing';

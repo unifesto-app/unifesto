@@ -14,7 +14,7 @@ import {
   SignOut,
   Trash,
   type Icon,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';

@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretLeft, CaretRight, MagnifyingGlass, X } from 'phosphor-react-native';
+import { CaretLeft, CaretRight, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useEventAttendees } from '../hooks/useEventAttendees';

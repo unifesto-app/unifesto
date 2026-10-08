@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PencilSimple, UserFocus } from 'phosphor-react-native';
+import { PencilSimple, UserFocus } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import Skeleton from '../Skeleton';

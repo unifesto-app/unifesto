@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
-import { ArrowsClockwise, CloudArrowUp, UsersThree, Warning } from 'phosphor-react-native';
+import { ArrowsClockwise, CloudArrowUp, UsersThree, Warning } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useIsOffline } from '../../lib/offline/connectivity';
 import type { useOfflineCheckin } from '../../hooks/useOfflineCheckin';

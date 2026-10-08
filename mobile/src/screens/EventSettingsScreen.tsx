@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketLaunch, Trash, XCircle } from 'phosphor-react-native';
+import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketLaunch, Trash, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';

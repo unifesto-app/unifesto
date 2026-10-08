@@ -27,7 +27,7 @@ import {
   TextAa,
   TextAlignLeft,
   User,
-} from 'phosphor-react-native';
+} from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';

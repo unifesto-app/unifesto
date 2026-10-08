@@ -14,7 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PaperPlaneRight, Phone } from 'phosphor-react-native';
+import { PaperPlaneRight, Phone } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';

@@ -13,8 +13,8 @@ import { Image } from 'expo-image';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { At, Camera, Check, CheckCircle, WarningCircle } from 'phosphor-react-native';
-import { UnIcon } from '@unifesto/unicon/react-native';
+import { At, Camera, Check, CheckCircle, WarningCircle } from '@unifesto/unicon/react-native';
+import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -76,7 +76,7 @@ export default function EditProfileScreen() {
     );
   }
 
-  const unicon = (name: React.ComponentProps<typeof UnIcon>['name']) => <UnIcon name={name} size={ICON} />;
+  const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={tokens.text} />;
   const usernameStatus = p.checkingUsername ? (
     <ActivityIndicator size="small" color={tokens.textMuted} />
   ) : p.usernameError ? (
@@ -118,7 +118,7 @@ export default function EditProfileScreen() {
         {/* The three fields registration needs */}
         <SettingsGroup title="About me">
           <FormRow
-            icon={unicon('profile')}
+            icon={unicon('user')}
             value={fields.fullName}
             onChangeText={set('fullName')}
             placeholder="Full name"
@@ -177,9 +177,9 @@ export default function EditProfileScreen() {
 
         <SettingsGroup title="Links">
           {([
-            ['linkedin', 'linkedinUrl', 'linkedin.com/in/you'],
-            ['instagram', 'instagramUrl', 'instagram.com/you'],
-            ['github', 'githubUrl', 'github.com/you'],
+            ['linkedin-logo', 'linkedinUrl', 'linkedin.com/in/you'],
+            ['instagram-logo', 'instagramUrl', 'instagram.com/you'],
+            ['github-logo', 'githubUrl', 'github.com/you'],
             ['globe', 'websiteUrl', 'yourwebsite.com'],
           ] as const).map(([iconName, key, placeholder]) => (
             <FormRow

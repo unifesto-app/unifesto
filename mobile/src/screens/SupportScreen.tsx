@@ -1,7 +1,7 @@
 import React from 'react';
 import { Linking, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import * as Application from 'expo-application';
-import { EnvelopeSimple, FileText, ShieldCheck, WhatsappLogo } from 'phosphor-react-native';
+import { EnvelopeSimple, FileText, ShieldCheck, WhatsappLogo } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';

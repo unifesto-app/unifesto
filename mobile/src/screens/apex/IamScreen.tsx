@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { Lock, ShieldCheck } from 'phosphor-react-native';
+import { Lock, ShieldCheck } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';

@@ -93,15 +93,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 }
 
-// Preload UnIcon assets
-import { Asset } from 'expo-asset';
-
-
-const preloadIcons = async () => {
-  const icons: any[] = [];
-  await Asset.loadAsync(icons as any[]);
-};
-
 // Runs the deep-link wiring inside AuthProvider (useDeepLinks needs useAuth).
 function DeepLinkBridge() {
   useDeepLinks();
@@ -159,8 +150,6 @@ function RootStack() {
     </AuthProvider>
   );
 }
-
-preloadIcons().catch(() => {});
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);

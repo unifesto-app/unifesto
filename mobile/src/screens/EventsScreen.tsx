@@ -13,7 +13,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarBlank, MagnifyingGlass, X } from 'phosphor-react-native';
+import { CalendarBlank, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
 import { GlassView } from 'expo-glass-effect';
 import { useTheme } from '../context/ThemeContext';
 import { CardBackdrop, LIQUID_GLASS } from '../components/ui/CardSurface';
