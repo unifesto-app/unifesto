@@ -4,20 +4,20 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import Animated, { useAnimatedRef, useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import { Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
+import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
-import { useTokens } from '../context/ThemeContext';
-import BrandGlow from '../components/ui/BrandGlow';
-import { Button } from '../components/ui';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import { GUTTER } from '../components/home/Section';
+import PromptCard from '../components/home/PromptCard';
 import { ALL_TABS, canDeleteTicket, useMyTickets, type MyTicket, type TicketTab } from '../hooks/useMyTickets';
 import TicketTabs from '../components/tickets/TicketTabs';
 import TicketCard, { TicketCardSkeleton } from '../components/tickets/TicketCard';
+import NextPassCard, { NextPassCardSkeleton } from '../components/tickets/NextPassCard';
 import WaitlistCard from '../components/tickets/WaitlistCard';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /** Bucket tickets under "October 2026"-style headers, preserving order. */
 function groupByMonth(tickets: MyTicket[]) {
@@ -39,7 +39,7 @@ const EMPTY: Record<TicketTab, { icon: React.ComponentType<any>; title: string; 
 };
 
 export default function TicketsScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const topInset = useStableTopInset();
   const router = useRouter();
   const t = useMyTickets();
@@ -54,7 +54,7 @@ export default function TicketsScreen() {
   const shownIndex = useRef(0);
   const scrollTarget = useRef<number | null>(null);
 
-  // Tab changed from outside a drag (tap, or "Spot confirmed" → Upcoming).
+  // Tab changed from outside a drag (tap, offer nudge, or "Spot confirmed" → Upcoming).
   useEffect(() => {
     const index = ALL_TABS.indexOf(t.tab);
     if (index === shownIndex.current) return;
@@ -111,7 +111,7 @@ export default function TicketsScreen() {
 
   const header = (
     <View style={{ paddingTop: topInset + spacing[4], paddingHorizontal: GUTTER }}>
-      <Text style={[styles.title, { color: tokens.text }]}>My tickets</Text>
+      <Text style={[styles.title, { color: c.text }]}>My tickets</Text>
     </View>
   );
 
@@ -120,13 +120,11 @@ export default function TicketsScreen() {
     const Icon = e.icon;
     return (
       <View style={styles.empty}>
-        <View style={styles.emptyIcon}>
-          <Icon size={40} color={tokens.textSecondary} weight="duotone" />
-        </View>
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>{e.title}</Text>
-        <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>{e.body}</Text>
+        <Icon size={44} color={c.soft} weight="duotone" />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>{e.title}</Text>
+        <Text style={[styles.emptyBody, { color: c.muted }]}>{e.body}</Text>
         {e.cta ? (
-          <Button label={e.cta} onPress={() => router.navigate('/(tabs)')} style={{ marginTop: spacing[5], alignSelf: 'center' }} />
+          <AuthButton label={e.cta} arrow onPress={() => router.navigate('/(tabs)')} style={styles.emptyCta} />
         ) : null}
       </View>
     );
@@ -135,26 +133,18 @@ export default function TicketsScreen() {
   // ── Guest ────────────────────────────────────────────────────────────────
   if (!t.user) {
     return (
-      <View style={[styles.container, { backgroundColor: tokens.bg }]}>
-        <BrandGlow />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
         <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ flexGrow: 1 }}>
           {header}
-          <View style={styles.guest}>
-            <View style={styles.guestIcon}>
-              <Ticket size={48} color={tokens.accent} weight="duotone" />
-            </View>
-            <Text style={[styles.guestTitle, { color: tokens.text }]}>Every pass, one place</Text>
-            <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>
+          <View style={[styles.guest, { backgroundColor: c.raised }]}>
+            <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
+            <Text style={[styles.guestTitle, { color: c.text }]}>Every pass, one place</Text>
+            <Text style={[styles.guestBody, { color: c.soft }]}>
               Sign in to register for events and keep your tickets ready for the door.
             </Text>
-            <Button label="Sign in" size="lg" onPress={() => router.push('/login')} fullWidth style={{ marginTop: spacing[6], alignSelf: 'stretch' }} />
-            <Text
-              style={[styles.browse, { color: tokens.textSecondary }]}
-              onPress={() => router.navigate('/(tabs)')}
-              accessibilityRole="link"
-            >
-              Browse events
-            </Text>
+            <AuthButton label="Sign in" arrow onPress={() => router.push('/login')} style={{ marginTop: spacing[6] }} />
+            <AuthButton label="Browse events" variant="secondary" onPress={() => router.navigate('/(tabs)')} style={{ marginTop: spacing[3] }} />
           </View>
         </ScrollView>
       </View>
@@ -162,11 +152,43 @@ export default function TicketsScreen() {
   }
 
   // ── Signed in ────────────────────────────────────────────────────────────
+  const ticketCard = (ticket: MyTicket) => (
+    <TicketCard
+      key={ticket.registrationId || ticket.id}
+      ticket={ticket}
+      onPress={() => openTicket(ticket)}
+      // Long-press a finished ticket to delete it from the list.
+      onLongPress={canDeleteTicket(ticket) ? () => t.confirmDelete(ticket) : undefined}
+    />
+  );
+
+  const monthGroups = (items: MyTicket[]) =>
+    groupByMonth(items).map((group) => (
+      <View key={group.label} style={styles.group}>
+        <Text style={[styles.label, { color: c.muted }]}>{group.label}</Text>
+        <View style={styles.list}>{group.items.map(ticketCard)}</View>
+      </View>
+    ));
+
+  // A spot the organiser offered off a waiting list is time-sensitive, so it
+  // surfaces on Upcoming too instead of waiting for someone to open Waitlist.
+  const offers = t.waitlist.filter((e) => e.waitlistStatus === 'OFFERED' && e.offer);
+  const offerNudge = offers.length > 0 ? (
+    <View style={{ marginBottom: spacing[6] }}>
+      <PromptCard
+        icon={<Confetti size={24} color={c.text} weight="fill" />}
+        title="A spot opened up"
+        body={offers.length === 1 ? `${offers[0].event.title}. Confirm it to keep your seat.` : `${offers.length} waiting lists have a seat for you.`}
+        onPress={() => t.setTab('waitlist')}
+      />
+    </View>
+  ) : null;
+
   const renderBody = (tab: TicketTab) => {
     if (tab === 'waitlist') {
-      if (t.waitlistLoading && t.refreshing !== 'waitlist') return <Skeletons />;
+      if (t.waitlistLoading && t.refreshing !== 'waitlist') return <View style={styles.pad}><Skeletons /></View>;
       return t.waitlist.length > 0 ? (
-        <View style={styles.list}>
+        <View style={[styles.pad, styles.list]}>
           {t.waitlist.map((entry) => (
             <WaitlistCard
               key={entry.registrationId}
@@ -181,31 +203,35 @@ export default function TicketsScreen() {
         renderEmpty('waitlist')
       );
     }
-    const list = t.lists[tab];
-    if (list.loading && t.refreshing !== tab) return <Skeletons />;
-    if (list.items.length === 0) return renderEmpty(tab);
 
+    const list = t.lists[tab];
+    if (list.loading && t.refreshing !== tab) {
+      return (
+        <View style={[styles.pad, styles.list]}>
+          {tab === 'upcoming' ? <NextPassCardSkeleton /> : null}
+          <Skeletons />
+        </View>
+      );
+    }
+    if (list.items.length === 0) {
+      return tab === 'upcoming' ? <>{offerNudge}{renderEmpty(tab)}</> : renderEmpty(tab);
+    }
+
+    // Upcoming leads with the next pass, big; the rest follow by month.
+    const [next, ...later] = tab === 'upcoming' ? list.items : [null, ...list.items];
     return (
       <>
-        {groupByMonth(list.items).map((group) => (
-          <View key={group.label} style={styles.group}>
-            <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>{group.label}</Text>
-            <View style={styles.list}>
-              {group.items.map((ticket) => (
-                <TicketCard
-                  key={ticket.registrationId || ticket.id}
-                  ticket={ticket}
-                  onPress={() => openTicket(ticket)}
-                  // Long-press a finished ticket to delete it from the list.
-                  onLongPress={canDeleteTicket(ticket) ? () => t.confirmDelete(ticket) : undefined}
-                />
-              ))}
+        {tab === 'upcoming' ? offerNudge : null}
+        <View style={styles.pad}>
+          {next ? (
+            <View style={styles.group}>
+              <Text style={[styles.label, { color: c.soft }]}>Up next</Text>
+              <NextPassCard ticket={next} onPress={() => openTicket(next)} />
             </View>
-          </View>
-        ))}
-        {list.loadingMore ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[6] }} />
-        ) : null}
+          ) : null}
+          {monthGroups(later)}
+          {list.loadingMore ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[2] }} /> : null}
+        </View>
       </>
     );
   };
@@ -215,8 +241,8 @@ export default function TicketsScreen() {
   // Title + tabs stay put; below them a horizontal pager holds one vertically
   // scrolling page per tab, so a finger drag slides the neighbouring tab in.
   return (
-    <View style={[styles.container, { backgroundColor: tokens.bg }]}>
-      <BrandGlow />
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
       {header}
       <View style={{ paddingHorizontal: GUTTER, marginTop: spacing[5], marginBottom: spacing[2] }}>
         <TicketTabs value={t.tab} onChange={t.setTab} position={position} />
@@ -241,13 +267,13 @@ export default function TicketsScreen() {
             contentInsetAdjustmentBehavior="never"
             automaticallyAdjustContentInsets={false}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: GUTTER, paddingTop: spacing[3], paddingBottom: 120 }}
+            contentContainerStyle={{ paddingTop: spacing[4], paddingBottom: 140 }}
             refreshControl={
               <RefreshControl
                 refreshing={t.refreshing === tab}
                 onRefresh={() => t.onRefresh(tab)}
-                tintColor={tokens.accent}
-                colors={[tokens.accent]}
+                tintColor={c.text}
+                colors={[c.text]}
               />
             }
             onScroll={({ nativeEvent }) => {
@@ -274,32 +300,24 @@ function Skeletons() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  title: {
-    fontSize: typography.fontSize['4xl'],
-    lineHeight: typography.fontSize['4xl'] * 1.1,
-    letterSpacing: -0.8,
-    ...font('heading'),
-  },
+  pad: { paddingHorizontal: GUTTER },
+  title: { fontSize: 26, lineHeight: 34, ...cosmosFont.display },
   list: { gap: spacing[3] },
-  group: { marginBottom: spacing[6] },
-  groupLabel: {
-    fontSize: typography.fontSize.sm,
-    marginBottom: spacing[3],
-    ...font('semibold'),
-  },
-  empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: spacing[4] },
-  emptyIcon: { marginBottom: spacing[4] },
-  emptyTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...font('heading') },
+  group: { marginBottom: spacing[8] },
+  label: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], ...cosmosFont.strong },
+  empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: GUTTER + spacing[4] },
+  emptyTitle: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, textAlign: 'center', ...cosmosFont.display },
   emptyBody: {
     fontSize: typography.fontSize.sm,
     lineHeight: typography.fontSize.sm * 1.5,
     textAlign: 'center',
-    marginTop: 6,
+    marginTop: spacing[2],
     maxWidth: 300,
-    ...font(),
+    ...cosmosFont.body,
   },
-  guest: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: GUTTER, paddingBottom: 120 },
-  guestIcon: { marginBottom: spacing[5] },
-  guestTitle: { fontSize: typography.fontSize['2xl'], textAlign: 'center', ...font('heading') },
-  browse: { marginTop: spacing[5], fontSize: typography.fontSize.sm, ...font('semibold') },
+  emptyCta: { marginTop: spacing[6], alignSelf: 'stretch' },
+  rule: { width: 40, height: 1, marginBottom: spacing[5] },
+  guest: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  guestTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  guestBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });
