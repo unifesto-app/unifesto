@@ -5,65 +5,79 @@ import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarBlank, CaretRight, Export, UsersThree } from '@unifesto/unicon/react-native';
+import { ArrowUpRight, CalendarBlank, CaretRight, CheckCircle, Export, Globe, UsersThree } from '@unifesto/unicon/react-native';
 import Skeleton from '../components/Skeleton';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
 import PosterCard from '../components/home/PosterCard';
 import { SpaceCard } from '../components/home/SpaceCards';
 import { PeopleBlock } from '../components/event/EventSections';
-import { ActionBar } from '../components/event/EventOverlays';
+import { ActionBar, useActionBarSpace } from '../components/event/EventOverlays';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
-import { useSpaceDetail } from '../hooks/useSpaceDetail';
+import { useSpaceDetail, type SpaceDetail } from '../hooks/useSpaceDetail';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { useBannerPalette } from '../hooks/useBannerPalette';
+import { useBannerAccent } from '../hooks/useBannerPalette';
 import ReportSheet from '../components/ReportSheet';
-import { useTokens } from '../context/ThemeContext';
 import type { Event } from '../lib/api/events';
 import { relativeWhen, shortPrice, spaceBanner, spaceLogo } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import BannerRim from '../components/ui/BannerRim';
 import { CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 
 const LOGO = 76;
+const ICON = 24;
+/** Past events shown in the rail; older ones live on the web. */
+const PAST_LIMIT = 12;
 
 /**
- * Space page: identity (4:3 banner + 1:1 logo), a few numbers, about, then
- * its events (upcoming / past rails), sub-spaces and public team. Joining
- * lives in the bottom bar; share and the overflow menu live in the header.
+ * Space page, same fusion look as the event page: the cosmos sky lit by the
+ * space's colour (an approved white-label colour, else the banner's hue).
+ * Identity (4:3 banner + 1:1 logo), a stats card, about, then its events,
+ * sub-spaces and public team. Joining lives in the bottom bar; share and the
+ * overflow menu live in the header.
  */
 export default function SpaceDetailScreen() {
-  const tokens = useTokens();
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const s = useSpaceDetail(id);
+  const bannerHue = useBannerAccent(
+    s.space ? spaceBanner(s.space) : null,
+    s.space ? { space: s.space.id } : null,
+  );
+  const hue = s.brandColor || bannerHue;
+  return (
+    <CosmosWash active={!!hue}>
+      <CardSurfaceProvider kind={hue ? 'glass' : DEFAULT_CARD_SURFACE}>
+        <SpaceDetailView s={s} hue={hue} />
+      </CardSurfaceProvider>
+    </CosmosWash>
+  );
+}
+
+function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
+  const barSpace = useActionBarSpace();
   const { width } = useWindowDimensions();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const s = useSpaceDetail(id);
   const [reportOpen, setReportOpen] = useState(false);
   const { space } = s;
   const [descExpanded, setDescExpanded] = useState(false);
 
-  // White-label: an approved organiser colour replaces the accent here.
-  const accent = s.brandColor || tokens.accent;
   const bannerW = width - GUTTER * 2;
   const bannerH = Math.round((bannerW * 3) / 4); // space banners are 4:3
-  // Page background: light → dark shades of the banner's most frequent colour.
-  // Hook runs before the loading/error returns, so pass the banner URL directly.
-  const palette = useBannerPalette(space ? spaceBanner(space) : null, space ? { space: space.id } : null);
-  // The colour right behind the banner + logo (top of the wash), else the theme bg.
-  const pageTop = palette ? palette[0] : tokens.bg;
 
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
         <HeaderActions>
           <HeaderIconButton onPress={s.share} label="Share space">
-            <Export size={24} color={tokens.text} />
+            <Export size={24} color={c.text} />
           </HeaderIconButton>
           <HeaderMenu
             title={space?.name || 'Space'}
@@ -84,28 +98,29 @@ export default function SpaceDetailScreen() {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, space, s.website, s.canLeave, tokens.text]);
+  }, [navigation, space, s.website, s.canLeave, c.text]);
 
   // ── Loading / missing ─────────────────────────────────────────────────────
   if (s.loading) {
     return (
-      <View style={[styles.flex, { backgroundColor: tokens.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
-        <Skeleton width={bannerW} height={bannerH} borderRadius={borderRadius.xl} />
-        <Skeleton width={LOGO} height={LOGO} borderRadius={borderRadius.xl} style={{ marginTop: -LOGO / 2, marginLeft: spacing[4] }} />
-        <Skeleton width="70%" height={28} borderRadius={8} style={{ marginTop: spacing[4] }} />
+      <View style={[styles.flex, { backgroundColor: c.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
+        <CosmosBackdrop horizon={false} />
+        <Skeleton width={bannerW} height={bannerH} borderRadius={cosmosCardRadius} />
+        <Skeleton width={LOGO} height={LOGO} borderRadius={18} style={{ marginTop: -LOGO / 2, marginLeft: spacing[4] }} />
+        <Skeleton width="70%" height={26} borderRadius={8} style={{ marginTop: spacing[4] }} />
         <Skeleton width="45%" height={14} borderRadius={7} style={{ marginTop: spacing[3] }} />
+        <Skeleton width="100%" height={92} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[6] }} />
       </View>
     );
   }
 
   if (!space) {
     return (
-      <View style={[styles.flex, styles.center, { backgroundColor: tokens.bg }]}>
-        <UsersThree size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>Space not found</Text>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Text style={[styles.link, { color: accent }]}>Go back</Text>
-        </Pressable>
+      <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <UsersThree size={48} color={c.muted} />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>Space not found</Text>
+        <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
   }
@@ -117,19 +132,20 @@ export default function SpaceDetailScreen() {
   const eventCount = s.upcoming.length + s.past.length;
   const stats = [
     { label: s.memberCount === 1 ? 'Member' : 'Members', value: s.memberCount },
-    { label: eventCount === 1 ? 'Event' : 'Events', value: eventCount },
-    ...(s.subSpaces.length > 0 ? [{ label: s.subSpaces.length === 1 ? 'Sub-space' : 'Sub-spaces', value: s.subSpaces.length }] : []),
+    { label: 'Upcoming', value: s.upcoming.length },
+    { label: eventCount === 1 ? 'Event hosted' : 'Events hosted', value: eventCount },
   ];
   const description = space.description?.trim();
+  const websiteLabel = s.website?.replace(/^https?:\/\//i, '').replace(/\/$/, '') ?? null;
 
-  const poster = (e: Event, faded = false) => (
-    <View key={e.id} style={faded ? { opacity: 0.6 } : undefined}>
+  const poster = (e: Event, past = false) => (
+    <View key={e.id} style={past ? { opacity: 0.6 } : undefined}>
       <PosterCard
         title={e.title}
         imageUrl={e.coverImageUrl}
         when={relativeWhen(e.startDateTime)}
         where={e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null)}
-        price={faded ? undefined : shortPrice(e)}
+        price={past ? 'Ended' : shortPrice(e)}
         onPress={() => router.push(`/event/${e.slug || e.id}`)}
       />
     </View>
@@ -144,109 +160,113 @@ export default function SpaceDetailScreen() {
   });
 
   return (
-    <CardSurfaceProvider kind={palette ? 'glass' : DEFAULT_CARD_SURFACE}>
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
-      {palette ? (
-        <LinearGradient
-          colors={palette}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-      ) : null}
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} hue={hue} />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 150 }}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: cta.hidden ? spacing[12] : barSpace }}
         refreshControl={
           <RefreshControl
             refreshing={s.refreshing}
             onRefresh={s.refresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
       >
+        {/* ── Hero: 4:3 banner, 1:1 logo over its lower edge, name ── */}
         <View style={{ paddingHorizontal: GUTTER }}>
-          {/* Banner (4:3) with the 1:1 logo overlapping its lower edge */}
-          <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: tokens.elevated }]}>
+          <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: c.card }]}>
             {banner ? (
               <Image source={{ uri: banner }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
-              <LinearGradient colors={[accent, tokens.accentStrong]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}
-            <BannerRim radius={borderRadius.xl} color={pageTop} />
           </View>
-          <View style={[styles.logoWrap, { backgroundColor: pageTop }]}>
+          {/* Ring in the ground colour cuts the logo out of the banner edge. */}
+          <View style={[styles.logoWrap, { backgroundColor: c.bg }]}>
             {logo ? (
-              <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: tokens.elevated }]} />
+              <Image source={{ uri: logo }} style={[styles.logo, { backgroundColor: c.card }]} />
             ) : (
-              <LinearGradient colors={[accent, tokens.accentStrong]} style={[styles.logo, styles.center]}>
-                <Text style={styles.logoText}>{space.name.charAt(0).toUpperCase()}</Text>
+              <LinearGradient colors={c.fallback} style={[styles.logo, styles.center]}>
+                <Text style={[styles.logoText, { color: c.text }]}>{space.name.charAt(0).toUpperCase()}</Text>
               </LinearGradient>
             )}
           </View>
 
-          <Text style={[styles.name, { color: tokens.text }]}>{space.name}</Text>
-          <Text style={[styles.meta, { color: tokens.textSecondary }]}>{meta}</Text>
+          <Text style={[styles.name, { color: c.text }]}>{space.name}</Text>
+          <Text style={[styles.meta, { color: c.soft }]}>{meta}</Text>
 
           {s.parent ? (
-            <Pressable onPress={() => router.push(`/space/${s.parent!.id}`)} style={styles.partOf} accessibilityRole="link">
-              <Text style={[styles.partOfText, { color: tokens.textSecondary }]} numberOfLines={1}>
-                Part of <Text style={{ color: tokens.text, ...font('semibold') }}>{s.parent.name}</Text>
+            <Pressable
+              onPress={() => router.push(`/space/${s.parent!.id}`)}
+              style={({ pressed }) => [styles.partOf, { opacity: pressed ? 0.6 : 1 }]}
+              accessibilityRole="link"
+            >
+              <Text style={[styles.partOfText, { color: c.muted }]} numberOfLines={1}>
+                Part of <Text style={{ color: c.text, ...cosmosFont.strong }}>{s.parent.name}</Text>
               </Text>
-              <CaretRight size={12} color={tokens.textMuted} weight="bold" />
+              <CaretRight size={12} color={c.muted} />
             </Pressable>
           ) : null}
 
-          {/* Numbers: bare, no tiles */}
-          <View style={styles.stats}>
-            {stats.map((st) => (
-              <View key={st.label}>
-                <Text style={[styles.statValue, { color: tokens.text }]}>{st.value}</Text>
-                <Text style={[styles.statLabel, { color: tokens.textMuted }]}>{st.label}</Text>
-              </View>
-            ))}
+          {/* ── Stats card: numbers, then membership and website ── */}
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <View style={styles.stats}>
+              {stats.map((st) => (
+                <View key={st.label} style={styles.stat}>
+                  <Text style={[styles.statValue, { color: c.text }]}>{compact(st.value)}</Text>
+                  <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={1}>{st.label}</Text>
+                </View>
+              ))}
+            </View>
+            {s.isMember ? (
+              <Row icon={<CheckCircle size={ICON} color={c.text} weight="fill" />} title="You're a member" />
+            ) : null}
+            {websiteLabel ? (
+              <Row
+                icon={<Globe size={ICON} color={c.text} />}
+                title={websiteLabel}
+                trailing={<ArrowUpRight size={15} color={c.muted} />}
+                onPress={s.visitWebsite}
+              />
+            ) : null}
           </View>
+        </View>
 
-          {description ? (
-            <View style={{ marginTop: spacing[8] }}>
-              <Text style={[styles.blockTitle, { color: tokens.text }]}>About</Text>
-              <Text style={[styles.body, { color: tokens.textSecondary }]} numberOfLines={descExpanded ? undefined : 6}>
+        {description ? (
+          <Section title="About">
+            <View style={{ paddingHorizontal: GUTTER }}>
+              <Text style={[styles.body, { color: c.soft }]} numberOfLines={descExpanded ? undefined : 6}>
                 {description}
               </Text>
               {description.length > 240 ? (
-                <Pressable onPress={() => setDescExpanded((v) => !v)} hitSlop={8}>
-                  <Text style={[styles.link, { color: accent }]}>{descExpanded ? 'Show less' : 'Read more'}</Text>
+                <Pressable onPress={() => setDescExpanded((v) => !v)} hitSlop={8} accessibilityRole="button">
+                  <Text style={[styles.link, { color: c.text }]}>{descExpanded ? 'Show less' : 'Read more'}</Text>
                 </Pressable>
               ) : null}
             </View>
-          ) : null}
-        </View>
+          </Section>
+        ) : null}
 
         {s.upcoming.length > 0 ? (
-          <Section title="Upcoming">
+          <Section title="Upcoming" subtitle={`${s.upcoming.length} coming up`}>
             <Rail>{s.upcoming.map((e) => poster(e))}</Rail>
           </Section>
         ) : null}
 
-        {s.past.length > 0 ? (
-          <Section title="Past events">
-            <Rail>{s.past.slice(0, 12).map((e) => poster(e, true))}</Rail>
+        {eventCount === 0 ? (
+          <Section title="Events">
+            <View style={[styles.empty, { backgroundColor: c.raised, marginHorizontal: GUTTER }]}>
+              <CalendarBlank size={32} color={c.muted} />
+              <Text style={[styles.emptyText, { color: c.soft }]}>No events yet. Check back soon.</Text>
+            </View>
           </Section>
         ) : null}
 
-        {eventCount === 0 ? (
-          <View style={styles.noEvents}>
-            <CalendarBlank size={36} color={tokens.textSecondary} weight="duotone" />
-            <Text style={[styles.noEventsText, { color: tokens.textMuted }]}>No events yet</Text>
-          </View>
-        ) : null}
-
         {s.subSpaces.length > 0 ? (
-          <Section title="Sub-spaces">
+          <Section title="Sub-spaces" subtitle={`${s.subSpaces.length} inside ${space.name}`}>
             <Rail>
               {s.subSpaces.map((sub) => (
                 <SpaceCard key={sub.id} space={sub} onPress={() => router.push(`/space/${sub.id}`)} />
@@ -255,11 +275,13 @@ export default function SpaceDetailScreen() {
           </Section>
         ) : null}
 
-        {s.team.length > 0 ? (
-          <View style={{ paddingHorizontal: GUTTER, marginTop: spacing[10] }}>
-            <PeopleBlock title="Team" people={s.team} />
-          </View>
+        {s.past.length > 0 ? (
+          <Section title="Past events" subtitle={`${s.past.length} hosted`}>
+            <Rail>{s.past.slice(0, PAST_LIMIT).map((e) => poster(e, true))}</Rail>
+          </Section>
         ) : null}
+
+        {s.team.length > 0 ? <PeopleBlock title="Team" people={s.team} /> : null}
       </ScrollView>
 
       {!cta.hidden ? (
@@ -268,11 +290,12 @@ export default function SpaceDetailScreen() {
           label={cta.buttonLabel}
           disabled={cta.disabled}
           loading={s.membershipBusy}
-          tone={s.isMember ? 'neutral' : 'accent'}
-          accent={accent}
+          // Silver, the cosmos primary, like the event page's register button.
+          tone="neutral"
+          accent={c.primary}
           onPress={s.isMember ? s.confirmLeave : s.join}
           backdropImage={banner}
-          backdropColor={palette?.[2]}
+          backdropColor={c.bg}
         />
       ) : null}
       <ReportSheet
@@ -283,42 +306,82 @@ export default function SpaceDetailScreen() {
         subject={s.space?.name}
       />
     </View>
-    </CardSurfaceProvider>
   );
+}
+
+/** A line under the stats: bare icon, label, optional trailing mark. */
+function Row({ icon, title, trailing, onPress }: {
+  icon: React.ReactNode;
+  title: string;
+  trailing?: React.ReactNode;
+  onPress?: () => void;
+}) {
+  const c = useCosmos();
+  const content = (
+    <>
+      {icon}
+      <Text style={[styles.rowTitle, { color: c.text }]} numberOfLines={1}>{title}</Text>
+      {trailing}
+    </>
+  );
+  const style = [styles.row, { borderTopColor: c.border }];
+  if (!onPress) return <View style={style}>{content}</View>;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={title}
+      style={({ pressed }) => [style, pressed && { backgroundColor: c.tint }]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+/** 1.2k-style counts so three stats fit one row. */
+function compact(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return `${k >= 10 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, '')}k`;
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
-  banner: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  banner: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   logoWrap: {
     marginTop: -LOGO / 2,
     marginLeft: spacing[4],
     alignSelf: 'flex-start',
     padding: 4,
-    borderRadius: borderRadius.xl + 4,
+    borderRadius: 22,
   },
-  logo: { width: LOGO, height: LOGO, borderRadius: borderRadius.xl, overflow: 'hidden' },
-  logoText: { fontSize: 30, color: '#ffffff', ...font('heading') },
-  name: {
-    marginTop: spacing[3],
-    fontSize: typography.fontSize['3xl'],
-    lineHeight: typography.fontSize['3xl'] * 1.15,
-    letterSpacing: -0.5,
-    ...font('heading'),
-  },
-  meta: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
+  logo: { width: LOGO, height: LOGO, borderRadius: 18, overflow: 'hidden' },
+  logoText: { fontSize: 28, ...cosmosFont.display },
+  // Michroma runs wide: 24 reads like a 30 in a narrower face.
+  name: { marginTop: spacing[4], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[3] },
-  partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font() },
-  stats: { flexDirection: 'row', gap: spacing[8], marginTop: spacing[6] },
-  statValue: { fontSize: typography.fontSize['2xl'], ...font('heading') },
-  statLabel: { fontSize: typography.fontSize.sm, ...font() },
-  blockTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], ...font('heading') },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.55, ...font() },
-  link: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  noEvents: { alignItems: 'center', gap: spacing[2], marginTop: spacing[10] },
-  noEventsText: { fontSize: typography.fontSize.sm, ...font() },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
+  partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  card: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  stats: { flexDirection: 'row', paddingVertical: spacing[5], paddingHorizontal: spacing[2] },
+  stat: { flex: 1, alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[4],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  rowTitle: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
+  link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  empty: { alignItems: 'center', gap: spacing[3], paddingVertical: spacing[8], borderRadius: cosmosCardRadius },
+  emptyText: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
 });
 
 interface JoinCta {
