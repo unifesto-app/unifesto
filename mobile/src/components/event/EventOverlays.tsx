@@ -40,7 +40,8 @@ export function RegisterBar({ price, mode, accent, onPress, backdropImage, backd
     <ActionBar
       info={done ? null : price}
       label={CTA_LABEL[mode]}
-      tone={done ? 'neutral' : 'accent'}
+      // Silver button, the cosmos primary, in every state (the event page has no blue).
+      tone="neutral"
       accent={accent}
       onPress={onPress}
       backdropImage={backdropImage}

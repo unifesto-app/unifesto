@@ -15,7 +15,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Bed,
-  CalendarBlank,
+  CalendarPlus,
   CaretRight,
   Globe,
   MapPin,
@@ -27,50 +27,50 @@ import {
 import FavoriteButton from '../components/FavoriteButton';
 import Skeleton from '../components/Skeleton';
 import AttendingShareModal from '../components/AttendingShareModal';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
 import { Rail, Section, GUTTER } from '../components/home/Section';
-import PosterCard from '../components/home/PosterCard';
+import PosterCard, { CoverTag } from '../components/home/PosterCard';
 import {
   AgendaSection,
-  ContactSection,
-  CuratorsBlock,
   FaqSection,
+  HostedBySection,
   PrizesSection,
   SpeakersSection,
   SponsorsSection,
 } from '../components/event/EventSections';
-import { RegisterBar } from '../components/event/EventOverlays';
+import { RegisterBar, useActionBarSpace } from '../components/event/EventOverlays';
 import NotifySheet from '../components/event/NotifySheet';
 import { HeaderActions, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import VenueMap from '../components/event/VenueMap';
-import BannerRim from '../components/ui/BannerRim';
 import { useEventDetail } from '../hooks/useEventDetail';
 import { useEventStays } from '../hooks/useEventStays';
-import { useBannerPalette } from '../hooks/useBannerPalette';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
-import { useTokens } from '../context/ThemeContext';
-import { formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
-import { CardBackdrop, CardSurfaceProvider, DEFAULT_CARD_SURFACE } from '../components/ui/CardSurface';
 import type { SubEvent } from '../lib/api/events';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
 
-const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
-const dayLabel = (d: Date) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+const ICON = 24;
 
-/** "Sat, 12 Oct · 6:30 PM – 9:00 PM", or "12 Oct – 14 Oct" across days. */
-function whenLabel(startIso: string, endIso?: string | null) {
+const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+const shortDate = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+/** Facts-card date lines: "Saturday" / "6:30 PM – 9:00 PM", or "12 Oct – 14 Oct" / "From 6:30 PM" across days. */
+function whenLines(startIso: string, endIso?: string | null) {
   const start = new Date(startIso);
   const end = endIso ? new Date(endIso) : null;
   if (!end || sameDay(start, end)) {
-    return `${dayLabel(start)} · ${formatTime(start)}${end ? ` – ${formatTime(end)}` : ''}`;
+    return {
+      title: start.toLocaleDateString('en-IN', { weekday: 'long' }),
+      sub: `${formatTime(start)}${end ? ` – ${formatTime(end)}` : ''}`,
+    };
   }
-  const short = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-  return `${short(start)} – ${short(end)} · ${formatTime(start)}`;
+  return { title: `${shortDate(start)} – ${shortDate(end)}`, sub: `From ${formatTime(start)}` };
 }
 
 /** Upcoming and live sub-events first (soonest first), finished ones after. */
@@ -80,11 +80,12 @@ function orderSubEvents(subs: SubEvent[]): SubEvent[] {
 }
 
 export default function EventDetailScreen() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const defaults = useDefaultImages();
   const router = useRouter();
   const navigation = useNavigation();
   const topSpacing = useTopSpacing(8);
+  const barSpace = useActionBarSpace();
   const { width } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   // Y of the "Events inside" rail, so an umbrella's CTA lands on it.
@@ -98,12 +99,6 @@ export default function EventDetailScreen() {
   // Unifesto Stay: shown to signed-in viewers when the event offers stays.
   const stay = useEventStays(event?.id, !!d.user && !!event && event.type !== 'ONLINE');
 
-  const accent = tokens.accent;
-  // Page background: light → dark shades of the banner's most frequent colour.
-  const palette = useBannerPalette(
-    event?.coverImageUrl,
-    event ? { event: event.slug ?? event.id } : null,
-  );
   const bannerW = width - GUTTER * 2;
   const bannerH = Math.round((bannerW * 3) / 4); // event banners are 4:3
 
@@ -117,7 +112,7 @@ export default function EventDetailScreen() {
               <FavoriteButton
                 eventId={event.id}
                 size={24}
-                color={tokens.text}
+                color={c.text}
                 onRequireAuth={() => AppAlert.alert('Sign in required', 'Please sign in to save events.')}
               />
             </View>
@@ -143,34 +138,35 @@ export default function EventDetailScreen() {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, event, tokens.text, d.share, d.copyLink, d.addToCalendar, d.notify.openSheet]);
+  }, [navigation, event, c.text, d.share, d.copyLink, d.addToCalendar, d.notify.openSheet]);
 
   // ── Loading / missing ─────────────────────────────────────────────────────
   if (d.loading) {
     return (
-      <View style={[styles.flex, { backgroundColor: tokens.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
-        <Skeleton width={bannerW} height={bannerH} borderRadius={borderRadius.xl} />
-        <Skeleton width="85%" height={30} borderRadius={8} style={{ marginTop: spacing[5] }} />
+      <View style={[styles.flex, { backgroundColor: c.bg, paddingTop: topSpacing, paddingHorizontal: GUTTER }]}>
+        <CosmosBackdrop horizon={false} />
+        <Skeleton width={bannerW} height={bannerH} borderRadius={cosmosCardRadius} />
+        <Skeleton width="85%" height={28} borderRadius={8} style={{ marginTop: spacing[6] }} />
         <Skeleton width="50%" height={16} borderRadius={8} style={{ marginTop: spacing[3] }} />
-        <Skeleton width="100%" height={168} borderRadius={borderRadius.xl} style={{ marginTop: spacing[6] }} />
+        <Skeleton width="100%" height={196} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[6] }} />
       </View>
     );
   }
 
   if (!event) {
     return (
-      <View style={[styles.flex, styles.center, { backgroundColor: tokens.bg }]}>
-        <XCircle size={48} color={tokens.textSecondary} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: tokens.text }]}>{id ? 'Event not found' : 'No event selected'}</Text>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <Text style={[styles.link, { color: accent }]}>Go back</Text>
-        </Pressable>
+      <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <XCircle size={48} color={c.muted} />
+        <Text style={[styles.emptyTitle, { color: c.text }]}>{id ? 'Event not found' : 'No event selected'}</Text>
+        <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );
   }
 
   // ── Derived display bits ──────────────────────────────────────────────────
   const isOnline = event.type === 'ONLINE';
+  const isCancelled = event.status === 'CANCELLED';
   // In-person venue for the embedded map: exact coordinates when the organiser
   // set them, otherwise a name + address search.
   const venueCoords =
@@ -188,12 +184,19 @@ export default function EventDetailScreen() {
   const venueName = event.venueName || event.city || 'Venue';
   const venueAddress = [event.venueAddress, event.venueName ? event.city : null].filter(Boolean).join(', ') || null;
   const hosts = event.space
-    ? [event.space.name, ...(event.coHosts ?? []).map((c) => c.name)].join(' & ')
+    ? [event.space.name, ...(event.coHosts ?? []).map((h) => h.name)].join(' & ')
     : null;
+  const cover = coverOr(defaults, event.id, event.coverImageUrl);
+  const hostLogo = event.space ? logoOr(defaults, event.spaceId, event.space.logoUrl) : null;
+  const tag = event.categories?.[0] ?? event.category;
   const description = event.description?.trim();
   const groupUrl = event.whatsappGroupUrl;
   const communityUrl = event.whatsappCommunityUrl ?? event.parentEvent?.whatsappCommunityUrl ?? null;
   const whatsappUrl = groupUrl || communityUrl;
+  const chip = dateChip(event.startDateTime);
+  const when = whenLines(event.startDateTime, event.endDateTime);
+  // Countdown only while it's still ahead; the facts card covers ended / cancelled.
+  const countdown = !d.isOver && !isCancelled ? countdownLabel(event.startDateTime) : null;
   const priceLine = d.bigEventMode === 'umbrella'
     ? `${d.subEventCount} sub-event${d.subEventCount === 1 ? '' : 's'}`
     : d.priceDisplay;
@@ -205,145 +208,165 @@ export default function EventDetailScreen() {
       : { label: 'Entry', value: d.priceDisplay };
 
   return (
-    <CardSurfaceProvider kind={palette ? 'glass' : DEFAULT_CARD_SURFACE}>
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
-      {palette ? (
-        <LinearGradient
-          colors={palette}
-          locations={[0, 0.5, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-      ) : null}
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: 150 }}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingBottom: barSpace }}
         refreshControl={
           <RefreshControl
             refreshing={d.refreshing}
             onRefresh={d.refresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
       >
+        {/* ── Hero: clean 4:3 cover, then the name and who's behind it ── */}
         <View style={{ paddingHorizontal: GUTTER }}>
-          {/* Banner (4:3), kept clean: date lives in the facts card below */}
-          <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: tokens.elevated }]}>
-            {coverOr(defaults, event.id, event.coverImageUrl) ? (
-              <Image source={{ uri: coverOr(defaults, event.id, event.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <View style={[styles.banner, { width: bannerW, height: bannerH, backgroundColor: c.card }]}>
+            {cover ? (
+              <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
             ) : (
-              <LinearGradient colors={[accent, tokens.accentStrong]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={c.fallback} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             )}
-            {/* Corner light in the wash's top colour (what the banner sits on) */}
-            <BannerRim radius={borderRadius.xl} color={palette?.[0]} />
+            {tag ? <CoverTag label={tag} style={styles.coverTag} /> : null}
           </View>
 
           {event.parentEvent ? (
             <Pressable
               onPress={() => router.push(`/event/${event.parentEvent!.slug}`)}
-              style={styles.partOf}
+              style={({ pressed }) => [styles.partOf, { opacity: pressed ? 0.6 : 1 }]}
               accessibilityRole="link"
             >
-              <Text style={[styles.partOfText, { color: tokens.textSecondary }]} numberOfLines={1}>
-                Part of <Text style={{ color: tokens.text, ...font('semibold') }}>{event.parentEvent.title}</Text>
+              <Text style={[styles.partOfText, { color: c.muted }]} numberOfLines={1}>
+                Part of <Text style={{ color: c.text, ...cosmosFont.strong }}>{event.parentEvent.title}</Text>
               </Text>
-              <CaretRight size={12} color={tokens.textMuted} weight="bold" />
+              <CaretRight size={12} color={c.muted} />
             </Pressable>
           ) : null}
 
-          <Text style={[styles.title, { color: tokens.text }, !event.parentEvent && { marginTop: spacing[5] }]}>
+          <Text style={[styles.title, { color: c.text }, !event.parentEvent && { marginTop: spacing[6] }]}>
             {event.title}
           </Text>
 
           {hosts && event.space ? (
-            <Pressable onPress={() => router.push(`/space/${event.spaceId}`)} style={styles.host} accessibilityRole="link">
+            <Pressable
+              onPress={() => router.push(`/space/${event.spaceId}`)}
+              style={({ pressed }) => [styles.host, { opacity: pressed ? 0.6 : 1 }]}
+              accessibilityRole="link"
+            >
               {/* Space logos are 1:1. */}
-              {logoOr(defaults, event.spaceId, event.space.logoUrl) ? (
-                <Image source={{ uri: logoOr(defaults, event.spaceId, event.space.logoUrl) ?? undefined }} style={[styles.hostLogo, { backgroundColor: tokens.elevated }]} />
+              {hostLogo ? (
+                <Image source={{ uri: hostLogo }} style={[styles.hostLogo, { backgroundColor: c.card }]} />
               ) : (
-                <View style={[styles.hostLogo, styles.center, { backgroundColor: tokens.elevated }]}>
-                  <Text style={{ color: tokens.textSecondary, ...font('heading') }}>{event.space.name.charAt(0).toUpperCase()}</Text>
+                <View style={[styles.hostLogo, styles.center, { backgroundColor: c.card }]}>
+                  <Text style={[styles.hostInitial, { color: c.muted }]}>{event.space.name.charAt(0).toUpperCase()}</Text>
                 </View>
               )}
-              <Text style={[styles.hostText, { color: tokens.textSecondary }]} numberOfLines={1}>
-                by <Text style={{ color: tokens.text, ...font('semibold') }}>{hosts}</Text>
+              <Text style={[styles.hostText, { color: c.muted }]} numberOfLines={1}>
+                by <Text style={{ color: c.text, ...cosmosFont.strong }}>{hosts}</Text>
               </Text>
             </Pressable>
           ) : null}
 
-          {/* The facts: when, where, price */}
-          <SettingsGroup>
-            <SettingsRow
-              icon={<CalendarBlank size={24} color={accent} weight="duotone" />}
-              label={whenLabel(event.startDateTime, event.endDateTime)}
+          {/* ── Facts: a ticket-stub date, then where, entry and stay ── */}
+          <View style={[styles.facts, { backgroundColor: c.raised }]}>
+            <Pressable
               onPress={d.addToCalendar}
-            />
-            {isOnline ? (
-              <SettingsRow icon={<Globe size={24} color={accent} weight="duotone" />} label="Online" />
-            ) : !hasVenue && !venueCoords ? (
-              <SettingsRow icon={<MapPin size={24} color={accent} weight="duotone" />} label="Venue to be announced" />
-            ) : null}
-            {event.status === 'CANCELLED' ? (
-              <SettingsRow icon={<XCircle size={24} color={tokens.danger} weight="duotone" />} label="This event was cancelled" danger />
-            ) : d.isOver ? (
-              <SettingsRow icon={<Ticket size={24} color={tokens.textMuted} weight="duotone" />} label="This event has ended" />
-            ) : (
-              <SettingsRow icon={<Ticket size={24} color={accent} weight="duotone" />} label={priceLine} />
-            )}
-            {stay && event.status !== 'CANCELLED' ? (
-              <SettingsRow
-                icon={<Bed size={24} color={accent} weight="duotone" />}
-                label={stay.label}
-                value={stay.value}
-                onPress={() => router.push(stay.href as never)}
-              />
-            ) : null}
-          </SettingsGroup>
+              accessibilityRole="button"
+              accessibilityLabel={`${when.title}, ${when.sub}. Add to calendar`}
+              style={({ pressed }) => [styles.whenRow, pressed && { backgroundColor: c.tint }]}
+            >
+              <View style={[styles.stub, { borderColor: c.border }]}>
+                <Text style={[styles.stubMonth, { color: c.muted }]}>{chip.month}</Text>
+                <Text style={[styles.stubDay, { color: c.text }]}>{chip.day}</Text>
+              </View>
+              <View style={styles.flex}>
+                <Text style={[styles.factTitle, { color: c.text }]} numberOfLines={1}>{when.title}</Text>
+                <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={1}>{when.sub}</Text>
+                {countdown ? <Text style={[styles.factSub, { color: c.muted }]}>{countdown}</Text> : null}
+              </View>
+              <CalendarPlus size={ICON} color={c.text} />
+            </Pressable>
 
-          {/* Attendee actions */}
+            <Divider />
+            {isOnline ? (
+              <Fact icon={<Globe size={ICON} color={c.text} />} title="Online" sub={event.onlinePlatform} />
+            ) : hasVenue || venueCoords ? (
+              <Fact icon={<MapPin size={ICON} color={c.text} />} title={venueName} sub={venueAddress} onPress={d.openMaps} />
+            ) : (
+              <Fact icon={<MapPin size={ICON} color={c.muted} />} title="Venue to be announced" />
+            )}
+
+            <Divider />
+            {isCancelled ? (
+              <Fact icon={<XCircle size={ICON} color={c.danger} />} title="This event was cancelled" danger />
+            ) : d.isOver ? (
+              <Fact icon={<Ticket size={ICON} color={c.muted} />} title="This event has ended" />
+            ) : (
+              <Fact icon={<Ticket size={ICON} color={c.text} />} title={priceLine} />
+            )}
+
+            {stay && !isCancelled ? (
+              <>
+                <Divider />
+                <Fact
+                  icon={<Bed size={ICON} color={c.text} />}
+                  title={stay.label}
+                  sub={stay.value}
+                  onPress={() => router.push(stay.href as never)}
+                />
+              </>
+            ) : null}
+          </View>
+
+          {/* ── Attendee actions ── */}
           {(d.user && d.ownsAnyTicket) || whatsappUrl ? (
             <View style={styles.actions}>
               {d.user && d.ownsAnyTicket ? (
-                <ActionPill onPress={() => setShareOpen(true)}>
-                  <ShareNetwork size={18} color={tokens.text} weight="bold" />
-                  <Text style={[styles.actionText, { color: tokens.text }]}>I'm going</Text>
-                </ActionPill>
+                <AuthButton
+                  label="I'm going"
+                  variant="secondary"
+                  icon={<ShareNetwork size={18} color={c.text} />}
+                  onPress={() => setShareOpen(true)}
+                  style={styles.flex}
+                />
               ) : null}
               {whatsappUrl ? (
-                <ActionPill onPress={() => Linking.openURL(whatsappUrl)}>
-                  <WhatsappLogo size={18} color="#25D366" weight="fill" />
-                  <Text style={[styles.actionText, { color: tokens.text }]} numberOfLines={1}>
-                    Join {groupUrl ? 'group' : 'community'}
-                  </Text>
-                </ActionPill>
-              ) : null}
-            </View>
-          ) : null}
-
-          {description ? (
-            <View style={{ marginTop: spacing[8] }}>
-              <Text style={[styles.blockTitle, { color: tokens.text }]}>About</Text>
-              <Text style={[styles.body, { color: tokens.textSecondary }]} numberOfLines={descExpanded ? undefined : 6}>
-                {description}
-              </Text>
-              {description.length > 240 ? (
-                <Pressable onPress={() => setDescExpanded((v) => !v)} hitSlop={8}>
-                  <Text style={[styles.link, { color: accent }]}>{descExpanded ? 'Show less' : 'Read more'}</Text>
-                </Pressable>
+                <AuthButton
+                  label={`Join ${groupUrl ? 'group' : 'community'}`}
+                  variant="secondary"
+                  icon={<WhatsappLogo size={18} color="#25D366" weight="fill" />}
+                  onPress={() => Linking.openURL(whatsappUrl)}
+                  style={styles.flex}
+                />
               ) : null}
             </View>
           ) : null}
         </View>
 
+        {description ? (
+          <Section title="About">
+            <View style={{ paddingHorizontal: GUTTER }}>
+              <Text style={[styles.body, { color: c.soft }]} numberOfLines={descExpanded ? undefined : 6}>
+                {description}
+              </Text>
+              {description.length > 240 ? (
+                <Pressable onPress={() => setDescExpanded((v) => !v)} hitSlop={8} accessibilityRole="button">
+                  <Text style={[styles.link, { color: c.text }]}>{descExpanded ? 'Show less' : 'Read more'}</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </Section>
+        ) : null}
+
         {/* Sub-events of a big event */}
         {event.childEvents && event.childEvents.length > 0 ? (
           <View onLayout={(ev) => { subEventsY.current = ev.nativeEvent.layout.y; }}>
-            <Section title="Events inside">
+            <Section title="Events inside" subtitle={`${event.childEvents.length} to choose from`}>
               <Rail>
                 {orderSubEvents(event.childEvents).map((sub) => (
                   <PosterCard
@@ -361,49 +384,50 @@ export default function EventDetailScreen() {
           </View>
         ) : null}
 
-        <View style={styles.sections}>
-          {d.agenda.length > 0 ? <AgendaSection items={d.agenda} accent={accent} /> : null}
-          {d.speakers.length > 0 ? <SpeakersSection items={d.speakers} accent={accent} /> : null}
-          {event.sponsors && event.sponsors.length > 0 ? (
-            <SponsorsSection
-              items={event.sponsors}
-              optedIn={d.sponsorOptIns}
-              pending={d.sponsorPending}
-              onToggle={d.toggleSponsorOptIn}
-              accent={accent}
-            />
-          ) : null}
-          {d.prizes.length > 0 ? <PrizesSection items={d.prizes} accent={accent} /> : null}
-          {d.faqs.length > 0 ? <FaqSection items={d.faqs} /> : null}
-          {d.contacts.length > 0 ? <ContactSection items={d.contacts} accent={accent} /> : null}
-          {hasVenue || venueCoords ? (
-            <View style={{ marginTop: spacing[4] }}>
-              <Text style={[styles.blockTitle, { color: tokens.text }]}>Location</Text>
+        {d.agenda.length > 0 ? <AgendaSection items={d.agenda} /> : null}
+        {d.speakers.length > 0 ? <SpeakersSection items={d.speakers} /> : null}
+        {d.prizes.length > 0 ? <PrizesSection items={d.prizes} /> : null}
+
+        {hasVenue || venueCoords ? (
+          <Section title="Location">
+            <View style={{ paddingHorizontal: GUTTER }}>
               <VenueMap
                 coords={venueCoords}
                 place={venuePlace}
                 name={venueName}
                 address={venueAddress}
-                accent={accent}
+                accent={c.text}
                 onDirections={d.openMaps}
               />
             </View>
-          ) : null}
-          {event.curators && event.curators.length > 0 ? (
-            <View style={{ marginTop: spacing[4] }}>
-              <CuratorsBlock items={event.curators} />
-            </View>
-          ) : null}
-        </View>
+          </Section>
+        ) : null}
+
+        {event.sponsors && event.sponsors.length > 0 ? (
+          <SponsorsSection
+            items={event.sponsors}
+            optedIn={d.sponsorOptIns}
+            pending={d.sponsorPending}
+            onToggle={d.toggleSponsorOptIn}
+          />
+        ) : null}
+        {d.faqs.length > 0 ? <FaqSection items={d.faqs} /> : null}
+        <HostedBySection
+          space={event.space}
+          coHosts={event.coHosts}
+          curators={event.curators}
+          contacts={d.contacts}
+          onOpenSpace={(spaceId) => router.push(`/space/${spaceId}`)}
+        />
       </ScrollView>
 
       {!d.isOver ? (
         <RegisterBar
           price={barPrice}
           mode={d.registerMode}
-          accent={accent}
+          accent={c.primary}
           backdropImage={event.coverImageUrl}
-          backdropColor={palette?.[2]}
+          backdropColor={c.bg}
           onPress={
             // An umbrella parent has no registration of its own: jump to its sub-events.
             d.registerMode === 'umbrella' ? () => scrollRef.current?.scrollTo({ y: Math.max(0, (subEventsY.current ?? bannerH) - topSpacing), animated: true }) : d.handleRegister
@@ -424,7 +448,7 @@ export default function EventDetailScreen() {
         }}
       />
 
-      <NotifySheet notify={d.notify} accent={accent} eventTitle={d.event?.title} />
+      <NotifySheet notify={d.notify} accent={c.primary} eventTitle={d.event?.title} />
       <ReportSheet
         visible={reportOpen}
         onClose={() => setReportOpen(false)}
@@ -433,52 +457,82 @@ export default function EventDetailScreen() {
         subject={d.event?.title}
       />
     </View>
-    </CardSurfaceProvider>
   );
 }
 
-/** Pill button on the page's card surface (glass over the banner wash). */
-function ActionPill({ onPress, children }: { onPress: () => void; children: React.ReactNode }) {
+function Divider() {
+  const c = useCosmos();
+  return <View style={[styles.divider, { backgroundColor: c.border }]} />;
+}
+
+/** One line of the facts card: bare icon, title, optional quieter line under it. */
+function Fact({ icon, title, sub, danger, onPress }: {
+  icon: React.ReactNode;
+  title: string;
+  sub?: string | null;
+  danger?: boolean;
+  onPress?: () => void;
+}) {
+  const c = useCosmos();
+  const content = (
+    <>
+      <View style={styles.factIcon}>{icon}</View>
+      <View style={styles.flex}>
+        <Text style={[styles.factTitle, { color: danger ? c.danger : c.text }]} numberOfLines={1}>{title}</Text>
+        {sub ? <Text style={[styles.factSub, { color: c.soft }]} numberOfLines={2}>{sub}</Text> : null}
+      </View>
+      {onPress ? <CaretRight size={15} color={c.muted} /> : null}
+    </>
+  );
+  if (!onPress) return <View style={styles.factRow}>{content}</View>;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.action, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
-      <CardBackdrop style={styles.actionShape} />
-      {children}
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={({ pressed }) => [styles.factRow, pressed && { backgroundColor: c.tint }]}
+    >
+      {content}
     </Pressable>
   );
 }
+
+const STUB = 56;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   center: { alignItems: 'center', justifyContent: 'center' },
   headerIcon: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  banner: { borderRadius: borderRadius.xl, overflow: 'hidden' },
-  partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[5] },
-  partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font() },
-  title: {
-    marginTop: spacing[2],
-    fontSize: typography.fontSize['3xl'],
-    lineHeight: typography.fontSize['3xl'] * 1.15,
-    letterSpacing: -0.5,
-    ...font('heading'),
-  },
+  banner: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  coverTag: { position: 'absolute', left: spacing[4], bottom: spacing[4] },
+  partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[6] },
+  partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  // Michroma runs wide: 24 reads like a 30 in a narrower face.
+  title: { marginTop: spacing[2], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
   host: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3] },
   hostLogo: { width: 26, height: 26, borderRadius: 7, overflow: 'hidden' },
-  hostText: { flex: 1, fontSize: typography.fontSize.sm, ...font() },
-  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
-  action: {
-    flex: 1,
-    flexDirection: 'row',
+  hostInitial: { fontSize: 11, ...cosmosFont.display },
+  hostText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  facts: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
+  stub: {
+    width: STUB,
+    height: STUB,
+    borderRadius: 14,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[2],
-    height: 46,
-    borderRadius: borderRadius.full,
   },
-  actionShape: { borderRadius: 23 },
-  actionText: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  blockTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], ...font('heading') },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.55, ...font() },
-  link: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  sections: { paddingHorizontal: GUTTER, marginTop: spacing[8], gap: spacing[3] },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
+  stubMonth: { fontSize: 11, ...cosmosFont.strong },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
+  // Same column as the date stub, so every line's text starts at one edge.
+  factIcon: { width: STUB, alignItems: 'center' },
+  factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  factSub: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
+  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },
+  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.6, ...cosmosFont.body },
+  link: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  emptyTitle: { marginTop: spacing[4], fontSize: 17, ...cosmosFont.display },
 });
