@@ -6,10 +6,9 @@ import * as Location from 'expo-location';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { MapPin, NavigationArrow } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
-import { CardBackdrop } from '../ui/CardSurface';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const MAP_HEIGHT = 180;
 
@@ -137,6 +136,7 @@ export async function geocodeVenue(place: VenuePlace): Promise<Coords | null> {
  */
 export default function VenueMap({ coords, place, name, address, accent, onDirections }: VenueMapProps) {
   const tokens = useTokens();
+  const c = useCosmos();
   const [resolved, setResolved] = useState<Coords | null>(coords ?? null);
   const [geocodeFailed, setGeocodeFailed] = useState(false);
 
@@ -176,9 +176,8 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
   const showWeb = !Maps || geocodeFailed;
 
   return (
-    <View style={styles.card}>
-      <CardBackdrop />
-      <View style={[styles.map, { backgroundColor: tokens.surface }]} pointerEvents="none">
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
+      <View style={[styles.map, { backgroundColor: c.card }]} pointerEvents="none">
         {showNative && Maps ? (
           <Maps.default
             style={StyleSheet.absoluteFill}
@@ -210,11 +209,11 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
       </View>
 
       <View style={styles.row}>
-        <MapPin size={22} color={accent} weight="duotone" />
+        <MapPin size={24} color={c.text} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>{name}</Text>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>{name}</Text>
           {address ? (
-            <Text style={[styles.address, { color: tokens.textMuted }]} numberOfLines={2}>{address}</Text>
+            <Text style={[styles.address, { color: c.muted }]} numberOfLines={2}>{address}</Text>
           ) : null}
         </View>
         {onDirections ? (
@@ -225,8 +224,8 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
             accessibilityLabel="Get directions"
             style={({ pressed }) => [styles.directions, { opacity: pressed ? 0.6 : 1 }]}
           >
-            <NavigationArrow size={16} color={accent} weight="fill" />
-            <Text style={[styles.directionsText, { color: accent }]}>Directions</Text>
+            <NavigationArrow size={16} color={c.text} weight="fill" />
+            <Text style={[styles.directionsText, { color: c.text }]}>Directions</Text>
           </Pressable>
         ) : null}
       </View>
@@ -270,12 +269,12 @@ iframe{border:0;width:100%;height:calc(100% + 60px);margin-top:-30px;${tokens.sc
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   map: { height: MAP_HEIGHT, overflow: 'hidden' },
   center: { alignItems: 'center', justifyContent: 'center' },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4] },
-  name: { fontSize: typography.fontSize.base, ...font('semibold') },
-  address: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...font() },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  address: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   directions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  directionsText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  directionsText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
