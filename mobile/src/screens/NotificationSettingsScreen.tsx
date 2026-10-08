@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Switch } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Switch, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
@@ -8,6 +8,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
 import {
   NotificationSettings,
   getNotificationSettings,
@@ -194,6 +195,9 @@ export default function NotificationSettingsScreen() {
         {row('bell', 'Push notifications', notifs.pushEnabled, handlePushToggle)}
         {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
       </SettingsGroup>
+      <Text style={[styles.caption, { color: tokens.textMuted }]}>
+        Tickets, receipts and sign-in codes always arrive by email.
+      </Text>
 
       <SettingsGroup title="Events">
         {row('calendar-blank', 'Event reminders', notifs.eventReminders, () => toggle('eventReminders'))}
@@ -210,4 +214,5 @@ export default function NotificationSettingsScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: spacing[6], paddingBottom: 100 },
+  caption: { fontSize: typography.fontSize.sm, marginTop: spacing[2], marginHorizontal: spacing[1] },
 });

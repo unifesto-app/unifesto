@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { emailOptedOutUserIds } from '../email/email-preferences';
 import { CreateCampaignDto, SegmentFiltersDto } from './dto/campaign.dto';
 
 /** A recipient resolved for a campaign, with the fields merge-vars need. */
@@ -262,7 +263,15 @@ export class EmailCampaignsService {
       });
       if (!campaign) return;
 
-      const recipients = await this.getRecipients(campaign);
+      const resolved = await this.getRecipients(campaign);
+      // Marketing mail: drop users who turned email off.
+      const optedOut = await emailOptedOutUserIds(
+        this.prisma,
+        resolved.flatMap((r) => (r.userId ? [r.userId] : [])),
+      );
+      const recipients = resolved.filter(
+        (r) => !r.userId || !optedOut.has(r.userId),
+      );
       if (recipients.length === 0) {
         await this.prisma.emailCampaign.update({
           where: { id: campaignId },
