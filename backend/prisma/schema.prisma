@@ -678,6 +678,11 @@ model SpaceRequest {
   country     String?         @default("India") @db.VarChar(100)
   tags        String[]
   websiteUrl  String?         @map("website_url") @db.Text
+  // The requester's role at the organisation (e.g. "President, Coding Club")
+  // and when they declared they are authorised to represent it and to use its
+  // name and logo. Null declaration = an older client that never asked.
+  requesterRole        String?   @map("requester_role") @db.VarChar(120)
+  authorityConfirmedAt DateTime? @map("authority_confirmed_at") @db.Timestamptz(6)
   status      String          @default("PENDING") @db.VarChar(20)
   reviewNote  String?         @map("review_note") @db.Text
   reviewedBy  String?         @map("reviewed_by") @db.Uuid
@@ -951,6 +956,12 @@ model Space {
   rejectedAt      DateTime?   @map("rejected_at") @db.Timestamptz(6)
   approvedBy      String?     @map("approved_by") @db.Uuid
   rejectionReason String?     @map("rejection_reason") @db.Text
+
+  // Verified = a platform admin confirmed this space is run by (or with the
+  // permission of) the organisation it is named after. Unverified spaces show
+  // a "not affiliated" note publicly. Cleared when the space is renamed.
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz(6)
+  verifiedBy String?   @map("verified_by") @db.Uuid
 
   // Creator
   createdBy String @map("created_by") @db.Uuid

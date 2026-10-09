@@ -34,6 +34,7 @@ import {
   UpdateSpaceMemberRoleDto,
 } from './dto';
 import { CreateSpaceRequestDto } from './dto/create-space-request.dto';
+import { SetSpaceVerificationDto } from './dto/set-space-verification.dto';
 import {
   CreateSubSpaceRequestDto,
   ReviewSubSpaceRequestDto,
@@ -410,6 +411,21 @@ export class SpacesController {
     @CurrentUser() user: User,
   ) {
     return this.spacesService.updateSpaceStatus(id, dto, user.id);
+  }
+
+  /**
+   * Verify / un-verify a space (ADMIN only)
+   * PATCH /spaces/:id/verification { verified: boolean }
+   */
+  @Patch(':id/verification')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async setSpaceVerification(
+    @Param('id') id: string,
+    @Body() dto: SetSpaceVerificationDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.spacesService.setSpaceVerification(id, dto.verified, user.id);
   }
 
   /**

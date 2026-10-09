@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, IsIn, MaxLength, IsUrl } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsIn, MaxLength, IsUrl, IsBoolean } from 'class-validator';
 
 export class CreateSpaceRequestDto {
   @IsString()
@@ -36,4 +36,19 @@ export class CreateSpaceRequestDto {
   @IsOptional()
   @IsUrl()
   websiteUrl?: string;
+
+  /** Requester's role at the organisation, e.g. "President, Coding Club". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  requesterRole?: string;
+
+  /**
+   * "I am authorised to represent this organisation and to use its name and
+   * logo." Optional only so older app builds can still submit; current
+   * clients require it, and admins see requests without it flagged.
+   */
+  @IsOptional()
+  @IsBoolean()
+  authorityConfirmed?: boolean;
 }

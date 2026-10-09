@@ -3,7 +3,7 @@
 import { optimized } from "@/lib/img";
 import Link from "next/link";
 import { useState, useEffect, type CSSProperties } from "react";
-import { ArrowUpRight, CalendarBlank, CaretRight, DeviceMobile, Globe, UsersThree } from "@unifesto/unicon/react";
+import { ArrowUpRight, CalendarBlank, CaretRight, DeviceMobile, Globe, SealCheck, UsersThree } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
@@ -181,7 +181,16 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
             </div>
             <h1 className="waterline-load mt-5 font-display text-[clamp(1.6rem,3.6vw,2.6rem)] leading-[1.15] text-paper [text-wrap:balance]">
               <span className="line">
-                <span className="line-inner">{space.name}</span>
+                <span className="line-inner">
+                  {space.name}
+                  {space.is_verified && (
+                    <SealCheck
+                      weight="fill"
+                      className="ml-2 inline h-[0.8em] w-[0.8em] align-[-0.05em] text-primary"
+                      aria-label="Verified"
+                    />
+                  )}
+                </span>
               </span>
             </h1>
             {meta && <p className="enter mt-2 text-sm text-paper/65">{meta}</p>}
@@ -308,6 +317,17 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
             onSubmit={(body) => submitSpaceInquiry(space.id, body)}
           />
         </section>
+
+        {!space.is_verified && (
+          <p className="mt-10 max-w-2xl text-xs leading-5 text-paper/45">
+            This space is run by its members. Unifesto has not verified that it is affiliated with or endorsed by any
+            organisation it names. Represent that organisation?{" "}
+            <Link href="/grievance#organisations" className="underline hover:text-paper">
+              Let us know
+            </Link>
+            .
+          </p>
+        )}
       </div>
 
       <Footer />

@@ -65,6 +65,8 @@ export default function SpaceRequestScreen() {
   const [city, setCity] = useState('');
   const [otherCity, setOtherCity] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
+  const [requesterRole, setRequesterRole] = useState('');
+  const [authorised, setAuthorised] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -80,7 +82,7 @@ export default function SpaceRequestScreen() {
     load();
   }, [load]);
 
-  const ready = name.trim().length > 0 && description.trim().length > 0;
+  const ready = name.trim().length > 0 && description.trim().length > 0 && authorised;
 
   const handleSubmit = async () => {
     if (!ready) return;
@@ -94,12 +96,16 @@ export default function SpaceRequestScreen() {
         type,
         city: cityValue || undefined,
         websiteUrl: websiteUrl.trim() || undefined,
+        requesterRole: requesterRole.trim() || undefined,
+        authorityConfirmed: authorised,
       });
       setName('');
       setDescription('');
       setCity('');
       setOtherCity('');
       setWebsiteUrl('');
+      setRequesterRole('');
+      setAuthorised(false);
       await load();
       scroll.current?.scrollTo({ y: 0, animated: true });
     } catch (e: any) {
@@ -258,6 +264,30 @@ export default function SpaceRequestScreen() {
                   </View>
                 ) : null}
               </Section>
+
+              <Section title="About you" subtitle="Who is asking for this space">
+                <View style={styles.fields}>
+                  <AuthField
+                    label="Your role (optional)"
+                    value={requesterRole}
+                    onChangeText={setRequesterRole}
+                    placeholder="e.g. President, Coding Club"
+                    maxLength={120}
+                  />
+                  <Pressable
+                    onPress={() => setAuthorised((v) => !v)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: authorised }}
+                    style={({ pressed }) => [styles.consent, { opacity: pressed ? 0.7 : 1 }]}
+                  >
+                    {authorised ? <CheckCircle size={24} color={c.text} weight="fill" /> : <Circle size={24} color={c.muted} />}
+                    <Text style={[styles.consentText, { color: c.soft }]}>
+                      I'm authorised to represent this organisation, and I own or have permission to use any name and
+                      logo I add. Spaces are marked verified only after Unifesto confirms this.
+                    </Text>
+                  </Pressable>
+                </View>
+              </Section>
             </>
           )}
 
@@ -316,7 +346,11 @@ export default function SpaceRequestScreen() {
         <View style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }]}>
           <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
           <AuthButton label="Send request" arrow loading={submitting} disabled={!ready} onPress={handleSubmit} />
-          {!ready ? <Text style={[styles.hint, { color: c.muted }]}>Add a name and what it’s about to send</Text> : null}
+          {!ready ? (
+            <Text style={[styles.hint, { color: c.muted }]}>
+              {name.trim() && description.trim() ? 'Confirm you can represent it to send' : 'Add a name and what it’s about to send'}
+            </Text>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -387,5 +421,7 @@ const styles = StyleSheet.create({
   rowAction: { alignSelf: 'flex-start', marginTop: spacing[3] },
   rowActionText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
+  consent: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3] },
+  consentText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   hint: { marginTop: spacing[2], textAlign: 'center', fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

@@ -49,7 +49,32 @@ const sections: LegalSection[] = [
         <li>How your personal data is handled, or a privacy request we did not resolve.</li>
         <li>A decision to remove your content, suspend an event or close your account.</li>
         <li>Problems with an organiser’s conduct that the organiser has not addressed.</li>
+        <li>A Space or event using your organisation’s name, logo or other marks without permission (see below).</li>
       </ul>
+    ),
+  },
+  {
+    id: "organisations",
+    title: "Your organisation’s name or logo",
+    body: (
+      <>
+        <p>
+          Spaces are created by their members. Unless a Space shows a verified badge, Unifesto has not confirmed that
+          it is run by, or affiliated with, any college, company or community it names. If you represent an
+          organisation and a Space or event uses its name, logo or other marks without permission, email{" "}
+          {mail(LEGAL.grievance.email)} with:
+        </p>
+        <ul>
+          <li>the link to the Space or event;</li>
+          <li>who you are and your role, from an email address on the organisation’s own domain where you have one;</li>
+          <li>the name, logo or mark concerned, and any trademark registration number;</li>
+          <li>what you would like: the Space removed, renamed, its logo taken down, or handed over to you.</li>
+        </ul>
+        <p>
+          We tell the Space’s team and act within the timelines below. If you would like to run an official Space
+          for your organisation, ask us to verify it or hand an existing one over to you.
+        </p>
+      </>
     ),
   },
   {
@@ -76,6 +101,7 @@ const sections: LegalSection[] = [
         <li><strong>Acknowledgement:</strong> within 24 hours, with a ticket number.</li>
         <li><strong>Resolution:</strong> within 15 days.</li>
         <li><strong>Requests to remove unlawful content:</strong> acted on within 72 hours.</li>
+        <li><strong>A Space or event using an organisation’s name or marks without permission:</strong> acted on within 72 hours of a complete complaint.</li>
         <li><strong>Content showing a person in a sexual act, nudity or impersonation of them in such content:</strong> removed or disabled within 24 hours of the complaint.</li>
       </ul>
     ),

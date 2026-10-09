@@ -110,9 +110,13 @@ export const QUEUES: QueueDef[] = [
           requester: person(r.user),
           facts: [
             { label: 'Type', value: titleCase(r.type) },
+            ...(r.requesterRole ? [{ label: 'Their role', value: r.requesterRole }] : []),
             ...(r.city || r.state ? [{ label: 'Location', value: [r.city, r.state].filter(Boolean).join(', ') }] : []),
             ...(r.websiteUrl ? [{ label: 'Website', value: r.websiteUrl.replace(/^https?:\/\//, '') }] : []),
           ],
+          warning: r.authorityConfirmedAt
+            ? undefined
+            : 'No authority declaration (older app). Confirm they represent this organisation before approving.',
           approveEffect: `The space is created and ${nameOf(r.user)} becomes its Space Admin.`,
         })),
       ),

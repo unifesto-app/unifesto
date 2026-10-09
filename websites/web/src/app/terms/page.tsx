@@ -69,6 +69,7 @@ const sections: LegalSection[] = [
       <>
         <p>A Space is created on request and reviewed by Unifesto before it goes live. If you run a Space or an event, you agree to:</p>
         <ul>
+          <li>name a Space after a college, company, club or other organisation only if you are authorised to represent it, and use its name, logo and other marks only with its permission;</li>
           <li>describe events, tickets, prices, dates and venues accurately, and honour the registrations you accept;</li>
           <li>hold any permissions, licences and approvals your event needs, and run it lawfully and safely;</li>
           <li>use attendee data only to run your event and communicate about it, keep it secure, and not sell it or use it for unrelated marketing without the attendee’s consent;</li>
@@ -77,6 +78,13 @@ const sections: LegalSection[] = [
           <li>for stays, list properties accurately, keep guest photo IDs confidential, and take responsibility for the property, rooms and guest safety;</li>
           <li>for sponsors, collect leads only through the sponsor tools, where attendees choose to share their details.</li>
         </ul>
+        <p>
+          A <strong>verified</strong> badge means Unifesto has checked that the Space is run by, or with the
+          permission of, the organisation it names. Other Spaces are run by their members, and a Space naming an
+          organisation does not mean that organisation runs, sponsors or endorses it. We may rename, hand over,
+          hide or remove a Space that uses an organisation’s name or marks without permission. If you represent an
+          organisation, see <a href="/grievance#organisations">Grievance: your organisation’s name or logo</a>.
+        </p>
       </>
     ),
   },

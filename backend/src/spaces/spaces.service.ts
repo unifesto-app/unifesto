@@ -219,6 +219,7 @@ export class SpacesService {
         planActivatedAt,
         planExpiresAt,
         coCuratorLimit,
+        verifiedBy,
         ...publicSpace
       } = space;
       return publicSpace;
@@ -359,6 +360,7 @@ export class SpacesService {
       planActivatedAt,
       planExpiresAt,
       coCuratorLimit,
+      verifiedBy,
       subscription: _sub, // pulled only for the plan gate; never exposed publicly
       ...publicSpace
     } = space as any;
@@ -421,6 +423,7 @@ export class SpacesService {
       planActivatedAt,
       planExpiresAt,
       coCuratorLimit,
+      verifiedBy,
       subscription: _sub, // pulled only for the plan gate; never exposed publicly
       creator,
       ...rest
@@ -477,11 +480,16 @@ export class SpacesService {
       }
     }
 
+    // Verification vouches for the name it was granted under; a rename needs a
+    // fresh admin check.
+    const renamed = dto.name !== undefined && dto.name.trim() !== space.name;
+
     const updatedSpace = await this.prisma.space.update({
       where: { id },
       data: {
         name: dto.name,
         slug: dto.slug,
+        ...(renamed ? { verifiedAt: null, verifiedBy: null } : {}),
         description: dto.description,
         websiteUrl: dto.websiteUrl,
         city: dto.city,
@@ -1158,6 +1166,24 @@ export class SpacesService {
       message: 'Successfully left the space',
     };
   }
+  /**
+   * Mark a space as verified (run by, or with the permission of, the
+   * organisation it is named after) or clear it. Platform admins only.
+   */
+  async setSpaceVerification(id: string, verified: boolean, adminId: string) {
+    const space = await this.prisma.space.findUnique({ where: { id }, select: { id: true } });
+    if (!space) {
+      throw new NotFoundException('Space not found');
+    }
+    return this.prisma.space.update({
+      where: { id },
+      data: verified
+        ? { verifiedAt: new Date(), verifiedBy: adminId }
+        : { verifiedAt: null, verifiedBy: null },
+      select: { id: true, verifiedAt: true },
+    });
+  }
+
   async createSpaceRequest(userId: string, dto: any) {
     // Check if user already has a pending request
     const existing = await this.prisma.spaceRequest.findFirst({
@@ -1180,6 +1206,8 @@ export class SpacesService {
         country: 'India',
         tags: dto.tags || [],
         websiteUrl: dto.websiteUrl,
+        requesterRole: dto.requesterRole?.trim() || null,
+        authorityConfirmedAt: dto.authorityConfirmed ? new Date() : null,
         status: 'PENDING',
       },
     });
@@ -1209,6 +1237,13 @@ export class SpacesService {
             username: true,
             mobileNumber: true,
             avatarUrl: true,
+            // Verified email, so the reviewer can match it against the
+            // organisation's domain before approving.
+            identities: {
+              where: { email: { not: null }, emailVerified: true },
+              select: { email: true },
+              orderBy: { isPrimary: 'desc' },
+            },
           },
         },
       },
