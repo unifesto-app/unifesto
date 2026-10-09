@@ -103,6 +103,10 @@ export interface SpaceRequest extends Reviewed {
   city: string | null;
   state: string | null;
   websiteUrl: string | null;
+  /** Requester's role at the organisation, e.g. "President, Coding Club". */
+  requesterRole?: string | null;
+  /** When the requester declared authority to represent the organisation. */
+  authorityConfirmedAt?: string | null;
   user: PersonRef;
 }
 

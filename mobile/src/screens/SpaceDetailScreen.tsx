@@ -1,11 +1,11 @@
 import React, { useLayoutEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useNavigation } from 'expo-router/react-navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowUpRight, CalendarBlank, CaretRight, CheckCircle, Export, Globe, UsersThree } from '@unifesto/unicon/react-native';
+import { ArrowUpRight, CalendarBlank, CaretRight, CheckCircle, Export, Globe, SealCheck, UsersThree } from '@unifesto/unicon/react-native';
 import Skeleton from '../components/Skeleton';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
@@ -192,7 +192,15 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
             )}
           </View>
 
-          <Text style={[styles.name, { color: c.text }]}>{space.name}</Text>
+          <Text style={[styles.name, { color: c.text }]}>
+            {space.name}
+            {space.verifiedAt ? (
+              <Text accessibilityLabel="Verified">
+                {' '}
+                <SealCheck size={20} color={c.text} weight="fill" />
+              </Text>
+            ) : null}
+          </Text>
           <Text style={[styles.meta, { color: c.soft }]}>{meta}</Text>
 
           {s.parent ? (
@@ -279,6 +287,20 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         ) : null}
 
         {s.team.length > 0 ? <PeopleBlock title="Team" people={s.team} /> : null}
+
+        {!space.verifiedAt ? (
+          <Text style={[styles.disclaimer, { color: c.muted }]}>
+            This space is run by its members. Unifesto has not verified that it is affiliated with or endorsed by any
+            organisation it names. Represent that organisation?{' '}
+            <Text
+              style={{ color: c.soft, textDecorationLine: 'underline' }}
+              onPress={() => Linking.openURL('https://unifesto.app/grievance#organisations')}
+              accessibilityRole="link"
+            >
+              Let us know
+            </Text>
+          </Text>
+        ) : null}
       </ScrollView>
 
       {!cta.hidden ? (
@@ -357,6 +379,7 @@ const styles = StyleSheet.create({
   logoText: { fontSize: 28, ...cosmosFont.display },
   // Michroma runs wide: 24 reads like a 30 in a narrower face.
   name: { marginTop: spacing[4], fontSize: 24, lineHeight: 33, ...cosmosFont.display },
+  disclaimer: { marginTop: spacing[10], paddingHorizontal: GUTTER, fontSize: typography.fontSize.xs, lineHeight: 18, ...cosmosFont.body },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   partOf: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing[3] },
   partOfText: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },

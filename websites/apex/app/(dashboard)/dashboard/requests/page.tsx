@@ -250,7 +250,13 @@ export default function SpaceRequestsPage() {
                       </p>
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                      <span>By {applicantName(r)}</span>
+                      <span>
+                        By {applicantName(r)}
+                        {r.requesterRole ? ` (${r.requesterRole})` : ""}
+                      </span>
+                      {r.user?.identities?.[0]?.email && (
+                        <span>{r.user.identities[0].email}</span>
+                      )}
                       {location(r) && (
                         <span className="inline-flex items-center gap-1">
                           <MapPin className="h-3.5 w-3.5" /> {location(r)}
@@ -268,6 +274,15 @@ export default function SpaceRequestsPage() {
                       )}
                       <span>Requested {formatDate(r.createdAt)}</span>
                     </div>
+                    {r.status === "PENDING" && (
+                      <p
+                        className={`mt-1 text-xs ${r.authorityConfirmedAt ? "text-muted-foreground" : "text-destructive"}`}
+                      >
+                        {r.authorityConfirmedAt
+                          ? "Declared authorised to represent this organisation. Check the email domain or website before approving."
+                          : "No authority declaration (older app). Confirm they represent this organisation before approving."}
+                      </p>
+                    )}
                     {r.reviewNote && r.status !== "PENDING" && (
                       <p className="mt-1 text-xs italic text-muted-foreground">
                         Note: {r.reviewNote}

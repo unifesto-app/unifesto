@@ -44,6 +44,8 @@ async function request<T>(
 export interface Space {
   id: string;
   name: string;
+  /** Set when a platform admin confirmed the space is run by (or with the permission of) the organisation it names. */
+  verifiedAt?: string | null;
   slug: string;
   description: string | null;
   type?: string | null;
@@ -490,6 +492,8 @@ export const createSpaceRequest = async (data: {
   state?: string;
   tags?: string[];
   websiteUrl?: string;
+  requesterRole?: string;
+  authorityConfirmed?: boolean;
 }): Promise<SpaceRequest> => {
   const response = await makeAuthenticatedRequest('/spaces/request', {
     method: 'POST',

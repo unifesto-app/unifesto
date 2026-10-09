@@ -54,6 +54,10 @@ export interface SpaceRequest {
   country: string | null;
   tags: string[];
   websiteUrl: string | null;
+  /** Requester's role at the organisation, e.g. "President, Coding Club". */
+  requesterRole?: string | null;
+  /** When the requester declared authority to represent the organisation. */
+  authorityConfirmedAt?: string | null;
   status: RequestStatus;
   reviewNote: string | null;
   createdAt: string;

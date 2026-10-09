@@ -52,10 +52,12 @@ export default function RequestSpaceClient() {
     type: "REGULAR" as "REGULAR" | "SUPER",
     city: "",
     websiteUrl: "",
+    requesterRole: "",
     fullName: "",
     email: "",
     phone: "",
   });
+  const [authorised, setAuthorised] = useState(false);
   const [step, setStep] = useState<"details" | "email-otp" | "phone-otp" | "done">("details");
   const [otp, setOtp] = useState("");
   const [tempToken, setTempToken] = useState("");
@@ -100,6 +102,8 @@ export default function RequestSpaceClient() {
         type: form.type,
         city: form.city.trim() || undefined,
         websiteUrl: website ? (/^https?:\/\//.test(website) ? website : `https://${website}`) : undefined,
+        requesterRole: form.requesterRole.trim() || undefined,
+        authorityConfirmed: authorised,
       },
       accessToken,
     );
@@ -108,6 +112,7 @@ export default function RequestSpaceClient() {
 
   const sendEmailCode = run(async () => {
     if (!/^[0-9]{10}$/.test(form.phone)) throw new Error("Enter a 10 digit mobile number.");
+    if (!authorised) throw new Error("Confirm you are authorised to represent this organisation.");
     await call("POST", "/auth/email", { email });
     goTo("email-otp");
   });
@@ -266,6 +271,14 @@ export default function RequestSpaceClient() {
         className={FIELD}
       />
       <input
+        maxLength={120}
+        aria-label="Your role"
+        value={form.requesterRole}
+        onChange={(e) => set("requesterRole", e.target.value)}
+        placeholder="Your role, e.g. President, Coding Club (optional)"
+        className={FIELD}
+      />
+      <input
         required
         type="email"
         autoComplete="email"
@@ -289,6 +302,23 @@ export default function RequestSpaceClient() {
           className="w-full bg-transparent px-3 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none"
         />
       </div>
+      <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/75">
+        <input
+          type="checkbox"
+          required
+          checked={authorised}
+          onChange={(e) => setAuthorised(e.target.checked)}
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]"
+        />
+        <span>
+          I am authorised to represent this organisation, and I own or have permission to use any name and logo I add.
+          Spaces are marked verified only after we confirm this. See the{" "}
+          <a href="/terms#organisers" target="_blank" className="underline hover:text-white">
+            Terms
+          </a>
+          .
+        </span>
+      </label>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button type="submit" disabled={busy} className={CTA}>
         {busy ? "Sending code…" : "Verify and continue"}

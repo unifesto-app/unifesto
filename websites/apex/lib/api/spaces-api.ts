@@ -96,7 +96,7 @@ export async function getSpace(
     created_at: raw.created_at ?? raw.createdAt,
     updated_at: raw.updated_at ?? raw.updatedAt,
     is_active: raw.is_active ?? statusVal === "ACTIVE",
-    is_verified: raw.is_verified ?? Boolean(raw.approvedAt),
+    is_verified: Boolean(raw.verifiedAt),
   };
   return {
     data: normalized as unknown as SpaceWithHierarchy,
@@ -379,6 +379,17 @@ export async function updateSpaceStatus(
   return apiCall<AdminSpaceActionResult>(
     backendClient.patch(`/admin/spaces/${id}/status`, { status })
   );
+}
+
+/**
+ * Mark a space verified (run by, or with the permission of, the organisation
+ * it is named after) or clear it. ADMIN only. `PATCH /spaces/:id/verification`.
+ */
+export async function setSpaceVerification(
+  id: string,
+  verified: boolean
+): Promise<{ data: { id: string; verifiedAt: string | null } | null; error: ApiError | null }> {
+  return apiCall(backendClient.patch(`/spaces/${id}/verification`, { verified }));
 }
 
 /** Space visibility as accepted by the backend (`SpaceVisibility`). */

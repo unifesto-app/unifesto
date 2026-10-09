@@ -96,7 +96,7 @@ export async function getSpace(
     created_at: raw.created_at ?? raw.createdAt,
     updated_at: raw.updated_at ?? raw.updatedAt,
     is_active: raw.is_active ?? statusVal === "ACTIVE",
-    is_verified: raw.is_verified ?? Boolean(raw.approvedAt),
+    is_verified: Boolean(raw.verifiedAt),
   };
   return {
     data: normalized as unknown as SpaceWithHierarchy,

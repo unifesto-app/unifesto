@@ -53,6 +53,7 @@ import {
   deleteSpace,
   uploadSpaceLogo,
   uploadSpaceBanner,
+  setSpaceVerification,
   type ChildSpace,
   type SpaceMember,
   type SpaceMemberRoleCode,
@@ -437,6 +438,7 @@ function SpaceManagement({
             <AdminSpacePanel
               spaceId={space.id}
               status={space.status}
+              verified={space.is_verified}
               onChange={onChange}
             />
           )}
@@ -1376,10 +1378,12 @@ function EditSpacePanel({
 function AdminSpacePanel({
   spaceId,
   status,
+  verified,
   onChange,
 }: {
   spaceId: string;
   status?: SpaceStatus;
+  verified: boolean;
   onChange: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -1509,6 +1513,30 @@ function AdminSpacePanel({
             </Button>
           </div>
         )}
+
+        {/* Verified = the badge on public pages. Only grant it once you have
+            confirmed the team runs, or has permission from, the organisation
+            this space is named after (official email domain, letter, etc). */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {verified ? "Verified" : "Not verified"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {verified
+                ? "Shows the verified badge publicly. Renaming the space clears it."
+                : "Public pages say this space is not affiliated with or endorsed by the organisation it names."}
+            </p>
+          </div>
+          <Button
+            variant={verified ? "outline" : "default"}
+            disabled={busy}
+            onClick={() => run(() => setSpaceVerification(spaceId, !verified))}
+          >
+            <SealCheck className="h-4 w-4" />
+            {verified ? "Remove verification" : "Mark verified"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

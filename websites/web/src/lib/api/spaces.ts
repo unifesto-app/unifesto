@@ -106,7 +106,7 @@ function mapSpace(raw: Record<string, unknown> | null | undefined): Space | null
     city: r.city as string | undefined,
     state: r.state as string | undefined,
     country: r.country as string | undefined,
-    is_verified: (r.status as string) === 'APPROVED',
+    is_verified: Boolean(r.verifiedAt),
     is_active: (r.status as string) === 'APPROVED',
     created_at: (r.createdAt ?? r.created_at) as string,
     updated_at: (r.updatedAt ?? r.updated_at) as string,
