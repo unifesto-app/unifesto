@@ -158,8 +158,23 @@ function SpacesSkeleton() {
 
 const ITEMS_PER_PAGE = 12;
 
+type SortMode = "name" | "location";
+
+const byName = (a: Space, b: Space) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+
+// Location sort: state → city → name; spaces with no location sink to the end.
+function byLocation(a: Space, b: Space) {
+  for (const k of ["state", "city"] as const) {
+    const x = a[k]?.trim() ?? "";
+    const y = b[k]?.trim() ?? "";
+    if (x !== y) return !x ? 1 : !y ? -1 : x.localeCompare(y, undefined, { sensitivity: "base" });
+  }
+  return byName(a, b);
+}
+
 function SpacesContent() {
   const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortMode>("name");
   const [currentPage, setCurrentPage] = useState(1);
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,18 +204,21 @@ function SpacesContent() {
     return map;
   }, [allSpaces]);
 
-  // Spaces and sub-spaces live in the same flat grid — no hierarchy partitions.
+  // Top-level spaces only — sub-spaces are listed on their parent's page.
   const filtered = useMemo(() => {
     const lc = query.trim().toLowerCase();
-    if (!lc) return allSpaces;
-    return allSpaces.filter(
-      (s) => s.name.toLowerCase().includes(lc) || s.description?.toLowerCase().includes(lc)
-    );
-  }, [allSpaces, query]);
+    const roots = allSpaces.filter((s) => !s.parent_space_id);
+    const hits = !lc
+      ? roots
+      : roots.filter((s) =>
+          [s.name, s.description, s.city, s.state].some((v) => v?.toLowerCase().includes(lc))
+        );
+    return [...hits].sort(sort === "location" ? byLocation : byName);
+  }, [allSpaces, query, sort]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [query]);
+  }, [query, sort]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const page = Math.min(currentPage, totalPages);
@@ -255,12 +273,29 @@ function SpacesContent() {
           </div>
         ) : (
           <>
-            <p className="mb-6 text-sm text-paper/60">
-              {filtered.length} space{filtered.length !== 1 ? "s" : ""}
-              {totalPages > 1 && ` · page ${page} of ${totalPages}`}
-            </p>
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-paper/60">
+                {filtered.length} space{filtered.length !== 1 ? "s" : ""}
+                {totalPages > 1 && ` · page ${page} of ${totalPages}`}
+              </p>
+              <div role="group" aria-label="Sort spaces" className="flex gap-1 rounded-full bg-paper/[0.07] p-1">
+                {([["name", "A–Z"], ["location", "Location"]] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setSort(mode)}
+                    aria-pressed={sort === mode}
+                    className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-colors duration-150 ${
+                      sort === mode ? "bg-primary text-ink" : "text-paper/70 hover:text-paper"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            {/* One uniform grid for spaces and sub-spaces alike */}
+            {/* Top-level spaces; sub-space count shown on each card */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" data-stagger="rise">
               {paginated.map((space) => (
                 <div key={space.id}>
