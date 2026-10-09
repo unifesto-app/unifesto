@@ -45,14 +45,12 @@ async function getEventRoutes(): Promise<MetadataRoute.Sitemap> {
 }
 
 /**
- * Fetch the public spaces and turn each into a `/space/[slug]` sitemap entry.
- * The backend `/spaces` endpoint only ever returns APPROVED (public) spaces —
- * the same directory the `/spaces` page lists — so there's nothing extra to
- * filter beyond guarding against a missing slug.
+ * Fetch the ACTIVE public spaces and turn each into a `/space/[slug]` sitemap
+ * entry. Sub-spaces stay in: they have their own pages, just not a /spaces card.
  */
 async function getSpaceRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
-    const { spaces } = await getSpaces(1, 200)
+    const { spaces } = await getSpaces(1, 200, { is_active: true })
 
     return spaces
       .filter((s) => Boolean(s.slug))
