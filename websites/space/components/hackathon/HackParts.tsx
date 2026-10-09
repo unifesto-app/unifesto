@@ -25,8 +25,11 @@ export const hackBase = (eventId: string) => `/dashboard/events/${eventId}/hacka
 export function useResult<T>(fetcher: () => Promise<Result<T>>, deniedCopy = "You can't manage this event's hackathon.") {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
+  /** True after the first answer (data can legitimately be null). */
+  const [loaded, setLoaded] = useState(false);
   const reload = useCallback(async () => {
     const res = await fetcher();
+    setLoaded(true);
     if (res.ok) {
       setData(res.data);
       setError("");
@@ -36,7 +39,7 @@ export function useResult<T>(fetcher: () => Promise<Result<T>>, deniedCopy = "Yo
   useEffect(() => {
     void reload();
   }, [reload]);
-  return { data, setData, error, setError, reload };
+  return { data, setData, error, setError, reload, loaded };
 }
 
 /** Page frame: back link to the hub (or a parent), header, error, skeleton until `ready`. */

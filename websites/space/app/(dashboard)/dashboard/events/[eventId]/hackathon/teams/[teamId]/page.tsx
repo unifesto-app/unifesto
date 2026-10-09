@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { IdentificationCard, Lightbulb, LockSimple, WarningCircle } from "@unifesto/unicon/react";
 import { Badge } from "@/components/ui/badge";
@@ -33,14 +33,14 @@ export default function HackathonTeamPage() {
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const initial = useRef("");
+  const [initial, setInitial] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   const apply = useCallback((t: TeamDetail) => {
     const d = { teamCode: t.teamCode ?? "", name: t.name, roomId: t.room?.id ?? "" };
-    initial.current = JSON.stringify(d);
+    setInitial(JSON.stringify(d));
     setTeam(t);
     setDraft(d);
   }, []);
@@ -63,10 +63,10 @@ export default function HackathonTeamPage() {
   if (!team || !draft) return <HackPage eventId={eventId} back={back} title="Team" error={error} ready={false} />;
 
   const cancelled = team.stage === "CANCELLED";
-  const dirty = JSON.stringify(draft) !== initial.current;
+  const dirty = JSON.stringify(draft) !== initial;
 
   const save = async () => {
-    const before = JSON.parse(initial.current) as Draft;
+    const before = JSON.parse(initial) as Draft;
     const input: { teamCode?: string; name?: string; roomId?: string | null } = {};
     if (draft.teamCode.trim() !== before.teamCode) {
       if (!draft.teamCode.trim()) return setError("A team needs a Team ID.");

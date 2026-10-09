@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +58,7 @@ export default function HackathonSettingsPage() {
   const router = useRouter();
   const [overview, setOverview] = useState<HackathonOverview | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
-  const initial = useRef("");
+  const [initial, setInitial] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -66,7 +66,7 @@ export default function HackathonSettingsPage() {
     void getHackathonOverview(eventId).then((r) => {
       if (!r.ok) return setError(r.message);
       const d = toDraft(r.data);
-      initial.current = JSON.stringify(d);
+      setInitial(JSON.stringify(d));
       setOverview(r.data);
       setDraft(d);
     });
@@ -79,7 +79,7 @@ export default function HackathonSettingsPage() {
 
   if (!draft || !overview) return <HackPage eventId={eventId} title="Hackathon settings" error={error} ready={false} />;
 
-  const dirty = JSON.stringify(draft) !== initial.current;
+  const dirty = JSON.stringify(draft) !== initial;
   const currentNext = overview.hackathon?.teamCodeNext ?? 1;
   const prefix = draft.prefix.trim();
   const digits = Number(draft.digits);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default function PanelEditorPage() {
   const [judges, setJudges] = useState<Judge[]>([]);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
-  const initial = useRef(JSON.stringify(EMPTY));
+  const [initial, setInitial] = useState(JSON.stringify(EMPTY));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const listHref = `${hackBase(eventId)}/judges`;
@@ -49,7 +49,7 @@ export default function PanelEditorPage() {
         meetingUrl: found.meetingUrl ?? "",
         isAvailable: found.isAvailable,
       };
-      initial.current = JSON.stringify(d);
+      setInitial(JSON.stringify(d));
       setPanel(found);
       setDraft(d);
     });
@@ -63,7 +63,7 @@ export default function PanelEditorPage() {
     setError("");
     setDraft((d) => (d ? { ...d, ...patch } : d));
   };
-  const dirty = isNew || JSON.stringify(draft) !== initial.current;
+  const dirty = isNew || JSON.stringify(draft) !== initial;
   const panelRounds = rounds.filter((r) => r.judgingMode === "PANEL");
 
   const save = async () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { CheckCircle, CircleDashed, Pause, Play, Plus, Stop, Trash, XCircle } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
@@ -150,8 +150,12 @@ export default function HackathonRoundPage() {
   const isNew = roundId === "new";
   const router = useRouter();
   const [round, setRound] = useState<RoundDetail | null>(null);
-  const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
-  const initial = useRef(JSON.stringify(EMPTY));
+  // The draft and its last-saved snapshot live together so a live refresh can
+  // tell, in one update, whether the curator has unsaved edits to keep.
+  const [form, setForm] = useState<{ draft: Draft; initial: string } | null>(
+    isNew ? { draft: EMPTY, initial: JSON.stringify(EMPTY) } : null
+  );
+  const draft = form?.draft ?? null;
   const [saving, setSaving] = useState(false);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState("");
@@ -163,8 +167,7 @@ export default function HackathonRoundPage() {
     setRound(r);
     if (resetDraft) {
       const d = toDraft(r);
-      initial.current = JSON.stringify(d);
-      setDraft(d);
+      setForm({ draft: d, initial: JSON.stringify(d) });
     }
   }, []);
 
@@ -173,14 +176,8 @@ export default function HackathonRoundPage() {
     const res = await getRound(eventId, roundId);
     if (!res.ok) return setError(res.message);
     // Keep the curator's unsaved edits; refresh everything else.
-    setDraft((d) => {
-      if (!d || JSON.stringify(d) === initial.current) {
-        const next = toDraft(res.data);
-        initial.current = JSON.stringify(next);
-        return next;
-      }
-      return d;
-    });
+    const next = toDraft(res.data);
+    setForm((f) => (!f || JSON.stringify(f.draft) === f.initial ? { draft: next, initial: JSON.stringify(next) } : f));
     setRound(res.data);
   }, [isNew, eventId, roundId]);
 
@@ -191,14 +188,14 @@ export default function HackathonRoundPage() {
 
   const set = (patch: Partial<Draft>) => {
     setError("");
-    setDraft((d) => (d ? { ...d, ...patch } : d));
+    setForm((f) => (f ? { ...f, draft: { ...f.draft, ...patch } } : f));
   };
 
   const title = isNew ? "New round" : round?.name ?? "Round";
   const back = { href: listHref, label: "Rounds" };
   if (!draft) return <HackPage eventId={eventId} back={back} title={title} error={error} ready={false} />;
 
-  const dirty = isNew || JSON.stringify(draft) !== initial.current;
+  const dirty = isNew || JSON.stringify(draft) !== form?.initial;
   const mentoring = draft.kind === "MENTORING";
 
   const save = async () => {

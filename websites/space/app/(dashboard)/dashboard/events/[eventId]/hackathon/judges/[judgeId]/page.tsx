@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Trash } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,7 @@ export default function JudgeEditorPage() {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [rounds, setRounds] = useState<RoundRow[]>([]);
   const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
-  const initial = useRef(JSON.stringify(EMPTY));
+  const [initial, setInitial] = useState(JSON.stringify(EMPTY));
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +61,7 @@ export default function JudgeEditorPage() {
     void getJudge(eventId, judgeId).then((r) => {
       if (!r.ok) return setError(r.message);
       const d = toDraft(r.data);
-      initial.current = JSON.stringify(d);
+      setInitial(JSON.stringify(d));
       setJudge(r.data);
       setDraft(d);
     });
@@ -77,7 +77,7 @@ export default function JudgeEditorPage() {
     setError("");
     setDraft((d) => (d ? { ...d, ...patch } : d));
   };
-  const dirty = isNew || JSON.stringify(draft) !== initial.current;
+  const dirty = isNew || JSON.stringify(draft) !== initial;
 
   const save = async () => {
     const meetingUrl = draft.meetingUrl.trim();

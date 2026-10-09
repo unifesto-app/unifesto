@@ -1,5 +1,6 @@
 /**
- * Hackathon mode API client (docs/hackathon-mobile-plan.md).
+ * Hackathon curator API client, trimmed from mobile/src/lib/api/hackathon.ts
+ * (team and judge routes left out: those screens live in the app only).
  *
  * Curator routes live under `/events/:eventId/hackathon` (event:manage-leaderboard,
  * re-checked server-side); the team's own routes under `/hackathon/:eventId`.
@@ -304,103 +305,6 @@ export const assignTeamStatement = (eventId: string, teamId: string, input: SetS
 export const unlockTeamStatement = (eventId: string, teamId: string) =>
   call<TeamDetail>(`${base(eventId)}/teams/${teamId}/statement/unlock`, json('POST'));
 
-// ── Team member ──────────────────────────────────────────────────────────────
-
-export interface HackathonHub {
-  eventId: string;
-  event: { title: string; startDateTime: string; endDateTime: string; coverImageUrl: string | null };
-  venue: Venue;
-  /** Null when the signed-in user isn't on a team. */
-  team: {
-    id: string;
-    teamCode: string | null;
-    name: string;
-    nameSource: TeamNameSource | null;
-    stage: TeamStage;
-    isLead: boolean;
-    room: { name: string; location: string | null; notes: string | null } | null;
-    members: TeamMember[];
-    /** What the team chose or was assigned; null until then. */
-    statement: {
-      source: 'LIST' | 'OWN';
-      code: string | null;
-      title: string;
-      description: string;
-      themeLabel: string | null;
-      lockedAt: string | null;
-      setBy: StatementSetBy | null;
-    } | null;
-    /** Null when the team can lock one in now. Always null for a cancelled team. */
-    statementBlock: StatementBlock | null;
-    /** Open rounds and the team's place in a queue; null until it can be judged. */
-    evaluation: {
-      openRounds: number;
-      request: { status: EvalStatus; position: number | null; roundName: string; evaluatorName: string | null } | null;
-    } | null;
-  } | null;
-  problemStatements: { mode: PsMode | null; themeMode: ThemeMode; deadline: string | null };
-  unreadCount: number;
-}
-
-/** The team's statement screen: what it can choose from, and whether this person may. */
-export interface MyStatementOptions {
-  mode: PsMode | null;
-  themeMode: ThemeMode;
-  deadline: string | null;
-  cancelled: boolean;
-  block: StatementBlock | null;
-  /** Only the team lead locks the statement in. */
-  isLead: boolean;
-  themes: { id: string; name: string }[];
-  /** The list, when teams pick from it. */
-  statements: {
-    id: string;
-    code: string;
-    title: string;
-    description: string;
-    theme: { id: string; name: string } | null;
-    placesLeft: number | null;
-  }[];
-}
-
-/** The team hub, or `data: null` when the event runs no hackathon (or it's off). */
-export const getMyHackathon = (eventId: string) => call<HackathonHub | null>(`/hackathon/${eventId}/me`);
-export const renameMyTeam = (eventId: string, name: string) =>
-  call<{ name: string }>(`/hackathon/${eventId}/me/team-name`, json('PATCH', { name }));
-export const getMyStatementOptions = (eventId: string) =>
-  call<MyStatementOptions>(`/hackathon/${eventId}/statements`);
-/** Lock in the team's statement (lead only, final). Returns the refreshed hub. */
-export const lockMyStatement = (eventId: string, input: SetStatementInput) =>
-  call<HackathonHub>(`/hackathon/${eventId}/me/statement`, json('POST', input));
-
-// ── In-app notification feed ─────────────────────────────────────────────────
-
-export interface InAppNotification {
-  id: string;
-  eventId: string | null;
-  type: string;
-  title: string;
-  body: string;
-  deepLink: string | null;
-  data: Record<string, unknown> | null;
-  readAt: string | null;
-  createdAt: string;
-}
-
-const feedQuery = (scope: { eventId?: string; type?: string; before?: string }) => {
-  const q = new URLSearchParams();
-  if (scope.eventId) q.set('eventId', scope.eventId);
-  if (scope.type) q.set('type', scope.type);
-  if (scope.before) q.set('before', scope.before);
-  const s = q.toString();
-  return s ? `?${s}` : '';
-};
-
-export const getNotifications = (scope: { eventId?: string; type?: string; before?: string }) =>
-  call<{ items: InAppNotification[]; nextBefore: string | null }>(`/users/me/notifications${feedQuery(scope)}`);
-export const markNotificationsRead = (scope: { eventId?: string; type?: string; ids?: string[] }): Promise<Result<{ updated: number }>> =>
-  call<{ updated: number }>('/users/me/notifications/read', json('POST', scope));
-
 // ── Judging: rounds, criteria, judges, panels, queues (Phase 3) ──────────────
 
 export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';
@@ -630,170 +534,6 @@ export const forceComplete = (eventId: string, requestId: string) =>
 export const reopenJudgment = (eventId: string, judgmentId: string) =>
   call<QueueMonitor>(`${base(eventId)}/judgments/${judgmentId}/reopen`, json('POST'));
 
-// ── Judge console ────────────────────────────────────────────────────────────
-
-export interface SlotStatement {
-  source: 'LIST' | 'OWN';
-  code: string | null;
-  title: string;
-  description: string;
-  themeLabel: string | null;
-}
-
-export interface JudgeSlot {
-  requestId: string;
-  status: EvalStatus;
-  round: { id: string; name: string; slotMinutes: number; callGraceMinutes: number } | null;
-  team: {
-    id: string;
-    teamCode: string | null;
-    name: string;
-    /** Names only, never contacts. */
-    members: string[];
-    room: { name: string; location: string | null } | null;
-    statement: SlotStatement | null;
-    /** The team's project links for this round. */
-    links: SubmissionLink[];
-    linksNotes: string | null;
-  } | null;
-  calledAt: string | null;
-  graceEndsAt: string | null;
-  startedAt: string | null;
-  slotEndsAt: string | null;
-  myMarks: { submittedAt: string | null; editableUntil: string | null } | null;
-  panelProgress: { total: number; submitted: number } | null;
-}
-
-export interface ConsoleQueue {
-  kind: 'JUDGE' | 'PANEL';
-  id: string;
-  /** Panel name; null for the judge's own queue. */
-  name: string | null;
-  location: string | null;
-  meetingUrl: string | null;
-  isAvailable: boolean;
-  current: JudgeSlot | null;
-  waiting: WaitingEntry[];
-  canCallNext: boolean;
-}
-
-export interface JudgeConsole {
-  eventId: string;
-  /** MENTOR gives written feedback only. */
-  kind: PanelistRole;
-  isAvailable: boolean;
-  location: string | null;
-  meetingUrl: string | null;
-  rounds: { id: string; name: string; status: RoundStatus; kind: RoundKind; judgingMode: JudgingMode; slotMinutes: number; callGraceMinutes: number }[];
-  /** A slot open somewhere, which keeps Call next off. */
-  busy: { requestId: string; status: EvalStatus; teamCode: string | null } | null;
-  queues: ConsoleQueue[];
-  recent: {
-    requestId: string;
-    status: EvalStatus;
-    roundId: string;
-    roundName: string | null;
-    team: QueueTeam | null;
-    closedAt: string | null;
-    submittedAt: string | null;
-    editableUntil: string | null;
-    locked: boolean;
-  }[];
-}
-
-const judgeBase = (eventId: string) => `${base(eventId)}/judge`;
-export const getJudgeConsole = (eventId: string) => call<JudgeConsole>(`${judgeBase(eventId)}/console`);
-export const setJudgeAvailability = (eventId: string, isAvailable: boolean) =>
-  call<JudgeConsole>(`${judgeBase(eventId)}/availability`, json('PATCH', { isAvailable }));
-export const callNextTeam = (eventId: string, panelId?: string) =>
-  call<JudgeConsole>(`${judgeBase(eventId)}/call-next`, json('POST', panelId ? { panelId } : {}));
-export const startSlot = (eventId: string, requestId: string) =>
-  call<JudgeConsole>(`${judgeBase(eventId)}/requests/${requestId}/start`, json('POST'));
-export const markNoShow = (eventId: string, requestId: string) =>
-  call<JudgeConsole>(`${judgeBase(eventId)}/requests/${requestId}/no-show`, json('POST'));
-
-// ── Team: evaluation ─────────────────────────────────────────────────────────
-
-export interface TeamRound {
-  id: string;
-  name: string;
-  order: number;
-  status: RoundStatus;
-  kind: RoundKind;
-  judgingMode: JudgingMode;
-  slotMinutes: number;
-  endAt: string | null;
-  takesPart: boolean;
-  standing: Standing;
-  completed: number;
-  required: number;
-  canRequest: boolean;
-  acceptingRequests: boolean;
-}
-
-export interface TeamRequest {
-  id: string;
-  roundId: string;
-  roundName: string | null;
-  status: EvalStatus;
-  /** 1 = next. Null once called. */
-  position: number | null;
-  waitMinutes: number | null;
-  evaluator: {
-    kind: 'JUDGE' | 'PANEL';
-    name: string;
-    location: string | null;
-    /** Only once the team is called. */
-    meetingUrl: string | null;
-    online: boolean;
-  } | null;
-  requestedAt: string;
-  calledAt: string | null;
-  graceEndsAt: string | null;
-  startedAt: string | null;
-  slotEndsAt: string | null;
-}
-
-export interface MyEvaluation {
-  eventId: string;
-  stage: TeamStage;
-  team: { id: string; teamCode: string | null; name: string };
-  rounds: TeamRound[];
-  openRequest: TeamRequest | null;
-  history: {
-    id: string;
-    roundName: string | null;
-    status: EvalStatus;
-    closedReason: string | null;
-    evaluatorName: string | null;
-    closedAt: string | null;
-  }[];
-}
-
-export interface Evaluator {
-  kind: 'JUDGE' | 'PANEL';
-  /** User id (judge) or panel id. */
-  id: string;
-  name: string;
-  location: string | null;
-  online: boolean;
-  isAvailable: boolean;
-  waiting: number;
-  busy: boolean;
-  waitMinutes: number;
-  alreadyEvaluated: boolean;
-}
-
-export const getMyEvaluation = (eventId: string) => call<MyEvaluation>(`/hackathon/${eventId}/evaluate`);
-export const getEvaluators = (eventId: string, roundId: string) =>
-  call<{ round: { id: string; name: string; kind: RoundKind; judgingMode: JudgingMode; slotMinutes: number }; evaluators: Evaluator[] }>(
-    `/hackathon/${eventId}/rounds/${roundId}/evaluators`,
-  );
-export const requestEvaluation = (eventId: string, roundId: string, pick: { judgeUserId?: string; panelId?: string }) =>
-  call<MyEvaluation>(`/hackathon/${eventId}/rounds/${roundId}/requests`, json('POST', pick));
-export const leaveQueue = (eventId: string, requestId: string) =>
-  call<MyEvaluation>(`/hackathon/${eventId}/requests/${requestId}`, json('DELETE'));
-
 // ── Results & winners (Phase 4) ──────────────────────────────────────────────
 
 export type ScoringMode = 'PER_ROUND' | 'CUMULATIVE';
@@ -929,29 +669,6 @@ export interface SubmissionLink {
   url: string;
 }
 
-export interface MySubmissions {
-  eventId: string;
-  stage: TeamStage;
-  team: { id: string; teamCode: string | null; name: string };
-  rounds: {
-    roundId: string;
-    name: string;
-    kind: RoundKind;
-    status: RoundStatus;
-    /** Links lock then (else when the round closes). */
-    closesAt: string | null;
-    canEdit: boolean;
-    links: SubmissionLink[];
-    notes: string | null;
-    updatedAt: string | null;
-    updatedBy: string | null;
-  }[];
-}
-
-export const getMySubmissions = (eventId: string) => call<MySubmissions>(`/hackathon/${eventId}/submissions`);
-export const saveMySubmission = (eventId: string, roundId: string, input: { links: { label?: string; url: string }[]; notes?: string | null }) =>
-  call<MySubmissions>(`/hackathon/${eventId}/rounds/${roundId}/submission`, json('PUT', input));
-
 export type AnnouncementAudience = 'ALL' | 'TEAMS' | 'JUDGES' | 'ROOM';
 
 export interface Announcements {
@@ -983,22 +700,6 @@ export interface HelpTopics {
   topics: { id: string; name: string; pocs: StaffUser[] }[];
 }
 
-/** A team's view: what it can ask about, its room's volunteers, its queries. */
-export interface MyHelp {
-  topics: { id: string; name: string }[];
-  room: { name: string; volunteers: { name: string | null; avatarUrl: string | null }[] } | null;
-  queries: {
-    id: string;
-    topicName: string;
-    message: string;
-    status: HelpQueryStatus;
-    handledByName: string | null;
-    createdAt: string;
-    acknowledgedAt: string | null;
-    resolvedAt: string | null;
-  }[];
-}
-
 export interface HelpInboxQuery {
   id: string;
   topicName: string;
@@ -1026,9 +727,6 @@ export const updateHelpTopic = (eventId: string, topicId: string, input: { name?
 export const deleteHelpTopic = (eventId: string, topicId: string) =>
   call<HelpTopics>(`${base(eventId)}/help/topics/${topicId}`, json('DELETE'));
 
-export const getMyHelp = (eventId: string) => call<MyHelp>(`/hackathon/${eventId}/help`);
-export const raiseHelpQuery = (eventId: string, input: { topicId: string | null; message: string }) =>
-  call<MyHelp>(`/hackathon/${eventId}/help/queries`, json('POST', input));
 export const getHelpInbox = (eventId: string) => call<HelpInbox>(`/hackathon/${eventId}/help/inbox`);
 export const setHelpQueryStatus = (eventId: string, queryId: string, status: HelpQueryStatus) =>
   call<HelpInbox>(`/hackathon/${eventId}/help/queries/${queryId}/status`, json('POST', { status }));

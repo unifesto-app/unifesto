@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Trash } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default function StatementEditorPage() {
   const [themes, setThemes] = useState<Theme[]>([]);
   const [nextCode, setNextCode] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
-  const initial = useRef(JSON.stringify(EMPTY));
+  const [initial, setInitial] = useState(JSON.stringify(EMPTY));
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -50,7 +50,7 @@ export default function StatementEditorPage() {
         themeId: found.theme?.id ?? "",
         maxTeams: found.maxTeams != null ? String(found.maxTeams) : "",
       };
-      initial.current = JSON.stringify(d);
+      setInitial(JSON.stringify(d));
       setStatement(found);
       setDraft(d);
     });
@@ -64,7 +64,7 @@ export default function StatementEditorPage() {
   const back = { href: listHref, label: "Problem statements" };
   if (!draft) return <HackPage eventId={eventId} back={back} title={title} error={error} ready={false} />;
 
-  const dirty = isNew || JSON.stringify(draft) !== initial.current;
+  const dirty = isNew || JSON.stringify(draft) !== initial;
 
   const save = async () => {
     if (!draft.title.trim()) return setError("Give the problem statement a title.");
