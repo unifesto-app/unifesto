@@ -31,13 +31,13 @@ someone asks for one.
 
 | Area | Mobile screen(s) | Backend | Web phase |
 |---|---|---|---|
-| Space tracking | `manage/space/tracking` (SpaceTrackingScreen) | exists | 2 |
-| Event tracking + links | `manage/event/tracking` | exists | 2 |
-| Event partners | `manage/event/partners` | exists | 2 |
-| Attendees by source | `manage/event/source` | exists | 2 |
+| Space tracking | `manage/space/tracking` (SpaceTrackingScreen) | exists | 2 (done) |
+| Event tracking + links | `manage/event/tracking` | exists | 2 (done) |
+| Event partners | `manage/event/partners` | exists | 2 (done) |
+| Attendees by source | `manage/event/source` | exists | 2 (done) |
 | Per-event payout request | `manage/event/payout` (RequestPayoutScreen) | exists | 3 |
 | Unifesto Stay (stays, options, bookings, booking detail, pass desk) | `manage/event/stay*`, `stays`, `stay-scan` | `/events/:id/stays*`, `/stay-bookings*`, `/stay-pass/:code` | 4 |
-| Hackathon curator suite (judges, rooms, themes, statements, teams, rounds/criteria, queues, help topics, results, winners, awards, announce, certificates) | `manage/event/hackathon/**` (19 screens) | exists | 5, needs a decision |
+| Hackathon curator suite | `manage/event/hackathon/**` | exists | 2 (done) |
 
 Already at parity: members, sub-spaces, settings, billing, white-label, sponsors and
 tiers, leads, financials/payouts/refunds/bank accounts, support, event tickets,
@@ -45,9 +45,26 @@ attendees (add, import, detail), check-in, coupons, waitlist, RSVPs, WhatsApp,
 co-hosting, content, sub-events, occurrences (mobile "series dates"), team,
 certificates, reports, transactions, settings.
 
-## Phase 2: tracking and partners
-Space tracking page in the "Grow" nav group; event Tracking + Partners tabs in
-`EventNav`; source drill-down linking to the existing attendee detail.
+## Phase 2: tracking, partners and Unifesto Sprint (DONE, this branch)
+
+Shared plumbing: `lib/api/call.ts` gives the web the same `Result<T>` `call()`
+contract as mobile, so `lib/api/tracking.ts`, `traffic.ts` and `hackathon.ts`
+are copies of the mobile clients (hackathon trimmed to curator routes).
+`components/shared/ListGroup.tsx` is the web twin of mobile's SettingsGroup.
+
+- Tracking: space `/dashboard/tracking` (traffic, most viewed, sources with
+  per-event split, short links, tagged links); event `/tracking` + `/tracking/source`
+  drill-down; event `/partners`. Nav: space "Community › Tracking", event "Grow".
+- Sprint (curator side of every `manage/event/[eventId]/hackathon/**` screen),
+  under `/dashboard/events/[eventId]/hackathon`: hub (on/off, import teams),
+  settings, teams + team + team statement, statements + editor, themes, rounds
+  + round (criteria edited inline), judges/mentors + editor, panels, live queues,
+  results + team results (CSV download), winners + award editor, announcements,
+  help topics, help desk, rooms + room editor, certificates. Nav: event
+  "Experience › Sprint" (gated `event:manage-attendees`, plan gate shown in-page).
+- Live pages (round, queues, results, help desk) poll every 10 s and on focus;
+  mobile uses the `/leaderboard` socket. Add socket.io-client if that's too slow.
+- Judge console and team screens stay app-only.
 
 ## Phase 3: per-event payout request
 A "Request payout" action on the event money view, reusing `components/finance`.
@@ -56,8 +73,3 @@ A "Request payout" action on the event money view, reusing `components/finance`.
 Event "Stay" section: stays list/editor (cover, gallery, options, questions),
 bookings queue with approve/reject/mark-paid/check-in/out, and a pass desk
 (typed pass code; add camera scan only if desks ask for it).
-
-## Phase 5: hackathon curator suite (decision needed)
-`docs/hackathon-dashboard-plan.md` deliberately put curator management in
-**mobile only** ("Websites are not extended"). Porting the 19 screens reverses
-that. Confirm before starting; if yes, start with teams + judges + results.
