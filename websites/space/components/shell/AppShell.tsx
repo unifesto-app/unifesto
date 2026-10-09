@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             width={64}
             height={26}
             priority
-            className="h-7 w-auto"
+            className="wordmark h-7 w-auto"
           />
           <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
             Space

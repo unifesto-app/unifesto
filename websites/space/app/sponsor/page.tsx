@@ -319,7 +319,7 @@ function BoothScanPanel({
         {feedback && (
           <p
             className={`flex items-center gap-1.5 text-sm ${
-              feedback.ok ? "text-[hsl(142_71%_29%)]" : "text-destructive"
+              feedback.ok ? "text-success" : "text-destructive"
             }`}
           >
             {feedback.ok && <CheckCircle className="h-4 w-4" weight="fill" />}

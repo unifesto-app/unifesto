@@ -20,7 +20,7 @@ export function PageHeader({ title, subtitle, eyebrow, actions }: PageHeaderProp
     <header className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
         {eyebrow && <p className="text-eyebrow mb-1">{eyebrow}</p>}
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="font-display text-xl leading-snug text-foreground sm:text-2xl">
           {title}
         </h1>
         {subtitle && (

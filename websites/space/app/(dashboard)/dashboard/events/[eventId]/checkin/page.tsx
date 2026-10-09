@@ -623,7 +623,7 @@ function ScanAndSearchCard({
               "rounded-md border px-3 py-2 text-sm",
               result.ok
                 ? "border-success/30 bg-success-soft text-success"
-                : "border-destructive/30 bg-destructive-soft text-[hsl(358_65%_44%)]"
+                : "border-destructive/30 bg-destructive-soft text-destructive"
             )}
           >
             {result.msg}

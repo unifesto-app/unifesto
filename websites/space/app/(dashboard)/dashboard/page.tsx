@@ -331,7 +331,7 @@ export default function SpaceDashboardPage() {
                           href={`/dashboard/events/${e.id}/edit`}
                           className="flex items-center gap-3 p-3.5 transition-colors hover:bg-muted/60"
                         >
-                          <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-warning-soft text-[hsl(32_95%_34%)]">
+                          <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-warning-soft text-warning">
                             <PencilSimple className="h-4 w-4" weight="duotone" />
                           </span>
                           <div className="min-w-0 flex-1">

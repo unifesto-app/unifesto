@@ -263,9 +263,9 @@ export default function SpaceSettingsPage() {
       />
 
       {!canEdit && (
-        <Card className="border-amber-200 bg-amber-50">
+        <Card className="border-warning/30 bg-warning-soft">
           <CardContent className="py-4">
-            <p className="text-sm text-amber-800">
+            <p className="text-sm text-warning">
               You need Space Admin permissions to edit space settings.
             </p>
           </CardContent>
@@ -562,7 +562,7 @@ export default function SpaceSettingsPage() {
               <div className="flex-1">
                 {saveError && <ErrorNotice message={saveError} />}
                 {saveSuccess && (
-                  <div className="flex items-center gap-2 rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">
+                  <div className="flex items-center gap-2 rounded-md bg-success-soft px-3 py-2 text-sm text-success">
                     <CheckCircle className="h-4 w-4" weight="fill" />
                     Changes saved successfully
                   </div>

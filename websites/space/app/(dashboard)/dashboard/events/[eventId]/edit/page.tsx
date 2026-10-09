@@ -566,7 +566,7 @@ export default function EditEventPage() {
                 />
               </div>
               {event && form.slug !== event.slug && (
-                <p className="text-xs text-amber-600 dark:text-amber-500">
+                <p className="text-xs text-warning">
                   Changing the slug changes this event&apos;s public link. Old
                   links, QR codes and shares pointing to the previous URL will
                   stop working.

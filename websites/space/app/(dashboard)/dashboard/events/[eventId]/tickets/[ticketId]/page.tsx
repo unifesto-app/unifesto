@@ -304,7 +304,7 @@ export default function TicketDetailPage() {
 
       {error && <ErrorNotice message={error} />}
       {saved && (
-        <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+        <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success-soft px-3 py-2 text-sm text-success">
           <CheckCircle className="h-4 w-4" weight="fill" />
           Ticket details saved
         </div>
@@ -430,7 +430,7 @@ export default function TicketDetailPage() {
               })}
             </div>
             {savedBlocks && (
-              <div className="flex items-center gap-2 text-sm text-green-700">
+              <div className="flex items-center gap-2 text-sm text-success">
                 <CheckCircle className="h-4 w-4" weight="fill" />
                 Restrictions saved
               </div>

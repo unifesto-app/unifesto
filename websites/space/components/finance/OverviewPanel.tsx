@@ -43,10 +43,10 @@ const moneyShort = (v: number) => {
 };
 
 const C = {
-  blue: "hsl(221 83% 53%)",
-  green: "hsl(142 71% 45%)",
-  grid: "hsl(240 6% 90%)",
-  axis: "hsl(240 4% 46%)",
+  blue: "hsl(var(--primary))",
+  green: "hsl(var(--success))",
+  grid: "hsl(var(--border))",
+  axis: "hsl(var(--muted-foreground))",
 };
 
 interface TooltipEntry {
@@ -205,7 +205,7 @@ export function OverviewPanel({
                     width={48}
                     tick={{ fill: C.axis, fontSize: 12 }}
                   />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(240 5% 96%)" }} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: "hsl(var(--muted))" }} />
                   <Bar dataKey="total" name="Paid out" fill={C.blue} radius={[4, 4, 0, 0]} maxBarSize={44} />
                 </BarChart>
               </ResponsiveContainer>
@@ -382,7 +382,7 @@ function Connector({ direction }: { direction: "in" | "out" }) {
   // Left ribbon flows in blue, right ribbon in green.
   const color = direction === "in" ? C.blue : C.green;
   // Brighter tint for the light coursing along the lines.
-  const lightColor = direction === "in" ? "hsl(221 100% 72%)" : "hsl(142 70% 62%)";
+  const lightColor = direction === "in" ? "hsl(var(--primary))" : "hsl(var(--success))";
 
   // The band spans the full row height on the side-node edge and the (shorter)
   // middle-node height on the waist edge. Each streamline interpolates between

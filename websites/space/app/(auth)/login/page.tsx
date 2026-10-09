@@ -91,7 +91,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-md">
         <CardHeader className="pb-6">
           <Image
@@ -100,7 +100,7 @@ function LoginForm() {
             width={70}
             height={28}
             priority
-            className="-ml-1 h-10 w-30"
+            className="wordmark -ml-1 h-10 w-30"
           />
           <div className="space-y-1">
             <CardTitle className="text-xl">Sign in to your space</CardTitle>
@@ -113,7 +113,7 @@ function LoginForm() {
           {error && (
             <div
               role="alert"
-              className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-[hsl(358_65%_44%)]"
+              className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive"
             >
               {error}
             </div>
@@ -182,7 +182,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+        <div className="flex min-h-screen items-center justify-center bg-background p-4">
           <Card className="w-full max-w-md shadow-md">
             <CardHeader className="space-y-1 pb-6">
               <CardTitle className="text-xl">Space</CardTitle>

@@ -8,7 +8,7 @@ export function ErrorNotice({ message }: { message: string }) {
   return (
     <Card className="border-destructive/30 bg-destructive-soft">
       <CardContent className="py-4">
-        <p className="text-sm text-[hsl(358_65%_44%)]">{message}</p>
+        <p className="text-sm text-destructive">{message}</p>
       </CardContent>
     </Card>
   );
