@@ -18,6 +18,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Emit a self-contained server bundle for lean Docker images.
   output: "standalone",
+  // Skew protection: a tab still running the previous deploy gets a full
+  // reload on its next navigation instead of crashing on stale chunks
+  // (React #130). Baked into the standalone build, so stable at runtime.
+  deploymentId: process.env.DEPLOYMENT_ID ?? String(Date.now()),
   // S3 uploads (banners, posters) go through the optimizer via lib/img.ts.
   images: {
     remotePatterns: [{ protocol: "https", hostname: "unifesto-storage-bucket.s3.ap-south-1.amazonaws.com" }],
