@@ -58,20 +58,33 @@ const darkRules = (scope: string, prop: 'background' | 'color' | 'both') =>
 
 const STYLE = `
 :root{color-scheme:light dark;supported-color-schemes:light dark;}
-.logo-dark{display:none;}
+@media (prefers-color-scheme: light){
+.logo-brand{display:none !important;}
+.logo-light{display:block !important;max-height:none !important;}
+}
 @media (prefers-color-scheme: dark){
 ${darkRules('', 'both')}
 .l-line{border-color:${DARK.line} !important;}
-.logo-light{display:none !important;}
+.logo-brand{display:none !important;}
 .logo-dark{display:block !important;max-height:none !important;}
 }
 ${darkRules('[data-ogsb] ', 'background')}
 ${darkRules('[data-ogsc] ', 'color')}
+[data-ogsc] .logo-brand{display:none !important;}
+[data-ogsc] .logo-dark{display:block !important;max-height:none !important;}
 `;
 
 const FONT = `'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif`;
-const LOGO_LIGHT = `${WEB}/email/wordmark-black.png`;
-const LOGO_DARK = `${WEB}/email/wordmark-white.png`;
+// Default logo is a mid-grey wordmark that reads on white and on black, so
+// Gmail (which ignores these media queries and darkens colours itself, leaving
+// images alone) and other CSS-less clients always show a visible logo.
+// Clients that honour the CSS swap it for pure ink (light) or white (dark).
+// Served from www directly: the apex domain 308s, which some clients won't follow.
+const ASSETS = 'https://www.unifesto.app/email';
+const logoImg = (file: string) =>
+  `<img src="${ASSETS}/${file}" width="112" height="16" alt="Unifesto" style="display:block;width:112px;height:16px;border:0;">`;
+const hidden = (cls: string, file: string) =>
+  `<!--[if !mso]><!--><div class="${cls}" style="display:none;max-height:0;overflow:hidden;mso-hide:all;">${logoImg(file)}</div><!--<![endif]-->`;
 
 export function esc(value: unknown): string {
   return String(value ?? '')
@@ -110,8 +123,9 @@ export function layout(body: string, preheader = ''): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
     <tr><td style="padding:0 0 32px;">
       <a href="${WEB}" style="text-decoration:none;">
-        <img class="logo-light" src="${LOGO_LIGHT}" width="112" height="16" alt="Unifesto" style="display:block;width:112px;height:16px;border:0;">
-        <!--[if !mso]><!--><div class="logo-dark" style="display:none;max-height:0;overflow:hidden;mso-hide:all;"><img src="${LOGO_DARK}" width="112" height="16" alt="Unifesto" style="display:block;width:112px;height:16px;border:0;"></div><!--<![endif]-->
+        <div class="logo-brand">${logoImg('wordmark-grey.png')}</div>
+        ${hidden('logo-light', 'wordmark-black.png')}
+        ${hidden('logo-dark', 'wordmark-white.png')}
       </a>
     </td></tr>
     <tr><td class="${soft.cls}" style="font-family:${FONT};font-size:16px;line-height:1.6;${soft.css}">
