@@ -190,7 +190,7 @@ function CopyIdButton({ value }: { value: string }) {
       className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
       {copied ? (
-        <Check className="h-3.5 w-3.5 text-green-600" weight="bold" />
+        <Check className="h-3.5 w-3.5 text-success" weight="bold" />
       ) : (
         <Copy className="h-3.5 w-3.5" />
       )}
@@ -480,7 +480,7 @@ export default function AttendeeDetailPage() {
                   "Unknown"}
               </p>
               {registration.checkedInAt && (
-                <div className="mt-1 flex items-center gap-1 text-sm text-green-600">
+                <div className="mt-1 flex items-center gap-1 text-sm text-success">
                   <CheckCircle className="h-4 w-4" weight="fill" />
                   Checked in {formatDateTime(registration.checkedInAt)}
                 </div>
@@ -664,7 +664,7 @@ export default function AttendeeDetailPage() {
                       >
                         <div className="flex items-center gap-2">
                           <CheckCircle
-                            className="h-4 w-4 text-green-600"
+                            className="h-4 w-4 text-success"
                             weight="fill"
                           />
                           <span className="text-sm font-medium">
@@ -1081,7 +1081,7 @@ export default function AttendeeDetailPage() {
 
               {(registration.paymentStatus === "REFUNDED" ||
                 registration.paymentStatus === "PARTIALLY_REFUNDED") && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700 dark:text-amber-400">
+                <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2.5 text-sm text-warning">
                   <Warning className="mt-0.5 h-4 w-4 flex-shrink-0" weight="fill" />
                   <span>
                     This registration was already refunded. Restoring it gives

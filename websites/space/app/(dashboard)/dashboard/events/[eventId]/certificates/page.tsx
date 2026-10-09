@@ -688,7 +688,7 @@ export default function EventCertificatesPage() {
                 {summary && (
                   <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                     <CheckCircle
-                      className="h-4 w-4 text-emerald-600"
+                      className="h-4 w-4 text-success"
                       weight="fill"
                     />
                     {summary.issued} issued
@@ -711,7 +711,7 @@ export default function EventCertificatesPage() {
                   {reissueMessage && (
                     <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                       <CheckCircle
-                        className="h-4 w-4 text-emerald-600"
+                        className="h-4 w-4 text-success"
                         weight="fill"
                       />
                       {reissueMessage}
@@ -724,7 +724,7 @@ export default function EventCertificatesPage() {
                       {resendSummary && (
                         <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                           <CheckCircle
-                            className="h-4 w-4 text-emerald-600"
+                            className="h-4 w-4 text-success"
                             weight="fill"
                           />
                           {resendSummary.sent} sent

@@ -688,8 +688,8 @@ function SingleAddForm({
         </p>
       )}
       {result && (
-        <div className="rounded-md border border-green-600/30 bg-green-600/5 p-3 text-sm">
-          <p className="flex items-center gap-1.5 font-medium text-green-700">
+        <div className="rounded-md border border-success/30 bg-success-soft p-3 text-sm">
+          <p className="flex items-center gap-1.5 font-medium text-success">
             <CheckCircle className="h-4 w-4" weight="fill" />
             {result.message}
           </p>

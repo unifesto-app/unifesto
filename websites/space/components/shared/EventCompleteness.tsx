@@ -130,7 +130,7 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
     <li className="flex items-center gap-3 py-2.5">
       {item.done ? (
         <CheckCircle
-          className="h-5 w-5 flex-shrink-0 text-[hsl(142_71%_40%)]"
+          className="h-5 w-5 flex-shrink-0 text-success"
           weight="fill"
         />
       ) : (
@@ -193,7 +193,7 @@ export function EventCompleteness({ event }: { event: Event }) {
             <span
               className={cn(
                 "text-2xl font-semibold tabular-nums",
-                complete ? "text-[hsl(142_71%_40%)]" : "text-foreground"
+                complete ? "text-success" : "text-foreground"
               )}
             >
               {pct}%
@@ -205,7 +205,7 @@ export function EventCompleteness({ event }: { event: Event }) {
           <div
             className={cn(
               "h-full rounded-full transition-[width] duration-500 ease-standard",
-              complete ? "bg-[hsl(142_71%_45%)]" : "bg-primary"
+              complete ? "bg-success" : "bg-primary"
             )}
             style={{ width: `${pct}%` }}
           />

@@ -688,7 +688,7 @@ function EventPayoutAccountCard({ eventId }: { eventId: string }) {
                 {saving ? "Saving…" : "Save"}
               </Button>
               {saved && selected === initial && (
-                <span className="text-xs text-[hsl(142_71%_45%)]">Saved</span>
+                <span className="text-xs text-success">Saved</span>
               )}
             </div>
           </>

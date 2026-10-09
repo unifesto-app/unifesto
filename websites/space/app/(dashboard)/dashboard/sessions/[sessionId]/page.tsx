@@ -317,7 +317,7 @@ export default function ManageSessionPage() {
               variant="outline"
               onClick={handleToggleRecording}
               disabled={busy}
-              className="text-[hsl(358_65%_44%)]"
+              className="text-destructive"
             >
               <Stop className="h-4 w-4" weight="fill" />
               Stop recording
@@ -357,7 +357,7 @@ export default function ManageSessionPage() {
             variant="outline"
             onClick={() => setCancelOpen(true)}
             disabled={busy}
-            className="text-[hsl(358_65%_44%)]"
+            className="text-destructive"
           >
             <XCircle className="h-4 w-4" />
             Cancel session
@@ -384,7 +384,7 @@ export default function ManageSessionPage() {
             variant="outline"
             onClick={() => setDeleteOpen(true)}
             disabled={busy}
-            className="text-[hsl(358_65%_44%)]"
+            className="text-destructive"
           >
             <Trash className="h-4 w-4" />
             Delete permanently
@@ -572,7 +572,7 @@ export default function ManageSessionPage() {
                       size="sm"
                       onClick={() => handleRemoveCoHost(c.userId)}
                       disabled={busy}
-                      className="text-[hsl(358_65%_44%)]"
+                      className="text-destructive"
                     >
                       <Trash className="h-4 w-4" />
                       Remove
@@ -655,7 +655,7 @@ export default function ManageSessionPage() {
             <Button
               onClick={handleCancel}
               disabled={busy}
-              className="bg-[hsl(358_65%_44%)] text-white hover:bg-[hsl(358_65%_38%)]"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {busy ? "Cancelling…" : "Cancel & refund"}
             </Button>
@@ -725,7 +725,7 @@ export default function ManageSessionPage() {
             <Button
               onClick={handleDelete}
               disabled={busy}
-              className="bg-[hsl(358_65%_44%)] text-white hover:bg-[hsl(358_65%_38%)]"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {busy ? "Deleting…" : "Delete permanently"}
             </Button>

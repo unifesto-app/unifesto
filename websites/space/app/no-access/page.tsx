@@ -81,7 +81,7 @@ export default function NoAccessPage() {
 
   if (status === "checking") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
         <div className="w-full max-w-md space-y-3 text-center">
           <Skeleton className="mx-auto h-8 w-32" />
           <Skeleton className="mx-auto h-4 w-56" />
@@ -91,7 +91,7 @@ export default function NoAccessPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md shadow-md">
         <CardHeader className="space-y-4 pb-6">
           <Image
@@ -100,7 +100,7 @@ export default function NoAccessPage() {
             width={70}
             height={28}
             priority
-            className="-ml-1 h-10 w-30"
+            className="wordmark -ml-1 h-10 w-30"
           />
           <div
             aria-hidden

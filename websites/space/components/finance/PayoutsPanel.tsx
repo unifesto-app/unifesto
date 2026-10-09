@@ -182,8 +182,11 @@ export function PayoutsPanel() {
   );
 }
 
-/** Request a payout for one ended event — full remaining balance or a custom net amount. */
-function RequestPayoutDialog({
+/**
+ * Request a payout for one event — full remaining balance or a custom net
+ * amount. Also opened from the event's Transactions page (mobile parity).
+ */
+export function RequestPayoutDialog({
   event,
   onClose,
   onDone,

@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { Michroma, Hanken_Grotesk, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
-const agrandir = localFont({
-  src: "./assets/fonts/Agrandir/Agrandir-Regular.otf",
-  variable: "--font-agrandir",
+// Cosmos type, same as unifesto.app: Michroma for titles, Hanken for UI.
+const michroma = Michroma({
+  weight: "400",
+  variable: "--font-michroma",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const martian = Martian_Mono({
+  variable: "--font-martian",
+  preload: false,
+  subsets: ["latin"],
   display: "swap",
 });
 
@@ -18,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
       <body
-        className={`${agrandir.variable} font-sans antialiased min-h-full flex flex-col`}
+        className={`${michroma.variable} ${hanken.variable} ${martian.variable} font-sans antialiased min-h-full flex flex-col`}
       >
         {children}
       </body>

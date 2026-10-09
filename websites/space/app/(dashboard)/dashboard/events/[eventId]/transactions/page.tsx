@@ -28,6 +28,9 @@ import type {
   ExportFormat,
 } from "@/lib/api/registrations-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { RequestPayoutDialog } from "@/components/finance/PayoutsPanel";
+import { useSession } from "@/lib/context/SessionContext";
+import { can } from "@/lib/types/rbac";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { StatCard } from "@/components/shared/StatCard";
 import { Button } from "@/components/ui/button";
@@ -158,6 +161,8 @@ export default function EventTransactionsPage() {
   const [ticketFilter, setTicketFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
+  const [payoutOpen, setPayoutOpen] = useState(false);
+  const { currentRole } = useSession();
   // Whether this space's plan includes bulk export. `undefined` until the
   // space's plan resolves; the ExportMenu keeps the button live meanwhile.
   const [canExport, setCanExport] = useState<boolean | undefined>(undefined);
@@ -268,14 +273,22 @@ export default function EventTransactionsPage() {
         title="Transactions"
         subtitle="View payment transactions and refunds"
         actions={
-          <ExportMenu
-            onExport={handleExport}
-            exporting={exporting}
-            disabled={loading || transactions.length === 0}
-            canExport={canExport}
-          />
+          <div className="flex flex-wrap gap-2">
+            {event && can(currentRole, "space:manage-money") && (
+              <Button variant="outline" onClick={() => setPayoutOpen(true)}>
+                Request payout
+              </Button>
+            )}
+            <ExportMenu
+              onExport={handleExport}
+              exporting={exporting}
+              disabled={loading || transactions.length === 0}
+              canExport={canExport}
+            />
+          </div>
         }
       />
+      <RequestPayoutDialog event={payoutOpen ? event : null} onClose={() => setPayoutOpen(false)} onDone={() => setPayoutOpen(false)} />
 
       {error && <ErrorNotice message={error} />}
 

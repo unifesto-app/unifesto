@@ -415,7 +415,7 @@ export default function EventRegistrationsPage() {
                         {reg.paymentStatus}
                       </Badge>
                       {reg.checkedInAt && (
-                        <div className="flex items-center gap-1 text-xs text-green-600">
+                        <div className="flex items-center gap-1 text-xs text-success">
                           <CheckCircle className="h-3 w-3" weight="fill" />
                           Checked in
                         </div>
