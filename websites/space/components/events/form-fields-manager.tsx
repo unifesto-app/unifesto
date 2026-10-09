@@ -131,21 +131,50 @@ function configFrom(d: FieldDraft): FormFieldConfig | null {
   return Object.keys(c).length ? c : null;
 }
 
-/** Manage one ticket type's custom registration form (extra questions). */
+/** What a saved question sends; `order` only on create. */
+export interface QuestionPayload {
+  label: string;
+  type: FormFieldType;
+  options: string[];
+  isRequired: boolean;
+  perGroup: boolean;
+  helpText: string | null;
+  config: FormFieldConfig | null;
+  showIf: { fieldId: string; anyOf: string[] } | null;
+  order?: number;
+}
+
+type StoreResult = Promise<{ error: { message: string } | null }>;
+
+/** Where questions are saved. Defaults to the ticket's registration form; stays pass their own. */
+export interface QuestionStore {
+  create: (body: QuestionPayload) => StoreResult;
+  update: (id: string, body: QuestionPayload) => StoreResult;
+  remove: (id: string) => StoreResult;
+}
+
+/** Manage one ticket type's custom registration form (extra questions), or another question list via `store`. */
 export function FormFieldsManager({
   eventId,
   ticketTypeId,
   fields,
   isGroup,
   onChanged,
+  store,
 }: {
   eventId: string;
-  ticketTypeId: string;
+  ticketTypeId?: string;
   fields: EventFormField[];
   /** GROUP ticket → expose the "ask per member vs once per team" choice. */
   isGroup: boolean;
   onChanged: () => Promise<void>;
+  store?: QuestionStore;
 }) {
+  const api: QuestionStore = store ?? {
+    create: (b) => createFormField(eventId, { ticketTypeId: ticketTypeId!, ...b, order: b.order ?? fields.length }),
+    update: (id, b) => updateFormField(eventId, id, b),
+    remove: (id) => deleteFormField(eventId, id),
+  };
   const [draft, setDraft] = useState<FieldDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -206,13 +235,7 @@ export function FormFieldsManager({
           ? { fieldId: draft.showIfField, anyOf: draft.showIfAnyOf }
           : null,
     };
-    const { error } = draft.id
-      ? await updateFormField(eventId, draft.id, payload)
-      : await createFormField(eventId, {
-          ticketTypeId,
-          order: fields.length,
-          ...payload,
-        });
+    const { error } = draft.id ? await api.update(draft.id, payload) : await api.create({ ...payload, order: fields.length });
     setBusy(false);
     if (error) {
       setErr(error.message);
@@ -228,7 +251,7 @@ export function FormFieldsManager({
       ? ` ${dependents} question${dependents > 1 ? "s" : ""} shown only for its answers will always show.`
       : "";
     if (!confirm(`Delete this question?${note}`)) return;
-    const { error } = await deleteFormField(eventId, f.id);
+    const { error } = await api.remove(f.id);
     if (error) setErr(error.message);
     else await onChanged();
   };

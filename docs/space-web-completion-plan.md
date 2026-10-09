@@ -35,8 +35,8 @@ someone asks for one.
 | Event tracking + links | `manage/event/tracking` | exists | 2 (done) |
 | Event partners | `manage/event/partners` | exists | 2 (done) |
 | Attendees by source | `manage/event/source` | exists | 2 (done) |
-| Per-event payout request | `manage/event/payout` (RequestPayoutScreen) | exists | 3 |
-| Unifesto Stay (stays, options, bookings, booking detail, pass desk) | `manage/event/stay*`, `stays`, `stay-scan` | `/events/:id/stays*`, `/stay-bookings*`, `/stay-pass/:code` | 4 |
+| Per-event payout request | `manage/event/payout` (RequestPayoutScreen) | exists | 3 (done) |
+| Unifesto Stay (stays, options, bookings, booking detail, pass desk) | `manage/event/stay*`, `stays`, `stay-scan` | `/events/:id/stays*`, `/stay-bookings*`, `/stay-pass/:code` | 4 (done) |
 | Hackathon curator suite | `manage/event/hackathon/**` | exists | 2 (done) |
 
 Already at parity: members, sub-spaces, settings, billing, white-label, sponsors and
@@ -66,10 +66,19 @@ are copies of the mobile clients (hackathon trimmed to curator routes).
   mobile uses the `/leaderboard` socket. Add socket.io-client if that's too slow.
 - Judge console and team screens stay app-only.
 
-## Phase 3: per-event payout request
-A "Request payout" action on the event money view, reusing `components/finance`.
+## Phase 3: per-event payout request (DONE)
+"Request payout" on the event's Transactions page (gated `space:manage-money`),
+reusing the existing `RequestPayoutDialog` from `components/finance/PayoutsPanel.tsx`.
 
-## Phase 4: Unifesto Stay
-Event "Stay" section: stays list/editor (cover, gallery, options, questions),
-bookings queue with approve/reject/mark-paid/check-in/out, and a pass desk
-(typed pass code; add camera scan only if desks ask for it).
+## Phase 4: Unifesto Stay (DONE)
+`lib/api/stays.ts` = mobile's client trimmed to team routes (cover/gallery via
+FormData). Under `/dashboard/events/[eventId]/stays`: hub (stats, property desk
+pass lookup, stays list), stay editor (cover + gallery, property, dates, booking
+rules, rooms and beds edited inline, questions via `FormFieldsManager` with a new
+`store` prop), bookings (tabs, search, guest-list CSV) and booking detail
+(approve/decline, room + team note, mark paid, check in/out, cancel with optional
+refund, guest IDs through signed links). Crew (no `event:manage-attendees`) get
+desk mode, as on mobile. The pass desk is typed or a handheld scanner, no camera;
+add one if desks ask for it.
+
+All mobile manage screens now have a space-web page.

@@ -24,6 +24,7 @@ import {
   ChartLineUp,
   Handshake,
   Trophy,
+  Bed,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
@@ -85,6 +86,8 @@ const NAV_GROUPS: EventNavGroup[] = [
       { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", feature: "hasCertificates" },
       // Unifesto Sprint (hackathon mode). Plan gating is shown in-page.
       { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-attendees" },
+      // Unifesto Stay. Crew get the property desk; setup and approvals are gated in-page.
+      { href: "/stays", label: "Stay", icon: Bed, requires: "event:check-in" },
     ],
   },
   {
