@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeft } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -291,4 +291,26 @@ export function StatementCard({
   ) : (
     <div className={cls}>{body}</div>
   );
+}
+
+/**
+ * Keep a page live: re-run `onTick` every 10 s while the tab is visible and on
+ * refocus. Mobile has a socket for this; the web has no socket.io client.
+ * ponytail: polling, add the /leaderboard socket if curators need sub-10 s updates.
+ */
+export function useLivePoll(onTick: () => void, enabled = true) {
+  const cb = useRef(onTick);
+  useEffect(() => {
+    cb.current = onTick;
+  });
+  useEffect(() => {
+    if (!enabled) return;
+    const tick = () => document.visibilityState === "visible" && cb.current();
+    const id = setInterval(tick, 10_000);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("focus", tick);
+    };
+  }, [enabled]);
 }
