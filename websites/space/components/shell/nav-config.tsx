@@ -16,6 +16,7 @@ import {
   EnvelopeSimple,
   Handshake,
   Funnel,
+  ChartLineUp,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
@@ -61,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/email", label: "Email", icon: EnvelopeSimple, requires: "space:manage-email", keywords: "campaigns templates marketing" },
       { href: "/sponsors", label: "Sponsors", icon: Handshake, requires: "space:manage-sponsors", keywords: "sponsors partners tiers" },
       { href: "/leads", label: "Leads", icon: Funnel, requires: "space:manage-sponsors", keywords: "leads funnel interest inquiry notify crm" },
+      { href: "/tracking", label: "Tracking", icon: ChartLineUp, keywords: "traffic utm short links sources analytics views" },
     ],
   },
   {

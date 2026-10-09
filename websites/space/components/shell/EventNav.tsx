@@ -21,6 +21,8 @@ import {
   ArrowsClockwise,
   Tag,
   WhatsappLogo,
+  ChartLineUp,
+  Handshake,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
@@ -66,6 +68,13 @@ const NAV_GROUPS: EventNavGroup[] = [
     items: [
       { href: "/transactions", label: "Transactions", icon: Receipt, requires: "event:publish" },
       { href: "/reports", label: "Reports", icon: ChartBar, requires: "event:publish", feature: "hasAnalytics" },
+    ],
+  },
+  {
+    label: "Grow",
+    items: [
+      { href: "/tracking", label: "Tracking", icon: ChartLineUp },
+      { href: "/partners", label: "Partners", icon: Handshake },
     ],
   },
   {
