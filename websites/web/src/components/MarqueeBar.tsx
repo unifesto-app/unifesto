@@ -1,12 +1,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-// Every ACTIVE public space, re-read at most every 10 minutes (ISR).
+// Every ACTIVE top-level public space (sub-spaces skipped), re-read at most every 10 minutes (ISR).
 async function activeSpaceNames(): Promise<string[]> {
   try {
     const res = await fetch(`${API_URL}/spaces?status=ACTIVE&limit=100`, { next: { revalidate: 600 } });
     if (!res.ok) return [];
-    const { spaces } = (await res.json()) as { spaces?: { name: string }[] };
-    return (spaces ?? []).map((s) => s.name.trim()).filter(Boolean);
+    const { spaces } = (await res.json()) as { spaces?: { name: string; parentSpaceId?: string | null }[] };
+    return (spaces ?? []).filter((s) => !s.parentSpaceId).map((s) => s.name.trim()).filter(Boolean);
   } catch {
     return [];
   }

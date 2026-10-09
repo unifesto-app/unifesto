@@ -135,8 +135,10 @@ export async function getSpaces(
       limit: limit.toString(),
     });
 
-    // The backend only supports listing APPROVED spaces publicly, plus
-    // `search`. Frontend `type`/`is_active` filters are applied client-side.
+    // `is_active` maps to the backend's status=ACTIVE filter; `type` is client-side.
+    if (filters?.is_active) {
+      params.append('status', 'ACTIVE');
+    }
     if (filters?.search) {
       params.append('search', filters.search);
     }
