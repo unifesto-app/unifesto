@@ -551,6 +551,19 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
 }
 @keyframes scan-sweep { to { transform: translateY(56px); } }
 
+/* 404 ticket: glides out of the printer slot in one smooth feed, then
+   VOID slams down and the ticket takes the hit. */
+.print-feed { animation: print-feed 1600ms cubic-bezier(.3, 0, .2, 1) 300ms both; }
+@keyframes print-feed { from { transform: translateX(-100%); } }
+/* The stamp's animation ends on impact; the thud starts right after. */
+.stamp { animation: stamp 300ms cubic-bezier(.55, 0, .9, .4) 2000ms both; }
+@keyframes stamp { from { opacity: 0; transform: scale(2.6); } }
+.stamp-thud { animation: stamp-thud 260ms var(--ease-out-quart) 2300ms both; } /* 2300 = stamp delay + duration */
+@keyframes stamp-thud {
+  40% { transform: translateY(3px) scale(0.995); }
+}
+
+
 /* ─── Cosmos (hero backdrop) ─────────────────────────────────────────── */
 /* Motion map. Entrances: ease-out-expo, long (low-frequency, cinematic),
    staggered so the scene assembles back to front: stars → planet → horizon
@@ -743,6 +756,9 @@ a { text-underline-offset: 0.22em; text-decoration-thickness: 1px; }
   .draw-y,
   .pop,
   .scan-sweep,
+  .print-feed,
+  .stamp,
+  .stamp-thud,
   .success-ring,
   .eyebrow-rule::before,
   .cosmos *,
