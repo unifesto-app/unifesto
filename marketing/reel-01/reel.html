@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unifesto Reel 01 · Bring Unifesto to your college</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Michroma&family=Hanken+Grotesk:wght@300;400;500;600&display=block" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
+<script src="score.js"></script>
+<style>
+  /* Monochrome cosmos (brand-2026): night ground, light type, one silver accent.
+     Stage is 1080x1920 (9:16). Reel safe zones: nothing important above y=160, below y=1480,
+     and the horizon lives in the bottom band that app chrome covers. */
+  :root {
+    --ink:#ececee; --muted:#8a8a90; --night2:#0a0a0b; --night3:#141416; --accent:#e8e8ea;
+    --line: rgb(255 255 255 / .12);
+    --silver: linear-gradient(180deg,#ffffff 0%,#e4e4e8 50%,#a6a6ad 100%);
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:#000; overflow:hidden; height:100%; }
+  body { font-family:"Hanken Grotesk", system-ui, sans-serif; color:var(--ink); -webkit-font-smoothing:antialiased; }
+  #stage { position:absolute; left:0; top:0; width:1080px; height:1920px; overflow:hidden; background:#000; transform-origin:0 0; }
+
+  /* ---------- cosmos backdrop ---------- */
+  #sky { position:absolute; left:0; top:0; width:1080px; height:1920px; }
+  /* The horizon (planet, rim light, glows, sunrise) is drawn on the canvas, see "horizon" in the script. It follows the brand CSS:
+     an ellipse 140% wide and 1250px tall, radial-gradient(ellipse at 50% 0%, #1a1a1d, #000 60%),
+     box-shadow 0 -2px 0 rgb(255 255 255/.22), 0 -40px 120px rgb(255 255 255/.08). Drawn per pixel so the gradients are dithered, not banded. */
+
+  /* ---------- brand ---------- */
+  #mark { position:absolute; left:71px; top:168px; height:64px; transform-origin:0 0; }
+
+  /* ---------- type ---------- */
+  .abs { position:absolute; left:84px; right:84px; }
+  .display { font-family:"Michroma", sans-serif; font-weight:400; letter-spacing:.01em; line-height:1.14; }
+  .ln { display:block; overflow:hidden; padding:.12em 0 .24em; margin:-.12em 0 -.24em; white-space:nowrap; }
+  .in { display:block; position:relative; }
+  .lede { font-size:46px; line-height:1.38; font-weight:300; text-wrap:balance; }
+  .lede b { font-weight:500; }
+  .w { display:inline-block; white-space:pre; }
+  .slot { display:inline-block; width:.96em; height:.96em; margin-left:.2em; vertical-align:-.14em; }
+  .pill { display:inline-flex; align-items:center; padding:22px 40px; border-radius:999px; font-size:42px; font-weight:500; white-space:nowrap; line-height:1.2; }
+  .pill.solid { background:var(--accent); color:#000; }
+  .pill.ghost { border:2px solid rgb(255 255 255 / .28); background:#0a0a0b; }
+  .card { background:var(--night2); border:1.5px solid var(--line); border-radius:36px; }
+  svg.ico { fill:none; stroke:url(#sg); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; display:block; }
+
+  /* ---------- 1 hook ---------- */
+  #hook { position:absolute; inset:0; }
+  #rocket { position:absolute; width:96px; height:96px; }
+  #rocketFly, #rocketTilt { position:absolute; inset:0; }
+  #rocketTilt svg { width:96px; height:96px; }
+  #trail { position:absolute; left:50%; top:62%; width:8px; height:820px; margin-left:-4px; border-radius:4px; transform-origin:50% 0;
+    background: linear-gradient(to bottom, rgb(255 255 255 / .95), rgb(255 255 255 / .34) 28%, rgb(255 255 255 / 0)); filter: blur(1.4px); }
+  #burn { position:absolute; left:50%; top:74%; width:150px; height:210px; margin:-60px 0 0 -75px; border-radius:50%;
+    background: radial-gradient(closest-side, rgb(255 255 255 / .85), rgb(255 255 255 / .22) 38%, transparent 72%); }
+
+  /* ---------- 2 problem ---------- */
+  #types { transform-origin:0 0; }
+  #tools { display:grid; gap:22px; }
+  .trow { display:flex; align-items:center; gap:16px; height:98px; }
+  .glue { font-size:46px; font-weight:300; color:var(--muted); }
+  .toolwrap { display:inline-block; will-change:transform; }
+  #ring { position:absolute; left:540px; top:1150px; width:1160px; height:1160px; margin:-580px 0 0 -580px; border-radius:50%; border:2px solid rgb(255 255 255 / .8); opacity:0; visibility:hidden; }
+  #flash { position:absolute; left:540px; top:1150px; width:900px; height:900px; margin:-450px 0 0 -450px; border-radius:50%;
+    background: radial-gradient(closest-side, rgb(255 255 255 / .9), rgb(255 255 255 / .22) 34%, transparent 70%); opacity:0; visibility:hidden; }
+
+  /* ---------- 3 solution ---------- */
+  #sol { position:absolute; inset:0; }
+  #space { position:absolute; left:84px; right:84px; top:560px; height:880px; padding:28px 40px; transform-origin:50% 67%; }
+  #uhero { position:absolute; left:540px; top:1150px; width:260px; height:260px; margin:-130px 0 0 -130px; }
+  .feat { position:relative; display:grid; grid-template-columns:112px 1fr; gap:34px; align-items:center; height:206px; }
+  .feat .ic { width:112px; height:112px; border-radius:30px; background:var(--night3); display:grid; place-items:center; }
+  .feat .ic svg { width:58px; height:58px; }
+  .feat b { display:block; font-size:44px; font-weight:600; line-height:1.22; }
+  .feat .sub { display:block; font-size:36px; font-weight:300; color:var(--muted); margin-top:6px; }
+  .feat .sep { position:absolute; left:0; right:0; bottom:0; height:1.5px; background:rgb(255 255 255 / .09); transform-origin:0 50%; }
+
+  /* ---------- 4 steps ---------- */
+  #how { font-size:38px; font-weight:400; color:rgb(255 255 255 / .72); letter-spacing:.01em; }
+  #how::before { content:""; display:block; width:84px; height:2px; background:rgb(255 255 255 / .7); margin-bottom:26px; }
+  #keycap { position:absolute; left:84px; top:414px; width:128px; height:128px; border-radius:30px; border:2px solid rgb(255 255 255 / .3);
+    background: linear-gradient(180deg,#161618,#0a0a0b); overflow:hidden; }
+  #digits span { display:flex; align-items:center; justify-content:center; height:124px; font-family:"Michroma"; font-size:60px;
+    background:var(--silver); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .step { position:absolute; left:84px; right:84px; top:590px; }
+  .goto { display:flex; align-items:center; gap:22px; }
+  .goto .gt { font-size:44px; font-weight:300; color:var(--ink); }
+  .hand { width:62px; height:62px; flex:none; }
+  .hand svg { width:62px; height:62px; transform: rotate(90deg); }
+  .pill.big { font-size:44px; padding:24px 44px; }
+  #statLead { font-size:38px; font-weight:300; color:var(--muted); }
+  #numrow { display:flex; align-items:center; margin-top:10px; }
+  #num { font-size:170px; line-height:1.05; display:flex; }
+  #num i { font-style:normal; display:inline-block; text-align:center; background:var(--silver); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #dots { display:grid; grid-template-columns:repeat(15,10px); gap:18px 17px; margin-left:40px; }
+  #dots u { display:block; width:10px; height:10px; border-radius:50%; background:#fff; }
+  #statRest { font-size:37px; line-height:1.42; font-weight:300; color:var(--muted); margin-top:16px; }
+  #statRest b { font-weight:500; color:var(--ink); }
+  #statRest .nm { display:inline-block; font-weight:500; color:var(--muted); }
+  #appicon { position:absolute; left:0; top:468px; width:280px; height:280px; }
+  #appicon img { width:280px; height:280px; display:block; border-radius:63px; box-shadow:0 0 0 1.5px rgb(255 255 255 / .16); }
+  .notice { display:grid; grid-template-columns:60px 1fr; gap:28px; align-items:start; padding:38px 42px; border-color:rgb(255 255 255 / .3); }
+  .notice svg { width:58px; height:58px; margin-top:2px; }
+  .notice p { font-size:37px; line-height:1.42; font-weight:400; }
+
+  /* ---------- 5 close ---------- */
+  #closeLines { text-align:center; }
+  #closeLines .dim { color:rgb(255 255 255 / .5); }
+  #spark { position:absolute; width:.92em; height:.92em; margin-left:.18em; top:.06em; }
+  #spark svg { width:100%; height:100%; }
+  #closeUrls { display:flex; flex-direction:column; align-items:center; gap:20px; }
+  #fine { position:absolute; left:96px; right:96px; top:1392px; font-size:23px; line-height:1.5; color:var(--muted); text-align:center; text-wrap:balance; }
+
+  /* ---------- preview chrome (not part of the render) ---------- */
+  #play { position:fixed; inset:0; display:none; place-items:center; background:rgb(0 0 0 / .55); color:#fff; font:500 22px "Hanken Grotesk",system-ui; cursor:pointer; z-index:10; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <linearGradient id="sg" gradientUnits="userSpaceOnUse" x1="0" y1="2" x2="0" y2="22"><stop offset="0" stop-color="#ffffff"/><stop offset=".5" stop-color="#e4e4e8"/><stop offset="1" stop-color="#a6a6ad"/></linearGradient>
+</defs></svg>
+
+<div id="stage">
+  <canvas id="sky"></canvas>
+
+  <img id="mark" src="../brand-2026/svg/wordmark-silver.svg" alt="Unifesto">
+
+  <!-- 1 · HOOK — "Bring Unifesto to your college. Power up your events. 🚀" -->
+  <div id="hook">
+    <div id="hookA" class="display abs" style="top:600px; font-size:92px">
+      <span class="ln"><span class="in">Bring Unifesto</span></span>
+      <span class="ln"><span class="in">to your college.</span></span>
+    </div>
+    <div id="hookB" class="display abs" style="top:868px; font-size:92px">
+      <span class="ln"><span class="in">Power up</span></span>
+      <span class="ln"><span class="in">your events.<i id="rocketSlot" class="slot"></i></span></span>
+    </div>
+  </div>
+  <div id="rocket"><div id="rocketFly"><div id="burn"></div><div id="trail"></div><div id="rocketTilt">
+    <svg class="ico" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+  </div></div></div>
+
+  <!-- 2 · PROBLEM — "Fests, hackathons, workshops, club meetups. Your campus runs on events, and running them
+       shouldn’t mean juggling Google Forms, UPI screenshots and WhatsApp groups." -->
+  <div id="types" class="display abs" style="top:560px; font-size:100px">
+    <span class="ln" id="ty1"><span class="in">Fests,</span></span>
+    <span class="ln" id="ty2"><span class="in">hackathons,</span></span>
+    <span class="ln" id="ty3"><span class="in">workshops,</span></span>
+    <span class="ln" id="ty4"><span class="in">club meetups.</span></span>
+  </div>
+  <div id="runs" class="display abs" style="top:556px; font-size:84px">
+    <span class="ln"><span class="in">Your campus</span></span>
+    <span class="ln"><span class="in">runs on events,</span></span>
+  </div>
+  <p id="juggleLine" class="lede abs words" style="top:800px">and running them shouldn’t mean juggling</p>
+  <div id="tools" class="abs" style="top:964px">
+    <div class="trow" id="trow0"><span class="toolwrap"><span class="pill ghost" id="tool1">Google Forms</span></span><span class="glue">,</span></div>
+    <div class="trow" id="trow1"><span class="toolwrap"><span class="pill ghost" id="tool2">UPI screenshots</span></span></div>
+    <div class="trow" id="trow2"><span class="glue">and</span><span class="toolwrap"><span class="pill ghost" id="tool3">WhatsApp groups</span></span><span class="glue">.</span></div>
+  </div>
+  <div id="flash"></div>
+  <div id="ring"></div>
+
+  <!-- 3 · SOLUTION — "With a Unifesto Space, your college gets one place for: …" -->
+  <div id="sol">
+    <div id="solHead" class="display abs" style="top:300px; font-size:60px">
+      <span class="ln"><span class="in">With a Unifesto Space,</span></span>
+      <span class="ln"><span class="in">your college gets</span></span>
+      <span class="ln"><span class="in">one place for:</span></span>
+    </div>
+    <div id="space" class="card">
+      <div class="feat" id="f0">
+        <div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg></div>
+        <div class="ft"><b>Registrations and ticketing,</b><span class="sub">free or paid</span></div><i class="sep"></i>
+      </div>
+      <div class="feat" id="f1">
+        <div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="ft"><b>Team roles</b><span class="sub">for curators, co-curators and crew</span></div><i class="sep"></i>
+      </div>
+      <div class="feat" id="f2">
+        <div class="ic"><svg class="ico" viewBox="0 0 24 24"><rect x="9" y="2" width="12" height="20" rx="2" ry="2"/><path d="M15 18h.01"/><path d="M2 12h10"/><path d="m9 9 3 3-3 3"/></svg></div>
+        <div class="ft"><b>QR check-ins</b><span class="sub">on event day</span></div><i class="sep"></i>
+      </div>
+      <div class="feat" id="f3">
+        <div class="ic"><svg class="ico" viewBox="0 0 24 24"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg></div>
+        <div class="ft"><b>Certificates, reports and payouts,</b><span class="sub">all sorted</span></div>
+      </div>
+    </div>
+  </div>
+
+  <img id="uhero" src="../brand-2026/svg/symbol-silver.svg" alt="">
+
+  <!-- 4 · STEPS — "Here’s how to get started: 1️⃣ … 2️⃣ … 3️⃣ …" -->
+  <p id="how" class="abs" style="top:296px">Here’s how to get started:</p>
+  <div id="keycap"><div id="digits"><span>1</span><span>2</span><span>3</span></div></div>
+
+  <div class="step" id="st1">
+    <div class="display h" style="font-size:62px">
+      <span class="ln"><span class="in">Check if your college</span></span>
+      <span class="ln"><span class="in">is already here.</span></span>
+    </div>
+    <div class="goto" id="goto1" style="margin-top:42px">
+      <span class="gt">Go to</span>
+      <span class="hand"><svg class="ico" viewBox="0 0 24 24"><path d="M22 14a8 8 0 0 1-8 8"/><path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1"/><path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></span>
+      <span class="pill solid big">unifesto.app/spaces</span>
+    </div>
+    <div id="stat" style="margin-top:58px">
+      <p id="statLead" class="words">We’ve already set up Spaces for</p>
+      <div id="numrow"><div id="num" class="display"><i id="d1">7</i><i id="d2">5</i><i id="plus">+</i></div><div id="dots"></div></div>
+      <p id="statRest" class="words"><b>institutions</b> across <b>Andhra Pradesh</b> and <b>Telangana</b>, from <span class="nm nosplit" id="nm0">IIT Hyderabad</span> and <span class="nm nosplit" id="nm1">NIT Warangal</span> to <span class="nm nosplit" id="nm2">Andhra University</span> and <span class="nm nosplit" id="nm3">JNTU</span>.</p>
+    </div>
+  </div>
+
+  <div class="step" id="st2">
+    <div class="display h" style="font-size:96px"><span class="ln"><span class="in">Found it<span style="margin-left:-.13em">?</span></span></span></div>
+    <p class="lede words" style="margin-top:46px">Download the <b>Unifesto app</b> and <b>join your college’s Space</b> to stay on top of every event on campus.</p>
+    <div id="appicon"><div id="appFloat"><img src="../brand-2026/png/app-icon-dark-rounded-1024.png" alt="Unifesto app icon"></div></div>
+  </div>
+
+  <div class="step" id="st3">
+    <div class="display h" style="font-size:96px"><span class="ln"><span class="in">Not listed?</span></span></div>
+    <p class="lede words" style="margin-top:46px">Request your college’s Space today at</p>
+    <div class="goto" id="goto3" style="margin-top:30px">
+      <span class="hand"><svg class="ico" viewBox="0 0 24 24"><path d="M22 14a8 8 0 0 1-8 8"/><path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1"/><path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10"/><path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></span>
+      <span class="pill solid big">unifesto.app/request-space</span>
+    </div>
+    <div class="card notice" id="notice" style="margin-top:64px">
+      <svg class="ico" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      <p>Please inform your college management before you request a Space for your institution.</p>
+    </div>
+  </div>
+
+  <!-- 5 · CLOSE — "Your campus. Your events. One Space. ✨" -->
+  <div id="closeLines" class="display abs" style="top:748px; font-size:72px">
+    <span class="ln" id="cl1"><span class="in dim">Your campus.</span></span>
+    <span class="ln" id="cl2"><span class="in dim">Your events.</span></span>
+    <span class="ln" id="cl3"><span class="in">One Space.<i id="spark"><svg class="ico" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg></i></span></span>
+  </div>
+  <div id="closeUrls" class="abs" style="top:1064px">
+    <span class="pill solid big">unifesto.app/spaces</span>
+    <span class="pill ghost big">unifesto.app/request-space</span>
+  </div>
+
+  <p id="fine">Terms and Conditions and Privacy Policy apply. Spaces for institutions are not affiliated with or endorsed by the institution unless they are marked as verified.</p>
+</div>
+
+<div id="play">Click to play with sound</div>
+<audio id="snd" src="soundtrack.wav" preload="auto"></audio>
+
+<script>
+(() => {
+  const W = 1080, H = 1920;
+  const SC = window.SCORE, B = SC.beats;
+  const BEAT = 60 / SC.bpm, LEAD = SC.lead, DUR = SC.duration;
+  const Tb = b => (b - 1) * BEAT;                 // beat (1-indexed) -> seconds
+  const A  = b => Math.max(0, Tb(b) - LEAD);      // visuals start a hair before the beat so the hit lands with the sound
+  const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), lerp = (a, b, t) => a + (b - a) * t;
+  const stage = $("#stage");
+
+  // Easing: strong custom curves (entrances/exits ease-out, on-screen moves ease-in-out, constant motion linear)
+  gsap.registerPlugin(CustomEase);
+  CustomEase.create("out", "0.23,1,0.32,1");
+  CustomEase.create("inOut", "0.77,0,0.175,1");
+  gsap.defaults({ ease: "out", overwrite: false });
+  const tl = gsap.timeline({ paused: true });
+  const S = { tx: 0, ty: 0, count: 10, dots: 0, j0: 0, j1: 0, j2: 0, jcol: 0, shine: 0, n0: 0, n1: 0, n2: 0, n3: 0,
+              wx: 0, wy: 0, sun: 0, sunS: .55, flare: 0, streak: 0, streakS: .3 };
+
+  // ---------- helpers ----------
+  function stagePos(el) { let x = 0, y = 0; while (el && el !== stage) { x += el.offsetLeft; y += el.offsetTop; el = el.offsetParent; } return { x, y }; }
+  function splitWords(root) {
+    const out = [];
+    (function walk(node) {
+      [...node.childNodes].forEach(ch => {
+        if (ch.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          ch.textContent.split(/(\s+)/).forEach(p => {
+            if (!p) return;
+            if (/^\s+$/.test(p)) frag.appendChild(document.createTextNode(" "));
+            else { const s = document.createElement("span"); s.className = "w"; s.textContent = p; frag.appendChild(s); out.push(s); }
+          });
+          node.replaceChild(frag, ch);
+        } else if (ch.nodeType === 1) { if (ch.classList.contains("nosplit")) out.push(ch); else walk(ch); }
+      });
+    })(root);
+    return out;
+  }
+  const WORDS = new Map();
+  const words = sel => WORDS.get(sel) || (WORDS.set(sel, splitWords($(sel))), WORDS.get(sel));
+  const rise   = (sel, t, o = {}) => tl.fromTo(sel, { yPercent: 112 }, { yPercent: 0, duration: o.dur ?? .7, stagger: o.stagger ?? .085 }, t);
+  const wordsIn = (sel, t, o = {}) => tl.fromTo(words(sel), { autoAlpha: 0, y: o.y ?? 16, filter: "blur(6px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: o.dur ?? .5, stagger: o.stagger ?? .022 }, t);
+  const panIn  = (sel, t, o = {}) => tl.fromTo(sel, { x: o.x ?? 120, autoAlpha: 0, filter: "blur(10px)" }, { x: 0, autoAlpha: 1, filter: "blur(0px)", duration: o.dur ?? .7, stagger: o.stagger ?? .05 }, t);
+  const panOut = (sel, t, o = {}) => tl.to(sel, { x: o.x ?? -120, autoAlpha: 0, filter: "blur(10px)", duration: o.dur ?? .26, stagger: o.stagger ?? .02 }, t);   // exits are faster than entrances
+  const popIn  = (sel, t, o = {}) => tl.fromTo(sel, { autoAlpha: 0, scale: .9 }, { autoAlpha: 1, scale: 1, duration: o.dur ?? .5, ease: o.ease ?? "back.out(1.7)" }, t);
+  function draw(sel, t, dur = .7) {            // line drawing for stroke icons
+    $$(sel + " path, " + sel + " circle, " + sel + " rect").forEach((p, i) => {
+      const len = Math.ceil(p.getTotalLength()) + 1;
+      p.style.strokeDasharray = len;
+      tl.fromTo(p, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: dur, ease: "inOut" }, t + i * .05);
+    });
+  }
+  let TX = 0, TY = 0;
+  const travel = (dx, dy, t, dur) => { TX += dx; TY += dy; tl.to(S, { tx: TX, ty: TY, duration: dur, ease: "inOut" }, t);
+    if (!dy) { tl.to(S, { wx: -dx / 26, duration: dur * .5, ease: "inOut" }, t); tl.to(S, { wx: 0, duration: dur * 1.1 }, t + dur * .5); } };
+
+  // ---------- sky: deterministic starfield with real motion blur ----------
+  const sky = $("#sky"), DPR = window.devicePixelRatio || 1;
+  sky.width = W * DPR; sky.height = H * DPR;
+  const ctx = sky.getContext("2d"); ctx.scale(DPR, DPR);
+  function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const rnd = mulberry32(20261010), PAD = 120, FW = W + PAD * 2, FH = H + PAD * 2;
+  const stars = Array.from({ length: 190 }, () => {
+    const d = Math.pow(rnd(), 2.2);              // most stars far, small and slow
+    return { x: rnd(), y: rnd(), z: .12 + .88 * d, r: .55 + 1.25 * d + .25 * rnd(), a: .22 + .5 * d + .25 * rnd(), f: .25 + rnd() * .9, p: rnd() * 6.283 };
+  }).sort((a, b) => a.z - b.z);
+  const mod = (v, m) => ((v % m) + m) % m;
+
+  // ---------- horizon: every pixel computed in floating point, then dithered to 8 bits (no banding, no tile seams) ----------
+  const PL = { cx: 540, cy: 2125, rx: 756, ry: 625 };            // ellipse whose top touches y = 1500
+  const HZ = { x: -64, y: 1040, w: 1208, h: 890 };               // region the layers cover, with room for camera follow-through
+  let kickGlow = 0; const layers = {};
+  function erfc(x) { const z = Math.abs(x), t = 1 / (1 + .3275911 * z);
+    const y = t * (.254829592 + t * (-.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429)))) * Math.exp(-z * z); return x >= 0 ? y : 2 - y; }
+  function buildHorizon() {
+    const w = Math.round(HZ.w * DPR), hh = Math.round(HZ.h * DPR), n = w * hh;
+    const mk = () => { const c = document.createElement("canvas"); c.width = w; c.height = hh; return c; };
+    const cs = { base: mk(), kick: mk(), flare: mk() }, im = {}, px = {};
+    for (const k in cs) { im[k] = cs[k].getContext("2d").createImageData(w, hh); px[k] = im[k].data; }
+    const rn = mulberry32(1500);                                                                    // dither noise, fixed seed
+    const sd = (x, y, up) => { const X = (x - PL.cx) / PL.rx, Y = (y - PL.cy + up) / PL.ry, e = Math.sqrt(X * X + Y * Y) || 1e-9;
+      return (e - 1) / (Math.sqrt(X * X / (PL.rx * PL.rx) + Y * Y / (PL.ry * PL.ry)) / e); };      // signed distance to the limb, px
+    const cov = d => d < -.5 ? 1 : d > .5 ? 0 : .5 - d;                                             // 1px anti-aliased edge
+    const blur = (d, sigma) => .5 * erfc(d / (sigma * 1.41421356));                                 // gaussian-blurred edge
+    for (let j = 0, i = 0; j < hh; j++) {
+      const y = HZ.y + (j + .5) / DPR;
+      for (let k = 0; k < w; k++, i += 4) {
+        const x = HZ.x + (k + .5) / DPR, body = cov(sd(x, y, 0));
+        // base: body gradient + 2px rim (.22) + soft glow (.08, 40px up, 120px blur)
+        const t = Math.min(1, Math.sqrt(((x - 540) / 1069) ** 2 + ((y - 1500) / 1768) ** 2) / .6);
+        const light = 1 - (1 - .22 * cov(sd(x, y, 2))) * (1 - .08 * blur(sd(x, y, 40), 60));
+        const a = body + (1 - body) * light, u = rn();
+        if (a > 0) { const cr = (body * 26 * (1 - t) + (1 - body) * light * 255) / a, cb = (body * 29 * (1 - t) + (1 - body) * light * 255) / a;
+          px.base[i] = px.base[i + 1] = Math.min(255, Math.floor(cr + u)); px.base[i + 2] = Math.min(255, Math.floor(cb + u)); px.base[i + 3] = Math.min(255, Math.floor(a * 255 + rn())); }
+        if (body < 1) {
+          // kick pulse: brighter rim (.5) + glow (.14, 34px up, 110px blur) — added on top with the beat
+          const kv = (1 - (1 - .5 * cov(sd(x, y, 2))) * (1 - .14 * blur(sd(x, y, 34), 55))) * (1 - body) * 255;
+          px.kick[i] = px.kick[i + 1] = px.kick[i + 2] = Math.min(255, Math.floor(kv + rn())); 
+          // sunrise: 3px rim (.9) + two glows (.34 at 30px/90px blur, .16 at 80px/220px blur)
+          const fv = (1 - (1 - .9 * cov(sd(x, y, 3))) * (1 - .34 * blur(sd(x, y, 30), 45)) * (1 - .16 * blur(sd(x, y, 80), 110))) * (1 - body) * 255;
+          px.flare[i] = px.flare[i + 1] = px.flare[i + 2] = Math.min(255, Math.floor(fv + rn()));
+        }
+        px.kick[i + 3] = px.flare[i + 3] = 255;
+      }
+    }
+    for (const k in cs) { cs[k].getContext("2d").putImageData(im[k], 0, 0); layers[k] = cs[k]; }
+    // sun: an elliptical glow that rises behind the limb (stops as in the brand flare)
+    const sw = Math.round(1560 * DPR), sh2 = Math.round(560 * DPR), sc = document.createElement("canvas"); sc.width = sw; sc.height = sh2;
+    const si = sc.getContext("2d").createImageData(sw, sh2), sp = si.data, stops = [[0, .95], [.08, .5], [.26, .17], [.52, .05], [1, 0]];
+    for (let j = 0, i = 0; j < sh2; j++) for (let k = 0; k < sw; k++, i += 4) {
+      const r = Math.sqrt(((k + .5) / sw * 2 - 1) ** 2 + ((j + .5) / sh2 * 2 - 1) ** 2); let v = 0;
+      for (let s = 0; s < 4; s++) if (r >= stops[s][0] && r < stops[s + 1][0]) { v = lerp(stops[s][1], stops[s + 1][1], (r - stops[s][0]) / (stops[s + 1][0] - stops[s][0])); break; }
+      sp[i] = sp[i + 1] = sp[i + 2] = Math.min(255, Math.floor(v * 255 + rn())); sp[i + 3] = 255;
+    }
+    sc.getContext("2d").putImageData(si, 0, 0); layers.sun = sc;
+    // streak: a thin anamorphic line along the limb
+    const tw = Math.round(1100 * DPR), th = Math.round(28 * DPR), tc = document.createElement("canvas"); tc.width = tw; tc.height = th;
+    const ti = tc.getContext("2d").createImageData(tw, th), tp = ti.data;
+    for (let j = 0, i = 0; j < th; j++) for (let k = 0; k < tw; k++, i += 4) {
+      const ux = Math.abs((k + .5) / tw * 2 - 1), dy = ((j + .5) / DPR - 14) / 2.6, v = .95 * (1 - ux) * Math.exp(-.5 * dy * dy);
+      tp[i] = tp[i + 1] = tp[i + 2] = Math.min(255, Math.floor(v * 255 + rn())); tp[i + 3] = 255;
+    }
+    tc.getContext("2d").putImageData(ti, 0, 0); layers.streak = tc;
+  }
+  function drawHorizon() {
+    const wx = S.wx, wy = S.wy;
+    if (S.sun > .002) { const s = S.sunS; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = Math.min(1, S.sun);
+      ctx.drawImage(layers.sun, 540 - 780 * s + wx, 1506 - 280 * s + wy, 1560 * s, 560 * s); }
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+    ctx.drawImage(layers.base, HZ.x + wx, HZ.y + wy, HZ.w, HZ.h);
+    ctx.globalCompositeOperation = "lighter";
+    if (kickGlow > .002) { ctx.globalAlpha = Math.min(1, kickGlow); ctx.drawImage(layers.kick, HZ.x + wx, HZ.y + wy, HZ.w, HZ.h); }
+    if (S.flare > .002) { ctx.globalAlpha = Math.min(1, S.flare); ctx.drawImage(layers.flare, HZ.x + wx, HZ.y + wy, HZ.w, HZ.h); }
+    if (S.streak > .002) { const s = S.streakS; ctx.globalAlpha = Math.min(1, S.streak); ctx.drawImage(layers.streak, 540 - 550 * s + wx, 1497.5 - 14 + wy, 1100 * s, 28); }
+    ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  }
+  const cam = t => ({ x: 5 * t + S.tx, y: 9 * t + S.ty });
+  function drawSky(t, c0, c1) {
+    ctx.clearRect(0, 0, W, H);
+    ctx.lineCap = "round";
+    for (const s of stars) {
+      const x = mod(s.x * FW - c1.x * s.z, FW) - PAD, y = mod(s.y * FH + c1.y * s.z, FH) - PAD;
+      const dx = -(c1.x - c0.x) * s.z, dy = (c1.y - c0.y) * s.z, len = Math.hypot(dx, dy);
+      const a = Math.min(1, s.a * (.8 + .2 * Math.sin(6.283 * s.f * t + s.p)) * (1 + .9 * S.shine));
+      if (len < 1.4) {
+        ctx.globalAlpha = a; ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, s.r, 0, 6.283); ctx.fill();
+      } else {
+        ctx.globalAlpha = a * clamp(3.2 * s.r / len, .28, 1); ctx.strokeStyle = "#fff"; ctx.lineWidth = s.r * 2;
+        ctx.beginPath(); ctx.moveTo(x - dx, y - dy); ctx.lineTo(x, y); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = 1;
+    drawHorizon();
+  }
+
+  // ---------- custom, time-pure pieces ----------
+  let pills = [], dots = [], kicks = [];
+  const JC = { x: 540, y: 1150, ax: 268, ay: 205 };
+  function juggle(t) {
+    const t0 = Tb(B.tools[0]), span = Tb(B.drop) - t0, e = Math.max(0, t - t0), u = clamp(e / span, 0, 1);
+    const ph = 6.283 * (.62 * e + .5 * u * e);          // the juggle speeds up into the drop
+    const c = S.jcol;
+    pills.forEach((p, i) => {
+      const th = ph + i * 2.0944, w = S["j" + i];
+      let x = lerp(p.x, JC.x + JC.ax * Math.sin(th), w), y = lerp(p.y, JC.y - JC.ay * Math.sin(2 * th), w);
+      x = lerp(x, JC.x, c); y = lerp(y, JC.y, c);
+      p.el.style.transform = `translate(${(x - p.x).toFixed(2)}px,${(y - p.y).toFixed(2)}px) rotate(${(9 * Math.cos(th) * w * (1 - c)).toFixed(2)}deg) scale(${(lerp(1, .8, w) * lerp(1, .5, c)).toFixed(3)})`;
+      p.el.style.opacity = (1 - Math.pow(c, 4)).toFixed(3);
+    });
+  }
+  const NAMED = [8, 27, 40, 66];                       // the four named institutions, as stars in the grid
+  function counter() {
+    const n = clamp(Math.round(S.count), 10, 75);
+    $("#d1").textContent = Math.floor(n / 10); $("#d2").textContent = n % 10;
+    dots.forEach((d, k) => {
+      const a = clamp(S.dots - k, 0, 1), ni = NAMED.indexOf(k), g = ni >= 0 ? S["n" + ni] : 0;
+      d.style.opacity = (.15 + .85 * a).toFixed(3);
+      d.style.transform = `scale(${(.7 + .3 * a + 1.5 * g).toFixed(3)})`;
+      d.style.boxShadow = g > .01 ? `0 0 ${(22 * g).toFixed(1)}px rgb(255 255 255 / ${(.85 * g).toFixed(2)})` : "none";
+    });
+  }
+  function pulse(t) {                                  // the horizon breathes with the kick drum
+    let v = 0;
+    for (const k of kicks) { const d = t - k.t; if (d >= 0 && d < 1.2) v += k.a * Math.min(1, d / .012) * Math.exp(-d / .17); }
+    kickGlow = clamp(.62 * v, 0, 1);
+  }
+
+  // ---------- build ----------
+  function build() {
+    // layout-dependent setup
+    const rs = stagePos($("#rocketSlot")); Object.assign($("#rocket").style, { left: rs.x - 2 + "px", top: rs.y - 4 + "px" });
+    pills = $$(".toolwrap").map(el => { const p = stagePos(el); return { el, x: p.x + el.offsetWidth / 2, y: p.y + el.offsetHeight / 2 }; });
+    const dw = Math.max(...[..."0123456789"].map(c => { $("#d1").textContent = c; return $("#d1").getBoundingClientRect().width / (stage.getBoundingClientRect().width / W); }));
+    $("#d1").style.width = $("#d2").style.width = Math.ceil(dw) + "px";
+    for (let i = 0; i < 75; i++) dots.push($("#dots").appendChild(document.createElement("u")));
+    SC.kicks.ranges.forEach(([a, z]) => { for (let b = a; b <= z; b++) kicks.push({ t: Tb(b), a: b < 17 ? .6 : 1 }); });
+    SC.kicks.hits.forEach(b => kicks.push({ t: Tb(b), a: 1.35 }));
+    SC.kicks.soft.forEach(b => kicks.push({ t: Tb(b), a: .42 }));
+    const mk = $("#mark"), mw0 = mk.offsetWidth, MW = 540, MS = MW / mw0, MX = (W - MW) / 2 - mk.offsetLeft, MY = 520 - mk.offsetTop;
+
+    // ===== 1 · HOOK =====
+    tl.fromTo("#hook", { scale: 1 }, { scale: 1.035, duration: A(7), ease: "none", transformOrigin: "50% 45%" }, 0);
+    rise("#hookA .in", 0, { dur: .85, stagger: .11 });
+    tl.to("#hookA", { opacity: .5, duration: .6 }, A(B.hookB));
+    rise("#hookB .in", A(B.hookB), { dur: .75, stagger: .09 });
+    tl.to(S, { flare: .3, duration: .7 }, A(B.hookB) + .05);                                            // "Power up": the horizon charges…
+    tl.to(S, { flare: 0, duration: .55 }, A(B.rocketLaunch) + .1);                                      // …and the rocket takes the energy with it
+    popIn("#rocket", A(B.hookB) + .3, { dur: .5, ease: "back.out(1.8)" });
+    tl.fromTo("#rocketTilt", { rotate: -12 }, { rotate: 0, duration: .6 }, A(B.hookB) + .3);
+    tl.to("#rocketTilt", { rotate: -38, duration: .34, ease: "inOut" }, A(B.rocketAnticipate));      // anticipation: wind up…
+    tl.to("#rocketFly", { y: 16, duration: .3, ease: "inOut" }, A(B.rocketAnticipate));
+    tl.to("#rocketFly", { x: 96, y: -1560, duration: .64, ease: "power3.in" }, A(B.rocketLaunch));    // …and launch (a rocket accelerates)
+    tl.fromTo("#trail", { autoAlpha: 0, scaleY: .06 }, { autoAlpha: .9, scaleY: 1, duration: .3, ease: "power1.in" }, A(B.rocketLaunch));
+    tl.fromTo("#burn", { autoAlpha: 0, scale: .9 }, { autoAlpha: .55, scale: 1, duration: .22 }, A(B.rocketAnticipate) + .12);          // ignition
+    tl.to("#burn", { autoAlpha: 1, scaleY: 1.5, duration: .3, ease: "power1.in" }, A(B.rocketLaunch));
+    tl.set("#rocket", { autoAlpha: 0 }, A(B.rocketLaunch) + .68);
+    travel(160, 1500, A(B.rocketLaunch) - .04, 1.0);                                                  // the camera follows it up
+    tl.to(S, { wy: 64, duration: .5, ease: "inOut" }, A(B.rocketLaunch) + .02);                      // the horizon drops away, then settles (follow-through)
+    tl.to(S, { wy: 0, duration: .95 }, A(B.rocketLaunch) + .52);
+    tl.to("#hook", { y: 150, autoAlpha: 0, filter: "blur(10px)", duration: .3 }, A(B.rocketLaunch) + .14);
+
+    // ===== 2 · PROBLEM =====
+    B.types.forEach((b, i) => rise(`#ty${i + 1} .in`, A(b), { dur: .55 }));
+    tl.to("#types", { scale: .4, y: -246, opacity: .5, duration: .6, ease: "inOut" }, A(B.compress));
+    rise("#runs .in", A(B.runs), { dur: .7, stagger: .09 });
+    wordsIn("#juggleLine", A(B.juggleLine));
+    B.tools.forEach((b, i) => {
+      popIn(`#tool${i + 1}`, A(b), { dur: .45 });
+      tl.fromTo(`#trow${i} .glue`, { autoAlpha: 0 }, { autoAlpha: 1, duration: .3 }, A(b) + .06);
+      tl.to(S, { ["j" + i]: 1, duration: .6, ease: "inOut" }, A(b) + .3);                              // each tool lifts off into the juggle
+    });
+    tl.to(".glue", { autoAlpha: 0, duration: .3 }, A(B.tools[2]) + .34);
+    tl.to(S, { jcol: 1, duration: Tb(B.drop) - Tb(B.collapse) + .03, ease: "power2.in" }, A(B.collapse));   // …and everything falls into one place
+    tl.to("#types, #runs, #juggleLine", { autoAlpha: 0, filter: "blur(10px)", duration: .24 }, A(B.collapse) + .04);
+
+    // ===== 3 · SOLUTION =====
+    tl.fromTo("#flash", { autoAlpha: .6, scale: .5 }, { autoAlpha: 0, scale: 1.5, duration: .55, immediateRender: false }, A(B.drop));
+    tl.fromTo("#ring", { autoAlpha: .75, scale: .08 }, { autoAlpha: 0, scale: 1, duration: .95, immediateRender: false }, A(B.drop));
+    tl.fromTo("#space", { autoAlpha: 0, scale: .9 }, { autoAlpha: 1, scale: 1, duration: .75 }, A(B.drop));
+    rise("#solHead .in", A(B.drop) + .1, { dur: .7, stagger: .08 });
+    tl.fromTo("#uhero", { autoAlpha: 0, scale: .9, filter: "blur(8px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: .6 }, A(B.drop) + .02);   // three tools become one Space
+    tl.to("#uhero", { autoAlpha: 0, scale: .92, filter: "blur(8px)", duration: .26 }, A(B.rows[0]) - .2);
+    B.rows.forEach((b, i) => {
+      const t = A(b);
+      tl.fromTo(`#f${i} .ic`, { autoAlpha: 0, scale: .9 }, { autoAlpha: 1, scale: 1, duration: .5, ease: "back.out(1.6)" }, t);
+      draw(`#f${i} .ic svg`, t + .04, .65);
+      tl.fromTo(`#f${i} .ft > *`, { autoAlpha: 0, x: 26, filter: "blur(6px)" }, { autoAlpha: 1, x: 0, filter: "blur(0px)", duration: .55, stagger: .07 }, t + .06);
+      if (i < 3) tl.fromTo(`#f${i} .sep`, { scaleX: 0 }, { scaleX: 1, duration: .7, ease: "inOut" }, t + .1);
+    });
+
+    // ===== 4 · STEPS =====
+    panOut("#sol", A(B.steps) - .22);
+    travel(1100, 0, A(B.steps) - .26, .9);
+    panIn(["#how", "#keycap", "#st1"], A(B.steps) - .02);
+    rise("#st1 .h .in", A(B.steps) + .08, { dur: .7, stagger: .08 });
+    const goTo = (id, t) => {
+      if ($(id + " .gt")) tl.fromTo(id + " .gt", { autoAlpha: 0, x: -14 }, { autoAlpha: 1, x: 0, duration: .4 }, t);
+      tl.fromTo(id + " .hand", { autoAlpha: 0, x: -26 }, { autoAlpha: 1, x: 0, duration: .5, ease: "back.out(2)" }, t + .08);
+      tl.fromTo(id + " .pill", { autoAlpha: 0, scale: .94, x: -10 }, { autoAlpha: 1, scale: 1, x: 0, duration: .5, transformOrigin: "0% 50%" }, t + .16);
+      tl.to(id + " .hand", { x: 9, duration: .22, ease: "inOut", yoyo: true, repeat: 3 }, t + .7);     // the hand nudges toward the link
+    };
+    goTo("#goto1", A(B.goto));
+    wordsIn("#statLead", A(B.stat));
+    tl.fromTo("#num", { autoAlpha: 0, y: 22 }, { autoAlpha: 1, y: 0, duration: .4 }, A(B.stat) + .04);
+    tl.fromTo("#dots", { autoAlpha: 0 }, { autoAlpha: 1, duration: .3 }, A(B.stat) + .04);
+    tl.fromTo(S, { count: 10, dots: 0 }, { count: 75, dots: 75, duration: Tb(B.countEnd) - Tb(B.stat), ease: "power2.out" }, A(B.stat) + .04);   // number ticker
+    tl.fromTo("#plus", { autoAlpha: 0, scale: .9, x: -12 }, { autoAlpha: 1, scale: 1, x: 0, duration: .4, ease: "back.out(2.4)" }, A(B.countEnd));
+    wordsIn("#statRest", A(B.statRest), { stagger: .016 });
+    tl.fromTo("#fine", { autoAlpha: 0 }, { autoAlpha: 1, duration: .6 }, A(B.statRest));
+    B.names.forEach((b, i) => {
+      tl.to(`#nm${i}`, { color: "#ffffff", duration: .22 }, A(b));
+      tl.to(S, { ["n" + i]: 1, duration: .14, ease: "power1.out" }, A(b));
+      tl.to(S, { ["n" + i]: .4, duration: .5 }, A(b) + .14);
+    });
+    const stepSwap = (from, to, idx, b) => {
+      panOut(from, A(b) - .24);
+      travel(700, 0, A(b) - .26, .8);
+      tl.to("#digits", { y: -124 * idx, duration: .6, ease: "inOut" }, A(b) - .2);                    // the keycap stays put; only its digit rolls
+      tl.to("#keycap", { scale: 1.06, duration: .18, ease: "power1.inOut", yoyo: true, repeat: 1 }, A(b) - .02);
+      panIn(to, A(b) - .02);
+    };
+    stepSwap("#st1", "#st2", 1, B.step2);
+    rise("#st2 .h .in", A(B.step2) + .06, { dur: .65 });
+    wordsIn("#st2 .lede", A(B.step2) + .2);
+    tl.fromTo("#appicon", { autoAlpha: 0, scale: .9, y: 30 }, { autoAlpha: 1, scale: 1, y: 0, duration: .7 }, A(B.appIcon));
+    tl.to("#appFloat", { y: -12, duration: 1.3, ease: "sine.inOut", yoyo: true, repeat: 1 }, A(B.appIcon) + .35);
+    stepSwap("#st2", "#st3", 2, B.step3);
+    rise("#st3 .h .in", A(B.step3) + .06, { dur: .65 });
+    wordsIn("#st3 .lede", A(B.step3) + .2);
+    goTo("#goto3", A(B.requestPill));
+    tl.fromTo("#notice", { autoAlpha: 0, y: 36, filter: "blur(8px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: .6 }, A(B.notice));
+    draw("#notice svg", A(B.notice) + .08, .7);
+
+    // ===== 5 · CLOSE =====
+    panOut(["#how", "#keycap", "#st3"], A(B.closeStart), { stagger: .03 });
+    travel(1100, 0, A(B.closeStart) - .04, 1.0);
+    tl.to("#mark", { x: MX, y: MY, scale: MS, duration: 1.0, ease: "inOut" }, A(B.closeStart));        // the wordmark travels to centre for the sign-off
+    rise("#cl1 .in", A(B.close[0]), { dur: .55 });
+    rise("#cl2 .in", A(B.close[1]), { dur: .55 });
+    rise("#cl3 .in", A(B.close[2]) - .02, { dur: .6 });
+    tl.fromTo("#spark", { autoAlpha: 0, scale: .9, rotate: -40 }, { autoAlpha: 1, scale: 1, rotate: 0, duration: .6, ease: "back.out(2.6)" }, A(B.close[2]) + .14);
+    tl.to("#spark", { scale: 1.12, rotate: 8, duration: .55, ease: "sine.inOut", yoyo: true, repeat: 1 }, A(B.close[2]) + .78);
+    tl.to(S, { sun: 1, sunS: 1, flare: 1, streak: .9, streakS: 1, duration: .5 }, A(B.close[2]) - .02);              // first light over the horizon
+    tl.to(S, { sun: .6, sunS: 1.08, flare: .7, streak: .4, duration: 1.3, ease: "sine.out" }, A(B.close[2]) + .5);
+    tl.to(S, { shine: 1, duration: .3 }, A(B.close[2])); tl.to(S, { shine: .35, duration: 1.2, ease: "sine.out" }, A(B.close[2]) + .3);
+    tl.to("#fine", { color: "#a2a2a8", duration: .5 }, A(B.close[2]));
+    tl.fromTo("#closeUrls .pill", { autoAlpha: 0, y: 24, scale: .96 }, { autoAlpha: 1, y: 0, scale: 1, duration: .5, stagger: .09 }, A(B.urls));
+
+    tl.to({}, { duration: .001 }, DUR - .001);       // pin the timeline to exactly 30 s
+  }
+
+  // ---------- one frame, as a pure function of time ----------
+  function frame(t) {
+    t = clamp(t, 0, DUR);
+    const sh = 1 / 48, t0 = Math.max(0, t - sh);      // 1/48 s shutter for star streaks
+    tl.seek(t0, true); const c0 = cam(t0);
+    tl.seek(t, true);  const c1 = cam(t);
+    pulse(t); drawSky(t, c0, c1); juggle(t); counter();
+  }
+  window.seek = frame;
+
+  function fit() { const k = Math.min(innerWidth / W, innerHeight / H); stage.style.transform = `scale(${k})`; stage.style.left = (innerWidth - W * k) / 2 + "px"; }
+  const fontsWanted = ['400 40px "Michroma"', '300 40px "Hanken Grotesk"', '400 40px "Hanken Grotesk"', '500 40px "Hanken Grotesk"', '600 40px "Hanken Grotesk"'];
+  window.ready = Promise.all(fontsWanted.map(f => document.fonts.load(f))).then(() => document.fonts.ready).then(() => {
+    fit(); buildHorizon(); build(); frame(0);
+    if (!/[?&]render/.test(location.search)) {       // preview: play in real time with the soundtrack
+      addEventListener("resize", fit);
+      const play = $("#play"), snd = $("#snd"); play.style.display = "grid";
+      play.onclick = () => { play.style.display = "none"; snd.currentTime = 0; snd.play().catch(() => {}); const t0 = performance.now();
+        gsap.ticker.add(() => { const t = snd.paused && !snd.ended && snd.currentTime === 0 ? (performance.now() - t0) / 1000 : snd.currentTime; frame(Math.min(t, DUR)); }); };
+    }
+    return true;
+  });
+})();
+</script>
+</body>
+</html>
