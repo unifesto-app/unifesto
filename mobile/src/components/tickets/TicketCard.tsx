@@ -1,12 +1,12 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, QrCode, UsersThree, XCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import type { MyTicket } from '../../hooks/useMyTickets';
 import Skeleton from '../Skeleton';
+import PressableScale from '../ui/PressableScale';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { countdownLabel, dateChip, formatTime } from '../../utils/eventFormat';
@@ -47,7 +47,6 @@ export default function TicketCard({
   onPress: () => void;
   onLongPress?: () => void;
 }) {
-  const tokens = useTokens();
   const c = useCosmos();
   const defaults = useDefaultImages();
   const status = statusOf(ticket);
@@ -61,25 +60,29 @@ export default function TicketCard({
       case 'countdown':
         return { text: status.label, color: c.primary, bg: c.tint, icon: <View style={[styles.dot, { backgroundColor: c.primary }]} /> };
       case 'checkedIn':
-        return { text: 'Checked in', color: tokens.success, bg: 'rgba(16,185,129,0.14)', icon: <CheckCircle size={11} color={tokens.success} weight="fill" /> };
+        return { text: 'Checked in', color: c.success, bg: 'rgba(16,185,129,0.14)', icon: <CheckCircle size={12} color={c.success} weight="fill" /> };
       case 'cancelled':
-        return { text: 'Cancelled', color: c.danger, bg: 'rgba(239,68,68,0.14)', icon: <XCircle size={11} color={c.danger} weight="fill" /> };
+        return { text: 'Cancelled', color: c.danger, bg: 'rgba(239,68,68,0.14)', icon: <XCircle size={12} color={c.danger} weight="fill" /> };
       default:
         return { text: 'Ended', color: c.muted, bg: c.tint, icon: null };
     }
   })();
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole="button"
-      accessibilityLabel={`Ticket for ${ticket.title}`}
-      accessibilityHint={onLongPress ? 'Long press to delete this ticket' : undefined}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      accessibilityLabel={`${ticket.title}, ${badge.text}, ${chip.day} ${chip.month}, ${venue}`}
+      accessibilityHint="Opens the ticket"
+      // VoiceOver can't long-press; offer delete in the actions rotor instead.
+      accessibilityActions={onLongPress ? [{ name: 'delete', label: 'Delete ticket' }] : undefined}
+      onAccessibilityAction={(e) => e.nativeEvent.actionName === 'delete' && onLongPress?.()}
+      style={[styles.card, { backgroundColor: c.raised }]}
     >
-      <View style={[styles.main, !live && { opacity: 0.62 }]}>
-        <View style={[styles.thumb, { backgroundColor: c.card }]}>
+      <View style={styles.main}>
+        {/* Finished passes recede through the cover only; text keeps full contrast. */}
+        <View style={[styles.thumb, { backgroundColor: c.card }, !live && { opacity: 0.45 }]}>
           {coverOr(defaults, ticket.id, ticket.coverImageUrl) ? (
             <Image source={{ uri: coverOr(defaults, ticket.id, ticket.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
@@ -116,12 +119,12 @@ export default function TicketCard({
         <View style={[styles.notch, styles.notchBottom, { backgroundColor: c.bg }]} />
       </View>
 
-      <View style={[styles.stub, !live && { opacity: 0.62 }]}>
+      <View style={styles.stub}>
         <Text style={[styles.stubDay, { color: live ? c.text : c.soft }]}>{chip.day}</Text>
         <Text style={[styles.stubMonth, { color: live ? c.soft : c.muted }]}>{chip.month}</Text>
         {live ? <QrCode size={18} color={c.soft} style={{ marginTop: 8 }} /> : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -160,9 +163,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   dot: { width: 5, height: 5, borderRadius: 3 },
-  badgeText: { fontSize: 11, ...cosmosFont.strong },
+  badgeText: { fontSize: 12, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
-  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   perfColumn: { width: 1, alignItems: 'center' },
   perf: { flex: 1, borderLeftWidth: 1, borderStyle: 'dashed', marginVertical: NOTCH / 2 + 2 },

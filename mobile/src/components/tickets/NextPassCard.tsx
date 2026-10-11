@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { QrCode, UsersThree } from '@unifesto/unicon/react-native';
@@ -8,6 +8,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import Skeleton from '../Skeleton';
+import PressableScale from '../ui/PressableScale';
 import { countdownLabel, relativeWhen } from '../../utils/eventFormat';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
@@ -21,13 +22,17 @@ export default function NextPassCard({ ticket, onPress }: { ticket: MyTicket; on
   const cover = coverOr(defaults, ticket.id, ticket.coverImageUrl);
   const venue = ticket.venueName || ticket.city || (ticket.type === 'ONLINE' ? 'Online' : 'Venue TBA');
   const typeName = typeof ticket.ticketType === 'string' ? ticket.ticketType : ticket.ticketType?.name;
+  // Past this Dynamic Type scale the footer row would squeeze the venue: stack it.
+  const large = useWindowDimensions().fontScale > LARGE_TEXT;
+  const when = relativeWhen(ticket.startDateTime);
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Open ticket for ${ticket.title}`}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      accessibilityLabel={`${ticket.title}, ${countdownLabel(ticket.startDateTime)}, ${when}, ${venue}`}
+      accessibilityHint="Shows your pass"
+      style={[styles.card, { backgroundColor: c.raised }]}
     >
       <View style={[styles.cover, { backgroundColor: c.card }]}>
         {cover ? (
@@ -62,17 +67,17 @@ export default function NextPassCard({ ticket, onPress }: { ticket: MyTicket; on
         <View style={[styles.notch, styles.notchRight, { backgroundColor: c.bg }]} />
       </View>
 
-      <View style={styles.footer}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.when, { color: c.text }]}>{relativeWhen(ticket.startDateTime)}</Text>
-          <Text style={[styles.venue, { color: c.muted }]} numberOfLines={1}>{venue}</Text>
+      <View style={[styles.footer, large && styles.footerStack]}>
+        <View style={large ? null : { flex: 1 }}>
+          <Text style={[styles.when, { color: c.text }]}>{when}</Text>
+          <Text style={[styles.venue, { color: c.muted }]} numberOfLines={large ? undefined : 1}>{venue}</Text>
         </View>
         <View style={[styles.qr, { backgroundColor: c.primary }]}>
           <QrCode size={16} color={c.primaryFg} weight="bold" />
           <Text style={[styles.qrText, { color: c.primaryFg }]}>Show pass</Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -92,13 +97,14 @@ export function NextPassCardSkeleton() {
           <Skeleton width="45%" height={14} borderRadius={6} />
           <Skeleton width="60%" height={12} borderRadius={6} />
         </View>
-        <Skeleton width={112} height={40} borderRadius={cosmosRadius} />
+        <Skeleton width={112} height={44} borderRadius={cosmosRadius} />
       </View>
     </View>
   );
 }
 
 const NOTCH = 18;
+const LARGE_TEXT = 1.3;
 
 const styles = StyleSheet.create({
   card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
@@ -124,14 +130,17 @@ const styles = StyleSheet.create({
   notchLeft: { left: -NOTCH / 2 },
   notchRight: { right: -NOTCH / 2 },
   footer: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], paddingTop: spacing[2] },
+  footerStack: { flexDirection: 'column', alignItems: 'stretch' },
   when: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   venue: { fontSize: typography.fontSize.sm, marginTop: 2, ...cosmosFont.body },
   qr: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    justifyContent: 'center',
     paddingHorizontal: 14,
-    height: 40,
+    paddingVertical: 8,
+    minHeight: 44,
     borderRadius: cosmosRadius,
   },
   qrText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
