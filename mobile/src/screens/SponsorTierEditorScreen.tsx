@@ -1,22 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Trash } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { createTier, deleteTier, getTiers, HEX_RE, updateTier, type TierInput } from '../lib/api/spaceSponsors';
-import { BlockTitle, FieldRow } from '../components/manage/FormFields';
+import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { borderRadius, spacing } from '../theme/spacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const SWATCH = 40;
 
 /** The usual sponsorship metals, so most tiers are one tap. */
@@ -40,9 +40,8 @@ export default function SponsorTierEditorScreen() {
   const { spaceId, tierId } = useLocalSearchParams<{ spaceId: string; tierId: string }>();
   const isNew = !tierId || tierId === 'new';
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [draft, setDraft] = useState<Draft | null>(null);
   const initial = useRef('');
   const [saving, setSaving] = useState(false);
@@ -116,103 +115,114 @@ export default function SponsorTierEditorScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen>
         <Stack.Screen options={{ title }} />
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+        <View style={styles.pad}>
+          {error ? (
+            <View style={[styles.card, { backgroundColor: c.raised }]}>
+              <Text style={[styles.body, { color: c.soft }]}>{error}</Text>
+            </View>
+          ) : (
+            <Skeleton width="100%" height={120} borderRadius={cosmosCardRadius} />
+          )}
+        </View>
+      </CosmosScreen>
     );
   }
 
   const picked = draft.color.toLowerCase();
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      footer={
+        <SaveBar visible={dirty} label={isNew ? 'Create tier' : 'Save changes'} onPress={() => void save()} loading={saving} disabled={deleting} error={error} />
+      }
+    >
       <Stack.Screen options={{ title }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <SettingsGroup plain>
-          <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Gold" />
-          <FieldRow label="Rank (0 is the top)" value={draft.rank} onChangeText={(v) => set({ rank: v.replace(/\D/g, '') })} keyboardType="number-pad" />
-        </SettingsGroup>
 
-        <View style={{ marginTop: spacing[8] }}>
-          <BlockTitle>Colour</BlockTitle>
-          <View style={styles.swatches}>
-            <Pressable
-              onPress={() => set({ color: '' })}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: !picked }}
-              accessibilityLabel="No colour"
-              style={styles.swatchCell}
-            >
-              <View style={[styles.swatch, { backgroundColor: tokens.elevated }]}>
-                {!picked ? <Check size={18} color={tokens.text} weight="bold" /> : null}
-              </View>
-              <Text style={[styles.swatchName, { color: tokens.textMuted }]}>None</Text>
-            </Pressable>
-            {PRESETS.map((p) => {
-              const on = picked === p.hex.toLowerCase();
-              return (
-                <Pressable
-                  key={p.hex}
-                  onPress={() => set({ color: p.hex, name: draft.name || p.name })}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={p.name}
-                  style={styles.swatchCell}
-                >
-                  <View style={[styles.swatch, { backgroundColor: p.hex }]}>
-                    {on ? <Check size={18} color="#111111" weight="bold" /> : null}
-                  </View>
-                  <Text style={[styles.swatchName, { color: tokens.textMuted }]}>{p.name}</Text>
-                </Pressable>
-              );
-            })}
+      <SettingsGroup plain style={styles.group}>
+        <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Gold" />
+        <FieldRow label="Rank (0 is the top)" value={draft.rank} onChangeText={(v) => set({ rank: v.replace(/\D/g, '') })} keyboardType="number-pad" />
+      </SettingsGroup>
+
+      <Section title="Colour" subtitle="Picking a preset on a new tier also fills in its name">
+        <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <View style={styles.swatches} accessibilityRole="radiogroup">
+            <Swatch label="None" on={!picked} fill={c.tint} onPress={() => set({ color: '' })} />
+            {PRESETS.map((p) => (
+              <Swatch
+                key={p.hex}
+                label={p.name}
+                fill={p.hex}
+                on={picked === p.hex.toLowerCase()}
+                onPress={() => set({ color: p.hex, name: draft.name || p.name })}
+              />
+            ))}
           </View>
-          <SettingsGroup plain>
-            <FieldRow
-              label="Hex"
-              value={draft.color}
-              onChangeText={(v) => set({ color: v.trim() })}
-              placeholder="#D4AF37"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={7}
-            />
-          </SettingsGroup>
-          <Text style={[styles.note, { color: tokens.textMuted }]}>Picking a preset on a new tier also fills in its name.</Text>
         </View>
+        <SettingsGroup plain style={[styles.group, { marginTop: spacing[3] }]}>
+          <FieldRow
+            label="Hex"
+            value={draft.color}
+            onChangeText={(v) => set({ color: v.trim() })}
+            placeholder="#D4AF37"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={7}
+          />
+        </SettingsGroup>
+      </Section>
 
-        {!isNew ? (
-          <Button
+      {!isNew ? (
+        <View style={styles.pad}>
+          <AuthButton
             label="Delete tier"
             variant="danger"
-            size="lg"
-            fullWidth
             loading={deleting}
             disabled={saving}
-            icon={<Trash size={18} color={tokens.danger} weight="bold" />}
+            icon={<Trash size={18} color={c.danger} />}
             onPress={remove}
-            style={{ marginTop: spacing[10] }}
+            style={{ marginTop: spacing[12] }}
           />
-        ) : null}
-      </ScrollView>
+        </View>
+      ) : null}
+    </CosmosScreen>
+  );
+}
 
-      <SaveBar visible={dirty} label={isNew ? 'Create tier' : 'Save changes'} onPress={() => void save()} loading={saving} disabled={deleting} error={error} />
-    </KeyboardAvoidingView>
+/** One colour choice: a round dot (ring + check when picked) over its name. */
+function Swatch({ label, fill, on, onPress }: { label: string; fill: string; on: boolean; onPress: () => void }) {
+  const c = useCosmos();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: on }}
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.swatchCell, { opacity: pressed ? 0.7 : 1 }]}
+    >
+      <View style={[styles.ring, { borderColor: on ? c.text : 'transparent' }]}>
+        <View style={[styles.swatch, { backgroundColor: fill }]}>
+          {on ? <Check size={16} color={fill === c.tint ? c.text : '#111111'} weight="bold" /> : null}
+        </View>
+      </View>
+      <Text style={[styles.swatchName, { color: on ? c.text : c.muted }]}>{label}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3], marginBottom: spacing[4] },
-  swatchCell: { alignItems: 'center', gap: spacing[1], width: SWATCH + 12 },
-  swatch: { width: SWATCH, height: SWATCH, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  swatchName: { fontSize: typography.fontSize.xs, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  pad: { paddingHorizontal: GUTTER },
+  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[4] },
+  body: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  swatches: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[3] },
+  swatchCell: { alignItems: 'center', gap: spacing[1], width: '25%' },
+  ring: { padding: 3, borderRadius: SWATCH, borderWidth: 2 },
+  swatch: { width: SWATCH, height: SWATCH, borderRadius: SWATCH / 2, alignItems: 'center', justifyContent: 'center' },
+  swatchName: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
