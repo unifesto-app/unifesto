@@ -6,6 +6,7 @@ import Animated, {
   interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -117,7 +118,8 @@ function HeroCarousel({ events, loading, failed, onRetry, onPressEvent }: HeroCa
       </Animated.ScrollView>
 
       {slides.length > 1 ? (
-        <View style={styles.dots}>
+        // Decorative: VoiceOver reaches every card directly.
+        <View style={styles.dots} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           {slides.map((e, i) => (
             <Dot key={e.id} index={i} scrollX={scrollX} snap={snap} />
           ))}
@@ -142,11 +144,15 @@ interface SlideProps {
 const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, coverH, onPressEvent }: SlideProps) {
   const c = useCosmos();
   const defaults = useDefaultImages();
+  const reduced = useReducedMotion();
+  const titleLines = useWindowDimensions().fontScale > 1.3 ? 2 : 1;
   const place = event.venueName || event.city || (event.type === 'ONLINE' ? 'Online' : null);
   const tag = event.categories?.[0] || event.category;
 
   // Distance from focus in "cards": 0 = centred, 1 = one card away.
+  // Reduce Motion: every card stays still and fully lit.
   const animated = useAnimatedStyle(() => {
+    if (reduced) return { opacity: 1, transform: [{ scale: 1 }] };
     const d = Math.abs(scrollX.value / snap - index);
     return {
       opacity: interpolate(d, [0, 1], [1, 0.45], Extrapolation.CLAMP),
@@ -156,7 +162,11 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
 
   return (
     <Animated.View style={[{ width: cardW }, animated]}>
-      <Pressable onPress={() => onPressEvent(event)} accessibilityRole="button" accessibilityLabel={event.title}>
+      <Pressable
+        onPress={() => onPressEvent(event)}
+        accessibilityRole="button"
+        accessibilityLabel={[event.title, relativeWhen(event.startDateTime), shortPrice(event), place].filter(Boolean).join(', ')}
+      >
         <View style={[styles.cover, { height: coverH, backgroundColor: c.card }]}>
           {coverOr(defaults, event.id, event.coverImageUrl) ? (
             <Image
@@ -174,7 +184,7 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
           {tag ? <CoverTag label={tag} style={styles.tag} /> : null}
         </View>
 
-        <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{event.title}</Text>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={titleLines}>{event.title}</Text>
         <Text style={styles.meta} numberOfLines={1}>
           <Text style={{ color: c.primary }}>{relativeWhen(event.startDateTime)}</Text>
           <Text style={{ color: c.soft }}>{`  ·  ${shortPrice(event)}`}</Text>

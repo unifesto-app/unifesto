@@ -205,6 +205,11 @@ export const getEvents = async (params?: {
   category?: string;
   search?: string;
   isFree?: boolean;
+  type?: 'IN_PERSON' | 'ONLINE' | 'HYBRID';
+  startDate?: string;
+  endDate?: string;
+  /** No paid ticket type. */
+  free?: boolean;
 }) => {
   const query = new URLSearchParams();
   if (params?.page) query.append('page', String(params.page));
@@ -213,6 +218,10 @@ export const getEvents = async (params?: {
   if (params?.category) query.append('category', params.category);
   if (params?.search) query.append('search', params.search);
   if (params?.isFree !== undefined) query.append('isFree', String(params.isFree));
+  if (params?.type) query.append('type', params.type);
+  if (params?.startDate) query.append('startDate', params.startDate);
+  if (params?.endDate) query.append('endDate', params.endDate);
+  if (params?.free) query.append('free', 'true');
 
   const response = await makePublicRequest(`/events?${query.toString()}`);
   if (!response?.ok) return null;

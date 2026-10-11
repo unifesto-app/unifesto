@@ -1,20 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getCategories, getEvents, type Event } from '../lib/api/events';
+import { weekendWindow } from '../utils/eventFormat';
 
 const PAGE_SIZE = 20;
 const ALL = 'All';
 
 type LoadMode = 'initial' | 'refresh' | 'more';
 
+/** Quick filters that sit before the category chips (and that Home's "Browse by" row links to). */
+export const PRESETS = [
+  { key: 'weekend', label: 'This weekend' },
+  { key: 'free', label: 'Free' },
+  { key: 'online', label: 'Online' },
+] as const;
+export type Preset = (typeof PRESETS)[number]['key'];
+
+const isPreset = (v?: string): v is Preset => PRESETS.some((p) => p.key === v);
+
+function presetParams(preset: Preset | null) {
+  if (preset === 'online') return { type: 'ONLINE' as const };
+  if (preset === 'free') return { free: true };
+  if (preset === 'weekend') {
+    const { start, end } = weekendWindow();
+    return { startDate: start.toISOString(), endDate: end.toISOString() };
+  }
+  return {};
+}
+
 /**
  * Data for the Events browse list: category chips, debounced search and
  * paged results. Every request carries a sequence number so a slow response
  * for an old query/category can never overwrite a newer one.
  */
-export function useEventsBrowse(initial: { category?: string; search?: string }) {
+export function useEventsBrowse(initial: { category?: string; search?: string; preset?: string }) {
   const [categories, setCategories] = useState<string[]>([ALL]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [category, setCategory] = useState(initial.category || ALL);
+  const [preset, setPreset] = useState<Preset | null>(isPreset(initial.preset) ? initial.preset : null);
   const [query, setQuery] = useState(initial.search || '');
   const [debouncedQuery, setDebouncedQuery] = useState(query.trim());
 
@@ -59,6 +81,7 @@ export function useEventsBrowse(initial: { category?: string; search?: string })
           limit: PAGE_SIZE,
           status: 'PUBLISHED',
           ...(category !== ALL ? { category } : {}),
+          ...presetParams(preset),
           ...(debouncedQuery ? { search: debouncedQuery } : {}),
         } as any);
         if (id !== seq.current) return; // a newer request superseded this one
@@ -76,7 +99,7 @@ export function useEventsBrowse(initial: { category?: string; search?: string })
         }
       }
     },
-    [category, debouncedQuery],
+    [category, preset, debouncedQuery],
   );
 
   useEffect(() => {
@@ -92,6 +115,7 @@ export function useEventsBrowse(initial: { category?: string; search?: string })
   const clearFilters = useCallback(() => {
     setQuery('');
     setCategory(ALL);
+    setPreset(null);
   }, []);
 
   return {
@@ -99,9 +123,11 @@ export function useEventsBrowse(initial: { category?: string; search?: string })
     categoriesLoading,
     category,
     setCategory,
+    preset,
+    setPreset,
     query,
     setQuery,
-    filtered: category !== ALL || !!debouncedQuery,
+    filtered: category !== ALL || !!preset || !!debouncedQuery,
     events,
     loading,
     refreshing,

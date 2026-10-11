@@ -18,7 +18,7 @@ import { GlassView } from 'expo-glass-effect';
 import { useTheme } from '../context/ThemeContext';
 import { CardBackdrop, LIQUID_GLASS } from '../components/ui/CardSurface';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { useEventsBrowse } from '../hooks/useEventsBrowse';
+import { PRESETS, useEventsBrowse } from '../hooks/useEventsBrowse';
 import Skeleton from '../components/Skeleton';
 import { relativeWhen, shortPrice } from '../utils/eventFormat';
 import type { Event } from '../lib/api/events';
@@ -38,8 +38,8 @@ export default function EventsScreen() {
   const defaults = useDefaultImages();
   const router = useRouter();
   const topSpacing = useTopSpacing(8);
-  const params = useLocalSearchParams<{ category?: string; search?: string }>();
-  const b = useEventsBrowse({ category: params.category, search: params.search });
+  const params = useLocalSearchParams<{ category?: string; search?: string; preset?: string }>();
+  const b = useEventsBrowse({ category: params.category, search: params.search, preset: params.preset });
 
   // Keep the selected chip in view (e.g. arriving from a Home category tile).
   const chipScroll = useRef<ScrollView>(null);
@@ -52,6 +52,34 @@ export default function EventsScreen() {
     }, 60);
     return () => clearTimeout(t);
   }, [b.category, b.categoriesLoading]);
+
+  const renderChip = (key: string, label: string, active: boolean, onPress: () => void) => (
+    <Pressable
+      key={key}
+      onLayout={(e) => (chipX.current[key] = e.nativeEvent.layout.x)}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      style={({ pressed }) => [
+        styles.chip,
+        LIQUID_GLASS
+          ? // opacity would break the glass, so press feedback is a scale
+            { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] }
+          : { backgroundColor: active ? tokens.text : tokens.elevated, opacity: pressed ? 0.8 : 1 },
+      ]}
+    >
+      {LIQUID_GLASS && !active ? (
+        <GlassView
+          glassEffectStyle="regular"
+          colorScheme={isDark ? 'dark' : 'light'}
+          isInteractive
+          style={[StyleSheet.absoluteFill, { borderRadius: borderRadius.full }]}
+          pointerEvents="none"
+        />
+      ) : null}
+      <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{label}</Text>
+    </Pressable>
+  );
 
   const header = (
     <View>
@@ -84,34 +112,12 @@ export default function EventsScreen() {
       >
         {b.categoriesLoading
           ? [72, 96, 80, 104].map((w, i) => <Skeleton key={i} width={w} height={36} borderRadius={borderRadius.full} />)
-          : b.categories.map((c) => {
-              const active = b.category === c;
-              return (
-                <Pressable
-                  key={c}
-                  onLayout={(e) => (chipX.current[c] = e.nativeEvent.layout.x)}
-                  onPress={() => b.setCategory(c)}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    LIQUID_GLASS
-                      ? // opacity would break the glass, so press feedback is a scale
-                        { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] }
-                      : { backgroundColor: active ? tokens.text : tokens.elevated, opacity: pressed ? 0.8 : 1 },
-                  ]}
-                >
-                  {LIQUID_GLASS && !active ? (
-                    <GlassView
-                      glassEffectStyle="regular"
-                      colorScheme={isDark ? 'dark' : 'light'}
-                      isInteractive
-                      style={[StyleSheet.absoluteFill, { borderRadius: borderRadius.full }]}
-                      pointerEvents="none"
-                    />
-                  ) : null}
-                  <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{c}</Text>
-                </Pressable>
-              );
-            })}
+          : [
+              ...PRESETS.map((p) =>
+                renderChip(p.key, p.label, b.preset === p.key, () => b.setPreset(b.preset === p.key ? null : p.key)),
+              ),
+              ...b.categories.map((c) => renderChip(c, c, b.category === c, () => b.setCategory(c))),
+            ]}
       </ScrollView>
     </View>
   );
@@ -176,7 +182,7 @@ export default function EventsScreen() {
         {b.error
           ? 'Check your connection and try again.'
           : b.filtered
-            ? 'Try another word or a different category.'
+            ? 'Try another word or a different filter.'
             : 'New events from spaces show up here.'}
       </Text>
       {b.error || b.filtered ? (
@@ -232,7 +238,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
   chipsWrap: { marginTop: spacing[4], marginBottom: spacing[6], marginHorizontal: -GUTTER },
   chips: { paddingHorizontal: GUTTER, gap: spacing[2] },
-  chip: { height: 36, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
+  chip: { minHeight: 36, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
   chipText: { fontSize: typography.fontSize.sm, ...font('medium') },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.lg, overflow: 'hidden' },

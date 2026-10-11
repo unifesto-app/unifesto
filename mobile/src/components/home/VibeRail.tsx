@@ -1,10 +1,11 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
 import Skeleton from '../Skeleton';
 import { GUTTER } from './Section';
 
@@ -20,6 +21,8 @@ interface VibeRailProps {
 /** One-row strip of 4:3 category tiles ("Find your vibe"). */
 export default function VibeRail({ categories, onPressCategory }: VibeRailProps) {
   const c = useCosmos();
+  // Large text: let names wrap rather than clip to a word.
+  const lines = useWindowDimensions().fontScale > 1.3 ? 2 : 1;
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {categories.map((cat) => (
@@ -43,7 +46,27 @@ export default function VibeRail({ categories, onPressCategory }: VibeRailProps)
             locations={[0.4, 1]}
             style={StyleSheet.absoluteFill}
           />
-          <Text style={styles.name} numberOfLines={1}>{cat.name}</Text>
+          <Text style={styles.name} numberOfLines={lines}>{cat.name}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
+  );
+}
+
+/** Quick filters that open Events pre-filtered. Solid fills: content layer, no glass. */
+export function PresetChips({ onPress }: { onPress: (preset: Preset) => void }) {
+  const c = useCosmos();
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, styles.chips]}>
+      {PRESETS.map((p) => (
+        <Pressable
+          key={p.key}
+          onPress={() => onPress(p.key)}
+          accessibilityRole="button"
+          accessibilityHint="Opens events with this filter"
+          style={({ pressed }) => [styles.chip, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+        >
+          <Text style={[styles.chipText, { color: c.text }]}>{p.label}</Text>
         </Pressable>
       ))}
     </ScrollView>
@@ -72,4 +95,7 @@ const styles = StyleSheet.create({
     padding: spacing[2] + 2,
   },
   name: { fontSize: typography.fontSize.sm, color: '#ffffff', ...cosmosFont.strong },
+  chips: { paddingBottom: spacing[3] },
+  chip: { minHeight: 44, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
+  chipText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

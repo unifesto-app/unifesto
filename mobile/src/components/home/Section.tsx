@@ -19,17 +19,16 @@ interface SectionProps {
 }
 
 /**
- * Home section in the web's voice: a short silver rule (the web's
- * .eyebrow-rule), a Michroma title, a quiet subtitle and a "See all →" link.
+ * Home section in the web's voice: a Michroma title (a VoiceOver heading, so
+ * the rotor can jump between sections), a quiet subtitle and a "See all →" link.
  */
 export function Section({ title, subtitle, onSeeAll, children, style }: SectionProps) {
   const c = useCosmos();
   return (
     <View style={[styles.section, style]}>
-      <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: c.text }]}>{title}</Text>
+          <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{title}</Text>
           {subtitle ? <Text style={[styles.subtitle, { color: c.muted }]}>{subtitle}</Text> : null}
         </View>
         {onSeeAll ? (
@@ -68,7 +67,6 @@ export function Rail({ children, snap }: { children: React.ReactNode; snap?: num
 
 const styles = StyleSheet.create({
   section: { marginTop: spacing[12] },
-  rule: { width: 40, height: 1, marginLeft: GUTTER, marginBottom: spacing[4] },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -1188,6 +1188,14 @@ export class EventFilterDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   trending?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Only events with no paid ticket type (the price, not the unreliable isFree flag).',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  free?: boolean;
 }
 
 export class AddCoHostDto {

@@ -30,7 +30,7 @@ export default function TrendingList({ events, onPress }: { events: Event[]; onP
             key={e.id}
             onPress={() => onPress(e)}
             accessibilityRole="button"
-            accessibilityLabel={`Number ${i + 1}, ${e.title}`}
+            accessibilityLabel={`Number ${i + 1}, ${e.title}, ${relativeWhen(e.startDateTime)}, ${shortPrice(e)}`}
             style={({ pressed }) => [
               styles.row,
               i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
@@ -64,5 +64,5 @@ const styles = StyleSheet.create({
   // Event covers are 4:3.
   thumb: { width: 76, height: 57, borderRadius: 12, overflow: 'hidden' },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
-  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
