@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import { MenuView, type MenuAction } from '@react-native-menu/menu';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import {
@@ -64,6 +64,13 @@ export interface HeaderMenuItem {
   destructive?: boolean;
 }
 
+interface MenuTrigger {
+  /** Replaces the ⋯ glyph (e.g. a filter button beside a search field). */
+  trigger?: React.ReactNode;
+  triggerStyle?: StyleProp<ViewStyle>;
+  label?: string;
+}
+
 /**
  * The ⋯ overflow menu. iOS keeps the native UIMenu (SF Symbols, system look).
  * Android draws its own dropdown in the app's style: the stock popup looked
@@ -73,13 +80,18 @@ export function HeaderMenu({
   title,
   items,
   onSelect,
+  trigger,
+  triggerStyle = styles.icon,
+  label = 'More options',
 }: {
   title: string;
   items: HeaderMenuItem[];
   onSelect: (id: string) => void;
-}) {
+} & MenuTrigger) {
   const tokens = useTokens();
-  if (Platform.OS === 'android') return <AndroidMenu title={title} items={items} onSelect={onSelect} />;
+  if (Platform.OS === 'android') {
+    return <AndroidMenu title={title} items={items} onSelect={onSelect} trigger={trigger} triggerStyle={triggerStyle} label={label} />;
+  }
 
   const actions: MenuAction[] = items.map((item) => ({
     id: item.id,
@@ -95,10 +107,9 @@ export function HeaderMenu({
       actions={actions}
       shouldOpenOnLongPress={false}
       onPressAction={({ nativeEvent }) => onSelect(nativeEvent.event)}
-      style={styles.icon}
     >
-      <View style={styles.icon} pointerEvents="none" accessibilityLabel="More options">
-        <DotsThree size={26} color={tokens.text} weight="bold" />
+      <View style={triggerStyle} pointerEvents="none" accessibilityLabel={label}>
+        {trigger ?? <DotsThree size={26} color={tokens.text} weight="bold" />}
       </View>
     </MenuView>
   );
@@ -109,11 +120,14 @@ function AndroidMenu({
   title,
   items,
   onSelect,
+  trigger,
+  triggerStyle,
+  label,
 }: {
   title: string;
   items: HeaderMenuItem[];
   onSelect: (id: string) => void;
-}) {
+} & MenuTrigger) {
   const tokens = useTokens();
   const { width } = useWindowDimensions();
   const buttonRef = useRef<View>(null);
@@ -148,10 +162,10 @@ function AndroidMenu({
         onPress={open}
         hitSlop={6}
         accessibilityRole="button"
-        accessibilityLabel="More options"
-        style={({ pressed }) => [styles.icon, { opacity: pressed ? 0.6 : 1 }]}
+        accessibilityLabel={label}
+        style={({ pressed }) => [triggerStyle, { opacity: pressed ? 0.6 : 1 }]}
       >
-        <DotsThree size={26} color={tokens.text} weight="bold" />
+        {trigger ?? <DotsThree size={26} color={tokens.text} weight="bold" />}
       </Pressable>
 
       <Modal visible={!!anchor} transparent animationType="none" statusBarTranslucent onRequestClose={() => close()}>

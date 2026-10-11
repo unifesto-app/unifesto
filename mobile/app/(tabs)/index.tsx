@@ -22,7 +22,7 @@ import SpacePanel from '../../src/components/home/SpacePanel';
 import ApexPanel from '../../src/components/home/ApexPanel';
 import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import PosterCard, { PosterCardSkeleton } from '../../src/components/home/PosterCard';
-import VibeRail, { PresetChips, VibeRailSkeleton } from '../../src/components/home/VibeRail';
+import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import { CircleRow, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
 import TrendingList from '../../src/components/home/TrendingList';
 import HostCta from '../../src/components/home/HostCta';
@@ -146,6 +146,7 @@ export default function HomeTab() {
           locationStatus={data.locationStatus}
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
           onPressAvatar={() => router.navigate('/profile')}
+          onPressPreset={(preset) => router.push({ pathname: '/events', params: { preset } })}
           onPressSearch={search.openSheet}
         />
 
@@ -221,10 +222,7 @@ export default function HomeTab() {
           </Section>
         ) : null}
 
-        {/* Weekend / free / online live on Events as quick filters (one tap
-            from here) instead of three more rails sliced from the same pool. */}
         <Section title="Find your vibe">
-          <PresetChips onPress={(preset) => router.push({ pathname: '/events', params: { preset } })} />
           {data.isLoadingCategories && data.categories.length === 0 ? (
             <VibeRailSkeleton />
           ) : data.categories.length > 0 ? (

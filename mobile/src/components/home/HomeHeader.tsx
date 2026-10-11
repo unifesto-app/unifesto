@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { MagnifyingGlass, MapPin, NavigationArrow, UserCircle } from '@unifesto/unicon/react-native';
+import { CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket, UserCircle } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
+import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
+import { HeaderMenu, type HeaderMenuItem } from '../../navigation/HeaderActions';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
@@ -14,6 +16,14 @@ import PressableScale from '../ui/PressableScale';
 const MARK_W = 112;
 const MARK_H = Math.round((MARK_W * 551) / 2400);
 const AVATAR = 36;
+const SEARCH_H = 52;
+
+const PRESET_ICONS: Record<Preset, HeaderMenuItem['icon']> = {
+  weekend: { ios: 'calendar', android: 'ic_menu_my_calendar', glyph: CalendarDots },
+  free: { ios: 'ticket', android: 'ic_menu_agenda', glyph: Ticket },
+  online: { ios: 'globe', android: 'ic_menu_mapmode', glyph: Globe },
+};
+const PRESET_ITEMS: HeaderMenuItem[] = PRESETS.map((p) => ({ id: p.key, title: p.label, icon: PRESET_ICONS[p.key] }));
 
 interface HomeHeaderProps {
   /** First name when signed in ('' if none yet); null for guests (no avatar). */
@@ -24,6 +34,8 @@ interface HomeHeaderProps {
   onEnableLocation: () => void;
   onPressAvatar: () => void;
   onPressSearch: () => void;
+  /** Quick filter picked from the menu beside search; opens Events pre-filtered. */
+  onPressPreset: (preset: Preset) => void;
 }
 
 /**
@@ -40,6 +52,7 @@ export default function HomeHeader({
   onEnableLocation,
   onPressAvatar,
   onPressSearch,
+  onPressPreset,
 }: HomeHeaderProps) {
   const c = useCosmos();
   const topInset = useStableTopInset();
@@ -101,18 +114,28 @@ export default function HomeHeader({
         What's on{city ? ` in ${city}` : ''}?
       </Text>
 
-      <PressableScale
-        onPress={onPressSearch}
-        accessibilityRole="search"
-        accessibilityLabel="Search events and spaces"
-        style={[
-          styles.search,
-          { borderColor: c.input, backgroundColor: c.card },
-        ]}
-      >
-        <MagnifyingGlass size={18} color={c.muted} />
-        <Text style={[styles.searchText, { color: c.muted }]}>Search events, spaces, vibes</Text>
-      </PressableScale>
+      <View style={styles.searchRow}>
+        <PressableScale
+          onPress={onPressSearch}
+          accessibilityRole="search"
+          accessibilityLabel="Search events and spaces"
+          style={[
+            styles.search,
+            { borderColor: c.input, backgroundColor: c.card },
+          ]}
+        >
+          <MagnifyingGlass size={18} color={c.muted} />
+          <Text style={[styles.searchText, { color: c.muted }]} numberOfLines={1}>Search events, spaces, vibes</Text>
+        </PressableScale>
+        <HeaderMenu
+          title="Browse events"
+          items={PRESET_ITEMS}
+          onSelect={(id) => onPressPreset(id as Preset)}
+          label="Filter events"
+          trigger={<SlidersHorizontal size={20} color={c.text} />}
+          triggerStyle={[styles.filter, { borderColor: c.input, backgroundColor: c.card }]}
+        />
+      </View>
     </View>
   );
 }
@@ -144,9 +167,10 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 15, ...cosmosFont.strong },
   // Michroma has one weight and runs wide: 28px fits "What's on in Hyderabad?" in two lines.
   headline: { marginTop: spacing[8], fontSize: 28, lineHeight: 36, ...cosmosFont.display },
+  searchRow: { marginTop: spacing[6], flexDirection: 'row', gap: spacing[2] },
   search: {
-    marginTop: spacing[6],
-    minHeight: 52,
+    flex: 1,
+    minHeight: SEARCH_H,
     paddingVertical: spacing[3],
     borderRadius: cosmosRadius,
     borderWidth: 1,
@@ -155,5 +179,13 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[4],
   },
-  searchText: { fontSize: typography.fontSize.base, ...cosmosFont.body },
+  searchText: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  filter: {
+    width: SEARCH_H,
+    height: SEARCH_H,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
