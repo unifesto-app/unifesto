@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import Skeleton from '../Skeleton';
 import AuthButton from '../auth/AuthButton';
+import PressableScale from '../ui/PressableScale';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -26,6 +27,8 @@ interface IdentityCardProps {
 }
 
 const AVATAR = 72;
+/** Past this Dynamic Type scale the side-by-side rows would truncate: stack them. */
+const LARGE_TEXT = 1.3;
 
 const initials = (name: string) =>
   name
@@ -42,14 +45,15 @@ const initials = (name: string) =>
  */
 export default function IdentityCard({ name, username, avatarUrl, bio, memberSince, stats, onEdit, onViewPublic }: IdentityCardProps) {
   const c = useCosmos();
+  const large = useWindowDimensions().fontScale > LARGE_TEXT;
   const joined = memberSince
     ? `Since ${new Date(memberSince).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}`
     : null;
 
   return (
     <View style={[styles.card, { backgroundColor: c.raised }]}>
-      <View style={styles.top}>
-        <View style={[styles.ring, { borderColor: c.outline }]}>
+      <View style={[styles.top, large && styles.stack]}>
+        <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={[styles.ring, { borderColor: c.outline }]}>
           <View style={[styles.avatar, { backgroundColor: c.card }]}>
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
@@ -58,9 +62,9 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
             )}
           </View>
         </View>
-        <View style={styles.who}>
-          <Text style={[styles.name, { color: c.text }]} numberOfLines={2}>{name}</Text>
-          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
+        <View style={large ? null : styles.who}>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={large ? undefined : 2}>{name}</Text>
+          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={large ? undefined : 1}>
             {[username ? `@${username}` : null, joined].filter(Boolean).join('  ·  ')}
           </Text>
         </View>
@@ -68,27 +72,29 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
 
       {bio ? <Text style={[styles.bio, { color: c.soft }]} numberOfLines={3}>{bio}</Text> : null}
 
-      <View style={styles.actions}>
-        <AuthButton label="Edit profile" onPress={onEdit} style={styles.action} />
-        <AuthButton label="View profile" variant="secondary" onPress={onViewPublic} style={styles.action} />
+      <View style={[styles.actions, large && styles.stackActions]}>
+        <AuthButton label="Edit profile" onPress={onEdit} style={[styles.action, large && styles.actionFull]} />
+        <AuthButton label="View profile" variant="secondary" onPress={onViewPublic} style={[styles.action, large && styles.actionFull]} />
       </View>
 
       <View style={[styles.stats, { borderTopColor: c.border }]}>
         {stats.map((s) => (
-          <Pressable
+          <PressableScale
             key={s.label}
+            feedback="inline"
             onPress={s.onPress}
+            hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={s.value == null ? s.label : `${s.value} ${s.label}`}
-            style={({ pressed }) => [styles.stat, { opacity: pressed ? 0.6 : 1 }]}
+            accessibilityLabel={s.value == null ? `${s.label}, loading` : `${s.label}, ${s.value}`}
+            style={styles.stat}
           >
             {s.value == null ? (
               <Skeleton width={28} height={22} borderRadius={6} />
             ) : (
               <Text style={[styles.statValue, { color: c.text }]}>{s.value}</Text>
             )}
-            <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={1}>{s.label}</Text>
-          </Pressable>
+            <Text style={[styles.statLabel, { color: c.muted }]} numberOfLines={large ? 2 : 1}>{s.label}</Text>
+          </PressableScale>
         ))}
       </View>
     </View>
@@ -98,7 +104,7 @@ export default function IdentityCard({ name, username, avatarUrl, bio, memberSin
 export function IdentityCardSkeleton() {
   const c = useCosmos();
   return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
+    <View style={[styles.card, { backgroundColor: c.raised }]} accessible accessibilityLabel="Loading profile">
       <View style={styles.top}>
         <Skeleton width={AVATAR + 8} height={AVATAR + 8} borderRadius={(AVATAR + 8) / 2} />
         <View style={[styles.who, { gap: 10 }]}>
@@ -132,6 +138,7 @@ const styles = StyleSheet.create({
   },
   initials: { fontSize: 22, ...cosmosFont.display },
   who: { flex: 1 },
+  stack: { flexDirection: 'column', alignItems: 'flex-start' },
   // Michroma runs wide: 18 reads like a 22 in Hanken.
   name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
   sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
@@ -142,14 +149,18 @@ const styles = StyleSheet.create({
     ...cosmosFont.body,
   },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
-  action: { flex: 1, height: 46, paddingHorizontal: spacing[3] },
+  // minHeight, not height: a fixed 46 clips the label at large Dynamic Type sizes.
+  action: { flex: 1, height: undefined, minHeight: 46, paddingVertical: spacing[2], paddingHorizontal: spacing[3] },
+  stackActions: { flexDirection: 'column' },
+  actionFull: { flex: 0, alignSelf: 'stretch' },
   stats: {
     flexDirection: 'row',
     marginTop: spacing[5],
     paddingTop: spacing[4],
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  stat: { flex: 1, alignItems: 'center', gap: 4 },
+  stat: { flex: 1, alignItems: 'center', gap: 4, minHeight: 44 },
   statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
-  statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  // sm, not xs: 11pt is the floor, not a size for labels people tap.
+  statLabel: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
 });

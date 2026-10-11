@@ -26,6 +26,7 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
+import PressableScale from '../components/ui/PressableScale';
 
 const ICON = 28;
 
@@ -143,7 +144,7 @@ export default function ProfileScreen() {
 
   const header = (
     <View style={[styles.header, { paddingTop: topInset + spacing[4] }]}>
-      <Text style={[styles.pageTitle, { color: c.text }]}>Profile</Text>
+      <Text accessibilityRole="header" style={[styles.pageTitle, { color: c.text }]}>Profile</Text>
     </View>
   );
 
@@ -177,7 +178,7 @@ export default function ProfileScreen() {
           {header}
           <View style={[styles.guest, { backgroundColor: c.raised }]}>
             <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-            <Text style={[styles.guestTitle, { color: c.text }]}>Make it yours</Text>
+            <Text accessibilityRole="header" style={[styles.guestTitle, { color: c.text }]}>Make it yours</Text>
             <Text style={[styles.guestBody, { color: c.soft }]}>
               Sign in to keep your tickets, save events, collect certificates and join the circles you care about.
             </Text>
@@ -283,14 +284,10 @@ export default function ProfileScreen() {
         {help}
 
         <View style={styles.pad}>
-          <Pressable
-            onPress={handleLogout}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.signOut, { borderColor: c.border, opacity: pressed ? 0.6 : 1 }]}
-          >
+          <PressableScale onPress={handleLogout} accessibilityRole="button" style={[styles.signOut, { borderColor: c.border }]}>
             <UnGlyph name="sign-out" size={22} color={c.danger} />
             <Text style={[styles.signOutText, { color: c.danger }]}>Sign out</Text>
-          </Pressable>
+          </PressableScale>
         </View>
 
         {footer}
@@ -313,7 +310,7 @@ const styles = StyleSheet.create({
   guestBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   signOut: {
     marginTop: spacing[10],
-    height: 52,
+    minHeight: 52,
     borderRadius: cosmosRadius,
     borderWidth: 1,
     flexDirection: 'row',
