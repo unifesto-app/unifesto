@@ -2,17 +2,17 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CalendarBlank } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import type { ManagedEvent } from '../../lib/api/manageSpace';
 import { relativeWhen } from '../../utils/eventFormat';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import Skeleton from '../Skeleton';
 import { CardBackdrop } from '../ui/CardSurface';
 
 const THUMB_W = 88;
 const THUMB_H = 66; // 4:3, never cropped off-ratio
+const THUMB_RADIUS = 12;
 
 interface Props {
   event: ManagedEvent;
@@ -31,11 +31,11 @@ function statusLine(e: ManagedEvent, now: Date): { text: string; tone: 'live' | 
 }
 
 export default function ManageEventRow({ event, now, onPress }: Props) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const status = statusLine(event, now);
   const people = event.attendees?.total ?? 0;
   const capacity = event.capacity ? ` / ${event.capacity.toLocaleString('en-IN')}` : '';
-  const statusColor = status.tone === 'live' ? tokens.success : status.tone === 'danger' ? tokens.danger : tokens.textMuted;
+  const statusColor = status.tone === 'live' ? c.success : status.tone === 'danger' ? c.danger : c.muted;
 
   return (
     <Pressable
@@ -45,14 +45,14 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
     >
       <CardBackdrop shape={styles.row} />
       {event.coverImageUrl ? (
-        <Image source={{ uri: event.coverImageUrl }} style={styles.thumb} />
+        <Image source={{ uri: event.coverImageUrl }} style={[styles.thumb, { backgroundColor: c.card }]} />
       ) : (
-        <View style={[styles.thumb, styles.thumbEmpty, { backgroundColor: tokens.surface }]}>
-          <CalendarBlank size={24} color={tokens.textMuted} />
+        <View style={[styles.thumb, styles.thumbEmpty, { backgroundColor: c.tint }]}>
+          <CalendarBlank size={24} color={c.muted} />
         </View>
       )}
       <View style={styles.body}>
-        <Text style={[styles.title, { color: tokens.text }]} numberOfLines={2}>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
           {event.title}
         </Text>
         <Text style={[styles.meta, { color: statusColor }]} numberOfLines={1}>
@@ -60,7 +60,7 @@ export default function ManageEventRow({ event, now, onPress }: Props) {
           {event.isCoHost ? '  ·  Co-hosting' : ''}
         </Text>
         {event.status !== 'DRAFT' ? (
-          <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
+          <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
             {people.toLocaleString('en-IN')}
             {capacity} attending
           </Text>
@@ -74,7 +74,7 @@ export function ManageEventRowSkeleton() {
   return (
     <View style={[styles.row]}>
       <CardBackdrop shape={styles.row} />
-      <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
+      <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={THUMB_RADIUS} />
       <View style={[styles.body, { gap: 8 }]}>
         <Skeleton width="80%" height={16} />
         <Skeleton width="50%" height={12} />
@@ -89,11 +89,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     padding: spacing[3],
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
   },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md },
+  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: THUMB_RADIUS, overflow: 'hidden' },
   thumbEmpty: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
-  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.xs, ...font('medium') },
+  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
