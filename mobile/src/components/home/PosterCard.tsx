@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarBlank, MapPin } from '@unifesto/unicon/react-native';
@@ -43,6 +43,8 @@ export default function PosterCard({
   onPress,
 }: PosterCardProps) {
   const c = useCosmos();
+  // Large text: a fixed-width card would cut titles to a word or two.
+  const titleLines = useWindowDimensions().fontScale > 1.3 ? 3 : 2;
 
   return (
     <Pressable
@@ -64,7 +66,7 @@ export default function PosterCard({
 
       <View style={styles.body}>
         <View>
-          <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{title}</Text>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={titleLines}>{title}</Text>
           {host ? <Text style={[styles.host, { color: c.muted }]} numberOfLines={1}>{host}</Text> : null}
         </View>
         <View style={styles.metaBlock}>
@@ -130,11 +132,11 @@ const styles = StyleSheet.create({
   },
   coverTagText: { fontSize: 11, color: '#ffffff', ...cosmosFont.strong },
   body: { flex: 1, padding: spacing[4], gap: spacing[3] },
-  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.3, ...cosmosFont.strong },
-  host: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.3, ...cosmosFont.strong },
+  host: { marginTop: 3, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   metaBlock: { gap: 5 },
   metaLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  meta: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  meta: { flexShrink: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   // Pinned to the bottom so prices line up across a rail of uneven titles.
-  price: { marginTop: 'auto', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  price: { marginTop: 'auto', fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

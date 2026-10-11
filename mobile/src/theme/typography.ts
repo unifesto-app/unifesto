@@ -30,7 +30,8 @@ const FONT_SCALE = 0.92;
 const FONT_SCALE_ANDROID = 0.9;
 const scaleFont = (size: number): number => {
   const factor = FONT_SCALE * (Platform.OS === 'android' ? FONT_SCALE_ANDROID : 1);
-  return Math.round(size * factor);
+  // Never below 11pt: the platform minimum for legible text (Apple HIG › Typography).
+  return Math.max(11, Math.round(size * factor));
 };
 
 export const typography = {

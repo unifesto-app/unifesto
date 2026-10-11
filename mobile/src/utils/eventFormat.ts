@@ -73,15 +73,6 @@ export function weekendWindow(now: Date = new Date()) {
   return { start, end };
 }
 
-/** "Good morning" / "Good afternoon" / "Good evening" / "Up late". */
-export function greeting(now: Date = new Date()) {
-  const h = now.getHours();
-  if (h < 5) return 'Up late';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
 export const spaceMembers = (s: { member_count?: number; _count?: { userRoles: number } }) =>
   s.member_count || s._count?.userRoles || 0;
 

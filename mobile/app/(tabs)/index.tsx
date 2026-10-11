@@ -22,7 +22,7 @@ import SpacePanel from '../../src/components/home/SpacePanel';
 import ApexPanel from '../../src/components/home/ApexPanel';
 import { useWorkspaceCards } from '../../src/hooks/useWorkspaceCards';
 import PosterCard, { PosterCardSkeleton } from '../../src/components/home/PosterCard';
-import VibeRail, { VibeRailSkeleton } from '../../src/components/home/VibeRail';
+import VibeRail, { PresetChips, VibeRailSkeleton } from '../../src/components/home/VibeRail';
 import { CircleRow, SpaceCard, SpaceCardSkeleton } from '../../src/components/home/SpaceCards';
 import TrendingList from '../../src/components/home/TrendingList';
 import HostCta from '../../src/components/home/HostCta';
@@ -43,7 +43,7 @@ export default function HomeTab() {
   const workspace = useWorkspaceCards();
   const { user, profile } = data;
 
-  // '' when signed in without a name yet: plain greeting, icon avatar (never "there" / "T").
+  // '' when signed in without a name yet: icon avatar (never "T").
   const firstName = user
     ? (profile?.fullName || user.fullName || profile?.username || user.username || '').split(' ')[0]
     : null;
@@ -205,40 +205,21 @@ export default function HomeTab() {
 
         {/* Under three it isn't much of a ranking. */}
         {data.trendingEvents.length >= 3 ? (
-          <Section title="Trending now" subtitle="What people are booking this week" onSeeAll={() => router.push('/events')}>
+          <Section title="Trending now" subtitle="What people are booking this week">
             <TrendingList events={data.trendingEvents} onPress={openEvent} />
           </Section>
         ) : null}
 
-        {data.isLoadingCategories || data.categories.length > 0 ? (
-          <Section title="Find your vibe" onSeeAll={() => router.push('/events')}>
-            {data.isLoadingCategories && data.categories.length === 0 ? (
-              <VibeRailSkeleton />
-            ) : (
-              <VibeRail categories={data.categories} onPressCategory={openCategory} />
-            )}
-          </Section>
-        ) : null}
-
-        {/* Themed rails slice events Home already loaded (see useHomeData's
-            eventPool), so they appear once that's in and never skeleton. */}
-        {data.weekendEvents.length > 0 ? (
-          <Section title="This weekend" subtitle="Plans for Saturday and Sunday">
-            <Rail>{data.weekendEvents.map(eventPoster)}</Rail>
-          </Section>
-        ) : null}
-
-        {data.freeEvents.length > 0 ? (
-          <Section title="Free to attend" subtitle="No ticket price, just show up">
-            <Rail>{data.freeEvents.map(eventPoster)}</Rail>
-          </Section>
-        ) : null}
-
-        {data.onlineEvents.length > 0 ? (
-          <Section title="Online, from anywhere" subtitle="Join from your phone or laptop">
-            <Rail>{data.onlineEvents.map(eventPoster)}</Rail>
-          </Section>
-        ) : null}
+        {/* Weekend / free / online live on Events as quick filters (one tap
+            from here) instead of three more rails sliced from the same pool. */}
+        <Section title="Find your vibe">
+          <PresetChips onPress={(preset) => router.push({ pathname: '/events', params: { preset } })} />
+          {data.isLoadingCategories && data.categories.length === 0 ? (
+            <VibeRailSkeleton />
+          ) : data.categories.length > 0 ? (
+            <VibeRail categories={data.categories} onPressCategory={openCategory} />
+          ) : null}
+        </Section>
 
         {data.isLoadingSessions || data.sessions.length > 0 ? (
           <Section title="Unifesto Huddle" subtitle="Live online sessions and workshops" onSeeAll={() => router.push('/sessions')}>

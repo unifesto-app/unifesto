@@ -16,7 +16,6 @@ import { getUserSpaces, Space, getAllSpaces, getSpaceEvents } from '../lib/api/s
 import { getFavorites } from '../lib/api/favorites';
 import { fetchUpcomingTickets } from '../lib/upcomingTickets';
 import { syncUpNextWidget } from '../widgets/sync';
-import { shortPrice, weekendWindow } from '../utils/eventFormat';
 
 // The featured partner space whose events get their own home rail.
 export const BEYOND_SPACE_NAME = 'Beyond by Unifesto';
@@ -381,24 +380,6 @@ export function useHomeData() {
 
   const showNearbySpaces = !!detectedCity && nearbySpaces.length > 0;
 
-  // Every event Home already fetched (nearby, curated, Beyond), deduped, rolled
-  // up to super events and still running. The themed rails below slice this
-  // pool instead of making their own calls.
-  const eventPool = useMemo(() => {
-    const now = Date.now();
-    return rollUpToSuperEvents(buildPopularEvents(nearbyEvents, popularEvents, beyondEvents)).filter(
-      (e) => new Date(e.endDateTime || e.startDateTime).getTime() >= now,
-    );
-  }, [nearbyEvents, popularEvents, beyondEvents]);
-  const weekendEvents = useMemo(() => {
-    const { start, end } = weekendWindow();
-    return eventPool.filter(
-      (e) => new Date(e.startDateTime) < end && new Date(e.endDateTime || e.startDateTime) >= start,
-    );
-  }, [eventPool]);
-  // Priced from ticket types, not the unreliable `isFree` flag.
-  const freeEvents = useMemo(() => eventPool.filter((e) => shortPrice(e) === 'Free'), [eventPool]);
-  const onlineEvents = useMemo(() => eventPool.filter((e) => e.type === 'ONLINE'), [eventPool]);
   const discoverSpaces = showNearbySpaces ? nearbySpaces : allSpaces;
   const isLoadingDiscoverSpaces = isLoadingAllSpaces || (detectedCity ? isLoadingNearby : false);
 
@@ -417,9 +398,6 @@ export function useHomeData() {
     popularEvents,
     isLoadingEvents,
     eventsFailed,
-    weekendEvents,
-    freeEvents,
-    onlineEvents,
 
     favoriteEvents,
     isLoadingFavorites,

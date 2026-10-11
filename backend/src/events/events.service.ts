@@ -1553,6 +1553,7 @@ export class EventsService {
       includeSubEvents = false,
       featured = false,
       trending = false,
+      free = false,
       page = 1,
       limit = 20,
     } = filters;
@@ -1598,6 +1599,10 @@ export class EventsService {
 
     if (type) {
       where.type = type;
+    }
+
+    if (free) {
+      where.ticketTypes = { none: { price: { gt: 0 } } };
     }
 
     if (category) {
