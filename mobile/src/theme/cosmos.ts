@@ -105,3 +105,16 @@ export const cosmosFont = {
 export const cosmosRadius = 14;
 /** Cards and covers. */
 export const cosmosCardRadius = 20;
+
+/**
+ * Row i of n in a FlatList that should read as one card (cosmos grouped list):
+ * the card fill on every row, rounded only at the ends.
+ */
+export const cardSegment = (fill: string, i: number, n: number) => ({
+  backgroundColor: fill,
+  paddingHorizontal: 16,
+  borderTopLeftRadius: i === 0 ? cosmosCardRadius : 0,
+  borderTopRightRadius: i === 0 ? cosmosCardRadius : 0,
+  borderBottomLeftRadius: i === n - 1 ? cosmosCardRadius : 0,
+  borderBottomRightRadius: i === n - 1 ? cosmosCardRadius : 0,
+});
