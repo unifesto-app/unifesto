@@ -1,12 +1,12 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Confetti, Hourglass } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import type { MyWaitlistEntry } from '../../lib/api/registrations';
 import AuthButton from '../auth/AuthButton';
+import PressableScale from '../ui/PressableScale';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { relativeWhen } from '../../utils/eventFormat';
@@ -36,7 +36,6 @@ interface WaitlistCardProps {
  * When the organiser offers a spot the card lights up and grows a Pay action.
  */
 export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCardProps) {
-  const tokens = useTokens();
   const c = useCosmos();
   const defaults = useDefaultImages();
   const offered = entry.waitlistStatus === 'OFFERED' && !!entry.offer;
@@ -96,21 +95,23 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
             </Text>
             {offer.needsPayment && offer.expiresAt ? (
               <View style={styles.deadline}>
-                <Hourglass size={13} color={tokens.warning} weight="fill" />
-                <Text style={[styles.deadlineText, { color: tokens.warning }]}>{timeLeft(offer.expiresAt)}</Text>
+                <Hourglass size={14} color={c.warn} weight="fill" />
+                <Text style={[styles.deadlineText, { color: c.warn }]}>{timeLeft(offer.expiresAt)}</Text>
               </View>
             ) : null}
             <View style={styles.actions}>
               {offer.needsPayment ? (
                 <AuthButton label={`Pay ₹${offer.amountDue}`} onPress={onPay} loading={busy} style={{ flex: 1, height: 44 }} />
               ) : null}
-              <Pressable
+              <PressableScale
                 onPress={onLeave}
                 disabled={busy}
-                style={({ pressed }) => [styles.secondary, { borderColor: c.border, opacity: pressed ? 0.7 : 1 }]}
+                accessibilityRole="button"
+                accessibilityLabel={`Turn down the spot for ${entry.event.title}`}
+                style={[styles.secondary, { borderColor: c.border }]}
               >
                 <Text style={[styles.secondaryText, { color: c.soft }]}>Turn down</Text>
-              </Pressable>
+              </PressableScale>
             </View>
           </>
         ) : (
@@ -118,9 +119,15 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
             <Text style={[styles.body, { color: c.muted, flex: 1 }]}>
               Sold out. We'll tell you if a spot opens. Nothing is charged until then.
             </Text>
-            <Pressable onPress={onLeave} hitSlop={8}>
+            <PressableScale
+              feedback="inline"
+              onPress={onLeave}
+              accessibilityRole="button"
+              accessibilityLabel={`Leave the waiting list for ${entry.event.title}`}
+              style={styles.leaveHit}
+            >
               <Text style={[styles.leave, { color: c.soft }]}>Leave</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         )}
       </View>
@@ -134,7 +141,7 @@ const styles = StyleSheet.create({
   // Event banners are 4:3.
   thumb: { width: 84, height: 63, borderRadius: borderRadius.md, overflow: 'hidden', marginVertical: spacing[3] },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
-  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  meta: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stub: {
     width: 72,
     alignSelf: 'stretch',
@@ -145,14 +152,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   stubNumber: { fontSize: 24, lineHeight: 26, ...cosmosFont.display },
-  stubLabel: { fontSize: 11, ...cosmosFont.strong },
+  stubLabel: { fontSize: 12, ...cosmosFont.strong },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, padding: spacing[3], gap: spacing[2] },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   deadline: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   deadlineText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   actions: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[1] },
   secondary: {
-    height: 44,
+    minHeight: 44,
     paddingHorizontal: spacing[5],
     borderRadius: cosmosRadius,
     borderWidth: 1,
@@ -161,5 +168,6 @@ const styles = StyleSheet.create({
   },
   secondaryText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   waitingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  leaveHit: { minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center' },
   leave: { fontSize: typography.fontSize.sm, textDecorationLine: 'underline', ...cosmosFont.strong },
 });

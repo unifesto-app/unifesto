@@ -111,7 +111,7 @@ export default function TicketsScreen() {
 
   const header = (
     <View style={{ paddingTop: topInset + spacing[4], paddingHorizontal: GUTTER }}>
-      <Text style={[styles.title, { color: c.text }]}>My tickets</Text>
+      <Text accessibilityRole="header" style={[styles.title, { color: c.text }]}>My tickets</Text>
     </View>
   );
 
@@ -120,8 +120,8 @@ export default function TicketsScreen() {
     const Icon = e.icon;
     return (
       <View style={styles.empty}>
-        <Icon size={44} color={c.soft} weight="duotone" />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>{e.title}</Text>
+        <Icon size={44} color={c.soft} weight="duotone" accessibilityElementsHidden importantForAccessibility="no" />
+        <Text accessibilityRole="header" style={[styles.emptyTitle, { color: c.text }]}>{e.title}</Text>
         <Text style={[styles.emptyBody, { color: c.muted }]}>{e.body}</Text>
         {e.cta ? (
           <AuthButton label={e.cta} arrow onPress={() => router.navigate('/(tabs)')} style={styles.emptyCta} />
@@ -139,7 +139,7 @@ export default function TicketsScreen() {
           {header}
           <View style={[styles.guest, { backgroundColor: c.raised }]}>
             <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
-            <Text style={[styles.guestTitle, { color: c.text }]}>Every pass, one place</Text>
+            <Text accessibilityRole="header" style={[styles.guestTitle, { color: c.text }]}>Every pass, one place</Text>
             <Text style={[styles.guestBody, { color: c.soft }]}>
               Sign in to register for events and keep your tickets ready for the door.
             </Text>
@@ -165,7 +165,7 @@ export default function TicketsScreen() {
   const monthGroups = (items: MyTicket[]) =>
     groupByMonth(items).map((group) => (
       <View key={group.label} style={styles.group}>
-        <Text style={[styles.label, { color: c.muted }]}>{group.label}</Text>
+        <Text accessibilityRole="header" style={[styles.label, { color: c.muted }]}>{group.label}</Text>
         <View style={styles.list}>{group.items.map(ticketCard)}</View>
       </View>
     ));
@@ -186,7 +186,7 @@ export default function TicketsScreen() {
 
   const renderBody = (tab: TicketTab) => {
     if (tab === 'waitlist') {
-      if (t.waitlistLoading && t.refreshing !== 'waitlist') return <View style={styles.pad}><Skeletons /></View>;
+      if (t.waitlistLoading && t.refreshing !== 'waitlist') return <View style={styles.pad} accessible accessibilityLabel="Loading waitlist"><Skeletons /></View>;
       return t.waitlist.length > 0 ? (
         <View style={[styles.pad, styles.list]}>
           {t.waitlist.map((entry) => (
@@ -207,7 +207,7 @@ export default function TicketsScreen() {
     const list = t.lists[tab];
     if (list.loading && t.refreshing !== tab) {
       return (
-        <View style={[styles.pad, styles.list]}>
+        <View style={[styles.pad, styles.list]} accessible accessibilityLabel="Loading tickets">
           {tab === 'upcoming' ? <NextPassCardSkeleton /> : null}
           <Skeletons />
         </View>
@@ -225,7 +225,7 @@ export default function TicketsScreen() {
         <View style={styles.pad}>
           {next ? (
             <View style={styles.group}>
-              <Text style={[styles.label, { color: c.soft }]}>Up next</Text>
+              <Text accessibilityRole="header" style={[styles.label, { color: c.soft }]}>Up next</Text>
               <NextPassCard ticket={next} onPress={() => openTicket(next)} />
             </View>
           ) : null}

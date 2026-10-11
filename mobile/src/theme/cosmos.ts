@@ -26,6 +26,8 @@ const dark = {
   tint: 'rgba(255, 255, 255, 0.06)',
   /** Cover placeholder when an image is missing: the web's night-3 field. */
   fallback: ['#1c1c20', '#0a0a0b'] as [string, string],
+  /** Green for done states (Checked in); the light value holds 4.5:1 on its own tinted chip. */
+  success: '#10b981',
   scheme: 'dark' as 'dark' | 'light',
 };
 
@@ -43,11 +45,13 @@ const light: typeof dark = {
   border: 'rgba(0, 0, 0, 0.1)',
   input: 'rgba(0, 0, 0, 0.18)',
   outline: 'rgba(0, 0, 0, 0.28)',
-  danger: '#d93636',
+  /** #d93636 was 4.15:1 on the grey ground; this holds 5:1 on it, 5.6:1 on cards. */
+  danger: '#c62828',
   warn: '#92400e',
   glow: '17, 17, 19',
   tint: 'rgba(0, 0, 0, 0.04)',
   fallback: ['#e4e4e7', '#f4f4f5'],
+  success: '#047857',
   scheme: 'light',
 };
 
