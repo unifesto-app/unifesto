@@ -1,10 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowCounterClockwise, Bank, Warning } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getMyBankAccounts,
@@ -17,15 +14,16 @@ import {
 } from '../lib/api/finance';
 import { PayoutRow } from '../components/manage/FinanceRows';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
 import { inr } from '../utils/money';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
-const ICON = 28;
+const ICON = 26;
 
 interface State {
   fin: Financials;
@@ -41,8 +39,7 @@ interface State {
 export default function FinanceScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [state, setState] = useState<State | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -88,115 +85,140 @@ export default function FinanceScreen() {
 
   if (!state) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? (
-          <>
-            <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text>
-            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-          </>
-        ) : (
-          <ActivityIndicator color={tokens.accent} />
-        )}
-      </View>
+      <CosmosScreen>
+        <View style={styles.pad}>
+          {error ? (
+            <View style={[styles.card, { backgroundColor: c.raised }]}>
+              <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : (
+            <>
+              <Skeleton width="100%" height={210} borderRadius={cosmosCardRadius} />
+              <Skeleton width="100%" height={56} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+              <Skeleton width="100%" height={280} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+            </>
+          )}
+        </View>
+      </CosmosScreen>
     );
   }
 
   const { fin, payouts, toReview, accounts } = state;
   const hasVerified = accounts?.some((a) => a.status === 'VERIFIED') ?? true;
-  const icon = (I: typeof Bank) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof Bank) => <I size={ICON} color={c.text} weight="fill" />;
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-      }
-    >
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
       {/* What can move now */}
-      <View style={[styles.hero]}>
-        <CardBackdrop shape={styles.hero} />
-        <Text style={[styles.heroLabel, { color: tokens.textMuted }]}>Available to pay out</Text>
-        <Text style={[styles.heroValue, { color: tokens.text }]}>{inr(fin.available)}</Text>
-        <Text style={[styles.heroSub, { color: tokens.textSecondary }]}>
-          {inr(fin.settled)} paid out{fin.pending > 0 ? `  ·  ${inr(fin.pending)} on the way` : ''}
-        </Text>
-        <Button
-          label={fin.available > 0 ? 'Request payout' : 'Nothing to pay out yet'}
-          size="lg"
-          fullWidth
-          disabled={fin.available <= 0}
-          onPress={() => router.push(`/manage/space/${spaceId}/payouts`)}
-          style={{ marginTop: spacing[5] }}
-        />
+      <View style={styles.pad}>
+        <View style={[styles.card, { backgroundColor: c.raised }]}>
+          <Text style={[styles.eyebrow, { color: c.muted }]}>Available to pay out</Text>
+          <Text style={[styles.heroValue, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            {inr(fin.available)}
+          </Text>
+          <Text style={[styles.body, { color: c.soft }]}>
+            {inr(fin.settled)} paid out{fin.pending > 0 ? `  ·  ${inr(fin.pending)} on the way` : ''}
+          </Text>
+          <AuthButton
+            label={fin.available > 0 ? 'Request payout' : 'Nothing to pay out yet'}
+            arrow={fin.available > 0}
+            disabled={fin.available <= 0}
+            onPress={() => router.push(`/manage/space/${spaceId}/payouts`)}
+            style={{ marginTop: spacing[5] }}
+          />
+        </View>
+
+        {!hasVerified ? (
+          <View style={[styles.warn, { backgroundColor: c.raised }]}>
+            <Warning size={22} color={c.warn} weight="fill" />
+            <Text style={[styles.warnText, { color: c.soft }]}>
+              No verified payout account yet. Add one in Unifesto Space on the web; Unifesto verifies it before money can be sent.
+            </Text>
+          </View>
+        ) : null}
       </View>
 
-      {!hasVerified ? (
-        <View style={[styles.warn]}>
-          <CardBackdrop shape={styles.warn} />
-          <Warning size={22} color={tokens.warning} weight="fill" />
-          <Text style={[styles.warnText, { color: tokens.textSecondary }]}>
-            No verified payout account yet. Add one in Unifesto Space on the web; Unifesto verifies it before money can be sent.
-          </Text>
-        </View>
-      ) : null}
-
-      <SettingsGroup title="Needs you">
-        <SettingsRow
-          icon={icon(ArrowCounterClockwise)}
-          label="Refund requests"
-          value={toReview > 0 ? `${toReview} to review` : 'All clear'}
-          onPress={() => router.push(`/manage/space/${spaceId}/refunds`)}
-        />
-      </SettingsGroup>
+      <Section title="Needs you" style={styles.firstSection}>
+        <SettingsGroup style={styles.group}>
+          <SettingsRow
+            icon={icon(ArrowCounterClockwise)}
+            label="Refund requests"
+            value={toReview > 0 ? `${toReview} to review` : 'All clear'}
+            onPress={() => router.push(`/manage/space/${spaceId}/refunds`)}
+          />
+        </SettingsGroup>
+      </Section>
 
       {/* How the number is reached — reconciles top to bottom */}
-      <SettingsGroup title="How it adds up" plain>
-        <SettingsRow label="Collected" value={inr(fin.collectedOverall)} />
-        <SettingsRow label="App fees" value={`− ${inr(fin.processingFees)}`} />
-        <SettingsRow label="Ticket revenue" value={inr(fin.ticketRevenue)} />
-        <SettingsRow label="Refunded" value={fin.refunded ? `− ${inr(fin.refunded)}` : inr(0)} />
-        <SettingsRow label="Platform fee" value={`− ${inr(fin.platformFee)}`} />
-        <SettingsRow label="My earnings" value={inr(fin.netEntitlement)} />
-      </SettingsGroup>
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
-        My earnings = paid out + on the way + available. App fees are charged to buyers and kept by Unifesto.
-      </Text>
+      <Section title="How it adds up" subtitle="Paid out + on the way + available">
+        <SettingsGroup plain style={styles.group}>
+          <SettingsRow label="Collected" value={inr(fin.collectedOverall)} />
+          <SettingsRow label="App fees" value={`− ${inr(fin.processingFees)}`} />
+          <SettingsRow label="Ticket revenue" value={inr(fin.ticketRevenue)} />
+          <SettingsRow label="Refunded" value={fin.refunded ? `− ${inr(fin.refunded)}` : inr(0)} />
+          <SettingsRow label="Platform fee" value={`− ${inr(fin.platformFee)}`} />
+          <View style={styles.total}>
+            <Text style={[styles.totalLabel, { color: c.text }]}>My earnings</Text>
+            <Text style={[styles.totalValue, { color: c.text }]}>{inr(fin.netEntitlement)}</Text>
+          </View>
+        </SettingsGroup>
+        <Text style={[styles.note, { color: c.muted }]}>App fees are charged to buyers and kept by Unifesto.</Text>
+      </Section>
 
-      <SettingsGroup
-        plain
+      <Section
         title="Recent payouts"
-        action={payouts.length > 0 ? { label: 'See all', onPress: () => router.push(`/manage/space/${spaceId}/payouts`) } : undefined}
+        onSeeAll={payouts.length > 0 ? () => router.push(`/manage/space/${spaceId}/payouts`) : undefined}
       >
-        {payouts.length === 0 ? (
-          <SettingsRow label="No payouts yet" />
-        ) : (
-          payouts.slice(0, 4).map((p) => <PayoutRow key={p.id} payout={p} inCard />)
-        )}
-      </SettingsGroup>
+        <SettingsGroup plain style={styles.group}>
+          {payouts.length === 0 ? (
+            <SettingsRow label="No payouts yet" />
+          ) : (
+            payouts.slice(0, 4).map((p) => <PayoutRow key={p.id} payout={p} inCard />)
+          )}
+        </SettingsGroup>
+      </Section>
 
-      <SettingsGroup>
-        <SettingsRow
-          icon={icon(Bank)}
-          label="My payout accounts"
-          value={accounts ? String(accounts.length) : undefined}
-          onPress={() => router.push(`/manage/space/${spaceId}/accounts`)}
-        />
-      </SettingsGroup>
-    </ScrollView>
+      <Section title="Where it goes">
+        <SettingsGroup style={styles.group}>
+          <SettingsRow
+            icon={icon(Bank)}
+            label="My payout accounts"
+            value={accounts ? String(accounts.length) : undefined}
+            onPress={() => router.push(`/manage/space/${spaceId}/accounts`)}
+          />
+        </SettingsGroup>
+      </Section>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, ...font() },
-  hero: { borderRadius: borderRadius.xl, padding: spacing[5] },
-  heroLabel: { fontSize: typography.fontSize.sm, ...font('medium') },
-  heroValue: { marginTop: spacing[1], fontSize: typography.fontSize['4xl'], letterSpacing: -0.8, ...font('heading') },
-  heroSub: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  warn: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start', marginTop: spacing[4], padding: spacing[4], borderRadius: borderRadius.xl },
-  warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  pad: { paddingHorizontal: GUTTER },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  heroValue: { marginTop: spacing[2], fontSize: 32, lineHeight: 42, ...cosmosFont.display },
+  body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
+  warn: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start', marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },
+  warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
+  firstSection: { marginTop: spacing[10] },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  // The bottom line of the reconciliation: a real total, not one more row.
+  total: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[4],
+  },
+  totalLabel: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  totalValue: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  note: {
+    marginTop: spacing[3],
+    marginHorizontal: GUTTER + spacing[1],
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.fontSize.sm * 1.45,
+    ...cosmosFont.body,
+  },
 });
