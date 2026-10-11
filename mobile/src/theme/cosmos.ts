@@ -19,6 +19,8 @@ const dark = {
   input: 'rgba(255, 255, 255, 0.18)',
   outline: 'rgba(255, 255, 255, 0.28)',
   danger: '#ff6b6b',
+  /** Amber for counts and other text that needs attention; the light value holds 4.5:1 on cards. */
+  warn: '#f59e0b',
   glow: '255, 255, 255',
   /** Faint silver wash for highlighted cards (the web's rgb(var(--glow) / 0.06)). */
   tint: 'rgba(255, 255, 255, 0.06)',
@@ -40,6 +42,7 @@ const light: typeof dark = {
   input: 'rgba(0, 0, 0, 0.18)',
   outline: 'rgba(0, 0, 0, 0.28)',
   danger: '#d93636',
+  warn: '#92400e',
   glow: '17, 17, 19',
   tint: 'rgba(0, 0, 0, 0.04)',
   fallback: ['#e4e4e7', '#f4f4f5'],

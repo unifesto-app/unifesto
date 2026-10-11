@@ -12,6 +12,7 @@ import {
   BellRinging,
   Buildings,
   CalendarBlank,
+  CaretDown,
   CaretRight,
   ChartBar,
   ChartLineUp,
@@ -48,6 +49,7 @@ import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
+import PressableScale from '../components/ui/PressableScale';
 import { AppAlert } from '../components/ui/AppAlert';
 import { AreaChart, BarChart, BarList, Meter, Ring } from '../components/apex/MiniCharts';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
@@ -201,7 +203,7 @@ export default function ApexScreen() {
   const tokens = useTokens();
   const c = useCosmos();
   const topInset = useStableTopInset();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const [data, setData] = useState<PlatformOverview | null>(null);
   const [money, setMoney] = useState<FinancialPoint[] | null>(null);
   const [growth, setGrowth] = useState<GrowthPoint[] | null>(null);
@@ -214,6 +216,7 @@ export default function ApexScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
+  const [moreStats, setMoreStats] = useState(false);
 
   useAnalyticsScreenTracking('Apex');
 
@@ -306,8 +309,9 @@ export default function ApexScreen() {
   );
 
   const open = (to: Href) => router.push(to);
-  // Three tiles per row; half-width chart cards.
-  const tileW = (width - GUTTER * 2 - GAP * 2) / 3;
+  // Three tiles per row, two once large text would truncate the labels; half-width chart cards.
+  const cols = fontScale > 1.3 ? 2 : 3;
+  const tileW = (width - GUTTER * 2 - GAP * (cols - 1)) / cols;
   const halfW = (width - GUTTER * 2 - GAP) / 2;
 
   const moneyVals = money?.map((m) => m.collected) ?? [];
@@ -327,26 +331,26 @@ export default function ApexScreen() {
     const n = countOf(t);
     const isStatus = t.to === '/apex/status';
     return (
-      <Pressable
+      <PressableScale
         key={t.label}
         onPress={() => open(t.to)}
         accessibilityRole="button"
         accessibilityLabel={n ? `${t.label}, ${n} waiting` : isStatus && sys ? `${t.label}, ${sys.text}` : t.label}
-        style={({ pressed }) => [styles.tile, { width: tileW, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+        style={[styles.tile, { width: tileW }]}
       >
         <CardBackdrop shape={styles.tile} />
         <View style={styles.tileTop}>
           <t.icon size={ICON} color={isStatus && sys ? sys.color : c.text} />
           {n ? (
             <View style={[styles.count, { backgroundColor: `${tokens.warning}26` }]}>
-              <Text style={[styles.countText, { color: tokens.warning }]}>{fmt(n)}</Text>
+              <Text style={[styles.countText, { color: c.warn }]}>{fmt(n)}</Text>
             </View>
           ) : null}
         </View>
         <Text style={[styles.tileLabel, { color: c.text }]} numberOfLines={2}>
           {t.label}
         </Text>
-      </Pressable>
+      </PressableScale>
     );
   };
 
@@ -356,7 +360,7 @@ export default function ApexScreen() {
       <View style={[styles.rule, { backgroundColor: `rgba(${c.glow}, 0.7)` }]} />
       <Text accessibilityRole="header" style={[styles.headingText, { color: c.text }]}>
         {title}
-        {extra ? <Text style={{ color: tokens.warning }}>{`  ${extra}`}</Text> : null}
+        {extra ? <Text style={{ color: c.warn }}>{`  ${extra}`}</Text> : null}
       </Text>
     </View>
   );
@@ -371,12 +375,12 @@ export default function ApexScreen() {
     w?: number;
     children: React.ReactNode;
   }) => (
-    <Pressable
+    <PressableScale
       key={p.title}
       onPress={() => open(p.to)}
       accessibilityRole="button"
       accessibilityLabel={p.a11y}
-      style={({ pressed }) => [styles.card, p.w ? { width: p.w } : null, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      style={[styles.card, p.w ? { width: p.w } : null]}
     >
       <CardBackdrop shape={styles.card} />
       <View style={styles.cardHead}>
@@ -398,7 +402,7 @@ export default function ApexScreen() {
         </Text>
       ) : null}
       <View style={styles.cardChart}>{p.children}</View>
-    </Pressable>
+    </PressableScale>
   );
 
   const chartOrSkeleton = (ready: boolean, chart: React.ReactNode, h = 72) =>
@@ -498,24 +502,24 @@ export default function ApexScreen() {
                   const n = countOf(t);
                   const name = t.short ?? t.label;
                   return (
-                    <Pressable
+                    <PressableScale
                       key={t.label}
                       onPress={() => open(t.to)}
                       accessibilityRole="button"
                       accessibilityLabel={`${name}, ${n} waiting`}
-                      style={({ pressed }) => [styles.need, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+                      style={styles.need}
                     >
                       <CardBackdrop shape={styles.need} />
                       <View style={styles.tileTop}>
                         <t.icon size={16} color={c.soft} />
-                        <Text style={[styles.needCount, { color: tokens.warning }]}>{fmt(n)}</Text>
+                        <Text style={[styles.needCount, { color: c.warn }]}>{fmt(n)}</Text>
                       </View>
                       <Text style={[styles.needLabel, { color: c.text }]} numberOfLines={1}>
                         {name}
                       </Text>
                       {/* Share of everything waiting. */}
                       <Meter frac={n / waitingTotal} color={tokens.warning} />
-                    </Pressable>
+                    </PressableScale>
                   );
                 })}
               </ScrollView>
@@ -528,187 +532,201 @@ export default function ApexScreen() {
             </View>
 
             {chartCard({
-              title: 'Revenue collected',
+              title: 'Total revenue collected',
               value: data ? inrShort(data.revenue.totalPaid) : '—',
               sub: money?.length ? [`${inrShort(sum(moneyVals))} in ${span}`, trend(moneyVals, moneyLabels)].filter(Boolean).join(' · ') : null,
-              a11y: `Revenue collected, ${data ? inrShort(data.revenue.totalPaid) : 'loading'}. ${span}: ${moneyLabels
+              a11y: `Total revenue collected, ${data ? inrShort(data.revenue.totalPaid) : 'loading'}. ${span}: ${moneyLabels
                 .map((l, i) => `${l} ${inrShort(moneyVals[i])}`)
                 .join(', ')}`,
               to: '/apex/money/financials',
               children: chartOrSkeleton(!!money, <AreaChart values={moneyVals} labels={moneyLabels} height={56} format={inrShort} />, 56),
             })}
 
-            {money?.length
-              ? chartCard({
-                  title: `Where the money went · ${span}`,
-                  value: inrShort(sum(money.map((m) => m.netRevenue))),
-                  sub: 'Net after fees and refunds',
-                  a11y: `Money in ${span}: collected ${inrShort(sum(moneyVals))}, fees ${inrShort(sum(money.map((m) => m.processingFees)))}, refunded ${inrShort(sum(money.map((m) => m.refunded)))}, net ${inrShort(sum(money.map((m) => m.netRevenue)))}`,
-                  to: '/apex/money/financials',
-                  children: (
-                    <BarList
-                      items={[
-                        { key: 'in', label: 'Collected', value: sum(moneyVals), display: inrShort(sum(moneyVals)) },
-                        { key: 'fee', label: 'Processing fees', value: sum(money.map((m) => m.processingFees)), display: inrShort(sum(money.map((m) => m.processingFees))) },
-                        { key: 'ref', label: 'Refunded', value: sum(money.map((m) => m.refunded)), display: inrShort(sum(money.map((m) => m.refunded))) },
-                        { key: 'net', label: 'Net', value: sum(money.map((m) => m.netRevenue)), display: inrShort(sum(money.map((m) => m.netRevenue))) },
-                      ]}
-                    />
-                  ),
-                })
-              : null}
-
             <View style={styles.pair}>
               {chartCard({
-                title: 'Users',
+                title: 'Total users',
                 value: data ? fmt(data.users.total) : '—',
                 sub: growth?.length ? `+${fmt(sum(userVals))} in ${rangeShort}` : null,
-                a11y: `Users, ${data ? fmt(data.users.total) : 'loading'}. New users: ${growthLabels.map((l, i) => `${l} ${userVals[i]}`).join(', ')}`,
+                a11y: `Total users, ${data ? fmt(data.users.total) : 'loading'}. New users: ${growthLabels.map((l, i) => `${l} ${userVals[i]}`).join(', ')}`,
                 to: '/apex/users',
                 w: halfW,
                 children: chartOrSkeleton(!!growth, <BarChart values={userVals} labels={growthLabels} height={40} />, 40),
               })}
               {chartCard({
-                title: 'Registrations',
+                title: 'Total registrations',
                 value: data ? fmt(data.registrations.total) : '—',
                 sub: growth?.length ? `+${fmt(sum(regVals))} in ${rangeShort}` : null,
-                a11y: `Registrations, ${data ? fmt(data.registrations.total) : 'loading'}. New: ${growthLabels.map((l, i) => `${l} ${regVals[i]}`).join(', ')}`,
+                a11y: `Total registrations, ${data ? fmt(data.registrations.total) : 'loading'}. New: ${growthLabels.map((l, i) => `${l} ${regVals[i]}`).join(', ')}`,
                 to: '/apex/money/transactions',
                 w: halfW,
                 children: chartOrSkeleton(!!growth, <BarChart values={regVals} labels={growthLabels} height={40} />, 40),
               })}
             </View>
 
-            <View style={styles.pair}>
-              {chartCard({
-                title: 'New spaces',
-                value: growth ? fmt(sum(spaceVals)) : '—',
-                sub: `in ${rangeShort}`,
-                a11y: `New spaces in ${span}: ${fmt(sum(spaceVals))}. ${growthLabels.map((l, i) => `${l} ${spaceVals[i]}`).join(', ')}`,
-                to: '/apex/spaces',
-                w: halfW,
-                children: chartOrSkeleton(!!growth, <BarChart values={spaceVals} labels={growthLabels} height={40} />, 40),
-              })}
-              {chartCard({
-                title: 'New events',
-                value: growth ? fmt(sum(eventVals)) : '—',
-                sub: `in ${rangeShort}`,
-                a11y: `New events in ${span}: ${fmt(sum(eventVals))}. ${growthLabels.map((l, i) => `${l} ${eventVals[i]}`).join(', ')}`,
-                to: '/apex/events',
-                w: halfW,
-                children: chartOrSkeleton(!!growth, <BarChart values={eventVals} labels={growthLabels} height={40} />, 40),
-              })}
-            </View>
+            {/* Secondary stats stay folded so the tools aren't buried. */}
+            <PressableScale
+              feedback="inline"
+              onPress={() => setMoreStats((v) => !v)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: moreStats }}
+              hitSlop={8}
+              style={styles.moreStats}
+            >
+              <Text style={[styles.webText, { color: c.soft }]}>{moreStats ? 'Fewer stats' : 'More stats'}</Text>
+              <CaretDown size={14} color={c.soft} style={moreStats ? { transform: [{ rotate: '180deg' }] } : undefined} />
+            </PressableScale>
 
-            <View style={styles.pair}>
-              {[
-                { title: 'Spaces active', part: data?.spaces.active ?? 0, whole: data?.spaces.total ?? 0, to: '/apex/spaces' as Href },
-                { title: 'Events published', part: data?.events.published ?? 0, whole: data?.events.total ?? 0, to: '/apex/events' as Href },
-              ].map((r) => (
-                <Pressable
-                  key={r.title}
-                  onPress={() => open(r.to)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${r.title}: ${fmt(r.part)} of ${fmt(r.whole)}`}
-                  style={({ pressed }) => [styles.ringCard, { width: halfW, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
-                >
-                  <CardBackdrop shape={styles.ringCard} />
-                  {loading ? <Skeleton width={44} height={44} borderRadius={22} /> : <Ring part={r.part} whole={r.whole} size={44} />}
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.ringValue, { color: c.text }]} numberOfLines={1}>
-                      {data ? `${fmt(r.part)}/${fmt(r.whole)}` : '—'}
-                    </Text>
-                    <Text style={[styles.cardTitle, { color: c.muted }]} numberOfLines={2}>
-                      {r.title}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+            {moreStats ? (
+              <>
+                {money?.length
+                  ? chartCard({
+                      title: `Where the money went · ${span}`,
+                      value: inrShort(sum(money.map((m) => m.netRevenue))),
+                      sub: 'Net after fees and refunds',
+                      a11y: `Money in ${span}: collected ${inrShort(sum(moneyVals))}, fees ${inrShort(sum(money.map((m) => m.processingFees)))}, refunded ${inrShort(sum(money.map((m) => m.refunded)))}, net ${inrShort(sum(money.map((m) => m.netRevenue)))}`,
+                      to: '/apex/money/financials',
+                      children: (
+                        <BarList
+                          items={[
+                            { key: 'in', label: 'Collected', value: sum(moneyVals), display: inrShort(sum(moneyVals)) },
+                            { key: 'fee', label: 'Processing fees', value: sum(money.map((m) => m.processingFees)), display: inrShort(sum(money.map((m) => m.processingFees))) },
+                            { key: 'ref', label: 'Refunded', value: sum(money.map((m) => m.refunded)), display: inrShort(sum(money.map((m) => m.refunded))) },
+                            { key: 'net', label: 'Net', value: sum(money.map((m) => m.netRevenue)), display: inrShort(sum(money.map((m) => m.netRevenue))) },
+                          ]}
+                        />
+                      ),
+                    })
+                  : null}
 
-            {byStatus ? (
-              <View style={styles.pair}>
-                {[
-                  { title: 'Events by status', rows: byStatus.events, to: '/apex/events' as Href },
-                  { title: 'Spaces by status', rows: byStatus.spaces, to: '/apex/spaces' as Href },
-                ].map((b) =>
-                  chartCard({
-                    title: b.title,
-                    value: fmt(sum(b.rows.map((r) => r.count))),
-                    a11y: `${b.title}: ${b.rows.map((r) => `${titleCase(r.status)} ${r.count}`).join(', ')}`,
-                    to: b.to,
+                <View style={styles.pair}>
+                  {chartCard({
+                    title: 'New spaces',
+                    value: growth ? fmt(sum(spaceVals)) : '—',
+                    sub: `in ${rangeShort}`,
+                    a11y: `New spaces in ${span}: ${fmt(sum(spaceVals))}. ${growthLabels.map((l, i) => `${l} ${spaceVals[i]}`).join(', ')}`,
+                    to: '/apex/spaces',
                     w: halfW,
-                    children: (
-                      <BarList
-                        items={[...b.rows]
-                          .sort((x, y) => y.count - x.count)
-                          .map((r) => ({ key: r.status, label: titleCase(r.status), value: r.count }))}
-                      />
-                    ),
-                  }),
-                )}
-              </View>
+                    children: chartOrSkeleton(!!growth, <BarChart values={spaceVals} labels={growthLabels} height={40} />, 40),
+                  })}
+                  {chartCard({
+                    title: 'New events',
+                    value: growth ? fmt(sum(eventVals)) : '—',
+                    sub: `in ${rangeShort}`,
+                    a11y: `New events in ${span}: ${fmt(sum(eventVals))}. ${growthLabels.map((l, i) => `${l} ${eventVals[i]}`).join(', ')}`,
+                    to: '/apex/events',
+                    w: halfW,
+                    children: chartOrSkeleton(!!growth, <BarChart values={eventVals} labels={growthLabels} height={40} />, 40),
+                  })}
+                </View>
+
+                <View style={styles.pair}>
+                  {[
+                    { title: 'Spaces active', part: data?.spaces.active ?? 0, whole: data?.spaces.total ?? 0, to: '/apex/spaces' as Href },
+                    { title: 'Events published', part: data?.events.published ?? 0, whole: data?.events.total ?? 0, to: '/apex/events' as Href },
+                  ].map((r) => (
+                    <PressableScale
+                      key={r.title}
+                      onPress={() => open(r.to)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${r.title}: ${fmt(r.part)} of ${fmt(r.whole)}`}
+                      style={[styles.ringCard, { width: halfW }]}
+                    >
+                      <CardBackdrop shape={styles.ringCard} />
+                      {loading ? <Skeleton width={44} height={44} borderRadius={22} /> : <Ring part={r.part} whole={r.whole} size={44} />}
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.ringValue, { color: c.text }]} numberOfLines={1}>
+                          {data ? `${fmt(r.part)}/${fmt(r.whole)}` : '—'}
+                        </Text>
+                        <Text style={[styles.cardTitle, { color: c.muted }]} numberOfLines={2}>
+                          {r.title}
+                        </Text>
+                      </View>
+                    </PressableScale>
+                  ))}
+                </View>
+
+                {byStatus ? (
+                  <View style={styles.pair}>
+                    {[
+                      { title: 'Events by status', rows: byStatus.events, to: '/apex/events' as Href },
+                      { title: 'Spaces by status', rows: byStatus.spaces, to: '/apex/spaces' as Href },
+                    ].map((b) =>
+                      chartCard({
+                        title: b.title,
+                        value: fmt(sum(b.rows.map((r) => r.count))),
+                        a11y: `${b.title}: ${b.rows.map((r) => `${titleCase(r.status)} ${r.count}`).join(', ')}`,
+                        to: b.to,
+                        w: halfW,
+                        children: (
+                          <BarList
+                            items={[...b.rows]
+                              .sort((x, y) => y.count - x.count)
+                              .map((r) => ({ key: r.status, label: titleCase(r.status), value: r.count }))}
+                          />
+                        ),
+                      }),
+                    )}
+                  </View>
+                ) : null}
+
+                {traffic
+                  ? chartCard({
+                      title: `Views · last ${traffic.days} days`,
+                      value: fmt(traffic.views),
+                      sub: `${fmt(traffic.visitors)} visitors · ${fmt(traffic.registrations)} registrations`,
+                      a11y: `Views in the last ${traffic.days} days, ${fmt(traffic.views)}, from ${fmt(traffic.visitors)} visitors`,
+                      to: '/apex/traffic',
+                      children: <AreaChart values={views} labels={viewLabels} height={44} />,
+                    })
+                  : null}
+
+                {traffic?.topEvents.length
+                  ? chartCard({
+                      title: 'Top events by views',
+                      value: traffic.topEvents[0].title ?? '—',
+                      a11y: `Top events by views: ${traffic.topEvents.slice(0, 5).map((e) => `${e.title} ${e.views}`).join(', ')}`,
+                      to: '/apex/traffic',
+                      children: (
+                        <BarList
+                          items={traffic.topEvents.slice(0, 5).map((e) => ({
+                            key: e.id,
+                            label: e.title ?? e.slug,
+                            value: e.views,
+                            onPress: () => open(`/apex/events/${e.id}`),
+                          }))}
+                        />
+                      ),
+                    })
+                  : null}
+
+                {traffic?.topSpaces.length
+                  ? chartCard({
+                      title: 'Top spaces by views',
+                      value: traffic.topSpaces[0].name ?? '—',
+                      a11y: `Top spaces by views: ${traffic.topSpaces.slice(0, 5).map((e) => `${e.name} ${e.views}`).join(', ')}`,
+                      to: '/apex/traffic',
+                      children: (
+                        <BarList
+                          items={traffic.topSpaces.slice(0, 5).map((e) => ({
+                            key: e.id,
+                            label: e.name ?? e.slug,
+                            value: e.views,
+                            onPress: () => open(`/apex/spaces/${e.id}`),
+                          }))}
+                        />
+                      ),
+                    })
+                  : null}
+              </>
             ) : null}
 
-            {traffic
-              ? chartCard({
-                  title: `Views · last ${traffic.days} days`,
-                  value: fmt(traffic.views),
-                  sub: `${fmt(traffic.visitors)} visitors · ${fmt(traffic.registrations)} registrations`,
-                  a11y: `Views in the last ${traffic.days} days, ${fmt(traffic.views)}, from ${fmt(traffic.visitors)} visitors`,
-                  to: '/apex/traffic',
-                  children: <AreaChart values={views} labels={viewLabels} height={44} />,
-                })
-              : null}
-
-            {traffic?.topEvents.length
-              ? chartCard({
-                  title: 'Top events by views',
-                  value: traffic.topEvents[0].title ?? '—',
-                  a11y: `Top events by views: ${traffic.topEvents.slice(0, 5).map((e) => `${e.title} ${e.views}`).join(', ')}`,
-                  to: '/apex/traffic',
-                  children: (
-                    <BarList
-                      items={traffic.topEvents.slice(0, 5).map((e) => ({
-                        key: e.id,
-                        label: e.title ?? e.slug,
-                        value: e.views,
-                        onPress: () => open(`/apex/events/${e.id}`),
-                      }))}
-                    />
-                  ),
-                })
-              : null}
-
-            {traffic?.topSpaces.length
-              ? chartCard({
-                  title: 'Top spaces by views',
-                  value: traffic.topSpaces[0].name ?? '—',
-                  a11y: `Top spaces by views: ${traffic.topSpaces.slice(0, 5).map((e) => `${e.name} ${e.views}`).join(', ')}`,
-                  to: '/apex/traffic',
-                  children: (
-                    <BarList
-                      items={traffic.topSpaces.slice(0, 5).map((e) => ({
-                        key: e.id,
-                        label: e.name ?? e.slug,
-                        value: e.views,
-                        onPress: () => open(`/apex/spaces/${e.id}`),
-                      }))}
-                    />
-                  ),
-                })
-              : null}
-
             {/* ── Tools, in sections ─────────────────────────────── */}
-            {SECTIONS.map((s) => {
-              const n = s.tools.reduce((sum, t) => sum + countOf(t), 0);
-              return (
-                <View key={s.title}>
-                  {heading(s.title, n ? fmt(n) : undefined)}
-                  <View style={styles.grid}>{s.tools.map(toolTile)}</View>
-                </View>
-              );
-            })}
+            {SECTIONS.map((s) => (
+              <View key={s.title}>
+                {heading(s.title)}
+                <View style={styles.grid}>{s.tools.map(toolTile)}</View>
+              </View>
+            ))}
 
             <Pressable
               onPress={() => Linking.openURL(APEX_WEB_URL).catch(() => AppAlert.alert('Error', 'Unable to open Apex'))}
@@ -763,7 +781,7 @@ const styles = StyleSheet.create({
   // Rails run edge to edge; the first card still lines up with the gutter.
   bleed: { marginHorizontal: -GUTTER },
   rail: { paddingHorizontal: GUTTER, gap: GAP },
-  need: { width: 124, borderRadius: cosmosCardRadius, padding: PAD, gap: spacing[2] },
+  need: { minWidth: 124, borderRadius: cosmosCardRadius, padding: PAD, gap: spacing[2] },
   needCount: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.display },
   needLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   clear: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: PAD, borderRadius: cosmosCardRadius },
@@ -791,6 +809,7 @@ const styles = StyleSheet.create({
   count: { paddingHorizontal: spacing[2], paddingVertical: 2, borderRadius: 999 },
   countText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   tileLabel: { fontSize: typography.fontSize.xs, lineHeight: 16, ...cosmosFont.strong },
+  moreStats: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 },
   webLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: spacing[8], minHeight: 44 },
   webText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
