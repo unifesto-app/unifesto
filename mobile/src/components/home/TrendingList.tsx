@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Event } from '../../lib/api/events';
@@ -9,6 +9,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
+import PressableScale from '../ui/PressableScale';
 
 const MAX = 5;
 
@@ -26,15 +27,14 @@ export default function TrendingList({ events, onPress }: { events: Event[]; onP
       {events.slice(0, MAX).map((e, i) => {
         const cover = coverOr(defaults, e.id, e.coverImageUrl);
         return (
-          <Pressable
+          <PressableScale feedback="inline"
             key={e.id}
             onPress={() => onPress(e)}
             accessibilityRole="button"
             accessibilityLabel={`Number ${i + 1}, ${e.title}, ${relativeWhen(e.startDateTime)}, ${shortPrice(e)}`}
-            style={({ pressed }) => [
+            style={[
               styles.row,
               i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border },
-              { opacity: pressed ? 0.7 : 1 },
             ]}
           >
             <Text style={[styles.rank, { color: i === 0 ? c.text : c.muted }]}>{String(i + 1).padStart(2, '0')}</Text>
@@ -51,7 +51,7 @@ export default function TrendingList({ events, onPress }: { events: Event[]; onP
                 {`${relativeWhen(e.startDateTime)}  ·  ${shortPrice(e)}`}
               </Text>
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>

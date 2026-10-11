@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CaretRight } from '@unifesto/unicon/react-native';
@@ -12,6 +12,7 @@ import Skeleton from '../Skeleton';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
 import { logoOr, useDefaultImages } from '../../lib/defaultImages';
+import PressableScale from '../ui/PressableScale';
 
 // Space banner is 4:3 and the logo 1:1; both kept thumbnail-sized so the
 // feature reads as one compact row, not another full-width block.
@@ -30,11 +31,11 @@ export default function BeyondFeature({ space, onPress }: { space: Space; onPres
 
   return (
     <View style={{ paddingHorizontal: GUTTER }}>
-      <Pressable
+      <PressableScale
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={space.name}
-        style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+        style={styles.card}
       >
         <CardBackdrop shape={styles.card} />
         <LinearGradient
@@ -68,7 +69,7 @@ export default function BeyondFeature({ space, onPress }: { space: Space; onPres
           <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
         </View>
         <CaretRight size={16} color={c.soft} weight="bold" />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -77,7 +78,7 @@ export default function BeyondFeature({ space, onPress }: { space: Space; onPres
 export function BeyondFeatureSkeleton() {
   return (
     <View style={{ paddingHorizontal: GUTTER }}>
-      <View style={[styles.card]}>
+      <View style={styles.card}>
         <CardBackdrop shape={styles.card} />
         <Skeleton width={BANNER_W} height={BANNER_H} borderRadius={borderRadius.md} />
         <View style={{ flex: 1, gap: 8 }}>

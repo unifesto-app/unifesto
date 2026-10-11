@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Easing,
@@ -22,12 +22,12 @@ import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { CardBackdrop } from '../ui/CardSurface';
+import PressableScale from '../ui/PressableScale';
 
 type Team = NonNullable<HackathonHub['team']>;
 
-/** motion-design tokens: ease-out-quart for enters, sine in-out for ambient loops. */
+/** motion-design token: ease-out-quart for enters. */
 const EASE_OUT = Easing.bezier(0.165, 0.84, 0.44, 1);
-const EASE_IN_OUT = Easing.inOut(Easing.sin);
 
 /**
  * The first of my upcoming tickets where I'm on a live hackathon team.
@@ -85,17 +85,6 @@ function countdown(ms: number): string {
   return `${pad(h)}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
 }
 
-/** A 0 → 1 → 0 loop on the UI thread; stays still under Reduce Motion. */
-function useLoop(duration: number, delay = 0) {
-  const reduced = useReducedMotion();
-  const v = useSharedValue(0);
-  React.useEffect(() => {
-    if (reduced) return;
-    v.value = withDelay(delay, withRepeat(withTiming(1, { duration, easing: EASE_IN_OUT }), -1, true));
-  }, [reduced, v, duration, delay]);
-  return v;
-}
-
 /** Solid dot with a ring that radiates out and fades, like a broadcast light. */
 function LiveDot({ color }: { color: string }) {
   const reduced = useReducedMotion();
@@ -136,17 +125,6 @@ function TimeBar({ progress, color }: { progress: number; color: string }) {
   );
 }
 
-/** Trophy that gently bobs, so the card reads as "in play". */
-function FloatingTrophy({ color }: { color: string }) {
-  const t = useLoop(1800);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: -3 * t.value }, { rotate: `${-6 + 12 * t.value}deg` }] }));
-  return (
-    <Animated.View style={style}>
-      <Trophy size={26} color={color} weight="fill" />
-    </Animated.View>
-  );
-}
-
 interface HackathonCardProps {
   hub: HackathonHub;
   onPress: () => void;
@@ -171,46 +149,40 @@ export default function HackathonCard({ hub, onPress }: HackathonCardProps) {
   const live = start <= now && now < end;
   const progress = live ? (now - start) / (end - start) : 0;
 
-  const press = useSharedValue(1);
-  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: press.value }] }));
-
   return (
     <Animated.View
       entering={FadeInDown.duration(260).easing(EASE_OUT).withInitialValues({ opacity: 0, transform: [{ translateY: 12 }] })}
       style={{ paddingHorizontal: GUTTER }}
     >
-      <Pressable
+      <PressableScale
         onPress={onPress}
-        onPressIn={() => (press.value = withTiming(0.98, { duration: 120, easing: EASE_OUT }))}
-        onPressOut={() => (press.value = withTiming(1, { duration: 180, easing: EASE_OUT }))}
         accessibilityRole="button"
         accessibilityLabel={`Hackathon ${hub.event.title}, team ${team.name}. ${statusLine(team, hub.unreadCount)}`}
+        style={styles.card}
       >
-        <Animated.View style={[styles.card, pressStyle]}>
-          <CardBackdrop shape={styles.card} />
-          <View style={styles.topRow}>
-            <FloatingTrophy color={accent} />
-            <View style={{ flex: 1 }}>
-              <View style={styles.pill}>
-                {live ? <LiveDot color={accent} /> : null}
-                <Text style={[styles.pillText, { color: live ? accent : c.muted }]} numberOfLines={1}>
-                  {live ? 'Live' : 'Unifesto Sprint'} · {hub.event.title}
-                </Text>
-              </View>
-              <Text style={[styles.team, { color: c.text }]} numberOfLines={1}>{team.name}</Text>
+        <CardBackdrop shape={styles.card} />
+        <View style={styles.topRow}>
+          <Trophy size={26} color={accent} weight="fill" />
+          <View style={{ flex: 1 }}>
+            <View style={styles.pill}>
+              {live ? <LiveDot color={accent} /> : null}
+              <Text style={[styles.pillText, { color: live ? accent : c.muted }]} numberOfLines={1}>
+                {live ? 'Live' : 'Unifesto Sprint'} · {hub.event.title}
+              </Text>
             </View>
-            <View style={styles.clockCol}>
-              <Text style={[styles.clock, { color: c.text }]}>{countdown((live ? end : start) - now)}</Text>
-              <Text style={[styles.clockLabel, { color: c.muted }]}>{live ? 'left' : 'to kickoff'}</Text>
-            </View>
+            <Text style={[styles.team, { color: c.text }]} numberOfLines={1}>{team.name}</Text>
           </View>
-          {live ? <TimeBar progress={progress} color={accent} /> : null}
-          <View style={styles.bottomRow}>
-            <Text style={[styles.status, { color: c.soft }]} numberOfLines={1}>{statusLine(team, hub.unreadCount)}</Text>
-            <CaretRight size={14} color={accent} weight="bold" />
+          <View style={styles.clockCol}>
+            <Text style={[styles.clock, { color: c.text }]}>{countdown((live ? end : start) - now)}</Text>
+            <Text style={[styles.clockLabel, { color: c.muted }]}>{live ? 'left' : 'to kickoff'}</Text>
           </View>
-        </Animated.View>
-      </Pressable>
+        </View>
+        {live ? <TimeBar progress={progress} color={accent} /> : null}
+        <View style={styles.bottomRow}>
+          <Text style={[styles.status, { color: c.soft }]} numberOfLines={1}>{statusLine(team, hub.unreadCount)}</Text>
+          <CaretRight size={14} color={accent} weight="bold" />
+        </View>
+      </PressableScale>
     </Animated.View>
   );
 }

@@ -1,9 +1,10 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowRight } from '@unifesto/unicon/react-native';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import PressableScale from '../ui/PressableScale';
 
 /** Horizontal page gutter shared by every home section. */
 export const GUTTER = spacing[6];
@@ -32,16 +33,16 @@ export function Section({ title, subtitle, onSeeAll, children, style }: SectionP
           {subtitle ? <Text style={[styles.subtitle, { color: c.muted }]}>{subtitle}</Text> : null}
         </View>
         {onSeeAll ? (
-          <Pressable
+          <PressableScale feedback="inline"
             onPress={onSeeAll}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={`See all ${title}`}
-            style={({ pressed }) => [styles.seeAll, { opacity: pressed ? 0.6 : 1 }]}
+            style={styles.seeAll}
           >
             <Text style={[styles.seeAllText, { color: c.text }]}>See all</Text>
             <ArrowRight size={13} color={c.text} />
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
       {children}

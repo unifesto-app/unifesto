@@ -1,13 +1,16 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { CalendarDots, Globe, Ticket } from '@unifesto/unicon/react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
+import { weekendWindow } from '../../utils/eventFormat';
 import Skeleton from '../Skeleton';
 import { GUTTER } from './Section';
+import PressableScale from '../ui/PressableScale';
 
 // Category banners are 4:3; kept small so the row stays one thumb-swipe tall.
 const TILE_W = 136;
@@ -26,14 +29,14 @@ export default function VibeRail({ categories, onPressCategory }: VibeRailProps)
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {categories.map((cat) => (
-        <Pressable
+        <PressableScale
           key={cat.id}
           onPress={() => onPressCategory(cat.name)}
           accessibilityRole="button"
           accessibilityLabel={cat.name}
-          style={({ pressed }) => [
+          style={[
             styles.tile,
-            { backgroundColor: c.card, transform: [{ scale: pressed ? 0.96 : 1 }] },
+            { backgroundColor: c.card },
           ]}
         >
           {cat.bannerUrl ? (
@@ -47,29 +50,59 @@ export default function VibeRail({ categories, onPressCategory }: VibeRailProps)
             style={StyleSheet.absoluteFill}
           />
           <Text style={styles.name} numberOfLines={lines}>{cat.name}</Text>
-        </Pressable>
+        </PressableScale>
       ))}
     </ScrollView>
   );
 }
 
-/** Quick filters that open Events pre-filtered. Solid fills: content layer, no glass. */
+const PRESET_GLYPH: Record<Preset, typeof Globe> = { weekend: CalendarDots, free: Ticket, online: Globe };
+
+/** "17–18 Oct", or "31 Oct – 1 Nov" when the weekend straddles a month. */
+function weekendLabel() {
+  const { start } = weekendWindow();
+  const sun = new Date(start);
+  sun.setDate(start.getDate() + 1);
+  const mon = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short' });
+  return mon(start) === mon(sun)
+    ? `${start.getDate()}–${sun.getDate()} ${mon(sun)}`
+    : `${start.getDate()} ${mon(start)} – ${sun.getDate()} ${mon(sun)}`;
+}
+
+const PRESET_HINT: Record<Preset, () => string> = {
+  weekend: weekendLabel,
+  free: () => 'No ticket cost',
+  online: () => 'Join from anywhere',
+};
+
+/**
+ * Quick filters that open Events pre-filtered: three equal tiles across the
+ * full width (glyph, name, one line of context) instead of a scrolling pill
+ * strip, so all three are visible and each is a real thumb target.
+ */
 export function PresetChips({ onPress }: { onPress: (preset: Preset) => void }) {
   const c = useCosmos();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, styles.chips]}>
-      {PRESETS.map((p) => (
-        <Pressable
-          key={p.key}
-          onPress={() => onPress(p.key)}
-          accessibilityRole="button"
-          accessibilityHint="Opens events with this filter"
-          style={({ pressed }) => [styles.chip, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
-        >
-          <Text style={[styles.chipText, { color: c.text }]}>{p.label}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
+    <View style={styles.presets}>
+      {PRESETS.map((p) => {
+        const Glyph = PRESET_GLYPH[p.key];
+        const hint = PRESET_HINT[p.key]();
+        return (
+          <PressableScale
+            key={p.key}
+            onPress={() => onPress(p.key)}
+            accessibilityRole="button"
+            accessibilityLabel={`${p.label}, ${hint}`}
+            accessibilityHint="Opens events with this filter"
+            style={[styles.preset, { backgroundColor: c.raised }]}
+          >
+            <Glyph size={24} color={c.text} />
+            <Text style={[styles.presetLabel, { color: c.text }]} numberOfLines={2}>{p.label}</Text>
+            <Text style={[styles.presetHint, { color: c.muted }]} numberOfLines={2}>{hint}</Text>
+          </PressableScale>
+        );
+      })}
+    </View>
   );
 }
 
@@ -95,7 +128,8 @@ const styles = StyleSheet.create({
     padding: spacing[2] + 2,
   },
   name: { fontSize: typography.fontSize.sm, color: '#ffffff', ...cosmosFont.strong },
-  chips: { paddingBottom: spacing[3] },
-  chip: { minHeight: 44, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
-  chipText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  presets: { flexDirection: 'row', gap: spacing[2], paddingHorizontal: GUTTER, paddingBottom: spacing[3] },
+  preset: { flex: 1, minHeight: 96, padding: spacing[3], borderRadius: 14, gap: spacing[1] },
+  presetLabel: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  presetHint: { fontSize: typography.fontSize.xs },
 });

@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { ViewStyle } from 'react-native';
-import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { borderRadius } from '../theme';
 import { useTheme } from '../context/ThemeContext';
 
@@ -24,13 +24,16 @@ export default function Skeleton({
   style,
 }: SkeletonProps) {
   const { colors } = useTheme();
-  const pulse = useSharedValue(0);
+  const reduced = useReducedMotion();
+  // Reduce Motion: hold mid-pulse instead of breathing.
+  const pulse = useSharedValue(reduced ? 0.5 : 0);
 
   useEffect(() => {
+    if (reduced) return;
     // 0 → 1 → 0 … forever (reverse = true), 1s each way.
     pulse.value = withRepeat(withTiming(1, { duration: 1000 }), -1, true);
     return () => cancelAnimation(pulse);
-  }, [pulse]);
+  }, [pulse, reduced]);
 
   const animated = useAnimatedStyle(() => ({ opacity: 0.3 + pulse.value * 0.4 }));
 

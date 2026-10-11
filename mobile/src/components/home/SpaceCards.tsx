@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Space } from '../../lib/api/spaces';
@@ -12,6 +12,7 @@ import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
 import { ArrowRight } from '@unifesto/unicon/react-native';
 import { SPACE_ROLE_LABEL } from '../manage/MemberRow';
+import PressableScale from '../ui/PressableScale';
 
 const CARD_W = 148;
 // Space banners are 4:3; logos are 1:1.
@@ -63,11 +64,11 @@ export function SpaceCard({ space, onPress, width = CARD_W, context }: SpaceCard
   ];
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={space.name}
-      style={({ pressed }) => [{ width, opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      style={[{ width }]}
     >
       <View style={[styles.banner, { height: bannerH, backgroundColor: c.card }]}>
         {banner ? (
@@ -99,7 +100,7 @@ export function SpaceCard({ space, onPress, width = CARD_W, context }: SpaceCard
           </View>
         ))}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -173,12 +174,12 @@ export function CircleRow({
         const events = space._count?.events ?? space.event_count ?? 0;
         const meta = [space.city, `${compact(members)} ${members === 1 ? 'member' : 'members'}`].filter(Boolean).join(' · ');
         return (
-          <Pressable
+          <PressableScale
             key={space.id}
             onPress={() => onPress(space)}
             accessibilityRole="button"
             accessibilityLabel={role ? `${space.name}, ${role}` : space.name}
-            style={({ pressed }) => [styles.tile, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+            style={[styles.tile, { backgroundColor: c.raised }]}
           >
             <View style={styles.tileTop}>
               {logo ? (
@@ -198,20 +199,20 @@ export function CircleRow({
               <Text style={[styles.tileCount, { color: c.text }]}>{compact(events)}</Text>
               <Text style={[styles.tileMeta, { color: c.muted }]}>{events === 1 ? 'event' : 'events'}</Text>
             </View>
-          </Pressable>
+          </PressableScale>
         );
       })}
 
-      <Pressable
+      <PressableScale
         onPress={onFindMore}
         accessibilityRole="button"
         accessibilityLabel="Find more circles"
-        style={({ pressed }) => [styles.tile, styles.more, { borderColor: c.outline, transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+        style={[styles.tile, styles.more, { borderColor: c.outline }]}
       >
         <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
         <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs and communities near you</Text>
         <ArrowRight size={18} color={c.text} style={{ marginTop: spacing[4] }} />
-      </Pressable>
+      </PressableScale>
     </ScrollView>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import Animated, {
   Extrapolation,
@@ -20,6 +20,9 @@ import { GUTTER } from './Section';
 import { CoverTag } from './PosterCard';
 import { relativeWhen, shortPrice } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
+import PressableScale from '../ui/PressableScale';
+import { selectionTick } from '../../lib/haptics';
+import { scheduleOnRN } from 'react-native-worklets';
 import AuthButton from '../auth/AuthButton';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
 
@@ -54,8 +57,20 @@ function HeroCarousel({ events, loading, failed, onRetry, onPressEvent }: HeroCa
   // card never came fully into focus (dimmed, shrunk, its dot never lit).
   const endPad = Math.max(GUTTER, screenW - cardW - GUTTER);
   const scrollX = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollX.value = e.contentOffset.x;
+  // Card nearest the resting point; a light tick each time a new one comes into
+  // focus, like a picker detent. Only while a finger or momentum drives it.
+  const focused = useSharedValue(0);
+  const last = Math.min(events.length, MAX_SLIDES) - 1;
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      scrollX.value = e.contentOffset.x;
+      // Clamped, so the edge bounce never counts as a new card.
+      const i = Math.max(0, Math.min(last, Math.round(e.contentOffset.x / snap)));
+      if (i !== focused.value) {
+        focused.value = i;
+        scheduleOnRN(selectionTick);
+      }
+    },
   });
 
   const slides = events.slice(0, MAX_SLIDES);
@@ -162,7 +177,7 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
 
   return (
     <Animated.View style={[{ width: cardW }, animated]}>
-      <Pressable
+      <PressableScale
         onPress={() => onPressEvent(event)}
         accessibilityRole="button"
         accessibilityLabel={[event.title, relativeWhen(event.startDateTime), shortPrice(event), place].filter(Boolean).join(', ')}
@@ -190,7 +205,7 @@ const Slide = React.memo(function Slide({ event, index, scrollX, snap, cardW, co
           <Text style={{ color: c.soft }}>{`  ·  ${shortPrice(event)}`}</Text>
           {place ? <Text style={{ color: c.muted }}>{`  ·  ${place}`}</Text> : null}
         </Text>
-      </Pressable>
+      </PressableScale>
     </Animated.View>
   );
 });

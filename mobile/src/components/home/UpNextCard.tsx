@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { QrCode } from '@unifesto/unicon/react-native';
@@ -12,6 +12,7 @@ import { GUTTER } from './Section';
 import { countdownLabel, relativeWhen } from '../../utils/eventFormat';
 import { CardBackdrop } from '../ui/CardSurface';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
+import PressableScale from '../ui/PressableScale';
 
 interface UpNextCardProps {
   ticket: UpcomingTicket;
@@ -34,24 +35,24 @@ export default function UpNextCard({ ticket, moreCount, onOpenTicket, onSeeAllTi
       <View style={styles.labelRow}>
         <Text style={[styles.label, { color: c.soft }]}>Up next</Text>
         {moreCount > 0 ? (
-          <Pressable
+          <PressableScale
+            feedback="inline"
             onPress={onSeeAllTickets}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel={`See all my tickets, ${moreCount} more`}
           >
             <Text style={[styles.more, { color: c.soft }]}>+{moreCount} more</Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
 
-      <Pressable
+      <PressableScale
         onPress={onOpenTicket}
         accessibilityRole="button"
         accessibilityLabel={`Open ticket for ${ticket.title}`}
-        style={({ pressed }) => [
+        style={[
           styles.card,
-          { transform: [{ scale: pressed ? 0.98 : 1 }] },
         ]}
       >
         <CardBackdrop shape={styles.card} />
@@ -89,7 +90,7 @@ export default function UpNextCard({ ticket, moreCount, onOpenTicket, onSeeAllTi
             <Text style={[styles.qrText, { color: c.primaryFg }]}>Ticket</Text>
           </View>
         </View>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -101,7 +102,7 @@ export function UpNextCardSkeleton() {
       <View style={styles.labelRow}>
         <Skeleton width={56} height={14} borderRadius={6} />
       </View>
-      <View style={[styles.card]}>
+      <View style={styles.card}>
         <CardBackdrop shape={styles.card} />
         <View style={styles.main}>
           <Skeleton width={76} height={57} borderRadius={borderRadius.md} />

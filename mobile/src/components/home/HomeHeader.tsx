@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { MagnifyingGlass, MapPin, NavigationArrow, UserCircle } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../CustomHeader';
@@ -8,6 +8,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
+import PressableScale from '../ui/PressableScale';
 
 // Brand wordmark PNG is 2400×551.
 const MARK_W = 112;
@@ -61,29 +62,28 @@ export default function HomeHeader({
               <Text style={[styles.chipText, { color: c.soft }]} numberOfLines={1}>{city}</Text>
             </View>
           ) : locationStatus === 'denied' ? (
-            <Pressable
+            <PressableScale
               onPress={onEnableLocation}
               hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="Use my location"
-              // Scale, not opacity: opacity breaks Liquid Glass.
-              style={({ pressed }) => [
+              style={[
                 styles.chip,
-                { borderColor: c.border, backgroundColor: c.card, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                { borderColor: c.border, backgroundColor: c.card },
               ]}
             >
               <NavigationArrow size={13} color={c.muted} weight="fill" />
               <Text style={[styles.chipText, { color: c.muted }]}>Set location</Text>
-            </Pressable>
+            </PressableScale>
           ) : null}
 
           {firstName !== null ? (
-            <Pressable
+            <PressableScale
               onPress={onPressAvatar}
               hitSlop={6}
               accessibilityRole="button"
               accessibilityLabel="Open profile"
-              style={({ pressed }) => [styles.avatar, { borderColor: c.outline, backgroundColor: c.card, transform: [{ scale: pressed ? 0.94 : 1 }] }]}
+              style={[styles.avatar, { borderColor: c.outline, backgroundColor: c.card }]}
             >
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} />
@@ -92,7 +92,7 @@ export default function HomeHeader({
               ) : (
                 <UserCircle size={22} color={c.text} />
               )}
-            </Pressable>
+            </PressableScale>
           ) : null}
         </View>
       </View>
@@ -101,18 +101,18 @@ export default function HomeHeader({
         What's on{city ? ` in ${city}` : ''}?
       </Text>
 
-      <Pressable
+      <PressableScale
         onPress={onPressSearch}
         accessibilityRole="search"
         accessibilityLabel="Search events and spaces"
-        style={({ pressed }) => [
+        style={[
           styles.search,
-          { borderColor: c.input, backgroundColor: c.card, transform: [{ scale: pressed ? 0.985 : 1 }] },
+          { borderColor: c.input, backgroundColor: c.card },
         ]}
       >
         <MagnifyingGlass size={18} color={c.muted} />
         <Text style={[styles.searchText, { color: c.muted }]}>Search events, spaces, vibes</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

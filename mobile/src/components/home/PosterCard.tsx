@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CalendarBlank, MapPin } from '@unifesto/unicon/react-native';
@@ -7,6 +7,7 @@ import Skeleton from '../Skeleton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
+import PressableScale from '../ui/PressableScale';
 
 export const POSTER_WIDTH = 220;
 
@@ -47,11 +48,11 @@ export default function PosterCard({
   const titleLines = useWindowDimensions().fontScale > 1.3 ? 3 : 2;
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={[title, host, when, where, price].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.card, { width, backgroundColor: c.raised, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+      style={[styles.card, { width, backgroundColor: c.raised }]}
     >
       <View style={[styles.cover, { backgroundColor: c.card }]}>
         {imageUrl ? (
@@ -75,7 +76,7 @@ export default function PosterCard({
         </View>
         {price ? <Text style={[styles.price, { color: c.text }]}>{price}</Text> : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
