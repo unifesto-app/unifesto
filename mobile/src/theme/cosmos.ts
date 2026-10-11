@@ -43,7 +43,8 @@ const light: typeof dark = {
   border: 'rgba(0, 0, 0, 0.1)',
   input: 'rgba(0, 0, 0, 0.18)',
   outline: 'rgba(0, 0, 0, 0.28)',
-  danger: '#d93636',
+  /** #d93636 was 4.15:1 on the grey ground; this holds 5:1 on it, 5.6:1 on cards. */
+  danger: '#c62828',
   warn: '#92400e',
   glow: '17, 17, 19',
   tint: 'rgba(0, 0, 0, 0.04)',
