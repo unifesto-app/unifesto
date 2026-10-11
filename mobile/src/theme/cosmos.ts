@@ -29,10 +29,12 @@ const dark = {
   scheme: 'dark' as 'dark' | 'light',
 };
 
+// Light follows the app's grouped-list model (tokens.ts): a soft grey ground with
+// WHITE cards, so borderless cards (CardBackdrop paints tokens.elevated #fff) lift off it.
 const light: typeof dark = {
-  bg: '#ffffff',
-  card: '#f4f4f5',
-  raised: '#f4f4f5',
+  bg: '#f2f2f5',
+  card: '#ffffff',
+  raised: '#ffffff',
   text: '#111113',
   soft: '#3f3f46',
   muted: '#63636a',
