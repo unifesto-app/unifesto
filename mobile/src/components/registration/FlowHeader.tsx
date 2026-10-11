@@ -1,13 +1,13 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CaretLeft, Timer, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
+import PressableScale from '../ui/PressableScale';
 import { STEPS, type StepType } from '../../hooks/useEventRegistration';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export const GUTTER = spacing[6];
 
@@ -28,7 +28,9 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
 
 /**
  * Registration header: back/close on the left, the event title, the seat-hold
- * countdown on the right, then a progress bar (one part per step) with the step name.
+ * countdown on the right, then one labelled segment per step, so the whole
+ * route (and where you are on it) is visible at a glance. The step's own
+ * heading lives in the body, so the header never repeats it.
  */
 export function FlowHeader({
   title,
@@ -46,57 +48,61 @@ export function FlowHeader({
   onBack: (() => void) | null;
   onClose: () => void;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const index = step ? steps.findIndex((s) => s.id === step) : -1;
   const urgent = secondsLeft != null && secondsLeft <= 120;
 
   return (
-    <SheetTop style={{ paddingHorizontal: GUTTER, backgroundColor: tokens.bg }}>
+    <SheetTop style={{ paddingHorizontal: GUTTER }}>
       <View style={styles.bar}>
-        <Pressable
+        <PressableScale
+          feedback="inline"
           onPress={onBack ?? onClose}
-          hitSlop={12}
+          hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={onBack ? 'Previous step' : 'Close'}
-          style={({ pressed }) => [styles.side, { opacity: pressed ? 0.6 : 1 }]}
+          style={styles.side}
         >
-          {onBack ? <CaretLeft size={24} color={tokens.text} weight="bold" /> : <X size={24} color={tokens.text} weight="bold" />}
-        </Pressable>
-        <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>{title}</Text>
+          {onBack ? <CaretLeft size={24} color={c.text} weight="bold" /> : <X size={24} color={c.text} weight="bold" />}
+        </PressableScale>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={1} accessibilityRole="header">{title}</Text>
         <View style={[styles.side, styles.right]}>
           {secondsLeft != null ? (
-            <View style={styles.timer} accessibilityLabel={`${mmss(secondsLeft)} left to finish`}>
-              <Timer size={16} color={urgent ? tokens.danger : tokens.textMuted} weight="bold" />
-              <Text style={[styles.timerText, { color: urgent ? tokens.danger : tokens.textSecondary }]}>{mmss(secondsLeft)}</Text>
+            <View
+              style={styles.timer}
+              accessible
+              accessibilityLabel={`Seat held for ${Math.ceil(secondsLeft / 60)} more minute${secondsLeft > 60 ? 's' : ''}`}
+            >
+              <Timer size={16} color={urgent ? c.danger : c.muted} weight="bold" />
+              <Text style={[styles.timerText, { color: urgent ? c.danger : c.soft }]}>{mmss(secondsLeft)}</Text>
             </View>
           ) : null}
         </View>
       </View>
 
       {index >= 0 ? (
-        <View style={styles.progressWrap}>
-          <View style={styles.progress}>
-            {steps.map((s, i) => (
-              <Segment key={s.id} filled={i <= index} color={tokens.accent} track={tokens.elevated} />
-            ))}
-          </View>
-          <Text style={[styles.stepText, { color: tokens.textMuted }]}>
-            Step {index + 1} of {steps.length} · <Text style={{ color: tokens.text }}>{STEP_TITLES[steps[index].id]}</Text>
-          </Text>
+        <View
+          style={styles.progress}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Step ${index + 1} of ${steps.length}, ${steps[index].label}`}
+        >
+          {steps.map((s, i) => (
+            <View key={s.id} style={styles.stepCol}>
+              <Segment filled={i <= index} color={c.primary} track={c.border} />
+              <Text style={[styles.stepText, { color: i === index ? c.text : c.muted }, i === index && cosmosFont.strong]} numberOfLines={1}>
+                {s.label}
+              </Text>
+            </View>
+          ))}
         </View>
       ) : null}
     </SheetTop>
   );
 }
 
-const STEP_TITLES: Record<StepType, string> = {
-  ticket: 'Choose a ticket',
-  details: 'Who is going',
-  review: 'Check everything',
-  payment: 'Confirm and pay',
-};
-
 function Segment({ filled, color, track }: { filled: boolean; color: string; track: string }) {
+  // withTiming follows the system Reduce Motion setting (jumps straight to the end).
   const fill = useAnimatedStyle(() => ({ width: withTiming(filled ? '100%' : '0%', { duration: 260 }) }));
   return (
     <View style={[styles.segment, { backgroundColor: track }]}>
@@ -107,14 +113,14 @@ function Segment({ filled, color, track }: { filled: boolean; color: string; tra
 
 const styles = StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'center', height: 44 },
-  side: { width: 72, justifyContent: 'center' },
+  side: { width: 76, height: 44, justifyContent: 'center' },
   right: { alignItems: 'flex-end' },
-  title: { flex: 1, textAlign: 'center', fontSize: 17, ...font('semibold') },
+  title: { flex: 1, textAlign: 'center', fontSize: 17, ...cosmosFont.strong },
   timer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  timerText: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...font('semibold') },
-  progressWrap: { marginTop: spacing[3], paddingBottom: spacing[3] },
-  progress: { flexDirection: 'row', gap: 6 },
-  segment: { flex: 1, height: 4, borderRadius: 2, overflow: 'hidden' },
+  timerText: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  progress: { flexDirection: 'row', gap: 6, marginTop: spacing[3], paddingBottom: spacing[3] },
+  stepCol: { flex: 1, gap: spacing[2] },
+  segment: { height: 4, borderRadius: 2, overflow: 'hidden' },
   segmentFill: { height: '100%', borderRadius: 2 },
-  stepText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('medium') },
+  stepText: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

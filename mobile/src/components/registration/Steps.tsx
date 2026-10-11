@@ -1,7 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
 import {
-  At,
   Check,
   CheckCircle,
   EnvelopeSimple,
@@ -10,24 +9,20 @@ import {
   Plus,
   ShieldCheck,
   Sparkle,
-  Ticket as TicketIcon,
   User,
   XCircle,
 } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import AttendeeForm from '../AttendeeForm';
 import CustomFieldInput from '../CustomFieldInput';
+import AuthField from '../auth/AuthField';
+import PressableScale from '../ui/PressableScale';
 import { visibleFields } from '../../utils/formQuestions';
-import { SettingsGroup } from '../profile/SettingsGroup';
-import FormRow from '../profile/FormRow';
 import { displayFieldValue, isSelfComplete, type EventRegistration, type TicketState } from '../../hooks/useEventRegistration';
 import { relativeWhen } from '../../utils/eventFormat';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { selectionTick } from '../../lib/haptics';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
-import { CardBackdrop } from '../ui/CardSurface';
-
-const TINT = 'rgba(52,145,255,0.14)';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /** ₹1,200 or ₹1,062.50: whole amounts stay clean, paise show when present. */
 export function money(symbol: string, n: number) {
@@ -37,49 +32,67 @@ export function money(symbol: string, n: number) {
 
 // ── Shared bits ─────────────────────────────────────────────────────────────
 
+/** The step's one title (Michroma, a VoiceOver heading) and a quiet line under it. */
 function Heading({ children, sub }: { children: string; sub?: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.heading}>
-      <Text style={[styles.h1, { color: tokens.text }]}>{children}</Text>
-      {sub ? <Text style={[styles.sub, { color: tokens.textSecondary }]}>{sub}</Text> : null}
+      <Text style={[styles.h1, { color: c.text }]} accessibilityRole="header">{children}</Text>
+      {sub ? <Text style={[styles.sub, { color: c.soft }]}>{sub}</Text> : null}
     </View>
   );
 }
 
-function Label({ children, right }: { children: string; right?: React.ReactNode }) {
-  const tokens = useTokens();
-  return (
-    <View style={styles.labelRow}>
-      <Text style={[styles.label, { color: tokens.textMuted }]}>{children}</Text>
-      {right}
-    </View>
-  );
+function Label({ children }: { children: string }) {
+  const c = useCosmos();
+  return <Text style={[styles.label, { color: c.muted }]} accessibilityRole="header">{children}</Text>;
 }
 
-function Card({ children, style }: { children: React.ReactNode; style?: object }) {
-  return (
-    <View style={[styles.card, style]}>
-      <CardBackdrop shape={[styles.card, style]} />
-      {children}
-    </View>
-  );
+/** Borderless solid card: lifts off the black (dark) or grey (light) ground. */
+function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  const c = useCosmos();
+  return <View style={[styles.card, { backgroundColor: c.raised }, style]}>{children}</View>;
 }
 
 function Line({ label, value, strong, tone }: { label: string; value: string; strong?: boolean; tone?: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.line}>
-      <Text style={[styles.lineLabel, { color: tone ?? (strong ? tokens.text : tokens.textSecondary) }, strong && font('semibold')]}>{label}</Text>
-      <Text
-        style={[
-          styles.lineValue,
-          { color: tone ?? tokens.text },
-          strong && { fontSize: typography.fontSize.xl, ...font('heading') },
-        ]}
-      >
-        {value}
-      </Text>
+      <Text style={[styles.lineLabel, { color: tone ?? (strong ? c.text : c.soft) }, strong && cosmosFont.strong]}>{label}</Text>
+      <Text style={[styles.lineValue, { color: tone ?? c.text }, strong && styles.lineTotal]}>{value}</Text>
+    </View>
+  );
+}
+
+/** Square-ish tick box: silver when on. The whole row is the target. */
+function Checkbox({ checked, onToggle, children }: { checked: boolean; onToggle: () => void; children: React.ReactNode }) {
+  const c = useCosmos();
+  return (
+    <Pressable
+      onPress={() => {
+        selectionTick();
+        onToggle();
+      }}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      style={styles.checkRow}
+    >
+      <View style={[styles.box, checked ? { backgroundColor: c.primary, borderColor: c.primary } : { borderColor: c.outline }]}>
+        {checked ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
+      </View>
+      <Text style={[styles.body, { color: c.soft, flex: 1 }]}>{children}</Text>
+    </Pressable>
+  );
+}
+
+/** Ticket-stub perforation: a dashed rule with notches cut into both card edges. */
+function Perforation() {
+  const c = useCosmos();
+  return (
+    <View style={styles.perfRow} importantForAccessibility="no-hide-descendants">
+      <View style={[styles.notch, styles.notchLeft, { backgroundColor: c.bg }]} />
+      <View style={[styles.perf, { borderColor: c.border }]} />
+      <View style={[styles.notch, styles.notchRight, { backgroundColor: c.bg }]} />
     </View>
   );
 }
@@ -87,121 +100,108 @@ function Line({ label, value, strong, tone }: { label: string; value: string; st
 // ── Step 1: ticket ──────────────────────────────────────────────────────────
 
 export function TicketStep({ r }: { r: EventRegistration }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const event = r.event!;
   const where = event.venueName || event.city;
+  const none = r.ticketStates.every((s) => !s.selectable);
   return (
     <View>
       <Heading sub={[relativeWhen(event.startDateTime), where].filter(Boolean).join(' · ')}>Pick your ticket</Heading>
-      <View style={{ gap: spacing[3] }}>
+      <View style={{ gap: spacing[3] }} accessibilityRole="radiogroup">
         {r.ticketStates.map((s) => (
-          <TicketCard key={s.ticket.id} s={s} selected={r.selectedTicket?.id === s.ticket.id} onPress={() => r.selectTicket(s.ticket)} />
+          <TicketOption
+            key={s.ticket.id}
+            s={s}
+            selected={r.selectedTicket?.id === s.ticket.id}
+            onPress={() => {
+              if (r.selectedTicket?.id !== s.ticket.id) selectionTick();
+              r.selectTicket(s.ticket);
+            }}
+          />
         ))}
       </View>
-      {r.ticketStates.every((s) => !s.selectable) ? (
-        <Text style={[styles.hint, { color: tokens.textMuted }]}>None of these tickets can be booked right now.</Text>
+      {none ? <Text style={[styles.hint, { color: c.muted }]}>None of these tickets can be booked right now.</Text> : null}
+      {r.selectedTicket ? (
+        <View style={styles.confirm}>
+          <Checkbox checked={r.confirmed} onToggle={() => r.setConfirmed(!r.confirmed)}>
+            I confirm this is the ticket I want and agree to the Terms, including the organiser's refund rules.
+          </Checkbox>
+          <Pressable
+            onPress={() => Linking.openURL('https://unifesto.app/terms').catch(() => {})}
+            accessibilityRole="link"
+            hitSlop={8}
+            style={({ pressed }) => [styles.termsLink, { opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text style={[styles.linkText, { color: c.text }]}>Read the Terms</Text>
+          </Pressable>
+        </View>
       ) : null}
-      {r.selectedTicket ? <ConfirmCheck checked={r.confirmed} onToggle={() => r.setConfirmed(!r.confirmed)} /> : null}
     </View>
   );
 }
 
-/** Required tick before leaving step 1; Continue stays disabled until it's on. */
-function ConfirmCheck({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
-  const tokens = useTokens();
-  return (
-    <Pressable
-      onPress={onToggle}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      hitSlop={6}
-      style={styles.confirm}
-    >
-      <View
-        style={[
-          styles.checkbox,
-          checked ? { backgroundColor: tokens.accent, borderColor: tokens.accent } : { borderColor: tokens.borderStrong },
-        ]}
-      >
-        {checked ? <Check size={14} color="#ffffff" weight="bold" /> : null}
-      </View>
-      <Text style={[styles.confirmText, { color: tokens.textSecondary }]}>
-        I confirm this is the ticket I want and agree to the{' '}
-        <Text
-          style={{ color: tokens.accent, ...font('semibold') }}
-          onPress={() => Linking.openURL('https://unifesto.app/terms').catch(() => {})}
-          suppressHighlighting
-        >
-          Terms
-        </Text>
-        , including the organiser's refund rules.
-      </Text>
-    </Pressable>
-  );
-}
-
-function TicketCard({ s, selected, onPress }: { s: TicketState; selected: boolean; onPress: () => void }) {
-  const tokens = useTokens();
+function TicketOption({ s, selected, onPress }: { s: TicketState; selected: boolean; onPress: () => void }) {
+  const c = useCosmos();
   const t = s.ticket;
   const status = s.owned
-    ? { text: 'You already have this ticket', color: tokens.success }
+    ? { text: 'You already have this ticket', color: c.success }
     : s.blocked
-      ? { text: 'Not available with your current ticket', color: tokens.textMuted }
+      ? { text: 'Not available with your current ticket', color: c.muted }
       : s.waitlistOnly
-        ? { text: 'Sold out · join the waiting list', color: tokens.warning }
+        ? { text: 'Sold out · join the waiting list', color: c.warn }
         : !s.available
-          ? { text: s.spotsLeft <= 0 ? 'Sold out' : 'Not on sale right now', color: tokens.textMuted }
+          ? { text: s.spotsLeft <= 0 ? 'Sold out' : 'Not on sale right now', color: c.muted }
           : s.spotsLeft <= 10
-            ? { text: `Only ${s.spotsLeft} left`, color: tokens.warning }
+            ? { text: `Only ${s.spotsLeft} left`, color: c.warn }
             : null;
   const team = t.type === 'group' ? (t.max_purchase > t.min_purchase ? `Team of ${t.min_purchase} to ${t.max_purchase}` : `Team of ${t.min_purchase}`) : null;
   const per = t.price > 0 && t.price_type === 'per_person' ? 'per person' : t.price > 0 && t.price_type === 'per_group' ? 'per team' : null;
+  const price = t.price === 0 ? 'Free' : money(s.symbol, t.price);
 
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       disabled={!s.selectable}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected, disabled: !s.selectable }}
-      accessibilityLabel={`${t.name}, ${t.price === 0 ? 'free' : money(s.symbol, t.price)}`}
-      style={({ pressed }) => [
+      accessibilityLabel={[t.name, price, per, team, status?.text].filter(Boolean).join(', ')}
+      style={[
         styles.ticket,
-        // Unavailable tickets dim with opacity, which Liquid Glass can't take: they stay solid.
-        !s.selectable
-          ? { backgroundColor: tokens.elevated, opacity: 0.5 }
-          : { backgroundColor: selected ? TINT : undefined, transform: [{ scale: pressed ? 0.98 : 1 }] },
+        {
+          backgroundColor: c.raised,
+          // Always 1.5pt so selecting never shifts the layout; only the colour changes.
+          borderColor: selected ? c.primary : 'transparent',
+          opacity: s.selectable ? 1 : 0.55,
+        },
       ]}
     >
-      {s.selectable && !selected ? <CardBackdrop shape={styles.ticket} /> : null}
       <View style={styles.ticketTop}>
-        <Text style={[styles.ticketName, { color: tokens.text }]}>{t.name}</Text>
+        <Text style={[styles.ticketName, { color: c.text }]}>{t.name}</Text>
         <View style={styles.priceCol}>
-          <Text style={[styles.ticketPrice, { color: selected ? tokens.accent : tokens.text }]}>
-            {t.price === 0 ? 'Free' : money(s.symbol, t.price)}
-          </Text>
-          {per ? <Text style={[styles.per, { color: tokens.textMuted }]}>{per}</Text> : null}
+          <Text style={[styles.ticketPrice, { color: c.text }]}>{price}</Text>
+          {per ? <Text style={[styles.per, { color: c.muted }]}>{per}</Text> : null}
         </View>
       </View>
       {t.description ? (
-        <Text style={[styles.ticketDesc, { color: tokens.textSecondary }]} numberOfLines={3}>{t.description}</Text>
+        <Text style={[styles.ticketDesc, { color: c.soft }]} numberOfLines={3}>{t.description}</Text>
       ) : null}
       {team || status || selected ? (
         <View style={styles.ticketFoot}>
           <View style={{ flex: 1, gap: 2 }}>
-            {team ? <Text style={[styles.meta, { color: tokens.textSecondary }]}>{team}</Text> : null}
-            {status ? <Text style={[styles.meta, { color: status.color, ...font('semibold') }]}>{status.text}</Text> : null}
+            {team ? <Text style={[styles.meta, { color: c.soft }]}>{team}</Text> : null}
+            {status ? <Text style={[styles.meta, { color: status.color }, cosmosFont.strong]}>{status.text}</Text> : null}
           </View>
-          {selected ? <CheckCircle size={24} color={tokens.accent} weight="fill" /> : null}
+          {selected ? <CheckCircle size={24} color={c.primary} weight="fill" /> : null}
         </View>
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 
 // ── Step 2: details ─────────────────────────────────────────────────────────
 
 export function DetailsStep({ r }: { r: EventRegistration }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const adjustable = r.isGroup && r.teamMax > r.teamMin;
   const selfDone = r.attendees[0] ? isSelfComplete(r.attendees[0]) : false;
   const sub = r.isGroup
@@ -212,38 +212,41 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
 
   return (
     <View>
-      <Heading sub={sub}>
-        {r.isGroup ? 'Your team' : 'Your details'}
-      </Heading>
+      <Heading sub={sub}>{r.isGroup ? 'Your team' : 'Your details'}</Heading>
 
       {adjustable ? (
         <Card style={styles.stepperCard}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTitle, { color: tokens.text }]}>Team size</Text>
-            <Text style={[styles.meta, { color: tokens.textMuted }]}>
+            <Text style={[styles.cardTitle, { color: c.text }]}>Team size</Text>
+            <Text style={[styles.meta, { color: c.muted }]}>
               {r.teamMin} to {r.teamMax} people
             </Text>
           </View>
-          <View style={styles.stepper}>
-            <StepperButton icon={<Minus size={20} color={tokens.text} weight="bold" />} disabled={r.quantity <= r.teamMin} onPress={() => r.changeQuantity(r.quantity - 1)} label="Fewer people" />
-            <Text style={[styles.stepperValue, { color: tokens.text }]}>{r.quantity}</Text>
-            <StepperButton icon={<Plus size={20} color={tokens.text} weight="bold" />} disabled={r.quantity >= r.teamMax} onPress={() => r.changeQuantity(r.quantity + 1)} label="More people" />
+          <View style={styles.stepper} accessible accessibilityRole="adjustable" accessibilityLabel="Team size" accessibilityValue={{ min: r.teamMin, max: r.teamMax, now: r.quantity }}
+            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+            onAccessibilityAction={(e) => {
+              if (e.nativeEvent.actionName === 'increment' && r.quantity < r.teamMax) r.changeQuantity(r.quantity + 1);
+              if (e.nativeEvent.actionName === 'decrement' && r.quantity > r.teamMin) r.changeQuantity(r.quantity - 1);
+            }}
+          >
+            <StepperButton icon={<Minus size={22} color={c.text} weight="bold" />} disabled={r.quantity <= r.teamMin} onPress={() => r.changeQuantity(r.quantity - 1)} />
+            <Text style={[styles.stepperValue, { color: c.text }]}>{r.quantity}</Text>
+            <StepperButton icon={<Plus size={22} color={c.text} weight="bold" />} disabled={r.quantity >= r.teamMax} onPress={() => r.changeQuantity(r.quantity + 1)} />
           </View>
         </Card>
       ) : null}
 
       {r.attendees.map((a, index) => {
         const isSelf = index === 0;
-        const invited = r.invitedIndices.has(index);
         // Teammates are invited by email after booking (see the note below).
-        if (invited) return null;
+        if (r.invitedIndices.has(index)) return null;
         // Personal details stay hidden once complete (Review still lists them);
         // the form only opens when a profile field is missing.
         const hideSelfDetails = isSelf && isSelfComplete(a);
         if (hideSelfDetails && r.memberFields.length === 0) return null;
 
         return (
-          <View key={index} style={[styles.person, index === 0 && !adjustable && { marginTop: 0 }]}>
+          <View key={index} style={[styles.block, index === 0 && !adjustable && { marginTop: 0 }]}>
             {hideSelfDetails ? null : (
               <>
                 <AttendeeForm
@@ -254,18 +257,15 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
                   showTitle={false}
                 />
                 {isSelf ? (
-                  <Pressable onPress={() => r.setAlsoUpdateProfile(!r.alsoUpdateProfile)} style={styles.checkRow} accessibilityRole="checkbox" accessibilityState={{ checked: r.alsoUpdateProfile }}>
-                    <View style={[styles.box, { backgroundColor: r.alsoUpdateProfile ? tokens.accent : tokens.fillStrong }]}>
-                      {r.alsoUpdateProfile ? <Check size={14} color="#ffffff" weight="bold" /> : null}
-                    </View>
-                    <Text style={[styles.body, { color: tokens.textSecondary, flex: 1 }]}>Also save these to my profile</Text>
-                  </Pressable>
+                  <Checkbox checked={r.alsoUpdateProfile} onToggle={() => r.setAlsoUpdateProfile(!r.alsoUpdateProfile)}>
+                    Also save these to my profile
+                  </Checkbox>
                 ) : null}
               </>
             )}
 
             {r.memberFields.length > 0 ? (
-              <View style={styles.questions}>
+              <View style={hideSelfDetails ? null : styles.questions}>
                 {visibleFields(r.memberFields, a.customFields).map((f) => (
                   <CustomFieldInput key={f.id} field={f} value={a.customFields?.[f.id]} onChange={(v) => r.changeCustomField(index, f.id, v)} />
                 ))}
@@ -276,11 +276,11 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
       })}
 
       {r.invitedIndices.size > 0 ? (
-        <View style={styles.person}>
+        <View style={styles.block}>
           <Label>{r.invitedIndices.size === 1 ? 'Your teammate' : `Your ${r.invitedIndices.size} teammates`}</Label>
           <Card style={styles.inviteNote}>
-            <PaperPlaneTilt size={22} color={tokens.accent} weight="duotone" />
-            <Text style={[styles.body, { color: tokens.textSecondary, flex: 1 }]}>
+            <PaperPlaneTilt size={24} color={c.text} weight="duotone" />
+            <Text style={[styles.body, { color: c.soft, flex: 1 }]}>
               After you book, invite each of them by email from Manage group. They claim their seat and fill in their own details.
             </Text>
           </Card>
@@ -288,7 +288,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
       ) : null}
 
       {r.teamFields.length > 0 ? (
-        <View style={styles.person}>
+        <View style={styles.block}>
           <Label>About your team</Label>
           {visibleFields(r.teamFields, r.teamFieldValues).map((f) => (
             <CustomFieldInput key={f.id} field={f} value={r.teamFieldValues[f.id]} onChange={(v) => r.changeTeamField(f.id, v)} />
@@ -297,7 +297,7 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
       ) : null}
 
       {!r.canContinue ? (
-        <Text style={[styles.hint, { color: tokens.textMuted }]}>
+        <Text style={[styles.hint, { color: c.muted }]}>
           {r.detailsProblem ??
             `Fill in every required detail${r.isGroup ? ' for each person you add' : ''} to continue. Mobile numbers need 10 digits.`}
         </Text>
@@ -306,15 +306,17 @@ export function DetailsStep({ r }: { r: EventRegistration }) {
   );
 }
 
-function StepperButton({ icon, disabled, onPress, label }: { icon: React.ReactNode; disabled: boolean; onPress: () => void; label: string }) {
+/** Bare glyph on a 44pt target; the stepper as a whole is the VoiceOver control. */
+function StepperButton({ icon, disabled, onPress }: { icon: React.ReactNode; disabled: boolean; onPress: () => void }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        selectionTick();
+        onPress();
+      }}
       disabled={disabled}
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.stepperBtn, { opacity: disabled ? 0.3 : pressed ? 0.6 : 1 }]}
+      importantForAccessibility="no"
+      style={({ pressed }) => [styles.stepperBtn, { opacity: disabled ? 0.3 : pressed ? 0.5 : 1 }]}
     >
       {icon}
     </Pressable>
@@ -324,7 +326,7 @@ function StepperButton({ icon, disabled, onPress, label }: { icon: React.ReactNo
 // ── Step 3: review ──────────────────────────────────────────────────────────
 
 export function ReviewStep({ r }: { r: EventRegistration }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const event = r.event!;
   const t = r.selectedTicket!;
   const where = event.venueName || event.city;
@@ -333,47 +335,47 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
     <View>
       <Heading sub="Make sure everything looks right before you confirm.">Almost there</Heading>
 
-      <Card>
-        <View style={styles.reviewHead}>
-          <TicketIcon size={26} color={tokens.accent} weight="duotone" />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.cardTitle, { color: tokens.text }]} numberOfLines={2}>{event.title}</Text>
-            <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
-              {[relativeWhen(event.startDateTime), where].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
+      {/* A preview of the pass they're about to get: same stub as the Tickets tab. */}
+      <View style={[styles.pass, { backgroundColor: c.raised }]}>
+        <View style={styles.passBody}>
+          <Text style={[styles.passTitle, { color: c.text }]} numberOfLines={3}>{event.title}</Text>
+          <Text style={[styles.meta, { color: c.soft, marginTop: spacing[2] }]} numberOfLines={2}>
+            {[relativeWhen(event.startDateTime), where].filter(Boolean).join(' · ')}
+          </Text>
         </View>
-        <View style={[styles.divider, { backgroundColor: tokens.border }]} />
-        <Line label="Ticket" value={t.name} />
-        <Line label={r.isGroup ? 'Team size' : 'People'} value={`${r.quantity}`} />
-        <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} />
-      </Card>
+        <Perforation />
+        <View style={styles.passStub}>
+          <Line label="Ticket" value={t.name} />
+          <Line label={r.isGroup ? 'Team size' : 'People'} value={`${r.quantity}`} />
+          <Line label="Total" value={r.total === 0 ? 'Free' : money(r.symbol, r.total)} strong />
+        </View>
+      </View>
 
-      <View style={styles.person}>
+      <View style={styles.block}>
         <Label>{r.attendees.length > 1 ? 'People' : 'Attendee'}</Label>
-        <Card style={{ gap: spacing[4] }}>
+        <Card style={{ gap: spacing[5] }}>
           {r.attendees.map((a, index) => {
             const invited = r.invitedIndices.has(index);
             return (
               <View key={index} style={styles.reviewPerson}>
                 {invited ? (
-                  <EnvelopeSimple size={22} color={tokens.textMuted} weight="duotone" />
+                  <EnvelopeSimple size={24} color={c.muted} weight="duotone" />
                 ) : (
-                  <User size={22} color={tokens.accent} weight="duotone" />
+                  <User size={24} color={c.text} weight="duotone" />
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.personName, { color: invited ? tokens.textSecondary : tokens.text }]}>
+                  <Text style={[styles.personName, { color: invited ? c.soft : c.text }]}>
                     {invited ? `Person ${index + 1}` : a.name}
                   </Text>
-                  <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={2}>
+                  <Text style={[styles.meta, { color: c.muted }]} numberOfLines={2}>
                     {invited ? 'You invite them after this' : `${a.email} · +91 ${a.mobile} · ${a.gender}`}
                   </Text>
                   {!invited
                     ? visibleFields(r.memberFields, a.customFields).filter((f) => f.field_type !== 'section').map((f) => {
                         const v = displayFieldValue(f, a.customFields?.[f.id]);
                         return v ? (
-                          <Text key={f.id} style={[styles.meta, { color: tokens.textSecondary }]}>
-                            {f.label}: <Text style={{ color: tokens.text }}>{v}</Text>
+                          <Text key={f.id} style={[styles.meta, { color: c.soft }]}>
+                            {f.label}: <Text style={{ color: c.text }}>{v}</Text>
                           </Text>
                         ) : null;
                       })
@@ -386,7 +388,7 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
       </View>
 
       {r.teamFields.length > 0 ? (
-        <View style={styles.person}>
+        <View style={styles.block}>
           <Label>About your team</Label>
           <Card style={{ gap: spacing[2] }}>
             {visibleFields(r.teamFields, r.teamFieldValues)
@@ -403,88 +405,107 @@ export function ReviewStep({ r }: { r: EventRegistration }) {
 
 // ── Step 4: pay ─────────────────────────────────────────────────────────────
 
+function CenterNote({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
+  const c = useCosmos();
+  return (
+    <View style={styles.center}>
+      {icon}
+      <Text style={[styles.h1, styles.centerText, { color: c.text, marginTop: spacing[5] }]} accessibilityRole="header">{title}</Text>
+      <Text style={[styles.sub, styles.centerText, { color: c.soft }]}>{body}</Text>
+    </View>
+  );
+}
+
 export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: boolean }) {
-  const tokens = useTokens();
+  const c = useCosmos();
 
   if (waitlist) {
     return (
-      <View style={styles.center}>
-        <Sparkle size={56} color={tokens.warning} weight="duotone" />
-        <Text style={[styles.h1, styles.centerText, { color: tokens.text, marginTop: spacing[4] }]}>Join the waiting list</Text>
-        <Text style={[styles.sub, styles.centerText, { color: tokens.textSecondary }]}>
-          {r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.
-        </Text>
-      </View>
+      <CenterNote
+        icon={<Sparkle size={56} color={c.warn} weight="duotone" />}
+        title="Join the waiting list"
+        body={`${r.selectedTicket?.name} is sold out. We'll hold your place in line and charge nothing now. If the organiser lets you in, you'll get an email.`}
+      />
     );
   }
 
   if (r.total === 0) {
     return (
-      <View style={styles.center}>
-        <CheckCircle size={56} color={tokens.success} weight="duotone" />
-        <Text style={[styles.h1, styles.centerText, { color: tokens.text, marginTop: spacing[4] }]}>Nothing to pay</Text>
-        <Text style={[styles.sub, styles.centerText, { color: tokens.textSecondary }]}>
-          This one's free. Confirm and your ticket is ready right away.
-        </Text>
-      </View>
+      <CenterNote
+        icon={<CheckCircle size={56} color={c.success} weight="duotone" />}
+        title="Nothing to pay"
+        body="This one's free. Confirm and your ticket is ready right away."
+      />
     );
   }
 
   const canApply = !!r.couponInput.trim() && !r.applyingCoupon;
   return (
     <View>
-      <Heading>Payment</Heading>
+      <Heading sub="Check the total, add a code if you have one, then pay.">Payment</Heading>
 
-      <Label>Discount code</Label>
-      {r.appliedCoupon ? (
-        <View style={[styles.coupon, { backgroundColor: TINT }]}>
-          <CheckCircle size={22} color={tokens.accent} weight="fill" />
-          <Text style={[styles.couponCode, { color: tokens.accent }]}>{r.appliedCoupon.code} applied</Text>
-          <Pressable onPress={r.removeCoupon} hitSlop={10} accessibilityLabel="Remove discount code">
-            <XCircle size={22} color={tokens.textSecondary} weight="fill" />
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.coupon}>
-          <CardBackdrop shape={styles.coupon} />
-          <TextInput
-            value={r.couponInput}
-            onChangeText={(v) => r.setCouponInput(v.toUpperCase())}
-            placeholder="Have a code?"
-            placeholderTextColor={tokens.textMuted}
-            selectionColor={tokens.accent}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            returnKeyType="done"
-            onSubmitEditing={r.applyCoupon}
-            style={[styles.couponInput, { color: tokens.text }]}
-          />
-          {r.applyingCoupon ? (
-            <ActivityIndicator color={tokens.accent} />
-          ) : (
-            <Text
-              onPress={canApply ? r.applyCoupon : undefined}
-              style={[styles.link, { color: canApply ? tokens.accent : tokens.textMuted }]}
-              accessibilityRole="button"
-            >
-              Apply
-            </Text>
-          )}
-        </View>
-      )}
-      {r.couponError ? <Text style={[styles.error, { color: tokens.danger }]}>{r.couponError}</Text> : null}
-
-      <Card style={{ marginTop: spacing[6], gap: spacing[3] }}>
+      <Card style={{ gap: spacing[3] }}>
         <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
-        {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={tokens.success} /> : null}
+        {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.success} /> : null}
         {r.feePercent > 0 ? <Line label={`Processing fee (${r.feePercent}%)`} value={money(r.symbol, r.fee)} /> : null}
-        <View style={[styles.divider, { backgroundColor: tokens.border }]} />
+        <View style={[styles.divider, { backgroundColor: c.border }]} />
         <Line label="Total" value={money(r.symbol, r.total)} strong />
       </Card>
 
+      <View style={styles.block}>
+        {r.appliedCoupon ? (
+          <View style={[styles.coupon, { backgroundColor: c.tint, borderColor: c.primary }]} accessible accessibilityLabel={`Code ${r.appliedCoupon.code} applied`}>
+            <CheckCircle size={22} color={c.success} weight="fill" />
+            <Text style={[styles.couponCode, { color: c.text }]}>{r.appliedCoupon.code} applied</Text>
+            <Pressable
+              onPress={r.removeCoupon}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Remove discount code"
+              style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+            >
+              <XCircle size={24} color={c.muted} weight="fill" />
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <Text style={[styles.fieldLabel, { color: c.muted }]}>Discount code</Text>
+            <View style={[styles.coupon, { backgroundColor: c.card, borderColor: r.couponError ? c.danger : c.input }]}>
+              <TextInput
+                value={r.couponInput}
+                onChangeText={(v) => r.setCouponInput(v.toUpperCase())}
+                placeholder="Have a code?"
+                placeholderTextColor={c.muted}
+                selectionColor={c.primary}
+                autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={canApply ? r.applyCoupon : undefined}
+                accessibilityLabel="Discount code"
+                style={[styles.couponInput, { color: c.text }]}
+              />
+              {r.applyingCoupon ? (
+                <ActivityIndicator color={c.text} />
+              ) : (
+                <Pressable
+                  onPress={r.applyCoupon}
+                  disabled={!canApply}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: !canApply }}
+                  style={({ pressed }) => [styles.apply, { opacity: !canApply ? 0.4 : pressed ? 0.6 : 1 }]}
+                >
+                  <Text style={[styles.linkText, { color: c.text }]}>Apply</Text>
+                </Pressable>
+              )}
+            </View>
+          </>
+        )}
+        {r.couponError ? <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">{r.couponError}</Text> : null}
+      </View>
+
       <View style={styles.secure}>
-        <ShieldCheck size={18} color={tokens.textMuted} weight="duotone" />
-        <Text style={[styles.meta, { color: tokens.textMuted }]}>Payments are processed securely by Razorpay.</Text>
+        <ShieldCheck size={18} color={c.muted} weight="duotone" />
+        <Text style={[styles.meta, { color: c.muted }]}>Payments are processed securely by Razorpay.</Text>
       </View>
     </View>
   );
@@ -499,111 +520,134 @@ const GATE_GENDERS = [
 ];
 
 export function ProfileGate({ r }: { r: EventRegistration }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const g = r.gate;
   return (
     <View>
-      <Heading sub="We need your name, username and gender to register you and put the right name on your ticket. You only do this once.">
+      <Heading sub="We need your name, username and gender to register you and put the right name on your pass. You only do this once.">
         One quick step
       </Heading>
-      <SettingsGroup>
-        <FormRow
-          icon={<User size={24} color={tokens.accent} weight="duotone" />}
+      <View style={styles.fields}>
+        <AuthField
+          label="Full name"
           value={g.name}
           onChangeText={g.setName}
-          placeholder="Full name"
+          placeholder="As it should appear on the pass"
           autoCapitalize="words"
           textContentType="name"
+          autoComplete="name"
           returnKeyType="next"
         />
-        <FormRow
-          icon={<At size={24} color={tokens.accent} weight="duotone" />}
-          value={g.username}
-          onChangeText={g.onUsernameChange}
-          placeholder="username"
-          autoCapitalize="none"
-          autoCorrect={false}
-          trailing={
-            g.checking ? (
-              <ActivityIndicator size="small" color={tokens.textMuted} />
-            ) : g.usernameError ? (
-              <XCircle size={20} color={tokens.danger} weight="fill" />
-            ) : g.usernameAvailable ? (
-              <CheckCircle size={20} color={tokens.success} weight="fill" />
-            ) : null
-          }
-        />
-      </SettingsGroup>
-      {g.usernameError ? <Text style={[styles.error, { color: tokens.danger }]}>{g.usernameError}</Text> : null}
-
-      <View style={{ marginTop: spacing[6] }}>
-        <Label>Gender</Label>
-        <View style={styles.chips}>
-          {GATE_GENDERS.map((o) => {
-            const active = g.gender === o.value;
-            return (
-              <Pressable
-                key={o.value}
-                onPress={() => g.setGender(o.value)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: active }}
-                style={({ pressed }) => [styles.chip, { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
-              >
-                {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{o.label}</Text>
-              </Pressable>
-            );
-          })}
+        <View>
+          <AuthField
+            label="Username"
+            prefix="@"
+            value={g.username}
+            onChangeText={g.onUsernameChange}
+            placeholder="username"
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="username"
+            error={!!g.usernameError}
+            trailing={
+              g.checking ? (
+                <ActivityIndicator size="small" color={c.muted} />
+              ) : g.usernameError ? (
+                <XCircle size={20} color={c.danger} weight="fill" />
+              ) : g.usernameAvailable ? (
+                <CheckCircle size={20} color={c.success} weight="fill" accessibilityLabel="Username available" />
+              ) : null
+            }
+          />
+          {g.usernameError ? <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">{g.usernameError}</Text> : null}
+        </View>
+        <View>
+          <Text style={[styles.fieldLabel, { color: c.muted }]}>Gender</Text>
+          <View style={styles.chips} accessibilityRole="radiogroup">
+            {GATE_GENDERS.map((o) => {
+              const active = g.gender === o.value;
+              return (
+                <Pressable
+                  key={o.value}
+                  onPress={() => {
+                    if (!active) selectionTick();
+                    g.setGender(o.value);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  style={({ pressed }) => [
+                    styles.chip,
+                    { backgroundColor: active ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                  ]}
+                >
+                  {active ? <Check size={14} color={c.primaryFg} weight="bold" /> : null}
+                  <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{o.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       </View>
-      {g.error ? <Text style={[styles.error, { color: tokens.danger, marginTop: spacing[4] }]}>{g.error}</Text> : null}
+      {g.error ? <Text style={[styles.error, { color: c.danger, marginTop: spacing[4] }]} accessibilityLiveRegion="polite">{g.error}</Text> : null}
     </View>
   );
 }
 
+const NOTCH = 18;
+
 const styles = StyleSheet.create({
   heading: { marginBottom: spacing[6] },
-  h1: { fontSize: typography.fontSize['2xl'], letterSpacing: -0.4, ...font('heading') },
-  sub: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing[3], minHeight: 32 },
-  label: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  link: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  card: { borderRadius: borderRadius.xl, padding: spacing[5] },
-  cardTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
-  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  confirm: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], marginTop: spacing[6] },
-  checkbox: { width: 22, height: 22, borderRadius: borderRadius.sm, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
-  confirmText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  hint: { marginTop: spacing[6], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', ...font() },
-  error: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font() },
-  divider: { height: 1, marginVertical: spacing[4] },
+  // Michroma runs wide and has one weight: size carries the hierarchy, never bold.
+  h1: { fontSize: 21, lineHeight: 30, ...cosmosFont.display },
+  sub: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
+  label: { fontSize: typography.fontSize.base, marginBottom: spacing[3], ...cosmosFont.strong },
+  fieldLabel: { fontSize: 13, marginBottom: 8, ...cosmosFont.strong },
+  linkText: { fontSize: typography.fontSize.base, textDecorationLine: 'underline', ...cosmosFont.strong },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  meta: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], minHeight: 44, paddingVertical: spacing[1] },
+  box: { width: 24, height: 24, borderRadius: 8, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  confirm: { marginTop: spacing[6] },
+  termsLink: { alignSelf: 'flex-start', marginLeft: 24 + spacing[3], minHeight: 32, justifyContent: 'center' },
+  hint: { marginTop: spacing[6], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, textAlign: 'center', ...cosmosFont.body },
+  error: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing[2] },
   // ticket
-  ticket: { borderRadius: borderRadius.xl, padding: spacing[5] },
+  ticket: { borderRadius: cosmosCardRadius, padding: spacing[5], borderWidth: 1.5 },
   ticketTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3] },
-  ticketName: { flex: 1, fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.25, ...font('heading') },
+  ticketName: { flex: 1, fontSize: typography.fontSize.lg, lineHeight: typography.fontSize.lg * 1.3, ...cosmosFont.strong },
   priceCol: { alignItems: 'flex-end' },
-  ticketPrice: { fontSize: typography.fontSize.lg, ...font('heading') },
-  per: { fontSize: 12, ...font() },
-  ticketDesc: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  ticketPrice: { fontSize: typography.fontSize.lg, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  per: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  ticketDesc: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   ticketFoot: { flexDirection: 'row', alignItems: 'flex-end', marginTop: spacing[3], gap: spacing[3] },
   // details
   stepperCard: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing[2] },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  stepperBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  stepperValue: { minWidth: 28, textAlign: 'center', fontSize: typography.fontSize.xl, fontVariant: ['tabular-nums'], ...font('heading') },
-  person: { marginTop: spacing[6] },
-  inviteNote: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  questions: { marginTop: spacing[2] },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: -spacing[1], marginBottom: spacing[2] },
-  box: { width: 22, height: 22, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  // review
-  reviewHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
+  stepperBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  stepperValue: { minWidth: 32, textAlign: 'center', fontSize: typography.fontSize.xl, fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  block: { marginTop: spacing[8] },
+  inviteNote: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  questions: { marginTop: spacing[5] },
+  fields: { gap: spacing[5] },
+  // review (pass preview)
+  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  passBody: { padding: spacing[5], paddingBottom: spacing[2] },
+  passTitle: { fontSize: 17, lineHeight: 26, ...cosmosFont.display },
+  perfRow: { height: NOTCH, justifyContent: 'center', marginVertical: spacing[2] },
+  perf: { marginHorizontal: NOTCH, borderTopWidth: 1, borderStyle: 'dashed' },
+  notch: { position: 'absolute', width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2 },
+  notchLeft: { left: -NOTCH / 2 },
+  notchRight: { right: -NOTCH / 2 },
+  passStub: { paddingHorizontal: spacing[5], paddingBottom: spacing[5], paddingTop: spacing[1], gap: spacing[2] },
   reviewPerson: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3] },
-  personName: { fontSize: typography.fontSize.base, marginBottom: 2, ...font('semibold') },
-  line: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[4], minHeight: 26 },
-  lineLabel: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font() },
-  lineValue: { fontSize: typography.fontSize.sm, textAlign: 'right', ...font('semibold') },
+  personName: { fontSize: typography.fontSize.base, marginBottom: 2, ...cosmosFont.strong },
+  line: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[4], minHeight: 28 },
+  lineLabel: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  lineValue: { flexShrink: 1, fontSize: typography.fontSize.base, textAlign: 'right', fontVariant: ['tabular-nums'], ...cosmosFont.strong },
+  lineTotal: { fontSize: typography.fontSize.xl },
   // pay
   center: { alignItems: 'center', paddingTop: spacing[10], paddingHorizontal: spacing[4] },
   centerText: { textAlign: 'center' },
@@ -611,15 +655,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    height: 52,
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing[5],
+    height: 54,
+    borderWidth: 1,
+    borderRadius: cosmosRadius,
+    paddingLeft: spacing[4],
+    paddingRight: spacing[2],
   },
-  couponInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, letterSpacing: 1, ...font('semibold') },
-  couponCode: { flex: 1, fontSize: typography.fontSize.base, ...font('semibold') },
-  secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[5], justifyContent: 'center' },
+  couponInput: { flex: 1, height: '100%', fontSize: 16, letterSpacing: 1, ...cosmosFont.strong },
+  couponCode: { flex: 1, fontSize: 16, ...cosmosFont.strong },
+  apply: { minWidth: 64, height: 44, alignItems: 'center', justifyContent: 'center' },
+  secure: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[6], justifyContent: 'center' },
   // gate
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { height: 40, paddingHorizontal: spacing[5], borderRadius: borderRadius.full, justifyContent: 'center' },
-  chipText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: spacing[4], borderRadius: 999 },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
