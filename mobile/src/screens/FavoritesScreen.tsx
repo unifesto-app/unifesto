@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
-import { Image } from 'expo-image';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Heart } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { Event } from '../lib/api/events';
 import { getFavorites } from '../lib/api/favorites';
 import FavoriteButton from '../components/FavoriteButton';
-import Skeleton from '../components/Skeleton';
+import EventListCard, { EventListCardSkeleton, placeOf } from '../components/EventListCard';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
@@ -19,17 +17,19 @@ import { GUTTER, Section } from '../components/home/Section';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { isEventOver } from '../lib/upcomingTickets';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { coverOr, useDefaultImages } from '../lib/defaultImages';
 
-// Event banners are 4:3.
-const THUMB_W = 84;
-const THUMB_H = 63;
 const reflow = LinearTransition.duration(220);
 
-const placeOf = (e: Event) => e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null);
+/** Un-hearting removes a card live, so each one fades out and the rest reflow. */
+const SavedCard = (props: React.ComponentProps<typeof EventListCard>) => (
+  <Animated.View entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow}>
+    <EventListCard {...props} />
+  </Animated.View>
+);
 
 /**
  * Profile › Saved: the soonest saved event as a full poster ("Up next"), the
@@ -136,7 +136,7 @@ export default function FavoritesScreen() {
       <View style={styles.pad}>
         <PosterCardSkeleton width={posterWidth} />
         <View style={[styles.list, { marginTop: spacing[8] }]}>
-          {[0, 1].map((i) => <SavedCardSkeleton key={i} />)}
+          {[0, 1].map((i) => <EventListCardSkeleton key={i} />)}
         </View>
       </View>,
     );
@@ -195,59 +195,6 @@ export default function FavoritesScreen() {
   );
 }
 
-/** Compact saved card: 4:3 thumb, title, host, when · where, price, heart. */
-function SavedCard({ event, past = false, onPress }: { event: Event; past?: boolean; onPress: () => void }) {
-  const c = useCosmos();
-  const defaults = useDefaultImages();
-  const cover = coverOr(defaults, event.id, event.coverImageUrl);
-  const meta = [relativeWhen(event.startDateTime), placeOf(event)].filter(Boolean).join(' · ');
-
-  return (
-    <Animated.View entering={FadeIn} exiting={FadeOut.duration(180)} layout={reflow}>
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={[event.title, event.space?.name, meta].filter(Boolean).join(', ')}
-        style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
-      >
-        <View style={[styles.cardMain, past && { opacity: 0.62 }]}>
-          <View style={[styles.thumb, { backgroundColor: c.card }]}>
-            {cover ? (
-              <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
-            ) : (
-              <LinearGradient colors={c.fallback} style={StyleSheet.absoluteFill} />
-            )}
-          </View>
-          <View style={styles.info}>
-            <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>{event.title}</Text>
-            {event.space?.name ? (
-              <Text style={[styles.host, { color: c.muted }]} numberOfLines={1}>{event.space.name}</Text>
-            ) : null}
-            <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
-            {past ? null : <Text style={[styles.price, { color: c.text }]}>{shortPrice(event)}</Text>}
-          </View>
-        </View>
-        <FavoriteButton eventId={event.id} size={20} color={c.soft} style={styles.cardHeart} />
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function SavedCardSkeleton() {
-  const c = useCosmos();
-  return (
-    <View style={[styles.card, { backgroundColor: c.raised }]}>
-      <View style={styles.cardMain}>
-        <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
-        <View style={[styles.info, { gap: 8 }]}>
-          <Skeleton width="85%" height={14} borderRadius={6} />
-          <Skeleton width="55%" height={12} borderRadius={6} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: { paddingBottom: 100 },
@@ -257,15 +204,6 @@ const styles = StyleSheet.create({
   eyebrowRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[4], marginBottom: spacing[3] },
   eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   list: { gap: spacing[3] },
-  card: { flexDirection: 'row', alignItems: 'center', borderRadius: cosmosCardRadius, overflow: 'hidden' },
-  cardMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3] },
-  cardHeart: { paddingRight: spacing[4], paddingLeft: spacing[1] },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.md, overflow: 'hidden' },
-  info: { flex: 1, gap: 3 },
-  title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
-  host: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  price: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
   promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },

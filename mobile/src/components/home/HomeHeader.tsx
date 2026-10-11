@@ -23,7 +23,8 @@ const PRESET_ICONS: Record<Preset, HeaderMenuItem['icon']> = {
   free: { ios: 'ticket', android: 'ic_menu_agenda', glyph: Ticket },
   online: { ios: 'globe', android: 'ic_menu_mapmode', glyph: Globe },
 };
-const PRESET_ITEMS: HeaderMenuItem[] = PRESETS.map((p) => ({ id: p.key, title: p.label, icon: PRESET_ICONS[p.key] }));
+/** Quick-filter menu items, shared with the Events screen's filter button. */
+export const PRESET_ITEMS: HeaderMenuItem[] = PRESETS.map((p) => ({ id: p.key, title: p.label, icon: PRESET_ICONS[p.key] }));
 
 interface HomeHeaderProps {
   /** First name when signed in ('' if none yet); null for guests (no avatar). */
