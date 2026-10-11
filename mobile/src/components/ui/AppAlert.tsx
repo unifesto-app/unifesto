@@ -2,16 +2,15 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { WarningCircle } from '@unifesto/unicon/react-native';
+import { cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../../theme/cosmos';
+import { spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 
 /**
  * Themed drop-in for React Native's `Alert.alert`: same arguments, same
- * button styles, but rendered as a glass bottom card (Liquid Glass on iOS 26+,
- * frosted blur elsewhere) that matches the app instead of the system dialog.
+ * button styles, rendered as a cosmos glass card floating at the bottom
+ * (Liquid Glass on iOS 26+, frosted blur elsewhere) instead of the system dialog.
  *
  *   AppAlert.alert('Delete?', 'This cannot be undone.', [
  *     { text: 'Cancel', style: 'cancel' },
@@ -56,22 +55,47 @@ export const AppAlert = {
   },
 };
 
+// ── Layout ──────────────────────────────────────────────────────────────
+
+type Variant = 'primary' | 'danger' | 'quiet';
+
+interface LaidOutButton {
+  button: AppAlertButton;
+  variant: Variant;
+}
+
+/**
+ * Orders and styles the buttons. Destructive actions are red; otherwise the
+ * preferred action (else the last one) gets the silver fill; the rest are
+ * hairline outlines. Two short buttons sit side by side (cancel on the left,
+ * action on the right); anything else stacks with the action on top.
+ */
+function layoutButtons(buttons: AppAlertButton[]): { items: LaidOutButton[]; inRow: boolean } {
+  const actions = buttons.filter((b) => b.style !== 'cancel');
+  const cancels = buttons.filter((b) => b.style === 'cancel');
+
+  // A destructive action is the red one, so nothing else gets filled beside it.
+  const filled = actions.some((b) => b.style === 'destructive')
+    ? null
+    : actions.find((b) => b.isPreferred) ?? actions[actions.length - 1];
+
+  const items = [...actions, ...cancels].map<LaidOutButton>((button) => ({
+    button,
+    variant: button.style === 'destructive' ? 'danger' : button === filled ? 'primary' : 'quiet',
+  }));
+
+  const inRow = items.length === 2 && items.every((i) => (i.button.text ?? 'OK').length <= 14);
+  return { items: inRow ? items.reverse() : items, inRow };
+}
+
+// ── Host ────────────────────────────────────────────────────────────────
+
 const CLOSE_MS = 160;
 /** How far below its resting spot the card starts / exits (it slides, never fades). */
 const SLIDE = 420;
 
-/** Which button carries the filled accent: preferred, else the last non-cancel default. */
-function primaryIndex(buttons: AppAlertButton[]): number {
-  const preferred = buttons.findIndex((b) => b.isPreferred);
-  if (preferred >= 0) return preferred;
-  for (let i = buttons.length - 1; i >= 0; i--) {
-    if (buttons[i].style !== 'cancel' && buttons[i].style !== 'destructive') return i;
-  }
-  return -1;
-}
-
 export function AppAlertHost() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const [queue, setQueue] = useState<AlertRequest[]>([]);
   const closing = useRef(false);
@@ -125,14 +149,8 @@ export function AppAlertHost() {
 
   if (!current) return null;
 
-  // Cancel always sits last (bottom of the stack / left of a pair).
-  const ordered = [
-    ...current.buttons.filter((b) => b.style !== 'cancel'),
-    ...current.buttons.filter((b) => b.style === 'cancel'),
-  ];
-  const primary = primaryIndex(ordered);
-  const inRow = ordered.length === 2 && ordered.every((b) => (b.text ?? 'OK').length <= 14);
-  const rowOrder = inRow ? [...ordered].reverse() : ordered;
+  const { items, inRow } = layoutButtons(current.buttons);
+  const isDestructive = current.buttons.some((b) => b.style === 'destructive');
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onBackdrop}>
@@ -150,32 +168,22 @@ export function AppAlertHost() {
           <CardSurfaceProvider kind="glass">
             <CardBackdrop shape={styles.card} opaque />
           </CardSurfaceProvider>
-          <Text style={[styles.title, { color: tokens.text }]}>{current.title}</Text>
-          {current.message ? <Text style={[styles.message, { color: tokens.textSecondary }]}>{current.message}</Text> : null}
+
+          {isDestructive && <WarningCircle size={28} color={c.danger} weight="fill" style={styles.glyph} />}
+          <Text style={[styles.title, { color: c.text }]}>{current.title}</Text>
+          {current.message ? <Text style={[styles.message, { color: c.soft }]}>{current.message}</Text> : null}
 
           <View style={[styles.actions, inRow && styles.actionsRow]}>
-            {rowOrder.map((b, i) => {
-              const isPrimary = ordered.indexOf(b) === primary;
-              const destructive = b.style === 'destructive';
-              const bg = destructive ? tokens.danger : isPrimary ? tokens.accent : tokens.fill;
-              const fg = destructive || isPrimary ? '#ffffff' : tokens.text;
-              return (
-                <Pressable
-                  key={`${b.text ?? 'OK'}-${i}`}
-                  onPress={() => close(b.onPress)}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    styles.button,
-                    inRow && styles.flex,
-                    { backgroundColor: bg, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  <Text style={[styles.buttonText, { color: fg }]} numberOfLines={1}>
-                    {b.text ?? 'OK'}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            {items.map(({ button, variant }, i) => (
+              <AlertButton
+                key={`${button.text ?? 'OK'}-${i}`}
+                label={button.text ?? 'OK'}
+                variant={variant}
+                flex={inRow}
+                c={c}
+                onPress={() => close(button.onPress)}
+              />
+            ))}
           </View>
         </Animated.View>
       </View>
@@ -183,33 +191,61 @@ export function AppAlertHost() {
   );
 }
 
+// ── Button ──────────────────────────────────────────────────────────────
+
+/** Silver fill (the web's .btn-primary), red fill, or hairline outline. */
+function AlertButton({ label, variant, flex, c, onPress }: {
+  label: string;
+  variant: Variant;
+  flex: boolean;
+  c: Cosmos;
+  onPress: () => void;
+}) {
+  const bg = variant === 'primary' ? c.primary : variant === 'danger' ? c.danger : 'transparent';
+  const fg = variant === 'primary' ? c.primaryFg : variant === 'danger' ? '#ffffff' : c.text;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.button,
+        flex && styles.flex,
+        variant === 'quiet'
+          ? { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed ? c.border : 'transparent' }
+          : { backgroundColor: bg, opacity: pressed ? 0.88 : 1 },
+        { transform: [{ scale: pressed ? 0.97 : 1 }] },
+      ]}
+    >
+      <Text style={[styles.buttonText, { color: fg }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   root: { flex: 1, justifyContent: 'flex-end' },
   // Lighter than a solid-card scrim so the screen still shows through the glass.
-  backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
+  backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
   card: {
     marginHorizontal: spacing[3],
-    borderRadius: 24,
+    borderRadius: 28,
     paddingHorizontal: spacing[6],
     paddingTop: spacing[6],
-    paddingBottom: spacing[4],
+    paddingBottom: spacing[5],
   },
-  title: { fontSize: typography.fontSize.xl, letterSpacing: -0.3, ...font('heading') },
-  message: {
-    marginTop: spacing[2],
-    fontSize: typography.fontSize.base,
-    lineHeight: typography.fontSize.base * 1.45,
-    ...font(),
-  },
+  glyph: { marginBottom: spacing[3] },
+  title: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
+  message: { marginTop: spacing[2], fontSize: 15, lineHeight: 22, ...cosmosFont.body },
   actions: { marginTop: spacing[6], gap: spacing[2] },
   actionsRow: { flexDirection: 'row' },
   button: {
     height: 50,
-    borderRadius: borderRadius.full,
+    borderRadius: cosmosRadius,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing[4],
   },
-  buttonText: { fontSize: typography.fontSize.base, ...font('semibold') },
+  buttonText: { fontSize: 16, ...cosmosFont.strong },
 });
