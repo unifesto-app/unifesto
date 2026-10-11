@@ -1,11 +1,12 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { CaretRight } from '@unifesto/unicon/react-native';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { CardBackdrop } from '../ui/CardSurface';
+import PressableScale from '../ui/PressableScale';
 
 interface PromptCardProps {
   icon: React.ReactNode;
@@ -19,13 +20,12 @@ export default function PromptCard({ icon, title, body, onPress }: PromptCardPro
   const c = useCosmos();
   return (
     <View style={{ paddingHorizontal: GUTTER }}>
-      <Pressable
+      <PressableScale
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={title}
-        style={({ pressed }) => [
+        style={[
           styles.card,
-          { transform: [{ scale: pressed ? 0.98 : 1 }] },
         ]}
       >
         <CardBackdrop shape={styles.card} />
@@ -35,7 +35,7 @@ export default function PromptCard({ icon, title, body, onPress }: PromptCardPro
           <Text style={[styles.body, { color: c.muted }]}>{body}</Text>
         </View>
         <CaretRight size={16} color={c.muted} weight="bold" />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }

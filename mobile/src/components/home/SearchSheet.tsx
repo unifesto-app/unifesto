@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { CaretLeft, ClockCounterClockwise, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
+import { ClockCounterClockwise, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
 import { GlassView } from 'expo-glass-effect';
 import { GlassFill, LIQUID_GLASS } from '../ui/CardSurface';
 import { useStableTopInset } from '../CustomHeader';
@@ -21,6 +22,7 @@ import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 import { relativeWhen, shortPrice, spaceLogo } from '../../utils/eventFormat';
+import PressableScale from '../ui/PressableScale';
 
 interface SearchSheetProps {
   search: HomeSearch;
@@ -56,9 +58,9 @@ export default function SearchSheet({
 
   // Events show their 4:3 banner; spaces show their 1:1 logo.
   const Row = ({ title, sub, meta, image, shape, onPress }: { title: string; sub?: string | null; meta?: string | null; image?: string | null; shape: 'banner' | 'logo'; onPress: () => void }) => (
-    <Pressable
+    <PressableScale feedback="inline"
       onPress={onPress}
-      style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.card : 'transparent' }]}
+      style={styles.row}
       accessibilityRole="button"
       accessibilityLabel={title}
     >
@@ -76,7 +78,7 @@ export default function SearchSheet({
         {sub ? <Text style={[styles.rowSub, { color: c.soft }]} numberOfLines={1}>{sub}</Text> : null}
         {meta ? <Text style={[styles.rowSub, { color: c.muted }]} numberOfLines={1}>{meta}</Text> : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 
   const eventRow = (e: Event) => (
@@ -112,18 +114,17 @@ export default function SearchSheet({
   };
 
   const Chip = ({ label, icon, onPress }: { label: string; icon?: React.ReactNode; onPress: () => void }) => (
-    <Pressable
+    <PressableScale
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.chip,
         LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: c.card, borderColor: c.border },
-        { transform: [{ scale: pressed ? 0.96 : 1 }] },
       ]}
     >
       <GlassFill interactive />
       {icon}
       <Text style={[styles.chipText, { color: c.text }]} numberOfLines={1}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 
   const BlockTitle = ({ title, action }: { title: string; action?: React.ReactNode }) => (
@@ -136,12 +137,24 @@ export default function SearchSheet({
   const results = s.type === 'events' ? s.eventResults : s.spaceResults;
 
   return (
-    <Modal visible={s.open} animationType="slide" onRequestClose={s.closeSheet} statusBarTranslucent>
-      <View style={[styles.container, { backgroundColor: c.bg, paddingTop: topInset + spacing[2] }]}>
+    // iOS: a native page sheet. It rises from the bottom and leaves the same way
+    // (swipe down, which also fires onRequestClose) with the page behind pushed
+    // back; Cancel sits where iOS search puts it. Android ignores
+    // presentationStyle and stays full screen under the status bar.
+    <Modal
+      visible={s.open}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={s.closeSheet}
+      statusBarTranslucent
+    >
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: c.bg, paddingTop: Platform.OS === 'ios' ? spacing[4] : topInset + spacing[2] },
+        ]}
+      >
         <View style={styles.header}>
-          <Pressable onPress={s.closeSheet} hitSlop={10} style={styles.back} accessibilityLabel="Close search">
-            <CaretLeft size={22} color={c.text} weight="bold" />
-          </Pressable>
           <View style={[styles.field, LIQUID_GLASS ? { borderWidth: 0 } : { backgroundColor: c.card, borderColor: c.border }]}>
             {LIQUID_GLASS ? (
               <GlassView
@@ -166,11 +179,14 @@ export default function SearchSheet({
               autoFocus
             />
             {s.query !== '' && (
-              <Pressable onPress={s.clear} hitSlop={10} style={[styles.clear, { backgroundColor: c.muted }]} accessibilityLabel="Clear search">
+              <PressableScale feedback="inline" onPress={s.clear} hitSlop={10} style={[styles.clear, { backgroundColor: c.muted }]} accessibilityLabel="Clear search">
                 <X size={11} color={c.bg} weight="bold" />
-              </Pressable>
+              </PressableScale>
             )}
           </View>
+          <PressableScale feedback="inline" onPress={s.closeSheet} hitSlop={10} style={styles.cancel} accessibilityRole="button">
+            <Text style={[styles.cancelText, { color: c.text }]}>Cancel</Text>
+          </PressableScale>
         </View>
 
         <View style={[styles.segment, { backgroundColor: LIQUID_GLASS ? undefined : c.card }]}>
@@ -209,9 +225,9 @@ export default function SearchSheet({
                   <BlockTitle
                     title="Recent"
                     action={
-                      <Pressable onPress={s.clearRecentSearches} hitSlop={10}>
+                      <PressableScale feedback="inline" onPress={s.clearRecentSearches} hitSlop={10} accessibilityRole="button">
                         <Text style={[styles.blockAction, { color: c.soft }]}>Clear</Text>
-                      </Pressable>
+                      </PressableScale>
                     }
                   />
                   <View style={styles.chips}>
@@ -268,9 +284,9 @@ export default function SearchSheet({
                 title={`${results.length} ${s.type === 'events' ? 'event' : 'space'}${results.length === 1 ? '' : 's'}`}
                 action={
                   s.type === 'events' ? (
-                    <Pressable onPress={() => onSubmit(s.query)} hitSlop={10}>
+                    <PressableScale feedback="inline" onPress={() => onSubmit(s.query)} hitSlop={10} accessibilityRole="button">
                       <Text style={[styles.blockAction, { color: c.primary }]}>View all</Text>
-                    </Pressable>
+                    </PressableScale>
                   ) : undefined
                 }
               />
@@ -303,7 +319,8 @@ export default function SearchSheet({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[5] },
-  back: { width: 32, height: 44, alignItems: 'flex-start', justifyContent: 'center' },
+  cancel: { minHeight: 44, justifyContent: 'center' },
+  cancelText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   field: {
     flex: 1,
     height: 48,

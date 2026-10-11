@@ -30,6 +30,7 @@ import BeyondFeature, { BeyondFeatureSkeleton } from '../../src/components/home/
 import SearchSheet from '../../src/components/home/SearchSheet';
 import { relativeWhen, shortPrice } from '../../src/utils/eventFormat';
 import { spacing } from '../../src/theme/spacing';
+import { successTap } from '../../src/lib/haptics';
 
 export default function HomeTab() {
   const router = useRouter();
@@ -99,6 +100,15 @@ export default function HomeTab() {
         ? { icon: <UserCircle size={20} color={c.text} weight="fill" />, title: 'Finish your profile', body: 'Add your name before you register.', to: '/edit-profile' as const }
         : null;
 
+  // A success tap when a pull-to-refresh I started lands (not on background reloads).
+  const pulled = React.useRef(false);
+  React.useEffect(() => {
+    if (!data.refreshing && pulled.current) {
+      pulled.current = false;
+      successTap();
+    }
+  }, [data.refreshing]);
+
   const nextTicket = data.upcomingTickets[0];
   // My team hub, when one of my upcoming tickets is a hackathon I'm on a team in.
   const hackathon = useMyHackathon(data.upcomingTickets);
@@ -118,6 +128,7 @@ export default function HomeTab() {
           <RefreshControl
             refreshing={data.refreshing}
             onRefresh={() => {
+              pulled.current = true;
               void myInvites.refresh();
               workspace.refresh();
               data.onRefresh();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CalendarBlank, CaretRight, Gavel, Handshake, Plus, QrCode } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
@@ -16,6 +16,7 @@ import type { CheckinEvent } from '../../lib/api/checkin';
 import type { JudgingEvent } from '../../lib/api/leaderboard';
 import type { PortalSponsor } from '../../lib/api/sponsorPortal';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
+import PressableScale from '../ui/PressableScale';
 
 interface SpacePanelProps {
   liveCheckins: CheckinEvent[];
@@ -48,12 +49,12 @@ export default function SpacePanel(p: SpacePanelProps) {
   return (
     <View style={styles.wrap}>
       {p.liveCheckins.map((e) => (
-        <Pressable
+        <PressableScale
           key={e.id}
           onPress={() => p.onScan(e)}
           accessibilityRole="button"
           accessibilityLabel={`Scan tickets for ${e.title}`}
-          style={({ pressed }) => [styles.card, styles.row, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+          style={[styles.card, styles.row]}
         >
           <CardBackdrop shape={styles.card} />
           <QrCode {...glyph} />
@@ -70,7 +71,7 @@ export default function SpacePanel(p: SpacePanelProps) {
           <View style={[styles.cta, { backgroundColor: c.primary }]}>
             <Text style={[styles.ctaText, { color: c.primaryFg }]}>Scan</Text>
           </View>
-        </Pressable>
+        </PressableScale>
       ))}
 
       {p.loadingUpcoming && p.upcoming.length === 0 ? (
@@ -97,10 +98,10 @@ export default function SpacePanel(p: SpacePanelProps) {
           ) : null}
         </View>
       ) : p.hosting ? (
-        <Pressable
+        <PressableScale
           onPress={p.onCreateEvent}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.card, styles.row, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+          style={[styles.card, styles.row]}
         >
           <CardBackdrop shape={styles.card} />
           <CalendarBlank {...glyph} />
@@ -111,7 +112,7 @@ export default function SpacePanel(p: SpacePanelProps) {
             </Text>
           </View>
           <CaretRight size={16} color={c.muted} weight="bold" />
-        </Pressable>
+        </PressableScale>
       ) : null}
 
       {p.judging.length > 0 || p.sponsorships.length > 0 ? (
@@ -150,11 +151,11 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
   const going = e.attendees?.total ?? e._count?.registrations ?? 0;
   const fill = e.capacity ? Math.min(1, going / e.capacity) : null;
   return (
-    <Pressable
+    <PressableScale feedback="inline"
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${e.title}, ${going} going`}
-      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+      style={styles.row}
     >
       {coverOr(defaults, e.id, e.coverImageUrl) ? (
         <Image source={{ uri: coverOr(defaults, e.id, e.coverImageUrl) ?? undefined }} style={styles.thumb} contentFit="cover" />
@@ -180,21 +181,21 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
           </Text>
         </View>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 export function LinkRow({ icon, title, meta, onPress }: { icon: React.ReactNode; title: string; meta: string; onPress: () => void }) {
   const c = useCosmos();
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}>
+    <PressableScale feedback="inline" onPress={onPress} accessibilityRole="button" style={styles.row}>
       <View style={styles.icon}>{icon}</View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{title}</Text>
         <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>{meta}</Text>
       </View>
       <CaretRight size={16} color={c.muted} weight="bold" />
-    </Pressable>
+    </PressableScale>
   );
 }
 

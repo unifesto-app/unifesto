@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { borderRadius, spacing } from '../../theme/spacing';
@@ -8,6 +8,7 @@ import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
 import Skeleton from '../Skeleton';
 import { GUTTER } from './Section';
+import PressableScale from '../ui/PressableScale';
 
 // Category banners are 4:3; kept small so the row stays one thumb-swipe tall.
 const TILE_W = 136;
@@ -26,14 +27,14 @@ export default function VibeRail({ categories, onPressCategory }: VibeRailProps)
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
       {categories.map((cat) => (
-        <Pressable
+        <PressableScale
           key={cat.id}
           onPress={() => onPressCategory(cat.name)}
           accessibilityRole="button"
           accessibilityLabel={cat.name}
-          style={({ pressed }) => [
+          style={[
             styles.tile,
-            { backgroundColor: c.card, transform: [{ scale: pressed ? 0.96 : 1 }] },
+            { backgroundColor: c.card },
           ]}
         >
           {cat.bannerUrl ? (
@@ -47,7 +48,7 @@ export default function VibeRail({ categories, onPressCategory }: VibeRailProps)
             style={StyleSheet.absoluteFill}
           />
           <Text style={styles.name} numberOfLines={lines}>{cat.name}</Text>
-        </Pressable>
+        </PressableScale>
       ))}
     </ScrollView>
   );
@@ -59,15 +60,15 @@ export function PresetChips({ onPress }: { onPress: (preset: Preset) => void }) 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, styles.chips]}>
       {PRESETS.map((p) => (
-        <Pressable
+        <PressableScale
           key={p.key}
           onPress={() => onPress(p.key)}
           accessibilityRole="button"
           accessibilityHint="Opens events with this filter"
-          style={({ pressed }) => [styles.chip, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+          style={[styles.chip, { backgroundColor: c.raised }]}
         >
           <Text style={[styles.chipText, { color: c.text }]}>{p.label}</Text>
-        </Pressable>
+        </PressableScale>
       ))}
     </ScrollView>
   );

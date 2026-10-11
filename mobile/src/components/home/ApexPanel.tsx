@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { CheckCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
@@ -12,6 +12,7 @@ import { GUTTER } from './Section';
 import { inrShort } from '../../utils/money';
 import type { ApexNeed } from '../../hooks/useWorkspaceCards';
 import type { PlatformOverview } from '../../lib/api/apex';
+import PressableScale from '../ui/PressableScale';
 
 interface ApexPanelProps {
   overview: PlatformOverview | null;
@@ -44,7 +45,7 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
           ))}
         </View>
       ) : needs.length === 0 ? (
-        <View style={[styles.clear]}>
+        <View style={styles.clear}>
           <CardBackdrop shape={styles.clear} />
           <CheckCircle size={24} color={tokens.success} weight="fill" />
           <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
@@ -52,19 +53,19 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
       ) : (
         <View style={styles.grid}>
           {needs.map((n) => (
-            <Pressable
+            <PressableScale
               key={n.key}
               onPress={() => onOpenNeed(n)}
               accessibilityRole="button"
               accessibilityLabel={`${n.count} ${n.label}`}
-              style={({ pressed }) => [styles.need, { transform: [{ scale: pressed ? 0.96 : 1 }] }]}
+              style={styles.need}
             >
               <CardBackdrop shape={styles.need} />
               <Text style={[styles.needCount, { color: tokens.warning }]}>{n.count.toLocaleString('en-IN')}</Text>
               <Text style={[styles.needLabel, { color: c.soft }]} numberOfLines={1}>
                 {n.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </View>
       )}

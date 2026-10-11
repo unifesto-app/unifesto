@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { X } from '@unifesto/unicon/react-native';
@@ -10,6 +10,7 @@ import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 import { GUTTER } from './Section';
 import { coverOr, useDefaultImages } from '../../lib/defaultImages';
+import PressableScale from '../ui/PressableScale';
 
 /**
  * "You've been invited" cards: seats someone booked for me in a group ticket,
@@ -34,14 +35,14 @@ export default function InviteCards({
       {invites.slice(0, 3).map((inv) => {
         const where = inv.event.venueName || inv.event.city;
         return (
-          <Pressable
+          <PressableScale
             key={inv.token}
             onPress={() => onOpen(inv.token)}
             accessibilityRole="button"
             accessibilityLabel={`Seat invite for ${inv.event.title}`}
-            style={({ pressed }) => [
+            style={[
               styles.card,
-              { backgroundColor: c.tint, transform: [{ scale: pressed ? 0.98 : 1 }] },
+              { backgroundColor: c.tint },
             ]}
           >
             <View style={[styles.cover, { backgroundColor: c.card }]}>
@@ -61,16 +62,16 @@ export default function InviteCards({
               </Text>
             </View>
             <Text style={[styles.view, { color: c.primary }]}>View</Text>
-            <Pressable
+            <PressableScale feedback="inline"
               onPress={() => onDecline(inv.token)}
               hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel="Decline this invite"
-              style={({ pressed }) => [styles.close, { opacity: pressed ? 0.6 : 1 }]}
+              style={styles.close}
             >
               <X size={16} color={c.muted} weight="bold" />
-            </Pressable>
-          </Pressable>
+            </PressableScale>
+          </PressableScale>
         );
       })}
     </View>
