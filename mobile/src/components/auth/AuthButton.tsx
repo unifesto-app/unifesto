@@ -6,8 +6,8 @@ import { cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 interface AuthButtonProps {
   label: string;
   onPress: () => void;
-  /** primary = silver fill (the web's .btn-primary); secondary = hairline outline. */
-  variant?: 'primary' | 'secondary';
+  /** primary = silver fill (the web's .btn-primary); secondary = hairline outline; danger = outline with red label. */
+  variant?: 'primary' | 'secondary' | 'danger';
   /** Leading mark, e.g. a provider logo. */
   icon?: React.ReactNode;
   /** Trailing arrow, as on the web's primary CTAs. */
@@ -31,7 +31,7 @@ export default function AuthButton({
 }: AuthButtonProps) {
   const c = useCosmos();
   const isPrimary = variant === 'primary';
-  const fg = isPrimary ? c.primaryFg : c.text;
+  const fg = isPrimary ? c.primaryFg : variant === 'danger' ? c.danger : c.text;
   const inactive = disabled || loading;
 
   return (
@@ -45,7 +45,7 @@ export default function AuthButton({
         styles.button,
         isPrimary
           ? { backgroundColor: c.primary }
-          : { borderWidth: 1, borderColor: c.outline, backgroundColor: pressed ? c.border : 'transparent' },
+          : { borderWidth: 1, borderColor: variant === 'danger' ? c.border : c.outline, backgroundColor: pressed ? c.border : 'transparent' },
         { opacity: disabled ? 0.45 : pressed && isPrimary ? 0.88 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] },
         style,
       ]}

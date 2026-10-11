@@ -25,12 +25,11 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { AppAlert } from '../components/ui/AppAlert';
 import CosmosScreen from '../components/ui/CosmosScreen';
 import AuthButton from '../components/auth/AuthButton';
-import PressableScale from '../components/ui/PressableScale';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const LOGO = 72;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -381,22 +380,15 @@ export default function SponsorEditorScreen() {
           </Section>
 
           <View style={styles.pad}>
-            <PressableScale
+            <AuthButton
+              label="Remove sponsor"
+              variant="danger"
+              loading={deleting}
+              disabled={saving}
+              icon={<Trash size={18} color={c.danger} />}
               onPress={remove}
-              disabled={deleting || saving}
-              accessibilityRole="button"
-              accessibilityState={{ busy: deleting }}
-              style={[styles.danger, { borderColor: c.border }]}
-            >
-              {deleting ? (
-                <ActivityIndicator color={c.danger} />
-              ) : (
-                <>
-                  <Trash size={20} color={c.danger} />
-                  <Text style={[styles.dangerText, { color: c.danger }]}>Remove sponsor</Text>
-                </>
-              )}
-            </PressableScale>
+              style={{ marginTop: spacing[12] }}
+            />
           </View>
         </>
       ) : null}
@@ -433,15 +425,4 @@ const styles = StyleSheet.create({
     lineHeight: typography.fontSize.sm * 1.5,
     ...cosmosFont.body,
   },
-  danger: {
-    marginTop: spacing[12],
-    minHeight: 52,
-    borderRadius: cosmosRadius,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-  },
-  dangerText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

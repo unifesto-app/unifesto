@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Check } from '@unifesto/unicon/react-native';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
@@ -21,13 +21,13 @@ import {
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosScreen from '../components/ui/CosmosScreen';
-import PressableScale from '../components/ui/PressableScale';
+import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const CYCLES = [
   { key: 'MONTHLY' as const, label: 'Monthly' },
@@ -213,19 +213,7 @@ export default function BillingScreen() {
 
       {canCancel ? (
         <View style={styles.pad}>
-          <PressableScale
-            onPress={confirmCancel}
-            disabled={cancelling}
-            accessibilityRole="button"
-            accessibilityState={{ busy: cancelling }}
-            style={[styles.cancel, { borderColor: c.border }]}
-          >
-            {cancelling ? (
-              <ActivityIndicator color={c.danger} />
-            ) : (
-              <Text style={[styles.cancelText, { color: c.danger }]}>Cancel plan</Text>
-            )}
-          </PressableScale>
+          <AuthButton label="Cancel plan" variant="danger" loading={cancelling} onPress={confirmCancel} style={{ marginTop: spacing[10] }} />
         </View>
       ) : null}
     </CosmosScreen>
@@ -253,13 +241,4 @@ const styles = StyleSheet.create({
   price: { marginTop: spacing[2], marginBottom: spacing[3], fontSize: typography.fontSize.xl, ...cosmosFont.strong },
   feature: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2] },
   featureText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  cancel: {
-    marginTop: spacing[10],
-    minHeight: 52,
-    borderRadius: cosmosRadius,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelText: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });
