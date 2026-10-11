@@ -1,42 +1,38 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
-import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { CalendarBlank, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
-import { GlassView } from 'expo-glass-effect';
-import { useTheme } from '../context/ThemeContext';
-import { CardBackdrop, LIQUID_GLASS } from '../components/ui/CardSurface';
-import useTopSpacing from '../hooks/useTopSpacing';
-import { PRESETS, useEventsBrowse } from '../hooks/useEventsBrowse';
+import { CalendarBlank, MagnifyingGlass, SlidersHorizontal, X } from '@unifesto/unicon/react-native';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import AuthButton from '../components/auth/AuthButton';
+import EventListCard, { EventListCardSkeleton, placeOf } from '../components/EventListCard';
+import PosterCard, { PosterCardSkeleton } from '../components/home/PosterCard';
+import { PRESET_ITEMS } from '../components/home/HomeHeader';
+import { GUTTER } from '../components/home/Section';
+import { HeaderMenu } from '../navigation/HeaderActions';
 import Skeleton from '../components/Skeleton';
-import { relativeWhen, shortPrice } from '../utils/eventFormat';
+import useTopSpacing from '../hooks/useTopSpacing';
+import { PRESETS, useEventsBrowse, type Preset } from '../hooks/useEventsBrowse';
+import { countdownLabel, relativeWhen, shortPrice } from '../utils/eventFormat';
 import type { Event } from '../lib/api/events';
+import { coverOr, useDefaultImages } from '../lib/defaultImages';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-import { coverOr, useDefaultImages } from '../lib/defaultImages';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
-// Event banners are 4:3; thumbs keep the ratio.
-const THUMB_W = 112;
-const THUMB_H = 84;
+const SEARCH_H = 52;
 
-/** Browse all published events: search, category chips, paged list. */
+/**
+ * Browse all published events, in Home's cosmos voice: a search field with the
+ * quick-filter menu beside it (same as Home), category chips, then the top
+ * result as a full poster and the rest as compact cards. While searching the
+ * poster steps aside so results read as one even list.
+ */
 export default function EventsScreen() {
-  const { tokens, isDark } = useTheme();
-  const defaults = useDefaultImages();
+  const c = useCosmos();
   const router = useRouter();
+  const defaults = useDefaultImages();
+  const { width } = useWindowDimensions();
   const topSpacing = useTopSpacing(8);
   const params = useLocalSearchParams<{ category?: string; search?: string; preset?: string }>();
   const b = useEventsBrowse({ category: params.category, search: params.search, preset: params.preset });
@@ -53,54 +49,65 @@ export default function EventsScreen() {
     return () => clearTimeout(t);
   }, [b.category, b.categoriesLoading]);
 
-  const renderChip = (key: string, label: string, active: boolean, onPress: () => void) => (
+  const openEvent = (e: Event) => router.push(`/event/${e.slug || e.id}`);
+  const presetLabel = PRESETS.find((p) => p.key === b.preset)?.label;
+  const featured = !b.loading && !b.query.trim() ? b.events[0] : undefined;
+  const rest = b.loading ? [] : featured ? b.events.slice(1) : b.events;
+  const posterWidth = width - GUTTER * 2;
+
+  const chip = (key: string, label: string, active: boolean, onPress: () => void, dismissible = false) => (
     <Pressable
       key={key}
       onLayout={(e) => (chipX.current[key] = e.nativeEvent.layout.x)}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      accessibilityLabel={dismissible ? `${label}, remove filter` : label}
       style={({ pressed }) => [
         styles.chip,
-        LIQUID_GLASS
-          ? // opacity would break the glass, so press feedback is a scale
-            { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] }
-          : { backgroundColor: active ? tokens.text : tokens.elevated, opacity: pressed ? 0.8 : 1 },
+        active ? { backgroundColor: c.primary, borderColor: c.primary } : { backgroundColor: c.card, borderColor: c.border },
+        { transform: [{ scale: pressed ? 0.96 : 1 }] },
       ]}
     >
-      {LIQUID_GLASS && !active ? (
-        <GlassView
-          glassEffectStyle="regular"
-          colorScheme={isDark ? 'dark' : 'light'}
-          isInteractive
-          style={[StyleSheet.absoluteFill, { borderRadius: borderRadius.full }]}
-          pointerEvents="none"
-        />
-      ) : null}
-      <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{label}</Text>
+      <Text style={[styles.chipText, { color: active ? c.primaryFg : c.text }]}>{label}</Text>
+      {dismissible ? <X size={13} color={c.primaryFg} /> : null}
     </Pressable>
   );
 
   const header = (
     <View>
-      <View style={styles.search}>
-        <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-        <TextInput
-          value={b.query}
-          onChangeText={b.setQuery}
-          placeholder="Search events, spaces or cities"
-          placeholderTextColor={tokens.textMuted}
-          style={[styles.searchInput, { color: tokens.text }]}
-          returnKeyType="search"
-          autoCorrect={false}
-          clearButtonMode="never"
+      <View style={styles.searchRow}>
+        <View style={[styles.search, { borderColor: c.input, backgroundColor: c.card }]}>
+          <MagnifyingGlass size={18} color={c.muted} />
+          <TextInput
+            value={b.query}
+            onChangeText={b.setQuery}
+            placeholder="Search events, spaces or cities"
+            placeholderTextColor={c.muted}
+            style={[styles.searchInput, { color: c.text }]}
+            selectionColor={c.text}
+            returnKeyType="search"
+            autoCorrect={false}
+            clearButtonMode="never"
+            accessibilityRole="search"
+          />
+          {b.query.length > 0 ? (
+            <Pressable onPress={() => b.setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
+              <X size={16} color={c.soft} />
+            </Pressable>
+          ) : null}
+        </View>
+        <HeaderMenu
+          title="Browse events"
+          items={PRESET_ITEMS}
+          onSelect={(id) => b.setPreset(b.preset === id ? null : (id as Preset))}
+          label={presetLabel ? `Filter: ${presetLabel}` : 'Filter events'}
+          trigger={<SlidersHorizontal size={20} color={b.preset ? c.primaryFg : c.text} />}
+          triggerStyle={[
+            styles.filter,
+            b.preset ? { borderColor: c.primary, backgroundColor: c.primary } : { borderColor: c.input, backgroundColor: c.card },
+          ]}
         />
-        {b.query.length > 0 ? (
-          <Pressable onPress={() => b.setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <X size={18} color={tokens.textSecondary} weight="bold" />
-          </Pressable>
-        ) : null}
       </View>
 
       <ScrollView
@@ -113,72 +120,50 @@ export default function EventsScreen() {
         {b.categoriesLoading
           ? [72, 96, 80, 104].map((w, i) => <Skeleton key={i} width={w} height={36} borderRadius={borderRadius.full} />)
           : [
-              ...PRESETS.map((p) =>
-                renderChip(p.key, p.label, b.preset === p.key, () => b.setPreset(b.preset === p.key ? null : p.key)),
-              ),
-              ...b.categories.map((c) => renderChip(c, c, b.category === c, () => b.setCategory(c))),
+              // The active quick filter rides first so it's visible and one tap to drop.
+              presetLabel ? chip(`preset-${b.preset}`, presetLabel, true, () => b.setPreset(null), true) : null,
+              ...b.categories.map((name) => chip(name, name, b.category === name, () => b.setCategory(name))),
             ]}
       </ScrollView>
+
+      {featured ? (
+        <View style={styles.featured}>
+          <PosterCard
+            width={posterWidth}
+            title={featured.title}
+            imageUrl={coverOr(defaults, featured.id, featured.coverImageUrl)}
+            when={relativeWhen(featured.startDateTime)}
+            where={placeOf(featured)}
+            host={featured.space?.name}
+            tag={countdownLabel(featured.startDateTime)}
+            price={shortPrice(featured)}
+            onPress={() => openEvent(featured)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 
-  const renderItem = ({ item }: { item: Event }) => {
-    const where = item.venueName || item.city;
-    return (
-      <Pressable
-        onPress={() => router.push(`/event/${item.slug || item.id}`)}
-        accessibilityRole="button"
-        accessibilityLabel={item.title}
-        style={({ pressed }) => [styles.row, { opacity: pressed ? 0.75 : 1 }]}
-      >
-        <View style={[styles.thumb, { backgroundColor: tokens.elevated }]}>
-          {coverOr(defaults, item.id, item.coverImageUrl) ? (
-            <Image source={{ uri: coverOr(defaults, item.id, item.coverImageUrl) ?? undefined }} style={StyleSheet.absoluteFill} contentFit="cover" />
-          ) : (
-            <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-          )}
-        </View>
-
-        <View style={styles.rowBody}>
-          <Text style={[styles.rowTitle, { color: tokens.text }]} numberOfLines={2}>{item.title}</Text>
-          <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
-            {[relativeWhen(item.startDateTime), where].filter(Boolean).join(' · ')}
-          </Text>
-          <View style={styles.footer}>
-            <Text style={[styles.meta, styles.host, { color: tokens.textMuted }]} numberOfLines={1}>
-              {item.space?.name ?? ''}
-            </Text>
-            <Text style={[styles.price, { color: tokens.accent }]} numberOfLines={1}>{shortPrice(item)}</Text>
-          </View>
-        </View>
-      </Pressable>
-    );
-  };
-
   const empty = b.loading ? (
-    <View style={{ gap: spacing[5] }}>
-      {[0, 1, 2, 3, 4].map((i) => (
-        <View key={i} style={styles.row}>
-          <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.lg} />
-          <View style={{ flex: 1, gap: 8 }}>
-            <Skeleton width="90%" height={15} borderRadius={6} />
-            <Skeleton width="60%" height={12} borderRadius={6} />
-            <Skeleton width="40%" height={12} borderRadius={6} />
-          </View>
+    <View style={styles.list}>
+      {b.query.trim() ? null : (
+        <View style={{ marginBottom: spacing[3] }}>
+          <PosterCardSkeleton width={posterWidth} />
         </View>
-      ))}
-    </View>
-  ) : (
-    <View style={styles.empty}>
-      {b.error ? (
-        <CalendarBlank size={48} color={tokens.textSecondary} weight="duotone" />
-      ) : (
-        <MagnifyingGlass size={48} color={tokens.textSecondary} weight="duotone" />
       )}
-      <Text style={[styles.emptyTitle, { color: tokens.text }]}>
+      {[0, 1, 2, 3].map((i) => <EventListCardSkeleton key={i} />)}
+    </View>
+  ) : featured ? null : (
+    <View style={[styles.prompt, { backgroundColor: c.raised }]}>
+      {b.error ? (
+        <CalendarBlank size={40} color={c.soft} weight="duotone" />
+      ) : (
+        <MagnifyingGlass size={40} color={c.soft} weight="duotone" />
+      )}
+      <Text style={[styles.promptTitle, { color: c.text }]}>
         {b.error ? "Couldn't load events" : b.filtered ? 'Nothing matches that' : 'No events yet'}
       </Text>
-      <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>
+      <Text style={[styles.promptBody, { color: c.soft }]}>
         {b.error
           ? 'Check your connection and try again.'
           : b.filtered
@@ -186,26 +171,30 @@ export default function EventsScreen() {
             : 'New events from spaces show up here.'}
       </Text>
       {b.error || b.filtered ? (
-        <Text style={[styles.link, { color: tokens.accent }]} onPress={b.error ? b.refresh : b.clearFilters}>
-          {b.error ? 'Try again' : 'Clear filters'}
-        </Text>
+        <AuthButton
+          label={b.error ? 'Try again' : 'Clear filters'}
+          variant="secondary"
+          onPress={b.error ? b.refresh : b.clearFilters}
+          style={{ marginTop: spacing[6] }}
+        />
       ) : null}
     </View>
   );
 
   return (
-    <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
       <FlatList
-        data={b.loading ? [] : b.events}
+        data={rest}
         keyExtractor={(e) => e.id}
-        renderItem={renderItem}
+        renderItem={({ item }) => <EventListCard event={item} onPress={() => openEvent(item)} />}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
-        ListFooterComponent={
-          b.loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[6] }} /> : null
-        }
-        ItemSeparatorComponent={() => <View style={{ height: spacing[5] }} />}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[12] }}
+        ListFooterComponent={b.loadingMore ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[6] }} /> : null}
+        ItemSeparatorComponent={() => <View style={{ height: spacing[3] }} />}
+        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 100 }}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -215,8 +204,8 @@ export default function EventsScreen() {
           <RefreshControl
             refreshing={b.refreshing}
             onRefresh={b.refresh}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
@@ -227,36 +216,41 @@ export default function EventsScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  searchRow: { flexDirection: 'row', gap: spacing[2] },
   search: {
+    flex: 1,
+    height: SEARCH_H,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    height: 50,
+    paddingHorizontal: spacing[4],
+  },
+  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
+  filter: {
+    width: SEARCH_H,
+    height: SEARCH_H,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipsWrap: { marginTop: spacing[4], marginBottom: spacing[5], marginHorizontal: -GUTTER },
+  chips: { paddingHorizontal: GUTTER, gap: spacing[2] },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 36,
     paddingHorizontal: spacing[4],
     borderRadius: borderRadius.full,
+    borderWidth: 1,
   },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
-  chipsWrap: { marginTop: spacing[4], marginBottom: spacing[6], marginHorizontal: -GUTTER },
-  chips: { paddingHorizontal: GUTTER, gap: spacing[2] },
-  chip: { minHeight: 36, paddingHorizontal: spacing[4], borderRadius: borderRadius.full, justifyContent: 'center' },
-  chipText: { fontSize: typography.fontSize.sm, ...font('medium') },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.lg, overflow: 'hidden' },
-  rowBody: { flex: 1, gap: 4 },
-  rowTitle: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...font('semibold') },
-  meta: { fontSize: typography.fontSize.sm, ...font() },
-  footer: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  host: { flex: 1 },
-  price: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  empty: { alignItems: 'center', paddingTop: spacing[12], paddingHorizontal: spacing[4] },
-  emptyTitle: { marginTop: spacing[4], fontSize: typography.fontSize.lg, ...font('heading') },
-  emptyBody: {
-    marginTop: 6,
-    fontSize: typography.fontSize.sm,
-    lineHeight: typography.fontSize.sm * 1.5,
-    textAlign: 'center',
-    maxWidth: 300,
-    ...font(),
-  },
-  link: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...font('semibold') },
+  chipText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  featured: { marginBottom: spacing[3] },
+  list: { gap: spacing[3] },
+  prompt: { marginTop: spacing[2], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  promptTitle: { marginTop: spacing[5], fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  promptBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
 });
