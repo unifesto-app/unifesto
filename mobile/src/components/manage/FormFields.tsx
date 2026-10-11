@@ -1,9 +1,8 @@
 import React from 'react';
 import { StyleSheet, Switch, Text, TextInput, View, type TextInputProps } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface FieldRowProps extends Omit<TextInputProps, 'style'> {
   label: string;
@@ -19,22 +18,22 @@ interface FieldRowProps extends Omit<TextInputProps, 'style'> {
  *  stacked: small caption over a full-width input (free text)
  */
 export function FieldRow({ label, stacked, multiline, error, ...input }: FieldRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const errorText = error ? (
-    <Text style={[styles.error, { color: tokens.danger }]} accessibilityLiveRegion="polite">
+    <Text style={[styles.error, { color: c.danger }]} accessibilityLiveRegion="polite">
       {error}
     </Text>
   ) : null;
   if (stacked) {
     return (
       <View style={styles.stacked}>
-        <Text style={[styles.caption, { color: error ? tokens.danger : tokens.textMuted }]}>{label}</Text>
+        <Text style={[styles.caption, { color: error ? c.danger : c.muted }]}>{label}</Text>
         <TextInput
           {...input}
           multiline={multiline}
-          placeholderTextColor={tokens.textMuted}
-          selectionColor={tokens.accent}
-          style={[styles.stackedInput, multiline && styles.multiline, { color: tokens.text }]}
+          placeholderTextColor={c.muted}
+          selectionColor={c.primary}
+          style={[styles.stackedInput, multiline && styles.multiline, { color: c.text }]}
         />
         {errorText}
       </View>
@@ -43,14 +42,14 @@ export function FieldRow({ label, stacked, multiline, error, ...input }: FieldRo
   return (
     <View>
       <View style={styles.row}>
-        <Text style={[styles.label, { color: error ? tokens.danger : tokens.text }]} numberOfLines={1}>
+        <Text style={[styles.label, { color: error ? c.danger : c.text }]} numberOfLines={1}>
           {label}
         </Text>
         <TextInput
           {...input}
-          placeholderTextColor={tokens.textMuted}
-          selectionColor={tokens.accent}
-          style={[styles.inlineInput, { color: tokens.text }]}
+          placeholderTextColor={c.muted}
+          selectionColor={c.primary}
+          style={[styles.inlineInput, { color: c.text }]}
         />
       </View>
       {errorText ? <View style={styles.inlineError}>{errorText}</View> : null}
@@ -67,18 +66,21 @@ interface SwitchRowProps {
 }
 
 export function SwitchRow({ label, hint, value, onValueChange, disabled }: SwitchRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={[styles.row, styles.switchRow]}>
       <View style={{ flex: 1, opacity: disabled ? 0.5 : 1 }}>
-        <Text style={[styles.label, { color: tokens.text }]}>{label}</Text>
-        {hint ? <Text style={[styles.hint, { color: tokens.textMuted }]}>{hint}</Text> : null}
+        <Text style={[styles.label, { color: c.text }]}>{label}</Text>
+        {hint ? <Text style={[styles.hint, { color: c.muted }]}>{hint}</Text> : null}
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ true: tokens.accent, false: tokens.border }}
+        trackColor={{ false: c.input, true: c.primary }}
+        thumbColor={value ? c.primaryFg : '#ffffff'}
+        ios_backgroundColor={c.input}
+        accessibilityLabel={label}
       />
     </View>
   );
@@ -86,28 +88,28 @@ export function SwitchRow({ label, hint, value, onValueChange, disabled }: Switc
 
 /** Small heading over a control that isn't a card (segmented tabs, chips). */
 export function BlockTitle({ children }: { children: string }) {
-  const tokens = useTokens();
-  return <Text style={[styles.blockTitle, { color: tokens.textMuted }]}>{children}</Text>;
+  const c = useCosmos();
+  return <Text style={[styles.blockTitle, { color: c.muted }]}>{children}</Text>;
 }
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 56 },
   switchRow: { paddingVertical: spacing[3] },
-  label: { flexShrink: 1, fontSize: typography.fontSize.base, ...font('medium') },
+  label: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   // Takes the rest of the row so the tap target is wide and the value hugs the right edge.
   inlineInput: {
     flex: 1,
     textAlign: 'right',
     fontSize: typography.fontSize.base,
     paddingVertical: spacing[3],
-    ...font('medium'),
+    ...cosmosFont.body,
   },
-  hint: { marginTop: 2, fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.4, ...font() },
+  hint: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },
   stacked: { paddingHorizontal: spacing[4], paddingTop: spacing[3], paddingBottom: spacing[1] },
-  caption: { fontSize: typography.fontSize.xs, ...font('medium') },
-  stackedInput: { fontSize: typography.fontSize.base, paddingTop: spacing[1], paddingBottom: spacing[3], ...font('medium') },
+  caption: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  stackedInput: { fontSize: typography.fontSize.base, paddingTop: spacing[1], paddingBottom: spacing[3], ...cosmosFont.body },
   multiline: { minHeight: 64, textAlignVertical: 'top' },
-  error: { paddingBottom: spacing[3], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.4, ...font('medium') },
+  error: { paddingBottom: spacing[3], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.4, ...cosmosFont.body },
   inlineError: { paddingHorizontal: spacing[4], marginTop: -spacing[2] },
-  blockTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...font('semibold') },
+  blockTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...cosmosFont.strong },
 });

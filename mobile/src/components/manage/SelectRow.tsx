@@ -2,10 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CaretDown, Check, MagnifyingGlass } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, cosmosRadius, cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 import { SheetBackdrop } from '../ui/CardSurface';
 
 interface SelectRowProps {
@@ -24,7 +23,7 @@ interface SelectRowProps {
  * that isn't in the list (typed on the web before) is still shown as is.
  */
 export default function SelectRow({ label, value, options, onChange, placeholder = 'Choose', clearable }: SelectRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -44,32 +43,32 @@ export default function SelectRow({ label, value, options, onChange, placeholder
     <>
       <Pressable
         onPress={() => setOpen(true)}
-        style={({ pressed }) => [styles.row, pressed && { backgroundColor: tokens.pressed }]}
+        style={({ pressed }) => [styles.row, pressed && { backgroundColor: c.tint }]}
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${value || placeholder}`}
       >
-        <Text style={[styles.label, { color: tokens.text }]}>{label}</Text>
-        <Text style={[styles.value, { color: value ? tokens.text : tokens.textMuted }]} numberOfLines={1}>
+        <Text style={[styles.label, { color: c.text }]}>{label}</Text>
+        <Text style={[styles.value, { color: value ? c.text : c.muted }]} numberOfLines={1}>
           {value || placeholder}
         </Text>
-        <CaretDown size={15} color={tokens.textMuted} />
+        <CaretDown size={15} color={c.muted} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setOpen(false)}>
-        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: tokens.overlay }]} onPress={() => setOpen(false)} accessibilityLabel="Close" />
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0, 0, 0, 0.6)' }]} onPress={() => setOpen(false)} accessibilityLabel="Close" />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing[2], top: insets.top + spacing[16] }]}>
-          <SheetBackdrop radius={borderRadius.xl} />
-          <Text style={[styles.title, { color: tokens.text }]}>{label}</Text>
-          <View style={[styles.search, { backgroundColor: tokens.fill }]}>
-            <MagnifyingGlass size={18} color={tokens.textMuted} weight="bold" />
+          <SheetBackdrop radius={cosmosCardRadius} />
+          <Text style={[styles.title, { color: c.text }]}>{label}</Text>
+          <View style={[styles.search, { backgroundColor: c.tint }]}>
+            <MagnifyingGlass size={18} color={c.muted} weight="bold" />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search"
-              placeholderTextColor={tokens.textMuted}
-              selectionColor={tokens.accent}
+              placeholderTextColor={c.muted}
+              selectionColor={c.primary}
               autoCorrect={false}
-              style={[styles.searchInput, { color: tokens.text }]}
+              style={[styles.searchInput, { color: c.text }]}
             />
           </View>
           <FlatList
@@ -79,13 +78,13 @@ export default function SelectRow({ label, value, options, onChange, placeholder
             renderItem={({ item }) => {
               const on = item === value;
               return (
-                <Pressable onPress={() => pick(item)} style={({ pressed }) => [styles.option, pressed && { backgroundColor: tokens.pressed }]}>
-                  <Text style={[styles.optionText, { color: item ? tokens.text : tokens.textMuted }]}>{item || 'None'}</Text>
-                  {on ? <Check size={18} color={tokens.accent} weight="bold" /> : null}
+                <Pressable onPress={() => pick(item)} style={({ pressed }) => [styles.option, pressed && { backgroundColor: c.tint }]}>
+                  <Text style={[styles.optionText, { color: item ? c.text : c.muted }]}>{item || 'None'}</Text>
+                  {on ? <Check size={18} color={c.primary} weight="bold" /> : null}
                 </Pressable>
               );
             }}
-            ListEmptyComponent={<Text style={[styles.empty, { color: tokens.textMuted }]}>No match</Text>}
+            ListEmptyComponent={<Text style={[styles.empty, { color: c.muted }]}>No match</Text>}
           />
         </View>
       </Modal>
@@ -95,13 +94,13 @@ export default function SelectRow({ label, value, options, onChange, placeholder
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], minHeight: 56 },
-  label: { fontSize: typography.fontSize.base, ...font('medium') },
-  value: { flex: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...font('medium') },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingTop: spacing[5] },
-  title: { paddingHorizontal: spacing[6], fontSize: typography.fontSize.lg, ...font('heading') },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: borderRadius.xl },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...font() },
+  label: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  value: { flex: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.body },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: cosmosCardRadius, borderTopRightRadius: cosmosCardRadius, paddingTop: spacing[5] },
+  title: { paddingHorizontal: spacing[6], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: cosmosRadius },
+  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing[6], minHeight: 52 },
-  optionText: { fontSize: typography.fontSize.base, ...font() },
-  empty: { textAlign: 'center', paddingVertical: spacing[8], fontSize: typography.fontSize.sm, ...font() },
+  optionText: { fontSize: typography.fontSize.base, ...cosmosFont.body },
+  empty: { textAlign: 'center', paddingVertical: spacing[8], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

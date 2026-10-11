@@ -3,11 +3,10 @@ import { StyleSheet, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTokens } from '../../context/ThemeContext';
-import { Button } from '../ui';
+import AuthButton from '../auth/AuthButton';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 interface SaveBarProps {
   /** Slides in when true (something changed, saving, or an error to show). */
@@ -26,7 +25,7 @@ interface SaveBarProps {
  * bottom padding so the last field can scroll clear of it.
  */
 export default function SaveBar({ visible, label, onPress, loading, disabled, error }: SaveBarProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const shown = visible || !!loading || !!error;
 
@@ -39,14 +38,14 @@ export default function SaveBar({ visible, label, onPress, loading, disabled, er
     <Animated.View
       style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]), pointerEvents: shown ? 'auto' : 'none' }, style]}
     >
-      <LinearGradient colors={[`${tokens.bg}00`, tokens.bg]} locations={[0, 0.45]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
-      {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
-      <Button label={label} onPress={onPress} loading={loading} disabled={disabled} size="lg" fullWidth />
+      <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={[StyleSheet.absoluteFill, { pointerEvents: 'none' }]} />
+      {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
+      <AuthButton label={label} onPress={onPress} loading={loading} disabled={disabled} />
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: spacing[6], paddingTop: spacing[6] },
-  error: { marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  error: { marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
