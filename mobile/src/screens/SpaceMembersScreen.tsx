@@ -1,10 +1,10 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { MagnifyingGlass, UserPlus, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { UserPlus } from '@unifesto/unicon/react-native';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import SearchField from '../components/manage/SearchField';
 import { useAuth } from '../context/AuthContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useSpaceMembers, type MemberFilter } from '../hooks/useSpaceMembers';
@@ -14,11 +14,10 @@ import MemberRow, { SPACE_ROLE_LABEL } from '../components/manage/MemberRow';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { AppAlert, type AppAlertButton } from '../components/ui/AppAlert';
 import type { SpaceMember } from '../lib/api/spaceMembers';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import { GUTTER } from '../components/home/Section';
 
 const TABS: { key: MemberFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -34,7 +33,7 @@ const TABS: { key: MemberFilter; label: string }[] = [
 export default function SpaceMembersScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const { user } = useAuth();
   const { spaces, refresh: refreshAccess } = useSpaceAccess();
@@ -121,30 +120,12 @@ export default function SpaceMembersScreen() {
 
   const header = (
     <View style={{ paddingTop: topSpacing }}>
-      <View style={styles.search}>
-        <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-        <TextInput
-          value={m.query}
-          onChangeText={m.setQuery}
-          placeholder="Name, username or email"
-          placeholderTextColor={tokens.textMuted}
-          style={[styles.searchInput, { color: tokens.text }]}
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="none"
-        />
-        {m.query.length > 0 ? (
-          <Pressable onPress={() => m.setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <X size={18} color={tokens.textSecondary} weight="bold" />
-          </Pressable>
-        ) : null}
-      </View>
+      <SearchField value={m.query} onChangeText={m.setQuery} placeholder="Name, username or email" />
       <View style={{ marginTop: spacing[4] }}>
         <SegmentedTabs tabs={TABS} value={m.filter} onChange={m.setFilter} />
       </View>
       {!m.loading && !m.error ? (
-        <Text style={[styles.count, { color: tokens.textMuted }]}>
+        <Text style={[styles.count, { color: c.muted }]} accessibilityRole="header">
           {m.total.toLocaleString('en-IN')} {m.total === 1 ? 'person' : 'people'}
         </Text>
       ) : null}
@@ -152,12 +133,16 @@ export default function SpaceMembersScreen() {
   );
 
   const empty = m.loading ? (
-    <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+    <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
   ) : (
-    <Text style={[styles.empty, { color: tokens.textMuted }]}>
-      {m.denied ? 'Only Space admins can manage members.' : m.error || (m.query ? 'No one matches that search.' : 'No one here yet.')}
-    </Text>
+    <View style={[styles.empty, { backgroundColor: c.raised }]}>
+      <Text style={[styles.emptyText, { color: c.soft }]}>
+        {m.denied ? 'Only Space admins can manage members.' : m.error || (m.query ? 'No one matches that search.' : 'No one here yet.')}
+      </Text>
+    </View>
   );
+
+  const rows = m.loading || m.error ? [] : m.rows;
 
   return (
     <>
@@ -167,47 +152,55 @@ export default function SpaceMembersScreen() {
             ? undefined
             : () => (
                 <Pressable onPress={openAdd} hitSlop={10} accessibilityRole="button" accessibilityLabel="Add member">
-                  <UserPlus size={24} color={tokens.text} weight="bold" />
+                  <UserPlus size={24} color={c.text} weight="bold" />
                 </Pressable>
               ),
         }}
       />
-      <FlatList
-        style={{ backgroundColor: tokens.bg }}
-        contentContainerStyle={styles.content}
-        data={m.loading || m.error ? [] : m.rows}
-        keyExtractor={(r) => r.id}
-        ListHeaderComponent={header}
-        ListEmptyComponent={empty}
-        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-        renderItem={({ item }) => (
-          <MemberRow
-            user={item.user}
-            trailing={SPACE_ROLE_LABEL[item.role.code] ?? item.role.name}
-            tags={[item.userId === creatorId ? 'Owner' : '', item.userId === user?.id ? 'You' : ''].filter(Boolean)}
-            busy={m.busyId === item.id}
-            onPress={() => openMember(item)}
-          />
-        )}
-        onEndReached={() => void m.loadMore()}
-        onEndReachedThreshold={0.4}
-        ListFooterComponent={m.loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={m.refreshing} onRefresh={m.refresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-        }
-      />
+      <View style={[styles.container, { backgroundColor: c.bg }]}>
+        <CosmosBackdrop horizon={false} />
+        <FlatList
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          contentContainerStyle={styles.content}
+          data={rows}
+          keyExtractor={(r) => r.id}
+          ListHeaderComponent={header}
+          ListEmptyComponent={empty}
+          // One card for the whole roster: each row is a segment of it.
+          renderItem={({ item, index }) => (
+            <View style={cardSegment(c.raised, index, rows.length)}>
+              {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+              <MemberRow
+                user={item.user}
+                trailing={SPACE_ROLE_LABEL[item.role.code] ?? item.role.name}
+                tags={[item.userId === creatorId ? 'Owner' : '', item.userId === user?.id ? 'You' : ''].filter(Boolean)}
+                busy={m.busyId === item.id}
+                onPress={() => openMember(item)}
+              />
+            </View>
+          )}
+          onEndReached={() => void m.loadMore()}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={m.loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={m.refreshing} onRefresh={m.refresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topSpacing} />
+          }
+        />
+      </View>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 50, paddingHorizontal: spacing[4], borderRadius: borderRadius.full },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
-  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...font('medium') },
+  container: { flex: 1 },
+  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
+  count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  // Starts under the name: past the 40pt avatar and its gap.
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

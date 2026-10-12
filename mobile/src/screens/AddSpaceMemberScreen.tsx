@@ -1,19 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { MagnifyingGlass, X } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
+import { CheckCircle } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import MemberRow, { SPACE_ROLE_LABEL } from '../components/manage/MemberRow';
 import { AppAlert } from '../components/ui/AppAlert';
 import { addSpaceMember, searchAddableUsers, type MemberUser, type SpaceMemberRole } from '../lib/api/spaceMembers';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-import { CardBackdrop } from '../components/ui/CardSurface';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import SearchField from '../components/manage/SearchField';
+import { GUTTER } from '../components/home/Section';
 const MIN_CHARS = 2;
 const DEBOUNCE_MS = 300;
 
@@ -24,7 +23,7 @@ const DEBOUNCE_MS = 300;
  */
 export default function AddSpaceMemberScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MemberUser[]>([]);
@@ -95,68 +94,63 @@ export default function AddSpaceMemberScreen() {
       : error || (!searching && results.length === 0 ? 'No one found. They need a Unifesto account first.' : '');
 
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      data={results}
-      keyExtractor={(u) => u.id}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      showsVerticalScrollIndicator={false}
-      ListHeaderComponent={
-        <View>
-          <View style={styles.search}>
-            <CardBackdrop shape={styles.search} />
-            <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Find someone"
-              placeholderTextColor={tokens.textMuted}
-              style={[styles.searchInput, { color: tokens.text }]}
-              autoFocus
-              autoCorrect={false}
-              autoCapitalize="none"
-              returnKeyType="search"
-            />
-            {searching ? (
-              <ActivityIndicator size="small" color={tokens.textMuted} />
-            ) : query.length > 0 ? (
-              <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-                <X size={18} color={tokens.textSecondary} weight="bold" />
-              </Pressable>
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <FlatList
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        data={results}
+        keyExtractor={(u) => u.id}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View>
+            <SearchField value={query} onChangeText={setQuery} placeholder="Find someone" autoFocus busy={searching} />
+
+            {added.length > 0 ? (
+              <View style={[styles.added, { backgroundColor: c.raised }]} accessibilityLiveRegion="polite">
+                {added.map((a) => (
+                  <View key={a.id} style={styles.addedRow}>
+                    <CheckCircle size={20} color={c.success} weight="fill" />
+                    <Text style={[styles.addedText, { color: c.text }]} numberOfLines={1}>
+                      {a.name} <Text style={{ color: c.muted }}>as {SPACE_ROLE_LABEL[a.role].toLowerCase()}</Text>
+                    </Text>
+                  </View>
+                ))}
+              </View>
             ) : null}
+
+            {hint ? <Text style={[styles.hint, { color: error ? c.danger : c.muted }]}>{hint}</Text> : null}
           </View>
-
-          {added.length > 0 ? (
-            <View style={[styles.added]}>
-              <CardBackdrop shape={styles.added} />
-              {added.map((a) => (
-                <Text key={a.id} style={[styles.addedText, { color: tokens.text }]} numberOfLines={1}>
-                  <Text style={{ color: tokens.success }}>Added  </Text>
-                  {a.name} as {SPACE_ROLE_LABEL[a.role].toLowerCase()}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-
-          {hint ? <Text style={[styles.hint, { color: error ? tokens.danger : tokens.textMuted }]}>{hint}</Text> : null}
-        </View>
-      }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-      renderItem={({ item }) => (
-        <MemberRow user={item} trailing="Add" busy={addingId === item.id} onPress={() => choose(item)} />
-      )}
-    />
+        }
+        // One card for all results: each row is a segment of it.
+        renderItem={({ item, index }) => (
+          <View style={cardSegment(c.raised, index, results.length)}>
+            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+            <MemberRow user={item} trailing="Add" busy={addingId === item.id} onPress={() => choose(item)} />
+          </View>
+        )}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 50, paddingHorizontal: spacing[4], borderRadius: borderRadius.full },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...font() },
-  added: { marginTop: spacing[4], borderRadius: borderRadius.xl, padding: spacing[4], gap: spacing[2] },
-  addedText: { fontSize: typography.fontSize.sm, ...font('medium') },
-  hint: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  container: { flex: 1 },
+  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
+  added: { marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[4], gap: spacing[3] },
+  addedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  addedText: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  hint: {
+    marginTop: spacing[4],
+    marginBottom: spacing[3],
+    marginHorizontal: spacing[1],
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.fontSize.sm * 1.5,
+    ...cosmosFont.body,
+  },
+  // Starts under the name: past the 40pt avatar and its gap.
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
 });

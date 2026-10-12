@@ -1,9 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius } from '../../theme/spacing';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import { initials } from '../../lib/api/spaceSponsors';
 
 /**
@@ -11,14 +9,15 @@ import { initials } from '../../lib/api/spaceSponsors';
  * marks are drawn for light backgrounds) or its initials when it has none.
  */
 export default function SponsorMark({ name, logoUrl, size = 28 }: { name: string; logoUrl?: string | null; size?: number }) {
-  const tokens = useTokens();
-  const box = { width: size, height: size, borderRadius: size >= 48 ? borderRadius.md : borderRadius.sm };
+  const c = useCosmos();
+  // Rounded like the other cosmos marks: a quarter of the side, never a square box.
+  const box = { width: size, height: size, borderRadius: Math.round(size / 4) };
   if (logoUrl) {
     return <Image source={{ uri: logoUrl }} style={[box, styles.logo]} contentFit="contain" transition={120} />;
   }
   return (
-    <View style={[box, styles.center, { backgroundColor: tokens.elevated }]}>
-      <Text style={[styles.initials, { color: tokens.accent, fontSize: Math.round(size * 0.38) }]}>{initials(name)}</Text>
+    <View style={[box, styles.center, { backgroundColor: c.tint }]}>
+      <Text style={[styles.initials, { color: c.text, fontSize: Math.round(size * 0.34) }]}>{initials(name)}</Text>
     </View>
   );
 }
@@ -26,5 +25,5 @@ export default function SponsorMark({ name, logoUrl, size = 28 }: { name: string
 const styles = StyleSheet.create({
   logo: { backgroundColor: '#ffffff' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  initials: { ...font('semibold') },
+  initials: { ...cosmosFont.display },
 });

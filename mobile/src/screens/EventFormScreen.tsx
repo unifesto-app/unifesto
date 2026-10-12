@@ -9,7 +9,6 @@ import * as Location from 'expo-location';
 import * as FileSystem from 'expo-file-system/legacy';
 import { cropToAspect, pickImageAtAspect } from '../utils/pickImage';
 import { ImageSquare, MapPin } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
@@ -57,9 +56,9 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const GUTTER = spacing[6];
@@ -169,7 +168,6 @@ export default function EventFormScreen() {
   }>();
   const creating = !eventId;
   const router = useRouter();
-  const tokens = useTokens();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
@@ -445,9 +443,9 @@ export default function EventFormScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <View style={[styles.center, { backgroundColor: c.bg }]}>
         <Stack.Screen options={{ title }} />
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
+        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.text} />}
       </View>
     );
   }
@@ -465,11 +463,14 @@ export default function EventFormScreen() {
   const primaryLabel = !atEnd ? 'Next' : !creating ? 'Save changes' : launch === 'publish' ? 'Create and publish' : 'Create draft';
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <CosmosBackdrop horizon={false} />
       {/* The start panel carries its own big title. */}
       <Stack.Screen options={{ title: starting ? '' : title }} />
       <ScrollView
         ref={scrollRef}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -505,16 +506,16 @@ export default function EventFormScreen() {
                   <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} />
                 ) : (
                   <View style={styles.coverEmpty}>
-                    <ImageSquare size={30} color={tokens.textMuted} />
+                    <ImageSquare size={30} color={c.muted} />
                   </View>
                 )}
               </Pressable>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.coverTitle, { color: tokens.text }]}>Cover</Text>
+                <Text style={[styles.coverTitle, { color: c.text }]}>Cover</Text>
                 <Text style={[styles.change, { color: c.text }]} onPress={pickCover}>
                   {cover ? 'Change cover' : 'Add a cover'}
                 </Text>
-                <Text style={[styles.coverHint, { color: tokens.textMuted }]}>4:3 works best</Text>
+                <Text style={[styles.coverHint, { color: c.muted }]}>4:3 works best</Text>
               </View>
             </View>
 
@@ -562,7 +563,7 @@ export default function EventFormScreen() {
                   onChange={(v) => set({ categories: v })}
                   max={MAX_EVENT_CATEGORIES}
                 />
-                <Text style={[styles.note, { color: tokens.textMuted }]}>
+                <Text style={[styles.note, { color: c.muted }]}>
                   Pick up to {MAX_EVENT_CATEGORIES}. The first one leads on event cards.
                 </Text>
               </View>
@@ -584,9 +585,9 @@ export default function EventFormScreen() {
               />
               <DateTimeRow label="Ends" value={draft.end} minimumDate={draft.start} onChange={(d) => set({ end: d })} />
             </SettingsGroup>
-            {whenError ? <Text style={[styles.note, styles.errorNote, { color: tokens.danger }]}>{whenError}</Text> : null}
+            {whenError ? <Text style={[styles.note, styles.errorNote, { color: c.danger }]}>{whenError}</Text> : null}
             {!whenError && pastImport ? (
-              <Text style={[styles.note, styles.errorNote, { color: tokens.danger }]}>
+              <Text style={[styles.note, styles.errorNote, { color: c.danger }]}>
                 These imported dates have passed. Set new ones before creating.
               </Text>
             ) : null}
@@ -596,7 +597,7 @@ export default function EventFormScreen() {
               <RecurrenceEditor value={draft.recurrence} onChange={(r) => set({ recurrence: r })} start={draft.start} />
             ) : null}
             {original?.seriesParentId ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>
+              <Text style={[styles.note, { color: c.muted }]}>
                 One date of a series. Detach it under Repeats on the series if this date should differ.
               </Text>
             ) : null}
@@ -621,9 +622,9 @@ export default function EventFormScreen() {
                   place={placeOf(draft)}
                   name={draft.venueName || 'Map pin'}
                   address={[draft.venueAddress, draft.city].filter(Boolean).join(', ')}
-                  accent={tokens.accent}
+                  accent={c.primary}
                 />
-                <Text style={[styles.note, { color: tokens.textMuted }]}>
+                <Text style={[styles.note, { color: c.muted }]}>
                   Wrong spot? Edit the address, then pin again.
                 </Text>
               </View>
@@ -637,7 +638,7 @@ export default function EventFormScreen() {
                 {pinning ? <ActivityIndicator size="small" color={c.text} /> : <MapPin size={20} color={c.text} weight="fill" />}
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.pinTitle, { color: c.text }]}>{pinning ? 'Finding it…' : 'Pin on map'}</Text>
-                  <Text style={[styles.coverHint, { color: tokens.textMuted }]}>So attendees get exact directions.</Text>
+                  <Text style={[styles.coverHint, { color: c.muted }]}>So attendees get exact directions.</Text>
                 </View>
               </Pressable>
             ) : null}
@@ -692,20 +693,20 @@ export default function EventFormScreen() {
               </SettingsGroup>
             ) : null}
             {creating ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>Add more tickets, group tickets and waiting lists from the event after creating it.</Text>
+              <Text style={[styles.note, { color: c.muted }]}>Add more tickets, group tickets and waiting lists from the event after creating it.</Text>
             ) : null}
 
             <View style={styles.block}>
               <BlockTitle>Who can see it</BlockTitle>
               <SegmentedTabs tabs={VIS_TABS} value={draft.visibility} onChange={(v) => set({ visibility: v })} />
-              <Text style={[styles.note, { color: tokens.textMuted }]}>{VIS_HINT[draft.visibility]}</Text>
+              <Text style={[styles.note, { color: c.muted }]}>{VIS_HINT[draft.visibility]}</Text>
             </View>
 
             {creating ? (
               <View style={styles.block}>
                 <BlockTitle>When it's created</BlockTitle>
                 <SegmentedTabs tabs={LAUNCH_TABS} value={launch} onChange={setLaunch} />
-                <Text style={[styles.note, { color: tokens.textMuted }]}>{LAUNCH_HINT[launch]}</Text>
+                <Text style={[styles.note, { color: c.muted }]}>{LAUNCH_HINT[launch]}</Text>
               </View>
             ) : null}
           </>
@@ -777,7 +778,7 @@ function NoticeLink({ label, onPress }: { label: string; onPress: () => void }) 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   stepHead: { marginBottom: spacing[6] },
   steps: { flexDirection: 'row', gap: spacing[2] },
   stepBar: { flex: 1, height: 4, borderRadius: 2 },
@@ -791,11 +792,11 @@ const styles = StyleSheet.create({
   coverEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   coverTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   change: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  coverHint: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  coverHint: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   pinRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginTop: spacing[3], marginHorizontal: spacing[1] },
   pinTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   block: { marginTop: spacing[8] },
   firstBlock: { marginTop: 0 },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  errorNote: { marginBottom: spacing[2], ...font('medium') },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  errorNote: { marginBottom: spacing[2], ...cosmosFont.strong },
 });

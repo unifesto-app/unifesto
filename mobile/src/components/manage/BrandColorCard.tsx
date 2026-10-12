@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
-import { CardBackdrop } from '../ui/CardSurface';
-import { Button } from '../ui';
+import AuthButton from '../auth/AuthButton';
 import { FieldRow } from './FormFields';
 import { SettingsGroup } from '../profile/SettingsGroup';
 import {
@@ -12,9 +10,9 @@ import {
   type WhiteLabelOverview,
   type WhiteLabelRequest,
 } from '../../lib/api/whiteLabel';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const DEFAULT = '#3491ff';
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -51,7 +49,9 @@ export default function BrandColorCard({
   surfaces,
   onChanged,
 }: BrandColorCardProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
+  // An event's card sits on the raised event row: step down to the tint there.
+  const fill = eventId ? c.tint : c.raised;
   const pending = !enabled && latest?.status === 'PENDING';
   const seedColor = brandColor ?? latest?.brandColor ?? inherited ?? DEFAULT;
 
@@ -68,7 +68,7 @@ export default function BrandColorCard({
 
   if (!enabled && !pending && !planHasBranding) {
     return (
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
+      <Text style={[styles.note, { color: c.muted }]}>
         Your own accent colour isn't part of this space's plan. See Plan and billing.
       </Text>
     );
@@ -104,13 +104,12 @@ export default function BrandColorCard({
   return (
     <View>
       {eventId && !enabled && inherited ? (
-        <Text style={[styles.note, { color: tokens.textMuted }]}>Already uses your space colour. Request only if it needs its own.</Text>
+        <Text style={[styles.note, { color: c.muted }]}>Already uses your space colour. Request only if it needs its own.</Text>
       ) : null}
 
-      <View style={[styles.picker, { opacity: pending ? 0.5 : 1, pointerEvents: pending ? 'none' : 'auto' }]}>
-        <CardBackdrop shape={styles.picker} />
+      <View style={[styles.picker, { backgroundColor: fill, opacity: pending ? 0.5 : 1, pointerEvents: pending ? 'none' : 'auto' }]}>
         <View style={styles.previewRow}>
-          <View style={[styles.preview, { backgroundColor: valid ? color : tokens.elevated }]} />
+          <View style={[styles.preview, { backgroundColor: valid ? color : c.tint }]} />
           <TextInput
             value={color}
             onChangeText={(v) => setColor(v.trim())}
@@ -118,9 +117,9 @@ export default function BrandColorCard({
             autoCorrect={false}
             maxLength={7}
             placeholder={DEFAULT}
-            placeholderTextColor={tokens.textMuted}
-            selectionColor={tokens.accent}
-            style={[styles.hex, { color: valid ? tokens.text : tokens.danger }]}
+            placeholderTextColor={c.muted}
+            selectionColor={c.text}
+            style={[styles.hex, { color: valid ? c.text : c.danger }]}
           />
         </View>
         <View style={styles.swatches}>
@@ -129,15 +128,19 @@ export default function BrandColorCard({
               key={s}
               onPress={() => setColor(s)}
               accessibilityLabel={`Use ${s}`}
-              style={[styles.swatch, { backgroundColor: s, borderColor: color.toLowerCase() === s ? tokens.text : 'transparent' }]}
-            />
+              accessibilityRole="button"
+              accessibilityState={{ selected: color.toLowerCase() === s }}
+              style={[styles.swatch, { borderColor: color.toLowerCase() === s ? c.text : 'transparent' }]}
+            >
+              <View style={[styles.dot, { backgroundColor: s }]} />
+            </Pressable>
           ))}
         </View>
       </View>
-      {!valid ? <Text style={[styles.note, { color: tokens.danger }]}>Use a 6-digit hex colour, like #7a5af8.</Text> : null}
+      {!valid ? <Text style={[styles.note, { color: c.danger }]}>Use a 6-digit hex colour, like #7a5af8.</Text> : null}
 
       {enabled && !eventId ? (
-        <SettingsGroup title="Confirmation emails" plain>
+        <SettingsGroup title="Confirmation emails" plain surface={eventId ? c.tint : undefined}>
           <FieldRow stacked label="Sender name" value={fromName} onChangeText={setFromName} placeholder="Your organisation" />
           <FieldRow
             stacked
@@ -152,42 +155,43 @@ export default function BrandColorCard({
       ) : null}
 
       {pending ? (
-        <Text style={[styles.note, { color: tokens.textSecondary }]}>
+        <Text style={[styles.note, { color: c.soft }]}>
           Waiting for review{latest?.requester?.fullName ? `, requested by ${latest.requester.fullName}` : ''}. You can change
           the colour any time once it's approved.
         </Text>
       ) : !enabled ? (
         <>
           {latest?.status === 'REJECTED' && latest.reviewNote ? (
-            <Text style={[styles.note, { color: tokens.danger }]}>Last request declined: {latest.reviewNote}</Text>
+            <Text style={[styles.note, { color: c.danger }]}>Last request declined: {latest.reviewNote}</Text>
           ) : null}
-          <SettingsGroup plain>
+          <SettingsGroup plain surface={eventId ? c.tint : undefined}>
             <FieldRow stacked multiline label="Note for the reviewer (optional)" value={note} onChangeText={setNote} />
           </SettingsGroup>
         </>
       ) : null}
 
       {!pending ? (
-        <Button
+        <AuthButton
           label={enabled ? 'Save colour' : 'Request own colour'}
           onPress={submit}
           loading={busy}
           disabled={!valid}
-          fullWidth
           style={{ marginTop: spacing[4] }}
         />
       ) : null}
-      {message ? <Text style={[styles.note, { color: message.bad ? tokens.danger : tokens.success }]}>{message.text}</Text> : null}
+      {message ? <Text style={[styles.note, { color: message.bad ? c.danger : c.success }]}>{message.text}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  picker: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], marginTop: spacing[3] },
+  picker: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginTop: spacing[3] },
   previewRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  preview: { width: 40, height: 40, borderRadius: borderRadius.md },
-  hex: { flex: 1, fontSize: typography.fontSize.lg, ...font('medium') },
-  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[3], marginTop: spacing[4] },
-  swatch: { width: 32, height: 32, borderRadius: 16, borderWidth: 2 },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  preview: { width: 40, height: 40, borderRadius: 12 },
+  hex: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
+  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[1], marginTop: spacing[4] },
+  // 44pt tap target around a 32pt dot; the ring marks the picked one.
+  swatch: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+  dot: { width: 32, height: 32, borderRadius: 16 },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

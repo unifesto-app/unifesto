@@ -1,11 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { CalendarBlank, PaperPlaneTilt, Trash } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createSponsor,
@@ -24,14 +22,16 @@ import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
-const LOGO = 88;
+const LOGO = 72;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Draft {
@@ -70,9 +70,8 @@ export default function SponsorEditorScreen() {
   const { spaceId, sponsorId } = useLocalSearchParams<{ spaceId: string; sponsorId: string }>();
   const isNew = !sponsorId || sponsorId === 'new';
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
   const initial = useRef(JSON.stringify(EMPTY));
   const [detail, setDetail] = useState<SponsorDetail | null>(null);
@@ -213,31 +212,52 @@ export default function SponsorEditorScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen>
         <Stack.Screen options={{ title }} />
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+        <View style={styles.pad}>
+          {error ? (
+            <View style={[styles.card, { backgroundColor: c.raised }]}>
+              <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            </View>
+          ) : (
+            <>
+              <Skeleton width="100%" height={120} borderRadius={cosmosCardRadius} />
+              <Skeleton width="100%" height={220} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+            </>
+          )}
+        </View>
+      </CosmosScreen>
     );
   }
 
   const events = detail?.eventSponsors ?? [];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      footer={
+        <SaveBar
+          visible={isNew || dirty}
+          label={isNew ? 'Add sponsor' : 'Save changes'}
+          onPress={() => void save()}
+          loading={saving}
+          disabled={deleting || uploading}
+          error={error}
+        />
+      }
+    >
       <Stack.Screen options={{ title }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo */}
+
+      {/* Logo + live name: what attendees see on event pages */}
+      <View style={[styles.card, styles.identity, { backgroundColor: c.raised }]}>
         <Pressable
           onPress={() => void pickLogo()}
           disabled={uploading}
           accessibilityRole="button"
           accessibilityLabel={draft.logoUrl ? 'Change logo' : 'Add logo'}
-          style={({ pressed }) => [styles.logoWrap, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}
+          style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
         >
           <SponsorMark name={draft.name || '?'} logoUrl={draft.logoUrl || null} size={LOGO} />
           {uploading ? (
@@ -246,18 +266,25 @@ export default function SponsorEditorScreen() {
             </View>
           ) : null}
         </Pressable>
-        <View style={styles.logoActions}>
-          <Text style={[styles.link, { color: tokens.accent }]} onPress={() => void pickLogo()}>
-            {draft.logoUrl ? 'Change logo' : 'Add logo'}
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.name, { color: draft.name ? c.text : c.muted }]} numberOfLines={2}>
+            {draft.name || 'Sponsor name'}
           </Text>
-          {draft.logoUrl ? (
-            <Text style={[styles.link, { color: tokens.textMuted }]} onPress={() => set({ logoUrl: '' })}>
-              Remove
+          <View style={styles.logoActions}>
+            <Text style={[styles.link, { color: c.text }]} onPress={() => void pickLogo()} accessibilityRole="button">
+              {draft.logoUrl ? 'Change logo' : 'Add logo'}
             </Text>
-          ) : null}
+            {draft.logoUrl ? (
+              <Text style={[styles.link, { color: c.muted }]} onPress={() => set({ logoUrl: '' })} accessibilityRole="button">
+                Remove
+              </Text>
+            ) : null}
+          </View>
         </View>
+      </View>
 
-        <SettingsGroup plain>
+      <Section title="Details" style={styles.firstSection}>
+        <SettingsGroup plain style={styles.group}>
           <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Acme Corp" />
           <FieldRow
             stacked
@@ -278,8 +305,10 @@ export default function SponsorEditorScreen() {
             placeholder="What they do, in a line"
           />
         </SettingsGroup>
+      </Section>
 
-        <SettingsGroup title="Contact (only your team sees this)" plain>
+      <Section title="Contact" subtitle="Only your team sees this">
+        <SettingsGroup plain style={styles.group}>
           <FieldRow stacked label="Name" value={draft.contactName} onChangeText={(v) => set({ contactName: v })} />
           <FieldRow
             stacked
@@ -292,15 +321,17 @@ export default function SponsorEditorScreen() {
           />
           <FieldRow stacked label="Phone" value={draft.contactPhone} onChangeText={(v) => set({ contactPhone: v })} keyboardType="phone-pad" />
         </SettingsGroup>
+      </Section>
 
-        {!isNew ? (
-          <>
-            <SettingsGroup title="On events">
+      {!isNew ? (
+        <>
+          <Section title="On events" subtitle="To attach it, open an event and go to Sponsors">
+            <SettingsGroup style={styles.group}>
               {events.length === 0 ? <SettingsRow label="Not attached to any event yet" /> : null}
               {events.map((es) => (
                 <SettingsRow
                   key={es.id}
-                  icon={<CalendarBlank size={24} color={tokens.accent} weight="fill" />}
+                  icon={<CalendarBlank size={24} color={c.text} weight="fill" />}
                   label={es.event.title}
                   onPress={() =>
                     router.push({ pathname: `/manage/event/${es.event.id}/sponsors`, params: { spaceId: spaceId!, title: es.event.title } })
@@ -308,78 +339,69 @@ export default function SponsorEditorScreen() {
                 />
               ))}
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>To attach it, open an event and go to Sponsors.</Text>
+          </Section>
 
-            <View style={{ marginTop: spacing[6] }}>
-              <SettingsGroup title="Portal access" plain>
-                {users.map((u) => (
-                  <SettingsRow
-                    key={u.id}
-                    label={u.user.fullName || u.invitedEmail || 'Invited'}
-                    value={u.status === 'ACTIVE' ? 'Active' : 'Invited'}
-                    onPress={() => revoke(u)}
-                  />
-                ))}
-                <FieldRow
-                  stacked
-                  label="Invite by email"
-                  value={inviteEmail}
-                  onChangeText={setInviteEmail}
-                  placeholder="person@company.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="send"
-                  onSubmitEditing={() => void invite()}
+          <Section title="Portal access" subtitle="Booth scanning and this sponsor's leads, in the app or on the web">
+            <SettingsGroup plain style={styles.group}>
+              {users.map((u) => (
+                <SettingsRow
+                  key={u.id}
+                  label={u.user.fullName || u.invitedEmail || 'Invited'}
+                  value={u.status === 'ACTIVE' ? 'Active' : 'Invited'}
+                  onPress={() => revoke(u)}
                 />
-              </SettingsGroup>
-              <Text style={[styles.note, { color: tokens.textMuted }]}>
-                People you invite can scan attendee tickets at the booth and see this sponsor's leads, in the Unifesto app or on the web.
-                They need a Unifesto account with this email. Tap a person to remove them.
-              </Text>
-              <Button
+              ))}
+              <FieldRow
+                stacked
+                label="Invite by email"
+                value={inviteEmail}
+                onChangeText={setInviteEmail}
+                placeholder="person@company.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="send"
+                onSubmitEditing={() => void invite()}
+              />
+            </SettingsGroup>
+            <Text style={[styles.note, { color: c.muted }]}>
+              They need a Unifesto account with this email. Tap a person to remove them.
+            </Text>
+            <View style={[styles.pad, { marginTop: spacing[4] }]}>
+              <AuthButton
                 label="Send invite"
                 variant="secondary"
-                fullWidth
                 loading={inviting}
                 disabled={!inviteEmail.trim()}
-                icon={<PaperPlaneTilt size={18} color={tokens.text} weight="bold" />}
+                icon={<PaperPlaneTilt size={16} color={c.text} weight="bold" />}
                 onPress={() => void invite()}
-                style={{ marginTop: spacing[3] }}
               />
             </View>
+          </Section>
 
-            <Button
+          <View style={styles.pad}>
+            <AuthButton
               label="Remove sponsor"
               variant="danger"
-              size="lg"
-              fullWidth
               loading={deleting}
               disabled={saving}
-              icon={<Trash size={18} color={tokens.danger} weight="bold" />}
+              icon={<Trash size={18} color={c.danger} />}
               onPress={remove}
-              style={{ marginTop: spacing[10] }}
+              style={{ marginTop: spacing[12] }}
             />
-          </>
-        ) : null}
-      </ScrollView>
-
-      <SaveBar
-        visible={isNew || dirty}
-        label={isNew ? 'Add sponsor' : 'Save changes'}
-        onPress={() => void save()}
-        loading={saving}
-        disabled={deleting || uploading}
-        error={error}
-      />
-    </KeyboardAvoidingView>
+          </View>
+        </>
+      ) : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  logoWrap: { alignSelf: 'center', marginTop: spacing[2] },
+  pad: { paddingHorizontal: GUTTER },
+  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
+  body: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  name: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
   logoBusy: {
     position: 'absolute',
     top: 0,
@@ -389,9 +411,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderRadius: 12,
+    borderRadius: LOGO / 4,
   },
-  logoActions: { flexDirection: 'row', justifyContent: 'center', gap: spacing[5], marginTop: spacing[3], marginBottom: spacing[6] },
-  link: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  logoActions: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[2] },
+  link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  firstSection: { marginTop: spacing[10] },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  note: {
+    marginTop: spacing[3],
+    marginHorizontal: GUTTER + spacing[1],
+    fontSize: typography.fontSize.sm,
+    lineHeight: typography.fontSize.sm * 1.5,
+    ...cosmosFont.body,
+  },
 });

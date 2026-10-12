@@ -1,9 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 import { CardBackdrop } from '../ui/CardSurface';
 
 interface ChipPickerProps<V extends string> {
@@ -16,7 +15,7 @@ interface ChipPickerProps<V extends string> {
 
 /** Wrapping row of single-select chips, for lists too long for SegmentedTabs. */
 export default function ChipPicker<V extends string>({ options, value, onChange, clearable }: ChipPickerProps<V>) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.wrap}>
       {options.map((o) => {
@@ -29,11 +28,11 @@ export default function ChipPicker<V extends string>({ options, value, onChange,
             accessibilityState={{ selected: on }}
             style={({ pressed }) => [
               styles.chip,
-              { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+              { backgroundColor: on ? c.primary : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
             ]}
           >
             {!on ? <CardBackdrop shape={styles.chip} /> : null}
-            <Text style={[styles.label, { color: on ? tokens.accentFg : tokens.text }]}>{o.label}</Text>
+            <Text style={[styles.label, { color: on ? c.primaryFg : c.text }]}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -51,7 +50,7 @@ interface MultiChipPickerProps {
 
 /** Wrapping row of multi-select chips, kept in tap order (first = primary). */
 export function MultiChipPicker({ options, value, onChange, max }: MultiChipPickerProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const full = max !== undefined && value.length >= max;
   return (
     <View style={styles.wrap}>
@@ -68,14 +67,14 @@ export function MultiChipPicker({ options, value, onChange, max }: MultiChipPick
             style={({ pressed }) => [
               styles.chip,
               {
-                backgroundColor: on ? tokens.accent : undefined,
+                backgroundColor: on ? c.primary : undefined,
                 opacity: disabled ? 0.4 : 1,
                 transform: [{ scale: pressed ? 0.96 : 1 }],
               },
             ]}
           >
             {!on ? <CardBackdrop shape={styles.chip} /> : null}
-            <Text style={[styles.label, { color: on ? tokens.accentFg : tokens.text }]}>{o.label}</Text>
+            <Text style={[styles.label, { color: on ? c.primaryFg : c.text }]}>{o.label}</Text>
           </Pressable>
         );
       })}
@@ -85,6 +84,6 @@ export function MultiChipPicker({ options, value, onChange, max }: MultiChipPick
 
 const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2] },
-  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  label: { fontSize: typography.fontSize.sm, ...font('medium') },
+  chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: 999 },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -2,17 +2,16 @@ import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRefundQueue, type RefundRequest, type RefundStatus } from '../lib/api/finance';
 import { RefundRow } from '../components/manage/FinanceRows';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 const PAGE_SIZE = 30;
 
 const TABS: { key: RefundStatus; label: string }[] = [
@@ -37,7 +36,7 @@ const EMPTY: Record<RefundStatus, string> = {
 export default function RefundsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [status, setStatus] = useState<RefundStatus>('PENDING_CURATOR');
   const [rows, setRows] = useState<RefundRequest[]>([]);
@@ -90,45 +89,60 @@ export default function RefundsScreen() {
     setRefreshing(false);
   };
 
+  const data = loading || error ? [] : rows;
+
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={styles.content}
-      data={loading || error ? [] : rows}
-      keyExtractor={(r) => r.id}
-      ListHeaderComponent={
-        <View style={{ paddingTop: topSpacing }}>
-          <SegmentedTabs tabs={TABS} value={status} onChange={setStatus} />
-          {!loading && !error && total > 0 ? (
-            <Text style={[styles.count, { color: tokens.textMuted }]}>
-              {total} {total === 1 ? 'request' : 'requests'}
-            </Text>
-          ) : null}
-        </View>
-      }
-      ListEmptyComponent={
-        loading ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
-        ) : (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>{error || EMPTY[status]}</Text>
-        )
-      }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-      renderItem={({ item }) => <RefundRow refund={item} onPress={() => router.push(`/manage/refund/${item.id}`)} />}
-      onEndReached={() => void loadMore()}
-      onEndReachedThreshold={0.4}
-      ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-      }
-    />
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <FlatList
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={styles.content}
+        data={data}
+        keyExtractor={(r) => r.id}
+        ListHeaderComponent={
+          <View style={{ paddingTop: topSpacing }}>
+            <SegmentedTabs tabs={TABS} value={status} onChange={setStatus} />
+            {!loading && !error && total > 0 ? (
+              <Text style={[styles.count, { color: c.muted }]} accessibilityRole="header">
+                {total} {total === 1 ? 'request' : 'requests'}
+              </Text>
+            ) : null}
+          </View>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+          ) : (
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>{error || EMPTY[status]}</Text>
+            </View>
+          )
+        }
+        // One card for the queue: each request is a segment of it.
+        renderItem={({ item, index }) => (
+          <View style={cardSegment(c.raised, index, data.length)}>
+            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+            <RefundRow refund={item} onPress={() => router.push(`/manage/refund/${item.id}`)} />
+          </View>
+        )}
+        onEndReached={() => void loadMore()}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topSpacing} />
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...font('medium') },
+  container: { flex: 1 },
+  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
+  count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -1,43 +1,33 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getSponsors, getTiers, type Sponsor, type SponsorTier } from '../lib/api/spaceSponsors';
 import { getUsage } from '../lib/api/billing';
-import SegmentedTabs from '../components/ui/SegmentedTabs';
 import SponsorMark from '../components/manage/SponsorMark';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import { borderRadius, spacing } from '../theme/spacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
-
-type Tab = 'sponsors' | 'tiers';
-const TABS: { key: Tab; label: string }[] = [
-  { key: 'sponsors', label: 'Sponsors' },
-  { key: 'tiers', label: 'Tiers' },
-];
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * The space's sponsor roster (add once, attach to any event) and its tier
- * ladder (Platinum, Gold…). Attaching to events happens from each event's hub.
+ * ladder (Platinum, Gold…), one under the other. Attaching to events happens
+ * from each event's hub.
  */
 export default function SponsorsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
-  const [tab, setTab] = useState<Tab>('sponsors');
+  const c = useCosmos();
   const [sponsors, setSponsors] = useState<Sponsor[] | null>(null);
   const [tiers, setTiers] = useState<SponsorTier[]>([]);
   // null = unknown (usage call failed); the server still enforces the plan.
@@ -71,120 +61,103 @@ export default function SponsorsScreen() {
   const openSponsor = (sponsorId: string) => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId } });
   const openTier = (tierId: string) => router.push({ pathname: `/manage/space/${spaceId}/sponsor-tier`, params: { tierId } });
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
   if (!sponsors) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen>
+        <View style={styles.pad}>
+          <Skeleton width="100%" height={180} borderRadius={cosmosCardRadius} />
+          <Skeleton width="100%" height={120} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
+  const locked = onPlan === false;
+
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
-      {onPlan === false ? (
-        <View style={styles.notice}>
-          <CardBackdrop shape={styles.notice} />
-          <Text style={[styles.noticeTitle, { color: tokens.text }]}>Not on this space's plan</Text>
-          <Text style={[styles.noticeBody, { color: tokens.textSecondary }]}>
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
+      {locked ? (
+        <View style={[styles.notice, { backgroundColor: c.raised }]}>
+          <Text style={[styles.noticeTitle, { color: c.text }]}>Not on this space's plan</Text>
+          <Text style={[styles.noticeBody, { color: c.soft }]}>
             You can look through what's here, but adding or changing sponsors needs a plan that includes Sponsors and leads.
           </Text>
         </View>
       ) : null}
-      {error ? <Text style={[styles.intro, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? (
+        <View style={[styles.notice, { backgroundColor: c.raised }]}>
+          <Text style={[styles.noticeBody, { color: c.danger }]}>{error}</Text>
+        </View>
+      ) : null}
 
-      <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
-
-      {tab === 'sponsors' ? (
-        <>
-          <Text style={[styles.intro, { color: tokens.textSecondary }]}>
-            Add a sponsor once, then attach it to any of your events from the event's page.
-          </Text>
-          <SettingsGroup>
-            {sponsors.length === 0 ? <SettingsRow label="No sponsors yet" /> : null}
-            {sponsors.map((s) => {
-              const events = s._count?.eventSponsors ?? 0;
-              return (
-                <SettingsRow
-                  key={s.id}
-                  icon={<SponsorMark name={s.name} logoUrl={s.logoUrl} size={ICON} />}
-                  label={s.name}
-                  value={events ? plural(events, 'event') : 'Not on an event'}
-                  onPress={() => openSponsor(s.id)}
-                />
-              );
-            })}
-          </SettingsGroup>
-          <Button
+      <Section title="Sponsors" subtitle="Add one once, then attach it to any event from the event's page" style={styles.firstSection}>
+        <SettingsGroup style={styles.group}>
+          {sponsors.length === 0 ? <SettingsRow label="No sponsors yet" /> : null}
+          {sponsors.map((s) => {
+            const events = s._count?.eventSponsors ?? 0;
+            return (
+              <SettingsRow
+                key={s.id}
+                icon={<SponsorMark name={s.name} logoUrl={s.logoUrl} size={ICON} />}
+                label={s.name}
+                value={events ? plural(events, 'event') : 'Not on an event'}
+                onPress={() => openSponsor(s.id)}
+              />
+            );
+          })}
+        </SettingsGroup>
+        <View style={[styles.pad, { marginTop: spacing[4] }]}>
+          <AuthButton
             label="Add sponsor"
             variant="secondary"
-            fullWidth
-            disabled={onPlan === false}
-            icon={<Plus size={18} color={tokens.text} weight="bold" />}
+            disabled={locked}
+            icon={<Plus size={16} color={c.text} weight="bold" />}
             onPress={() => openSponsor('new')}
-            style={{ marginTop: spacing[5] }}
           />
-        </>
-      ) : (
-        <>
-          <Text style={[styles.intro, { color: tokens.textSecondary }]}>
-            Tiers group and order sponsors on event pages, top rank first. They're optional: sponsors without a tier still show.
-          </Text>
-          <SettingsGroup>
-            {tiers.length === 0 ? <SettingsRow label="No tiers yet" /> : null}
-            {tiers.map((t) => (
-              <SettingsRow
-                key={t.id}
-                icon={<View style={[styles.swatch, { backgroundColor: t.color || tokens.elevated }]} />}
-                label={t.name}
-                value={`Rank ${t.rank}`}
-                onPress={() => openTier(t.id)}
-              />
-            ))}
-          </SettingsGroup>
-          <Button
+        </View>
+      </Section>
+
+      <Section title="Tiers" subtitle="Group and order sponsors on event pages, top rank first. Optional">
+        <SettingsGroup style={styles.group}>
+          {tiers.length === 0 ? <SettingsRow label="No tiers yet" /> : null}
+          {tiers.map((t) => (
+            <SettingsRow
+              key={t.id}
+              icon={<View style={[styles.swatch, { backgroundColor: t.color || c.tint }]} />}
+              label={t.name}
+              value={`Rank ${t.rank}`}
+              onPress={() => openTier(t.id)}
+            />
+          ))}
+        </SettingsGroup>
+        <View style={[styles.pad, { marginTop: spacing[4] }]}>
+          <AuthButton
             label="Add tier"
             variant="secondary"
-            fullWidth
-            disabled={onPlan === false}
-            icon={<Plus size={18} color={tokens.text} weight="bold" />}
+            disabled={locked}
+            icon={<Plus size={16} color={c.text} weight="bold" />}
             onPress={() => openTier('new')}
-            style={{ marginTop: spacing[5] }}
           />
-        </>
-      )}
-    </ScrollView>
+        </View>
+      </Section>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  intro: {
-    marginTop: spacing[4],
-    marginLeft: spacing[1],
-    fontSize: typography.fontSize.sm,
-    lineHeight: typography.fontSize.sm * 1.5,
-    ...font(),
-  },
-  notice: { padding: spacing[4], borderRadius: borderRadius.lg, marginBottom: spacing[4], gap: spacing[1] },
-  noticeTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  noticeBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  swatch: { width: ICON - 6, height: ICON - 6, borderRadius: borderRadius.sm },
+  pad: { paddingHorizontal: GUTTER },
+  notice: { marginHorizontal: GUTTER, marginBottom: spacing[3], padding: spacing[5], borderRadius: cosmosCardRadius, gap: spacing[1] },
+  noticeTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  noticeBody: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  firstSection: { marginTop: spacing[4] },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  // A tier's colour as a round dot: bare, no tile behind it.
+  swatch: { width: 18, height: 18, borderRadius: 9 },
 });

@@ -1,9 +1,8 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useTokens } from '../../context/ThemeContext';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, cosmosCardRadius, useCosmos } from '../../theme/cosmos';
 import Skeleton from '../Skeleton';
 import { CardBackdrop } from '../ui/CardSurface';
 
@@ -15,7 +14,7 @@ export interface ManageStat {
 
 /** A row of borderless stat tiles (elevated fill lifts them off the black). */
 export default function ManageStats({ stats, loading }: { stats: ManageStat[]; loading?: boolean }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.row}>
       {stats.map((s) => (
@@ -24,11 +23,11 @@ export default function ManageStats({ stats, loading }: { stats: ManageStat[]; l
           {loading ? (
             <Skeleton width={36} height={26} />
           ) : (
-            <Text style={[styles.value, { color: tokens.text }]} numberOfLines={1} adjustsFontSizeToFit>
+            <Text style={[styles.value, { color: c.text }]} numberOfLines={1} adjustsFontSizeToFit>
               {typeof s.value === 'number' ? s.value.toLocaleString('en-IN') : s.value}
             </Text>
           )}
-          <Text style={[styles.label, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.label, { color: c.muted }]} numberOfLines={1}>
             {s.label}
           </Text>
         </View>
@@ -39,7 +38,7 @@ export default function ManageStats({ stats, loading }: { stats: ManageStat[]; l
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing[3] },
-  tile: { flex: 1, borderRadius: borderRadius.xl, paddingVertical: spacing[4], paddingHorizontal: spacing[4], gap: 4 },
-  value: { fontSize: typography.fontSize['2xl'], ...font('heading') },
-  label: { fontSize: typography.fontSize.xs, ...font('medium') },
+  tile: { flex: 1, borderRadius: cosmosCardRadius, paddingVertical: spacing[4], paddingHorizontal: spacing[4], gap: 4 },
+  value: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  label: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

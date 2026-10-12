@@ -1,20 +1,18 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getSpacePayouts, type Payout } from '../lib/api/finance';
 import { getManagedSpaceEvents, type ManagedEvent } from '../lib/api/manageSpace';
 import { PayoutRow } from '../components/manage/FinanceRows';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { relativeWhen } from '../utils/eventFormat';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Any event that has earned money can be drawn down, ended or not. Paid is
@@ -28,8 +26,7 @@ function requestable(e: ManagedEvent) {
 export default function PayoutsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [events, setEvents] = useState<ManagedEvent[] | null>(null);
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [error, setError] = useState('');
@@ -65,64 +62,67 @@ export default function PayoutsScreen() {
 
   if (!events) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen>
+        <View style={styles.pad}>
+          <Skeleton width="100%" height={40} borderRadius={8} />
+          <Skeleton width="100%" height={168} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+          <Skeleton width="100%" height={220} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
   const now = new Date();
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-      }
-    >
-      <Text style={[styles.intro, { color: tokens.textMuted }]}>
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
+      <Text style={[styles.intro, { color: c.soft }]}>
         Pick an event to pay out what it has earned so far. Unifesto sends the money by bank transfer and records the reference here.
       </Text>
 
-      <SettingsGroup title="Request a payout" plain>
-        {events.length === 0 ? (
-          <SettingsRow label="No paid events yet" />
-        ) : (
-          events.map((e) => (
-            <SettingsRow
-              key={e.id}
-              label={e.title}
-              value={new Date(e.endDateTime) < now ? 'Ended' : relativeWhen(e.startDateTime, now)}
-              onPress={() => router.push({ pathname: `/manage/event/${e.id}/payout`, params: { title: e.title } })}
-            />
-          ))
-        )}
-      </SettingsGroup>
+      <Section title="Request a payout" style={styles.firstSection}>
+        <SettingsGroup plain style={styles.group}>
+          {events.length === 0 ? (
+            <SettingsRow label="No paid events yet" />
+          ) : (
+            events.map((e) => (
+              <SettingsRow
+                key={e.id}
+                label={e.title}
+                value={new Date(e.endDateTime) < now ? 'Ended' : relativeWhen(e.startDateTime, now)}
+                onPress={() => router.push({ pathname: `/manage/event/${e.id}/payout`, params: { title: e.title } })}
+              />
+            ))
+          )}
+        </SettingsGroup>
+      </Section>
 
-      <SettingsGroup plain title={`History${payouts.length ? ` · ${payouts.length}` : ''}`}>
-        {error ? (
-          <SettingsRow label={error} />
-        ) : payouts.length === 0 ? (
-          <SettingsRow label="No payouts yet" />
-        ) : (
-          payouts.map((p) => (
-            <PayoutRow
-              key={p.id}
-              payout={p}
-              inCard
-              detail={p.failureReason ? { text: p.failureReason, danger: true } : p.utr ? { text: `Reference ${p.utr}` } : null}
-            />
-          ))
-        )}
-      </SettingsGroup>
-    </ScrollView>
+      <Section title="History" subtitle={payouts.length ? `${payouts.length} payout${payouts.length === 1 ? '' : 's'}` : undefined}>
+        <SettingsGroup plain style={styles.group}>
+          {error ? (
+            <SettingsRow label={error} />
+          ) : payouts.length === 0 ? (
+            <SettingsRow label="No payouts yet" />
+          ) : (
+            payouts.map((p) => (
+              <PayoutRow
+                key={p.id}
+                payout={p}
+                inCard
+                detail={p.failureReason ? { text: p.failureReason, danger: true } : p.utr ? { text: `Reference ${p.utr}` } : null}
+              />
+            ))
+          )}
+        </SettingsGroup>
+      </Section>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  pad: { paddingHorizontal: GUTTER },
+  intro: { paddingHorizontal: GUTTER, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  firstSection: { marginTop: spacing[8] },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
 });

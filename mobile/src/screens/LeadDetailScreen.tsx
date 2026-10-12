@@ -1,10 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EnvelopeSimple, Phone, Trash, WhatsappLogo } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createLead,
@@ -19,17 +17,20 @@ import {
   type LeadStatus,
 } from '../lib/api/spaceLeads';
 import ChipPicker from '../components/manage/ChipPicker';
-import { BlockTitle, FieldRow } from '../components/manage/FormFields';
+import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
+import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import PressableScale from '../components/ui/PressableScale';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
-const ICON = 26;
+const ICON = 24;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Draft {
@@ -56,9 +57,8 @@ export default function LeadDetailScreen() {
   const { spaceId, leadId } = useLocalSearchParams<{ spaceId: string; leadId: string }>();
   const isNew = !leadId || leadId === 'new';
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [lead, setLead] = useState<Lead | null>(null);
   const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
   const initial = useRef(JSON.stringify(EMPTY));
@@ -148,28 +148,51 @@ export default function LeadDetailScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen>
         <Stack.Screen options={{ title }} />
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+        <View style={styles.pad}>
+          {error ? (
+            <View style={[styles.card, { backgroundColor: c.raised }]}>
+              <Text style={[styles.meta, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            </View>
+          ) : (
+            <>
+              <Skeleton width="100%" height={170} borderRadius={cosmosCardRadius} />
+              <Skeleton width="100%" height={220} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+            </>
+          )}
+        </View>
+      </CosmosScreen>
     );
   }
 
-  const icon = (I: typeof Phone) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  // Ways to reach them, as one-tap actions in the identity card.
+  const reach = lead
+    ? [
+        lead.email ? { label: 'Email', I: EnvelopeSimple, url: `mailto:${lead.email}` } : null,
+        lead.phone ? { label: 'Call', I: Phone, url: `tel:${lead.phone}` } : null,
+        lead.phone ? { label: 'WhatsApp', I: WhatsappLogo, url: `https://wa.me/${waNumber(lead.phone)}` } : null,
+      ].filter((r): r is { label: string; I: typeof Phone; url: string } => r !== null)
+    : [];
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      footer={
+        <SaveBar visible={isNew || dirty} label={isNew ? 'Add lead' : 'Save changes'} onPress={() => void save()} loading={saving} disabled={deleting} error={error} />
+      }
+    >
       <Stack.Screen options={{ title }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        {lead ? (
-          <>
-            <Text style={[styles.name, { color: tokens.text }]}>{leadName(lead)}</Text>
-            <Text style={[styles.meta, { color: tokens.textMuted }]}>
+
+      {lead ? (
+        <>
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
+            <Text style={[styles.name, { color: c.text }]} accessibilityRole="header">
+              {leadName(lead)}
+            </Text>
+            <Text style={[styles.meta, { color: c.muted }]}>
               {[
                 LEAD_SOURCE_LABEL[lead.source],
                 lead.event?.title,
@@ -178,36 +201,43 @@ export default function LeadDetailScreen() {
                 .filter(Boolean)
                 .join(' · ')}
             </Text>
-
-            {lead.email || lead.phone ? (
-              <View style={{ marginTop: spacing[5] }}>
-                <SettingsGroup>
-                  {lead.email ? <SettingsRow icon={icon(EnvelopeSimple)} label="Email" value={lead.email} external onPress={() => open(`mailto:${lead.email}`)} /> : null}
-                  {lead.phone ? <SettingsRow icon={icon(Phone)} label="Call" value={lead.phone} external onPress={() => open(`tel:${lead.phone}`)} /> : null}
-                  {lead.phone ? (
-                    <SettingsRow icon={icon(WhatsappLogo)} label="WhatsApp" external onPress={() => open(`https://wa.me/${waNumber(lead.phone!)}`)} />
-                  ) : null}
-                </SettingsGroup>
+            {reach.length > 0 ? (
+              <View style={styles.reach}>
+                {reach.map(({ label, I, url }) => (
+                  <PressableScale
+                    key={label}
+                    onPress={() => open(url)}
+                    accessibilityRole="link"
+                    accessibilityLabel={label}
+                    style={[styles.reachBtn, { borderColor: c.outline }]}
+                  >
+                    <I size={ICON} color={c.text} weight="fill" />
+                    <Text style={[styles.reachText, { color: c.text }]}>{label}</Text>
+                  </PressableScale>
+                ))}
               </View>
             ) : null}
+          </View>
 
-            <View style={{ marginTop: spacing[6] }}>
-              <BlockTitle>Stage</BlockTitle>
+          <Section title="Stage" style={styles.firstSection}>
+            <View style={styles.pad}>
               <ChipPicker
                 options={LEAD_STATUSES.map((s) => ({ value: s, label: LEAD_STATUS_LABEL[s] }))}
                 value={lead.status}
                 onChange={(s) => void stage(s)}
               />
-              {staging ? <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[2], alignSelf: 'flex-start' }} /> : null}
+              {staging ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[3], alignSelf: 'flex-start' }} /> : null}
             </View>
+          </Section>
+        </>
+      ) : null}
 
-            <View style={{ marginTop: spacing[8] }}>
-              <BlockTitle>Details</BlockTitle>
-            </View>
-          </>
-        ) : null}
-
-        <SettingsGroup plain>
+      <Section
+        title="Details"
+        subtitle={isNew ? 'Add at least an email or a phone number' : undefined}
+        style={lead ? undefined : styles.newFirst}
+      >
+        <SettingsGroup plain style={styles.group}>
           <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} />
           <FieldRow
             stacked
@@ -221,32 +251,45 @@ export default function LeadDetailScreen() {
           <FieldRow stacked label="Phone" value={draft.phone} onChangeText={(v) => set({ phone: v })} keyboardType="phone-pad" />
           <FieldRow stacked multiline label={isNew ? 'Note' : 'Message or note'} value={draft.message} onChangeText={(v) => set({ message: v })} />
         </SettingsGroup>
-        {isNew ? <Text style={[styles.note, { color: tokens.textMuted }]}>Add at least an email or a phone number.</Text> : null}
+      </Section>
 
-        {lead ? (
-          <Button
+      {lead ? (
+        <View style={styles.pad}>
+          <AuthButton
             label="Delete lead"
             variant="danger"
-            size="lg"
-            fullWidth
             loading={deleting}
             disabled={saving}
-            icon={<Trash size={18} color={tokens.danger} weight="bold" />}
+            icon={<Trash size={18} color={c.danger} />}
             onPress={remove}
-            style={{ marginTop: spacing[10] }}
+            style={{ marginTop: spacing[12] }}
           />
-        ) : null}
-      </ScrollView>
-
-      <SaveBar visible={isNew || dirty} label={isNew ? 'Add lead' : 'Save changes'} onPress={() => void save()} loading={saving} disabled={deleting} error={error} />
-    </KeyboardAvoidingView>
+        </View>
+      ) : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  name: { fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.2, ...font('heading') },
-  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  pad: { paddingHorizontal: GUTTER },
+  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
+  name: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
+  reach: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
+  reachBtn: {
+    flex: 1,
+    minHeight: 64,
+    borderRadius: cosmosRadius,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: spacing[2],
+  },
+  reachText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  firstSection: { marginTop: spacing[10] },
+  // A new lead has no identity card: the form leads the page.
+  newFirst: { marginTop: 0 },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
 });

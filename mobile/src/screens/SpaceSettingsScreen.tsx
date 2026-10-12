@@ -1,14 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { pickImageAtAspect } from '../utils/pickImage';
 import { Buildings, ImageSquare } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getSpaceProfile,
@@ -19,20 +17,22 @@ import {
   type SpaceProfilePatch,
 } from '../lib/api/spaceSettings';
 import { sanitizeSlug } from '../lib/eventDraft';
-import { BlockTitle, FieldRow } from '../components/manage/FormFields';
+import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';
 import { INDIAN_STATES } from '../lib/indianStates';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
-import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
+const IMG_H = 96;
 const VIS_TABS = [
   { key: 'PUBLIC' as const, label: 'Public' },
   { key: 'PRIVATE' as const, label: 'Private' },
@@ -59,9 +59,8 @@ const toForm = (p: SpaceProfile): Form => ({
  */
 export default function SpaceSettingsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const { refresh: refreshAccess } = useSpaceAccess();
 
   const [profile, setProfile] = useState<SpaceProfile | null>(null);
@@ -158,62 +157,55 @@ export default function SpaceSettingsScreen() {
 
   if (!form || !profile) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {loadError ? (
-          <>
-            <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text>
-            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-          </>
-        ) : (
-          <ActivityIndicator color={tokens.accent} />
-        )}
-      </View>
+      <CosmosScreen>
+        <View style={styles.pad}>
+          {loadError ? (
+            <View style={[styles.card, { backgroundColor: c.raised }]}>
+              <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+              <AuthButton label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : (
+            <>
+              <Skeleton width="100%" height={170} borderRadius={cosmosCardRadius} />
+              <Skeleton width="100%" height={260} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+            </>
+          )}
+        </View>
+      </CosmosScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo 1:1 + compact 4:3 banner, each uploads on pick */}
-        <View style={styles.images}>
-          <Pressable onPress={() => pick('logo')} style={({ pressed }) => [styles.logo, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
-            <CardBackdrop shape={styles.logo} />
-            {profile.logoUrl ? (
-              <Image source={{ uri: profile.logoUrl }} style={StyleSheet.absoluteFill} />
-            ) : (
-              <View style={styles.empty}>
-                <Buildings size={28} color={tokens.textMuted} />
-              </View>
-            )}
-            {uploading === 'logo' ? <ActivityIndicator style={StyleSheet.absoluteFill} color={tokens.accent} /> : null}
-          </Pressable>
-          <Pressable onPress={() => pick('banner')} style={({ pressed }) => [styles.banner, { transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
-            <CardBackdrop shape={styles.banner} />
-            {profile.bannerUrl ? (
-              <Image source={{ uri: profile.bannerUrl }} style={StyleSheet.absoluteFill} />
-            ) : (
-              <View style={styles.empty}>
-                <ImageSquare size={28} color={tokens.textMuted} />
-              </View>
-            )}
-            {uploading === 'banner' ? <ActivityIndicator style={StyleSheet.absoluteFill} color={tokens.accent} /> : null}
-          </Pressable>
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      footer={<SaveBar visible={dirty} label="Save changes" onPress={save} loading={saving} error={error} />}
+    >
+      {/* Logo 1:1 + compact 4:3 banner, each uploads on pick */}
+      <View style={styles.pad}>
+        <View style={[styles.card, styles.images, { backgroundColor: c.raised }]}>
+          <ImageSlot
+            label="Logo"
+            url={profile.logoUrl}
+            width={IMG_H}
+            busy={uploading === 'logo'}
+            empty={<Buildings size={28} color={c.muted} />}
+            onPress={() => pick('logo')}
+          />
+          <ImageSlot
+            label="Banner"
+            url={profile.bannerUrl}
+            width={(IMG_H * 4) / 3}
+            busy={uploading === 'banner'}
+            empty={<ImageSquare size={28} color={c.muted} />}
+            onPress={() => pick('banner')}
+          />
         </View>
-        <View style={styles.captions}>
-          <Text style={[styles.caption, { color: tokens.accent, width: 96 }]} onPress={() => pick('logo')}>
-            {profile.logoUrl ? 'Change logo' : 'Add logo'}
-          </Text>
-          <Text style={[styles.caption, { color: tokens.accent }]} onPress={() => pick('banner')}>
-            {profile.bannerUrl ? 'Change banner' : 'Add banner'}
-          </Text>
-        </View>
+      </View>
 
-        <SettingsGroup title="Profile" plain>
+      <Section title="Profile" style={styles.firstSection}>
+        <SettingsGroup plain style={styles.group}>
           <FieldRow stacked label="Name" value={form.name} onChangeText={(v) => set({ name: v })} maxLength={100} />
           <FieldRow
             stacked
@@ -233,8 +225,10 @@ export default function SpaceSettingsScreen() {
           />
           <FieldRow stacked label="Tags" value={form.tagsText} onChangeText={(v) => set({ tagsText: v })} placeholder="tech, community, events" autoCapitalize="none" />
         </SettingsGroup>
+      </Section>
 
-        <SettingsGroup title="Location and web" plain>
+      <Section title="Location and web">
+        <SettingsGroup plain style={styles.group}>
           <FieldRow
             stacked
             label="Website"
@@ -248,30 +242,65 @@ export default function SpaceSettingsScreen() {
           <FieldRow label="City" value={form.city} onChangeText={(v) => set({ city: v })} placeholder="Hyderabad" />
           <SelectRow label="State" value={form.state} options={INDIAN_STATES} onChange={(v) => set({ state: v })} clearable />
         </SettingsGroup>
+      </Section>
 
-        <View style={{ marginTop: spacing[8] }}>
-          <BlockTitle>Who can see it</BlockTitle>
+      <Section title="Who can see it">
+        <View style={styles.pad}>
           <SegmentedTabs tabs={VIS_TABS} value={form.visibility} onChange={(v) => set({ visibility: v })} />
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
+          <Text style={[styles.note, { color: c.muted }]}>
             {form.visibility === 'PUBLIC' ? 'Anyone can find and view this space.' : 'Only members can view it. Add people from Members.'}
           </Text>
         </View>
-      </ScrollView>
+      </Section>
+    </CosmosScreen>
+  );
+}
 
-      <SaveBar visible={dirty} label="Save changes" onPress={save} loading={saving} error={error} />
-    </KeyboardAvoidingView>
+/** One upload slot: the image at its true ratio, its name and a change link under it. */
+function ImageSlot({
+  label,
+  url,
+  width,
+  busy,
+  empty,
+  onPress,
+}: {
+  label: string;
+  url: string | null | undefined;
+  width: number;
+  busy: boolean;
+  empty: React.ReactNode;
+  onPress: () => void;
+}) {
+  const c = useCosmos();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={busy}
+      accessibilityRole="button"
+      accessibilityLabel={url ? `Change ${label.toLowerCase()}` : `Add ${label.toLowerCase()}`}
+      style={({ pressed }) => ({ width, transform: [{ scale: pressed ? 0.97 : 1 }] })}
+    >
+      <View style={[styles.slot, { width, backgroundColor: c.tint }]}>
+        {url ? <Image source={{ uri: url }} style={StyleSheet.absoluteFill} contentFit="cover" /> : empty}
+        {busy ? <ActivityIndicator style={StyleSheet.absoluteFill} color={c.text} /> : null}
+      </View>
+      <Text style={[styles.slotLabel, { color: c.text }]}>{label}</Text>
+      <Text style={[styles.slotAction, { color: c.muted }]}>{url ? 'Tap to change' : 'Tap to add'}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  images: { flexDirection: 'row', gap: spacing[4], alignItems: 'flex-end' },
-  logo: { width: 96, height: 96, borderRadius: borderRadius.lg, overflow: 'hidden' },
-  banner: { width: 128, height: 96, borderRadius: borderRadius.lg, overflow: 'hidden' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  captions: { flexDirection: 'row', gap: spacing[4], marginTop: spacing[2] },
-  caption: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  pad: { paddingHorizontal: GUTTER },
+  card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  images: { flexDirection: 'row', gap: spacing[5], alignItems: 'flex-start' },
+  slot: { height: IMG_H, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  slotLabel: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  slotAction: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  firstSection: { marginTop: spacing[10] },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

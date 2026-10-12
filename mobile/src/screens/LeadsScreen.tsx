@@ -1,10 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Export, Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import { CaretRight, Export, Plus } from '@unifesto/unicon/react-native';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getLeads,
@@ -21,13 +18,14 @@ import ManageStats from '../components/manage/ManageStats';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import AuthButton from '../components/auth/AuthButton';
+import Skeleton from '../components/Skeleton';
+import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
@@ -39,8 +37,7 @@ const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { d
 export default function LeadsScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [leads, setLeads] = useState<Lead[] | null>(null);
   const [status, setStatus] = useState<LeadStatus | ''>('NEW');
   const [source, setSource] = useState<LeadSource | ''>('');
@@ -69,9 +66,9 @@ export default function LeadsScreen() {
   );
 
   const counts = useMemo(() => {
-    const c: Record<LeadStatus, number> = { NEW: 0, CONTACTED: 0, CONVERTED: 0, ARCHIVED: 0 };
-    for (const l of leads ?? []) c[l.status] += 1;
-    return c;
+    const n: Record<LeadStatus, number> = { NEW: 0, CONTACTED: 0, CONVERTED: 0, ARCHIVED: 0 };
+    for (const l of leads ?? []) n[l.status] += 1;
+    return n;
   }, [leads]);
 
   const shown = useMemo(
@@ -96,105 +93,123 @@ export default function LeadsScreen() {
     if (!ok) AppAlert.alert("Couldn't export", 'Sharing is not available on this device.');
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
+
   if (!leads) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen>
+        <View style={styles.pad}>
+          <Skeleton width="100%" height={84} borderRadius={cosmosCardRadius} />
+          <Skeleton width="100%" height={240} borderRadius={cosmosCardRadius} style={{ marginTop: spacing[10] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
-      {error ? <Text style={[styles.intro, { color: tokens.danger }]}>{error}</Text> : null}
-
-      <ManageStats
-        stats={[
-          { label: 'New', value: counts.NEW },
-          { label: 'Contacted', value: counts.CONTACTED },
-          { label: 'Converted', value: counts.CONVERTED },
-        ]}
-      />
-
-      <View style={{ marginTop: spacing[6] }}>
-        <BlockTitle>Stage</BlockTitle>
-        <ChipPicker
-          options={LEAD_STATUSES.map((s) => ({ value: s, label: `${LEAD_STATUS_LABEL[s]} ${counts[s]}` }))}
-          value={status}
-          onChange={setStatus}
-          clearable
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
+      <View style={styles.pad}>
+        {error ? (
+          <View style={[styles.notice, { backgroundColor: c.raised }]}>
+            <Text style={[styles.body, { color: c.danger }]}>{error}</Text>
+          </View>
+        ) : null}
+        <ManageStats
+          stats={[
+            { label: 'New', value: counts.NEW },
+            { label: 'Contacted', value: counts.CONTACTED },
+            { label: 'Converted', value: counts.CONVERTED },
+          ]}
         />
       </View>
-      {sources.length > 1 ? (
-        <View style={{ marginTop: spacing[4] }}>
-          <BlockTitle>Came from</BlockTitle>
-          <ChipPicker options={sources} value={source} onChange={setSource} clearable />
-        </View>
-      ) : null}
 
-      <View style={{ marginTop: spacing[5] }}>
-        <SettingsGroup plain>
-          {shown.length === 0 ? (
-            <SettingsRow label={leads.length ? 'Nothing matches these filters' : 'No leads yet'} />
-          ) : null}
-          {shown.map((l) => (
-            <View key={l.id}>
-              <SettingsRow label={leadName(l)} value={shortDate(l.createdAt)} onPress={() => open(l.id)} />
-              <Text style={[styles.sub, { color: tokens.textMuted }]} onPress={() => open(l.id)} numberOfLines={1}>
-                {[status ? null : LEAD_STATUS_LABEL[l.status], LEAD_SOURCE_LABEL[l.source], l.event?.title].filter(Boolean).join(' · ')}
-              </Text>
+      <Section
+        title="Leads"
+        subtitle={leads.length ? undefined : 'People who tap Notify me on an event or send an inquiry from your space page'}
+        style={styles.firstSection}
+      >
+        <View style={styles.pad}>
+          <BlockTitle>Stage</BlockTitle>
+          <ChipPicker
+            options={LEAD_STATUSES.map((s) => ({ value: s, label: `${LEAD_STATUS_LABEL[s]} ${counts[s]}` }))}
+            value={status}
+            onChange={setStatus}
+            clearable
+          />
+          {sources.length > 1 ? (
+            <View style={{ marginTop: spacing[4] }}>
+              <BlockTitle>Came from</BlockTitle>
+              <ChipPicker options={sources} value={source} onChange={setSource} clearable />
             </View>
-          ))}
-        </SettingsGroup>
-      </View>
-      {leads.length === 0 ? (
-        <Text style={[styles.intro, { color: tokens.textMuted }]}>
-          People land here when they tap Notify me on one of your events or send an inquiry from your space page.
-        </Text>
-      ) : null}
+          ) : null}
+        </View>
 
-      <Button
-        label="Add lead"
-        variant="secondary"
-        fullWidth
-        icon={<Plus size={18} color={tokens.text} weight="bold" />}
-        onPress={() => open('new')}
-        style={{ marginTop: spacing[5] }}
-      />
-      {shown.length ? (
-        <Button
-          label={`Export ${shown.length === leads.length ? 'all' : 'these'} as CSV`}
-          variant="ghost"
-          fullWidth
-          icon={<Export size={18} color={tokens.accent} weight="bold" />}
-          onPress={() => void exportCsv()}
-          style={{ marginTop: spacing[2] }}
-        />
-      ) : null}
-    </ScrollView>
+        <SettingsGroup plain style={[styles.group, { marginTop: spacing[5] }]}>
+          {shown.length === 0 ? <SettingsRow label={leads.length ? 'Nothing matches these filters' : 'No leads yet'} /> : null}
+          {shown.map((l) => {
+            const meta = [status ? null : LEAD_STATUS_LABEL[l.status], LEAD_SOURCE_LABEL[l.source], l.event?.title].filter(Boolean).join(' · ');
+            return (
+              <Pressable
+                key={l.id}
+                onPress={() => open(l.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${leadName(l)}, ${meta}, ${shortDate(l.createdAt)}`}
+                style={({ pressed }) => [styles.row, { opacity: pressed ? 0.6 : 1 }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                    {leadName(l)}
+                  </Text>
+                  <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
+                    {meta}
+                  </Text>
+                </View>
+                <Text style={[styles.meta, { color: c.soft }]}>{shortDate(l.createdAt)}</Text>
+                <CaretRight size={15} color={c.muted} />
+              </Pressable>
+            );
+          })}
+        </SettingsGroup>
+
+        <View style={[styles.pad, styles.actions]}>
+          <AuthButton
+            label="Add lead"
+            variant="secondary"
+            icon={<Plus size={16} color={c.text} weight="bold" />}
+            onPress={() => open('new')}
+            style={styles.action}
+          />
+          {shown.length ? (
+            <AuthButton
+              label="Export CSV"
+              variant="secondary"
+              accessibilityLabel={`Export ${shown.length === leads.length ? 'all' : 'these'} leads as CSV`}
+              icon={<Export size={16} color={c.text} weight="bold" />}
+              onPress={() => void exportCsv()}
+              style={styles.action}
+            />
+          ) : null}
+        </View>
+      </Section>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  intro: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...font() },
+  pad: { paddingHorizontal: GUTTER },
+  notice: { marginBottom: spacing[3], padding: spacing[5], borderRadius: cosmosCardRadius },
+  body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  firstSection: { marginTop: spacing[10] },
+  // Section owns the top spacing and the title; the card just needs the gutter.
+  group: { marginTop: 0, marginHorizontal: GUTTER },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 64 },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  meta: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
+  // minHeight, not height: a fixed height clips the label at large Dynamic Type sizes.
+  action: { flex: 1, height: undefined, minHeight: 52, paddingHorizontal: spacing[3] },
 });
