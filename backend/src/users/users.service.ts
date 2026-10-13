@@ -1102,7 +1102,7 @@ export class UsersService {
     // anything this deletion removes.
     const noOpenRefund = {
       refundRequests: {
-        none: { status: { in: [RefundStatus.PENDING_CURATOR, RefundStatus.PENDING_ADMIN] } },
+        none: { status: { in: [RefundStatus.PENDING_CURATOR, RefundStatus.PENDING_ADMIN, RefundStatus.PROCESSING] } },
       },
     } satisfies Prisma.EventRegistrationWhereInput;
 
