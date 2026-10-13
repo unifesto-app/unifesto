@@ -1,3 +1,4 @@
+import { RedisService } from '../redis/redis.service';
 import {
   BadRequestException,
   ForbiddenException,
@@ -79,6 +80,7 @@ export class FormUploadsService {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly authz: AuthorizationService,
+    private readonly redis: RedisService,
   ) {}
 
   private canManageAttendees(userId: string, eventId: string) {
@@ -199,6 +201,12 @@ export class FormUploadsService {
    * uploads from abandoned checkouts, which were never tied to a registration.
    */
   @Cron('30 3 * * *', { timeZone: 'Asia/Kolkata' })
+  async purgeExpiredCron(): Promise<void> {
+    await this.redis.runExclusive('cron:formUploadsPurge', 60 * 60, async () => {
+      await this.purgeExpired();
+    });
+  }
+
   async purgeExpired(now = new Date()): Promise<number> {
     const cutoff = new Date(
       now.getTime() - FORM_UPLOAD_RETENTION_DAYS * 24 * 60 * 60 * 1000,

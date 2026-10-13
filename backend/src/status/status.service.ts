@@ -504,6 +504,10 @@ export class StatusService {
 
   /** Keep ~HISTORY_DAYS of samples. */
   @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async cleanupCron(): Promise<void> {
+    await this.redis.runExclusive('cron:healthCleanup', 60 * 60, () => this.cleanup());
+  }
+
   async cleanup(): Promise<void> {
     const cutoff = new Date();
     cutoff.setUTCDate(cutoff.getUTCDate() - (HISTORY_DAYS + 1));

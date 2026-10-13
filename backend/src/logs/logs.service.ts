@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -25,15 +24,12 @@ interface QueryParams {
   limit?: number;
 }
 
-/** How long request logs are kept. CERT-In Directions (Apr 2022) require 180 days. */
-const RETENTION_DAYS = 180;
 /** Buffered writes: flush every FLUSH_MS or once FLUSH_AT rows are queued. */
 const FLUSH_MS = 2000;
 const FLUSH_AT = 200;
 /** Drop (not grow) if the DB is down long enough to back up this far. */
 const MAX_BUFFER = 5000;
-/** Retention deletes in chunks so one huge DELETE never locks the table. */
-const CLEANUP_BATCH = 10000;
+// Retention (180d, CERT-In) lives in RetentionService.
 
 @Injectable()
 export class LogsService implements OnModuleDestroy {
@@ -161,22 +157,5 @@ export class LogsService implements OnModuleDestroy {
       errors24h,
       avgDurationMs: Math.round(agg._avg.durationMs ?? 0),
     };
-  }
-
-  /** Daily cleanup so the table doesn't grow unbounded. */
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
-  async cleanup(): Promise<void> {
-    const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    let total = 0;
-    for (;;) {
-      const count = await this.prisma.$executeRaw`
-        DELETE FROM api_logs WHERE id IN (
-          SELECT id FROM api_logs WHERE created_at < ${cutoff}
-          LIMIT ${CLEANUP_BATCH}
-        )`;
-      total += count;
-      if (count < CLEANUP_BATCH) break;
-    }
-    if (total > 0) this.logger.log(`Pruned ${total} old api logs`);
   }
 }

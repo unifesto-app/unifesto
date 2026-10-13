@@ -41,19 +41,41 @@ export class AuthorizationService {
     action: Action,
     resource: AuthResource = {},
   ): Promise<boolean> {
+    return this.canAny(user, action, [resource]);
+  }
+
+  /**
+   * True when `action` is allowed on ANY of `resources`. Loads the caller's
+   * role assignments once, so checking a list (e.g. every co-host space of an
+   * event) costs one query instead of one per resource.
+   */
+  async canAny(
+    user: Pick<User, 'id'>,
+    action: Action,
+    resources: AuthResource[],
+  ): Promise<boolean> {
+    if (resources.length === 0) return false;
     const assignments = await this.loadAssignments(user.id);
+    // No roles at all: nothing can grant, so skip the event-space lookups.
+    if (assignments.length === 0) return false;
     const scope = ACTION_SCOPE[action];
 
-    // For EVENT actions we need the owning space so a Space Admin of that space
-    // can be considered (inheritance). Resolve it once, up front.
-    const eventSpaceId =
-      scope === RoleScope.EVENT && resource.eventId
-        ? await this.resolveEventSpace(resource.eventId)
-        : null;
-
-    return assignments.some((a) =>
-      this.grants(a, action, scope, resource, eventSpaceId),
-    );
+    for (const resource of resources) {
+      // For EVENT actions we need the owning space so a Space Admin of that
+      // space can be considered (inheritance).
+      const eventSpaceId =
+        scope === RoleScope.EVENT && resource.eventId
+          ? await this.resolveEventSpace(resource.eventId)
+          : null;
+      if (
+        assignments.some((a) =>
+          this.grants(a, action, scope, resource, eventSpaceId),
+        )
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   async assertCan(

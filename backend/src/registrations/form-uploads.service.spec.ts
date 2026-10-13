@@ -43,7 +43,7 @@ function setup(
   };
   const authz: any = { can: async () => !!opts.manager };
   return {
-    svc: new FormUploadsService(prisma, storage, authz),
+    svc: new FormUploadsService(prisma, storage, authz, {} as any),
     stored,
     deletedPrefixes,
     updates,

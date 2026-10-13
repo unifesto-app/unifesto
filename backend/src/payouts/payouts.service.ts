@@ -443,6 +443,39 @@ export class PayoutsService {
     };
   }
 
+  /**
+   * `currentGross` of aggregateRegistrations, per event: money still held
+   * (HELD rules) net of the app fee and refunds, across tickets, online stays
+   * and add-on seats. Three groupBys for any number of events.
+   */
+  private async currentGrossByEvent(eventIds: string[]): Promise<Map<string, number>> {
+    const out = new Map<string, number>();
+    if (eventIds.length === 0) return out;
+    const eventId = { in: eventIds };
+    const sum = this.HELD_SUM;
+    const [regs, stays, addons] = await Promise.all([
+      this.prisma.eventRegistration.groupBy({ by: ['eventId'], where: { eventId, ...this.HELD }, _sum: sum }),
+      this.prisma.stayBooking.groupBy({
+        by: ['eventId'],
+        where: { eventId, paymentMode: StayPaymentMode.ONLINE, ...this.HELD },
+        _sum: sum,
+      }),
+      this.prisma.groupSeatPurchase.groupBy({
+        by: ['eventId'],
+        where: { eventId, ...this.HELD_ADDON, ...this.ADDON_ADDED },
+        _sum: sum,
+      }),
+    ]);
+    for (const r of [...regs, ...stays, ...addons]) {
+      const net =
+        Number(r._sum.totalAmount ?? 0) -
+        Number(r._sum.processingFee ?? 0) -
+        Number(r._sum.refundedAmount ?? 0);
+      out.set(r.eventId, (out.get(r.eventId) ?? 0) + net);
+    }
+    return out;
+  }
+
   /** Sum payout money for a set of events (or all events when undefined). */
   private async aggregatePayouts(eventIds?: string[]) {
     if (eventIds && eventIds.length === 0) return { settled: 0, pending: 0 };
@@ -594,18 +627,27 @@ export class PayoutsService {
       }),
     ]);
 
-    let platformFee = 0;
+    // Fee per space = its currentGross x its percent. Fixed number of queries
+    // however many revenue-share spaces exist (was two per space).
+    const feeBySpace = new Map<string, number>();
     for (const s of revShareSpaces) {
       const feePercent = this.resolvePlatformFeePercent(s.subscription);
-      if (feePercent <= 0) continue;
-      const evIds = (
-        await this.prisma.event.findMany({
-          where: { spaceId: s.id },
-          select: { id: true },
-        })
-      ).map((e) => e.id);
-      const spaceReg = await this.aggregateRegistrations(evIds);
-      platformFee += platformShare(spaceReg.currentGross, feePercent);
+      if (feePercent > 0) feeBySpace.set(s.id, feePercent);
+    }
+    let platformFee = 0;
+    if (feeBySpace.size > 0) {
+      const events = await this.prisma.event.findMany({
+        where: { spaceId: { in: [...feeBySpace.keys()] } },
+        select: { id: true, spaceId: true },
+      });
+      const grossByEvent = await this.currentGrossByEvent(events.map((e) => e.id));
+      const grossBySpace = new Map<string, number>();
+      for (const e of events) {
+        grossBySpace.set(e.spaceId, (grossBySpace.get(e.spaceId) ?? 0) + (grossByEvent.get(e.id) ?? 0));
+      }
+      for (const [spaceId, gross] of grossBySpace) {
+        platformFee += platformShare(gross, feeBySpace.get(spaceId)!);
+      }
     }
 
     return {

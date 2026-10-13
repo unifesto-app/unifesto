@@ -24,6 +24,22 @@ function csvCell(value: string): string {
   return value;
 }
 
+/**
+ * CSV as a stream of chunks, one per page of rows, so a big export is written
+ * to the response as it is read instead of being built whole in memory.
+ */
+export async function* csvChunks(
+  header: string[],
+  rowPages: AsyncIterable<string[][]>,
+): AsyncGenerator<string> {
+  // UTF-8 BOM so Excel opens non-ASCII (₹, accented names) correctly.
+  yield '\uFEFF' + header.map(csvCell).join(',');
+  for await (const rows of rowPages) {
+    if (rows.length === 0) continue;
+    yield '\r\n' + rows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+  }
+}
+
 function toCsv(header: string[], rows: string[][]): Buffer {
   const lines = [header, ...rows].map((row) => row.map(csvCell).join(','));
   // Prepend a UTF-8 BOM so Excel opens non-ASCII (₹, accented names) correctly.

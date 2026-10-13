@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { reportError } from '../observability';
 
 /**
  * Catches every unhandled exception, logs the full stack trace via the Nest
@@ -40,6 +41,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         `${logContext} -> ${status}`,
         error?.stack ?? String(exception),
       );
+      // Path only: query strings can carry tokens.
+      reportError(exception, {
+        method: request.method,
+        path: request.path,
+        status: String(status),
+        requestId:
+          String((request as { id?: unknown }).id ?? '') ||
+          (request.headers['cf-ray'] as string | undefined),
+      });
     } else {
       // Expected client error (4xx) — log a single warning line.
       this.logger.warn(

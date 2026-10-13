@@ -21,6 +21,9 @@ import { ReportRenderService } from './report-render.service';
 import { CreateReportDto } from './dto';
 
 /** Every section, in canonical order — the content of a DEFAULT report. */
+/** A PENDING report older than this was cut off mid-render. */
+export const REPORT_STALE_MS = 15 * 60 * 1000;
+
 export const ALL_SECTIONS: ReportSection[] = [
   ReportSection.OVERVIEW,
   ReportSection.CHECKINS,
@@ -159,11 +162,11 @@ export class ReportsService {
   // =====================================================
 
   /**
-   * Create a report row and generate its PDF. The row is written PENDING first
-   * so a failed render still leaves an auditable record (flipped to FAILED with
-   * the reason) rather than vanishing. Generation is synchronous for v1; the
-   * obvious next step for large events is to return the PENDING row immediately
-   * and render on a queue.
+   * Create a report row and generate its PDF in the background. The PENDING
+   * row is returned straight away (the space app polls the list until it is
+   * READY or FAILED); a failed render flips it to FAILED with the reason. A
+   * render cut off by a restart is failed lazily by `list` after
+   * REPORT_STALE_MS, so it never spins forever.
    */
   async create(userId: string, eventId: string, dto: CreateReportDto) {
     const event = await this.assertCanManage(eventId, userId);
@@ -196,6 +199,19 @@ export class ReportsService {
       },
     });
 
+    void this.generate(report.id, event, eventId, sections, window, title);
+    return report;
+  }
+
+  private async generate(
+    reportId: string,
+    event: Awaited<ReturnType<ReportsService['assertCanManage']>>,
+    eventId: string,
+    sections: ReportSection[],
+    window: ReportWindow,
+    title: string,
+  ): Promise<void> {
+    const report = { id: reportId };
     try {
       const data = await this.data.gather(eventId, sections, window);
       const generatedAt = new Date();
@@ -222,7 +238,7 @@ export class ReportsService {
         'application/pdf',
       );
 
-      return this.prisma.eventReport.update({
+      await this.prisma.eventReport.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.READY,
@@ -236,11 +252,12 @@ export class ReportsService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Report ${report.id} generation failed: ${message}`);
-      await this.prisma.eventReport.update({
-        where: { id: report.id },
-        data: { status: ReportStatus.FAILED, error: message.slice(0, 500) },
-      });
-      throw new BadRequestException(`Failed to generate report: ${message}`);
+      await this.prisma.eventReport
+        .update({
+          where: { id: report.id },
+          data: { status: ReportStatus.FAILED, error: message.slice(0, 500) },
+        })
+        .catch(() => undefined);
     }
   }
 
@@ -268,6 +285,15 @@ export class ReportsService {
 
   async list(userId: string, eventId: string, type?: ReportType) {
     await this.assertCanManage(eventId, userId);
+    // A render the process never finished (deploy, crash) stays PENDING.
+    await this.prisma.eventReport.updateMany({
+      where: {
+        eventId,
+        status: ReportStatus.PENDING,
+        createdAt: { lt: new Date(Date.now() - REPORT_STALE_MS) },
+      },
+      data: { status: ReportStatus.FAILED, error: 'Generation was interrupted. Please try again.' },
+    });
     return this.prisma.eventReport.findMany({
       where: { eventId, ...(type ? { type } : {}) },
       orderBy: { createdAt: 'desc' },

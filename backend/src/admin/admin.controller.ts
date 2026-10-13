@@ -467,18 +467,6 @@ export class AdminController {
     return this.adminService.reconcileSeatCounts();
   }
 
-  @Get('logs')
-  @Roles(RoleCode.ADMIN)
-  async getLogs(
-    @Query('lines') lines?: string,
-    @Query('search') search?: string,
-  ) {
-    return this.adminService.getPm2Logs({
-      lines: lines ? parseInt(lines, 10) : 200,
-      search,
-    });
-  }
-
   @Post('device-token')
   @Roles(RoleCode.ADMIN)
   async registerDeviceToken(

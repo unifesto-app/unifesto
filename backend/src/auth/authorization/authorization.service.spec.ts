@@ -142,4 +142,39 @@ describe('AuthorizationService', () => {
       expect(await svc.can(user, Action.SPACE_MANAGE_EMAIL, { spaceId: SPACE_A })).toBe(false);
     });
   });
+
+  describe('canAny (S34: one assignment load for a list of resources)', () => {
+    const buildWithPrisma = (assignments: Assignment[]) => {
+      const prisma = {
+        userRole: {
+          findMany: jest.fn().mockResolvedValue(
+            assignments.map((a) => ({
+              role: { code: a.code, scope: a.scope },
+              spaceId: a.spaceId,
+              eventId: a.eventId,
+            })),
+          ),
+        },
+        event: { findUnique: jest.fn().mockResolvedValue({ spaceId: SPACE_A }) },
+      };
+      const svc = new AuthorizationService(prisma as any, new CapabilityConfigService(prisma as any));
+      return { svc, prisma };
+    };
+
+    it('grants when any resource matches and loads roles once', async () => {
+      const { svc, prisma } = buildWithPrisma([
+        { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: SPACE_B, eventId: null },
+      ]);
+      const spaces = ['s1', 's2', 's3', SPACE_B].map((spaceId) => ({ spaceId }));
+      expect(await svc.canAny(user, Action.SPACE_CREATE_EVENT, spaces)).toBe(true);
+      expect(prisma.userRole.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('denies an empty list and a user with no roles without event lookups', async () => {
+      const { svc, prisma } = buildWithPrisma([]);
+      expect(await svc.canAny(user, Action.SPACE_CREATE_EVENT, [])).toBe(false);
+      expect(await svc.can(user, Action.EVENT_EDIT, { eventId: EVENT_IN_A })).toBe(false);
+      expect(prisma.event.findUnique).not.toHaveBeenCalled();
+    });
+  });
 });

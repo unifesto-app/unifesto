@@ -1,3 +1,4 @@
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
@@ -10,6 +11,8 @@ import { isAllowedOrigin } from './common/cors';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import axios from 'axios';
 import { OUTBOUND_TIMEOUT_MS } from './common/http/outbound-timeouts';
+import { Logger as PinoLogger } from 'nestjs-pino';
+import { jsonLogsEnabled } from './common/observability';
 
 // S32: no outbound axios call (WhatsApp, OneSignal, Razorpay's SDK) may hang
 // forever. Set before any service is constructed so SDK instances inherit it.
@@ -30,7 +33,10 @@ async function bootstrap() {
     // Preserve the raw request body so webhook signatures (e.g. WhatsApp/Meta,
     // LiveKit) can be verified against the exact bytes that were signed.
     rawBody: true,
+    // With LOG_FORMAT=json, hold boot logs until the pino logger takes over.
+    bufferLogs: jsonLogsEnabled(),
   });
+  if (jsonLogsEnabled()) app.useLogger(app.get(PinoLogger));
 
   // LiveKit posts webhooks as `application/webhook+json`; teach the JSON parser
   // to accept that content type so the raw body is captured for signing checks.

@@ -53,9 +53,29 @@ import { PartnerLinksModule } from './partner-links/partner-links.module';
 import { TrafficModule } from './traffic/traffic.module';
 import { DefaultImagesModule } from './default-images/default-images.module';
 import { StaysModule } from './stays/stays.module';
+import { LoggerModule } from 'nestjs-pino';
+import { jsonLogsEnabled, requestIdFor } from './common/observability';
 
 @Module({
   imports: [
+    // Structured JSON logs, only with LOG_FORMAT=json (Nest's text logger otherwise).
+    ...(jsonLogsEnabled()
+      ? [
+          LoggerModule.forRoot({
+            pinoHttp: {
+              level: process.env.LOG_LEVEL || 'info',
+              genReqId: (req, res) => {
+                const id = requestIdFor(req);
+                res.setHeader('x-request-id', id);
+                return id;
+              },
+              redact: ['req.headers.authorization', 'req.headers.cookie'],
+              // The external uptime probe would otherwise be most of the log.
+              autoLogging: { ignore: (req) => req.url === '/health' },
+            },
+          }),
+        ]
+      : []),
     CategoriesModule,
     // Load environment variables from .env file
     NestConfigModule.forRoot({

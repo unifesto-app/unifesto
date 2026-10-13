@@ -5,6 +5,7 @@ import { EmailService } from '../email/email.service';
 import { RedisService } from '../redis/redis.service';
 import { NOT_DELETED } from '../common/soft-delete';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { forEachPage, inChunks } from '../common/batching';
 
 @Injectable()
 export class EventSchedulerService {
@@ -38,11 +39,9 @@ export class EventSchedulerService {
 
     const events = await this.prisma.event.findMany({
       where: {
+        ...NOT_DELETED,
         startDateTime: { gte: in23Hours, lte: in25Hours },
         status: 'PUBLISHED',
-      },
-      include: {
-        space: true,
       },
     });
 
@@ -54,62 +53,72 @@ export class EventSchedulerService {
       );
       if (!first) continue; // already reminded (another replica / earlier run)
 
-      const registrations = await this.prisma.eventRegistration.findMany({
-        where: {
-          eventId: event.id,
-          status: { not: 'CANCELLED' },
-          isWaitlisted: false,
-        },
-        include: {
-          user: {
-            include: {
-              identities: {
-                where: { email: { not: null } },
-                select: { email: true },
-                take: 1,
-              },
+      let sent = 0;
+      // A page of attendees at a time, a few sends in flight at once.
+      await forEachPage(
+        (page) =>
+          this.prisma.eventRegistration.findMany({
+            ...page,
+            where: {
+              eventId: event.id,
+              status: { not: 'CANCELLED' },
+              isWaitlisted: false,
             },
-          },
-          tickets: { take: 1 },
-        },
-      });
+            include: {
+              user: {
+                include: {
+                  identities: {
+                    where: { email: { not: null } },
+                    select: { email: true },
+                    take: 1,
+                  },
+                },
+              },
+              tickets: { take: 1 },
+            },
+          }),
+        async (registrations) => {
+          const optedOut = await emailOptedOutUserIds(
+            this.prisma,
+            registrations.map((r) => r.userId),
+          );
+          sent += registrations.length;
 
-      const optedOut = await emailOptedOutUserIds(
-        this.prisma,
-        registrations.map((r) => r.userId),
+          await inChunks(registrations, async (reg) => {
+            const email = optedOut.has(reg.userId)
+              ? undefined
+              : reg.user.identities[0]?.email;
+
+            // Email reminder
+            if (email) {
+              await this.emailService
+                .sendEventReminder({
+                  email,
+                  userName: reg.user.fullName || reg.user.username || 'there',
+                  eventId: event.id,
+                  eventTitle: event.title,
+                  eventDate: this.formatDate(event.startDateTime),
+                  eventTime: this.formatTime(
+                    event.startDateTime,
+                    event.endDateTime,
+                  ),
+                  venueName: event.venueName || undefined,
+                  city: event.city || undefined,
+                  isOnline: event.type === 'ONLINE',
+                  onlineUrl: event.onlineUrl || undefined,
+                  qrCode: reg.qrCode,
+                  ticketCode: reg.tickets[0]?.ticketCode || undefined,
+                })
+                .catch((err) =>
+                  this.logger.error('Event reminder email failed', err),
+                );
+            }
+          });
+        },
       );
 
-      for (const reg of registrations) {
-        const email = optedOut.has(reg.userId)
-          ? undefined
-          : reg.user.identities[0]?.email;
-
-        // Email reminder
-        if (email) {
-          this.emailService
-            .sendEventReminder({
-              email,
-              userName: reg.user.fullName || reg.user.username || 'there',
-              eventId: event.id,
-              eventTitle: event.title,
-              eventDate: this.formatDate(event.startDateTime),
-              eventTime: this.formatTime(event.startDateTime, event.endDateTime),
-              venueName: event.venueName || undefined,
-              city: event.city || undefined,
-              isOnline: event.type === 'ONLINE',
-              onlineUrl: event.onlineUrl || undefined,
-              qrCode: reg.qrCode,
-              ticketCode: reg.tickets[0]?.ticketCode || undefined,
-            })
-            .catch((err) =>
-              this.logger.error('Event reminder email failed', err),
-            );
-        }
-
-      }
-
       this.logger.log(
-        `Sent reminders for event ${event.id} to ${registrations.length} attendees`,
+        `Sent reminders for event ${event.id} to ${sent} attendees`,
       );
     }
 
@@ -133,6 +142,7 @@ export class EventSchedulerService {
 
     const events = await this.prisma.event.findMany({
       where: {
+        ...NOT_DELETED,
         startDateTime: { gte: in55Min, lte: in65Min },
         status: 'PUBLISHED',
       },
@@ -146,56 +156,63 @@ export class EventSchedulerService {
       );
       if (!first) continue; // already notified (another replica / overlapping run)
 
-      const registrations = await this.prisma.eventRegistration.findMany({
-        where: {
-          eventId: event.id,
-          status: { not: 'CANCELLED' },
-          isWaitlisted: false,
-        },
-        include: {
-          user: {
+      let sent = 0;
+      await forEachPage(
+        (page) =>
+          this.prisma.eventRegistration.findMany({
+            ...page,
+            where: {
+              eventId: event.id,
+              status: { not: 'CANCELLED' },
+              isWaitlisted: false,
+            },
             include: {
-              identities: {
-                where: { email: { not: null } },
-                select: { email: true },
-                take: 1,
+              user: {
+                include: {
+                  identities: {
+                    where: { email: { not: null } },
+                    select: { email: true },
+                    take: 1,
+                  },
+                },
               },
             },
-          },
-        },
-      });
+          }),
+        async (registrations) => {
+          const optedOut = await emailOptedOutUserIds(
+            this.prisma,
+            registrations.map((r) => r.userId),
+          );
+          sent += registrations.length;
 
-      const optedOut = await emailOptedOutUserIds(
-        this.prisma,
-        registrations.map((r) => r.userId),
+          await inChunks(registrations, async (reg) => {
+            const email = optedOut.has(reg.userId)
+              ? undefined
+              : reg.user.identities[0]?.email;
+            if (email) {
+              await this.emailService
+                .sendEventStartingSoon({
+                  email,
+                  userName: reg.user.fullName || reg.user.username || 'there',
+                  eventId: event.id,
+                  eventTitle: event.title,
+                  startsInMinutes: 60,
+                  venueName: event.venueName || undefined,
+                  city: event.city || undefined,
+                  isOnline: event.type === 'ONLINE',
+                  onlineUrl: event.onlineUrl || undefined,
+                  qrCode: reg.qrCode,
+                })
+                .catch((err) =>
+                  this.logger.error('Event starting soon email failed', err),
+                );
+            }
+          });
+        },
       );
 
-      for (const reg of registrations) {
-        const email = optedOut.has(reg.userId)
-          ? undefined
-          : reg.user.identities[0]?.email;
-        if (email) {
-          this.emailService
-            .sendEventStartingSoon({
-              email,
-              userName: reg.user.fullName || reg.user.username || 'there',
-              eventId: event.id,
-              eventTitle: event.title,
-              startsInMinutes: 60,
-              venueName: event.venueName || undefined,
-              city: event.city || undefined,
-              isOnline: event.type === 'ONLINE',
-              onlineUrl: event.onlineUrl || undefined,
-              qrCode: reg.qrCode,
-            })
-            .catch((err) =>
-              this.logger.error('Event starting soon email failed', err),
-            );
-        }
-      }
-
       this.logger.log(
-        `Sent starting soon notifications for event ${event.id} to ${registrations.length} attendees`,
+        `Sent starting soon notifications for event ${event.id} to ${sent} attendees`,
       );
     }
 
@@ -213,6 +230,12 @@ export class EventSchedulerService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async markCompletedEvents(): Promise<void> {
+    await this.redis.runExclusive('cron:eventsComplete', 50 * 60, () =>
+      this.runMarkCompletedEvents(),
+    );
+  }
+
+  private async runMarkCompletedEvents(): Promise<void> {
     this.logger.log('Starting mark completed events job...');
 
     const now = new Date();
@@ -265,49 +288,56 @@ export class EventSchedulerService {
       );
       if (!first) continue; // already summarised (another replica / overlapping run)
 
-      const attendees = await this.prisma.eventRegistration.findMany({
-        where: {
-          eventId: event.id,
-          status: 'ATTENDED',
-        },
-        include: {
-          user: {
+      let sent = 0;
+      await forEachPage(
+        (page) =>
+          this.prisma.eventRegistration.findMany({
+            ...page,
+            where: {
+              eventId: event.id,
+              status: 'ATTENDED',
+            },
             include: {
-              identities: {
-                where: { email: { not: null } },
-                select: { email: true },
-                take: 1,
+              user: {
+                include: {
+                  identities: {
+                    where: { email: { not: null } },
+                    select: { email: true },
+                    take: 1,
+                  },
+                },
               },
             },
-          },
-        },
-      });
+          }),
+        async (attendees) => {
+          const optedOut = await emailOptedOutUserIds(
+            this.prisma,
+            attendees.map((r) => r.userId),
+          );
+          sent += attendees.length;
 
-      const optedOut = await emailOptedOutUserIds(
-        this.prisma,
-        attendees.map((r) => r.userId),
+          await inChunks(attendees, async (reg) => {
+            const email = optedOut.has(reg.userId)
+              ? undefined
+              : reg.user.identities[0]?.email;
+            if (email) {
+              await this.emailService
+                .sendEventSummary({
+                  email,
+                  userName: reg.user.fullName || reg.user.username || 'there',
+                  eventTitle: event.title,
+                  attendeeCount: event.registeredCount,
+                })
+                .catch((err) =>
+                  this.logger.error('Event summary email failed', err),
+                );
+            }
+          });
+        },
       );
 
-      for (const reg of attendees) {
-        const email = optedOut.has(reg.userId)
-          ? undefined
-          : reg.user.identities[0]?.email;
-        if (email) {
-          this.emailService
-            .sendEventSummary({
-              email,
-              userName: reg.user.fullName || reg.user.username || 'there',
-              eventTitle: event.title,
-              attendeeCount: event.registeredCount,
-            })
-            .catch((err) =>
-              this.logger.error('Event summary email failed', err),
-            );
-        }
-      }
-
       this.logger.log(
-        `Sent event summaries for ${event.id} to ${attendees.length} attendees`,
+        `Sent event summaries for ${event.id} to ${sent} attendees`,
       );
     }
 

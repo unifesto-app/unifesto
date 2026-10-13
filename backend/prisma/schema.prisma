@@ -555,6 +555,7 @@ model UserNotification {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, eventId, readAt])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("user_notifications")
 }
 
@@ -2621,6 +2622,7 @@ model EmailCampaignLog {
   @@index([campaignId])
   @@index([userId])
   @@index([status])
+  @@index([sentAt]) // retention sweep (RetentionService)
   @@map("email_campaign_logs")
 }
 
@@ -4674,6 +4676,7 @@ model PushLog {
   @@index([userId])
   @@index([status])
   @@index([category])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("push_logs")
 }
 
@@ -4794,6 +4797,7 @@ model WhatsappMessage {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([conversationId, createdAt])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("whatsapp_messages")
 }
 
@@ -4963,6 +4967,7 @@ model ShortLinkClick {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([shortLinkId, createdAt])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("short_link_clicks")
 }
 
