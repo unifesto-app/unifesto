@@ -11,7 +11,6 @@ import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { getFirebaseAdmin } from '../firebase/firebase-admin.provider';
 import { SpaceStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
@@ -305,77 +304,6 @@ export class AdminService {
       month: 'long',
       year: 'numeric',
     }).format(date);
-  }
-
-  async registerDeviceToken(userId: string, fcmToken: string, platform: string): Promise<{ message: string }> {
-    await this.prisma.adminDevice.upsert({
-      where: { fcmToken },
-      create: { userId, fcmToken, platform },
-      update: { userId, platform },
-    });
-    this.logger.log('Registered FCM token for user: ' + userId);
-    return { message: 'Device token registered' };
-  }
-
-  async unregisterDeviceToken(userId: string, fcmToken: string): Promise<{ message: string }> {
-    await this.prisma.adminDevice.deleteMany({
-      where: { userId, fcmToken },
-    });
-    return { message: 'Device token unregistered' };
-  }
-
-  async sendPushToAdmins(title: string, body: string, data?: Record<string, string>): Promise<void> {
-    // Get all admin device tokens
-    const devices = await this.prisma.adminDevice.findMany({
-      include: { user: { include: { roles: { include: { role: true } } } } },
-    });
-
-    const adminDevices = devices.filter(d =>
-      d.user.roles.some(r => r.role.code === 'ADMIN')
-    );
-
-    if (adminDevices.length === 0) return;
-
-    const tokens = adminDevices.map((d) => d.fcmToken);
-
-    // Data payloads must be string-only key/value pairs for FCM.
-    const stringData = data
-      ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v)]))
-      : undefined;
-
-    try {
-      const messaging = getFirebaseAdmin().messaging();
-      const response = await messaging.sendEachForMulticast({
-        tokens,
-        notification: { title, body },
-        data: stringData,
-      });
-
-      this.logger.log(
-        `Admin push sent: ${response.successCount} succeeded, ${response.failureCount} failed`,
-      );
-
-      // Clean up tokens that are no longer valid (uninstalled app, expired token, etc)
-      // so admin_devices doesn't accumulate dead rows over time.
-      const invalidTokens: string[] = [];
-      response.responses.forEach((r, i) => {
-        if (
-          !r.success &&
-          (r.error?.code === 'messaging/invalid-registration-token' ||
-            r.error?.code === 'messaging/registration-token-not-registered')
-        ) {
-          invalidTokens.push(tokens[i]);
-        }
-      });
-      if (invalidTokens.length > 0) {
-        await this.prisma.adminDevice.deleteMany({
-          where: { fcmToken: { in: invalidTokens } },
-        });
-        this.logger.log(`Removed ${invalidTokens.length} stale admin device token(s).`);
-      }
-    } catch (err) {
-      this.logger.error(`Failed to send admin push notifications: ${err.message}`);
-    }
   }
 
   /**

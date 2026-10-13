@@ -14,14 +14,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { IamModule } from './iam/iam.module';
 import { UsersModule } from './users/users.module';
-import { RolesModule } from './roles/roles.module';
 import { SpacesModule } from './spaces/spaces.module';
-import { DiscussionsModule } from './discussions/discussions.module';
 import { StorageModule } from './storage/storage.module';
 import { RedisModule } from './redis/redis.module';
 import { RedisService } from './redis/redis.service';
 import { AdminModule } from './admin/admin.module';
-import { AwsModule } from './aws/aws.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { EventsModule } from './events/events.module';
 import { RegistrationsModule } from './registrations/registrations.module';
@@ -122,11 +119,8 @@ import { StaysModule } from './stays/stays.module';
     StorageModule,
     AuthModule,
     UsersModule,
-    RolesModule,
     SpacesModule,
-    DiscussionsModule,
     AdminModule,
-    AwsModule,
     // Event Tech Platform Modules
     SubscriptionModule,
     EventsModule,

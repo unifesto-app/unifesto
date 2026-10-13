@@ -12,22 +12,19 @@ import { makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } 
  * the parsed body, or throw with the server's message.
  *
  * Auth: an explicit `token` is sent as-is (callers pass the one they hold);
- * `anonymous` sends none (public discussion routes); otherwise the stored
- * token is attached when signed in.
+ * otherwise the stored token is attached when signed in.
  */
 async function request<T>(
   path: string,
   failureMessage: string,
-  { token, anonymous, ...init }: RequestInit & { token?: string; anonymous?: boolean } = {},
+  { token, ...init }: RequestInit & { token?: string } = {},
 ): Promise<T> {
   const response = token
     ? await makePublicRequest(path, {
         ...init,
         headers: { Authorization: `Bearer ${token}`, ...(init.headers as Record<string, string>) },
       })
-    : anonymous
-      ? await makePublicRequest(path, init)
-      : await makeOptionalAuthRequest(path, init);
+    : await makeOptionalAuthRequest(path, init);
 
   if (!response) throw new Error("Can't reach Unifesto. Check your connection and try again.");
   if (!response.ok) {
@@ -139,53 +136,6 @@ export interface SpaceListResponse {
   };
 }
 
-export interface Discussion {
-  id: string;
-  title: string;
-  content: string;
-  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-  isPinned: boolean;
-  isLocked: boolean;
-  viewCount: number;
-  replyCount: number;
-  createdAt: string;
-  updatedAt: string;
-  author: {
-    id: string;
-    fullName: string | null;
-    username: string | null;
-    avatarUrl: string | null;
-  };
-  space: {
-    id: string;
-    name: string;
-    slug: string;
-  };
-}
-
-export interface DiscussionReply {
-  id: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  author: {
-    id: string;
-    fullName: string | null;
-    username: string | null;
-    avatarUrl: string | null;
-  };
-}
-
-export interface DiscussionListResponse {
-  discussions: Discussion[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
-
 export interface ApiError {
   statusCode: number;
   message: string;
@@ -257,96 +207,8 @@ export async function searchSpaces(
 }
 
 // ============================================================================
-// Space Discussions APIs
-// ============================================================================
-
-/**
- * Get discussions for a space
- */
-export async function getSpaceDiscussions(params: {
-  spaceId: string;
-  page?: number;
-  limit?: number;
-  status?: string;
-}): Promise<DiscussionListResponse> {
-  const queryParams = new URLSearchParams({
-    page: (params.page || 1).toString(),
-    limit: (params.limit || 20).toString(),
-  });
-
-  if (params.status) queryParams.append('status', params.status);
-
-  return request(
-    `/discussions/space/${params.spaceId}?${queryParams.toString()}`,
-    'Failed to fetch discussions',
-    { anonymous: true },
-  );
-}
-
-/**
- * Get discussion by ID
- */
-export async function getDiscussionById(discussionId: string): Promise<Discussion> {
-  return request(`/discussions/${discussionId}`, 'Failed to fetch discussion', { anonymous: true });
-}
-
-/**
- * Get replies for a discussion
- */
-export async function getDiscussionReplies(
-  discussionId: string,
-  page: number = 1,
-  limit: number = 20
-): Promise<{ replies: DiscussionReply[]; pagination: any }> {
-  const queryParams = new URLSearchParams({
-    page: page.toString(),
-    limit: limit.toString(),
-  });
-
-  return request(
-    `/discussions/${discussionId}/replies?${queryParams.toString()}`,
-    'Failed to fetch replies',
-    { anonymous: true },
-  );
-}
-
-// ============================================================================
 // Authenticated Space APIs (Require access token)
 // ============================================================================
-
-/**
- * Create a discussion (authenticated)
- */
-export async function createDiscussion(
-  accessToken: string,
-  data: {
-    spaceId: string;
-    title: string;
-    content: string;
-    status?: 'DRAFT' | 'PUBLISHED';
-  }
-): Promise<Discussion> {
-  return request('/discussions', 'Failed to create discussion', {
-    token: accessToken,
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-
-/**
- * Reply to a discussion (authenticated)
- */
-export async function replyToDiscussion(
-  accessToken: string,
-  discussionId: string,
-  content: string
-): Promise<DiscussionReply> {
-  return request(`/discussions/${discussionId}/replies`, 'Failed to post reply', {
-    token: accessToken,
-    method: 'POST',
-    body: JSON.stringify({ content }),
-  });
-}
 
 /**
  * Get user's space memberships (authenticated)
