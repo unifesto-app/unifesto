@@ -28,7 +28,7 @@ the minimum version is raised past it.
 > build. Until then, bundle iOS + Android yourself and upload with `--skip-bundler`:
 >
 > ```bash
-> npm run ota:preflight
+> npm run ota:rollout-guard && npm run ota:preflight
 > eas env:exec production "npx expo export --output-dir dist --experimental-bundle --dump-sourcemap --dump-assetmap --platform ios --platform android --clear"
 > eas update --channel production --environment production --rollout-percentage=20 --skip-bundler --message "…"
 > ```
@@ -39,11 +39,13 @@ the minimum version is raised past it.
 npm run update:production
 ```
 
-1. **Preflight** (`ota:preflight`): refuses if this checkout's fingerprint matches no
+1. **One rollout at a time** (`ota:rollout-guard`): refuses while the newest update
+   of any runtime on the channel is a staged rollout below 100%. Promote or revert it first.
+2. **Preflight** (`ota:preflight`): refuses if this checkout's fingerprint matches no
    recorded live build on either platform. That means native code changed: ship a
    store build instead. `eas fingerprint:compare --environment production` shows why.
-2. **Staged rollout**: publishes to **20%** of production installs.
-3. Add a "What's new" entry in `src/lib/whatsNew.ts` first if the release has
+3. **Staged rollout**: publishes to **20%** of production installs.
+4. Add a "What's new" entry in `src/lib/whatsNew.ts` first if the release has
    anything people will notice. It ships inside the update and shows once after it applies.
 
 ## Promote, pause, roll back
