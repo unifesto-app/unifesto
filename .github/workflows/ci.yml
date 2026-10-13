@@ -118,6 +118,52 @@ jobs:
       - name: Expo config resolves (runtime + updates)
         run: npx expo config --type public > /dev/null
 
+  ota-safe:
+    # O7: does this PR keep main OTA-reachable? Fingerprints the PR (merge ref)
+    # and its base; fails when the base matched a live store runtime in the
+    # base's runtime-fingerprints.json and the PR does not. No EAS credentials.
+    name: OTA-safe
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # The only env var feeding app.config.js, so the only one in the fingerprint.
+      GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+    steps:
+      - name: Secret present
+        id: secret
+        run: |
+          if [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+            echo "::warning title=OTA-safe::GOOGLE_MAPS_ANDROID_API_KEY secret is not set (or not shared with this PR), so fingerprints can't match production. Check skipped."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.ok == 'true'
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.ok == 'true'
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .ota-base
+      - uses: actions/setup-node@v4
+        if: steps.secret.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            mobile/package-lock.json
+            .ota-base/mobile/package-lock.json
+      - name: Install head and base
+        if: steps.secret.outputs.ok == 'true'
+        run: |
+          (cd mobile && npm ci)
+          (cd .ota-base/mobile && npm ci)
+      - name: Compare fingerprints with the live runtimes
+        if: steps.secret.outputs.ok == 'true'
+        working-directory: mobile
+        run: node scripts/ota-ci-check.js ../.ota-base/mobile
+
   web:
     needs: changes
     if: needs.changes.outputs.web == 'true'
@@ -178,7 +224,7 @@ jobs:
   ci-passed:
     name: CI passed
     if: always()
-    needs: [changes, backend, mobile, web, space, apex]
+    needs: [changes, backend, mobile, ota-safe, web, space, apex]
     runs-on: ubuntu-latest
     steps:
       - name: Every affected job succeeded

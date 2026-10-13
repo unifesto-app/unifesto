@@ -41,22 +41,16 @@ Record the runtime **the EAS build reports**, not one hashed from your checkout
 (a local tree can differ from what EAS built, see `fingerprint.config.js`):
 
 ```bash
-eas build:list --platform all --channel production --status finished --limit 4 --json --non-interactive
+npm run ota:record-build
 ```
 
-Take `runtimeVersion` of the newest iOS and Android build, add each to the front
-of its list in `runtime-fingerprints.json`, and commit the file with the release.
-Keep every runtime still in use; delete one only once the minimum app version is
-raised past it.
-
-`npm run ota:record` still exists but hashes the local tree; use it only as a
-cross-check that it agrees with EAS.
+This reads the latest finished production store build per platform from EAS
+(`eas build:list --json`, read-only) and adds its `runtimeVersion` to
+`runtime-fingerprints.json` under the build's channel. Commit the file with the
+release. Keep every runtime still in use; delete one only once the minimum app
+version is raised past it.
 
 ## Publishing an update
-
-One rollout at a time: before publishing, the previous update on the channel
-must be at 100% (promote it) or reverted. Check **Apex › OTA updates** or
-`eas update:list --branch production`.
 
 1. Add a "What's new" entry in `src/lib/whatsNew.ts` if the release has anything
    people will notice. It ships inside the update and shows once after it applies.
@@ -66,6 +60,9 @@ must be at 100% (promote it) or reverted. Check **Apex › OTA updates** or
    npm run update:production
    ```
 
+   - **One rollout at a time** (`ota:rollout-guard`): refuses while the newest update
+     of any runtime on the channel is a staged rollout below 100%. Promote or revert
+     it first (**Apex › OTA updates** or `eas update:list --branch production`).
    - **Preflight** (`ota:preflight`) refuses if this checkout's fingerprint matches
      no recorded live build on either platform. That means native code changed:
      it needs a store build, not an OTA.
