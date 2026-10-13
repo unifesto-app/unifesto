@@ -1,5 +1,12 @@
 // Unifesto Authentication & User System
 // Prisma Schema - Single Source of Truth
+//
+// Migrations: hand-written, additive, one new unique timestamp per migration
+// (check `ls prisma/migrations` first; never reuse or rename one). Known
+// history quirks, applied in prod and left as they are:
+//   - 20260930120000 is shared by _hidden_tickets and _hackathon_foundation.
+//   - 20260929120000_unifesto_stay and 20260930120000_hackathon_foundation
+//     were committed after migrations that sort later than them.
 
 generator client {
   provider = "prisma-client-js"
