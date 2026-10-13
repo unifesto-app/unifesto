@@ -18,7 +18,7 @@ import {
 } from '@prisma/client';
 import { CertificateIssuanceQueue } from './certificates.queue';
 import { PrismaService } from '../prisma/prisma.service';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService } from '../auth/authorization';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { StorageService } from '../storage/storage.service';
@@ -76,6 +76,7 @@ export class CertificatesService {
     private readonly storage: StorageService,
     private readonly config: ConfigService,
     private readonly email: EmailService,
+    private readonly authz: AuthorizationService,
     // forwardRef: the queue's worker calls back into this service (via ModuleRef),
     // so the two form a cycle that forwardRef resolves.
     @Inject(forwardRef(() => CertificateIssuanceQueue))
@@ -109,15 +110,9 @@ export class CertificatesService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    const membership = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (membership === 0) {
+    // Anyone who may edit the event: its Curator / Co-Curator, a Space Admin of
+    // its space (inherited), or a platform admin.
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_EDIT, { eventId }))) {
       throw new ForbiddenException(
         'Only an organiser of this event can manage certificates',
       );

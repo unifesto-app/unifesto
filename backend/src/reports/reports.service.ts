@@ -13,7 +13,7 @@ import {
   ReportType,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService } from '../auth/authorization';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { StorageService } from '../storage/storage.service';
 import { ReportDataService, ReportWindow } from './report-data.service';
@@ -39,6 +39,7 @@ export class ReportsService {
     private readonly data: ReportDataService,
     private readonly render: ReportRenderService,
     private readonly storage: StorageService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   // =====================================================
@@ -65,15 +66,13 @@ export class ReportsService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    const membership = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (membership === 0) {
+    // Reports carry revenue, so the money capability: the event's Curator, a
+    // Space Admin of its space, or a platform admin.
+    const user = { id: userId };
+    const allowed =
+      (await this.authz.can(user, Action.EVENT_MANAGE_MONEY, { eventId })) ||
+      (await this.authz.can(user, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }));
+    if (!allowed) {
       throw new ForbiddenException(
         'Only an organiser of this event can generate reports',
       );
