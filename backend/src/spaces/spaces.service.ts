@@ -38,6 +38,7 @@ import {
   SpaceVisibility,
 } from '@prisma/client';
 import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
+import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
@@ -140,15 +141,6 @@ export class SpacesService {
   /**
    * Get all spaces with filters
    */
-  private async isPlatformAdmin(userId?: string): Promise<boolean> {
-    if (!userId) return false;
-    const admin = await this.prisma.userRole.findFirst({
-      where: { userId, role: { code: RoleCode.ADMIN } },
-      select: { id: true },
-    });
-    return !!admin;
-  }
-
   async getAllSpaces(params: {
     page?: number;
     limit?: number;
@@ -162,7 +154,7 @@ export class SpacesService {
     const skip = (page - 1) * limit;
 
     // Private spaces only list for their members (platform admins see all).
-    const where: any = (await this.isPlatformAdmin(viewerId))
+    const where: any = (await isPlatformAdmin(this.prisma, viewerId))
       ? {}
       : { AND: [visibleSpacesWhere(viewerId)] };
 
@@ -764,7 +756,7 @@ export class SpacesService {
 
   /**
    * Search users who can be added to a space (excludes existing members).
-   * Available to admins and organisers/co-organisers of the space.
+   * Available to platform admins and Space Admins of the space.
    */
   async searchAddableUsers(spaceId: string, search?: string) {
     const space = await this.prisma.space.findUnique({
@@ -1264,7 +1256,7 @@ export class SpacesService {
 
   /**
    * Approve a space request (ADMIN)
-   * Creates the Space (ACTIVE) and grants the requester the ORGANISER role
+   * Creates the Space (ACTIVE) and grants the requester the SPACE_ADMIN role
    * scoped to the new space, all within a single transaction.
    */
   async approveSpaceRequest(requestId: string, adminId: string) {
@@ -1686,8 +1678,8 @@ export class SpacesService {
   }
 
   /**
-   * Admin decision on a transfer. Approving moves `createdBy`, promotes the new
-   * owner to Organiser and steps the outgoing creator down to Co-Organiser, all
+   * Admin decision on a transfer. Approving moves `createdBy`, makes sure the new
+   * owner holds Space Admin and keeps the outgoing creator on as Space Admin, all
    * in one transaction — a space must never be left with no owner or two.
    */
   async reviewSpaceOwnershipRequest(

@@ -6,7 +6,6 @@ import {
   IsInt,
   IsNotEmpty,
   IsNumber,
-  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -16,60 +15,8 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import {
-  LeaderboardEntrantKind,
   LeaderboardEntrantRoundStatus,
-  LeaderboardMode,
-  LeaderboardTieBreak,
-  LeaderboardVisibility,
 } from '@prisma/client';
-
-export class CreateLeaderboardDto {
-  @ApiProperty({ enum: LeaderboardMode })
-  @IsEnum(LeaderboardMode)
-  mode: LeaderboardMode;
-
-  @ApiPropertyOptional({ enum: LeaderboardEntrantKind })
-  @IsOptional() @IsEnum(LeaderboardEntrantKind)
-  entrantKind?: LeaderboardEntrantKind;
-
-  @ApiPropertyOptional({ enum: LeaderboardVisibility })
-  @IsOptional() @IsEnum(LeaderboardVisibility)
-  visibility?: LeaderboardVisibility;
-
-  @ApiPropertyOptional({ maxLength: 200 })
-  @IsOptional() @IsString() @MaxLength(200)
-  title?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional() @IsString()
-  description?: string;
-
-  @ApiPropertyOptional({ enum: LeaderboardTieBreak })
-  @IsOptional() @IsEnum(LeaderboardTieBreak)
-  tieBreak?: LeaderboardTieBreak;
-
-  @ApiPropertyOptional()
-  @IsOptional() @IsUUID()
-  tieBreakMetricId?: string;
-}
-
-export class CreateEntrantDto {
-  @ApiProperty({ maxLength: 200 })
-  @IsString() @IsNotEmpty() @MaxLength(200)
-  name: string;
-
-  @ApiPropertyOptional({ description: 'Soft link to an event registration' })
-  @IsOptional() @IsUUID()
-  registrationId?: string;
-
-  @ApiPropertyOptional({ description: 'Soft link to a user account' })
-  @IsOptional() @IsUUID()
-  userId?: string;
-
-  @ApiPropertyOptional({ description: 'Roster / project metadata' })
-  @IsOptional() @IsObject()
-  meta?: Record<string, unknown>;
-}
 
 export class ScoreCellDto {
   @ApiProperty()
@@ -127,14 +74,6 @@ export class CreateRoundDto {
   order?: number;
 }
 
-export class UpdateRoundDto {
-  @ApiPropertyOptional({ maxLength: 160 })
-  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160)
-  name?: string;
-}
-
-// ── Panelists (judges / mentors) ────────────────────────────────────────────
-
 // ── Manual advancement / elimination ────────────────────────────────────────
 
 export class SetEntrantRoundStatusDto {
@@ -145,34 +84,4 @@ export class SetEntrantRoundStatusDto {
   @ApiProperty({ enum: LeaderboardEntrantRoundStatus })
   @IsEnum(LeaderboardEntrantRoundStatus)
   status: LeaderboardEntrantRoundStatus;
-}
-
-// ── Awards ──────────────────────────────────────────────────────────────────
-
-export class CreateAwardDto {
-  @ApiProperty({ description: 'Entrant receiving the award' })
-  @IsUUID()
-  entrantId: string;
-
-  @ApiProperty({ maxLength: 160, description: 'e.g. "Winner", "Best Design"' })
-  @IsString() @IsNotEmpty() @MaxLength(160)
-  title: string;
-
-  @ApiPropertyOptional()
-  @IsOptional() @IsInt()
-  order?: number;
-}
-
-export class UpdateAwardDto {
-  @ApiPropertyOptional()
-  @IsOptional() @IsUUID()
-  entrantId?: string;
-
-  @ApiPropertyOptional({ maxLength: 160 })
-  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160)
-  title?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional() @IsInt()
-  order?: number;
 }

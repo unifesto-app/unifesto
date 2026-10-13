@@ -6,9 +6,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isPlatformAdmin } from '../events/event-access';
 import {
   Prisma,
-  RoleCode,
   SupportTicketStatus,
   SupportTicketCategory,
   SupportTicketPriority,
@@ -61,14 +61,6 @@ export class SupportService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Whether the user holds the platform ADMIN role. */
-  async isAdmin(userId: string): Promise<boolean> {
-    const count = await this.prisma.userRole.count({
-      where: { userId, role: { code: RoleCode.ADMIN } },
-    });
-    return count > 0;
-  }
-
   /* ---------------------------------------------------------------------- */
   /* Create                                                                  */
   /* ---------------------------------------------------------------------- */
@@ -116,7 +108,7 @@ export class SupportService {
   /* ---------------------------------------------------------------------- */
 
   async listTickets(userId: string, params: ListParams) {
-    const admin = await this.isAdmin(userId);
+    const admin = await isPlatformAdmin(this.prisma, userId);
     const { page = 1, limit = 20 } = params;
     const take = Math.min(Math.max(limit, 1), 100);
     const skip = (Math.max(page, 1) - 1) * take;
@@ -193,7 +185,7 @@ export class SupportService {
       throw new NotFoundException('Support ticket not found');
     }
 
-    const admin = await this.isAdmin(userId);
+    const admin = await isPlatformAdmin(this.prisma, userId);
     if (!admin && ticket.requesterId !== userId) {
       throw new ForbiddenException('You cannot view this ticket');
     }
@@ -214,7 +206,7 @@ export class SupportService {
       throw new NotFoundException('Support ticket not found');
     }
 
-    const admin = await this.isAdmin(userId);
+    const admin = await isPlatformAdmin(this.prisma, userId);
     if (!admin && ticket.requesterId !== userId) {
       throw new ForbiddenException('You cannot reply to this ticket');
     }
@@ -270,7 +262,7 @@ export class SupportService {
     }
 
     if (dto.assignedToId) {
-      const admin = await this.isAdmin(dto.assignedToId);
+      const admin = await isPlatformAdmin(this.prisma, dto.assignedToId);
       if (!admin) {
         throw new BadRequestException('Tickets can only be assigned to admins');
       }
@@ -341,7 +333,7 @@ export class SupportService {
   /* ---------------------------------------------------------------------- */
 
   async getStats(userId: string) {
-    const admin = await this.isAdmin(userId);
+    const admin = await isPlatformAdmin(this.prisma, userId);
     const scope: Prisma.SupportTicketWhereInput = admin
       ? {}
       : { requesterId: userId };

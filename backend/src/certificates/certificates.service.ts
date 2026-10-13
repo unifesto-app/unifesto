@@ -376,9 +376,6 @@ export class CertificatesService {
    * NOTE: a registration's `checkedInAt` is set on first check-in; the
    * multi-point system also writes `EventCheckinRecord` rows. For v1,
    * `checkedInAt IS NOT NULL` is the simplest "attended" signal.
-   *
-   * TODO(you): implement the three branches. The CONFIRMED branch is provided
-   * as a worked example; complete CHECKED_IN and MANUAL.
    */
   private async resolveRecipients(
     eventId: string,

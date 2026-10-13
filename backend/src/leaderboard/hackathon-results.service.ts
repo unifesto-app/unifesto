@@ -25,9 +25,9 @@ import {
   readLinks,
   takesPart,
   teamStage,
-  toCsv,
   type RoundStanding,
 } from './hackathon.shared';
+import { toCsv } from '../common/csv';
 import type { CreateHackathonAwardDto, PublishAwardsDto, UpdateHackathonAwardDto } from './dto/hackathon.dto';
 
 /** Trimmed text, or null when nothing is left. Keeps line breaks. */

@@ -20,7 +20,7 @@ import {
   RegistrationStatus,
   WaitlistStatus,
 } from '@prisma/client';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin } from '../events/event-access';
 
 /**
  * Raised when a spot cannot be offered because the seats are gone.
@@ -90,27 +90,15 @@ export class WaitlistService {
     return r.groupSize && r.groupSize > 0 ? r.groupSize : r.quantity || 1;
   }
 
-  /** Rejects anyone who is not an organiser or co-organiser of the event's space. */
-  private async assertOrganiser(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true, spaceId: true, title: true, startDateTime: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-
-    const roles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (roles.length === 0) {
-      throw new ForbiddenException(
-        'Only the event organisers can manage the waiting list',
-      );
-    }
-    return event;
+  /** Rejects anyone who is not a Space Admin of the event's space. */
+  private assertOrganiser(userId: string, eventId: string) {
+    return assertEventSpaceAdmin(
+      this.prisma,
+      userId,
+      eventId,
+      'Only the event organisers can manage the waiting list',
+      { title: true, startDateTime: true },
+    );
   }
 
   /**

@@ -99,8 +99,6 @@ interface FinancialSummary {
  *   • If the organiser ABSORBS the Razorpay processing fee, subtract it (default).
  *   • If the fee is PASSED ON to the attendee (added on top of ticket price),
  *     it isn't the organiser's cost — do NOT subtract it: `net = collected - refunded`.
- *   • If coins-used should be treated as non-cash and excluded from revenue,
- *     factor `coinValueINR` in here too.
  * Only you know which of these is true, so this one line is left for you to own.
  * ─────────────────────────────────────────────────────────────────────────────
  */

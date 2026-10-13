@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
  * Who may SEE a space. PUBLIC spaces: everyone. PRIVATE spaces ("only members
  * can view"): platform admins plus anyone holding a role in the space — any
  * space-scoped role (incl. plain MEMBER) or an event-scoped role on one of its
- * events. Shared by spaces, events and discussions so the rule lives once.
+ * events. Shared by spaces and events so the rule lives once.
  */
 export async function canViewSpace(
   prisma: PrismaService,

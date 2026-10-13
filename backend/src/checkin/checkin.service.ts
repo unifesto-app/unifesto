@@ -18,6 +18,7 @@ import {
   TicketStatus,
 } from '@prisma/client';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin, isSpaceAdmin } from '../events/event-access';
 import { NOT_DELETED } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 
@@ -39,23 +40,6 @@ export class CheckinService {
   ) {}
 
   /**
-   * True when the user is a Space Admin of the space — the role allowed to
-   * *manage* an event (including delegating check-in access). Legacy
-   * ORGANISER/CO_ORGANISER are kept alongside SPACE_ADMIN so any un-backfilled
-   * row still resolves; post-P2.2 the canonical code is SPACE_ADMIN.
-   */
-  async isSpaceOrganiser(userId: string, spaceId: string): Promise<boolean> {
-    const count = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    return count > 0;
-  }
-
-  /**
    * True when the user may act on check-in for an event at all (any point):
    * an organiser of the event's space, or a member with any check-in grant.
    */
@@ -64,7 +48,7 @@ export class CheckinService {
     spaceId: string,
     eventId?: string,
   ): Promise<boolean> {
-    if (await this.isSpaceOrganiser(userId, spaceId)) return true;
+    if (await isSpaceAdmin(this.prisma, userId, spaceId)) return true;
 
     if (eventId) {
       const grant = await this.prisma.eventCheckinAccess.findFirst({
@@ -87,7 +71,7 @@ export class CheckinService {
     eventId: string,
     checkinTypeId: string,
   ): Promise<boolean> {
-    if (await this.isSpaceOrganiser(userId, spaceId)) return true;
+    if (await isSpaceAdmin(this.prisma, userId, spaceId)) return true;
     const grant = await this.prisma.eventCheckinAccess.findFirst({
       where: {
         eventId,
@@ -1308,16 +1292,14 @@ export class CheckinService {
   // ---------------------------------------------------------------------------
 
   /** Loads the event or throws, and asserts the caller is a space organiser. */
-  private async assertEventOrganiser(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true, spaceId: true, title: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-    if (!(await this.isSpaceOrganiser(userId, event.spaceId))) {
-      throw new BadRequestException('Only space organisers can manage check-in access');
-    }
-    return event;
+  private assertEventOrganiser(userId: string, eventId: string) {
+    return assertEventSpaceAdmin(
+      this.prisma,
+      userId,
+      eventId,
+      'Only space organisers can manage check-in access',
+      { title: true },
+    );
   }
 
   // ---------------------------------------------------------------------------

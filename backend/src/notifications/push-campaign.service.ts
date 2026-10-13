@@ -163,7 +163,7 @@ export class PushCampaignService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    // Scoped auth: only an organiser/co-organiser of this event (or a co-host).
+    // Scoped auth: only a Space Admin of this event's space (or a co-host).
     const canManage = await this.events.canManageEvent(userId, event.spaceId, event.id);
     if (!canManage) {
       throw new ForbiddenException('You cannot announce to this event');

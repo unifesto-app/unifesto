@@ -466,22 +466,4 @@ export class AdminController {
   async reconcileSeatCounts() {
     return this.adminService.reconcileSeatCounts();
   }
-
-  @Post('device-token')
-  @Roles(RoleCode.ADMIN)
-  async registerDeviceToken(
-    @CurrentUser() user: User,
-    @Body() body: { fcmToken: string; platform?: string },
-  ) {
-    return this.adminService.registerDeviceToken(user.id, body.fcmToken, body.platform || 'ios');
-  }
-
-  @Delete('device-token')
-  @Roles(RoleCode.ADMIN)
-  async unregisterDeviceToken(
-    @CurrentUser() user: User,
-    @Body() body: { fcmToken: string },
-  ) {
-    return this.adminService.unregisterDeviceToken(user.id, body.fcmToken);
-  }
 }

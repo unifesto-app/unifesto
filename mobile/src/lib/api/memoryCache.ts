@@ -43,7 +43,6 @@ const NEVER: RegExp[] = [
   /^\/hackathon\//,
   /^\/events\/[^/]+\/hackathon/,
   /^\/users\/me\/notifications/,
-  /^\/discussions/,
   /^\/support/,
   /^\/app\/version/,
   /^\/registrations\/claim\//,

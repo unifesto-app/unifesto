@@ -28,6 +28,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { Action, AuthorizationService } from '../auth/authorization';
+import { isPlatformAdmin } from '../events/event-access';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 import { PayoutsService } from '../payouts/payouts.service';
@@ -905,10 +906,7 @@ export class RefundsService {
     const isOwner =
       request.registration.userId === userId || request.requestedById === userId;
     if (!isOwner) {
-      const isAdmin = await this.prisma.userRole.count({
-        where: { userId, role: { code: 'ADMIN' } },
-      });
-      if (!isAdmin) {
+      if (!(await isPlatformAdmin(this.prisma, userId))) {
         // Throws ForbiddenException if the user isn't an organiser of the event.
         await this.assertOrganiser(userId, request.eventId);
       }

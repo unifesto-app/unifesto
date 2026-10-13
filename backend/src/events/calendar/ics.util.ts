@@ -113,28 +113,10 @@ function quoteParam(value: string): string {
 /**
  * Build the VEVENT property lines for one event.
  *
- * ─────────────────────────────────────────────────────────────────────────
- * TODO(you): this is the one part of P1 with real design decisions — implement
- * the mapping. Fill `lines` with the VEVENT properties. Guidance:
- *
- *  - UID: must be globally unique AND stable across regenerations for the same
- *    event, so re-downloading updates the existing entry instead of duplicating.
- *    A good choice: `${event.id}@unifesto.app`.
- *  - DTSTAMP: `${formatUtcStamp(now)}` (when this .ics was generated).
- *  - DTSTART / DTEND: use `formatLocal(...)` and attach the timezone, e.g.
- *      `DTSTART;TZID=${event.timezone}:${formatLocal(event.startDateTime, event.timezone)}`
- *  - SUMMARY: the escaped title.
- *  - LOCATION: for IN_PERSON/HYBRID prefer venueAddress (fall back to
- *    venueName / city); for ONLINE use onlineUrl. Decide what to do for HYBRID
- *    (which channel is "the" location?).
- *  - DESCRIPTION: escaped description + the eventPageUrl(slug); for HYBRID/ONLINE
- *    consider surfacing the *other* channel here so nothing is lost.
- *  - URL: eventPageUrl(slug).
- *  - ORGANIZER (optional): `CN=<organiserName>` if present.
- *
- * Each entry in `lines` is one unfolded property line (no trailing CRLF — the
- * envelope joins them). Use escapeText() on any free-text value.
- * ─────────────────────────────────────────────────────────────────────────
+ * UID is `${id}@unifesto.app` (stable, so a re-download updates the entry);
+ * DTSTART/DTEND carry the event's TZID; LOCATION is the venue for in-person
+ * and hybrid events and the join URL for online ones, with the other channel
+ * surfaced in DESCRIPTION. Each entry is one unfolded property line.
  */
 function buildVeventLines(event: IcsEventInput, now: Date): string[] {
   const lines: string[] = [];

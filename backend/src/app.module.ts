@@ -15,14 +15,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { IamModule } from './iam/iam.module';
 import { UsersModule } from './users/users.module';
-import { RolesModule } from './roles/roles.module';
 import { SpacesModule } from './spaces/spaces.module';
-import { DiscussionsModule } from './discussions/discussions.module';
 import { StorageModule } from './storage/storage.module';
 import { RedisModule } from './redis/redis.module';
 import { RedisService } from './redis/redis.service';
 import { AdminModule } from './admin/admin.module';
-import { AwsModule } from './aws/aws.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { EventsModule } from './events/events.module';
 import { RegistrationsModule } from './registrations/registrations.module';
@@ -89,8 +86,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     EventEmitterModule.forRoot(),
     // Global throttler configuration with Redis-backed storage
     ThrottlerModule.forRootAsync({
-      imports: [
-    CategoriesModule,RedisModule],
+      imports: [RedisModule],
       useFactory: (redisService: RedisService) => {
         const logger = new Logger('ThrottlerModule');
         // Dedicated connection (not the shared cache client): this factory runs
@@ -156,11 +152,8 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     StorageModule,
     AuthModule,
     UsersModule,
-    RolesModule,
     SpacesModule,
-    DiscussionsModule,
     AdminModule,
-    AwsModule,
     // Event Tech Platform Modules
     SubscriptionModule,
     EventsModule,

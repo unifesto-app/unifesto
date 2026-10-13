@@ -17,8 +17,8 @@ interface Assignment {
 
 /**
  * Central authorization. Controllers ask `can(user, action, resource)` (or the
- * throwing `assertCan`) instead of hand-rolling role checks. This replaces the
- * scattered `if (role === ORGANISER)` logic and the two ad-hoc guards.
+ * throwing `assertCan`) instead of hand-rolling role checks. Hand-rolled role
+ * checks are what this replaces.
  *
  * Answering a check has three parts:
  *   1. mechanical: does the caller hold a role AT the action's scope, ON the
@@ -183,8 +183,7 @@ export class AuthorizationService {
  *   (b) A Space Admin of the event's owning space inherits EVERY event action
  *       EXCEPT money (`event:manage-money`) — separation of duty: they can run
  *       the event but cannot unilaterally move its funds; that still needs an
- *       explicit Curator. Legacy ORGANISER/CO_ORGANISER count as space admins
- *       here because P2.2 migrates both into SPACE_ADMIN.
+ *       explicit Curator.
  *
  * Pure function (no DB) so it stays trivially unit-testable.
  */
