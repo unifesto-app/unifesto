@@ -405,18 +405,26 @@ export class SessionsService {
       },
     });
 
-    await this.prisma.session.update({
-      where: { id: sessionId },
+    // Claim the cancel: two overlapping requests must not both refund.
+    const claimed = await this.prisma.session.updateMany({
+      where: { id: sessionId, status: session.status },
       data: {
         status: SessionStatus.CANCELLED,
         cancelledAt: new Date(),
         cancellationReason: reason,
       },
     });
+    if (claimed.count !== 1) {
+      throw new BadRequestException('This session just changed. Refresh and try again.');
+    }
 
     let refunded = 0;
     for (const reg of paidRegistrations) {
-      const amount = Number(reg.razorpayAmount);
+      // Base only: the processing fee is kept, same as every other refund.
+      const amount = Math.max(
+        0,
+        Math.round((Number(reg.razorpayAmount) - Number(reg.processingFee)) * 100) / 100,
+      );
       try {
         if (amount > 0 && reg.paymentId) {
           await this.payments.refund(reg.paymentId, amount);
