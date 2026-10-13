@@ -21,8 +21,9 @@ describe('EmailCampaignsService', () => {
     sendCustomCampaignEmail: jest.fn(),
   };
 
+  const queue = { add: jest.fn().mockResolvedValue(true) };
   const build = (prisma: any = {}) =>
-    new EmailCampaignsService(prisma, email as any, config as any);
+    new EmailCampaignsService(prisma, email as any, config as any, queue as any);
 
   describe('click-link signing', () => {
     it('verifies a URL it signed and rejects a tampered one', () => {
@@ -169,6 +170,98 @@ describe('EmailCampaignsService', () => {
           { targetType: EmailTargetType.EVENT_REGISTRANTS, targetId: 'e1', subject: 's', body: 'b' },
         ),
       ).resolves.toBe('e1');
+    });
+  });
+
+  describe('queued, resumable sending (S33)', () => {
+    const campaignRow = {
+      id: 'c1',
+      status: 'SENDING',
+      subject: 'Hi',
+      subjectB: null,
+      abSplitPct: null,
+      body: '<p>x</p>',
+      targetType: EmailTargetType.SINGLE_USER,
+      targetId: 'u',
+    };
+    const users = ['a', 'b', 'c'].map((id) => ({
+      id,
+      fullName: id.toUpperCase(),
+      identities: [{ email: `${id}@x.com`, isPrimary: true }],
+    }));
+
+    const prismaFor = (loggedEmails: string[]) => ({
+      emailCampaign: {
+        findUnique: jest.fn().mockResolvedValue(campaignRow),
+        update: jest.fn().mockResolvedValue({}),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        create: jest.fn().mockResolvedValue({ id: 'c1' }),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      emailCampaignLog: {
+        findMany: jest.fn().mockResolvedValue(loggedEmails.map((recipientEmail) => ({ recipientEmail }))),
+        create: jest.fn().mockResolvedValue({}),
+        count: jest.fn().mockResolvedValue(3),
+      },
+      user: { findMany: jest.fn().mockResolvedValue(users) },
+      notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
+    });
+
+    beforeEach(() => {
+      jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate'] });
+      email.sendCustomCampaignEmail.mockReset().mockResolvedValue({ messageId: 'm' });
+      queue.add.mockClear();
+    });
+    afterEach(() => jest.useRealTimers());
+
+    const runAll = async (p: Promise<unknown>) => {
+      // Let the 1s inter-batch pause elapse.
+      for (let i = 0; i < 20; i++) {
+        await Promise.resolve();
+        await jest.advanceTimersByTimeAsync(1000);
+      }
+      return p;
+    };
+
+    it('a resumed run skips recipients that already have a log row', async () => {
+      const prisma = prismaFor(['a@x.com']);
+      const svc = build(prisma);
+      await runAll(svc.runCampaign('c1', { lastAttempt: true }));
+      const sentTo = email.sendCustomCampaignEmail.mock.calls.map(([a]: any) => a.to);
+      expect(sentTo).toEqual(['b@x.com', 'c@x.com']);
+      expect(prisma.emailCampaign.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: 'SENT', totalSent: 3 }) }),
+      );
+    });
+
+    it('send-now claims the row and queues it instead of sending in the request', async () => {
+      const prisma = prismaFor([]);
+      const svc = build(prisma);
+      jest.spyOn(svc as any, 'resolveTarget').mockResolvedValue('u');
+      await svc.createCampaign({ spaceId: null }, 'admin', {
+        subject: 'Hi',
+        body: 'x',
+        targetType: EmailTargetType.SINGLE_USER,
+        targetId: 'u',
+      } as any);
+      expect(prisma.emailCampaign.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { status: 'SENDING' } }),
+      );
+      expect(queue.add).toHaveBeenCalledWith('c1');
+      expect(email.sendCustomCampaignEmail).not.toHaveBeenCalled();
+    });
+
+    it('stale sweep fails day-old SENDING rows and re-queues recent stalls', async () => {
+      const prisma = prismaFor([]);
+      prisma.emailCampaign.findMany.mockResolvedValue([{ id: 'c1' }]);
+      const svc = build(prisma);
+      const now = new Date('2026-10-15T12:00:00Z');
+      expect(await svc.sweepStaleCampaigns(now)).toBe(1);
+      expect(prisma.emailCampaign.updateMany.mock.calls[0][0]).toEqual({
+        where: { status: 'SENDING', updatedAt: { lt: new Date(now.getTime() - 86_400_000) } },
+        data: { status: 'FAILED' },
+      });
+      expect(queue.add).toHaveBeenCalledWith('c1');
     });
   });
 });
