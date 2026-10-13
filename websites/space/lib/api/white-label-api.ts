@@ -237,3 +237,59 @@ export async function adminApplyEventBranding(
   );
 }
 
+
+/** A DNS record the space must add, as the provider returned it. */
+export interface DomainRecord {
+  record: string;
+  type: string;
+  name: string;
+  value: string;
+  priority?: number;
+  status: string;
+}
+
+export interface SpaceDomain {
+  id: string;
+  kind: "WEB" | "EMAIL";
+  hostname: string;
+  emailLocalPart: string | null;
+  /** pending | verified | failed | not_started | partially_verified | ... */
+  status: string;
+  records: DomainRecord[];
+  verifiedAt: string | null;
+  lastCheckedAt: string | null;
+}
+
+/** `GET /white-label/spaces/:spaceId/domains` (re-checks pending ones). */
+export async function getSpaceDomains(
+  spaceId: string
+): Promise<{ data: SpaceDomain[] | null; error: ApiError | null }> {
+  return apiCall<SpaceDomain[]>(backendClient.get(`/white-label/spaces/${spaceId}/domains`));
+}
+
+/** `POST /white-label/spaces/:spaceId/domains/email` — returns the DNS records to add. */
+export async function addEmailDomain(
+  spaceId: string,
+  hostname: string,
+  localPart?: string
+): Promise<{ data: SpaceDomain | null; error: ApiError | null }> {
+  return apiCall<SpaceDomain>(
+    backendClient.post(`/white-label/spaces/${spaceId}/domains/email`, { hostname, localPart })
+  );
+}
+
+/** `POST /white-label/spaces/:spaceId/domains/email/verify` — check DNS now. */
+export async function verifyEmailDomain(
+  spaceId: string
+): Promise<{ data: SpaceDomain | null; error: ApiError | null }> {
+  return apiCall<SpaceDomain>(
+    backendClient.post(`/white-label/spaces/${spaceId}/domains/email/verify`)
+  );
+}
+
+/** `DELETE /white-label/spaces/:spaceId/domains/email`. */
+export async function removeEmailDomain(
+  spaceId: string
+): Promise<{ data: unknown | null; error: ApiError | null }> {
+  return apiCall(backendClient.delete(`/white-label/spaces/${spaceId}/domains/email`));
+}

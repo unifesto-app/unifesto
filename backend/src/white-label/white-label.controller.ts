@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   FileTypeValidator,
   Get,
   MaxFileSizeValidator,
@@ -23,6 +24,7 @@ import { Roles, CurrentUser } from '../auth/decorators';
 import { Action, Can, CanGuard } from '../auth/authorization';
 import { WhiteLabelService } from './white-label.service';
 import {
+  AddEmailDomainDto,
   AdminApplyBrandingDto,
   SuspendBrandingDto,
   CreateWhiteLabelRequestDto,
@@ -127,6 +129,36 @@ export class WhiteLabelController {
       throw new BadRequestException('kind must be logo or favicon');
     }
     return this.whiteLabel.uploadAsset(spaceId, kind, file);
+  }
+
+  /** The space's custom domains (email sending, later web). */
+  @Get('spaces/:spaceId/domains')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async domains(@Param('spaceId') spaceId: string) {
+    return this.whiteLabel.getDomains(spaceId);
+  }
+
+  /** Start verifying a sending domain; returns the DNS records to add. */
+  @Post('spaces/:spaceId/domains/email')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async addEmailDomain(@Param('spaceId') spaceId: string, @Body() dto: AddEmailDomainDto) {
+    return this.whiteLabel.addEmailDomain(spaceId, dto.hostname, dto.localPart);
+  }
+
+  @Post('spaces/:spaceId/domains/email/verify')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async verifyEmailDomain(@Param('spaceId') spaceId: string) {
+    return this.whiteLabel.verifyEmailDomain(spaceId);
+  }
+
+  @Delete('spaces/:spaceId/domains/email')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async removeEmailDomain(@Param('spaceId') spaceId: string) {
+    return this.whiteLabel.removeEmailDomain(spaceId);
   }
 
   /** Curator sets or clears an event's accent override. */

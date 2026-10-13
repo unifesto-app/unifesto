@@ -21,7 +21,8 @@ interface CustomCampaignData {
 }
 
 type Attachment = { filename: string; content: Buffer };
-type Sender = { fromName?: string | null; replyTo?: string | null };
+// fromAddress: a space's verified sending address (Resend only; SES ignores it).
+type Sender = { fromName?: string | null; replyTo?: string | null; fromAddress?: string | null };
 
 /**
  * Sends Unifesto's email. What each mail says lives in ./templates (built on
@@ -100,11 +101,10 @@ export class EmailService {
     }
 
     try {
-      // White-label: swap the display name in front of the same verified
-      // sending address, and route replies to the organiser. Address/domain are
-      // never changed here; that needs domain verification, a separate feature.
+      // White-label: the space's display name, its own verified address when
+      // it has one (else ours), and replies routed to the organiser.
       const from = sender?.fromName
-        ? `${sender.fromName} <${this.transactionalAddress}>`
+        ? `${sender.fromName} <${sender.fromAddress || this.transactionalAddress}>`
         : this.fromTransactional;
 
       const { data, error } = await this.resend.emails.send({
@@ -187,7 +187,17 @@ export class EmailService {
         select: {
           whiteLabelEnabled: true,
           brandColor: true,
-          space: { select: { slug: true, subscription: true, ...BRANDING_SPACE_SELECT } },
+          space: {
+            select: {
+              slug: true,
+              subscription: true,
+              ...BRANDING_SPACE_SELECT,
+              domains: {
+                where: { kind: 'EMAIL', status: 'verified' },
+                select: { hostname: true, emailLocalPart: true },
+              },
+            },
+          },
         },
       });
       const space = event?.space;
@@ -207,7 +217,13 @@ export class EmailService {
             }
           : null,
         sender: sender
-          ? { fromName: sender.emailFromName || space.name, replyTo: sender.emailReplyTo }
+          ? {
+              fromName: sender.emailFromName || space.name,
+              replyTo: sender.emailReplyTo,
+              fromAddress: space.domains[0]
+                ? `${space.domains[0].emailLocalPart || 'tickets'}@${space.domains[0].hostname}`
+                : null,
+            }
           : undefined,
       };
     } catch (error) {

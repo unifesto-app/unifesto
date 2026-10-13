@@ -761,6 +761,39 @@ model SpaceOwnershipRequest {
 /// target Space/Event and its `whiteLabelEnabled` flag is flipped on. Rendering
 /// additionally requires the space's plan to include `hasRemoveBranding`, so a
 /// later downgrade silently disables branding without touching this row.
+enum DomainKind {
+  WEB
+  EMAIL
+}
+
+/// A domain a space owns and has pointed at us, for white-label. EMAIL =
+/// sending domain verified with Resend (DKIM/SPF); WEB = custom hostname for
+/// the public pages. One per kind per space. Used only once `status` is
+/// 'verified' and the space's branding is live.
+model SpaceDomain {
+  id      String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId String     @map("space_id") @db.Uuid
+  space   Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  kind    DomainKind
+  /// Lower-case FQDN, e.g. `mail.acme.edu`.
+  hostname String @unique @db.VarChar(253)
+  /// EMAIL only: the mailbox part of the From address (`tickets`@hostname).
+  emailLocalPart String? @map("email_local_part") @db.VarChar(64)
+  /// Provider's id (Resend domain id / Cloudflare custom hostname id).
+  providerId String? @map("provider_id") @db.VarChar(100)
+  /// Provider status as reported: pending | verified | failed | ...
+  status  String @default("pending") @db.VarChar(30)
+  /// DNS records the space must add, as the provider returned them.
+  records Json   @default("[]")
+  verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
+  lastCheckedAt DateTime? @map("last_checked_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([spaceId, kind])
+  @@map("space_domains")
+}
+
 model WhiteLabelRequest {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
@@ -983,6 +1016,7 @@ model Space {
   statusRequests           SpaceStatusRequest[]
   ownershipRequests        SpaceOwnershipRequest[]
   whiteLabelRequests       WhiteLabelRequest[]
+  domains                  SpaceDomain[]
   freeAttendeeAddRequests  FreeAttendeeAddRequest[]
   subSpaceRequests         SubSpaceRequest[]        @relation("SubSpaceRequests")
   targetSpaceRequests      SubSpaceRequest[]        @relation("TargetSpaceRequests")

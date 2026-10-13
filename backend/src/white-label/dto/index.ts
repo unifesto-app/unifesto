@@ -7,6 +7,7 @@ import {
   IsString,
   IsUrl,
   IsUUID,
+  Matches,
   MaxLength,
 } from 'class-validator';
 import { BRAND_FONTS, BRAND_MODES } from '../branding.util';
@@ -112,4 +113,15 @@ export class AdminApplyBrandingDto {
   @IsOptional()
   @IsHexColor()
   brandColor?: string | null;
+}
+
+export class AddEmailDomainDto {
+  @IsString()
+  @MaxLength(253)
+  hostname: string;
+
+  /** Mailbox part of the From address; defaults to `tickets`. */
+  @IsOptional()
+  @Matches(/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/i)
+  localPart?: string;
 }

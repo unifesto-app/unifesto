@@ -1,9 +1,14 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { DomainKind, Prisma } from '@prisma/client';
+import { Resend } from 'resend';
 import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
@@ -25,14 +30,33 @@ import {
  * The old request → review flow is kept only so shipped mobile builds keep
  * working: `createRequest` now enables branding immediately.
  */
+/** Lower-case FQDN with at least one dot; no unifesto.app hosts. */
+export function normaliseHostname(raw: string): string {
+  const host = raw.trim().toLowerCase().replace(/\.$/, '');
+  const fqdn = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+  if (!fqdn.test(host)) throw new BadRequestException('Enter a domain like mail.yourorg.com');
+  if (host === 'unifesto.app' || host.endsWith('.unifesto.app')) {
+    throw new BadRequestException('Use a domain your organisation owns');
+  }
+  return host;
+}
+
 @Injectable()
 export class WhiteLabelService {
+  private readonly logger = new Logger(WhiteLabelService.name);
+  // Null without RESEND_API_KEY: email domains are then unavailable.
+  private readonly resend: Resend | null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
     private readonly cache: CacheService,
     private readonly storage: StorageService,
-  ) {}
+    config: ConfigService,
+  ) {
+    const key = config.get<string>('RESEND_API_KEY');
+    this.resend = key ? new Resend(key) : null;
+  }
 
   /**
    * Public event pages are cached by slug and carry `branding`. An event target
@@ -337,6 +361,98 @@ export class WhiteLabelService {
     });
     await this.invalidateBrandingCaches({ spaceId });
     return updated;
+  }
+
+  // ---------------------------------------------------------------------
+  // Email sending domain (Resend). The space adds the DKIM/SPF records Resend
+  // returns; once verified, attendee mail goes from <localPart>@<hostname>.
+  // ---------------------------------------------------------------------
+
+  private emailDomainProvider() {
+    if (!this.resend) throw new BadRequestException('Email domains are not available right now');
+    return this.resend.domains;
+  }
+
+  /** The space's domains. A pending email domain is re-checked at most once a minute. */
+  async getDomains(spaceId: string) {
+    const rows = await this.prisma.spaceDomain.findMany({ where: { spaceId } });
+    const stale = (d: (typeof rows)[number]) =>
+      d.kind === DomainKind.EMAIL &&
+      d.status !== 'verified' &&
+      d.providerId &&
+      (!d.lastCheckedAt || Date.now() - d.lastCheckedAt.getTime() > 60_000);
+    return Promise.all(rows.map((d) => (stale(d) ? this.refreshEmailDomain(d.id) : d)));
+  }
+
+  async addEmailDomain(spaceId: string, rawHost: string, localPart = 'tickets') {
+    await this.assertPlan(spaceId);
+    const hostname = normaliseHostname(rawHost);
+    if (await this.prisma.spaceDomain.findFirst({ where: { spaceId, kind: DomainKind.EMAIL } })) {
+      throw new ConflictException('This space already has an email domain. Remove it first.');
+    }
+    if (await this.prisma.spaceDomain.findUnique({ where: { hostname } })) {
+      throw new ConflictException('That domain is already in use');
+    }
+    const { data, error } = await this.emailDomainProvider().create({ name: hostname });
+    if (error || !data) {
+      throw new BadRequestException(error?.message ?? 'Could not add that domain');
+    }
+    return this.prisma.spaceDomain.create({
+      data: {
+        spaceId,
+        kind: DomainKind.EMAIL,
+        hostname,
+        emailLocalPart: localPart,
+        providerId: data.id,
+        status: data.status,
+        records: data.records as unknown as Prisma.InputJsonValue,
+        lastCheckedAt: new Date(),
+      },
+    });
+  }
+
+  /** Ask Resend to check the DNS now, then store what it reports. */
+  async verifyEmailDomain(spaceId: string) {
+    const row = await this.emailDomainRow(spaceId);
+    const { error } = await this.emailDomainProvider().verify(row.providerId!);
+    if (error) throw new BadRequestException(error.message);
+    return this.refreshEmailDomain(row.id);
+  }
+
+  async removeEmailDomain(spaceId: string) {
+    const row = await this.emailDomainRow(spaceId);
+    // Best effort upstream: the row must go even if Resend already forgot it.
+    const { error } = await this.emailDomainProvider().remove(row.providerId!);
+    if (error) this.logger.warn(`Resend remove ${row.hostname}: ${error.message}`);
+    await this.prisma.spaceDomain.delete({ where: { id: row.id } });
+    return { removed: true };
+  }
+
+  private async emailDomainRow(spaceId: string) {
+    const row = await this.prisma.spaceDomain.findFirst({
+      where: { spaceId, kind: DomainKind.EMAIL },
+    });
+    if (!row?.providerId) throw new NotFoundException('No email domain on this space');
+    return row;
+  }
+
+  private async refreshEmailDomain(id: string) {
+    const row = await this.prisma.spaceDomain.findUniqueOrThrow({ where: { id } });
+    const { data, error } = await this.emailDomainProvider().get(row.providerId!);
+    if (error || !data) {
+      this.logger.warn(`Resend get ${row.hostname}: ${error?.message}`);
+      return this.prisma.spaceDomain.update({ where: { id }, data: { lastCheckedAt: new Date() } });
+    }
+    const verified = data.status === 'verified';
+    return this.prisma.spaceDomain.update({
+      where: { id },
+      data: {
+        status: data.status,
+        records: data.records as unknown as Prisma.InputJsonValue,
+        lastCheckedAt: new Date(),
+        verifiedAt: verified ? (row.verifiedAt ?? new Date()) : null,
+      },
+    });
   }
 
   /** Platform kill switch. The stored theme is untouched, so unsuspending restores it. */
