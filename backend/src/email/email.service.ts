@@ -1,9 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { buildEventIcs, IcsEventInput } from '../events/calendar/ics.util';
-import { layout } from './layout';
+import { PrismaService } from '../prisma/prisma.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
+import {
+  BRANDING_SPACE_SELECT,
+  resolveEmailSender,
+  resolveEventBranding,
+} from '../white-label/branding.util';
+import { layout, WEB, type EmailBrand } from './layout';
 import * as T from './templates';
 
 interface CustomCampaignData {
@@ -14,7 +21,8 @@ interface CustomCampaignData {
 }
 
 type Attachment = { filename: string; content: Buffer };
-type Sender = { fromName?: string | null; replyTo?: string | null };
+// fromAddress: a space's verified sending address (Resend only; SES ignores it).
+type Sender = { fromName?: string | null; replyTo?: string | null; fromAddress?: string | null };
 
 /**
  * Sends Unifesto's email. What each mail says lives in ./templates (built on
@@ -37,8 +45,15 @@ export class EmailService {
   // The bare transactional sending address (no display name). White-label lets a
   // space swap the display name in front of this same verified address.
   private readonly transactionalAddress: string;
+  private readonly bulkAddress: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    // Optional so the unit spec can build the service with config alone;
+    // without them every mail goes out unbranded.
+    @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly planConfig?: PlanConfigService,
+  ) {
     const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
     if (!resendApiKey) {
       this.logger.warn('RESEND_API_KEY not configured. Transactional emails will not work.');
@@ -52,11 +67,11 @@ export class EmailService {
 
     const sesRegion = this.configService.get<string>('AWS_SES_REGION', 'ap-south-1');
     this.sesClient = new SESClient({ region: sesRegion });
-    const bulkAddress = this.configService.get<string>(
+    this.bulkAddress = this.configService.get<string>(
       'EMAIL_FROM_BULK',
       'no-reply@updates.unifesto.app',
     );
-    this.fromBulk = `Unifesto <${bulkAddress}>`;
+    this.fromBulk = `Unifesto <${this.bulkAddress}>`;
   }
 
   // =====================================================
@@ -86,11 +101,10 @@ export class EmailService {
     }
 
     try {
-      // White-label: swap the display name in front of the same verified
-      // sending address, and route replies to the organiser. Address/domain are
-      // never changed here; that needs domain verification, a separate feature.
+      // White-label: the space's display name, its own verified address when
+      // it has one (else ours), and replies routed to the organiser.
       const from = sender?.fromName
-        ? `${sender.fromName} <${this.transactionalAddress}>`
+        ? `${sender.fromName} <${sender.fromAddress || this.transactionalAddress}>`
         : this.fromTransactional;
 
       const { data, error } = await this.resend.emails.send({
@@ -118,10 +132,12 @@ export class EmailService {
     to: string | string[],
     subject: string,
     html: string,
+    sender?: Sender,
   ): Promise<string | null> {
     try {
       const command = new SendEmailCommand({
-        Source: this.fromBulk,
+        Source: sender?.fromName ? `${sender.fromName} <${this.bulkAddress}>` : this.fromBulk,
+        ...(sender?.replyTo ? { ReplyToAddresses: [sender.replyTo] } : {}),
         Destination: { ToAddresses: Array.isArray(to) ? to : [to] },
         Message: {
           Subject: { Data: subject, Charset: 'UTF-8' },
@@ -147,7 +163,7 @@ export class EmailService {
     try {
       const id =
         via === 'ses'
-          ? await this.sendViaSES(to, subject, html)
+          ? await this.sendViaSES(to, subject, html, opts?.sender)
           : await this.sendViaResend(to, subject, html, opts?.attachments, opts?.sender);
       if (id) this.logger.log(`Sent "${subject}" to ${to} (${id})`);
       else this.logger.error(`Failed to send "${subject}" to ${to}`);
@@ -156,6 +172,77 @@ export class EmailService {
       this.logger.error(`Error sending "${subject}" to ${to}`, error);
       return false;
     }
+  }
+
+  /**
+   * The event's space theme for attendee mail, plus the white-label sender.
+   * Same gate as the public pages (on + plan perk + not suspended). Never
+   * throws: a lookup problem just sends the mail unbranded.
+   */
+  private async brandFor(eventId?: string): Promise<{ brand: EmailBrand | null; sender?: Sender }> {
+    if (!eventId || !this.prisma || !this.planConfig) return { brand: null };
+    try {
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        select: {
+          whiteLabelEnabled: true,
+          brandColor: true,
+          space: {
+            select: {
+              slug: true,
+              subscription: true,
+              ...BRANDING_SPACE_SELECT,
+              domains: {
+                where: { status: 'verified' },
+                select: { kind: true, hostname: true, emailLocalPart: true },
+              },
+            },
+          },
+        },
+      });
+      const space = event?.space;
+      if (!event || !space?.subscription) return { brand: null };
+      const has = this.planConfig.getEffectiveLimits(space.subscription).hasRemoveBranding;
+      const theme = resolveEventBranding(event, space, has);
+      const sender = resolveEmailSender(space, has);
+      const mail = space.domains.find((d) => d.kind === 'EMAIL');
+      const web = space.domains.find((d) => d.kind === 'WEB');
+      return {
+        // An event-only colour override (no space theme) keeps Unifesto mail.
+        brand: theme?.name
+          ? {
+              name: theme.name,
+              logoUrl: theme.logoUrl,
+              color: theme.color,
+              hidePoweredBy: theme.hidePoweredBy,
+              url: web ? `https://${web.hostname}` : `${WEB}/space/${space.slug}`,
+              webBase: web ? `https://${web.hostname}` : WEB,
+            }
+          : null,
+        sender: sender
+          ? {
+              fromName: sender.emailFromName || space.name,
+              replyTo: sender.emailReplyTo,
+              fromAddress: mail ? `${mail.emailLocalPart || 'tickets'}@${mail.hostname}` : null,
+            }
+          : undefined,
+      };
+    } catch (error) {
+      this.logger.warn(`Brand lookup failed for event ${eventId}: ${error.message}`);
+      return { brand: null };
+    }
+  }
+
+  /** `deliver` for attendee mail: resolves the brand from `data.eventId` first. */
+  private async deliverBranded<D extends { eventId?: string; brand?: EmailBrand | null }>(
+    via: 'resend' | 'ses',
+    to: string | null | undefined,
+    data: D,
+    build: (d: D) => T.Email,
+    opts?: { attachments?: Attachment[] },
+  ): Promise<boolean> {
+    const { brand, sender } = await this.brandFor(data.eventId);
+    return this.deliver(via, to, build({ ...data, brand }), { ...opts, sender });
   }
 
   /**
@@ -207,34 +294,33 @@ export class EmailService {
   // =====================================================
 
   async sendRegistrationConfirmation(data: T.RegistrationConfirmationData): Promise<void> {
-    await this.deliver('resend', data.email, T.registrationConfirmationEmail(data), {
+    await this.deliverBranded('resend', data.email, data, T.registrationConfirmationEmail, {
       attachments: this.buildIcsAttachment(data),
-      sender: { fromName: data.brandFromName, replyTo: data.brandReplyTo },
     });
   }
 
   async sendPaymentConfirmation(data: T.PaymentConfirmationData): Promise<void> {
-    await this.deliver('resend', data.email, T.paymentConfirmationEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.paymentConfirmationEmail);
   }
 
   async sendCancellationConfirmation(data: T.CancellationConfirmationData): Promise<void> {
-    await this.deliver('resend', data.email, T.cancellationConfirmationEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.cancellationConfirmationEmail);
   }
 
   async sendEventReminder(data: T.EventReminderData): Promise<void> {
-    await this.deliver('resend', data.email, T.eventReminderEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.eventReminderEmail);
   }
 
   async sendEventStartingSoon(data: T.EventStartingSoonData): Promise<void> {
-    await this.deliver('resend', data.email, T.eventStartingSoonEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.eventStartingSoonEmail);
   }
 
   async sendEventCancelled(data: T.EventCancelledData): Promise<void> {
-    await this.deliver('resend', data.email, T.eventCancelledEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.eventCancelledEmail);
   }
 
   async sendEventUpdated(data: T.EventUpdatedData): Promise<void> {
-    await this.deliver('resend', data.email, T.eventUpdatedEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.eventUpdatedEmail);
   }
 
   async sendEventPublished(data: T.EventPublishedData): Promise<void> {
@@ -246,15 +332,15 @@ export class EmailService {
   }
 
   async sendWaitlistConfirmation(data: T.WaitlistConfirmationData): Promise<void> {
-    await this.deliver('resend', data.email, T.waitlistConfirmationEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.waitlistConfirmationEmail);
   }
 
   async sendWaitlistPromoted(data: T.WaitlistPromotedData): Promise<void> {
-    await this.deliver('resend', data.email, T.waitlistPromotedEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.waitlistPromotedEmail);
   }
 
   async sendWaitlistRevoked(data: T.WaitlistRevokedData): Promise<void> {
-    await this.deliver('resend', data.email, T.waitlistRevokedEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.waitlistRevokedEmail);
   }
 
   /**
@@ -265,7 +351,7 @@ export class EmailService {
    * success (a failed send leaves it null, meaning "needs resend").
    */
   async sendCertificateIssued(data: T.CertificateIssuedData): Promise<boolean> {
-    return this.deliver('ses', data.email, T.certificateIssuedEmail(data));
+    return this.deliverBranded('ses', data.email, data, T.certificateIssuedEmail);
   }
 
   // =====================================================
@@ -273,7 +359,7 @@ export class EmailService {
   // =====================================================
 
   async sendPaymentFailed(data: T.PaymentFailedData): Promise<void> {
-    await this.deliver('resend', data.email, T.paymentFailedEmail(data));
+    await this.deliverBranded('resend', data.email, data, T.paymentFailedEmail);
   }
 
   async sendBankAccountRejected(data: T.BankAccountRejectedData): Promise<void> {

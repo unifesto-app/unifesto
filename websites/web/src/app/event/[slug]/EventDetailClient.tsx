@@ -2,7 +2,7 @@
 
 import { optimized } from "@/lib/img";
 import Link from "next/link";
-import { useState, useEffect, useSyncExternalStore, type CSSProperties } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import {
   CaretDown,
   CaretRight,
@@ -20,6 +20,7 @@ import {
 } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { BrandFooter, BrandHeader, BrandTheme, brandStyle, hasBrandedChrome } from "@/components/BrandedChrome";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/components/DetailParts";
 import { registerEventInterest } from "@/lib/api/leads";
@@ -234,12 +235,8 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
   };
   const calItem = "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-paper/[0.06]";
 
-  // White-label: an approved organiser colour recolours this page only, by
-  // overriding `--primary`/`--accent` on the wrapper.
-  const brandColor = event.branding?.color || undefined;
-  const brandStyle = brandColor
-    ? ({ "--primary": brandColor, "--accent": brandColor } as CSSProperties)
-    : undefined;
+  // White-label: theme the wrapper; a live space theme also swaps the chrome.
+  const branded = hasBrandedChrome(event.branding) ? event.branding : null;
 
   const hostedBy = [
     ...(eventSpace ? [{ id: eventSpace.id, name: eventSpace.name, slug: eventSpace.slug, logo_url: eventSpace.logo_url }] : []),
@@ -247,8 +244,13 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
   ];
 
   return (
-    <main className={`min-h-screen overflow-x-hidden bg-canvas ${isOver ? "" : "pb-24"}`} style={brandStyle}>
-      <Navbar />
+    <main className={`min-h-screen overflow-x-hidden bg-canvas ${isOver ? "" : "pb-24"}`} style={brandStyle(event.branding)}>
+      <BrandTheme branding={event.branding} />
+      {branded ? (
+        <BrandHeader branding={branded} href={eventSpace?.slug ? `/space/${eventSpace.slug}` : `/event/${event.slug}`} />
+      ) : (
+        <Navbar />
+      )}
 
       {/* ── Hero: clean 4:3 cover beside the name, host and facts ── */}
       <section className="px-5 pt-28 sm:px-8 md:pt-32">
@@ -579,7 +581,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
         )}
       </div>
 
-      <Footer />
+      {branded ? <BrandFooter branding={branded} /> : <Footer />}
 
       {!isOver && (
         <ActionBar label={bar.label} value={bar.value}>

@@ -3,12 +3,17 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { ConfigService } from '@nestjs/config';
+import { DomainKind, Prisma } from '@prisma/client';
+import { Resend } from 'resend';
 import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
+import { isSpaceBrandingLive } from './branding.util';
 import {
   AdminApplyBrandingDto,
   CreateWhiteLabelRequestDto,
@@ -17,25 +22,63 @@ import {
 } from './dto';
 
 /**
- * White-label (organiser branding) request flow — mirrors the space ownership
- * and status request flows in `SpacesService`. An organiser proposes branding
- * for a space (or one of its events); an admin approves or rejects; on approval
- * the branding is copied onto the target and its `whiteLabelEnabled` flag is
- * flipped on. Creating a request additionally requires the space's plan to
- * include `hasRemoveBranding` — the same perk sold as the "White-label option".
+ * White-label, self-serve. A space whose plan includes `hasRemoveBranding`
+ * edits its own theme in the Branding studio; there is no approval step.
+ * Platform admins keep a kill switch (`brandingSuspendedAt`) and can still
+ * apply branding directly. Callers are authorised by `@Can` on the controller.
+ *
+ * The old request → review flow is kept only so shipped mobile builds keep
+ * working: `createRequest` now enables branding immediately.
  */
+/** The parts of a Cloudflare custom hostname we read. */
+interface CfCustomHostname {
+  id: string;
+  hostname: string;
+  status: string;
+  ssl?: { status?: string; validation_records?: { txt_name?: string; txt_value?: string }[] };
+  ownership_verification?: { type: string; name: string; value: string };
+}
+
+/** Lower-case FQDN with at least one dot; no unifesto.app hosts. */
+export function normaliseHostname(raw: string): string {
+  const host = raw.trim().toLowerCase().replace(/\.$/, '');
+  const fqdn = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+  if (!fqdn.test(host)) throw new BadRequestException('Enter a domain like mail.yourorg.com');
+  if (host === 'unifesto.app' || host.endsWith('.unifesto.app')) {
+    throw new BadRequestException('Use a domain your organisation owns');
+  }
+  return host;
+}
+
 @Injectable()
 export class WhiteLabelService {
+  private readonly logger = new Logger(WhiteLabelService.name);
+  // Null without RESEND_API_KEY: email domains are then unavailable.
+  private readonly resend: Resend | null;
+  // Cloudflare for SaaS (custom web hostnames). Unset → web domains unavailable.
+  private readonly cf: { zoneId: string; token: string; target: string } | null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly planConfig: PlanConfigService,
     private readonly cache: CacheService,
-  ) {}
+    private readonly storage: StorageService,
+    config: ConfigService,
+  ) {
+    const key = config.get<string>('RESEND_API_KEY');
+    this.resend = key ? new Resend(key) : null;
+    const zoneId = config.get<string>('CLOUDFLARE_ZONE_ID');
+    const token = config.get<string>('CLOUDFLARE_API_TOKEN');
+    this.cf =
+      zoneId && token
+        ? { zoneId, token, target: config.get<string>('CUSTOM_DOMAIN_TARGET', 'domains.unifesto.app') }
+        : null;
+  }
 
   /**
    * Public event pages are cached by slug and carry `branding`. An event target
    * busts only itself; a space target busts every event under it, since events
-   * inherit the space's branding and favicon.
+   * inherit the space's theme.
    */
   private async invalidateBrandingCaches(target: {
     spaceId?: string;
@@ -50,97 +93,65 @@ export class WhiteLabelService {
     );
   }
 
-  /** True when the space's owner's plan includes the white-label perk. */
+  /** True when the space's plan includes the white-label perk. */
   private async spaceHasBrandingPlan(spaceId: string): Promise<boolean> {
     const space = await this.prisma.space.findUnique({
       where: { id: spaceId },
       select: { subscription: true },
     });
-    const subscription = space?.subscription;
-    // No subscription → not paying for the perk → not allowed. (Stricter than
-    // Sessions/Leaderboard, which only gate *management*; branding is a public,
-    // paid perk so an unbilled space should never render it.)
-    if (!subscription) return false;
-    return this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding;
+    // No subscription → not paying for the perk → not allowed.
+    if (!space?.subscription) return false;
+    return this.planConfig.getEffectiveLimits(space.subscription).hasRemoveBranding;
   }
 
-  /** Assert the user is an organiser (or co-organiser) of the space. */
-  private async assertOrganiser(spaceId: string, userId: string) {
-    const membership = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (membership === 0) {
+  private async assertPlan(spaceId: string) {
+    if (!(await this.spaceHasBrandingPlan(spaceId))) {
       throw new ForbiddenException(
-        'Only an organiser of this space can request white-label',
+        'White-label is not included in this space’s plan. Upgrade to use it.',
       );
     }
   }
 
+  /**
+   * Legacy entry point (shipped mobile builds). Turns branding on for the
+   * target straight away and logs the row as APPROVED so the history reads
+   * right.
+   */
   async createRequest(userId: string, dto: CreateWhiteLabelRequestDto) {
-    const space = await this.prisma.space.findUnique({
-      where: { id: dto.spaceId },
-      select: { id: true, whiteLabelEnabled: true },
-    });
-    if (!space) throw new NotFoundException('Space not found');
-
-    await this.assertOrganiser(dto.spaceId, userId);
-
-    let alreadyEnabled = space.whiteLabelEnabled;
     if (dto.eventId) {
       const event = await this.prisma.event.findUnique({
         where: { id: dto.eventId },
-        select: { spaceId: true, whiteLabelEnabled: true },
+        select: { spaceId: true },
       });
       if (!event) throw new NotFoundException('Event not found');
       if (event.spaceId !== dto.spaceId) {
-        throw new BadRequestException(
-          'That event does not belong to this space',
-        );
+        throw new BadRequestException('That event does not belong to this space');
       }
-      alreadyEnabled = event.whiteLabelEnabled;
     }
-    if (alreadyEnabled) {
-      throw new ConflictException(
-        'White-label is already on for this target. Edit the branding directly.',
-      );
-    }
+    await this.assertPlan(dto.spaceId);
 
-    if (!(await this.spaceHasBrandingPlan(dto.spaceId))) {
-      throw new ForbiddenException(
-        'White-label is not included in this space’s plan. Upgrade to request it.',
-      );
-    }
-
-    // One pending request per target (space-level vs a specific event).
-    const existing = await this.prisma.whiteLabelRequest.findFirst({
-      where: {
-        spaceId: dto.spaceId,
-        eventId: dto.eventId ?? null,
-        status: 'PENDING',
-      },
-    });
-    if (existing) {
-      throw new ConflictException(
-        'A white-label request for this target is already awaiting review',
-      );
-    }
-
-    return this.prisma.whiteLabelRequest.create({
-      data: {
-        spaceId: dto.spaceId,
-        eventId: dto.eventId ?? null,
-        requestedBy: userId,
-        brandColor: dto.brandColor,
-        reason: dto.reason,
-        status: 'PENDING',
-      },
-      include: this.requestInclude(),
-    });
+    const target = dto.eventId ? { eventId: dto.eventId } : { spaceId: dto.spaceId };
+    const data = { whiteLabelEnabled: true, brandColor: dto.brandColor };
+    const [, row] = await this.prisma.$transaction([
+      dto.eventId
+        ? this.prisma.event.update({ where: { id: dto.eventId }, data })
+        : this.prisma.space.update({ where: { id: dto.spaceId }, data }),
+      this.prisma.whiteLabelRequest.create({
+        data: {
+          spaceId: dto.spaceId,
+          eventId: dto.eventId ?? null,
+          requestedBy: userId,
+          brandColor: dto.brandColor,
+          reason: dto.reason,
+          status: 'APPROVED',
+          reviewNote: 'Self-serve',
+          reviewedAt: new Date(),
+        },
+        include: this.requestInclude(),
+      }),
+    ]);
+    await this.invalidateBrandingCaches(target);
+    return row;
   }
 
   /** Requests raised by this user (optionally scoped to one space). */
@@ -153,18 +164,15 @@ export class WhiteLabelService {
   }
 
   /**
-   * Everything the space's white-label page needs, from the source of truth
-   * (the Space/Event rows) rather than the request history: an admin may have
-   * applied or removed white-label directly, and a co-admin may have raised the
-   * request. Requests are space-wide, newest first.
+   * Everything the Branding studio needs: the space theme, whether it is live
+   * right now (and why not), and each event's colour override.
    */
-  async getSpaceOverview(userId: string, spaceId: string) {
+  async getSpaceOverview(spaceId: string) {
     const space = await this.prisma.space.findUnique({
       where: { id: spaceId },
       select: this.spaceBrandingSelect(),
     });
     if (!space) throw new NotFoundException('Space not found');
-    await this.assertOrganiser(spaceId, userId);
 
     const [planHasBranding, events, requests] = await Promise.all([
       this.spaceHasBrandingPlan(spaceId),
@@ -179,17 +187,25 @@ export class WhiteLabelService {
         },
         orderBy: { startDateTime: 'desc' },
       }),
+      // Kept for older mobile builds that read the request history.
       this.prisma.whiteLabelRequest.findMany({
         where: { spaceId },
         include: this.requestInclude(),
         orderBy: { createdAt: 'desc' },
+        take: 20,
       }),
     ]);
 
-    return { planHasBranding, space, events, requests };
+    return {
+      planHasBranding,
+      live: isSpaceBrandingLive(space, planHasBranding),
+      space,
+      events,
+      requests,
+    };
   }
 
-  /** Admin inbox. */
+  /** Admin inbox (legacy request history). */
   async getAllRequests(status?: string, page = 1, limit = 20) {
     const where = status ? { status } : {};
     const [rows, total] = await Promise.all([
@@ -203,8 +219,6 @@ export class WhiteLabelService {
       this.prisma.whiteLabelRequest.count({ where }),
     ]);
 
-    // Approving never blocks on the plan, but branding only renders when the
-    // plan has the perk — surface it so the reviewer isn't surprised.
     const planBySpace = new Map<string, boolean>();
     for (const spaceId of new Set(rows.map((r) => r.spaceId))) {
       planBySpace.set(spaceId, await this.spaceHasBrandingPlan(spaceId));
@@ -221,8 +235,8 @@ export class WhiteLabelService {
   }
 
   /**
-   * Admin decision. Approving copies the proposed branding onto the target
-   * Space/Event and flips its `whiteLabelEnabled` on, in one transaction.
+   * Admin decision on a request left PENDING from before self-serve. Approving
+   * applies the colour and turns branding on, like it always did.
    */
   async reviewRequest(
     requestId: string,
@@ -237,45 +251,28 @@ export class WhiteLabelService {
       throw new BadRequestException('This request has already been reviewed');
     }
 
-    const reviewedAt = new Date();
-
+    const review = {
+      status: dto.status,
+      reviewNote: dto.reviewNote ?? null,
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+    };
     if (dto.status === 'REJECTED') {
       return this.prisma.whiteLabelRequest.update({
         where: { id: requestId },
-        data: {
-          status: 'REJECTED',
-          reviewNote: dto.reviewNote ?? null,
-          reviewedBy: adminId,
-          reviewedAt,
-        },
+        data: review,
         include: this.requestInclude(true),
       });
     }
 
-    // APPROVED — apply branding to the target and record the decision atomically.
-    const branding = {
-      whiteLabelEnabled: true,
-      brandColor: req.brandColor,
-    };
-
+    const data = { whiteLabelEnabled: true, brandColor: req.brandColor };
     const [, updated] = await this.prisma.$transaction([
       req.eventId
-        ? this.prisma.event.update({
-            where: { id: req.eventId },
-            data: branding,
-          })
-        : this.prisma.space.update({
-            where: { id: req.spaceId },
-            data: branding,
-          }),
+        ? this.prisma.event.update({ where: { id: req.eventId }, data })
+        : this.prisma.space.update({ where: { id: req.spaceId }, data }),
       this.prisma.whiteLabelRequest.update({
         where: { id: requestId },
-        data: {
-          status: 'APPROVED',
-          reviewNote: dto.reviewNote ?? null,
-          reviewedBy: adminId,
-          reviewedAt,
-        },
+        data: review,
         include: this.requestInclude(true),
       }),
     ]);
@@ -287,32 +284,29 @@ export class WhiteLabelService {
   }
 
   /**
-   * Organiser edits the branding on an already-approved target. No admin
-   * re-approval (white-label was already granted for the entity), but the plan
-   * gate and organiser membership are re-checked, and the target must already
-   * be white-labelled.
+   * Curator edits the space theme, or an event's colour override. Needs the
+   * plan perk. Editing while suspended is allowed; it just won't render.
    */
   async updateBranding(
-    userId: string,
     target: { spaceId?: string; eventId?: string },
     dto: UpdateBrandingDto,
   ) {
     if (target.eventId) {
       const event = await this.prisma.event.findUnique({
         where: { id: target.eventId },
-        select: { spaceId: true, whiteLabelEnabled: true },
+        select: { spaceId: true },
       });
       if (!event) throw new NotFoundException('Event not found');
-      await this.assertOrganiser(event.spaceId, userId);
-      if (!event.whiteLabelEnabled) {
-        throw new ForbiddenException('White-label is not enabled for this event');
-      }
-      if (!(await this.spaceHasBrandingPlan(event.spaceId))) {
-        throw new ForbiddenException('White-label is not included in this plan');
-      }
+      await this.assertPlan(event.spaceId);
+      // An event only overrides the colour: setting one turns the override
+      // on, clearing it (null) falls back to the space theme.
+      const data =
+        dto.brandColor !== undefined
+          ? { brandColor: dto.brandColor, whiteLabelEnabled: dto.brandColor !== null }
+          : {};
       const updated = await this.prisma.event.update({
         where: { id: target.eventId },
-        data: this.brandingPatch(dto),
+        data,
         select: this.brandingSelect(),
       });
       await this.invalidateBrandingCaches(target);
@@ -320,21 +314,10 @@ export class WhiteLabelService {
     }
 
     if (!target.spaceId) throw new BadRequestException('No target specified');
-    const space = await this.prisma.space.findUnique({
-      where: { id: target.spaceId },
-      select: { whiteLabelEnabled: true },
-    });
-    if (!space) throw new NotFoundException('Space not found');
-    await this.assertOrganiser(target.spaceId, userId);
-    if (!space.whiteLabelEnabled) {
-      throw new ForbiddenException('White-label is not enabled for this space');
-    }
-    if (!(await this.spaceHasBrandingPlan(target.spaceId))) {
-      throw new ForbiddenException('White-label is not included in this plan');
-    }
+    await this.assertPlan(target.spaceId);
     const updated = await this.prisma.space.update({
       where: { id: target.spaceId },
-      data: { ...this.brandingPatch(dto), ...this.spaceSurfacesPatch(dto) },
+      data: this.spaceThemePatch(dto),
       select: this.spaceBrandingSelect(),
     });
     await this.invalidateBrandingCaches(target);
@@ -342,32 +325,21 @@ export class WhiteLabelService {
   }
 
   /**
-   * Admin override: directly apply (or remove) white-label on a space or event,
-   * bypassing the organiser request/approval flow and the organiser-membership
-   * check. Sets `whiteLabelEnabled` to `dto.enabled` and patches the colour
-   * when supplied. Deliberately does NOT block on the plan — an admin may grant
-   * ahead of a plan — but returns `willRender`, computed from the same plan gate
-   * that `resolveBranding` applies, so the caller can warn when the branding is
-   * stored but won't yet show publicly.
+   * Admin override: turn branding on/off on a space or event and optionally set
+   * the colour. Doesn't block on the plan (an admin may grant ahead of one) but
+   * returns `willRender` so the UI can warn.
    */
   async adminApplyBranding(
     target: { spaceId?: string; eventId?: string },
     dto: AdminApplyBrandingDto,
   ) {
-    const data = {
+    const data: { whiteLabelEnabled: boolean; brandColor?: string | null } = {
       whiteLabelEnabled: dto.enabled,
-      ...this.brandingPatch(dto),
     };
+    if (dto.brandColor !== undefined) data.brandColor = dto.brandColor;
 
-    let updated: {
-      id: string;
-      whiteLabelEnabled: boolean;
-      brandColor: string | null;
-    };
-    // The space whose plan governs whether this will render — the target space,
-    // or the event's owning space.
     let owningSpaceId: string;
-
+    let updated: { id: string; whiteLabelEnabled: boolean; brandColor: string | null };
     if (target.eventId) {
       const event = await this.prisma.event.findUnique({
         where: { id: target.eventId },
@@ -382,11 +354,6 @@ export class WhiteLabelService {
       });
     } else {
       if (!target.spaceId) throw new BadRequestException('No target specified');
-      const space = await this.prisma.space.findUnique({
-        where: { id: target.spaceId },
-        select: { id: true },
-      });
-      if (!space) throw new NotFoundException('Space not found');
       owningSpaceId = target.spaceId;
       updated = await this.prisma.space.update({
         where: { id: target.spaceId },
@@ -397,53 +364,283 @@ export class WhiteLabelService {
 
     await this.invalidateBrandingCaches(target);
     const planHasBranding = await this.spaceHasBrandingPlan(owningSpaceId);
+    return { ...updated, willRender: dto.enabled && planHasBranding, planHasBranding };
+  }
+
+  /** Uploads the brand wordmark or favicon and saves it on the space. */
+  async uploadAsset(spaceId: string, kind: 'logo' | 'favicon', file: Express.Multer.File) {
+    await this.assertPlan(spaceId);
+    const url = await this.storage.uploadFile(file, 'space-branding/', spaceId);
+    const updated = await this.prisma.space.update({
+      where: { id: spaceId },
+      data: kind === 'logo' ? { brandLogoUrl: url } : { faviconUrl: url },
+      select: this.spaceBrandingSelect(),
+    });
+    await this.invalidateBrandingCaches({ spaceId });
+    return updated;
+  }
+
+  // ---------------------------------------------------------------------
+  // Email sending domain (Resend). The space adds the DKIM/SPF records Resend
+  // returns; once verified, attendee mail goes from <localPart>@<hostname>.
+  // ---------------------------------------------------------------------
+
+  private emailDomainProvider() {
+    if (!this.resend) throw new BadRequestException('Email domains are not available right now');
+    return this.resend.domains;
+  }
+
+  /** The space's domains. A pending one is re-checked at most once a minute. */
+  async getDomains(spaceId: string) {
+    const rows = await this.prisma.spaceDomain.findMany({ where: { spaceId } });
+    const stale = (d: (typeof rows)[number]) =>
+      d.status !== 'verified' &&
+      d.providerId &&
+      (!d.lastCheckedAt || Date.now() - d.lastCheckedAt.getTime() > 60_000);
+    return Promise.all(
+      rows.map((d) =>
+        !stale(d) ? d : d.kind === DomainKind.EMAIL ? this.refreshEmailDomain(d.id) : this.refreshWebDomain(d.id),
+      ),
+    );
+  }
+
+  async addEmailDomain(spaceId: string, rawHost: string, localPart = 'tickets') {
+    await this.assertPlan(spaceId);
+    const hostname = normaliseHostname(rawHost);
+    if (await this.prisma.spaceDomain.findFirst({ where: { spaceId, kind: DomainKind.EMAIL } })) {
+      throw new ConflictException('This space already has an email domain. Remove it first.');
+    }
+    if (await this.prisma.spaceDomain.findUnique({ where: { hostname } })) {
+      throw new ConflictException('That domain is already in use');
+    }
+    const { data, error } = await this.emailDomainProvider().create({ name: hostname });
+    if (error || !data) {
+      throw new BadRequestException(error?.message ?? 'Could not add that domain');
+    }
+    return this.prisma.spaceDomain.create({
+      data: {
+        spaceId,
+        kind: DomainKind.EMAIL,
+        hostname,
+        emailLocalPart: localPart,
+        providerId: data.id,
+        status: data.status,
+        records: data.records as unknown as Prisma.InputJsonValue,
+        lastCheckedAt: new Date(),
+      },
+    });
+  }
+
+  /** Ask Resend to check the DNS now, then store what it reports. */
+  async verifyEmailDomain(spaceId: string) {
+    const row = await this.domainRow(spaceId, DomainKind.EMAIL);
+    const { error } = await this.emailDomainProvider().verify(row.providerId!);
+    if (error) throw new BadRequestException(error.message);
+    return this.refreshEmailDomain(row.id);
+  }
+
+  async removeEmailDomain(spaceId: string) {
+    const row = await this.domainRow(spaceId, DomainKind.EMAIL);
+    // Best effort upstream: the row must go even if Resend already forgot it.
+    const { error } = await this.emailDomainProvider().remove(row.providerId!);
+    if (error) this.logger.warn(`Resend remove ${row.hostname}: ${error.message}`);
+    await this.prisma.spaceDomain.delete({ where: { id: row.id } });
+    return { removed: true };
+  }
+
+  private async domainRow(spaceId: string, kind: DomainKind) {
+    const row = await this.prisma.spaceDomain.findFirst({ where: { spaceId, kind } });
+    if (!row?.providerId) throw new NotFoundException(`No ${kind.toLowerCase()} domain on this space`);
+    return row;
+  }
+
+  private async refreshEmailDomain(id: string) {
+    const row = await this.prisma.spaceDomain.findUniqueOrThrow({ where: { id } });
+    const { data, error } = await this.emailDomainProvider().get(row.providerId!);
+    if (error || !data) {
+      this.logger.warn(`Resend get ${row.hostname}: ${error?.message}`);
+      return this.prisma.spaceDomain.update({ where: { id }, data: { lastCheckedAt: new Date() } });
+    }
+    const verified = data.status === 'verified';
+    return this.prisma.spaceDomain.update({
+      where: { id },
+      data: {
+        status: data.status,
+        records: data.records as unknown as Prisma.InputJsonValue,
+        lastCheckedAt: new Date(),
+        verifiedAt: verified ? (row.verifiedAt ?? new Date()) : null,
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Custom web domain (Cloudflare for SaaS custom hostnames). The space adds a
+  // CNAME to our target plus Cloudflare's ownership TXT; Cloudflare issues the
+  // certificate and forwards the host to our origin, where web resolves it.
+  // ---------------------------------------------------------------------
+
+  private async cfApi<T>(method: string, path: string, body?: unknown): Promise<T> {
+    if (!this.cf) throw new BadRequestException('Custom domains are not available right now');
+    const res = await fetch(
+      `https://api.cloudflare.com/client/v4/zones/${this.cf.zoneId}/custom_hostnames${path}`,
+      {
+        method,
+        headers: { Authorization: `Bearer ${this.cf.token}`, 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      },
+    );
+    const json = (await res.json().catch(() => ({}))) as {
+      success?: boolean;
+      result?: T;
+      errors?: { message: string }[];
+    };
+    if (!res.ok || !json.success) {
+      throw new BadRequestException(json.errors?.[0]?.message ?? `Cloudflare error ${res.status}`);
+    }
+    return json.result as T;
+  }
+
+  /** Our DB shape from a Cloudflare custom hostname. */
+  private webDomainState(h: CfCustomHostname) {
+    const verified = h.status === 'active' && h.ssl?.status === 'active';
+    const ok = (done: boolean) => (done ? 'verified' : 'pending');
+    const records = [
+      { record: 'Route', type: 'CNAME', name: h.hostname, value: this.cf!.target, status: ok(verified) },
+      ...(h.ownership_verification && h.status !== 'active'
+        ? [{ record: 'Ownership', type: 'TXT', name: h.ownership_verification.name, value: h.ownership_verification.value, status: 'pending' }]
+        : []),
+      ...(h.ssl?.validation_records ?? [])
+        .filter((r) => r.txt_name && r.txt_value)
+        .map((r) => ({ record: 'Certificate', type: 'TXT', name: r.txt_name!, value: r.txt_value!, status: ok(h.ssl?.status === 'active') })),
+    ];
     return {
-      ...updated,
-      // True only when it will actually surface on public pages right now.
-      willRender: dto.enabled && planHasBranding,
-      planHasBranding,
+      status: verified ? 'verified' : h.status === 'blocked' || h.status === 'moved' ? 'failed' : 'pending',
+      records: records as unknown as Prisma.InputJsonValue,
+      lastCheckedAt: new Date(),
     };
   }
 
-  // `null` is meaningful here (explicitly clears the column); only `undefined`
-  // means "leave untouched", so the guard is `!== undefined`, not truthiness.
-  private brandingPatch(dto: { brandColor?: string | null }) {
-    const patch: { brandColor?: string | null } = {};
-    if (dto.brandColor !== undefined) patch.brandColor = dto.brandColor;
+  async addWebDomain(spaceId: string, rawHost: string) {
+    await this.assertPlan(spaceId);
+    const hostname = normaliseHostname(rawHost);
+    if (await this.prisma.spaceDomain.findFirst({ where: { spaceId, kind: DomainKind.WEB } })) {
+      throw new ConflictException('This space already has a web domain. Remove it first.');
+    }
+    if (await this.prisma.spaceDomain.findUnique({ where: { hostname } })) {
+      throw new ConflictException('That domain is already in use');
+    }
+    const h = await this.cfApi<CfCustomHostname>('POST', '', {
+      hostname,
+      ssl: { method: 'http', type: 'dv' },
+    });
+    return this.prisma.spaceDomain.create({
+      data: { spaceId, kind: DomainKind.WEB, hostname, providerId: h.id, ...this.webDomainState(h) },
+    });
+  }
+
+  async verifyWebDomain(spaceId: string) {
+    const row = await this.domainRow(spaceId, DomainKind.WEB);
+    // Cloudflare re-checks on PATCH; an empty one just nudges it.
+    await this.cfApi('PATCH', `/${row.providerId}`, { ssl: { method: 'http', type: 'dv' } });
+    return this.refreshWebDomain(row.id);
+  }
+
+  async removeWebDomain(spaceId: string) {
+    const row = await this.domainRow(spaceId, DomainKind.WEB);
+    try {
+      await this.cfApi('DELETE', `/${row.providerId}`);
+    } catch (e) {
+      this.logger.warn(`Cloudflare delete ${row.hostname}: ${(e as Error).message}`);
+    }
+    await this.prisma.spaceDomain.delete({ where: { id: row.id } });
+    await this.invalidateBrandingCaches({ spaceId });
+    return { removed: true };
+  }
+
+  private async refreshWebDomain(id: string) {
+    const row = await this.prisma.spaceDomain.findUniqueOrThrow({ where: { id } });
+    try {
+      const h = await this.cfApi<CfCustomHostname>('GET', `/${row.providerId}`);
+      const state = this.webDomainState(h);
+      return this.prisma.spaceDomain.update({
+        where: { id },
+        data: { ...state, verifiedAt: state.status === 'verified' ? (row.verifiedAt ?? new Date()) : null },
+      });
+    } catch (e) {
+      this.logger.warn(`Cloudflare get ${row.hostname}: ${(e as Error).message}`);
+      return this.prisma.spaceDomain.update({ where: { id }, data: { lastCheckedAt: new Date() } });
+    }
+  }
+
+  /**
+   * Public: which space a custom hostname serves. Only a verified WEB domain
+   * whose space branding is live resolves; anything else 404s, so a lapsed
+   * plan or a suspension sends the domain back to nothing.
+   */
+  async resolveHost(rawHost: string): Promise<{ spaceSlug: string }> {
+    const hostname = rawHost.trim().toLowerCase().replace(/:\d+$/, '');
+    const row = await this.prisma.spaceDomain.findUnique({
+      where: { hostname },
+      select: {
+        kind: true,
+        status: true,
+        space: { select: { slug: true, subscription: true, whiteLabelEnabled: true, brandingSuspendedAt: true } },
+      },
+    });
+    const sub = row?.space.subscription;
+    const live =
+      row?.kind === DomainKind.WEB &&
+      row.status === 'verified' &&
+      !!sub &&
+      isSpaceBrandingLive(row.space, this.planConfig.getEffectiveLimits(sub).hasRemoveBranding);
+    if (!live) throw new NotFoundException('Unknown host');
+    return { spaceSlug: row!.space.slug };
+  }
+
+  /** Platform kill switch. The stored theme is untouched, so unsuspending restores it. */
+  async setSuspended(spaceId: string, suspended: boolean) {
+    const updated = await this.prisma.space.update({
+      where: { id: spaceId },
+      data: { brandingSuspendedAt: suspended ? new Date() : null },
+      select: this.spaceBrandingSelect(),
+    });
+    await this.invalidateBrandingCaches({ spaceId });
+    return updated;
+  }
+
+  /** Only the fields present in the DTO; `null` clears, `undefined` leaves alone. */
+  private spaceThemePatch(dto: UpdateBrandingDto) {
+    const keys = [
+      'brandColor',
+      'brandLogoUrl',
+      'brandFont',
+      'brandMode',
+      'hidePoweredBy',
+      'faviconUrl',
+      'emailFromName',
+      'emailReplyTo',
+    ] as const;
+    const patch: Record<string, unknown> = {};
+    for (const k of keys) if (dto[k] !== undefined) patch[k] = dto[k];
+    if (dto.enabled !== undefined) patch.whiteLabelEnabled = dto.enabled;
     return patch;
   }
 
   private brandingSelect() {
-    return {
-      id: true,
-      whiteLabelEnabled: true,
-      brandColor: true,
-    };
-  }
-
-  /**
-   * Space-only white-label surfaces. Kept out of `brandingPatch` because an
-   * event row has no such columns — only the space branch applies these.
-   */
-  private spaceSurfacesPatch(dto: {
-    faviconUrl?: string | null;
-    emailFromName?: string | null;
-    emailReplyTo?: string | null;
-  }) {
-    const patch: {
-      faviconUrl?: string | null;
-      emailFromName?: string | null;
-      emailReplyTo?: string | null;
-    } = {};
-    if (dto.faviconUrl !== undefined) patch.faviconUrl = dto.faviconUrl;
-    if (dto.emailFromName !== undefined) patch.emailFromName = dto.emailFromName;
-    if (dto.emailReplyTo !== undefined) patch.emailReplyTo = dto.emailReplyTo;
-    return patch;
+    return { id: true, whiteLabelEnabled: true, brandColor: true };
   }
 
   private spaceBrandingSelect() {
     return {
       ...this.brandingSelect(),
+      name: true,
+      slug: true,
+      logoUrl: true,
+      brandingSuspendedAt: true,
+      brandLogoUrl: true,
+      brandFont: true,
+      brandMode: true,
+      hidePoweredBy: true,
       faviconUrl: true,
       emailFromName: true,
       emailReplyTo: true,

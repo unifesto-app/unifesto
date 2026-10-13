@@ -20,7 +20,6 @@ import { PaymentsService } from '../payments/payments.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
-import { resolveSpaceSurfaces } from '../white-label/branding.util';
 import { buildExportFile, type ExportFormat } from './export.util';
 import {
   buildTemplateSpec,
@@ -556,40 +555,6 @@ export class RegistrationsService {
    * Sends WhatsApp + email registration confirmations for a completed (PAID) registration.
    * Shared by RSVP completion and free-ticket completion in createPaymentOrder.
    */
-  /**
-   * White-label email sender for a space, or `{}` when it doesn't apply. Runs
-   * the same two-check gate as public-page branding (white-label enabled + plan
-   * carries the perk), so a downgraded space silently reverts to the default
-   * Unifesto sender with no flag to flip.
-   */
-  private resolveEmailSender(
-    space:
-      | {
-          whiteLabelEnabled: boolean;
-          faviconUrl: string | null;
-          emailFromName: string | null;
-          emailReplyTo: string | null;
-          subscription: {
-            billingModel: BillingModel;
-            plan: OrgPlan;
-            revenueSharePercent?: number | { toString(): string } | null;
-          } | null;
-        }
-      | null
-      | undefined,
-  ): { brandFromName?: string | null; brandReplyTo?: string | null } {
-    if (!space?.subscription) return {};
-    const hasRemoveBranding = this.planConfig.getEffectiveLimits(
-      space.subscription,
-    ).hasRemoveBranding;
-    const surfaces = resolveSpaceSurfaces(space, hasRemoveBranding);
-    if (!surfaces) return {};
-    return {
-      brandFromName: surfaces.emailFromName,
-      brandReplyTo: surfaces.emailReplyTo,
-    };
-  }
-
   private async sendRegistrationConfirmations(registrationId: string) {
     // One confirmation per registration, no matter how many code paths reach
     // here. The webhook (`payment.captured`), the client-side verify, and
@@ -639,17 +604,10 @@ export class RegistrationsService {
             parentEvent: {
               select: { whatsappAttendeeGroupUrl: true },
             },
-            // Organiser name for the calendar (.ics) ORGANIZER line, plus the
-            // white-label email-sender surfaces + plan (for the render gate).
+            // Organiser name for the calendar (.ics) ORGANIZER line. Branding
+            // and sender are resolved by EmailService from the eventId.
             space: {
-              select: {
-                name: true,
-                whiteLabelEnabled: true,
-                faviconUrl: true,
-                emailFromName: true,
-                emailReplyTo: true,
-                subscription: true,
-              },
+              select: { name: true },
             },
           },
         },
@@ -752,6 +710,7 @@ export class RegistrationsService {
         .sendRegistrationConfirmation({
           email: identity.email,
           userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
+          eventId: fullRegistration.event.id,
           eventTitle: fullRegistration.event.title,
           eventDate,
           eventTime,
@@ -770,7 +729,6 @@ export class RegistrationsService {
           venueAddress: fullRegistration.event.venueAddress || undefined,
           eventDescription: fullRegistration.event.description || undefined,
           organiserName: fullRegistration.event.space?.name || undefined,
-          ...this.resolveEmailSender(fullRegistration.event.space),
         })
         .catch((err) => this.logger.error('Failed to send registration confirmation email', err));
     }
@@ -836,6 +794,7 @@ export class RegistrationsService {
         .sendRegistrationConfirmation({
           email,
           userName: m.name || 'there',
+          eventId: event.id,
           eventTitle: event.title,
           eventDate,
           eventTime,
@@ -951,14 +910,7 @@ export class RegistrationsService {
         event: {
           include: {
             space: {
-              select: {
-                name: true,
-                whiteLabelEnabled: true,
-                faviconUrl: true,
-                emailFromName: true,
-                emailReplyTo: true,
-                subscription: true,
-              },
+              select: { name: true },
             },
           },
         },
@@ -1008,6 +960,7 @@ export class RegistrationsService {
       this.emailService.sendRegistrationConfirmation({
         email: identity.email,
         userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
+        eventId: fullRegistration.event.id,
         eventTitle: fullRegistration.event.title,
         eventDate,
         eventTime,
@@ -1026,7 +979,6 @@ export class RegistrationsService {
         venueAddress: fullRegistration.event.venueAddress || undefined,
         eventDescription: fullRegistration.event.description || undefined,
         organiserName: fullRegistration.event.space?.name || undefined,
-        ...this.resolveEmailSender(fullRegistration.event.space),
       }).catch(err => this.logger.error('Failed to send registration confirmation email', err));
     }
 
@@ -4177,14 +4129,7 @@ export class RegistrationsService {
           event: {
           include: {
             space: {
-              select: {
-                name: true,
-                whiteLabelEnabled: true,
-                faviconUrl: true,
-                emailFromName: true,
-                emailReplyTo: true,
-                subscription: true,
-              },
+              select: { name: true },
             },
           },
         },
@@ -4233,6 +4178,7 @@ export class RegistrationsService {
         this.emailService.sendRegistrationConfirmation({
           email: identity.email,
           userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
+          eventId: fullRegistration.event.id,
           eventTitle: fullRegistration.event.title,
           eventDate: evDate,
           eventTime: evTime,
@@ -4251,7 +4197,6 @@ export class RegistrationsService {
           venueAddress: fullRegistration.event.venueAddress || undefined,
           eventDescription: fullRegistration.event.description || undefined,
           organiserName: fullRegistration.event.space?.name || undefined,
-          ...this.resolveEmailSender(fullRegistration.event.space),
         }).catch((err) => this.logger.error('Failed to send free-ticket confirmation email', err));
       }
 
@@ -4719,6 +4664,7 @@ export class RegistrationsService {
         this.emailService.sendPaymentConfirmation({
           email: userEmail,
           userName: registration.user.fullName || registration.user.username || 'there',
+          eventId: registration.event.id,
           eventTitle: registration.event.title,
           eventDate,
           eventTime,
@@ -4737,6 +4683,7 @@ export class RegistrationsService {
         this.emailService.sendRegistrationConfirmation({
           email: userEmail,
           userName: registration.user.fullName || registration.user.username || 'there',
+          eventId: registration.event.id,
           eventTitle: registration.event.title,
           eventDate,
           eventTime,
@@ -4948,7 +4895,7 @@ export class RegistrationsService {
   private async markRegistrationFailed(registration: {
     id: string;
     razorpayAmount: Prisma.Decimal;
-    event: { title: string; slug: string };
+    event: { id: string; title: string; slug: string };
     user: {
       fullName: string | null;
       username: string | null;
@@ -4969,6 +4916,7 @@ export class RegistrationsService {
         .sendPaymentFailed({
           email: userEmail,
           userName: registration.user.fullName || registration.user.username || 'there',
+          eventId: registration.event.id,
           eventTitle: registration.event.title,
           amount: Number(registration.razorpayAmount),
           reason: 'Payment was declined. Please try again.',
@@ -5247,7 +5195,7 @@ export class RegistrationsService {
       totalAmount: Prisma.Decimal;
       processingFee: Prisma.Decimal;
       razorpayAmount: Prisma.Decimal;
-      event: { title: string; slug: string };
+      event: { id: string; title: string; slug: string };
       user: {
         fullName: string | null;
         username: string | null;
@@ -5774,6 +5722,7 @@ export class RegistrationsService {
       this.emailService.sendCancellationConfirmation({
         email: identity.email,
         userName: registration.user.fullName || registration.user.username || 'there',
+        eventId: registration.event.id,
         eventTitle: registration.event.title,
         razorpayRefundInitiated,
         razorpayRefundAmount: razorpayRefundInitiated ? Number(registration.razorpayAmount) : undefined,

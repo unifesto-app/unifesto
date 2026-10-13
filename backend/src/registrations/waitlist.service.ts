@@ -899,13 +899,14 @@ export class WaitlistService {
 
   private async notifyJoined(
     userId: string,
-    event: { title: string; startDateTime: Date },
+    event: { id: string; title: string; startDateTime: Date },
     position: number,
   ) {
     const to = await this.recipient(userId);
     if (!to) return;
     await this.email.sendWaitlistConfirmation({
       ...to,
+      eventId: event.id,
       eventTitle: event.title,
       eventDate: this.formatDate(event.startDateTime),
       waitlistPosition: position,
@@ -926,6 +927,7 @@ export class WaitlistService {
 
     await this.email.sendWaitlistRevoked({
       ...to,
+      eventId: event.id,
       eventTitle: event.title,
       eventDate: this.formatDate(event.startDateTime, full?.timezone),
       registrationUrl: `${process.env.WEB_URL || ''}/events/${full?.slug ?? event.id}`,
@@ -957,6 +959,7 @@ export class WaitlistService {
 
     await this.email.sendWaitlistPromoted({
       ...to,
+      eventId: event.id,
       eventTitle: event.title,
       eventDate: this.formatDate(event.startDateTime, full?.timezone),
       eventTime: full

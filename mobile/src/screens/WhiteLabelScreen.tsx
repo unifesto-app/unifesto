@@ -15,8 +15,8 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * White-label for a space: its accent colour (inherited by every event), then
- * per-event overrides. Colour-only; the first change of each is reviewed by
- * Unifesto, later changes apply straight away.
+ * per-event overrides. Self-serve when the plan includes it; the full theme
+ * (logo, font, page theme) lives in the space app's Branding studio.
  */
 export default function WhiteLabelScreen() {
   const { spaceId } = useLocalSearchParams<{ spaceId: string }>();

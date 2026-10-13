@@ -120,13 +120,13 @@ const adminNav: NavGroup[] = [
     items: [
       {
         href: "/dashboard/requests/white-label",
-        label: "Requests",
+        label: "History",
         icon: PaintBrush,
         exact: true,
       },
       {
         href: "/dashboard/requests/white-label/apply",
-        label: "Apply",
+        label: "Manage",
         icon: MagicWand,
       },
     ],

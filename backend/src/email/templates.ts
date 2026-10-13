@@ -4,6 +4,7 @@
 import {
   APEX, SPACE_APP, SUPPORT, WEB,
   button, code, details, esc, faint, greet, h1, inr, layout, link, list, note, p, qr, small, strong,
+  type EmailBrand,
 } from './layout';
 
 export interface Email {
@@ -17,6 +18,10 @@ type EventWhere = {
   isOnline: boolean;
   onlineUrl?: string;
 };
+
+/** Branded mail points back at the space, not Unifesto's listing. */
+const moreEvents = (brand?: EmailBrand | null) =>
+  brand ? button(`More from ${brand.name}`, brand.url) : button('Find another event', `${WEB}/events`);
 
 /** "Online" with the join link, or "Venue, City". */
 function where(e: EventWhere): string | undefined {
@@ -75,6 +80,10 @@ export function welcomeEmail(userName: string): Email {
 // =====================================================
 
 export interface RegistrationConfirmationData extends EventWhere {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -93,10 +102,6 @@ export interface RegistrationConfirmationData extends EventWhere {
   venueAddress?: string;
   eventDescription?: string;
   organiserName?: string;
-  // White-label sender identity (space-level, already gated by the caller).
-  // When present, the confirmation is sent with this display name and Reply-To.
-  brandFromName?: string | null;
-  brandReplyTo?: string | null;
 }
 
 export function registrationConfirmationEmail(d: RegistrationConfirmationData): Email {
@@ -108,14 +113,19 @@ export function registrationConfirmationEmail(d: RegistrationConfirmationData): 
       ${p(`Your spot at ${strong(d.eventTitle)} is confirmed.`)}
       ${eventCard(d)}
       ${qr(d.qrCode, d.ticketCode)}
-      ${d.eventSlug ? button('View event', `${WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
+      ${d.eventSlug ? button('View event', `${d.brand?.webBase ?? WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
       ${small('Your ticket is also in the Unifesto app. See you there.')}`,
       `${d.eventDate}, ${d.eventTime}. Your ticket is inside.`,
+      d.brand,
     ),
   };
 }
 
 export interface PaymentConfirmationData extends EventWhere {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -143,11 +153,16 @@ export function paymentConfirmationEmail(d: PaymentConfirmationData): Email {
       ])}
       ${qr(d.qrCode, d.ticketCode)}`,
       `${inr(d.amount)} paid. Your ticket is inside.`,
+      d.brand,
     ),
   };
 }
 
 export interface CancellationConfirmationData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -169,12 +184,18 @@ export function cancellationConfirmationEmail(d: CancellationConfirmationData): 
       ${d.razorpayRefundInitiated && d.razorpayRefundAmount
         ? note(`A refund of ${strong(inr(d.razorpayRefundAmount))} is on its way. It reaches your original payment method in 5 to 7 business days.`, 'success')
         : ''}
-      ${button('Find another event', `${WEB}/events`)}`,
+      ${moreEvents(d.brand)}`,
+      '',
+      d.brand,
     ),
   };
 }
 
 export interface EventReminderData extends EventWhere {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -194,11 +215,16 @@ export function eventReminderEmail(d: EventReminderData): Email {
       ${eventCard(d)}
       ${qr(d.qrCode, d.ticketCode)}`,
       `${d.eventTime}. Have your QR ready.`,
+      d.brand,
     ),
   };
 }
 
 export interface EventStartingSoonData extends EventWhere {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -224,11 +250,17 @@ export function eventStartingSoonEmail(d: EventStartingSoonData): Email {
       ${p(`${strong(d.eventTitle)} starts soon.`)}
       ${details([[d.isOnline ? 'Where' : 'Venue', where(d)]])}
       ${d.isOnline && d.onlineUrl ? button('Join now', d.onlineUrl) : qr(d.qrCode)}`,
+      '',
+      d.brand,
     ),
   };
 }
 
 export interface EventCancelledData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -246,12 +278,18 @@ export function eventCancelledEmail(d: EventCancelledData): Email {
       ${p(`We're sorry. ${strong(d.eventTitle)} on ${esc(d.eventDate)} has been cancelled by the organiser.`)}
       ${d.cancellationReason ? note(`Reason: ${esc(d.cancellationReason)}`) : ''}
       ${d.refundInfo ? note(esc(d.refundInfo), 'success') : ''}
-      ${button('Find another event', `${WEB}/events`)}`,
+      ${moreEvents(d.brand)}`,
+      '',
+      d.brand,
     ),
   };
 }
 
 export interface EventUpdatedData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -280,6 +318,8 @@ export function eventUpdatedEmail(d: EventUpdatedData): Email {
         ['Venue', d.newVenue && esc(d.newVenue)],
       ])}
       ${p('Your registration still stands. Nothing to do on your side.')}`,
+      '',
+      d.brand,
     ),
   };
 }
@@ -337,6 +377,10 @@ export function eventSummaryEmail(d: EventSummaryData): Email {
 // =====================================================
 
 export interface WaitlistConfirmationData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -353,11 +397,17 @@ export function waitlistConfirmationEmail(d: WaitlistConfirmationData): Email {
       ${p(`${strong(d.eventTitle)} on ${esc(d.eventDate)} is full right now.`)}
       ${details([['Your position', `#${d.waitlistPosition}`]])}
       ${p("If a spot opens up for you, we'll email you straight away.")}`,
+      '',
+      d.brand,
     ),
   };
 }
 
 export interface WaitlistPromotedData extends EventWhere {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -398,11 +448,17 @@ export function waitlistPromotedEmail(d: WaitlistPromotedData): Email {
       ${p(`A spot opened up for you at ${strong(d.eventTitle)}.`)}
       ${eventCard(d)}
       ${action}`,
+      '',
+      d.brand,
     ),
   };
 }
 
 export interface WaitlistRevokedData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -420,6 +476,8 @@ export function waitlistRevokedEmail(d: WaitlistRevokedData): Email {
       ${p(`A spot at ${strong(d.eventTitle)} on ${esc(d.eventDate)} was held for you, but it went unpaid, so the organiser released it to someone else.`)}
       ${p("Nothing was charged. If you still want to go, you can join the waiting list again.")}
       ${button('View the event', d.registrationUrl)}`,
+      '',
+      d.brand,
     ),
   };
 }
@@ -429,6 +487,10 @@ export function waitlistRevokedEmail(d: WaitlistRevokedData): Email {
 // =====================================================
 
 export interface PaymentFailedData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   userName: string;
   eventTitle: string;
@@ -446,6 +508,8 @@ export function paymentFailedEmail(d: PaymentFailedData): Email {
       ${p(`We couldn't take your payment of ${strong(inr(d.amount))} for ${strong(d.eventTitle)}. If any money left your account, it is returned automatically.`)}
       ${d.reason ? note(`Reason: ${esc(d.reason)}`, 'danger') : ''}
       ${button('Try again', d.retryUrl)}`,
+      '',
+      d.brand,
     ),
   };
 }
@@ -477,6 +541,10 @@ export function bankAccountRejectedEmail(d: BankAccountRejectedData): Email {
 // =====================================================
 
 export interface CertificateIssuedData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** Lets EmailService resolve the brand + sender. */
+  eventId?: string;
   email: string;
   recipientName: string;
   eventTitle: string;
@@ -499,6 +567,8 @@ export function certificateIssuedEmail(d: CertificateIssuedData): Email {
       ${details([['Certificate no.', esc(d.certificateNumber)]])}
       ${button('Download my certificate', d.pdfUrl)}
       ${small(`Anyone can check it's genuine on its ${link('verification page', d.verifyUrl)}.`)}`,
+      '',
+      d.brand,
     ),
   };
 }

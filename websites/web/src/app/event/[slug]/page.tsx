@@ -7,6 +7,7 @@ import { preload } from "react-dom";
 import { getEventBySlug as fetchEvent, type Event } from "@/lib/api/events";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
+import { getTenant } from "@/lib/tenant";
 import EventDetailClient from "./EventDetailClient";
 
 // One fetch per request, shared by generateMetadata and the page.
@@ -40,19 +41,29 @@ function toSummary(input: string | undefined, max = 180): string | undefined {
  * the sibling `opengraph-image.tsx` route (banner when present, branded card
  * otherwise) and injected automatically by the App Router file convention.
  */
+/** On a space's custom domain, only that space's events exist. */
+async function assertOnTenant(event: Event) {
+  const tenant = await getTenant();
+  if (tenant && (event.space?.slug ?? event.organization?.slug) !== tenant.spaceSlug) notFound();
+  return tenant;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
 
   // A real 404 (not a 200 + noindex soft-404) so Google drops deleted events.
   if (!isPublic(event)) notFound();
+  const tenant = await assertOnTenant(event);
 
+  // White-labelled: the space's name replaces ours in titles and share cards.
+  const brand = event.branding?.name ?? null;
   const hostName = event.space?.name ?? event.organization?.name;
-  const title = `${event.title} | Unifesto`;
+  const title = `${event.title} | ${brand ?? "Unifesto"}`;
   const description =
     toSummary(event.short_description) ??
     toSummary(event.description) ??
-    [hostName ? `Hosted by ${hostName}.` : null, "Discover and register on Unifesto."]
+    [hostName ? `Hosted by ${hostName}.` : null, brand ? null : "Discover and register on Unifesto."]
       .filter(Boolean)
       .join(" ");
 
@@ -65,13 +76,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return withSocial({
     title: { absolute: title },
     description,
+    // On a custom domain, canonical + OG URLs point at that domain.
+    ...(tenant ? { metadataBase: new URL(`https://${tenant.host}`) } : {}),
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
     // Safari Smart App Banner; app-argument opens this event if installed.
     other: {
       "apple-itunes-app": `app-id=6767165496, app-argument=https://unifesto.app${canonical}`,
     },
-  }, { image: false });
+  }, { image: false, ...(brand ? { title, siteName: brand } : {}) });
 }
 
 /* schema.org Event, server-rendered, so search engines (event rich results)
@@ -125,6 +138,7 @@ export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!isPublic(event)) notFound();
+  await assertOnTenant(event);
   // The poster is the LCP element but only appears after the client fetch;
   // preloading it from the server HTML starts the download immediately.
   const poster = event.banner_url || event.thumbnail_url || event.image_url;

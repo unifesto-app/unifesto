@@ -26,3 +26,34 @@ describe('EmailService without RESEND_API_KEY', () => {
     await expect(service.sendViaResend('a@b.co', 'Hi', '<p>Hi</p>')).resolves.toBeNull();
   });
 });
+
+describe('EmailService brandFor', () => {
+  const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
+  const space = {
+    slug: 'acme', subscription: { plan: 'PRO' }, name: 'Acme', logoUrl: null,
+    whiteLabelEnabled: true, brandingSuspendedAt: null, brandColor: '#123456', brandLogoUrl: null,
+    brandFont: null, brandMode: null, hidePoweredBy: false, faviconUrl: null,
+    emailFromName: null, emailReplyTo: 'hi@acme.edu',
+    domains: [
+      { kind: 'EMAIL', hostname: 'mail.acme.edu', emailLocalPart: 'tickets' },
+      { kind: 'WEB', hostname: 'events.acme.edu', emailLocalPart: null },
+    ],
+  };
+  const build = (has: boolean) =>
+    new EmailService(
+      config,
+      { event: { findUnique: async () => ({ whiteLabelEnabled: false, brandColor: null, space }) } } as any,
+      { getEffectiveLimits: () => ({ hasRemoveBranding: has }) } as any,
+    ) as unknown as { brandFor: (id?: string) => Promise<any> };
+
+  it('brands and sends from the verified domain when the plan allows', async () => {
+    const r = await build(true).brandFor('e1');
+    expect(r.brand).toMatchObject({ name: 'Acme', color: '#123456', url: 'https://events.acme.edu' });
+    expect(r.sender).toEqual({ fromName: 'Acme', replyTo: 'hi@acme.edu', fromAddress: 'tickets@mail.acme.edu' });
+  });
+
+  it('stays Unifesto without the plan perk or an eventId', async () => {
+    expect(await build(false).brandFor('e1')).toEqual({ brand: null, sender: undefined });
+    expect(await build(true).brandFor()).toEqual({ brand: null });
+  });
+});

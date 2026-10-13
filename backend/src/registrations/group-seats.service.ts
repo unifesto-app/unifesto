@@ -1087,6 +1087,7 @@ export class GroupSeatsService {
           select: {
             event: {
               select: {
+                id: true,
                 title: true,
                 slug: true,
                 startDateTime: true,
@@ -1126,6 +1127,7 @@ export class GroupSeatsService {
           .sendRegistrationConfirmation({
             email,
             userName: name,
+            eventId: event.id,
             eventTitle: event.title,
             eventDate,
             eventTime,

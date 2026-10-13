@@ -1,13 +1,16 @@
 import {
   IsBoolean,
+  IsEmail,
   IsHexColor,
   IsIn,
   IsOptional,
   IsString,
   IsUrl,
   IsUUID,
+  Matches,
   MaxLength,
 } from 'class-validator';
+import { BRAND_FONTS, BRAND_MODES } from '../branding.util';
 
 /**
  * Organiser asks an admin to white-label a space, or one of its events.
@@ -40,31 +43,56 @@ export class ReviewWhiteLabelRequestDto {
 }
 
 /**
- * Post-approval tweak of the accent colour on an already-white-labelled target. The
- * admin has already blessed white-label for the entity, so colour/logo changes
- * doesn't need re-approval — but the plan gate is still enforced server-side.
+ * Branding studio patch. Every field is optional; `null` clears a column,
+ * omitted leaves it. On an event target only `brandColor` applies (the event's
+ * accent override); the rest are space-level.
  */
 export class UpdateBrandingDto {
+  /** Space only: switch the theme on/off. */
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
   @IsOptional()
   @IsHexColor()
-  brandColor?: string;
+  brandColor?: string | null;
 
-  // Space-level surfaces (ignored on an event target). All take effect only
-  // while the space's white-label is enabled and the plan carries the perk.
   @IsOptional()
   @IsUrl()
   @MaxLength(2000)
-  faviconUrl?: string;
+  brandLogoUrl?: string | null;
+
+  @IsOptional()
+  @IsIn(Object.keys(BRAND_FONTS))
+  brandFont?: string | null;
+
+  @IsOptional()
+  @IsIn(BRAND_MODES)
+  brandMode?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  hidePoweredBy?: boolean;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2000)
+  faviconUrl?: string | null;
 
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  emailFromName?: string;
+  emailFromName?: string | null;
 
   @IsOptional()
-  @IsString()
+  @IsEmail()
   @MaxLength(255)
-  emailReplyTo?: string;
+  emailReplyTo?: string | null;
+}
+
+export class SuspendBrandingDto {
+  @IsBoolean()
+  suspended: boolean;
 }
 
 /**
@@ -85,4 +113,21 @@ export class AdminApplyBrandingDto {
   @IsOptional()
   @IsHexColor()
   brandColor?: string | null;
+}
+
+export class AddEmailDomainDto {
+  @IsString()
+  @MaxLength(253)
+  hostname: string;
+
+  /** Mailbox part of the From address; defaults to `tickets`. */
+  @IsOptional()
+  @Matches(/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/i)
+  localPart?: string;
+}
+
+export class AddWebDomainDto {
+  @IsString()
+  @MaxLength(253)
+  hostname: string;
 }

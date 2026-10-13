@@ -27,6 +27,7 @@ import { getAllEventsAdmin } from "@/lib/api/admin-events-api";
 import {
   adminApplySpaceBranding,
   adminApplyEventBranding,
+  setSpaceBrandingSuspended,
   type AdminApplyBrandingInput,
   type AdminApplyBrandingResult,
 } from "@/lib/api/white-label-api";
@@ -43,10 +44,10 @@ interface Target {
 const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 /**
- * Admin surface: directly apply (or remove) white-label branding on any space
- * or event, skipping the organiser request/approval round-trip. The plan gate is
- * still enforced at render time, so the response reports `willRender` — this page
- * warns when branding is stored but won't show until the plan includes it.
+ * Admin surface. Spaces brand themselves (self-serve, plan-gated); this page
+ * lets an admin apply or remove branding on any space or event, and suspend a
+ * space's branding outright (kill switch, theme kept). The plan gate is still
+ * enforced at render time, so the response reports `willRender`.
  */
 export default function ApplyWhiteLabelPage() {
   const [targetType, setTargetType] = useState<TargetType>("space");
@@ -107,8 +108,8 @@ export default function ApplyWhiteLabelPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Apply white-label"
-        subtitle="Turn a white-label accent colour on (or off) for any space or event, without an organiser request"
+        title="Manage white-label"
+        subtitle="Apply, remove or suspend branding on any space or event"
       />
 
       <Card>
@@ -270,7 +271,53 @@ export default function ApplyWhiteLabelPage() {
           </CardContent>
         </Card>
       )}
+
+      {target && targetType === "space" && <SuspendCard spaceId={target.id} />}
     </div>
+  );
+}
+
+/** Kill switch: hides a space's branding everywhere without deleting its theme. */
+function SuspendCard({ spaceId }: { spaceId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [state, setState] = useState<"suspended" | "restored" | null>(null);
+
+  async function run(suspended: boolean) {
+    setBusy(true);
+    setError("");
+    const { error: apiError } = await setSpaceBrandingSuspended(spaceId, suspended);
+    if (apiError) setError(apiError.message || "Could not update suspension.");
+    else setState(suspended ? "suspended" : "restored");
+    setBusy(false);
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Suspend branding</CardTitle>
+        <CardDescription>
+          For abuse or impersonation. Attendees see the default Unifesto look; the space keeps its
+          settings but can&rsquo;t make them render until you restore it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {error && <ErrorNotice message={error} />}
+        <div className="flex gap-2">
+          <Button variant="destructive" onClick={() => run(true)} disabled={busy}>
+            Suspend
+          </Button>
+          <Button variant="outline" onClick={() => run(false)} disabled={busy}>
+            Restore
+          </Button>
+        </div>
+        {state && (
+          <p className="text-sm text-muted-foreground">
+            Branding {state}. Event pages refresh on their next load.
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

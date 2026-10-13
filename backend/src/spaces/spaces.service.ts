@@ -12,7 +12,7 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { resolveBranding, resolveSpaceSurfaces } from '../white-label/branding.util';
+import { resolveSpaceBranding } from '../white-label/branding.util';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
@@ -220,6 +220,9 @@ export class SpacesService {
         planExpiresAt,
         coCuratorLimit,
         verifiedBy,
+        brandingSuspendedAt, // internal branding state, never public
+        emailFromName,
+        emailReplyTo,
         ...publicSpace
       } = space;
       return publicSpace;
@@ -334,19 +337,14 @@ export class SpacesService {
         createdAt: ur.createdAt,
       }));
 
-    // Attendee-facing branding: only when admin-approved AND the plan still
-    // includes the perk (see resolveBranding). Mirrors getSpaceBySlug so the
+    // Attendee-facing theme: switched on, plan has the perk, not suspended
+    // (see resolveSpaceBranding). Mirrors getSpaceBySlug so the
     // mobile app (which fetches by id) recolours to the organiser's accent too.
     const subscription = (space as any).subscription ?? null;
     const hasRemoveBranding = subscription
       ? this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding
       : false;
-    const brandingBase = resolveBranding(space as any, hasRemoveBranding);
-    const surfaces = resolveSpaceSurfaces(space as any, hasRemoveBranding);
-    // Fold the favicon into the branding payload the web/mobile clients read.
-    const branding = brandingBase
-      ? { ...brandingBase, faviconUrl: surfaces?.faviconUrl ?? null }
-      : null;
+    const branding = resolveSpaceBranding(space as any, hasRemoveBranding);
 
     // Strip internal/sensitive fields and the raw member-role list before returning publicly.
     // Only the requester's own role (userRole), the organiser team, and aggregate counts are exposed.
@@ -362,6 +360,9 @@ export class SpacesService {
       coCuratorLimit,
       verifiedBy,
       subscription: _sub, // pulled only for the plan gate; never exposed publicly
+      brandingSuspendedAt, // internal; `branding` already reflects it
+      emailFromName,
+      emailReplyTo,
       ...publicSpace
     } = space as any;
 
@@ -401,18 +402,12 @@ export class SpacesService {
     await assertCanViewSpace(this.prisma, space, viewerId);
     this.logger.log(`parentSpace: ${JSON.stringify((space as any).parentSpace)}`);
 
-    // Attendee-facing branding: only when admin-approved AND the plan still
-    // includes the perk (see resolveBranding).
+    // Attendee-facing theme (see resolveSpaceBranding).
     const subscription = (space as any).subscription ?? null;
     const hasRemoveBranding = subscription
       ? this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding
       : false;
-    const brandingBase = resolveBranding(space as any, hasRemoveBranding);
-    const surfaces = resolveSpaceSurfaces(space as any, hasRemoveBranding);
-    // Fold the favicon into the branding payload the web/mobile clients read.
-    const branding = brandingBase
-      ? { ...brandingBase, faviconUrl: surfaces?.faviconUrl ?? null }
-      : null;
+    const branding = resolveSpaceBranding(space as any, hasRemoveBranding);
 
     const {
       approvedBy,
@@ -425,6 +420,9 @@ export class SpacesService {
       coCuratorLimit,
       verifiedBy,
       subscription: _sub, // pulled only for the plan gate; never exposed publicly
+      brandingSuspendedAt, // internal; `branding` already reflects it
+      emailFromName,
+      emailReplyTo,
       creator,
       ...rest
     } = space as any;

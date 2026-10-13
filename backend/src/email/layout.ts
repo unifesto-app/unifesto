@@ -99,12 +99,71 @@ export function esc(value: unknown): string {
 export const inr = (n: number) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 
+/**
+ * A space's white-label theme for attendee mail (already gated by the caller:
+ * on + plan perk + not suspended). Swaps the header, button colour and footer.
+ */
+export interface EmailBrand {
+  name: string;
+  logoUrl: string | null;
+  color: string | null;
+  hidePoweredBy: boolean;
+  /** Public space page, for the header link. */
+  url: string;
+  /** Origin for event links: the space's custom domain, else Unifesto. */
+  webBase: string;
+}
+
+/** Black or white, whichever reads better on `hex` (WCAG relative luminance). */
+export function contrastText(hex: string): string {
+  const n = parseInt(hex.slice(1, 7), 16);
+  const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255].map((v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? '#000000' : '#ffffff';
+}
+
+const HEX6 = /^#[0-9a-f]{6}$/i;
+
 /** A full HTML document around `body`. `preheader` is the inbox preview line. */
-export function layout(body: string, preheader = ''): string {
+export function layout(body: string, preheader = '', brand?: EmailBrand | null): string {
   const ground = bg('ground');
   const soft = fg('soft');
   const muted = fg('muted');
   const a = `class="${muted.cls}" style="${muted.css}"`;
+  const accent = brand?.color && HEX6.test(brand.color) ? brand.color : null;
+  // Buttons are built before the layout knows the brand, so recolour them
+  // here: inline for CSS-less clients, and a rule that beats the dark swap.
+  if (accent) {
+    const ink = contrastText(accent);
+    body = body
+      .replaceAll(`class="b-btn" style="background:${LIGHT.btn};`, `class="b-btn" style="background:${accent};`)
+      .replaceAll(`class="c-btnText" style="color:${LIGHT.btnText};`, `class="c-btnText" style="color:${ink};`);
+  }
+  const brandStyle = accent
+    ? `.b-btn,[data-ogsb] .b-btn{background:${accent} !important;}.c-btnText,[data-ogsc] .c-btnText{color:${contrastText(accent)} !important;}`
+    : '';
+  const header = brand
+    ? `<a href="${esc(brand.url)}" style="text-decoration:none;">${
+        brand.logoUrl
+          ? `<img src="${esc(brand.logoUrl)}" height="32" alt="${esc(brand.name)}" style="display:block;height:32px;width:auto;max-width:200px;border:0;">`
+          : `<span ${themed([fg('text')], `font-family:${FONT};font-size:18px;font-weight:600;`)}>${esc(brand.name)}</span>`
+      }</a>`
+    : `<a href="${WEB}" style="text-decoration:none;">
+        <div class="logo-brand">${logoImg('wordmark-grey.png')}</div>
+        ${hidden('logo-light', 'wordmark-black.png')}
+        ${hidden('logo-dark', 'wordmark-white.png')}
+      </a>`;
+  const footer = brand
+    ? `Questions? Reply to this email.<br>
+      Sent by ${esc(brand.name)}${brand.hidePoweredBy ? '' : ` via <a href="${WEB}" ${a}>Unifesto</a>`} &middot;
+      <a href="${WEB}/privacy" ${a}>Privacy</a> &middot;
+      <a href="${WEB}/terms" ${a}>Terms</a>`
+    : `Questions? Reply to this email or write to <a href="mailto:${SUPPORT}" ${a}>${SUPPORT}</a>.<br>
+      <a href="${WEB}" ${a}>Unifesto</a> &middot;
+      <a href="${WEB}/privacy" ${a}>Privacy</a> &middot;
+      <a href="${WEB}/terms" ${a}>Terms</a>`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -113,8 +172,8 @@ export function layout(body: string, preheader = ''): string {
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-<title>Unifesto</title>
-<style>${STYLE}</style>
+<title>${brand ? esc(brand.name) : 'Unifesto'}</title>
+<style>${STYLE}${brandStyle}</style>
 </head>
 <body class="${ground.cls}" style="margin:0;padding:0;${ground.css}-webkit-text-size-adjust:100%;">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${esc(preheader)}&#8203;</div>
@@ -122,20 +181,13 @@ export function layout(body: string, preheader = ''): string {
 <tr><td align="center" style="padding:40px 16px;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
     <tr><td style="padding:0 0 32px;">
-      <a href="${WEB}" style="text-decoration:none;">
-        <div class="logo-brand">${logoImg('wordmark-grey.png')}</div>
-        ${hidden('logo-light', 'wordmark-black.png')}
-        ${hidden('logo-dark', 'wordmark-white.png')}
-      </a>
+      ${header}
     </td></tr>
     <tr><td class="${soft.cls}" style="font-family:${FONT};font-size:16px;line-height:1.6;${soft.css}">
       ${body}
     </td></tr>
     <tr><td class="l-line ${muted.cls}" style="padding:24px 0 0;border-top:1px solid ${LIGHT.line};font-family:${FONT};font-size:13px;line-height:1.6;${muted.css}">
-      Questions? Reply to this email or write to <a href="mailto:${SUPPORT}" ${a}>${SUPPORT}</a>.<br>
-      <a href="${WEB}" ${a}>Unifesto</a> &middot;
-      <a href="${WEB}/privacy" ${a}>Privacy</a> &middot;
-      <a href="${WEB}/terms" ${a}>Terms</a>
+      ${footer}
     </td></tr>
   </table>
 </td></tr>

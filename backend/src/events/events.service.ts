@@ -18,7 +18,7 @@ import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { resolveBranding, resolveSpaceSurfaces } from '../white-label/branding.util';
+import { BRANDING_SPACE_SELECT, resolveEventBranding } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { RecurrenceService } from './recurrence/recurrence.service';
 import { parseRRule, serializeRRule } from './recurrence/rrule.util';
@@ -2027,41 +2027,18 @@ export class EventsService {
       delete tt.whatsappGroupUrl;
     }
 
-    // Attendee-facing branding. Gated on the event's own white-label flag AND
-    // the owning space's plan still including the perk — one small extra query
-    // (only on a cache miss) keeps a plan downgrade honest. `branding` is null
-    // for non-white-labelled events, so default Unifesto branding is untouched.
+    // Attendee-facing theme: the owning space's (see resolveEventBranding),
+    // with the event's own accent override. One small extra query, only on a
+    // cache miss; branding writes bust this cache.
     const owner = await this.prisma.space.findUnique({
       where: { id: event.spaceId },
-      select: {
-        subscription: true,
-        whiteLabelEnabled: true,
-        brandColor: true,
-        faviconUrl: true,
-        emailFromName: true,
-        emailReplyTo: true,
-      },
+      select: { subscription: true, ...BRANDING_SPACE_SELECT },
     });
     const subscription = owner?.subscription ?? null;
     const hasRemoveBranding = subscription
       ? this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding
       : false;
-    // The event's own white-label wins; otherwise it inherits the owning
-    // space's, so approving a space brands every event page under it (attendees
-    // mostly land on events, not the space page).
-    const eventBranding =
-      resolveBranding(event as any, hasRemoveBranding) ??
-      resolveBranding(owner as any, hasRemoveBranding);
-    // The favicon follows the owning SPACE's white-label, not the event's own
-    // flag — it's a space asset. So an event page under a white-labelled space
-    // gets the custom favicon even when the event itself isn't white-labelled.
-    const faviconUrl =
-      resolveSpaceSurfaces(owner as any, hasRemoveBranding)?.faviconUrl ?? null;
-    (event as any).branding = eventBranding
-      ? { ...eventBranding, faviconUrl }
-      : faviconUrl
-        ? { color: null, faviconUrl }
-        : null;
+    (event as any).branding = resolveEventBranding(event as any, owner, hasRemoveBranding);
 
     // Attendee-facing "Curated by" list: the event's Curators and Co-Curators
     // only. Space Admins run the space but are never surfaced here, and Crew is
@@ -2358,6 +2335,7 @@ export class EventsService {
             .sendEventUpdated({
               email: attendeeEmail,
               userName: reg.user.fullName || reg.user.username || 'there',
+              eventId: updated.id,
               eventTitle: updated.title,
               changes: significantChanges,
               newDate: this.formatEventDate(updated.startDateTime),
@@ -2670,6 +2648,7 @@ export class EventsService {
           .sendEventCancelled({
             email: attendeeEmail,
             userName: reg.user.fullName || reg.user.username || 'there',
+            eventId: event.id,
             eventTitle: event.title,
             eventDate: this.formatEventDate(event.startDateTime),
             cancellationReason: dto.reason || undefined,
