@@ -1211,8 +1211,20 @@ model SubscriptionHistory {
   toPlan    OrgPlan  @map("to_plan")
   reason    String?  @db.VarChar(500)
   changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  // Razorpay payment that paid for this change; unique so one receipt upgrades once.
+  paymentId String?  @unique @map("payment_id") @db.VarChar(255)
 
   @@map("subscription_history")
+}
+
+/// Provider webhook deliveries already processed (Razorpay `x-razorpay-event-id`),
+/// so a retried delivery is acknowledged without re-running its side effects.
+model WebhookEvent {
+  id         String   @id @db.VarChar(255)
+  source     String   @db.VarChar(32)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  @@map("webhook_events")
 }
 
 // Admin-editable definition of what each subscription plan includes.
@@ -1891,7 +1903,7 @@ model EventRegistration {
   processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
   refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId      String?       @map("payment_id") @db.VarChar(255)
+  paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
   orderId        String?       @map("order_id") @db.VarChar(255)
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
 
@@ -1988,6 +2000,7 @@ model EventRegistration {
   // sync with the pre-create cleanup in RegistrationsService.createPaymentOrder.
   @@index([eventId])
   @@index([eventId, updatedAt])
+  @@index([orderId])
   @@index([userId])
   @@index([qrCode])
   @@index([paymentStatus])
@@ -3100,7 +3113,7 @@ model SessionRegistration {
   processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
   refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId      String?       @map("payment_id") @db.VarChar(255)
+  paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
   orderId        String?       @map("order_id") @db.VarChar(255)
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
 
@@ -3117,6 +3130,7 @@ model SessionRegistration {
   @@index([sessionId])
   @@index([userId])
   @@index([paymentStatus])
+  @@index([orderId])
   @@map("session_registrations")
 }
 
