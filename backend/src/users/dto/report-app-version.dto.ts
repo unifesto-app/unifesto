@@ -1,4 +1,4 @@
-import { IsIn, IsString, Matches } from 'class-validator';
+import { IsIn, IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
 
 /** A dotted version like "2.0.1" (1–4 numeric segments). Mirrors the policy DTO. */
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
@@ -20,4 +20,18 @@ export class ReportAppVersionDto {
     message: 'platform must be one of: ios, android, web',
   })
   platform: string;
+
+  /**
+   * EAS Update runtime (fingerprint hash) the binary accepts updates for.
+   * Optional: 4.0.x clients never send it.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  runtimeVersion?: string;
+
+  /** Running OTA update id; omitted/null when the store build's own code runs. */
+  @IsOptional()
+  @IsUUID()
+  updateId?: string | null;
 }
