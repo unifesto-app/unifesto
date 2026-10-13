@@ -14,11 +14,13 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
 import { RedisService } from '../redis/redis.service';
-import { PlanConfigService } from '../subscription/plan-config.service';
+import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PaymentsService } from '../payments/payments.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
+import { takeSeats, SoldOutError } from './capacity.util';
+import { Cron } from '@nestjs/schedule';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
 import { buildExportFile, type ExportFormat } from './export.util';
 import {
@@ -79,6 +81,8 @@ const SETTLEABLE = {
   paymentStatus: { in: SETTLEABLE_PAYMENT },
   status: { not: RegistrationStatus.CANCELLED },
 };
+/** Payment states whose registration occupies its seats (free rows are PAID at ₹0). */
+const HOLDS_SEAT_PAYMENT: PaymentStatus[] = [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED];
 const isSettleable = (r: { paymentStatus: PaymentStatus; status: RegistrationStatus }) =>
   SETTLEABLE_PAYMENT.includes(r.paymentStatus) && r.status !== RegistrationStatus.CANCELLED;
 
@@ -201,6 +205,84 @@ export class RegistrationsService {
         );
       }
     });
+  }
+
+  /**
+   * Seats for a paid registration whose payment was just claimed, inside the
+   * claim's transaction. Taking is atomic against capacity; when the ticket sold
+   * out while they were paying, the row is cancelled, its coupon slot freed and
+   * a full refund queued (see {@link refundDue}) — returns false.
+   */
+  private async takeSeatsOrQueueRefund(
+    tx: Prisma.TransactionClient,
+    reg: { id: string; eventId: string; ticketTypeId: string | null; groupSize?: number | null; quantity: number },
+  ): Promise<boolean> {
+    try {
+      await takeSeats(tx, reg, this.seatsFor(reg));
+      return true;
+    } catch (err) {
+      if (!(err instanceof SoldOutError)) throw err;
+    }
+    await this.coupons.releaseByRegistration(tx, reg.id);
+    await tx.eventRegistration.update({
+      where: { id: reg.id },
+      data: {
+        status: RegistrationStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancellationReason: 'Sold out while the payment was in progress; refunded in full',
+        refundDueAt: new Date(),
+      },
+    });
+    return false;
+  }
+
+  /**
+   * Send a queued full refund back (everything paid, fee included: nothing was
+   * delivered). Claims the row first by pushing `refundDueAt` an hour out, so
+   * replicas and retries never refund twice; a failure leaves it due for the
+   * next {@link retryDueRefunds} pass.
+   */
+  async refundDue(registrationId: string): Promise<boolean> {
+    const now = new Date();
+    const claimed = await this.prisma.eventRegistration.updateMany({
+      where: { id: registrationId, refundDueAt: { lte: now }, paymentStatus: PaymentStatus.PAID },
+      data: { refundDueAt: new Date(now.getTime() + 60 * 60_000) },
+    });
+    if (claimed.count !== 1) return false;
+    const reg = await this.prisma.eventRegistration.findUniqueOrThrow({
+      where: { id: registrationId },
+      select: { paymentId: true, razorpayAmount: true },
+    });
+    const amount = Number(reg.razorpayAmount);
+    try {
+      if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount);
+    } catch (err) {
+      this.logger.error(`CRITICAL: auto-refund of registration ${registrationId} failed, retrying later: ${err}`);
+      return false;
+    }
+    await this.prisma.eventRegistration.update({
+      where: { id: registrationId },
+      // The fee went back too, so none is kept: zero it so exports and the
+      // financials (collected − fee − refunded) net this row to 0.
+      data: {
+        paymentStatus: PaymentStatus.REFUNDED,
+        refundedAmount: new Prisma.Decimal(amount),
+        processingFee: new Prisma.Decimal(0),
+        refundDueAt: null,
+      },
+    });
+    return true;
+  }
+
+  /** Retry automatic refunds that didn't go through the first time. */
+  @Cron('*/15 * * * *')
+  async retryDueRefunds(): Promise<void> {
+    const due = await this.prisma.eventRegistration.findMany({
+      where: { refundDueAt: { lte: new Date() } },
+      select: { id: true },
+      take: 100,
+    });
+    for (const r of due) await this.refundDue(r.id);
   }
 
   /**
@@ -523,19 +605,9 @@ export class RegistrationsService {
         },
       });
 
-      // Increment counts — a group occupies groupSize seats, not 1.
+      // Take the seats atomically — a group occupies groupSize seats, not 1.
       const seats = this.seatsFor(registration);
-      await tx.event.update({
-        where: { id: eventId },
-        data: { registeredCount: { increment: seats } },
-      });
-
-      if (registration.ticketTypeId) {
-        await tx.eventTicketType.update({
-          where: { id: registration.ticketTypeId },
-          data: { soldCount: { increment: seats } },
-        });
-      }
+      await takeSeats(tx, registration, seats);
 
       // Generate tickets
       for (let i = 0; i < (dto.quantity || 1); i++) {
@@ -878,18 +950,8 @@ export class RegistrationsService {
         },
       });
 
-      const seats = this.seatsFor(reg);
-      await tx.event.update({
-        where: { id: eventId },
-        data: { registeredCount: { increment: seats } },
-      });
-
-      if (dto.ticketTypeId) {
-        await tx.eventTicketType.update({
-          where: { id: dto.ticketTypeId },
-          data: { soldCount: { increment: seats } },
-        });
-      }
+      // Atomic against capacity: the last seat can't go to two RSVPs.
+      await takeSeats(tx, reg, this.seatsFor(reg));
 
       for (let i = 0; i < (dto.quantity || 1); i++) {
         await tx.eventTicket.create({
@@ -2265,14 +2327,7 @@ export class RegistrationsService {
         },
       });
 
-      await tx.event.update({
-        where: { id: eventId },
-        data: { registeredCount: { increment: seats } },
-      });
-      await tx.eventTicketType.update({
-        where: { id: ticketTypeId },
-        data: { soldCount: { increment: seats } },
-      });
+      await takeSeats(tx, { eventId, ticketTypeId }, seats, 'Not enough seats left on this ticket type.');
       await tx.eventTicket.create({
         data: {
           registrationId: reg.id,
@@ -2393,7 +2448,7 @@ export class RegistrationsService {
         report.push({
           ...this.rowHead(row),
           status: 'errored',
-          reason: 'Could not create the registration.',
+          reason: err instanceof SoldOutError ? err.message : 'Could not create the registration.',
         });
       }
     }
@@ -2939,7 +2994,8 @@ export class RegistrationsService {
       //   Collected = gross the attendee actually paid (only when captured)
       //   Fee       = platform's cut
       //   Refunded  = returned to the attendee
-      //   Net       = what the organiser keeps = Collected − Fee − Refunded
+      //   Platform Fee = revenue-share cut of what's kept (0 off revenue share)
+      //   Net       = what the organiser keeps = Collected − Fee − Refunded − Platform Fee
       //
       // PENDING/FAILED rows moved no money, so their Collected/Fee are 0 (they
       // stay in the export for the audit trail, but never inflate the totals).
@@ -2968,12 +3024,16 @@ export class RegistrationsService {
         'Collected (INR)',
         'Processing Fee (INR)',
         'Refunded (INR)',
+        'Platform Fee (INR)',
         'Net (INR)',
         'Payment Status',
         'Payment ID',
         'Order ID',
         'Paid At',
       ];
+      // Same fee rule and rounding as the payout figures, so the Net column
+      // sums to the event's netEntitlement (bar add-on seats and stays).
+      const sharePercent = this.planConfig.resolvePlatformFeePercent(subscription);
       const rows = txns.map((reg: any) => {
         const captured = CAPTURED_STATUSES.has(reg.paymentStatus);
         const gross = Number(reg.totalAmount) || 0;
@@ -2981,7 +3041,10 @@ export class RegistrationsService {
         const refunded = Number(reg.refundedAmount) || 0;
         const collected = captured ? gross : 0;
         const feeCharged = captured ? fee : 0;
-        const net = collected - feeCharged - refunded;
+        // A row whose automatic full refund is still due isn't the organiser's.
+        const kept = reg.refundDueAt ? 0 : Math.max(0, collected - feeCharged - refunded);
+        const platformCut = platformShare(kept, sharePercent);
+        const net = kept - platformCut;
         return [
           reg.user.fullName || '',
           reg.user.identities?.[0]?.email || '',
@@ -2990,6 +3053,7 @@ export class RegistrationsService {
           collected.toFixed(2),
           feeCharged.toFixed(2),
           refunded.toFixed(2),
+          platformCut.toFixed(2),
           net.toFixed(2),
           reg.paymentStatus,
           reg.paymentId || '',
@@ -3407,6 +3471,7 @@ export class RegistrationsService {
   private async performTransfer(
     registration: { id: string; eventId: string; userId: string; ticketTypeId: string | null },
     email: string,
+    db: Prisma.TransactionClient = this.prisma,
   ) {
     const normalizedEmail = email.trim();
     if (!normalizedEmail) {
@@ -3416,7 +3481,7 @@ export class RegistrationsService {
     // Resolve the target account from its email identity. Case-insensitive, and
     // preferring the account's primary identity when an email appears more than
     // once (e.g. linked via both email and Google).
-    const identity = await this.prisma.userIdentity.findFirst({
+    const identity = await db.userIdentity.findFirst({
       where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
       orderBy: { isPrimary: 'desc' },
       select: { userId: true },
@@ -3433,7 +3498,7 @@ export class RegistrationsService {
       );
     }
 
-    const clash = await this.prisma.eventRegistration.findFirst({
+    const clash = await db.eventRegistration.findFirst({
       where: {
         eventId: registration.eventId,
         userId: identity.userId,
@@ -3446,9 +3511,17 @@ export class RegistrationsService {
       );
     }
 
-    const updated = await this.prisma.eventRegistration.update({
-      where: { id: registration.id },
+    // Conditional on the holder we checked: a concurrent transfer that moved
+    // it first makes this one fail instead of silently overwriting it.
+    const moved = await db.eventRegistration.updateMany({
+      where: { id: registration.id, userId: registration.userId },
       data: { userId: identity.userId },
+    });
+    if (moved.count !== 1) {
+      throw new ConflictException('This registration just changed hands. Refresh and try again.');
+    }
+    const updated = await db.eventRegistration.findUniqueOrThrow({
+      where: { id: registration.id },
       include: {
         user: {
           select: {
@@ -3579,25 +3652,34 @@ export class RegistrationsService {
       throw new BadRequestException('This request has already been reviewed');
     }
 
-    if (status === 'APPROVED') {
-      // Perform the transfer first: if it fails (unknown email, clash), the
-      // request stays PENDING so the admin can retry rather than being left
-      // APPROVED with nothing moved.
-      await this.performTransfer(
-        req.registration,
-        overrideEmail?.trim() || req.targetEmail,
-      );
-    }
+    // Claim the request and move the ticket in one transaction: two admins
+    // reviewing at once can't both act, and if the transfer fails (unknown
+    // email, clash) the claim rolls back so the request stays PENDING.
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.registrationTransferRequest.updateMany({
+        where: { id: requestId, status: 'PENDING' },
+        data: {
+          status,
+          reviewNote: reviewNote ?? null,
+          reviewedBy: adminId,
+          reviewedAt: new Date(),
+          ...(overrideEmail?.trim() ? { targetEmail: overrideEmail.trim() } : {}),
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('This request has already been reviewed');
+      }
+      if (status === 'APPROVED') {
+        await this.performTransfer(
+          req.registration,
+          overrideEmail?.trim() || req.targetEmail,
+          tx,
+        );
+      }
+    });
 
-    return this.prisma.registrationTransferRequest.update({
+    return this.prisma.registrationTransferRequest.findUniqueOrThrow({
       where: { id: requestId },
-      data: {
-        status,
-        reviewNote: reviewNote ?? null,
-        reviewedBy: adminId,
-        reviewedAt: new Date(),
-        ...(overrideEmail?.trim() ? { targetEmail: overrideEmail.trim() } : {}),
-      },
       include: this.transferRequestInclude(),
     });
   }
@@ -4125,16 +4207,7 @@ export class RegistrationsService {
           });
         }
 
-        const seats = this.seatsFor(reg);
-        await tx.event.update({
-          where: { id: eventId },
-          data: { registeredCount: { increment: seats } },
-        });
-
-        await tx.eventTicketType.update({
-          where: { id: dto.ticketTypeId },
-          data: { soldCount: { increment: seats } },
-        });
+        await takeSeats(tx, reg, this.seatsFor(reg));
 
         for (let i = 0; i < dto.quantity; i++) {
           await tx.eventTicket.create({
@@ -4575,6 +4648,7 @@ export class RegistrationsService {
     // (count === 0) bails out and returns success idempotently — without it the
     // seat counts double and the attendee gets two confirmations.
     let claimedWin = false;
+    let soldOut = false;
     await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.eventRegistration.updateMany({
         where: { id: registration.id, ...SETTLEABLE },
@@ -4588,26 +4662,19 @@ export class RegistrationsService {
       if (claimed.count === 0) return; // another path already completed this
       claimedWin = true;
 
+      // Take the seats atomically — a group occupies groupSize seats, not 1.
+      // Sold out while they paid: cancel and queue a full refund instead.
+      if (!(await this.takeSeatsOrQueueRefund(tx, registration))) {
+        soldOut = true;
+        return;
+      }
+
       // Payment settled — promote a held coupon reservation to permanent. Runs
       // inside the same exactly-once guard as the seat increment, so a coupon is
       // confirmed once and only for the caller that won the race. No-op when the
       // registration carried no coupon.
       await this.coupons.confirmByRegistration(tx, registration.id);
-
-      // Increment counts — a group occupies groupSize seats, not 1.
       const seats = this.seatsFor(registration);
-      if (registration.ticketTypeId) {
-        await tx.eventTicketType.update({
-          where: { id: registration.ticketTypeId },
-          data: { soldCount: { increment: seats } },
-        });
-      }
-
-      // Increment event registeredCount
-      await tx.event.update({
-        where: { id: eventId },
-        data: { registeredCount: { increment: seats } },
-      });
 
       // Generate QR codes for each ticket
       for (let i = 0; i < registration.quantity; i++) {
@@ -4630,6 +4697,13 @@ export class RegistrationsService {
         groupMembers: registration.groupMembers as unknown[] | null,
       });
     });
+
+    if (soldOut) {
+      await this.refundDue(registration.id);
+      throw new BadRequestException(
+        `This ticket sold out while you were paying. Your payment of ₹${Number(registration.razorpayAmount)} is being refunded in full.`,
+      );
+    }
 
     // Lost the race — the other path (webhook/verify) already completed this
     // registration. Return success idempotently and send nothing.
@@ -4996,10 +5070,13 @@ export class RegistrationsService {
       identities: { email: string | null }[];
     };
   }): Promise<void> {
-    await this.prisma.eventRegistration.update({
-      where: { id: registration.id },
+    // Conditional: a capture may land between the caller's PENDING check and
+    // here (attempt 1 fails, attempt 2 succeeds). PAID must never go FAILED.
+    const marked = await this.prisma.eventRegistration.updateMany({
+      where: { id: registration.id, paymentStatus: PaymentStatus.PENDING },
       data: { paymentStatus: PaymentStatus.FAILED },
     });
+    if (marked.count !== 1) return;
 
     this.logger.log(`Payment failed for registration ${registration.id}`);
 
@@ -5330,7 +5407,7 @@ export class RegistrationsService {
 
       if (refunded <= 0) {
         // Clean capture — full settlement (tickets, seats, confirmation).
-        await this.completeWebhookPayment(
+        const outcome = await this.completeWebhookPayment(
           registration.id,
           payment.paymentId,
           payment.orderId ?? registration.orderId ?? '',
@@ -5343,6 +5420,13 @@ export class RegistrationsService {
             where: { id: registration.id },
             data: { orderId: payment.orderId },
           });
+        }
+        if (outcome === 'soldOut') {
+          return result(
+            PaymentStatus.PAID,
+            true,
+            'Captured payment found, but the ticket is sold out: registration cancelled and a full refund queued',
+          );
         }
         this.logger.log(
           `Reconcile: payment ${payment.paymentId} captured — registration ${registration.id} marked PAID`,
@@ -5472,7 +5556,7 @@ export class RegistrationsService {
     registrationId: string,
     paymentId: string,
     orderId: string,
-  ): Promise<void> {
+  ): Promise<'soldOut' | void> {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
       include: {
@@ -5501,6 +5585,7 @@ export class RegistrationsService {
     // returns without touching counts or sending — otherwise the seat counts
     // double and the attendee is confirmed twice.
     let claimedWin = false;
+    let soldOut = false;
     await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.eventRegistration.updateMany({
         // PENDING/FAILED only: a REFUNDED / PARTIALLY_REFUNDED row must never be
@@ -5515,23 +5600,15 @@ export class RegistrationsService {
       if (claimed.count === 0) return; // another path already completed this
       claimedWin = true;
 
+      // Sold out while they paid: cancel and queue a full refund instead.
+      if (!(await this.takeSeatsOrQueueRefund(tx, registration))) {
+        soldOut = true;
+        return;
+      }
+
       // Payment settled via webhook — promote a held coupon reservation to
       // permanent, inside the same exactly-once guard as the seat increment.
       await this.coupons.confirmByRegistration(tx, registration.id);
-
-      // Increment counts — a group occupies groupSize seats, not 1.
-      const seats = this.seatsFor(registration);
-      if (registration.ticketTypeId) {
-        await tx.eventTicketType.update({
-          where: { id: registration.ticketTypeId },
-          data: { soldCount: { increment: seats } },
-        });
-      }
-
-      await tx.event.update({
-        where: { id: registration.eventId },
-        data: { registeredCount: { increment: seats } },
-      });
 
       // Generate tickets
       for (let i = 0; i < registration.quantity; i++) {
@@ -5543,7 +5620,20 @@ export class RegistrationsService {
           },
         });
       }
+
+      // Same group roster as the client-verify path (idempotent).
+      await this.groupSeats.createSeatsForRegistration(tx, {
+        registrationId: registration.id,
+        leadUserId: registration.userId,
+        seatCount: this.seatsFor(registration),
+        groupMembers: registration.groupMembers as unknown[] | null,
+      });
     });
+
+    if (soldOut) {
+      await this.refundDue(registrationId);
+      return 'soldOut';
+    }
 
     // Lost the race — another path already completed this registration.
     if (!claimedWin) {
@@ -5731,31 +5821,42 @@ export class RegistrationsService {
     const razorpayRefundInitiated = false;
 
     await this.prisma.$transaction(async (tx) => {
-      // Update registration status
-      await tx.eventRegistration.update({
-        where: { id: registration.id },
+      // Claim the cancel: two overlapping cancels must not both release seats.
+      const claimed = await tx.eventRegistration.updateMany({
+        where: { id: registration.id, status: { not: RegistrationStatus.CANCELLED } },
         data: {
           status: RegistrationStatus.CANCELLED,
           cancelledAt: new Date(),
           cancellationReason: reason?.trim() || defaultReason,
         },
       });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('Registration already cancelled');
+      }
 
-      // Decrement counts — release the same seats the group occupied.
-      //
-      // Waiting list rows are the exception, and getting this wrong corrupts
-      // the counters permanently:
+      // Release only what this row actually holds — getting this wrong
+      // corrupts the counters permanently:
       //   WAITING  holds no seat and is not an attendee, so neither counter
       //            moves; it only leaves the queue.
       //   OFFERED  holds a seat but is not yet an attendee, so the seat comes
       //            back while registeredCount (never incremented) stays put.
+      //   unpaid   (PENDING / FAILED checkout) never took a seat or counted, so
+      //            nothing comes back; only its coupon reservation is freed.
       const seats = this.seatsFor(registration);
       const isQueued =
         registration.waitlistStatus === WaitlistStatus.WAITING;
       const isUnconvertedOffer =
         registration.waitlistStatus === WaitlistStatus.OFFERED;
+      const isCounted =
+        !isQueued &&
+        !isUnconvertedOffer &&
+        HOLDS_SEAT_PAYMENT.includes(registration.paymentStatus);
 
-      if (!isQueued && !isUnconvertedOffer) {
+      if (!isCounted && !isUnconvertedOffer) {
+        await this.coupons.releaseByRegistration(tx, registration.id);
+      }
+
+      if (isCounted) {
         await tx.event.update({
           where: { id: eventId },
           data: { registeredCount: { decrement: seats } },
@@ -5769,7 +5870,7 @@ export class RegistrationsService {
         });
       }
 
-      if (registration.ticketTypeId && !isQueued) {
+      if (registration.ticketTypeId && (isCounted || isUnconvertedOffer)) {
         await tx.eventTicketType.update({
           where: { id: registration.ticketTypeId },
           data: { soldCount: { decrement: seats } },
@@ -5906,42 +6007,39 @@ export class RegistrationsService {
       );
     }
 
-    const seats = this.seatsFor(registration);
-
-    // Don't let a restore oversell a limited ticket type (same rule the buy path
-    // enforces). Unlimited (null totalQuantity) always passes.
-    if (
-      registration.ticketType &&
-      registration.ticketType.totalQuantity != null &&
-      registration.ticketType.soldCount + seats >
-        registration.ticketType.totalQuantity
-    ) {
+    // Only a row whose money is still held (or a free one) comes back. A
+    // refunded row's money is gone, and an unpaid one never paid: restoring
+    // either would hand out a free ticket.
+    if (!HOLDS_SEAT_PAYMENT.includes(registration.paymentStatus) || registration.refundDueAt) {
       throw new BadRequestException(
-        'Restoring this registration would exceed the ticket type’s capacity.',
+        'Only a paid or free registration can be restored. A refunded or unpaid one has to register again.',
       );
     }
 
+    const seats = this.seatsFor(registration);
+
     await this.prisma.$transaction(async (tx) => {
-      await tx.eventRegistration.update({
-        where: { id: registration.id },
+      // Claim the row so two restores can't both re-take its seats.
+      const claimed = await tx.eventRegistration.updateMany({
+        where: { id: registration.id, status: RegistrationStatus.CANCELLED },
         data: {
           status: RegistrationStatus.REGISTERED,
           cancelledAt: null,
           cancellationReason: null,
         },
       });
-
-      // Re-consume the seats the cancellation released.
-      await tx.event.update({
-        where: { id: eventId },
-        data: { registeredCount: { increment: seats } },
-      });
-      if (registration.ticketTypeId) {
-        await tx.eventTicketType.update({
-          where: { id: registration.ticketTypeId },
-          data: { soldCount: { increment: seats } },
-        });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('Only a cancelled registration can be restored');
       }
+
+      // Re-take the seats the cancellation released, atomically against the
+      // ticket's capacity (a restore must not oversell either).
+      await takeSeats(
+        tx,
+        registration,
+        seats,
+        'Restoring this registration would exceed the ticket type’s capacity.',
+      );
 
       // Re-activate the tickets the cancellation voided. If the row never had
       // tickets issued (e.g. it was cancelled before its payment landed), mint

@@ -173,6 +173,12 @@ function makeDb(opts: {
     // recipient() short-circuits on a null identity, so no email is sent.
     userIdentity: { findFirst: async () => null },
     user: { findUnique: async () => null },
+    // takeTicketSeats' conditional UPDATE: (sql, n, ticketTypeId, n).
+    $executeRaw: async (_sql: TemplateStringsArray, n: number) => {
+      if (ticketType.totalQuantity != null && ticketType.soldCount + n > ticketType.totalQuantity) return 0;
+      ticketType.soldCount += n;
+      return 1;
+    },
     $transaction: async (fn: any) => fn(prisma),
   };
 
