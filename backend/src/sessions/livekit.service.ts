@@ -13,6 +13,7 @@ import {
   WebhookReceiver,
   type WebhookEvent,
 } from 'livekit-server-sdk';
+import { LIVEKIT_CLIENT_OPTIONS } from '../common/http/outbound-timeouts';
 
 /**
  * LiveKit integration for UNIFESTO_LIVE sessions.
@@ -75,6 +76,7 @@ export class LivekitService {
       this.httpUrl,
       this.apiKey,
       this.apiSecret,
+      LIVEKIT_CLIENT_OPTIONS,
     );
   }
 
@@ -190,6 +192,7 @@ export class LivekitService {
         this.httpUrl,
         this.apiKey,
         this.apiSecret,
+        LIVEKIT_CLIENT_OPTIONS,
       ).createRoom({ name: room });
     } catch (err) {
       // Already exists (or a transient error) — recording will still attach.
@@ -205,6 +208,7 @@ export class LivekitService {
         this.httpUrl,
         this.apiKey,
         this.apiSecret,
+        LIVEKIT_CLIENT_OPTIONS,
       ).deleteRoom(room);
     } catch (err) {
       // No active room (nobody joined / already closed) is fine.

@@ -180,7 +180,9 @@ export class StayBookingsService {
       body,
       deepLink: `unifesto://stay/pass/${bookingId}`,
       data: { type: 'stay', bookingId },
-    });
+    }).catch((err) =>
+      this.logger.error(`stay push(${bookingId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
   }
 
   private money(b: FullBooking) {

@@ -1,3 +1,4 @@
+import { withInternal } from '@/lib/api/internal';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -18,7 +19,7 @@ async function tenantSlug(host: string): Promise<string | null> {
   if (hit && hit.until > Date.now()) return hit.slug;
   let slug: string | null = null;
   try {
-    const res = await fetch(`${API}/white-label/domains/resolve?host=${encodeURIComponent(host)}`);
+    const res = await fetch(`${API}/white-label/domains/resolve?host=${encodeURIComponent(host)}`, withInternal());
     if (res.ok) {
       const body = await res.json();
       slug = (body.data ?? body).spaceSlug ?? null;

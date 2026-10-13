@@ -15,6 +15,7 @@ import { getFirebaseAdmin } from '../firebase/firebase-admin.provider';
 import { SpaceStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
 
 export interface ServiceStatus {
   status: 'connected' | 'disconnected';
@@ -59,6 +60,7 @@ export class AdminService {
     
     this.s3Client = new S3Client({
       region: region,
+      ...AWS_HTTP_TIMEOUTS,
     });
   }
 

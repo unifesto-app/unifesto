@@ -1,3 +1,4 @@
+import { apiBase, withInternal } from "@/lib/api/internal";
 /**
  * Additional Info API Client (Public Frontend)
  * Agenda, speakers, prizes, contacts, and FAQ for public event pages.
@@ -11,7 +12,7 @@
 "use client";
 
 // Call the NestJS backend directly, mirroring src/lib/api/events.ts.
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000");
 
 // ==========================================
 // TYPES (as consumed by the public event page)
@@ -228,7 +229,7 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
+    const response = await fetch(url, withInternal({ ...options, signal: controller.signal }));
     clearTimeout(id);
     return response;
   } catch (error) {

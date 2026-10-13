@@ -704,6 +704,8 @@ export class TeamChangesService {
       body,
       deepLink: `unifesto://group/${registrationId}`,
       data: { type: 'group', registrationId },
-    });
+    }).catch((err) =>
+      this.logger.error(`group push(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
   }
 }

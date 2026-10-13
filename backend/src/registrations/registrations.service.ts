@@ -2368,7 +2368,9 @@ export class RegistrationsService {
         if (state.remaining != null) state.remaining -= verdict.seats;
         if (sendEmails) {
           // Fire-and-forget: a slow SMTP hop must not stall a large import.
-          void this.sendRegistrationConfirmations(registrationId);
+          void this.sendRegistrationConfirmations(registrationId).catch((err) =>
+            this.logger.error(`sendRegistrationConfirmations(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+          );
         }
         report.push({ ...this.rowHead(row), status: 'created' });
       } catch (err) {
@@ -2631,7 +2633,9 @@ export class RegistrationsService {
         { groupSize, groupMembers, formResponses },
       );
       if (dto.sendTicketEmail !== false) {
-        void this.sendRegistrationConfirmations(registrationId);
+        void this.sendRegistrationConfirmations(registrationId).catch((err) =>
+          this.logger.error(`sendRegistrationConfirmations(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+        );
       }
       return {
         registrationId,

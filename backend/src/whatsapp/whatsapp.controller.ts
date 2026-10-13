@@ -78,7 +78,9 @@ export class WhatsAppController {
 
     // Fire-and-forget: Meta needs a fast 200, and persistence is self-contained
     // (every branch is wrapped) so a failure here never breaks the ack.
-    void this.whatsappService.handleWebhookPayload(req.body);
+    void this.whatsappService.handleWebhookPayload(req.body).catch((err) =>
+      this.logger.error(`handleWebhookPayload failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
 
     return { received: true };
   }

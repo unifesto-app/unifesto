@@ -638,16 +638,36 @@ export class CertificatesService {
       select: { id: true, status: true },
     });
 
-    const queued = await this.issuanceQueue.add(batch.id);
-    if (!queued) {
-      // No queue (Redis down) — process inline, but don't block the response or
-      // surface a processing error to the caller; the batch row records outcome.
-      void this.processBatch(batch.id).catch((error) =>
-        this.logger.error(`Inline issuance for batch ${batch.id} failed`, error),
-      );
-    }
+    await this.dispatchBatch(batch.id);
 
     return { batchId: batch.id, status: batch.status };
+  }
+
+  /**
+   * Hand a batch to the cert worker. No Redis configured (local dev) = process
+   * inline in the background. Redis configured but down = the batch is marked
+   * FAILED and the 503 reaches the caller; nothing renders on the request path.
+   */
+  private async dispatchBatch(batchId: string): Promise<void> {
+    let queued: boolean;
+    try {
+      queued = await this.issuanceQueue.add(batchId);
+    } catch (err) {
+      await this.prisma.certificateBatch.update({
+        where: { id: batchId },
+        data: {
+          status: CertificateBatchStatus.FAILED,
+          error: 'Queue unavailable',
+          finishedAt: new Date(),
+        },
+      });
+      throw err;
+    }
+    if (!queued) {
+      void this.processBatch(batchId).catch((error) =>
+        this.logger.error(`Inline issuance for batch ${batchId} failed`, error),
+      );
+    }
   }
 
   /**
@@ -941,10 +961,7 @@ export class CertificatesService {
       verifyUrl: `${this.webUrl}/verify/${verificationCode}`,
       verifyCode: verificationCode,
     };
-    const [pdf, png] = await Promise.all([
-      this.render.renderPdf(renderInput),
-      this.render.renderPng(renderInput),
-    ]);
+    const { pdf, png } = await this.render.renderAll(renderInput);
     const [pdfUrl, imageUrl] = await Promise.all([
       this.storage.uploadBuffer(
         pdf,
@@ -1332,12 +1349,7 @@ export class CertificatesService {
       },
       select: { id: true },
     });
-    const queued = await this.issuanceQueue.add(batch.id);
-    if (!queued) {
-      void this.processBatch(batch.id).catch((error) =>
-        this.logger.error(`Inline issuance for batch ${batch.id} failed`, error),
-      );
-    }
+    await this.dispatchBatch(batch.id);
     return { batchId: batch.id };
   }
 
@@ -1440,8 +1452,24 @@ export class CertificatesService {
    * certificate — the same bound the issuance worker gives a batch — rather than
    * ballooning RSS. A single certificate's failure is logged and counted, never
    * aborting the rest.
+   *
+   * The request only checks access and counts; the renders run on the cert
+   * worker (S20) and the response says `queued: true` with zero counts. Without
+   * Redis configured (local dev) it still runs inline and returns real counts.
    */
   async reissueAllRevoked(userId: string, eventId: string) {
+    await this.assertCanManage(eventId, userId);
+    const total = await this.prisma.certificate.count({
+      where: { eventId, status: CertificateStatus.REVOKED },
+    });
+    if (total && (await this.issuanceQueue.addReissueRevoked(eventId, userId))) {
+      return { total, reissued: 0, emailed: 0, failed: 0, queued: true };
+    }
+    return this.reissueAllRevokedNow(userId, eventId);
+  }
+
+  /** The reissue loop itself; run by the cert worker (or inline, see above). */
+  async reissueAllRevokedNow(userId: string, eventId: string) {
     const event = await this.assertCanManage(eventId, userId);
 
     const revoked = await this.prisma.certificate.findMany({
@@ -1463,7 +1491,7 @@ export class CertificatesService {
       }
     }
 
-    return { total: revoked.length, reissued, emailed, failed };
+    return { total: revoked.length, reissued, emailed, failed, queued: false };
   }
 
   /**

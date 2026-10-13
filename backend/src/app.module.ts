@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { FailOpenThrottlerStorage } from './common/throttler/fail-open-throttler.storage';
 import { APP_GUARD } from '@nestjs/core';
 import { UserAwareThrottlerGuard } from './common/guards/user-aware-throttler.guard';
 import { CategoriesModule } from './categories/categories.module';
@@ -78,7 +79,17 @@ import { StaysModule } from './stays/stays.module';
         // in-memory storage. createClient() returns a connecting client that
         // buffers until ready, so the store is Redis-backed and shared across
         // replicas.
-        const redisClient = redisService.createClient();
+        //
+        // Fail fast, never queue: with the shared defaults
+        // (maxRetriesPerRequest: null + offline queue) a Redis outage made every
+        // throttled request wait forever, the health probe included, so Caddy
+        // ejected all replicas at once. Here a dead Redis errors immediately and
+        // FailOpenThrottlerStorage lets the request through.
+        const redisClient = redisService.createClient({
+          maxRetriesPerRequest: 0,
+          enableOfflineQueue: false,
+          commandTimeout: 500,
+        });
 
         if (redisClient) {
           logger.log('Throttler using Redis storage backend');
@@ -92,7 +103,9 @@ import { StaysModule } from './stays/stays.module';
                 limit: 300, // 300 requests per 60 seconds
               },
             ],
-            storage: new ThrottlerStorageRedisService(redisClient),
+            storage: new FailOpenThrottlerStorage(
+              new ThrottlerStorageRedisService(redisClient),
+            ),
           };
         } else {
           logger.warn(

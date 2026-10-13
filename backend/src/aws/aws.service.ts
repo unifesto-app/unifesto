@@ -50,6 +50,7 @@ import {
 } from '@aws-sdk/client-sesv2';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
 
 const execAsync = promisify(exec);
 
@@ -80,7 +81,7 @@ export class AwsService {
     this.s3BucketName = this.configService.get<string>('S3_BUCKET_NAME', 'unifesto-storage-bucket');
 
     // Initialize AWS clients
-    const awsConfig = { region: this.region };
+    const awsConfig = { region: this.region, ...AWS_HTTP_TIMEOUTS };
     this.ec2Client = new EC2Client(awsConfig);
     this.rdsClient = new RDSClient(awsConfig);
     this.cacheClient = new ElastiCacheClient(awsConfig);

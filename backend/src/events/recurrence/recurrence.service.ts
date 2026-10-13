@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import slugify from 'slugify';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../redis/redis.service';
 import { expandRRule, parseRRule } from './rrule.util';
 
 /**
@@ -27,19 +28,32 @@ export class RecurrenceService {
   /** How far ahead we ever materialize ("weekly forever" can't be infinite). */
   private static readonly HORIZON_MONTHS = 12;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   /**
    * Daily: extend every active series' rolling window so "weekly forever" keeps
-   * ~12 months of occurrences materialized ahead. 3 AM IST is off-peak. Each
-   * replica runs its own copy; generation is idempotent (dedupes by start), so
-   * overlapping runs converge rather than duplicate.
+   * ~12 months of occurrences materialized ahead. 3 AM IST is off-peak. Every
+   * replica fires this cron, so one wins a Redis lock per day and runs it; the
+   * (seriesParentId, startDateTime) unique index catches any overlap left
+   * (Redis down = fail open, or a create racing the cron).
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async dailyReconcile(): Promise<void> {
-    this.logger.log('recurrence: daily series reconcile starting');
-    await this.reconcileAllSeries();
-    this.logger.log('recurrence: daily series reconcile done');
+    const day = new Date().toISOString().slice(0, 10);
+    const ran = await this.redis.runExclusive(
+      `cron:recurrenceReconcile:${day}`,
+      6 * 60 * 60,
+      async () => {
+        this.logger.log('recurrence: daily series reconcile starting');
+        await this.reconcileAllSeries();
+        this.logger.log('recurrence: daily series reconcile done');
+      },
+    );
+    if (!ran)
+      this.logger.log('recurrence: reconcile skipped (another replica ran it)');
   }
 
   /** Far edge of the rolling window from a given "now". */
@@ -116,7 +130,10 @@ export class RecurrenceService {
    *
    * Returns the number of occurrences created.
    */
-  async generateOccurrences(parentId: string, now: Date = new Date()): Promise<number> {
+  async generateOccurrences(
+    parentId: string,
+    now: Date = new Date(),
+  ): Promise<number> {
     const parent = await this.prisma.event.findUnique({
       where: { id: parentId },
       include: { ticketTypes: true },
@@ -143,7 +160,8 @@ export class RecurrenceService {
       return 0;
     }
 
-    const durationMs = parent.endDateTime.getTime() - parent.startDateTime.getTime();
+    const durationMs =
+      parent.endDateTime.getTime() - parent.startDateTime.getTime();
     const to = this.horizonFrom(now);
 
     // Generate from the true DTSTART (so COUNT/UNTIL are honoured), but only
@@ -162,37 +180,49 @@ export class RecurrenceService {
     let created = 0;
     for (const start of toCreate) {
       const end = new Date(start.getTime() + durationMs);
-      await this.prisma.$transaction(async (tx) => {
-        const occ = await tx.event.create({
-          data: this.occurrenceDataFromParent(parent, start, end),
-        });
-        if (parent.ticketTypes.length) {
-          await tx.eventTicketType.createMany({
-            data: parent.ticketTypes.map((t) => ({
-              eventId: occ.id,
-              name: t.name,
-              description: t.description,
-              price: t.price,
-              currency: t.currency,
-              totalQuantity: t.totalQuantity,
-              // Fresh occurrence: nothing sold yet.
-              soldCount: 0,
-              kind: t.kind,
-              groupPricingMode: t.groupPricingMode,
-              minGroupSize: t.minGroupSize,
-              maxGroupSize: t.maxGroupSize,
-              saleStartsAt: t.saleStartsAt,
-              saleEndsAt: t.saleEndsAt,
-              perUserLimit: t.perUserLimit,
-              waitlistEnabled: t.waitlistEnabled,
-              waitlistOfferTtlHours: t.waitlistOfferTtlHours,
-              isVisible: t.isVisible,
-              isActive: t.isActive,
-              order: t.order,
-            })),
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          const occ = await tx.event.create({
+            data: this.occurrenceDataFromParent(parent, start, end),
           });
+          if (parent.ticketTypes.length) {
+            await tx.eventTicketType.createMany({
+              data: parent.ticketTypes.map((t) => ({
+                eventId: occ.id,
+                name: t.name,
+                description: t.description,
+                price: t.price,
+                currency: t.currency,
+                totalQuantity: t.totalQuantity,
+                // Fresh occurrence: nothing sold yet.
+                soldCount: 0,
+                kind: t.kind,
+                groupPricingMode: t.groupPricingMode,
+                minGroupSize: t.minGroupSize,
+                maxGroupSize: t.maxGroupSize,
+                saleStartsAt: t.saleStartsAt,
+                saleEndsAt: t.saleEndsAt,
+                perUserLimit: t.perUserLimit,
+                waitlistEnabled: t.waitlistEnabled,
+                waitlistOfferTtlHours: t.waitlistOfferTtlHours,
+                isVisible: t.isVisible,
+                isActive: t.isActive,
+                order: t.order,
+              })),
+            });
+          }
+        });
+      } catch (err) {
+        // Another runner created this slot between our read and the insert;
+        // the unique index rolled our copy back. Not an error.
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          continue;
         }
-      });
+        throw err;
+      }
       created += 1;
     }
 
@@ -202,7 +232,9 @@ export class RecurrenceService {
     });
 
     if (created) {
-      this.logger.log(`Series ${parentId}: materialized ${created} new occurrence(s)`);
+      this.logger.log(
+        `Series ${parentId}: materialized ${created} new occurrence(s)`,
+      );
     }
     return created;
   }
@@ -214,7 +246,9 @@ export class RecurrenceService {
    */
   async reconcileAllSeries(now: Date = new Date()): Promise<void> {
     const refillBefore = new Date(now);
-    refillBefore.setUTCMonth(refillBefore.getUTCMonth() + RecurrenceService.HORIZON_MONTHS - 1);
+    refillBefore.setUTCMonth(
+      refillBefore.getUTCMonth() + RecurrenceService.HORIZON_MONTHS - 1,
+    );
 
     const parents = await this.prisma.event.findMany({
       where: {

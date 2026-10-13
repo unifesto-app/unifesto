@@ -592,7 +592,9 @@ export class RefundsService {
 
     // The money goes back to the cards it came from. When someone other than
     // today's lead paid (a lead who handed over, or bought extra seats), tell them.
-    void this.notifyOtherPayers(reg.id, reg.userId, request.registration.event.title, regCash, addonDone);
+    void this.notifyOtherPayers(reg.id, reg.userId, request.registration.event.title, regCash, addonDone).catch((err) =>
+      this.logger.error(`notifyOtherPayers(${reg.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
 
     const eventTitle = request.registration.event.title;
     const payer = await this.userContact(reg.userId);
