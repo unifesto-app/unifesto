@@ -246,9 +246,11 @@ export default function SpaceScreen() {
  * "2 check-ins live · 3 events coming up". Null hides it.
  */
 function summaryLine(n: { live: number; upcoming: number; spaces: number }): string | null {
-  // TODO(user): decide what the header says. See the note in chat.
-  void n;
-  return null;
+  const parts = [
+    n.live ? `${n.live} check-in${n.live === 1 ? '' : 's'} live` : null,
+    n.upcoming ? `${n.upcoming} event${n.upcoming === 1 ? '' : 's'} coming up` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 /** Card holding a list of rows (same surface as the Home operator panel). */

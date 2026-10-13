@@ -30,24 +30,21 @@ interface CurrentDevice {
   optedIn: boolean;
 }
 
+/** Re-report an unchanged device after this long so `lastSeenAt` stays fresh. */
+const REPORT_STALE_MS = 24 * 60 * 60 * 1000;
+
 /**
- * TODO(you): Decide whether this call should hit the network.
- *
- * Runs on every session start AND every OneSignal subscription change (id
- * issued, opt-in toggled). Reporting every time costs one small write per app
- * open; the backend skips the OneSignal link call once a device is linked.
- *
- * Things that MUST trigger a report: a different user on this device, a new
- * subscription id (reinstall / token rotation), opt-in flipping. The open
- * question is the "nothing changed" case: never re-report (fewest writes, but
- * `lastSeenAt` goes stale and a server-side failed link isn't retried until
- * something changes) vs. refresh after some interval (like appVersionReport's
- * 24h) vs. always.
- *
- * Default below = always report (correct, just chattier).
+ * Runs on every session start AND every OneSignal subscription change. Report
+ * when anything identifying changed (user, subscription id, opt-in); otherwise
+ * refresh once a day, like appVersionReport. A bad timestamp counts as stale.
  */
 function shouldReport(current: CurrentDevice, last: LastReport | null): boolean {
-  return true;
+  if (!last) return true;
+  if (last.userId !== current.userId) return true;
+  if (last.subscriptionId !== current.subscriptionId) return true;
+  if (last.optedIn !== current.optedIn) return true;
+  const lastAt = Date.parse(last.at);
+  return Number.isNaN(lastAt) || Date.now() - lastAt >= REPORT_STALE_MS;
 }
 
 /**

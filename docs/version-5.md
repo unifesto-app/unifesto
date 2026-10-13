@@ -58,7 +58,6 @@ Worked back from the date, with room for one store rejection. Only the release d
 | S | **Backend audit found live exploits:** payment-receipt replay (S1–S3) and two account takeovers (S4–S5). Backend deploys are not tied to 2 Dec, so fix and deploy these first | next |
 | O | **OTA is blocked.** `main` matches no live store build, so mobile work since 4 Oct reaches nobody until 5.0.0 is live on **2 Dec** (D6). Phase 2 guards (O7–O16) can be built now | next |
 | H | White-label P1–P3 merged (#106), not deployed. **Needs you:** Cloudflare SSL for SaaS + env (H8), then deploy (H10) and verify (H11) | next |
-| 0 | Clean house: 0.1–0.7 done (~10.6k lines removed). 0.8 needs your 5 decisions | in progress |
 
 ## Suggested order
 
@@ -226,7 +225,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | 0.5 | Mobile: delete `SettingsScreen.tsx`, `App.tsx`, `index.ts`, `src/navigation/*.ts.old`, `GlassyButton`, `GradientText`, `Footer`, `PasscodeInput`, `StepIndicator`, `RegistrationTimer`, `PocketWordmark`, `useRegistrationPayment`, `utils/iconMapper.ts`, `lib/spacesPlaceholder.ts`, `lib/api/device.ts`, `eventHelpers.ts`, `deepLinking.ts`, unused `constants.ts` exports; routes `spaces-list`, `signup`, `seats/[registrationId]`; stale wallet/coins comments | done (#108) |
 | 0.6 | Backend: legacy non-hackathon routes in `leaderboard/leaderboard.controller.ts` (rounds, metrics, panelists, awards). **Careful:** the hackathon services live in the same folder; delete only the controller routes with no callers | done (#107) |
 | 0.7 | Backend: referral and wallet leftovers (dormant tables decided separately) | done (#107) |
-| 0.8 | Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | in progress: stale TODOs removed; 5 decisions open (SpaceDetail join CTA, Space summaryLine, AdminEditUser empty fields, apexRequests ordering, pushDeviceReport.shouldReport) |
+| 0.8 | Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | done (#108) |
 
 ### A · Money and trust
 
@@ -449,3 +448,4 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 - **2026-10-14** · Backend audit (inventory, security, money/data, reliability) added as Track S. Live: payment-receipt replay (S1–S3) and identity takeover (S4–S5), confirmed in code.
 - **2026-10-14** · Track 0.6 + 0.7 (backend: 24 legacy leaderboard routes, referral/wallet leftovers) merged in #107.
 - **2026-10-14** · Track 0.1–0.5 (Apex pre-pivot pages/organiser branches, Space redirect routes + copied admin API fns, mobile dead screens/components/routes) + leaderboard `manage` route: #108. tsc green on all apps, backend jest green. Mobile is JS-only; `/signup` links now map to `/login` in `+native-intent.tsx`.
+- **2026-10-14** · Track 0.8 closed in #108: Space join bar hidden for members; Space tab summary "N check-ins live · M events coming up"; Apex edit-user sends null for cleared optional fields (name/username can't be cleared); Apex requests "All" orders open by oldest waiting, history by most recent; push-device report only on user/subscription/opt-in change or every 24h. Track 0 done.
