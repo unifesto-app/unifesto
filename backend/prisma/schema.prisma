@@ -413,6 +413,10 @@ model User {
   appVersion               String?   @map("app_version") @db.VarChar(20)
   appPlatform              String?   @map("app_platform") @db.VarChar(10)
   appVersionLastReportedAt DateTime? @map("app_version_last_reported_at") @db.Timestamptz(6)
+  // EAS Update runtime (fingerprint) + running OTA update id (null = the store build's own code).
+  // 4.0.x clients never report these. Feeds the adoption view in Apex › OTA updates.
+  appRuntimeVersion        String?   @map("app_runtime_version") @db.VarChar(64)
+  appUpdateId              String?   @map("app_update_id") @db.VarChar(36)
 
   // Last authenticated request from any client (mobile, web, space, apex).
   // Stamped by JwtAuthGuard, throttled to one write per user per 5 minutes.
@@ -2411,6 +2415,11 @@ model PlatformConfig {
   // Stats" daily/weekly/milestone broadcast. Admin-editable from Apex; read
   // fresh at send time so every replica sees edits immediately.
   statsRecipients String[] @default([]) @map("stats_recipients")
+
+  // Latest snapshot of `main` that CI POSTs on every push touching mobile/:
+  // { sha, otaSafe, fingerprints, commits: [{ sha, date }] }. Powers the
+  // stale-OTA alarm in Apex › OTA updates.
+  otaMainStatus Json? @map("ota_main_status")
 
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 

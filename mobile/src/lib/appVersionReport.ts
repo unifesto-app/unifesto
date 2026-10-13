@@ -2,12 +2,17 @@ import { Platform } from 'react-native';
 import * as Application from 'expo-application';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { makeAuthenticatedRequest } from './api/helpers';
+import { buildInfo } from './appBuild';
 
 /**
  * Reports the installed build to the backend so staff can see, per account,
  * which app version each user is running (surfaced in Apex → Users). This is
  * the client half of that feature; the backend persists it on the user row via
  * PATCH /users/me/app-version.
+ *
+ * It also sends the EAS runtime and the running OTA update id (null = the
+ * store build's own code), so Apex › OTA updates can show how many active
+ * users each runtime and update reached.
  *
  * Separate from `appUpdate.ts`, which *reads* the version policy to prompt for
  * updates — this module *writes* the current client's version.
@@ -16,12 +21,19 @@ import { makeAuthenticatedRequest } from './api/helpers';
 const LAST_REPORTED_KEY = 'unifesto_last_reported_app_version';
 
 /** Fire the report to the backend. Best-effort: never throws. */
-async function sendReport(version: string, platform: string): Promise<boolean> {
+async function sendReport(
+  version: string,
+  platform: string,
+  runtimeVersion: string | null,
+  updateId: string | null,
+): Promise<boolean> {
   try {
-    const response = await makeAuthenticatedRequest('/users/me/app-version', {
-      method: 'PATCH',
-      body: JSON.stringify({ version, platform }),
-    });
+    const patch = (body: object) =>
+      makeAuthenticatedRequest('/users/me/app-version', { method: 'PATCH', body: JSON.stringify(body) });
+    // runtimeVersion is null in dev / with expo-updates disabled: omit both then.
+    let response = await patch(runtimeVersion ? { version, platform, runtimeVersion, updateId } : { version, platform });
+    // A backend from before the runtime fields rejects unknown properties (400): still report the version.
+    if (response?.status === 400 && runtimeVersion) response = await patch({ version, platform });
     return Boolean(response?.ok);
   } catch {
     return false;
@@ -36,7 +48,7 @@ async function sendReport(version: string, platform: string): Promise<boolean> {
  * per launch per user. Gating avoids that — but the gate defines what the
  * admin's "last reported at" timestamp actually means.
  *
- * Chosen policy: report on any version change, and otherwise at most once per
+ * Chosen policy: report on any version or OTA update change, and otherwise at most once per
  * `REPORT_STALE_MS` (24h). This keeps `appVersionLastReportedAt` honest as a
  * "last seen" signal for the admin view while capping writes to ~1/user/day.
  */
@@ -47,6 +59,8 @@ interface LastReport {
   /** Who we reported for — the cache is per device, but the row is per user. */
   userId: string;
   version: string;
+  /** Running OTA update (null = build code). Missing on caches from older versions. */
+  updateId?: string | null;
   /** ISO timestamp of when we last reported. */
   at: string;
 }
@@ -54,6 +68,7 @@ interface LastReport {
 function shouldReport(
   userId: string,
   installedVersion: string,
+  updateId: string | null,
   lastReported: LastReport | null,
 ): boolean {
   // Never reported on this device → report.
@@ -63,6 +78,8 @@ function shouldReport(
   if (lastReported.userId !== userId) return true;
   // Version changed since we last reported → report immediately.
   if (lastReported.version !== installedVersion) return true;
+  // A new OTA update (or a rollback) started running → report so adoption is current.
+  if ((lastReported.updateId ?? null) !== updateId) return true;
   // Same version, but our last report is stale → refresh so "last seen" tracks
   // recency. A malformed/missing timestamp is treated as stale.
   const lastAt = Date.parse(lastReported.at);
@@ -97,17 +114,19 @@ export async function maybeReportAppVersion(userId: string): Promise<void> {
   if (inFlight) return;
   inFlight = true;
   try {
+    const { runtimeVersion, updateId } = buildInfo();
     const lastReported = await readLastReport();
 
-    if (!shouldReport(userId, installedVersion, lastReported)) return;
+    if (!shouldReport(userId, installedVersion, updateId, lastReported)) return;
 
-    const ok = await sendReport(installedVersion, Platform.OS);
+    const ok = await sendReport(installedVersion, Platform.OS, runtimeVersion, updateId);
     if (ok) {
       // Only remember the report once the server has accepted it, so a failed
       // report is retried on the next launch instead of being silently dropped.
       const record: LastReport = {
         userId,
         version: installedVersion,
+        updateId,
         at: new Date().toISOString(),
       };
       await AsyncStorage.setItem(

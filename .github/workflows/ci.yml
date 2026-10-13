@@ -101,6 +101,9 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The OTA status report counts mobile commits on main: needs history.
+          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -117,6 +120,16 @@ jobs:
           npx expo export --platform ios --output-dir /tmp/export-ios
       - name: Expo config resolves (runtime + updates)
         run: npx expo config --type public > /dev/null
+      - name: Report OTA status to Apex (stale-OTA alarm)
+        # Main's fingerprints vs the live store builds + its mobile commits, so
+        # Apex › OTA updates can show what main holds that nobody has received.
+        # Skips with a warning until the secrets are set.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          OTA_STATUS_URL: ${{ vars.OTA_STATUS_URL || 'https://api.unifesto.app' }}
+          OTA_STATUS_SECRET: ${{ secrets.OTA_STATUS_SECRET }}
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+        run: node scripts/ota-status-report.js
 
   ota-safe:
     # O7: does this PR keep main OTA-reachable? Fingerprints the PR (merge ref)

@@ -713,6 +713,31 @@ export const revertOtaRollout = (group: string) => call<{ ok: true }>(`/admin/ot
 /** POST /admin/ota/:group/republish — make an earlier update the latest again (rollback). */
 export const republishOtaGroup = (group: string) => call<{ ok: true }>(`/admin/ota/${group}/republish`, post({}));
 
+export interface OtaAdoption {
+  days: number;
+  /** Active = reported in the last `days` days. */
+  total: number;
+  /** runtimeVersion null = clients too old to report one (4.0.x). */
+  byRuntime: { runtimeVersion: string | null; users: number }[];
+  /** updateId null = running the store build's own code. */
+  byUpdate: { runtimeVersion: string; updateId: string | null; users: number }[];
+}
+/** GET /admin/ota/adoption — what active phones run, per runtime and per update. */
+export const getOtaAdoption = () => call<OtaAdoption>('/admin/ota/adoption');
+
+export interface OtaStaleness {
+  /** Last CI report of main; null until CI first posts it. */
+  main: { sha: string; otaSafe: boolean; reportedAt: string } | null;
+  lastPublish: { group: string; createdAt: string; message: string | null } | null;
+  /** Mobile commits on main newer than the last production publish. */
+  unshippedCommits: number | null;
+  unshippedTruncated: boolean;
+  oldestUnshippedAt: string | null;
+  expoError: string | null;
+}
+/** GET /admin/ota/staleness — the stale-OTA alarm. */
+export const getOtaStaleness = () => call<OtaStaleness>('/admin/ota/staleness');
+
 // ── Unifesto Stats recipients ────────────────────────────────────────────────
 
 /** GET /admin/stats-recipients — numbers that get the daily/weekly stats WhatsApp. */
