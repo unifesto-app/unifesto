@@ -23,6 +23,11 @@ describe('PaymentsService', () => {
       expect(service.computeProcessingFee(1000)).toBe(20); // 2% of 1000
     });
 
+    it('rounds to the paise (S16)', () => {
+      expect(service.computeProcessingFee(617.25)).toBe(12.35); // 2% = 12.345
+      expect(service.computeProcessingFee(0.3)).toBe(0.01); // 2% = 0.006
+    });
+
     it('is zero for a free base price', () => {
       expect(service.computeProcessingFee(0)).toBe(0);
     });
