@@ -4,6 +4,7 @@ import { createHmac, randomInt } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { CreateAdminShortLinkDto, CreateShortLinkDto, RecordViewDto } from './dto';
+import { hmacSecret } from '../common/secrets';
 
 /** utm_medium every short link destination carries; utm_campaign is the code. */
 export const SHORT_LINK_MEDIUM = 'short_link';
@@ -465,8 +466,7 @@ export class TrafficService {
   }
 
   private async recordClick(shortLinkId: string, visitor: { ip?: string; ua?: string; referer?: string }) {
-    const secret = process.env.TRAFFIC_HASH_SECRET || process.env.JWT_SECRET || 'unifesto-traffic';
-    const visitorHash = createHmac('sha256', secret)
+    const visitorHash = createHmac('sha256', hmacSecret('TRAFFIC_HASH_SECRET', 'traffic'))
       .update(`${visitor.ip ?? ''}|${visitor.ua ?? ''}`)
       .digest('hex');
     await this.prisma.$transaction([
