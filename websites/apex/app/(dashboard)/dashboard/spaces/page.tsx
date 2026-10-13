@@ -1,25 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   MagnifyingGlass,
   Buildings,
   Users,
   Stack,
-  SealCheck,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
-import {
-  getMySpaces,
-  getAllSpacesAdmin,
-  type AdminSpace,
-} from "@/lib/api/spaces-api";
-import {
-  isSpaceOperatorRole,
-  type SpaceWithHierarchy,
-  type SpaceStatus,
-} from "@/lib/types/rbac";
+import { getAllSpacesAdmin, type AdminSpace } from "@/lib/api/spaces-api";
+import type { SpaceStatus } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -55,17 +45,8 @@ function roleLabel(code?: string) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-type DisplaySpace = SpaceWithHierarchy | AdminSpace;
-
-function isAdminSpace(space: DisplaySpace): space is AdminSpace {
-  return "roleCounts" in space;
-}
-
 export default function SpacesPage() {
-  const { role, loading: sessionLoading } = useSession();
-  const isAdmin = role === "platform_admin";
-
-  const [spaces, setSpaces] = useState<DisplaySpace[]>([]);
+  const [spaces, setSpaces] = useState<AdminSpace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -100,57 +81,13 @@ export default function SpacesPage() {
     setLoading(false);
   }, [page, debounced]);
 
-  const loadMine = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const { data, error } = await getMySpaces();
-    if (error) setError(error.message);
-    else
-      // Organisers only manage spaces where they hold an organiser role —
-      // exclude spaces where they're merely a member/volunteer.
-      setSpaces(
-        (data ?? []).filter((s) => isSpaceOperatorRole(s.userRole?.code))
-      );
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    if (sessionLoading) return;
-    if (isAdmin) void loadAdmin();
-    else void loadMine();
-  }, [sessionLoading, isAdmin, loadAdmin, loadMine]);
-
-  // Non-admins fetch all their spaces once, so filter + paginate client-side.
-  const clientFiltered = useMemo(() => {
-    if (isAdmin) return spaces;
-    const q = debounced.toLowerCase();
-    if (!q) return spaces;
-    return spaces.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.slug.toLowerCase().includes(q) ||
-        (!isAdminSpace(s) &&
-          (s.spaceKind === "SUPER" ? "super" : "regular").includes(q))
-    );
-  }, [spaces, debounced, isAdmin]);
-
-  // Admin pages come pre-sliced from the server; non-admins slice locally.
-  const visible = useMemo(() => {
-    if (isAdmin) return spaces;
-    const start = (page - 1) * PAGE_SIZE;
-    return clientFiltered.slice(start, start + PAGE_SIZE);
-  }, [isAdmin, spaces, clientFiltered, page]);
-
-  const effectiveTotalPages = isAdmin
-    ? totalPages
-    : Math.max(1, Math.ceil(clientFiltered.length / PAGE_SIZE));
-  const effectiveTotal = isAdmin ? total : clientFiltered.length;
+    void loadAdmin();
+  }, [loadAdmin]);
 
   const subtitle = loading
     ? "Loading spaces…"
-    : isAdmin
-      ? `${effectiveTotal.toLocaleString("en-IN")} space${effectiveTotal === 1 ? "" : "s"} across the platform`
-      : "The spaces you organise, with your role in each";
+    : `${total.toLocaleString("en-IN")} space${total === 1 ? "" : "s"} across the platform`;
 
   return (
     <div className="space-y-6">
@@ -173,7 +110,7 @@ export default function SpacesPage() {
         <CardContent className="pt-6">
           {loading ? (
             <TableSkeleton avatar />
-          ) : visible.length === 0 ? (
+          ) : spaces.length === 0 ? (
             <EmptyState
               icon={Buildings}
               tone={debounced ? "neutral" : "positive"}
@@ -181,9 +118,7 @@ export default function SpacesPage() {
               description={
                 debounced
                   ? "Try a different name, slug, or type."
-                  : isAdmin
-                    ? "Spaces created on the platform will appear here."
-                    : "Once you're granted an organiser role in a space, it will show up here."
+                  : "Spaces created on the platform will appear here."
               }
             />
           ) : (
@@ -200,7 +135,7 @@ export default function SpacesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((s) => (
+                  {spaces.map((s) => (
                     <SpaceRow key={s.id} space={s} />
                   ))}
                 </tbody>
@@ -210,10 +145,10 @@ export default function SpacesPage() {
         </CardContent>
       </Card>
 
-      {!loading && visible.length > 0 && effectiveTotalPages > 1 && (
+      {!loading && spaces.length > 0 && totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Page {page} of {effectiveTotalPages}
+            Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">
             <Button
@@ -227,8 +162,8 @@ export default function SpacesPage() {
             <Button
               variant="outline"
               size="sm"
-              disabled={page >= effectiveTotalPages}
-              onClick={() => setPage((p) => Math.min(effectiveTotalPages, p + 1))}
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
               Next
             </Button>
@@ -239,16 +174,10 @@ export default function SpacesPage() {
   );
 }
 
-function SpaceRow({ space }: { space: DisplaySpace }) {
-  const admin = isAdminSpace(space);
-  const verified = !admin && space.is_verified;
-  const kind = admin ? space.type : space.spaceKind;
+function SpaceRow({ space }: { space: AdminSpace }) {
+  const kind = space.type;
   const memberCount = space.member_count;
-  const childCount = admin
-    ? space.type === "SUPER"
-      ? space.child_count
-      : 0
-    : space.sub_org_count;
+  const childCount = space.type === "SUPER" ? space.child_count : 0;
 
   return (
     <tr className="border-b border-border/60 transition-colors last:border-0 hover:bg-muted/50">
@@ -272,13 +201,6 @@ function SpaceRow({ space }: { space: DisplaySpace }) {
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
               <span className="truncate">{space.name}</span>
-              {verified && (
-                <SealCheck
-                  className="h-4 w-4 flex-shrink-0 text-primary"
-                  weight="fill"
-                  aria-label="Verified"
-                />
-              )}
             </p>
             <p className="truncate text-xs text-muted-foreground">
               /{space.slug}
@@ -321,15 +243,9 @@ function SpaceRow({ space }: { space: DisplaySpace }) {
         )}
       </td>
       <td className="py-3">
-        {admin ? (
-          <Badge variant={STATUS_VARIANT[space.status]}>
-            {roleLabel(space.status) ?? space.status}
-          </Badge>
-        ) : space.is_active ? (
-          <Badge variant="success">Active</Badge>
-        ) : (
-          <Badge variant="warning">Inactive</Badge>
-        )}
+        <Badge variant={STATUS_VARIANT[space.status]}>
+          {roleLabel(space.status) ?? space.status}
+        </Badge>
       </td>
     </tr>
   );

@@ -29,7 +29,7 @@ export function useStableTopInset(): number {
 // The header now scrolls inline with the page (it is the first child of each
 // tab's ScrollView), so it occupies real layout space instead of floating. This
 // helper is kept for the RefreshControl spinner offset: drop it just below the
-// notch. Shared by Home, Tickets, Wallet & Profile. Pass useStableTopInset().
+// notch. Shared by Home, Tickets & Profile. Pass useStableTopInset().
 export const headerClearance = (insetsTop: number) => insetsTop + HEADER_CONTENT_HEIGHT + 8;
 
 interface CustomHeaderProps {

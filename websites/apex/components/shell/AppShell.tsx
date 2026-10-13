@@ -37,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <Sidebar role={role} />
+      <Sidebar />
       <main className="min-h-screen pt-16 pl-60">
         <div className="mx-auto max-w-6xl p-8">{children}</div>
       </main>

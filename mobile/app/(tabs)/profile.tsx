@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import ProfileScreen from '../../src/screens/ProfileScreen';
 import { useTheme } from '../../src/context/ThemeContext';
 
-// Profile is the account hub: Wallet, Notifications, Support, Edit profile, etc.
+// Profile is the account hub: Notifications, Support, Edit profile, etc.
 // Thin wrapper mirroring the Tickets tab: an OPAQUE root View (backgroundColor
 // set) so the native tab host lets the inner ScrollView's
 // contentInsetAdjustmentBehavior="never" suppress the safe-area top inset. A

@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Money, Bank, Clock, CheckCircle } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import {
   getAllPayoutsUnpaginated,
-  getMyPayoutsUnpaginated,
   markPayoutPaid,
   cancelPayout,
   getAdminEventPayoutSummary,
@@ -74,9 +72,6 @@ const STATUS_BADGE: Record<
 const OWED: PayoutStatus[] = ["PENDING", "PROCESSING"];
 
 export default function PayoutsPage() {
-  const { role } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -89,14 +84,11 @@ export default function PayoutsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    // Admins reconcile every space's payouts; organisers see only their own.
-    const { data, error } = isAdmin
-      ? await getAllPayoutsUnpaginated()
-      : await getMyPayoutsUnpaginated();
+    const { data, error } = await getAllPayoutsUnpaginated();
     if (error) setError(error.message);
     else setPayouts(data ?? []);
     setLoading(false);
-  }, [isAdmin]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -110,12 +102,12 @@ export default function PayoutsPage() {
     const now = new Date();
     let pending = 0;
     let paidThisMonth = 0;
-    // Admins count distinct organisers due; organisers count distinct events.
+    // Distinct organisers due.
     const dueUnits = new Set<string>();
     for (const p of payouts) {
       if (OWED.includes(p.status)) {
         pending += Number(p.netAmount);
-        dueUnits.add(isAdmin ? p.userId : p.eventId);
+        dueUnits.add(p.userId);
       }
       if (p.status === "COMPLETED" && p.completedAt) {
         const d = new Date(p.completedAt);
@@ -128,7 +120,7 @@ export default function PayoutsPage() {
       }
     }
     return { pending, paidThisMonth, dueUnits: dueUnits.size };
-  }, [payouts, isAdmin]);
+  }, [payouts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -150,15 +142,9 @@ export default function PayoutsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Payouts"
-        subtitle={
-          isAdmin
-            ? "Money released to organisations for their events"
-            : "Payouts owed to and received by your space"
-        }
+        subtitle="Money released to organisations for their events"
         actions={
-          isAdmin && (
-            <Button onClick={() => setCreateOpen(true)}>Create payout</Button>
-          )
+          <Button onClick={() => setCreateOpen(true)}>Create payout</Button>
         }
       />
 
@@ -166,7 +152,7 @@ export default function PayoutsPage() {
         <StatCard
           title="Pending payout"
           value={money(summary.pending)}
-          hint={isAdmin ? "Owed to spaces" : "Owed to you"}
+          hint="Owed to spaces"
           icon={Clock}
           tone="brand"
           loading={loading}
@@ -180,7 +166,7 @@ export default function PayoutsPage() {
           loading={loading}
         />
         <StatCard
-          title={isAdmin ? "Spaces due" : "Events due"}
+          title="Spaces due"
           value={summary.dueUnits}
           hint="Awaiting disbursement"
           icon={Bank}
@@ -220,9 +206,8 @@ export default function PayoutsPage() {
         <CardHeader>
           <CardTitle className="text-base">Payout runs</CardTitle>
           <CardDescription>
-            {isAdmin
-              ? "Each payout is the net owed to an organiser for one event. Transfer the funds manually, then mark it paid with the bank reference."
-              : "Each payout is the net you earn from one event, after the platform fee. It's paid to your verified bank account."}
+            Each payout is the net owed to an organiser for one event. Transfer
+            the funds manually, then mark it paid with the bank reference.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -255,7 +240,7 @@ export default function PayoutsPage() {
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {isAdmin ? `${orgName(p)} · ` : ""}
+                        {`${orgName(p)} · `}
                         {p.bankAccount
                           ? p.bankAccount.methodType === "UPI"
                             ? `UPI ${p.bankAccount.upiId ?? ""}`
@@ -277,7 +262,7 @@ export default function PayoutsPage() {
                           gross {money(p.grossRevenue)}
                         </p>
                       </div>
-                      {isAdmin && p.status === "PENDING" && (
+                      {p.status === "PENDING" && (
                         <Button size="sm" onClick={() => setActive(p)}>
                           Mark paid
                         </Button>

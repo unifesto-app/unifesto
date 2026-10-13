@@ -86,15 +86,6 @@ export interface SupportStats {
   total: number;
 }
 
-export interface CreateTicketInput {
-  subject: string;
-  message: string;
-  category?: SupportTicketCategory;
-  priority?: SupportTicketPriority;
-  spaceId?: string;
-  contactEmail?: string;
-}
-
 export interface ListTicketsParams {
   status?: SupportTicketStatus;
   category?: SupportTicketCategory;
@@ -107,13 +98,6 @@ export interface ListTicketsParams {
 }
 
 type Result<T> = { data: T | null; error: ApiError | null };
-
-/** `POST /support/tickets` — raise a ticket (any authenticated user). */
-export async function createTicket(
-  input: CreateTicketInput
-): Promise<Result<SupportTicket>> {
-  return apiCall<SupportTicket>(backendClient.post("/support/tickets", input));
-}
 
 /** `GET /support/tickets` — role-scoped list with filters. */
 export async function listTickets(
@@ -148,22 +132,6 @@ export async function replyToTicket(
 ): Promise<Result<SupportMessage>> {
   return apiCall<SupportMessage>(
     backendClient.post(`/support/tickets/${id}/messages`, { body })
-  );
-}
-
-/** `PATCH /support/tickets/:id/close` — requester closes their own ticket. */
-export async function closeOwnTicket(id: string): Promise<Result<SupportTicket>> {
-  return apiCall<SupportTicket>(
-    backendClient.patch(`/support/tickets/${id}/close`)
-  );
-}
-
-/** `PATCH /support/tickets/:id/reopen` — requester reopens their own ticket. */
-export async function reopenOwnTicket(
-  id: string
-): Promise<Result<SupportTicket>> {
-  return apiCall<SupportTicket>(
-    backendClient.patch(`/support/tickets/${id}/reopen`)
   );
 }
 

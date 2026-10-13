@@ -121,19 +121,6 @@ export interface PlanInfo {
   annualPrice: number | null;
 }
 
-export interface SubscriptionUsage {
-  spacesCount: number;
-  eventsThisMonth: number;
-  plan: OrgPlan;
-  limits: {
-    spaces: number | null;
-    eventsPerMonth: number | null;
-    attendeesPerEvent: number | null;
-    ticketTypes: number | null;
-    coCurators: number | null;
-  };
-}
-
 export interface BillingStats {
   total: number;
   free: number;
@@ -182,18 +169,6 @@ export interface ListSubscriptionsParams {
 
 type Result<T> = { data: T | null; error: ApiError | null };
 
-/* ------------------------------- Organiser ------------------------------- */
-
-/** `GET /subscription` — the current organiser's arrangement. */
-export async function getMySubscription(): Promise<Result<Subscription>> {
-  return apiCall<Subscription>(backendClient.get("/subscription"));
-}
-
-/** `GET /subscription/usage` — usage vs the plan's limits. */
-export async function getMyUsage(): Promise<Result<SubscriptionUsage>> {
-  return apiCall<SubscriptionUsage>(backendClient.get("/subscription/usage"));
-}
-
 /** `GET /subscription/plans` — plan catalogue with limits + pricing. */
 export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
   return apiCall<PlanInfo[]>(backendClient.get("/subscription/plans"));
@@ -212,21 +187,6 @@ export interface PlatformConfig {
 /** `GET /admin/platform-config` — read app-wide settings (admin). */
 export async function getPlatformConfig(): Promise<Result<PlatformConfig>> {
   return apiCall<PlatformConfig>(backendClient.get("/admin/platform-config"));
-}
-
-/**
- * `GET /config/processing-fee` — the fixed, app-wide processing fee percentage,
- * public (no admin rights needed). This is the fee attendees actually pay on
- * every paid registration, so organiser-facing pages should display *this*
- * rather than a plan's stored `processingFeePercent`, which is editable and can
- * drift from what's charged.
- */
-export async function getAppProcessingFeePercent(): Promise<
-  Result<{ processingFeePercent: number }>
-> {
-  return apiCall<{ processingFeePercent: number }>(
-    backendClient.get("/config/processing-fee")
-  );
 }
 
 /**

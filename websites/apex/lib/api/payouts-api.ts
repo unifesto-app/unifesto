@@ -86,42 +86,6 @@ export async function getAllPayoutsUnpaginated(
   return { data: all, error: null };
 }
 
-/** Organiser: their own payouts. `GET /payouts/my`. */
-export async function getMyPayouts(params?: {
-  page?: number;
-  limit?: number;
-}): Promise<{ data: PayoutListResponse | null; error: ApiError | null }> {
-  return apiCall<PayoutListResponse>(
-    backendClient.get("/payouts/my", { params })
-  );
-}
-
-/** Every payout for the current organiser (walks pages) — for summary tiles. */
-export async function getMyPayoutsUnpaginated(): Promise<{
-  data: Payout[] | null;
-  error: ApiError | null;
-}> {
-  const PAGE = 100;
-  const first = await getMyPayouts({ page: 1, limit: PAGE });
-  if (first.error) return { data: null, error: first.error };
-  if (!first.data) return { data: [], error: null };
-
-  const { payouts, pagination } = first.data;
-  if (pagination.totalPages <= 1) return { data: payouts, error: null };
-
-  const rest = await Promise.all(
-    Array.from({ length: pagination.totalPages - 1 }, (_, i) =>
-      getMyPayouts({ page: i + 2, limit: PAGE })
-    )
-  );
-  const all = [...payouts];
-  for (const r of rest) {
-    if (r.error) return { data: null, error: r.error };
-    if (r.data) all.push(...r.data.payouts);
-  }
-  return { data: all, error: null };
-}
-
 /** Mark a payout settled, recording the manual UTR/reference. `POST /payouts/admin/:id/process`. */
 export async function markPayoutPaid(
   id: string,

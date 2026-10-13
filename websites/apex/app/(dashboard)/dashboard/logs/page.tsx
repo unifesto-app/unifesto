@@ -10,7 +10,6 @@ import {
   Timer,
   Database,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -87,9 +86,6 @@ function methodColor(method: string): string {
  * handled, with status, latency, and who made it. Backed by `GET /admin/logs`.
  */
 export default function LogsPage() {
-  const { role } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [logs, setLogs] = useState<ApiLog[]>([]);
   const [stats, setStats] = useState<LogStats | null>(null);
   const [total, setTotal] = useState(0);
@@ -128,12 +124,12 @@ export default function LogsPage() {
   }, [status, method, search, page]);
 
   useEffect(() => {
-    if (isAdmin) loadLogs();
-  }, [isAdmin, loadLogs]);
+    loadLogs();
+  }, [loadLogs]);
 
   useEffect(() => {
-    if (isAdmin) loadStats();
-  }, [isAdmin, loadStats]);
+    loadStats();
+  }, [loadStats]);
 
   // Reset to page 1 when filters change.
   useEffect(() => {
@@ -178,19 +174,6 @@ export default function LogsPage() {
     ],
     [stats]
   );
-
-  if (!isAdmin) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Activity logs" />
-        <EmptyState
-          icon={ListChecks}
-          title="Admins only"
-          description="API logs are visible to platform staff."
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">

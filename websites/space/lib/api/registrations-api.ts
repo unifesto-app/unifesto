@@ -650,26 +650,6 @@ export async function makeGroupLead(
   );
 }
 
-/**
- * ADMIN: transfer a registration directly to the account that owns `email`.
- * Reassigns the holder — same ticket, QR, payment and roster — provided that
- * account exists and isn't already registered for this event. Organisers can't
- * call this; they use `requestTransfer`.
- * Backed by `POST /events/:id/registrations/:registrationId/transfer`.
- */
-export async function transferRegistration(
-  eventId: string,
-  registrationId: string,
-  email: string
-): Promise<{ data: Registration | null; error: ApiError | null }> {
-  return apiCall<Registration>(
-    backendClient.post(
-      `/events/${eventId}/registrations/${registrationId}/transfer`,
-      { email }
-    )
-  );
-}
-
 /** A ticket-transfer request (organiser → admin). */
 export interface TransferRequest {
   id: string;
@@ -693,11 +673,6 @@ export interface TransferRequest {
     };
   };
   requester: { id: string; fullName: string | null; username: string | null };
-}
-
-export interface TransferRequestsResponse {
-  requests: TransferRequest[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
 }
 
 /**
@@ -725,38 +700,6 @@ export async function getMyTransferRequests(): Promise<{
 }> {
   return apiCall<TransferRequest[]>(
     backendClient.get("/registration-transfer-requests/my")
-  );
-}
-
-/** ADMIN: transfer-request inbox. `GET /registration-transfer-requests`. */
-export async function getTransferRequests(
-  status?: "PENDING" | "APPROVED" | "REJECTED",
-  page = 1,
-  limit = 50
-): Promise<{ data: TransferRequestsResponse | null; error: ApiError | null }> {
-  const params = new URLSearchParams();
-  if (status) params.set("status", status);
-  params.set("page", String(page));
-  params.set("limit", String(limit));
-  return apiCall<TransferRequestsResponse>(
-    backendClient.get(`/registration-transfer-requests?${params.toString()}`)
-  );
-}
-
-/**
- * ADMIN: approve (performs the transfer) or reject a request, optionally
- * overriding the target email. `PATCH /registration-transfer-requests/:id/review`.
- */
-export async function reviewTransferRequest(
-  requestId: string,
-  status: "APPROVED" | "REJECTED",
-  opts?: { reviewNote?: string; email?: string }
-): Promise<{ data: unknown | null; error: ApiError | null }> {
-  return apiCall(
-    backendClient.patch(
-      `/registration-transfer-requests/${requestId}/review`,
-      { status, reviewNote: opts?.reviewNote, email: opts?.email }
-    )
   );
 }
 

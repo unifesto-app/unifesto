@@ -11,7 +11,6 @@ import {
   CaretRight,
   Buildings,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import {
   getAdminTransactions,
   type LedgerTransaction,
@@ -61,9 +60,6 @@ const STATUS_BADGE: Record<
 };
 
 export default function TransactionsPage() {
-  const { role, currentSpace } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [transactions, setTransactions] = useState<LedgerTransaction[]>([]);
   const [summary, setSummary] = useState({
     grossVolume: 0,
@@ -114,11 +110,7 @@ export default function TransactionsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Transactions"
-        subtitle={
-          isAdmin
-            ? "Every payment moving through Unifesto"
-            : `Payments received by ${currentSpace?.name ?? "your space"}`
-        }
+        subtitle="Every payment moving through Unifesto"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -193,11 +185,7 @@ export default function TransactionsPage() {
             <EmptyState
               icon={Receipt}
               title="No transactions yet"
-              description={
-                isAdmin
-                  ? "As soon as attendees pay for tickets, every payment will be recorded here."
-                  : "When people register for your paid events, their payments will appear here."
-              }
+              description="As soon as attendees pay for tickets, every payment will be recorded here."
             />
           ) : (
             <div className="divide-y">
@@ -214,7 +202,7 @@ export default function TransactionsPage() {
                         {t.event.title}
                         {t.ticketType ? ` · ${t.ticketType.name}` : ""}
                       </p>
-                      {isAdmin && t.event.space && (
+                      {t.event.space && (
                         <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
                           <Buildings className="h-3.5 w-3.5 flex-shrink-0" />
                           {t.event.space.name}
@@ -238,9 +226,7 @@ export default function TransactionsPage() {
                           </p>
                         )}
                       </div>
-                      {isAdmin && (
-                        <CaretRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                      )}
+                      <CaretRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                     </div>
                   </>
                 );
@@ -248,7 +234,7 @@ export default function TransactionsPage() {
                 const rowClass =
                   "flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between";
 
-                return isAdmin ? (
+                return (
                   <Link
                     key={t.id}
                     href={`/dashboard/transactions/${t.id}`}
@@ -256,10 +242,6 @@ export default function TransactionsPage() {
                   >
                     {body}
                   </Link>
-                ) : (
-                  <div key={t.id} className={rowClass}>
-                    {body}
-                  </div>
                 );
               })}
             </div>

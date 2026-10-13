@@ -34,7 +34,6 @@ import {
   LinkBreak,
   Flag,
 } from "@unifesto/unicon/react";
-import type { AppRole } from "@/lib/types/rbac";
 
 export interface NavItem {
   href: string;
@@ -49,14 +48,10 @@ export interface NavGroup {
 }
 
 /**
- * Everything lives under a single `/dashboard` tree. Apex is platform-staff
- * only (P1.4) — the organiser surface moved to the space app — so there is now
- * a single admin nav. Kept role-parametrised (`navForRole`) so the shell need
- * not change, but any non-admin resolves to an empty nav.
+ * Platform-staff navigation. Everything lives under a single `/dashboard`
+ * tree; AppShell only renders the sidebar for platform admins.
  */
-
-/** Platform-staff (admin) navigation — mission-control surface. */
-const adminNav: NavGroup[] = [
+export const adminNav: NavGroup[] = [
   {
     label: "Overview",
     items: [
@@ -167,7 +162,3 @@ const adminNav: NavGroup[] = [
     ],
   },
 ];
-
-export function navForRole(role: AppRole): NavGroup[] {
-  return role === "platform_admin" ? adminNav : [];
-}

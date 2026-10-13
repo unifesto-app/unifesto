@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { navForRole } from "./nav-config";
-import type { AppRole } from "@/lib/types/rbac";
+import { adminNav } from "./nav-config";
 
-export function Sidebar({ role }: { role: AppRole }) {
+export function Sidebar() {
   const pathname = usePathname();
-  const groups = navForRole(role);
 
   const isActive = (href: string, exact?: boolean) =>
     exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
@@ -16,7 +14,7 @@ export function Sidebar({ role }: { role: AppRole }) {
   return (
     <aside className="fixed left-0 top-16 bottom-0 z-10 w-60 overflow-y-auto border-r border-border bg-sidebar">
       <nav className="space-y-6 p-4">
-        {groups.map((group) => (
+        {adminNav.map((group) => (
           <div key={group.label}>
             <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               {group.label}
