@@ -8,6 +8,21 @@ import { LogsService } from './logs/logs.service';
 import { createRequestLogger } from './logs/logging.middleware';
 import { isAllowedOrigin } from './common/cors';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
+import axios from 'axios';
+import { OUTBOUND_TIMEOUT_MS } from './common/http/outbound-timeouts';
+
+// S32: no outbound axios call (WhatsApp, OneSignal, Razorpay's SDK) may hang
+// forever. Set before any service is constructed so SDK instances inherit it.
+axios.defaults.timeout = OUTBOUND_TIMEOUT_MS;
+
+// Node 22 exits on an unhandled rejection, so one forgotten `.catch` on a
+// fire-and-forget notification took a whole replica down mid-request. Log it
+// instead; every intentional `void promise` also carries its own `.catch`.
+process.on('unhandledRejection', (reason) => {
+  new Logger('UnhandledRejection').error(
+    reason instanceof Error ? (reason.stack ?? reason.message) : String(reason),
+  );
+});
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');

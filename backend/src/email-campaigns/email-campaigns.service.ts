@@ -110,7 +110,9 @@ export class EmailCampaignsService {
     if (!dto.scheduledAt) {
       // Fire-and-forget: don't block the request on the whole send. Errors are
       // caught inside processCampaign and recorded on the row.
-      void this.processCampaign(campaign.id);
+      void this.processCampaign(campaign.id).catch((err) =>
+        this.logger.error(`processCampaign(${campaign.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
     }
 
     return { success: true, campaignId: campaign.id };
