@@ -911,7 +911,7 @@ export class CertificatesService {
   private async renderAndUpload(
     template: { backgroundUrl: string; canvasWidth: number; canvasHeight: number },
     fields: CertificateFieldDef[],
-    event: { title: string; space: { name: string } | null },
+    event: { id: string; title: string; space: { name: string } | null },
     issueDate: string,
     // Only the display name is printed; narrowed from Recipient so the reissue
     // path (which renders straight from a stored certificate row) can reuse this.
@@ -970,7 +970,7 @@ export class CertificatesService {
    */
   private async deliverCertificate(
     recipient: { name: string; email: string | null },
-    event: { title: string; space: { name: string } | null },
+    event: { id: string; title: string; space: { name: string } | null },
     cert: {
       certificateNumber: string;
       verificationCode: string;
@@ -982,6 +982,7 @@ export class CertificatesService {
     const sent = await this.email.sendCertificateIssued({
       email: recipient.email,
       recipientName: recipient.name,
+      eventId: event.id,
       eventTitle: event.title,
       issuerName: event.space?.name ?? 'Unifesto',
       certificateNumber: cert.certificateNumber,
@@ -1484,7 +1485,7 @@ export class CertificatesService {
       registrationId: string | null;
       awardId: string | null;
     },
-    event: { title: string; space: { name: string } | null },
+    event: { id: string; title: string; space: { name: string } | null },
     userId: string,
   ): Promise<boolean> {
     const template = await this.prisma.certificateTemplate.findUnique({

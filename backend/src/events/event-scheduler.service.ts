@@ -90,6 +90,7 @@ export class EventSchedulerService {
             .sendEventReminder({
               email,
               userName: reg.user.fullName || reg.user.username || 'there',
+              eventId: event.id,
               eventTitle: event.title,
               eventDate: this.formatDate(event.startDateTime),
               eventTime: this.formatTime(event.startDateTime, event.endDateTime),
@@ -178,6 +179,7 @@ export class EventSchedulerService {
             .sendEventStartingSoon({
               email,
               userName: reg.user.fullName || reg.user.username || 'there',
+              eventId: event.id,
               eventTitle: event.title,
               startsInMinutes: 60,
               venueName: event.venueName || undefined,

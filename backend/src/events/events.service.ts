@@ -2335,6 +2335,7 @@ export class EventsService {
             .sendEventUpdated({
               email: attendeeEmail,
               userName: reg.user.fullName || reg.user.username || 'there',
+              eventId: updated.id,
               eventTitle: updated.title,
               changes: significantChanges,
               newDate: this.formatEventDate(updated.startDateTime),
@@ -2647,6 +2648,7 @@ export class EventsService {
           .sendEventCancelled({
             email: attendeeEmail,
             userName: reg.user.fullName || reg.user.username || 'there',
+            eventId: event.id,
             eventTitle: event.title,
             eventDate: this.formatEventDate(event.startDateTime),
             cancellationReason: dto.reason || undefined,
