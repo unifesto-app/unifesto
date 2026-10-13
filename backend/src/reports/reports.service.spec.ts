@@ -22,7 +22,7 @@ describe('ReportsService background generation', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
-    const svc = new ReportsService(prisma, {} as any, { gather } as any, {} as any, {} as any);
+    const svc = new ReportsService(prisma, {} as any, { gather } as any, {} as any, {} as any, { can: async () => true } as any);
     jest.spyOn(svc as any, 'spaceHasAnalyticsPlan').mockResolvedValue(true);
     return { svc, prisma };
   };

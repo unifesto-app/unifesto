@@ -11,6 +11,12 @@ process.env.RAZORPAY_KEY_SECRET ??= 'secret';
  * refund is due must not be refunded a second time.
  */
 function approve(reg: { status: RegistrationStatus; refundDueAt?: Date | null }) {
+  const registration = {
+    id: 'reg-1', userId: 'holder', eventId: 'ev-1',
+    totalAmount: 105, processingFee: 5, razorpayAmount: 105, refundedAmount: 0,
+    paymentId: 'pay_1', groupSize: null, quantity: 1, ticketTypeId: 'tt-1',
+    refundDueAt: null, event: { title: 'Fest' }, ...reg,
+  };
   const tx = {
     eventRegistration: {
       update: jest.fn(async () => ({})),
@@ -28,19 +34,24 @@ function approve(reg: { status: RegistrationStatus; refundDueAt?: Date | null })
         id: 'rr-1',
         status: RefundStatus.PENDING_ADMIN,
         eventId: 'ev-1',
-        registration: {
-          id: 'reg-1', userId: 'holder', eventId: 'ev-1',
-          totalAmount: 105, processingFee: 5, razorpayAmount: 105, refundedAmount: 0,
-          paymentId: 'pay_1', groupSize: null, quantity: 1, ticketTypeId: 'tt-1',
-          refundDueAt: null, event: { title: 'Fest' }, ...reg,
-        },
+        registrationId: 'reg-1',
+        registration,
       })),
+      // PENDING_ADMIN -> PROCESSING claim (S11), and its release on failure.
+      update: jest.fn(async () => ({})),
     },
+    eventRegistration: { findUniqueOrThrow: jest.fn(async () => registration) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
     user: { findUnique: jest.fn(async () => ({ deletedAt: null })) },
     $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
   };
-  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any);
+  const service = new RefundsService(
+    prisma as any,
+    {} as any,
+    { emit: jest.fn() } as any,
+    { can: async () => true } as any,
+    { eventOverdrawn: async () => 0 } as any,
+  );
   const s = service as any;
   const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
   s.razorpay = { payments: { refund } };

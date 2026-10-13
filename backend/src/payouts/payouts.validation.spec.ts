@@ -3,6 +3,7 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { RequestPayoutDto } from './dto';
 import { PayoutsService } from './payouts.service';
 import { EventFilterDto } from '../events/dto';
+import { PlanConfigService } from '../subscription/plan-config.service';
 
 // S29: payout amounts and list limits are validated, and NaN never pays out.
 const pipe = new ValidationPipe({
@@ -46,7 +47,7 @@ describe('PayoutsService.createPayout', () => {
       payoutBankAccount: { findFirst: jest.fn().mockResolvedValue({ id: 'b1' }) },
       payout: { create: jest.fn() },
     };
-    const svc = new PayoutsService(prisma as never, {} as never, {} as never);
+    const svc = new PayoutsService(prisma as never, {} as never, {} as never, new PlanConfigService({} as never));
     jest.spyOn(svc as never, 'computeBalance').mockResolvedValue({ available: 1000 } as never);
     await expect(
       svc.createPayout({ eventId: EVENT, bankAccountId: 'b1', netAmount: NaN }, 'admin'),

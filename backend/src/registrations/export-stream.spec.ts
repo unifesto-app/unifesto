@@ -42,12 +42,12 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
           space: { subscription: { id: 'sub' } },
         }),
       },
-      userRole: { findMany: jest.fn().mockResolvedValue([{ id: 'role' }]) },
+      userRole: { count: jest.fn().mockResolvedValue(1) },
       eventRegistration: { findMany },
       eventFormField: { findMany: jest.fn().mockResolvedValue([]) },
       groupSeat: { findMany: jest.fn().mockResolvedValue([]) },
     };
-    const planConfig = { getEffectiveLimits: () => ({ hasBulkExport: true }) };
+    const planConfig = { getEffectiveLimits: () => ({ hasBulkExport: true }), resolvePlatformFeePercent: () => 0 };
     const svc = new RegistrationsService(
       prisma, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any,
       {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,

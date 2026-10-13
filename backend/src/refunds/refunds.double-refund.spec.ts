@@ -37,7 +37,7 @@ function setup() {
     return { id: 'rr-1', status };
   });
   const tx = {
-    eventRegistration: { update: jest.fn(async () => ({})) },
+    eventRegistration: { update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({ count: 1 })) },
     event: { update: jest.fn(async () => ({})) },
     eventTicketType: { update: jest.fn(async () => ({})) },
     eventTicket: { updateMany: jest.fn(async () => ({})) },

@@ -28,7 +28,7 @@ describe('StayBookingsService late-payment refund', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
     jest.spyOn(svc as any, 'fits').mockResolvedValue('No beds left'); // truthy = doesn't fit
     return { svc, prisma, payments };

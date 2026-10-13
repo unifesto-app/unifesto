@@ -30,7 +30,7 @@ describe('transactions export Net', () => {
           space: { subscription: { billingModel: 'REVENUE_SHARE', revenueSharePercent: null } },
         })),
       },
-      userRole: { findMany: jest.fn(async () => [{ id: 'role' }]) },
+      userRole: { count: jest.fn(async () => 1) },
       eventRegistration: {
         findMany: jest.fn(async () => [
           { ...base, paymentStatus: PaymentStatus.PAID },
@@ -48,7 +48,9 @@ describe('transactions export Net', () => {
       {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
     );
     const file = await svc.exportRegistrations('user-1', 'event-1', 'csv', 'transactions');
-    const lines = file.buffer.toString('utf8').trim().split(/\r?\n/);
+    let csv = '';
+    for await (const chunk of file.stream as AsyncIterable<string | Buffer>) csv += chunk;
+    const lines = csv.replace('\uFEFF', '').trim().split(/\r?\n/);
     const header = lines[0].split(',');
     const net = header.findIndex((h) => h.includes('Net'));
     const cut = header.findIndex((h) => h.includes('Platform Fee'));

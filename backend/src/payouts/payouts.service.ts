@@ -924,6 +924,10 @@ export class PayoutsService {
       where: { id: dto.bankAccountId, status: BankAccountStatus.VERIFIED },
     });
     if (!bankAccount) throw new BadRequestException('Bank account not found or not verified');
+    // `!(x > 0)` also rejects NaN, which slips past `x <= 0` (S29).
+    if (dto.netAmount != null && !(dto.netAmount > 0)) {
+      throw new BadRequestException('Payout amount must be greater than zero');
+    }
 
     // Compute-then-insert must not interleave with another payout for the same
     // event, or both read the same `available` and the event is paid twice.
@@ -944,10 +948,6 @@ export class PayoutsService {
       // Custom amount = exactly what to transfer; else the whole remaining balance.
       let netAmount: number;
       if (dto.netAmount != null) {
-        // `!(x > 0)` also rejects NaN, which slips past `x <= 0` (S29).
-        if (!(dto.netAmount > 0)) {
-          throw new BadRequestException('Payout amount must be greater than zero');
-        }
         if (round2(dto.netAmount) > balance.available) {
           throw new BadRequestException(
             `Amount exceeds the available balance of ₹${balance.available.toFixed(2)}`,

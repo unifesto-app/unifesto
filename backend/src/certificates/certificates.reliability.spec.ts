@@ -78,6 +78,7 @@ function setup(queue: { add?: jest.Mock; addReissueRevoked?: jest.Mock }) {
     {} as any,
     { get: () => undefined } as any,
     {} as any,
+    { can: async () => true } as any,
     queue as any,
   );
   jest

@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException } from '@nes
 import { PayoutStatus, Prisma } from '@prisma/client';
 import { Action } from '../auth/authorization';
 import { PayoutsService } from './payouts.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
 
 /**
  * S12: payout creation is serialised per event, status changes only leave
@@ -20,7 +21,7 @@ function setup(opts: { paid?: number; payouts?: { netAmount: number; status: Pay
       findUnique: jest.fn(async () => ({ id: 'ev-1', createdBy: 'creator', spaceId: 'sp-1', payoutBankAccountId: null, space: { subscription: null } })),
     },
     eventRegistration: {
-      findMany: jest.fn(async () => [{ totalAmount: opts.paid ?? 1000, processingFee: 0 }]),
+      findMany: jest.fn(async () => [{ totalAmount: opts.paid ?? 1000, processingFee: 0, refundedAmount: 0 }]),
     },
     stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
@@ -62,7 +63,7 @@ function setup(opts: { paid?: number; payouts?: { netAmount: number; status: Pay
     }
   });
   const authz = { can: jest.fn(async (_u: unknown, _a: Action) => false) };
-  const service = new PayoutsService(db, {} as any, authz as any);
+  const service = new PayoutsService(db, {} as any, authz as any, new PlanConfigService({} as any));
   return { service, db, payouts, authz };
 }
 

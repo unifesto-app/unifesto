@@ -1,5 +1,6 @@
 import { BillingModel, Prisma } from '@prisma/client';
 import { PayoutsService } from './payouts.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
 
 /**
  * S34: the platform fee on Apex financials is summed per revenue-share space
@@ -45,7 +46,7 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
         ]),
       },
     };
-    return { svc: new PayoutsService(prisma, {} as any, {} as any), prisma };
+    return { svc: new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any)), prisma };
   };
 
   it('charges each space its own percent of its held gross', async () => {
