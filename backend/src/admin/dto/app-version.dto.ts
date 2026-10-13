@@ -9,11 +9,19 @@ import {
 
 /** A dotted version like "2.0.1" (1–4 numeric segments). */
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
+/** Same, or empty: an empty latest version turns the soft update prompt off. */
+const OPTIONAL_VERSION_RE = /^(\d+(\.\d+){0,3})?$/;
 
 export class PlatformVersionDto {
-  @ApiProperty({ example: '2.1.0', description: 'Latest version live in the store.' })
+  @ApiProperty({
+    example: '2.1.0',
+    description:
+      'Latest version live in the store; installs below it get a dismissible "update available" prompt. Empty = prompt off.',
+  })
   @IsString()
-  @Matches(VERSION_RE, { message: 'latestVersion must be a dotted version like 2.1.0' })
+  @Matches(OPTIONAL_VERSION_RE, {
+    message: 'latestVersion must be a dotted version like 2.1.0, or empty',
+  })
   latestVersion: string;
 
   @ApiProperty({

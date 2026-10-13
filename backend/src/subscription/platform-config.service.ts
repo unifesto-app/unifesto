@@ -25,7 +25,10 @@ export function normalizeStatsRecipient(input: string): string | null {
   return null;
 }
 
-/** Version policy for one platform, driving the in-app update prompt. */
+/**
+ * Version policy for one platform, driving the in-app update prompt.
+ * `latestVersion` empty = soft prompt off.
+ */
 export interface PlatformVersionInfo {
   latestVersion: string;
   minimumVersion: string;
@@ -35,6 +38,26 @@ export interface PlatformVersionInfo {
 export interface AppVersionConfig {
   ios: PlatformVersionInfo;
   android: PlatformVersionInfo;
+}
+
+/**
+ * Builds up to 4.x skip the whole check (minimum included) when
+ * `latestVersion` is empty, so a minimum only reaches them with a latest set.
+ */
+export function assertAppVersionPolicy(config: AppVersionConfig): void {
+  for (const [name, p] of [
+    ['iOS', config.ios],
+    ['Android', config.android],
+  ] as const) {
+    const minIsZero = p.minimumVersion
+      .split('.')
+      .every((n) => Number(n) === 0);
+    if (!p.latestVersion && !minIsZero) {
+      throw new BadRequestException(
+        `${name}: set a latest version before raising the minimum version`,
+      );
+    }
+  }
 }
 
 /**
@@ -54,13 +77,13 @@ export class PlatformConfigService implements OnModuleInit {
   private postEventActionWindowDays = 7;
   private appVersion: AppVersionConfig = {
     ios: {
-      latestVersion: '2.0.1',
+      latestVersion: '',
       minimumVersion: '0.0.0',
       storeUrl:
         'https://apps.apple.com/in/app/unifesto-discover-events/id6767165496',
     },
     android: {
-      latestVersion: '2.0.1',
+      latestVersion: '',
       minimumVersion: '0.0.0',
       storeUrl:
         'https://play.google.com/store/apps/details?id=com.unifesto.app',
@@ -214,6 +237,7 @@ export class PlatformConfigService implements OnModuleInit {
 
   /** Admin update of the mobile app version policy. */
   async setAppVersion(config: AppVersionConfig): Promise<AppVersionConfig> {
+    assertAppVersionPolicy(config);
     const data = {
       iosLatestVersion: config.ios.latestVersion,
       iosMinimumVersion: config.ios.minimumVersion,

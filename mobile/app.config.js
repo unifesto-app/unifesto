@@ -12,6 +12,11 @@ module.exports = () => {
     name: "Unifesto",
     slug: "unifesto",
     version: "4.0.5",
+    // Native app only. Without this Expo defaults to ["ios", "android", "web"],
+    // so `eas update` (platform "all") also tried to bundle web and failed,
+    // which is why OTAs needed the --skip-bundler recipe. Part of the runtime
+    // fingerprint: landed for the 5.0.0 store build (version-5 O1).
+    platforms: ["ios", "android"],
     // OTA updates (EAS Update). "fingerprint" hashes the native layer, so an
     // update only reaches binaries built from the same native code: adding a
     // native module forces a store build instead of crashing old installs.

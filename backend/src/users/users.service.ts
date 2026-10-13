@@ -38,7 +38,7 @@ export class UsersService {
    */
   async updateMyAppVersion(
     userId: string,
-    dto: { version: string; platform: string },
+    dto: { version: string; platform: string; runtimeVersion?: string; updateId?: string | null },
   ) {
     await this.prisma.user.update({
       where: { id: userId },
@@ -46,6 +46,12 @@ export class UsersService {
         appVersion: dto.version,
         appPlatform: dto.platform,
         appVersionLastReportedAt: new Date(),
+        // Clients that report a runtime also report their update (or none =
+        // store build code). Older clients send neither: leave both untouched.
+        ...(dto.runtimeVersion !== undefined && {
+          appRuntimeVersion: dto.runtimeVersion,
+          appUpdateId: dto.updateId ?? null,
+        }),
       },
     });
     return { success: true };
@@ -1064,6 +1070,8 @@ export class UsersService {
           appVersion: null,
           appPlatform: null,
           appVersionLastReportedAt: null,
+          appRuntimeVersion: null,
+          appUpdateId: null,
           lastSeenAt: null,
           deletedAt: new Date(),
         },

@@ -1,5 +1,7 @@
 import { BadGatewayException, BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import axios from 'axios';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 
 /**
  * Apex › OTA updates: read and steer EAS Update rollouts from the admin app.
@@ -71,6 +73,75 @@ export interface OtaGroup {
 @Injectable()
 export class OtaAdminService {
   private readonly logger = new Logger(OtaAdminService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * O13 adoption: what active phones run, from the app-version reports. Active
+   * = reported in the last `days` days (the app reports at most daily, and on
+   * every version/update change). Users on 4.0.x never report a runtime and
+   * land in the null bucket.
+   */
+  async adoption(days = 30): Promise<OtaAdoption> {
+    const rows = await this.prisma.user.groupBy({
+      by: ['appRuntimeVersion', 'appUpdateId'],
+      where: {
+        deletedAt: null,
+        appPlatform: { in: ['ios', 'android'] },
+        appVersionLastReportedAt: { gte: new Date(Date.now() - days * 86_400_000) },
+      },
+      _count: { _all: true },
+    });
+    const total = rows.reduce((n, r) => n + r._count._all, 0);
+    const runtimes = new Map<string | null, number>();
+    for (const r of rows) runtimes.set(r.appRuntimeVersion, (runtimes.get(r.appRuntimeVersion) ?? 0) + r._count._all);
+    const byDesc = <T extends { users: number }>(a: T, b: T) => b.users - a.users;
+    return {
+      days,
+      total,
+      byRuntime: [...runtimes].map(([runtimeVersion, users]) => ({ runtimeVersion, users })).sort(byDesc),
+      byUpdate: rows
+        .filter((r) => r.appRuntimeVersion != null)
+        .map((r) => ({ runtimeVersion: r.appRuntimeVersion as string, updateId: r.appUpdateId, users: r._count._all }))
+        .sort(byDesc),
+    };
+  }
+
+  /** O12: CI's latest snapshot of main (.github/workflows/ci.yml, "Report OTA status"). */
+  async saveMainStatus(status: OtaMainStatus): Promise<void> {
+    const value = status as unknown as Prisma.InputJsonValue;
+    await this.prisma.platformConfig.upsert({
+      where: { id: 'global' },
+      create: { id: 'global', otaMainStatus: value },
+      update: { otaMainStatus: value },
+    });
+  }
+
+  /**
+   * O12 stale-OTA alarm: mobile commits on main newer than the last production
+   * publish, and whether main can still ship as an OTA. Expo being down only
+   * hides the "last publish" half.
+   */
+  async staleness(): Promise<OtaStaleness> {
+    const row = await this.prisma.platformConfig.findUnique({ where: { id: 'global' }, select: { otaMainStatus: true } });
+    const main = (row?.otaMainStatus ?? null) as OtaMainStatus | null;
+    let last: OtaGroup | null = null;
+    let expoError: string | null = null;
+    try {
+      last = (await this.listGroups('production', 1)).groups[0] ?? null;
+    } catch (err: any) {
+      expoError = err?.message ?? 'Expo unavailable';
+    }
+    const unshipped = main && !expoError ? unshippedCommits(main.commits, last) : null;
+    return {
+      main: main && { sha: main.sha, otaSafe: main.otaSafe, fingerprints: main.fingerprints ?? null, reportedAt: main.reportedAt },
+      lastPublish: last && { group: last.group, createdAt: last.createdAt, message: last.message, gitCommitHash: last.gitCommitHash },
+      unshippedCommits: unshipped?.count ?? null,
+      unshippedTruncated: unshipped?.truncated ?? false,
+      oldestUnshippedAt: unshipped?.oldestAt ?? null,
+      expoError,
+    };
+  }
 
   private async gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
     const token = process.env.EXPO_TOKEN;
@@ -213,6 +284,61 @@ export class OtaAdminService {
     }
     throw new BadGatewayException('Expo: deleting the rollout is taking too long. Check the EAS dashboard.');
   }
+}
+
+export interface OtaAdoption {
+  days: number;
+  total: number;
+  /** runtimeVersion null = clients too old to report one (4.0.x). */
+  byRuntime: { runtimeVersion: string | null; users: number }[];
+  /** updateId null = running the store build's own code. */
+  byUpdate: { runtimeVersion: string; updateId: string | null; users: number }[];
+}
+
+export interface OtaMainStatus {
+  sha: string;
+  /** Both platforms' fingerprints match a live production build (ota-preflight). */
+  otaSafe: boolean;
+  fingerprints?: { ios?: string; android?: string };
+  /** First-parent commits on main touching mobile/, newest first (capped by CI). */
+  commits: { sha: string; date: string }[];
+  reportedAt: string;
+}
+
+export interface OtaStaleness {
+  main: { sha: string; otaSafe: boolean; fingerprints: { ios?: string; android?: string } | null; reportedAt: string } | null;
+  lastPublish: { group: string; createdAt: string; message: string | null; gitCommitHash: string | null } | null;
+  unshippedCommits: number | null;
+  /** The count hit CI's cap: it's at least this many. */
+  unshippedTruncated: boolean;
+  oldestUnshippedAt: string | null;
+  expoError: string | null;
+}
+
+/** How many mobile commits CI sends (keep in sync with ci.yml). */
+export const MAIN_COMMITS_CAP = 300;
+
+/**
+ * Mobile commits on main newer than the last publish. Exact when the publish's
+ * commit is one of them; otherwise (published from a non-mobile commit or a
+ * hotfix branch) everything merged after the publish time counts.
+ */
+export function unshippedCommits(
+  commits: { sha: string; date: string }[],
+  last: { gitCommitHash: string | null; createdAt: string } | null,
+): { count: number; truncated: boolean; oldestAt: string | null } {
+  let newer = commits;
+  if (last) {
+    const idx = last.gitCommitHash ? commits.findIndex((c) => c.sha === last.gitCommitHash) : -1;
+    const at = Date.parse(last.createdAt);
+    newer = idx >= 0 ? commits.slice(0, idx) : commits.filter((c) => Date.parse(c.date) > at);
+  }
+  return {
+    count: newer.length,
+    // Every commit CI sent is unshipped, so there may be more beyond its cap.
+    truncated: newer.length === commits.length && commits.length >= MAIN_COMMITS_CAP,
+    oldestAt: newer[newer.length - 1]?.date ?? null,
+  };
 }
 
 function toOtaGroup(updates: ExpoUpdate[]): OtaGroup {
