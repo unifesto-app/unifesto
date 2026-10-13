@@ -213,6 +213,12 @@ export class EventSchedulerService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async markCompletedEvents(): Promise<void> {
+    await this.redis.runExclusive('cron:eventsComplete', 50 * 60, () =>
+      this.runMarkCompletedEvents(),
+    );
+  }
+
+  private async runMarkCompletedEvents(): Promise<void> {
     this.logger.log('Starting mark completed events job...');
 
     const now = new Date();

@@ -146,6 +146,12 @@ export class SessionSchedulerService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async markCompletedSessions(): Promise<void> {
+    await this.redis.runExclusive('cron:sessionsComplete', 50 * 60, () =>
+      this.runMarkCompletedSessions(),
+    );
+  }
+
+  private async runMarkCompletedSessions(): Promise<void> {
     const now = Date.now();
     const candidates = await this.prisma.session.findMany({
       where: {

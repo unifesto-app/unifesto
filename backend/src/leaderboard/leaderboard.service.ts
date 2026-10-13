@@ -1008,12 +1008,22 @@ export class LeaderboardService {
           include: {
             scores: true,
             judgments: { where: { submittedAt: { not: null } }, select: { roundId: true, panelistUserId: true } },
+            entrantRounds: { select: { roundId: true, roundScore: true, rank: true } },
           },
         },
       },
     });
     if (!board) return;
     if (board.rounds.length === 0) return; // nothing to rank yet
+
+    // Only write rows whose score or rank moved: a recompute runs on every
+    // submitted mark, and usually changes a handful of rows, not rounds x teams.
+    // Compared at the column's 4 decimal places.
+    const same = (stored: Prisma.Decimal | null | undefined, next: number) =>
+      stored != null && Math.round(Number(stored) * 1e4) === Math.round(next * 1e4);
+    const storedRound = new Map(
+      board.entrants.flatMap((e) => e.entrantRounds.map((r) => [`${e.id}:${r.roundId}`, r] as const)),
+    );
 
     const updates: Prisma.PrismaPromise<unknown>[] = [];
     // roundId -> (entrantId -> {score, rank}) so we can lift the last round onto totals.
@@ -1057,7 +1067,9 @@ export class LeaderboardService {
       });
 
       for (const r of ranked) {
-        updates.push(
+        const stored = storedRound.get(`${r.entrantId}:${round.id}`);
+        const unchanged = stored && same(stored.roundScore, r.totalScore) && stored.rank === r.rank;
+        if (!unchanged) updates.push(
           this.prisma.leaderboardEntrantRound.upsert({
             where: { entrantId_roundId: { entrantId: r.entrantId, roundId: round.id } },
             create: {
@@ -1094,15 +1106,18 @@ export class LeaderboardService {
     // Final ranking = the last round's ranking (or the cumulative one), mirrored to entrant totals.
     for (const e of board.entrants) {
       const final = lastRoundResult.get(e.id);
+      const score = final?.score ?? 0;
+      const rank = final?.rank ?? null;
+      if (same(e.totalScore, score) && e.rank === rank) continue;
       updates.push(
         this.prisma.leaderboardEntrant.update({
           where: { id: e.id },
-          data: { totalScore: final?.score ?? 0, rank: final?.rank ?? null },
+          data: { totalScore: score, rank },
         }),
       );
     }
 
-    await this.prisma.$transaction(updates);
+    if (updates.length) await this.prisma.$transaction(updates);
 
     if (board.status !== 'FROZEN' && board.status !== 'DRAFT') {
       this.gateway.broadcast(board.eventId, await this.getPublicSnapshot(board.eventId));

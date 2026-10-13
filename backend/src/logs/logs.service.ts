@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -22,9 +21,6 @@ interface QueryParams {
   page?: number;
   limit?: number;
 }
-
-/** How long request logs are kept. CERT-In Directions (Apr 2022) require 180 days. */
-const RETENTION_DAYS = 180;
 
 @Injectable()
 export class LogsService {
@@ -126,15 +122,5 @@ export class LogsService {
       errors24h,
       avgDurationMs: Math.round(agg._avg.durationMs ?? 0),
     };
-  }
-
-  /** Daily cleanup so the table doesn't grow unbounded. */
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
-  async cleanup(): Promise<void> {
-    const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const { count } = await this.prisma.apiLog.deleteMany({
-      where: { createdAt: { lt: cutoff } },
-    });
-    if (count > 0) this.logger.log(`Pruned ${count} old api logs`);
   }
 }

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { RedisService } from '../../redis/redis.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import slugify from 'slugify';
@@ -27,7 +28,10 @@ export class RecurrenceService {
   /** How far ahead we ever materialize ("weekly forever" can't be infinite). */
   private static readonly HORIZON_MONTHS = 12;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly redis: RedisService,
+  ) {}
 
   /**
    * Daily: extend every active series' rolling window so "weekly forever" keeps
@@ -37,9 +41,13 @@ export class RecurrenceService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async dailyReconcile(): Promise<void> {
-    this.logger.log('recurrence: daily series reconcile starting');
-    await this.reconcileAllSeries();
-    this.logger.log('recurrence: daily series reconcile done');
+    // One replica: occurrence slugs are random, so concurrent runs could
+    // still race on the same start.
+    await this.redis.runExclusive('cron:recurrence', 2 * 60 * 60, async () => {
+      this.logger.log('recurrence: daily series reconcile starting');
+      await this.reconcileAllSeries();
+      this.logger.log('recurrence: daily series reconcile done');
+    });
   }
 
   /** Far edge of the rolling window from a given "now". */

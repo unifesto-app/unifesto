@@ -208,6 +208,12 @@ export class SubscriptionSchedulerService {
    */
   @Cron('0 0 1 * *')
   async resetMonthlyEventCounts(): Promise<void> {
+    await this.redis.runExclusive(`cron:monthlyReset:${this.dayKey()}`, 12 * 60 * 60, () =>
+      this.runResetMonthlyEventCounts(),
+    );
+  }
+
+  private async runResetMonthlyEventCounts(): Promise<void> {
     this.logger.log('Starting monthly event count reset job...');
 
     const result = await this.prisma.orgSubscription.updateMany({

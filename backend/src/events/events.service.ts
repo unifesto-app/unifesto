@@ -141,14 +141,14 @@ export class EventsService {
         where: { eventId },
         select: { spaceId: true },
       });
-      for (const c of coHostSpaces) {
-        if (
-          await this.authz.can(user, Action.SPACE_CREATE_EVENT, {
-            spaceId: c.spaceId,
-          })
-        ) {
-          return true;
-        }
+      if (
+        await this.authz.canAny(
+          user,
+          Action.SPACE_CREATE_EVENT,
+          coHostSpaces.map((c) => ({ spaceId: c.spaceId })),
+        )
+      ) {
+        return true;
       }
     }
 

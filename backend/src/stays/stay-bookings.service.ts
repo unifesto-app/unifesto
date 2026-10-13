@@ -1,3 +1,4 @@
+import { RedisService } from '../redis/redis.service';
 import {
   BadRequestException,
   ConflictException,
@@ -136,6 +137,7 @@ export class StayBookingsService {
     private readonly payments: PaymentsService,
     private readonly notifications: NotificationsService,
     private readonly authz: AuthorizationService,
+    private readonly redis: RedisService,
   ) {}
 
   // ───────────────────────────── helpers ─────────────────────────────
@@ -740,6 +742,12 @@ export class StayBookingsService {
 
   /** Release beds whose payment window closed. */
   @Cron('*/15 * * * *', { timeZone: 'Asia/Kolkata' })
+  async expireOverdueCron(): Promise<void> {
+    await this.redis.runExclusive('cron:stayExpire', 10 * 60, async () => {
+      await this.expireOverdue();
+    });
+  }
+
   async expireOverdue(now = new Date()) {
     const due = await this.prisma.stayBooking.findMany({
       where: {
