@@ -3,13 +3,12 @@ import { Action } from '../auth/authorization/actions';
 import { CAPABILITIES } from '../auth/authorization/capabilities';
 import {
   competitionRanks,
-  csvCell,
   cumulativeTotal,
   evaluationTotal,
   finalRoundId,
-  toCsv,
   topNSplit,
 } from './hackathon.shared';
+import { csvCell, toCsv } from '../common/csv';
 
 /** Scoring, results and winners (Phase 4): the pure rules and the permission split. */
 describe('hackathon results rules', () => {
@@ -87,6 +86,9 @@ describe('hackathon results rules', () => {
     expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
     expect(csvCell('-12.5')).toBe('-12.5');
     expect(csvCell(null)).toBe('');
+    expect(csvCell('+91 98765-43210')).toBe('+91 98765-43210');
+    expect(csvCell('+SUM(A1)')).toBe("'+SUM(A1)");
+    expect(csvCell('@cmd')).toBe("'@cmd");
     expect(toCsv([['a', 'b'], [1, 2]])).toBe('﻿a,b\r\n1,2');
   });
 

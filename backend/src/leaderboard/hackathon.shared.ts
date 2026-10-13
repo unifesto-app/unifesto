@@ -502,21 +502,6 @@ export function topNSplit(teams: { id: string; score: number | null }[], n: numb
   };
 }
 
-/**
- * One CSV cell. Quoted when needed; a leading = + - @ is prefixed with ' so a
- * spreadsheet never runs team-typed text as a formula.
- */
-export function csvCell(v: unknown): string {
-  let s = v == null ? '' : String(v);
-  if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`;
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-/** A CSV document (CRLF, with a BOM so Excel reads names in any script). */
-export function toCsv(rows: unknown[][]): string {
-  return '﻿' + rows.map((r) => r.map(csvCell).join(',')).join('\r\n');
-}
-
 // ── Project links (Phase 5) ──────────────────────────────────────────────────
 
 export const SUBMISSION_LINKS_MAX = 10;

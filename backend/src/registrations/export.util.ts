@@ -7,6 +7,7 @@
  * data fetching live in the service; formatting lives here.
  */
 import PDFDocument from 'pdfkit';
+import { toCsv } from '../common/csv';
 
 export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 
@@ -16,18 +17,8 @@ export interface ExportFile {
   extension: string;
 }
 
-/** Escape one CSV cell: wrap in quotes when it contains a comma, quote or newline. */
-function csvCell(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return value;
-}
-
-function toCsv(header: string[], rows: string[][]): Buffer {
-  const lines = [header, ...rows].map((row) => row.map(csvCell).join(','));
-  // Prepend a UTF-8 BOM so Excel opens non-ASCII (₹, accented names) correctly.
-  return Buffer.from('﻿' + lines.join('\r\n'), 'utf8');
+function csvFile(header: string[], rows: string[][]): Buffer {
+  return Buffer.from(toCsv([header, ...rows]), 'utf8');
 }
 
 /** Escape a value for XML text/attribute content. */
@@ -144,7 +135,7 @@ export async function buildExportFile(
     case 'csv':
     default:
       return {
-        buffer: toCsv(header, rows),
+        buffer: csvFile(header, rows),
         contentType: 'text/csv; charset=utf-8',
         extension: 'csv',
       };
