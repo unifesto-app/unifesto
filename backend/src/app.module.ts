@@ -68,8 +68,7 @@ import { StaysModule } from './stays/stays.module';
     EventEmitterModule.forRoot(),
     // Global throttler configuration with Redis-backed storage
     ThrottlerModule.forRootAsync({
-      imports: [
-    CategoriesModule,RedisModule],
+      imports: [RedisModule],
       useFactory: (redisService: RedisService) => {
         const logger = new Logger('ThrottlerModule');
         // Dedicated connection (not the shared cache client): this factory runs
