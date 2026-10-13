@@ -1,3 +1,4 @@
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
@@ -8,6 +9,8 @@ import { LogsService } from './logs/logs.service';
 import { createRequestLogger } from './logs/logging.middleware';
 import { isAllowedOrigin } from './common/cors';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
+import { Logger as PinoLogger } from 'nestjs-pino';
+import { jsonLogsEnabled } from './common/observability';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -15,7 +18,10 @@ async function bootstrap() {
     // Preserve the raw request body so webhook signatures (e.g. WhatsApp/Meta,
     // LiveKit) can be verified against the exact bytes that were signed.
     rawBody: true,
+    // With LOG_FORMAT=json, hold boot logs until the pino logger takes over.
+    bufferLogs: jsonLogsEnabled(),
   });
+  if (jsonLogsEnabled()) app.useLogger(app.get(PinoLogger));
 
   // LiveKit posts webhooks as `application/webhook+json`; teach the JSON parser
   // to accept that content type so the raw body is captured for signing checks.

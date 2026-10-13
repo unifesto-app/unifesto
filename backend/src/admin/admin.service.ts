@@ -4,7 +4,6 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { execSync } from 'child_process';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
@@ -911,38 +910,6 @@ export class AdminService {
     });
     this.logger.log(`Space ${id} status set to ${status} by admin ${adminId}`);
     return updated;
-  }
-
-  /**
-   * List all events (incl. drafts) for moderation.
-   */
-  async getPm2Logs(params: { lines: number; search?: string }) {
-    try {
-      const raw = execSync(
-        `pm2 logs unifesto --lines ${params.lines} --nostream`,
-        // stderr 'ignore' so a missing `pm2` binary (e.g. in the containerised
-        // deploy, where logs come from `docker compose logs` instead) doesn't
-        // leak "pm2: not found" into the app's own logs.
-        { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'ignore'] },
-      );
-      const ansi = /\x1B\[[0-9;]*m|\x1B\[[0-9;]*[A-Za-z]/g;
-      const lines = raw.split('\n').filter(Boolean).map(l => l.replace(ansi, ''));
-      const filtered = params.search
-        ? lines.filter(l => l.toLowerCase().includes(params.search!.toLowerCase()))
-        : lines;
-      return {
-        lines: filtered.slice(-params.lines),
-        total: filtered.length,
-        fetchedAt: new Date().toISOString(),
-      };
-    } catch (error) {
-      return {
-        lines: [],
-        total: 0,
-        error: 'Failed to fetch PM2 logs',
-        fetchedAt: new Date().toISOString(),
-      };
-    }
   }
 
   /**

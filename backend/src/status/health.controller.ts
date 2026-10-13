@@ -18,13 +18,31 @@ import { AdminService } from '../admin/admin.service';
 @SkipThrottle()
 @Controller('health')
 export class HealthController {
+  /** Probes arrive every few seconds; each check hits S3, so reuse it briefly. */
+  static readonly CACHE_MS = 10_000;
+  private cached: {
+    at: number;
+    value: ReturnType<AdminService['getHealthStatus']>;
+  } | null = null;
+
   constructor(private readonly admin: AdminService) {}
+
+  private health() {
+    const now = Date.now();
+    if (!this.cached || now - this.cached.at > HealthController.CACHE_MS) {
+      const value = this.admin.getHealthStatus();
+      // Never pin a rejected check for the whole window.
+      value.catch(() => (this.cached = null));
+      this.cached = { at: now, value };
+    }
+    return this.cached.value;
+  }
 
   @Get()
   @HttpCode(200)
   @ApiOperation({ summary: 'Public readiness probe for external monitors' })
   async probe(@Res({ passthrough: true }) res: Response) {
-    const h = await this.admin.getHealthStatus();
+    const h = await this.health();
     const database = h.services.database.status === 'connected';
     const redis = h.services.redis.status === 'connected';
     const storage = h.services.storage.status === 'connected';

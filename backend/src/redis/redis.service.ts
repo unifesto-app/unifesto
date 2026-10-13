@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { reportError } from '../common/observability';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -222,9 +223,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   ): Promise<boolean> {
     const failOpen = opts.failOpen ?? true;
 
+    // Cron failures reach Sentry here (no-op without SENTRY_DSN), then rethrow
+    // so the scheduler still logs them.
+    const run = () =>
+      task().catch((err) => {
+        reportError(err, { cron: key });
+        throw err;
+      });
+
     if (!this.client) {
       if (failOpen) {
-        await task();
+        await run();
         return true;
       }
       this.logger.warn(
@@ -237,7 +246,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       (await this.client.set(key, '1', 'EX', ttlSeconds, 'NX')) === 'OK';
     if (!won) return false;
 
-    await task();
+    await run();
     return true;
   }
 

@@ -8,7 +8,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   constructor() {
     super({
       log: [
-        { emit: 'event', level: 'query' },
+        // Query events only in development: in prod Prisma would build an
+        // event for every query even though nothing listens.
+        ...(process.env.NODE_ENV === 'development'
+          ? [{ emit: 'event', level: 'query' } as const]
+          : []),
         { emit: 'event', level: 'error' },
         { emit: 'event', level: 'info' },
         { emit: 'event', level: 'warn' },
