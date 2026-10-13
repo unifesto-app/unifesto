@@ -1407,7 +1407,7 @@ export class GroupSeatsService {
         inviteEmail: { not: null },
         registration: {
           status: { not: RegistrationStatus.CANCELLED },
-          event: { startDateTime: { gt: now, lte: in48h } },
+          event: { deletedAt: null, startDateTime: { gt: now, lte: in48h } },
         },
       },
       select: {
