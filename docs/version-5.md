@@ -55,8 +55,8 @@ Worked back from the date, with room for one store rejection. Only the release d
 
 | Track | Item | Status |
 |---|---|---|
-| S | **Backend audit found live exploits:** payment-receipt replay (S1–S3) and two account takeovers (S4–S5). Backend deploys are not tied to 2 Dec, so fix and deploy these first | next |
-| O | **OTA is blocked.** `main` matches no live store build, so mobile work since 4 Oct reaches nobody until 5.0.0 is live on **2 Dec** (D6). Phase 2 guards (O7–O16) can be built now | next |
+| S | **Fixes merged (#110), not deployed: P0 exploits stay live until the backend deploys.** Before `./deploy.sh`: run the duplicate-check SQL from #110 on prod; confirm `JWT_SECRET`, `DIRECT_URL`, `INTERNAL_API_KEY` (backend + web), `APP_REVIEW_LOGIN_ENABLED` unset; `migrate deploy` before the new backend starts (index migrations off-peak); then backend, web, space, apex. Then S48 | next |
+| O | Guards merged (#109), secrets + `native` label done. OTA stays blocked until 5.0.0 on **2 Dec** (D6); `update:production` now refuses until the 5.0.0 runtime is recorded. Left: deploy #109 migrations + Apex with the S deploy, compare CI fingerprint once with `eas fingerprint:compare`, then O2–O5 on the [schedule](#500--release-wed-2-dec-2026) | next |
 | H | White-label P1–P3 merged (#106), not deployed. **Needs you:** Cloudflare SSL for SaaS + env (H8), then deploy (H10) and verify (H11) | next |
 
 ## Suggested order
@@ -87,73 +87,88 @@ Read-only audit of `backend/` in four passes: inventory, security, money/data, r
 
 | # | Item | Status |
 |---|---|---|
-| S1 | **Payment receipt replay.** `verifyPayment` (`registrations.service.ts:4480-4611`) checks the Razorpay signature but never that `dto.razorpayOrderId === registration.orderId`, and overwrites `orderId` with the caller's. One ₹10 receipt confirms any number of ₹5,000 registrations; the waitlist-convert branch too. Fix: require the order match + `registration.eventId === eventId`; partial unique indexes on `event_registrations.payment_id` / `order_id` (also fixes the unindexed webhook lookups). Copy the pattern from `team-changes.service.ts:450` and stays `:620` | next |
-| S2 | Same replay in sessions verify (`sessions.service.ts:794-840`); PAID unlocks the LiveKit join token | next |
-| S3 | Subscription upgrade verify (`subscription.service.ts:197-240`): no `order.notes.spaceId === spaceId`, no payment-id dedup, `!==` signature compare. Pay once, upgrade every space, replay monthly. Fix: check space + `order.status`, unique payment id, `timingSafeEqual` | next |
-| S4 | **Mass identity takeover.** `verifyTempToken` (`auth.service.ts:679`) accepts any JWT (access/refresh too). With no `provider`/`providerUserId`, Prisma drops the filters, so `verifyMobile` (`:325-350`) `findFirst({})` returns any identity and `updateMany({})` repoints **every** `user_identities` row to the caller. Fix: `type: 'temp'` claim required, reject empty provider fields, never pass possibly-undefined values into `updateMany` filters | next |
-| S5 | Account takeover by email auto-link: `handleProviderLogin` (`:493-520`) and `loginWithCognito` (`:795-818`) link a new IdP identity to an existing account by email without checking `email_verified`. Fix: link only when verified, otherwise OTP to the existing email/mobile | next |
-| S6 | Refresh tokens accepted as access tokens (`validateAccessToken` `:687` ignores `type`); no revocation on rotate/logout. Fix: reject non-access types; store refresh `jti` in Redis, revoke on rotate + logout, per-user `tokenVersion` | next |
-| S7 | OTP brute force: non-atomic attempt counter (concurrent guesses), `Math.random()` codes, counter reset per send, `verify-mobile` unthrottled. Fix: `crypto.randomInt`, atomic `INCR` checked before compare, per-identifier send cooldown + daily cap (also stops WhatsApp OTP cost abuse) | next |
-| S8 | Hardcoded App Review login `test-user@unifesto.app` / `098765` (`auth.service.ts:227`) bypasses OTP for anyone. Fix: env flag, off in production except during review | next |
+| S1 | **Payment receipt replay.** `verifyPayment` (`registrations.service.ts:4480-4611`) checks the Razorpay signature but never that `dto.razorpayOrderId === registration.orderId`, and overwrites `orderId` with the caller's. One ₹10 receipt confirms any number of ₹5,000 registrations; the waitlist-convert branch too. Fix: require the order match + `registration.eventId === eventId`; partial unique indexes on `event_registrations.payment_id` / `order_id` (also fixes the unindexed webhook lookups). Copy the pattern from `team-changes.service.ts:450` and stays `:620` | done (#110), not deployed |
+| S2 | Same replay in sessions verify (`sessions.service.ts:794-840`); PAID unlocks the LiveKit join token | done (#110), not deployed |
+| S3 | Subscription upgrade verify (`subscription.service.ts:197-240`): no `order.notes.spaceId === spaceId`, no payment-id dedup, `!==` signature compare. Pay once, upgrade every space, replay monthly. Fix: check space + `order.status`, unique payment id, `timingSafeEqual` | done (#110), not deployed |
+| S4 | **Mass identity takeover.** `verifyTempToken` (`auth.service.ts:679`) accepts any JWT (access/refresh too). With no `provider`/`providerUserId`, Prisma drops the filters, so `verifyMobile` (`:325-350`) `findFirst({})` returns any identity and `updateMany({})` repoints **every** `user_identities` row to the caller. Fix: `type: 'temp'` claim required, reject empty provider fields, never pass possibly-undefined values into `updateMany` filters | done (#110), not deployed |
+| S5 | Account takeover by email auto-link: `handleProviderLogin` (`:493-520`) and `loginWithCognito` (`:795-818`) link a new IdP identity to an existing account by email without checking `email_verified`. Fix: link only when verified, otherwise OTP to the existing email/mobile | done (#110), not deployed |
+| S6 | Refresh tokens accepted as access tokens (`validateAccessToken` `:687` ignores `type`); no revocation on rotate/logout. Fix: reject non-access types; store refresh `jti` in Redis, revoke on rotate + logout, per-user `tokenVersion` | done (#110), not deployed |
+| S7 | OTP brute force: non-atomic attempt counter (concurrent guesses), `Math.random()` codes, counter reset per send, `verify-mobile` unthrottled. Fix: `crypto.randomInt`, atomic `INCR` checked before compare, per-identifier send cooldown + daily cap (also stops WhatsApp OTP cost abuse) | done (#110), not deployed |
+| S8 | Hardcoded App Review login `test-user@unifesto.app` / `098765` (`auth.service.ts:227`) bypasses OTP for anyone. Fix: env flag, off in production except during review | done (#110), not deployed |
 
 **P1: money and data integrity**
 
 | # | Item | Status |
 |---|---|---|
-| S9 | Cancelling an unpaid PENDING registration decrements `soldCount`/`registeredCount` it never incremented (`registrations.service.ts:5677-5734`); repeatable, so it unlocks unlimited overselling. Only decrement for PAID / PARTIALLY_REFUNDED; release the coupon | planned |
-| S10 | Overselling on paid checkout, free/RSVP, import, complimentary add and restore: capacity is a plain read, increments are unconditional. Use the atomic `UPDATE … WHERE sold_count + n <= total_quantity` from `team-changes.service.ts:326` (`moveCapacity`) and auto-refund on a lost race | planned |
-| S11 | Double refund: `adminDecide` (`refunds.service.ts:368-483`) calls Razorpay without claiming the request; `refundedAmount` written absolute. Claim with `updateMany where status=PENDING_ADMIN → PROCESSING`; partial unique index on open requests per registration | planned |
-| S12 | Payouts: create races (compute then insert), mark-paid/cancel with no status condition (paid then cancelled frees the money again), refunds after payout hidden by `Math.max(0, …)`. Lock the event row/advisory lock around compute+insert, conditional status changes, show negative balances and flag refunds that exceed what's left | planned |
-| S13 | Checkout retry hard-deletes PENDING rows that already have a live Razorpay order (`:3990-4004`), creating orphaned payments. Cancel instead, like `:362` | planned |
-| S14 | Deleting a cancelled event cascade-deletes paid registrations, refund requests and stay bookings (`events.service.ts:2462`; same for sessions and space delete). `cancelEvent` promises refunds but issues none. Block delete while paid rows exist; decide the cancel-refund flow | planned |
-| S15 | Smaller money bugs: partial refund removes the whole ticket from payouts (count PARTIALLY_REFUNDED minus `refundedAmount`); restore revives refunded/unpaid rows; verify/webhook revive CANCELLED or REFUNDED rows to PAID; waitlist convert and session verify double-count; `payment.failed` can overwrite PAID; session cancel refunds the fee too; coupon cap leaks (30-min release while order still payable, release/confirm race); transfer request not claimed atomically; stay late-payment refund failure leaves PAID+CANCELLED | planned |
-| S16 | One fee source of truth: null `revenueSharePercent` = 0% in payouts but platform default in plan-config; export "Net" disagrees with `netEntitlement`; `computeProcessingFee` unrounded (paise drift trips reconcile). Single `resolvePlatformFeePercent` + round to paise | planned |
+| S9 | Cancelling an unpaid PENDING registration decrements `soldCount`/`registeredCount` it never incremented (`registrations.service.ts:5677-5734`); repeatable, so it unlocks unlimited overselling. Only decrement for PAID / PARTIALLY_REFUNDED; release the coupon | done (#110), not deployed |
+| S10 | Overselling on paid checkout, free/RSVP, import, complimentary add and restore: capacity is a plain read, increments are unconditional. Use the atomic `UPDATE … WHERE sold_count + n <= total_quantity` from `team-changes.service.ts:326` (`moveCapacity`) and auto-refund on a lost race | done (#110), not deployed |
+| S11 | Double refund: `adminDecide` (`refunds.service.ts:368-483`) calls Razorpay without claiming the request; `refundedAmount` written absolute. Claim with `updateMany where status=PENDING_ADMIN → PROCESSING`; partial unique index on open requests per registration | done (#110), not deployed |
+| S12 | Payouts: create races (compute then insert), mark-paid/cancel with no status condition (paid then cancelled frees the money again), refunds after payout hidden by `Math.max(0, …)`. Lock the event row/advisory lock around compute+insert, conditional status changes, show negative balances and flag refunds that exceed what's left | done (#110), not deployed |
+| S13 | Checkout retry hard-deletes PENDING rows that already have a live Razorpay order (`:3990-4004`), creating orphaned payments. Cancel instead, like `:362` | done (#110), not deployed |
+| S14 | Deleting a cancelled event cascade-deletes paid registrations, refund requests and stay bookings (`events.service.ts:2462`; same for sessions and space delete). `cancelEvent` promises refunds but issues none. Block delete while paid rows exist; decide the cancel-refund flow | in progress: delete blocked while paid rows exist (#110); `cancelEvent` refund flow needs your decision |
+| S15 | Smaller money bugs: partial refund removes the whole ticket from payouts (count PARTIALLY_REFUNDED minus `refundedAmount`); restore revives refunded/unpaid rows; verify/webhook revive CANCELLED or REFUNDED rows to PAID; waitlist convert and session verify double-count; `payment.failed` can overwrite PAID; session cancel refunds the fee too; coupon cap leaks (30-min release while order still payable, release/confirm race); transfer request not claimed atomically; stay late-payment refund failure leaves PAID+CANCELLED | done (#110), not deployed |
+| S16 | One fee source of truth: null `revenueSharePercent` = 0% in payouts but platform default in plan-config; export "Net" disagrees with `netEntitlement`; `computeProcessingFee` unrounded (paise drift trips reconcile). Single `resolvePlatformFeePercent` + round to paise | done (#110), not deployed |
 
 **P1: outage risks**
 
 | # | Item | Status |
 |---|---|---|
-| S17 | Deploys recreate all 3 replicas at once while Caddy retries for 5s and boot takes up to 40s (likely the 502/503 floods). Roll one replica at a time (`docker rollout` or scale 6 → healthy → 3); `stop_grace_period: 60s` | planned |
-| S18 | A Redis outage hangs every request incl. the health probe (throttler client `maxRetriesPerRequest: null` + offline queue; `GET /` not `@SkipThrottle`), so all replicas get ejected together. Own client, fail open, skip throttle on health | planned |
-| S19 | Rate limits keyed to Cloudflare edge IPs (no `trusted_proxies` / `client_ip_headers` in Caddy) = 429 storms; SSR calls the public API and shares one bucket. Trust Cloudflare CIDRs + `Cf-Connecting-Ip`; SSR via `http://backend:8080` with an internal header | planned |
-| S20 | Cert render OOM: canvas up to 10000², PDF+PNG in parallel each re-downloading the background, sync PNG encode blocks the loop, `reissueAllRevoked` on the request path, inline fallback when Redis is down. Cap ~3508×2480, fetch once, `await canvas.encode`, queue everything, separate `cert-worker` with its own memory limit | planned |
-| S21 | Unhandled rejections kill a replica (Node 22): `void sendRegistrationConfirmations` right after payment, `void dispatch` in push campaigns. `.catch(log)` at every `void` call + a global `unhandledRejection` logger | planned |
-| S22 | Recurrence cron runs on all 3 replicas, unlocked, read-then-create, so occurrences can duplicate. `runExclusive` + `@@unique([seriesParentId, startDateTime])` | planned |
+| S17 | Deploys recreate all 3 replicas at once while Caddy retries for 5s and boot takes up to 40s (likely the 502/503 floods). Roll one replica at a time (`docker rollout` or scale 6 → healthy → 3); `stop_grace_period: 60s` | done (#110), not deployed |
+| S18 | A Redis outage hangs every request incl. the health probe (throttler client `maxRetriesPerRequest: null` + offline queue; `GET /` not `@SkipThrottle`), so all replicas get ejected together. Own client, fail open, skip throttle on health | done (#110), not deployed |
+| S19 | Rate limits keyed to Cloudflare edge IPs (no `trusted_proxies` / `client_ip_headers` in Caddy) = 429 storms; SSR calls the public API and shares one bucket. Trust Cloudflare CIDRs + `Cf-Connecting-Ip`; SSR via `http://backend:8080` with an internal header | done (#110), not deployed |
+| S20 | Cert render OOM: canvas up to 10000², PDF+PNG in parallel each re-downloading the background, sync PNG encode blocks the loop, `reissueAllRevoked` on the request path, inline fallback when Redis is down. Cap ~3508×2480, fetch once, `await canvas.encode`, queue everything, separate `cert-worker` with its own memory limit | done (#110), not deployed |
+| S21 | Unhandled rejections kill a replica (Node 22): `void sendRegistrationConfirmations` right after payment, `void dispatch` in push campaigns. `.catch(log)` at every `void` call + a global `unhandledRejection` logger | done (#110), not deployed |
+| S22 | Recurrence cron runs on all 3 replicas, unlocked, read-then-create, so occurrences can duplicate. `runExclusive` + `@@unique([seriesParentId, startDateTime])` | done (#110), not deployed |
 
 **P2: hardening**
 
 | # | Item | Status |
 |---|---|---|
-| S23 | Payout separation of duty: request/payout-account routes allow any Space Admin or the creator, bypassing `EVENT_MANAGE_MONEY` (`payouts.service.ts:927`). Gate on `assertCan`. Same family: certificates (`:98`) and reports (`:48`) hand-roll role checks that wrongly refuse platform admins and event curators. Move every inline `SPACE_ADMIN_ROLE_CODES` check (15 files) to `@Can` | planned |
-| S24 | Member search returns any platform user's email by substring (`spaces.service.ts:759`): email harvesting. Exact match only | planned |
-| S25 | Career résumés uploaded public and unthrottled (`careers.service.ts:181`). `uploadPrivate` + signed URLs + throttle | planned |
-| S26 | CORS: `startsWith('http://localhost')` and http `*.unifesto.app` allowed. Exact regex, https only | planned |
-| S27 | api_logs store raw paths with bearer claim tokens and spoofable IPs; one insert per request; `ILIKE` scans. Log the route template + `req.ip`, sample 2xx GETs, batch retention, better indexes | planned |
-| S28 | Webhook dedup: store Razorpay event id / Meta message id unique; captured handler skips REFUNDED/CANCELLED | planned |
-| S29 | Inline auth/payout body types skip validation (payout `amount: "abc"` → NaN passes guards). Real DTOs; `@Max(100)` on list `limit`s (`GET /events`, users) | planned |
-| S30 | Stays `mark-paid` gated by check-in permission. Use attendee-manage or money capability | planned |
-| S31 | Secrets: `JWT_SECRET` reused for email-tracking + traffic HMACs with hardcoded fallbacks; not validated at boot. Dedicated secrets; Joi/zod env schema in `ConfigModule` (JWT_SECRET, PORT, DIRECT_URL…) | planned |
-| S32 | Timeouts on every outbound client: WhatsApp (8 axios calls), Razorpay, S3/SES/Resend, LiveKit | planned |
-| S33 | Fan-out: event/session reminders fire every attendee at once and ignore soft-deleted events; email campaigns run in-process and stick in SENDING after a deploy; reports + exports build in memory on the request. Chunk with a limit, BullMQ campaign jobs with checkpoints + stale sweep, stream CSV | planned |
-| S34 | DB: N+1s on the check-in gate path (offline sync, bulk), payouts, leaderboard upserts, `canManage`; retention for `page_views`, `push_logs`, `user_notifications`, `email_campaign_logs`, `short_link_clicks`, `whatsapp_messages`; `runExclusive` on unlocked cleanup crons | planned |
-| S35 | Observability: nestjs-pino with request id from `cf-ray`, Sentry for 5xx + cron failures, drop Prisma `query` log in prod, cache `/health` 5–10s (it hits S3 every probe), delete `getPm2Logs` `execSync` | planned |
-| S36 | Socket gateway: auth in `io.use`, disconnect on token expiry, 2s Redis cache for `getPublicSnapshot` (reconnect storms) | planned |
-| S37 | CI lint: fail migrations containing `DROP COLUMN`/`DROP TABLE` unless marked as a contract step | planned |
+| S23 | Payout separation of duty: request/payout-account routes allow any Space Admin or the creator, bypassing `EVENT_MANAGE_MONEY` (`payouts.service.ts:927`). Gate on `assertCan`. Same family: certificates (`:98`) and reports (`:48`) hand-roll role checks that wrongly refuse platform admins and event curators. Move every inline `SPACE_ADMIN_ROLE_CODES` check (15 files) to `@Can` | in progress: money, cert, report, refund checks on `@Can` (#110); inline `SPACE_ADMIN_ROLE_CODES` left in sessions, checkin, events, waitlist, registrations, hackathon-help, spaces |
+| S24 | Member search returns any platform user's email by substring (`spaces.service.ts:759`): email harvesting. Exact match only | done (#110), not deployed |
+| S25 | Career résumés uploaded public and unthrottled (`careers.service.ts:181`). `uploadPrivate` + signed URLs + throttle | done (#110), not deployed |
+| S26 | CORS: `startsWith('http://localhost')` and http `*.unifesto.app` allowed. Exact regex, https only | done (#110), not deployed |
+| S27 | api_logs store raw paths with bearer claim tokens and spoofable IPs; one insert per request; `ILIKE` scans. Log the route template + `req.ip`, sample 2xx GETs, batch retention, better indexes | done (#110), not deployed |
+| S28 | Webhook dedup: store Razorpay event id / Meta message id unique; captured handler skips REFUNDED/CANCELLED | done (#110), not deployed |
+| S29 | Inline auth/payout body types skip validation (payout `amount: "abc"` → NaN passes guards). Real DTOs; `@Max(100)` on list `limit`s (`GET /events`, users) | done (#110), not deployed |
+| S30 | Stays `mark-paid` gated by check-in permission. Use attendee-manage or money capability | done (#110), not deployed |
+| S31 | Secrets: `JWT_SECRET` reused for email-tracking + traffic HMACs with hardcoded fallbacks; not validated at boot. Dedicated secrets; Joi/zod env schema in `ConfigModule` (JWT_SECRET, PORT, DIRECT_URL…) | done (#110), not deployed; secrets validated by the existing ConfigValidationService, not a new schema lib |
+| S32 | Timeouts on every outbound client: WhatsApp (8 axios calls), Razorpay, S3/SES/Resend, LiveKit | done (#110), not deployed |
+| S33 | Fan-out: event/session reminders fire every attendee at once and ignore soft-deleted events; email campaigns run in-process and stick in SENDING after a deploy; reports + exports build in memory on the request. Chunk with a limit, BullMQ campaign jobs with checkpoints + stale sweep, stream CSV | done (#110), not deployed |
+| S34 | DB: N+1s on the check-in gate path (offline sync, bulk), payouts, leaderboard upserts, `canManage`; retention for `page_views`, `push_logs`, `user_notifications`, `email_campaign_logs`, `short_link_clicks`, `whatsapp_messages`; `runExclusive` on unlocked cleanup crons | done (#110), not deployed |
+| S35 | Observability: nestjs-pino with request id from `cf-ray`, Sentry for 5xx + cron failures, drop Prisma `query` log in prod, cache `/health` 5–10s (it hits S3 every probe), delete `getPm2Logs` `execSync` | done (#110), not deployed |
+| S36 | Socket gateway: auth in `io.use`, disconnect on token expiry, 2s Redis cache for `getPublicSnapshot` (reconnect storms) | done (#110), not deployed |
+| S37 | CI lint: fail migrations containing `DROP COLUMN`/`DROP TABLE` unless marked as a contract step | done (#110), not deployed |
 
 **P3: cleanup and tests**
 
 | # | Item | Status |
 |---|---|---|
-| S38 | Delete dead modules: `aws` (22 routes, includes the `$queryRawUnsafe` table-name injection), `roles`, `discussions` (plus mobile's orphan API fns calling a non-existent replies route; also has a pin/lock bypass via `PATCH`), `firebase` + `AdminDevice` + admin device-token routes | planned |
-| S39 | Delete ~25 dead legacy leaderboard routes (`leaderboard.controller.ts`); trim `leaderboard.service.ts` method by method (hackathon shares it) | planned |
-| S40 | Remove the duplicate `CategoriesModule` pasted inside `ThrottlerModule.forRootAsync` imports (`app.module.ts:72`) | planned |
-| S41 | Unused deps: `googleapis`, `firebase-admin`, `bcrypt`, `docx`, passport ×4, `ws`, `@types/socket.io`, 7 AWS SDK clients (after S38); fix `ts-jest`/`jest` and `pdfkit` types mismatches | planned |
+| S38 | Delete dead modules: `aws` (22 routes, includes the `$queryRawUnsafe` table-name injection), `roles`, `discussions` (plus mobile's orphan API fns calling a non-existent replies route; also has a pin/lock bypass via `PATCH`), `firebase` + `AdminDevice` + admin device-token routes | done (#110), not deployed |
+| S39 | Delete ~25 dead legacy leaderboard routes (`leaderboard.controller.ts`); trim `leaderboard.service.ts` method by method (hackathon shares it) | done (#110), not deployed |
+| S40 | Remove the duplicate `CategoriesModule` pasted inside `ThrottlerModule.forRootAsync` imports (`app.module.ts:72`) | done (#110), not deployed |
+| S41 | Unused deps: `googleapis`, `firebase-admin`, `bcrypt`, `docx`, passport ×4, `ws`, `@types/socket.io`, 7 AWS SDK clients (after S38); fix `ts-jest`/`jest` and `pdfkit` types mismatches | done (#110), not deployed |
 | S42 | Dormant schema: `Referral`, `referralCode`, `referralUpdates`, coins/cashback columns, `SKIPPED_MUTE`; finish GroupSeat consolidation (drop `groupMembers` fallbacks); stop writing the "do not read" WhatsApp URL fields. Contract migrations, one at a time | planned |
-| S43 | Duplication: one event-access helper (8 variants today), one `isAdmin`, shared CSV util, shared admin/space email controller, `slugify` dep instead of local copy | planned |
-| S44 | Stale comments: wallet/coins wording, ORGANISER role comments, done `TODO(you)` markers. Real open decision: sponsor override inheritance (`sponsors.util.ts:32`) | planned |
+| S43 | Duplication: one event-access helper (8 variants today), one `isAdmin`, shared CSV util, shared admin/space email controller, `slugify` dep instead of local copy | done (#110), not deployed |
+| S44 | Stale comments: wallet/coins wording, ORGANISER role comments, done `TODO(you)` markers. Real open decision: sponsor override inheritance (`sponsors.util.ts:32`) | done (#110), not deployed |
 | S45 | Tests on the money paths, written alongside S9–S16: register → pay → cancel → refund → payout, verify/webhook race, coupon cap, capacity race. Today payouts, main refunds, core registrations, stays bookings, coupons service, events, spaces have no spec; no e2e | planned |
 | S46 | Split `registrations.service.ts` (5,934 lines) into checkout, verify/webhook, cancel/restore, export services as S9–S16 touch them | planned |
-| S47 | Migration hygiene: two migrations share `20260930120000`; two were committed out of timestamp order. Note it; never reuse a timestamp | planned |
+| S47 | Migration hygiene: two migrations share `20260930120000`; two were committed out of timestamp order. Note it; never reuse a timestamp | done (#110), not deployed |
+
+
+**P1: follow-ups found while building S (2026-10-14)**
+
+| # | Item | Status |
+|---|---|---|
+| S48 | `verifyMobile` deletes the "placeholder" user when the mobile already belongs to someone, swallowing errors; that user can be a real email-OTP account, so its identities and data cascade-delete. Merge or refuse instead | next |
+| S49 | OTP lockout abuse: 6 wrong guesses lock a victim out for 15 min, and the 10/day send cap can lock them out for 24 h. Add a per-IP send/verify limit | planned |
+| S50 | Session capacity is not taken atomically on register/verify (S10 covered events only) | planned |
+| S51 | Refund paths outside `refunds.service` (sessions `:429`, stay-bookings `:719/:1026`, team-changes `:512`) don't use the S11 claim | planned |
+| S52 | Smaller money gaps: refund totals ignore automatic sold-out refunds; `eventMoneyRecords` misses `GroupSeatPurchase`; transfer requests can race; a lost waitlist-convert race sends a duplicate confirmation; sessions register can revive a REFUNDED/CANCELLED row | planned |
+| S53 | Data: legacy `user_identities` rows stored `emailVerified = !!email`, so they're still trusted for email linking. Decide and clean up | planned |
+| S54 | S20/S33/S34 remainders: cert-worker also runs every cron and serves on 8080; Resend timeout can't abort the fetch; reports render in-process; campaign recipient lists and xlsx/pdf exports build in memory; no `text_pattern_ops` index for api_logs path prefix search (S27) | planned |
+| S55 | After the #110 deploy: confirm retention periods before the first sweep (04:15 IST), recount `sold_count`/`registered_count` (S9/S15 drift), watch logout reports (60 s refresh-reuse grace, `REFRESH_REUSE_GRACE_MS`), check the Cognito pool maps `email_verified` | next |
+| S56 | Product decisions left in code: sponsor override inheritance (`sponsors.util.ts:32`), Space transactions net formula; S43 admin/space email controllers not merged | planned |
 
 **Done when:** S1–S8 are deployed; the money path has tests that fail on the S1 and S9–S12 scenarios; and a deploy no longer drops traffic.
 
@@ -188,27 +203,27 @@ It's a major because it removes the App Clip.
 | # | Item | Status |
 |---|---|---|
 | O0 | **Hotfix lane until 2 Dec** (only if something is badly broken for live users): branch `hotfix/4.1` from `e87540f` (the 4.1.1 OTA commit), cherry-pick the JS-only fix, run `ota:preflight` (it passes on the 4.0.5 runtimes), and publish with the `--skip-bundler` recipe. Never merge `hotfix/4.1` back into `main`; land the same fix on `main` separately | standby |
-| O1 | Batch in fingerprint fixes that need a store build anyway: `platforms: ["ios", "android"]` in `app.config.js` (makes `npm run update:production` work and retires `--skip-bundler`), and `sourceSkips: SourceSkips.PackageJsonScriptsAll` in `fingerprint.config.js` (editing npm scripts never changes the runtime again). Pull in any other native work wanted soon, such as C7 rich push, or consciously leave it for the next window. Land before the 20 Nov freeze | planned |
+| O1 | Batch in fingerprint fixes that need a store build anyway: `platforms: ["ios", "android"]` in `app.config.js` (makes `npm run update:production` work and retires `--skip-bundler`), and `sourceSkips: SourceSkips.PackageJsonScriptsAll` in `fingerprint.config.js` (editing npm scripts never changes the runtime again). Pull in any other native work wanted soon, such as C7 rich push, or consciously leave it for the next window. Land before the 20 Nov freeze | done (#109), not deployed |
 | O2 | Version → 5.0.0; `eas build --profile production --platform all` from `main` after the 20 Nov freeze | planned |
 | O3 | Device QA on TestFlight / internal testing. This is the first time 76 commits run on a phone. Smoke-test login, Home, event → register free + paid, ticket + QR, group claim, check-in scanner (online + offline), Space tab manage screens, Apex tab, app icon picker, haptics, light/dark, push + deep link | planned |
 | O4 | Record runtimes **from EAS metadata** (`eas build:list --json` → `runtime.version`), not `ota:record`, which hashes the local tree. Keep the 4.0.5 entries until O6 | planned |
 | O5 | `eas submit` on 25 Nov with manual release; release on **2 Dec**, then publish a tiny 5.0.1 OTA at 20% and confirm a real phone receives it (Profile › About shows the update id) | planned |
-| O6 | Move people off the 4.0.x runtimes, which can never get another OTA. Show a soft update prompt as soon as 5.0.0 is live on both stores, then raise the minimum version to 5.0.0 once most active users have moved (decision for you: how long between soft and hard) | planned |
+| O6 | Move people off the 4.0.x runtimes, which can never get another OTA. Show a soft update prompt as soon as 5.0.0 is live on both stores, then raise the minimum version to 5.0.0 once most active users have moved (decision for you: how long between soft and hard) | done (#109): soft prompt built, off until latest version is set in Apex › App version on 2 Dec. Gap between soft and hard is still your call |
 
 **Phase 2: make it impossible to repeat**
 
 | # | Item | Status |
 |---|---|---|
-| O7 | **CI "OTA-safe" check** on every PR touching `mobile/`: run preflight with `GOOGLE_MAPS_ANDROID_API_KEY` as a GitHub secret (the only env var feeding the config). If the PR's head no longer matches a live runtime while its base did, the check fails with "native change: needs a store build" | planned |
-| O8 | **Native PR rule (from 2 Dec on):** PRs that change the runtime get a `native` label and stay open until the next store-build window, when they merge together right before the build. JS PRs never wait. Before 2 Dec, native PRs merge normally into the 5.0.0 build. All PRs still base on `main` | planned |
-| O9 | PR template: replace the free-text "Ships as" with the CI result (OTA-safe ✓ / store build) | planned |
-| O10 | `scripts/ota-record-build.js`: fetch the latest finished production build per platform from EAS and write its runtime to `runtime-fingerprints.json`. Delete `ota:record` | planned |
-| O11 | Make `update:production` refuse to publish while another rollout on the channel is below 100%. Promote it or revert it first, so one rollout runs at a time | planned |
-| O12 | **Stale-OTA alarm:** Apex › OTA updates shows how many mobile commits on `main` are newer than the last published update, plus whether `main` is OTA-safe. That makes "nothing shipped for 10 days" visible | planned |
-| O13 | **Adoption:** add `runtimeVersion` + `updateId` to the app-version report (`src/lib/appVersionReport.ts` sends only version + platform today) and a backend column, so Apex shows the share of active users on each update and runtime | planned |
+| O7 | **CI "OTA-safe" check** on every PR touching `mobile/`: run preflight with `GOOGLE_MAPS_ANDROID_API_KEY` as a GitHub secret (the only env var feeding the config). If the PR's head no longer matches a live runtime while its base did, the check fails with "native change: needs a store build" | done (#109), not deployed |
+| O8 | **Native PR rule (from 2 Dec on):** PRs that change the runtime get a `native` label and stay open until the next store-build window, when they merge together right before the build. JS PRs never wait. Before 2 Dec, native PRs merge normally into the 5.0.0 build. All PRs still base on `main` | done (#109); `native` label created |
+| O9 | PR template: replace the free-text "Ships as" with the CI result (OTA-safe ✓ / store build) | done (#109), not deployed |
+| O10 | `scripts/ota-record-build.js`: fetch the latest finished production build per platform from EAS and write its runtime to `runtime-fingerprints.json`. Delete `ota:record` | done (#109), not deployed |
+| O11 | Make `update:production` refuse to publish while another rollout on the channel is below 100%. Promote it or revert it first, so one rollout runs at a time | done (#109), not deployed |
+| O12 | **Stale-OTA alarm:** Apex › OTA updates shows how many mobile commits on `main` are newer than the last published update, plus whether `main` is OTA-safe. That makes "nothing shipped for 10 days" visible | done (#109), not deployed |
+| O13 | **Adoption:** add `runtimeVersion` + `updateId` to the app-version report (`src/lib/appVersionReport.ts` sends only version + platform today) and a backend column, so Apex shows the share of active users on each update and runtime | done (#109), not deployed |
 | O14 | Test promote / revert / republish on the `preview` channel once, with an internal preview build. The Apex mutations are still untested. Use the preview channel to QA risky OTAs before production | planned |
 | O15 | Publish habit: OTA whenever a batch of mobile PRs has merged and been checked on a device. Don't let JS sit on `main` unshipped | planned |
-| O16 | Rewrite `mobile/docs/OTA.md` for the new flow (drop the `--skip-bundler` section, add the native-window rule, record-from-EAS and the one-rollout rule) | planned |
+| O16 | Rewrite `mobile/docs/OTA.md` for the new flow (drop the `--skip-bundler` section, add the native-window rule, record-from-EAS and the one-rollout rule) | done (#109), not deployed |
 
 **Done when:** a phone on the latest store build receives every OTA published from `main`; CI has flagged at least one native PR; and Apex shows update adoption.
 
@@ -449,3 +464,5 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 - **2026-10-14** · Track 0.6 + 0.7 (backend: 24 legacy leaderboard routes, referral/wallet leftovers) merged in #107.
 - **2026-10-14** · Track 0.1–0.5 (Apex pre-pivot pages/organiser branches, Space redirect routes + copied admin API fns, mobile dead screens/components/routes) + leaderboard `manage` route: #108. tsc green on all apps, backend jest green. Mobile is JS-only; `/signup` links now map to `/login` in `+native-intent.tsx`.
 - **2026-10-14** · Track 0.8 closed in #108: Space join bar hidden for members; Space tab summary "N check-ins live · M events coming up"; Apex edit-user sends null for cleared optional fields (name/username can't be cleared); Apex requests "All" orders open by oldest waiting, history by most recent; push-device report only on user/subscription/opt-in change or every 24h. Track 0 done.
+- **2026-10-14** · Track S built in 4 lanes (S1–S13, S15–S22, S24–S41, S43, S44, S47 done; S14 + S23 partial), adversarially reviewed on auth/payments/money/refunds, merged in #110. Backend jest 734/734. 9 additive migrations `20261015100000`–`20261015160000`. Not deployed. Follow-ups logged as S48–S56; S42 + S46 still open.
+- **2026-10-14** · Track O phase 2 + O1 + O6 merged in #109 (O1 is a native change, rides 5.0.0). `OTA-safe` CI check live; secrets `GOOGLE_MAPS_ANDROID_API_KEY` + `OTA_STATUS_SECRET` added; `native` label created. Migrations `20261015220000`, `20261015230000`. Not deployed.
