@@ -12,12 +12,12 @@ All commands run from `mobile/`.
 Record its runtime so later OTAs can be checked against it:
 
 ```bash
-npm run ota:record
+npm run ota:record-build
 ```
 
-This adds the iOS and Android fingerprints of this checkout (with the production
-EAS environment loaded) to `runtime-fingerprints.json`. Commit the file with the
-release. Keep the fingerprints of every build still in use; delete one only once
+This reads the latest finished production store build per platform from EAS
+(`eas build:list`, read-only) and adds its runtime to `runtime-fingerprints.json`.
+Commit the file with the release. Keep the fingerprints of every build still in use; delete one only once
 the minimum version is raised past it.
 
 ## Publishing an update
@@ -33,7 +33,7 @@ the minimum version is raised past it.
 > eas update --channel production --environment production --rollout-percentage=20 --skip-bundler --message "…"
 > ```
 >
-> With the next store build, add `platforms: ["ios", "android"]` to `app.config.js`, then `ota:record`.
+> With the next store build, add `platforms: ["ios", "android"]` to `app.config.js`, then `ota:record-build`.
 
 ```bash
 npm run update:production

@@ -15,7 +15,7 @@
     "reset:hard": "watchman watch-del-all && rm -rf node_modules/.cache && rm -rf .expo && expo start --dev-client --clear",
     "update:preview": "eas update --channel preview --environment preview",
     "ota:preflight": "eas env:exec production \"node scripts/ota-preflight.js production\"",
-    "ota:record": "eas env:exec production \"node scripts/ota-preflight.js production --record\"",
+    "ota:record-build": "node scripts/ota-record-build.js production",
     "update:production": "npm run ota:preflight && eas update --channel production --environment production --rollout-percentage=20",
     "update:promote": "eas update:edit",
     "update:revert-rollout": "eas update:revert-update-rollout",
