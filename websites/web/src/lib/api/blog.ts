@@ -1,8 +1,9 @@
+import { apiBase, withInternal } from "@/lib/api/internal";
 /**
  * Blog API — public, read-only. Safe to call from server components (no auth).
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
+const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app");
 
 export interface BlogPost {
   id: string;
@@ -23,7 +24,7 @@ export interface BlogPost {
 /** All published posts, newest first. Returns [] on any failure. */
 export async function getPosts(): Promise<BlogPost[]> {
   try {
-    const res = await fetch(`${API_URL}/blog`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API_URL}/blog`, withInternal({ next: { revalidate: 60 } }));
     if (!res.ok) return [];
     return (await res.json()) as BlogPost[];
   } catch {
@@ -34,9 +35,9 @@ export async function getPosts(): Promise<BlogPost[]> {
 /** One published post by slug, or null when not found. */
 export async function getPost(slug: string): Promise<BlogPost | null> {
   try {
-    const res = await fetch(`${API_URL}/blog/${encodeURIComponent(slug)}`, {
+    const res = await fetch(`${API_URL}/blog/${encodeURIComponent(slug)}`, withInternal({
       next: { revalidate: 60 },
-    });
+    }));
     if (res.status === 404) return null;
     if (!res.ok) return null;
     return (await res.json()) as BlogPost;

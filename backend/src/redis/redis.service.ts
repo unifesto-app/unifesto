@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -135,8 +135,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
    *
    * Returns null only when Redis is not configured, so callers degrade
    * gracefully to in-memory. Caller owns the returned client's lifecycle.
+   * `overrides` tweaks the connection (e.g. the throttler fails fast instead
+   * of queueing commands forever).
    */
-  createClient(): Redis | null {
+  createClient(overrides: RedisOptions = {}): Redis | null {
     const host = this.configService.get<string>('REDIS_HOST');
     const port = this.configService.get<number>('REDIS_PORT');
     const tlsEnabled = this.configService.get<string>('REDIS_TLS') === 'true';
@@ -159,6 +161,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       enableReadyCheck: true,
       lazyConnect: false,
       retryStrategy: (times) => Math.min(times * 200, 5000),
+      ...overrides,
     });
   }
 

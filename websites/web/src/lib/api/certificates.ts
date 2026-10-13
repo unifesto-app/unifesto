@@ -1,10 +1,11 @@
+import { apiBase, withInternal } from "@/lib/api/internal";
 /**
  * Certificate API for the website: public verification only, used by the
  * /verify/[code] page. No session is required, so it is a plain fetch usable
  * from the server. An attendee's own certificate list lives in the app.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app";
+const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto.app");
 
 // ============================================================================
 // TYPES
@@ -43,7 +44,7 @@ export async function verifyCertificate(
 ): Promise<CertificateVerification | null> {
   const response = await fetch(
     `${API_URL}/certificates/verify/${encodeURIComponent(code)}`,
-    { method: "GET", cache: "no-store" }
+    withInternal({ method: "GET", cache: "no-store" })
   );
 
   if (response.status === 404) return null;
