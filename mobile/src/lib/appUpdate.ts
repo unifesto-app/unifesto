@@ -1,4 +1,5 @@
 import { Linking, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import { getAppVersion, PlatformVersionInfo } from './api/appVersion';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -49,11 +50,14 @@ function promptForcedUpdate(info: PlatformVersionInfo) {
   );
 }
 
+/** latestVersion the soft prompt was last shown for; it shows once per version. */
+const SOFT_PROMPT_KEY = 'appUpdate.softPromptShownFor';
+
 /** Optional update: a dismissable alert with Update / Later. */
 function promptOptionalUpdate(info: PlatformVersionInfo) {
   AppAlert.alert(
-    'Update Available',
-    'A new version of Unifesto is available with the latest features and fixes.',
+    'Update available',
+    `Version ${info.latestVersion} of Unifesto is out with the latest features and fixes.`,
     [
       { text: 'Later', style: 'cancel' },
       { text: 'Update', onPress: () => openStore(info.storeUrl) },
@@ -96,8 +100,18 @@ export async function checkForAppUpdate(
   }
 
   if (res.kind === 'force') promptForcedUpdate(res.info);
-  else if (res.kind === 'optional') promptOptionalUpdate(res.info);
-  else if (manual) {
+  else if (res.kind === 'optional') {
+    // Startup nudges once per store version; a manual check always answers.
+    if (!manual) {
+      try {
+        if ((await AsyncStorage.getItem(SOFT_PROMPT_KEY)) === res.info.latestVersion) return;
+        await AsyncStorage.setItem(SOFT_PROMPT_KEY, res.info.latestVersion);
+      } catch {
+        return; // Storage unavailable: skip rather than nag every launch.
+      }
+    }
+    promptOptionalUpdate(res.info);
+  } else if (manual) {
     AppAlert.alert('You’re up to date', `You’re on the latest version (${res.installed}).`);
   }
 }
@@ -124,12 +138,13 @@ export async function getStoreUpdate(): Promise<StoreUpdate | 'unreachable' | nu
   if (!policy) return 'unreachable';
 
   const info = Platform.OS === 'ios' ? policy.ios : policy.android;
-  if (!info?.latestVersion) return null;
+  if (!info) return null;
 
+  // An empty latestVersion turns the soft prompt off; the minimum still applies.
   const kind =
     info.minimumVersion && compareVersions(installed, info.minimumVersion) < 0
       ? 'force'
-      : compareVersions(installed, info.latestVersion) < 0
+      : info.latestVersion && compareVersions(installed, info.latestVersion) < 0
         ? 'optional'
         : 'current';
   return { kind, installed, info };

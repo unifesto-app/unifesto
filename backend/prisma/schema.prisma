@@ -2402,12 +2402,12 @@ model PlatformConfig {
 
   // Mobile app version policy, edited by admins. Drives the in-app "update
   // available" prompt: the app compares its installed build against `latest`
-  // (optional prompt) and `minimum` (forced update below it). Store URLs are
+  // (optional prompt, off while empty) and `minimum` (forced update below it). Store URLs are
   // where "Update" sends the user.
-  iosLatestVersion      String @default("2.0.1") @map("ios_latest_version")
+  iosLatestVersion      String @default("") @map("ios_latest_version")
   iosMinimumVersion     String @default("0.0.0") @map("ios_minimum_version")
   iosStoreUrl           String @default("https://apps.apple.com/in/app/unifesto-discover-events/id6767165496") @map("ios_store_url")
-  androidLatestVersion  String @default("2.0.1") @map("android_latest_version")
+  androidLatestVersion  String @default("") @map("android_latest_version")
   androidMinimumVersion String @default("0.0.0") @map("android_minimum_version")
   androidStoreUrl       String @default("https://play.google.com/store/apps/details?id=com.unifesto.app") @map("android_store_url")
 

@@ -29,6 +29,19 @@ import {
 } from "@/lib/api/app-version-api";
 
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
+const ZERO_RE = /^0(\.0)*$/;
+
+/** Empty latest = soft prompt off. Builds up to 4.x skip the minimum then too. */
+function platformError(v: PlatformVersionInfo): string | null {
+  if (v.latestVersion && !VERSION_RE.test(v.latestVersion))
+    return "Use a dotted version like 2.1.0, or leave latest empty";
+  if (!VERSION_RE.test(v.minimumVersion))
+    return "Use a dotted version like 2.0.0";
+  if (!v.latestVersion && !ZERO_RE.test(v.minimumVersion))
+    return "Set a latest version before raising the minimum";
+  if (!v.storeUrl.trim()) return "Store URL is required";
+  return null;
+}
 
 type Platform = "ios" | "android";
 
@@ -46,8 +59,7 @@ function PlatformCard({
   const Logo = isIos ? AppleLogo : AndroidLogo;
   const label = isIos ? "iOS — App Store" : "Android — Play Store";
 
-  const latestValid = VERSION_RE.test(value.latestVersion);
-  const minimumValid = VERSION_RE.test(value.minimumVersion);
+  const problem = platformError(value);
 
   return (
     <Card>
@@ -57,8 +69,8 @@ function PlatformCard({
         </CardTitle>
         <CardDescription>
           Below <span className="font-medium">minimum</span> forces an update;
-          below <span className="font-medium">latest</span> shows an optional
-          prompt.
+          below <span className="font-medium">latest</span> shows a dismissible
+          prompt, once per version. Leave latest empty to show none.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -68,16 +80,11 @@ function PlatformCard({
             <Input
               id={`${platform}-latest`}
               value={value.latestVersion}
-              placeholder="2.1.0"
+              placeholder="Empty = no prompt"
               onChange={(e) =>
                 onChange({ ...value, latestVersion: e.target.value.trim() })
               }
             />
-            {!latestValid && value.latestVersion.length > 0 && (
-              <p className="text-xs text-destructive">
-                Use a dotted version like 2.1.0
-              </p>
-            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor={`${platform}-minimum`}>Minimum version</Label>
@@ -89,13 +96,9 @@ function PlatformCard({
                 onChange({ ...value, minimumVersion: e.target.value.trim() })
               }
             />
-            {!minimumValid && value.minimumVersion.length > 0 && (
-              <p className="text-xs text-destructive">
-                Use a dotted version like 2.0.0
-              </p>
-            )}
           </div>
         </div>
+        {problem && <p className="text-xs text-destructive">{problem}</p>}
         <div className="space-y-1.5">
           <Label htmlFor={`${platform}-url`}>Store URL</Label>
           <Input
@@ -134,10 +137,7 @@ export default function AppVersionPage() {
   const allValid = useMemo(() => {
     if (!config) return false;
     return (["ios", "android"] as Platform[]).every(
-      (p) =>
-        VERSION_RE.test(config[p].latestVersion) &&
-        VERSION_RE.test(config[p].minimumVersion) &&
-        config[p].storeUrl.trim().length > 0
+      (p) => platformError(config[p]) === null
     );
   }, [config]);
 
