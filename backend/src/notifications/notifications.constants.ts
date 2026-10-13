@@ -8,7 +8,6 @@ export type NotificationCategory =
   | 'eventReminders'
   | 'newEvents'
   | 'spaceUpdates'
-  | 'referralUpdates'
   | 'promotions' // admin marketing broadcasts (opt-IN: off by default)
   | 'productUpdates' // admin product/app announcements (opt-OUT: on by default)
   | 'organiserAnnouncements'

@@ -50,7 +50,7 @@ export interface PaymentLinkResult {
  * money (event registrations, sessions, …) goes through this service so that
  * order creation, signature verification, and the app-wide processing fee live
  * in exactly one place. Domain-specific consequences of a payment (issuing
- * tickets, incrementing seat counts, debiting coins) belong to the calling
+ * tickets, incrementing seat counts) belong to the calling
  * feature, not here.
  */
 @Injectable()
