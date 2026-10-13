@@ -12,6 +12,7 @@ import {
   ReportStatus,
   ReportType,
 } from '@prisma/client';
+import slugify from 'slugify';
 import { PrismaService } from '../prisma/prisma.service';
 import { assertEventSpaceAdmin } from '../events/event-access';
 import { PlanConfigService } from '../subscription/plan-config.service';
@@ -202,7 +203,7 @@ export class ReportsService {
         generatedAt,
       });
 
-      const fileName = `${slugify(title)}.pdf`;
+      const fileName = `${slugify(title, { lower: true, strict: true }).slice(0, 60) || 'event-report'}.pdf`;
       const fileUrl = await this.storage.uploadBuffer(
         pdf,
         `reports/${report.id}.pdf`,
@@ -286,14 +287,4 @@ export class ReportsService {
     await this.prisma.eventReport.delete({ where: { id: reportId } });
     return { deleted: true };
   }
-}
-
-function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || 'event-report'
-  );
 }
