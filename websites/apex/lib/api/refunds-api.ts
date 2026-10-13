@@ -8,6 +8,7 @@ import backendClient, { apiCall, ApiError } from "./backend-client";
 export type RefundStatus =
   | "PENDING_CURATOR"
   | "PENDING_ADMIN"
+  | "PROCESSING"
   | "APPROVED"
   | "REJECTED";
 
@@ -35,6 +36,8 @@ export interface RefundRequest {
   approvedAmount: string | null;
   cashRefunded: string;
   razorpayRefundId: string | null;
+  /** Set when the refund exceeded what was left to pay out: recover from the space. */
+  payoutShortfall?: string | null;
   createdAt: string;
   updatedAt: string;
   registration?: {

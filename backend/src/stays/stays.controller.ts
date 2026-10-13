@@ -304,9 +304,11 @@ export class StaysController {
     return this.bookings.lookupPass(eventId, passCode);
   }
 
+  // Recording money taken is not a desk/scanner job: crew (check-in only)
+  // can't mark a stay paid; curators and co-curators can.
   @Post('events/:eventId/stay-bookings/:bookingId/mark-paid')
   @UseGuards(JwtAuthGuard, CanGuard)
-  @Can(Action.EVENT_CHECK_IN, { eventKey: 'eventId' })
+  @Can(Action.EVENT_MANAGE_ATTENDEES, { eventKey: 'eventId' })
   markPaid(
     @Param('eventId', uuid) eventId: string,
     @Param('bookingId', uuid) bookingId: string,

@@ -71,7 +71,7 @@ function deriveSteps(req: RefundRequest): ProgressStep[] {
             ? 'rejected'
             : rejectedAtCurator
               ? 'skipped'
-              : status === 'PENDING_ADMIN'
+              : status === 'PENDING_ADMIN' || status === 'PROCESSING'
                 ? 'current'
                 : 'pending',
       at: adminActionAt,

@@ -41,6 +41,8 @@ export function refundStatus(s: RefundStatus, tokens: StatusPalette) {
       return { text: 'Needs review', color: tokens.warning };
     case 'PENDING_ADMIN':
       return { text: 'With Unifesto', color: tokens.info ?? tokens.textSecondary };
+    case 'PROCESSING':
+      return { text: 'Processing', color: tokens.info ?? tokens.textSecondary };
     case 'APPROVED':
       return { text: 'Refunded', color: tokens.success };
     default:

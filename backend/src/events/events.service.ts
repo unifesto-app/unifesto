@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { eventMoneyRecords } from '../common/money-records';
 import { StorageService } from '../storage/storage.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import {
@@ -2468,13 +2469,12 @@ export class EventsService {
       );
     }
 
-    // Payouts are financial records and are intentionally NOT cascade-deleted.
-    // Refuse rather than hit a raw foreign-key error so money-movement history
-    // is never silently lost.
-    const payoutCount = await this.prisma.payout.count({ where: { eventId } });
-    if (payoutCount > 0) {
+    // Payments, refunds and payouts are financial records. The delete would
+    // cascade over registrations, refund requests and stay bookings (payouts
+    // would hit a raw FK error), so refuse while any exist. Hide it instead.
+    if ((await eventMoneyRecords(this.prisma, { id: eventId })) > 0) {
       throw new BadRequestException(
-        'This event has payout records and cannot be deleted. Please contact support.',
+        'This event has payment, refund or payout records and cannot be deleted. Hide it instead.',
       );
     }
 

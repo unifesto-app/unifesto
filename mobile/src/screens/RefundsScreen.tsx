@@ -24,6 +24,7 @@ const TABS: { key: RefundStatus; label: string }[] = [
 const EMPTY: Record<RefundStatus, string> = {
   PENDING_CURATOR: 'Nothing waiting on you.',
   PENDING_ADMIN: 'Nothing with Unifesto right now.',
+  PROCESSING: 'Nothing being processed.',
   APPROVED: 'No refunds paid yet.',
   REJECTED: 'No rejected requests.',
 };

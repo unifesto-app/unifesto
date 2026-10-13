@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { sessionMoneyRecords } from '../common/money-records';
 import { PaymentsService } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { LivekitService } from './livekit.service';
@@ -377,6 +378,12 @@ export class SessionsService {
     ) {
       throw new BadRequestException(
         'Only draft or cancelled sessions can be deleted. Cancel it first.',
+      );
+    }
+    // Paid registrations (refunded or not) are financial records the cascade would erase.
+    if ((await sessionMoneyRecords(this.prisma, { id: sessionId })) > 0) {
+      throw new BadRequestException(
+        'This session has payment records and cannot be deleted. Hide it instead.',
       );
     }
 

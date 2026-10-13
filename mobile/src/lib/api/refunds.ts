@@ -18,6 +18,7 @@ import { createTicket } from './support';
 export type RefundStatus =
   | 'PENDING_CURATOR'
   | 'PENDING_ADMIN'
+  | 'PROCESSING'
   | 'APPROVED'
   | 'REJECTED';
 
@@ -42,7 +43,7 @@ export interface RefundRequest {
 }
 
 /** Statuses where the request is still moving through the pipeline. */
-export const OPEN_REFUND_STATUSES: RefundStatus[] = ['PENDING_CURATOR', 'PENDING_ADMIN'];
+export const OPEN_REFUND_STATUSES: RefundStatus[] = ['PENDING_CURATOR', 'PENDING_ADMIN', 'PROCESSING'];
 
 export interface RequestRefundInput {
   registrationId: string;

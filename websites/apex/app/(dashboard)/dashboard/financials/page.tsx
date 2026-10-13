@@ -63,6 +63,7 @@ type FigureKey = keyof Pick<
   | "settled"
   | "pending"
   | "available"
+  | "overdrawn"
 >;
 
 const COLUMNS: { key: FigureKey; label: string; hint: string }[] = [
@@ -73,6 +74,7 @@ const COLUMNS: { key: FigureKey; label: string; hint: string }[] = [
   { key: "settled", label: "Settled", hint: "Already paid out" },
   { key: "pending", label: "Pending", hint: "Queued for transfer" },
   { key: "available", label: "Remaining", hint: "Owed but not yet queued" },
+  { key: "overdrawn", label: "Overdrawn", hint: "Paid out beyond net owed (refunds after payout); to recover" },
 ];
 
 // ─── Default breakdown ordering ───────────────────────────────────────────────
@@ -430,7 +432,9 @@ function FigureCell({
           ? "text-muted-foreground/60"
           : column === "available" && value > 0
             ? "text-primary"
-            : "text-foreground"
+            : column === "overdrawn" && value > 0
+              ? "text-destructive"
+              : "text-foreground"
       )}
     >
       {money(value)}

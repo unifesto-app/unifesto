@@ -27,9 +27,10 @@ import {
   EventStatus,
   Prisma,
 } from '@prisma/client';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService } from '../auth/authorization';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
+import { PayoutsService } from '../payouts/payouts.service';
 import { esc, h1, small, strong } from '../email/layout';
 
 /** Round to 2 decimal places (money). */
@@ -57,7 +58,15 @@ export function allocateRefund<K>(amount: number, buckets: { key: K; room: numbe
 const OPEN_STATUSES: RefundStatus[] = [
   RefundStatus.PENDING_CURATOR,
   RefundStatus.PENDING_ADMIN,
+  RefundStatus.PROCESSING,
 ];
+
+const ALREADY_OPEN = 'A refund request is already open for this registration';
+
+/** P2025 = conditional update matched nothing; P2002 = open-request unique index. */
+function isPrismaCode(err: unknown, code: string): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === code;
+}
 
 @Injectable()
 export class RefundsService {
@@ -68,6 +77,8 @@ export class RefundsService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly events: EventEmitter2,
+    private readonly authz: AuthorizationService,
+    private readonly payouts: PayoutsService,
   ) {
     // Refunds use standard Razorpay Checkout (payments.refund) — the same
     // integration that collects ticket payments. This is unrelated to RazorpayX.
@@ -109,23 +120,44 @@ export class RefundsService {
     return money(Number(a.totalAmount) - Number(a.processingFee));
   }
 
-  /** Ensure the user is an organiser/co-organiser of the event's space. */
+  /**
+   * Ensure the user may handle this event's money: its Curator (event money)
+   * or an admin of its space (space money). Platform admins pass via the IAM.
+   */
   private async assertOrganiser(userId: string, eventId: string): Promise<void> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       select: { spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
-    const roles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-      select: { id: true },
-    });
-    if (roles.length === 0) {
+    const user = { id: userId };
+    const allowed =
+      (await this.authz.can(user, Action.EVENT_MANAGE_MONEY, { eventId })) ||
+      (await this.authz.can(user, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }));
+    if (!allowed) {
       throw new ForbiddenException('Not an organiser of this event');
+    }
+  }
+
+  /**
+   * Move a request out of `from` only if it is still there, so two reviewers
+   * (or a double click) can't both act on it.
+   */
+  private async transition(
+    requestId: string,
+    from: RefundStatus,
+    data: Prisma.RefundRequestUpdateInput,
+  ) {
+    try {
+      return await this.prisma.refundRequest.update({
+        where: { id: requestId, status: from },
+        data,
+      });
+    } catch (err) {
+      if (isPrismaCode(err, 'P2025')) {
+        throw new ConflictException('This refund request was already handled by someone else');
+      }
+      throw err;
     }
   }
 
@@ -237,7 +269,7 @@ export class RefundsService {
       where: { registrationId: dto.registrationId, status: { in: OPEN_STATUSES } },
     });
     if (existing) {
-      throw new ConflictException('A refund request is already open for this registration');
+      throw new ConflictException(ALREADY_OPEN);
     }
 
     if (dto.requestedAmount != null) {
@@ -248,19 +280,24 @@ export class RefundsService {
       }
     }
 
-    const created = await this.prisma.refundRequest.create({
-      data: {
-        registrationId: dto.registrationId,
-        eventId: registration.eventId,
-        requestedById: userId,
-        requesterRole,
-        supportTicketId: dto.supportTicketId ?? null,
-        reason: dto.reason,
-        requestedAmount: dto.requestedAmount != null ? money(dto.requestedAmount) : null,
-        refundMethod: RefundMethod.BANK,
-        status: initialStatus,
-      },
-    });
+    const created = await this.prisma.refundRequest
+      .create({
+        data: {
+          registrationId: dto.registrationId,
+          eventId: registration.eventId,
+          requestedById: userId,
+          requesterRole,
+          supportTicketId: dto.supportTicketId ?? null,
+          reason: dto.reason,
+          requestedAmount: dto.requestedAmount != null ? money(dto.requestedAmount) : null,
+          refundMethod: RefundMethod.BANK,
+          status: initialStatus,
+        },
+      })
+      .catch((err) => {
+        if (isPrismaCode(err, 'P2002')) throw new ConflictException(ALREADY_OPEN);
+        throw err;
+      });
 
     const eventTitle = registration.event.title;
     if (requesterRole === RefundRequesterRole.ATTENDEE) {
@@ -317,16 +354,13 @@ export class RefundsService {
       throw new BadRequestException('A reason is required to reject a refund request');
     }
 
-    const updated = await this.prisma.refundRequest.update({
-      where: { id: requestId },
-      data: {
-        status: dto.action === 'FORWARD' ? RefundStatus.PENDING_ADMIN : RefundStatus.REJECTED,
-        ...(dto.action === 'REJECT' &&
-          (await this.reasonOnceDecided(request.registration.userId))),
-        curatorNote: dto.note?.trim() || null,
-        curatorActionBy: userId,
-        curatorActionAt: new Date(),
-      },
+    const updated = await this.transition(requestId, RefundStatus.PENDING_CURATOR, {
+      status: dto.action === 'FORWARD' ? RefundStatus.PENDING_ADMIN : RefundStatus.REJECTED,
+      ...(dto.action === 'REJECT' &&
+        (await this.reasonOnceDecided(request.registration.userId))),
+      curatorNote: dto.note?.trim() || null,
+      curatorActionBy: userId,
+      curatorActionAt: new Date(),
     });
 
     const eventTitle = request.event.title;
@@ -378,15 +412,12 @@ export class RefundsService {
     }
 
     if (dto.action === 'REJECT') {
-      const rejected = await this.prisma.refundRequest.update({
-        where: { id: requestId },
-        data: {
-          status: RefundStatus.REJECTED,
-          ...(await this.reasonOnceDecided(request.registration.userId)),
-          adminNote: dto.note?.trim() || null,
-          adminActionBy: adminId,
-          adminActionAt: new Date(),
-        },
+      const rejected = await this.transition(requestId, RefundStatus.PENDING_ADMIN, {
+        status: RefundStatus.REJECTED,
+        ...(await this.reasonOnceDecided(request.registration.userId)),
+        adminNote: dto.note?.trim() || null,
+        adminActionBy: adminId,
+        adminActionAt: new Date(),
       });
       const payer = await this.userContact(request.registration.userId);
       this.notifyEmail(
@@ -416,8 +447,12 @@ export class RefundsService {
    * Move the money and record the outcome for an approved refund. Shared by the
    * admin's two-stage decision (`adminDecide`) and the admin-initiated refund
    * (`adminRefund`). Refunds the base only, cash-first, and cancels the
-   * registration once fully refunded. Assumes the caller has confirmed the
-   * request is in a state that may be approved.
+   * registration once fully refunded.
+   *
+   * Claims the request (PENDING_ADMIN -> PROCESSING) before any money moves, so
+   * a concurrent approval of the same request gets a 409 instead of a second
+   * Razorpay refund. If nothing went back the claim is released; once money has
+   * moved it is never released (a stuck PROCESSING row is for manual repair).
    */
   private async settleApprovedRefund(
     request: Prisma.RefundRequestGetPayload<{
@@ -428,7 +463,39 @@ export class RefundsService {
     note: string | null | undefined,
   ) {
     const requestId = request.id;
-    const reg = request.registration;
+    await this.transition(requestId, RefundStatus.PENDING_ADMIN, { status: RefundStatus.PROCESSING });
+    const progress = { moneyMoved: false };
+    try {
+      return await this.settleClaimedRefund(request, adminId, approvedAmount, note, progress);
+    } catch (err) {
+      if (!progress.moneyMoved) {
+        // Nothing went back to the payer: put the request back in the queue.
+        await this.prisma.refundRequest
+          .update({
+            where: { id: requestId, status: RefundStatus.PROCESSING },
+            data: { status: RefundStatus.PENDING_ADMIN },
+          })
+          .catch((e) => this.logger.error(`Could not release refund claim ${requestId}`, e));
+      }
+      throw err;
+    }
+  }
+
+  private async settleClaimedRefund(
+    request: Prisma.RefundRequestGetPayload<{
+      include: { registration: { include: { event: { select: { title: true } } } } };
+    }>,
+    adminId: string,
+    approvedAmount: number | null | undefined,
+    note: string | null | undefined,
+    progress: { moneyMoved: boolean },
+  ) {
+    const requestId = request.id;
+    // Re-read after the claim: the copy the caller loaded may predate a refund
+    // that settled in between.
+    const reg = await this.prisma.eventRegistration.findUniqueOrThrow({
+      where: { id: request.registrationId },
+    });
     const closedReason = await this.reasonOnceDecided(reg.userId);
     // A group may also hold extra-seats payments made after booking; a refund
     // draws on the group's own payment first, then on those, oldest first.
@@ -451,6 +518,9 @@ export class RefundsService {
     if (amount > maxRefundable) {
       throw new BadRequestException(`Maximum refundable base is ₹${maxRefundable}`);
     }
+
+    // Payout headroom before this refund, to flag one the event can't cover.
+    const overdrawnBefore = await this.payouts.eventOverdrawn(reg.eventId);
 
     const plan = allocateRefund<string | null>(amount, [
       { key: null, room: regBase - alreadyRefunded },
@@ -478,6 +548,7 @@ export class RefundsService {
           notes: { registrationId: reg.id, refundRequestId: requestId },
         } as any);
         razorpayRefundId = (refund as any)?.id ?? null;
+        progress.moneyMoved = true;
       } catch (err: any) {
         this.logger.error(`Razorpay refund failed for request ${requestId}`, err);
         throw new BadRequestException(
@@ -499,6 +570,7 @@ export class RefundsService {
           notes: { groupSeatPurchaseId: a.id, refundRequestId: requestId },
         } as any);
         addonDone.push({ id: a.id, amount: slice.amount, refundId: (refund as any)?.id ?? null, payerId: a.userId });
+        progress.moneyMoved = true;
       } catch (err: any) {
         this.logger.error(`CRITICAL: refund ${requestId}: extra-seats payment ${a.paymentId} refund failed`, err);
         shortfall = err?.error?.description || 'An extra-seats payment could not be refunded';
@@ -515,7 +587,6 @@ export class RefundsService {
       .join(' ') || null;
 
     // Persist: registration totals + (if fully refunded) cancellation, and the request.
-    const newRefunded = money(alreadyRefunded + regSlice);
     const fullyRefunded = money(totalRefunded + refundedNow) >= base;
 
     try {
@@ -533,7 +604,9 @@ export class RefundsService {
         await tx.eventRegistration.update({
           where: { id: reg.id },
           data: {
-            refundedAmount: newRefunded,
+            // Increment, never overwrite: an absolute write from a stale read
+            // would erase a refund that settled in between.
+            refundedAmount: { increment: regSlice },
             paymentStatus: fullyRefunded
               ? PaymentStatus.REFUNDED
               : PaymentStatus.PARTIALLY_REFUNDED,
@@ -546,7 +619,7 @@ export class RefundsService {
           await tx.groupSeatPurchase.update({
             where: { id: a.id },
             data: {
-              refundedAmount: refunded,
+              refundedAmount: { increment: d.amount },
               paymentStatus:
                 refunded >= this.addonBase(a) ? PaymentStatus.REFUNDED : PaymentStatus.PARTIALLY_REFUNDED,
               razorpayRefundId: d.refundId,
@@ -575,7 +648,7 @@ export class RefundsService {
         }
 
         await tx.refundRequest.update({
-          where: { id: requestId },
+          where: { id: requestId, status: RefundStatus.PROCESSING },
           data: {
             status: RefundStatus.APPROVED,
             ...closedReason,
@@ -600,6 +673,7 @@ export class RefundsService {
     this.logger.log(
       `Refund ${requestId} approved: ₹${refundedNow} (cash ₹${cashPortion})${fullyRefunded ? ' — registration cancelled' : ''}`,
     );
+    await this.flagPayoutShortfall(requestId, reg.eventId, overdrawnBefore, refundedNow);
 
     // The money goes back to the cards it came from. When someone other than
     // today's lead paid (a lead who handed over, or bought extra seats), tell them.
@@ -632,6 +706,23 @@ export class RefundsService {
     } satisfies RegistrationUpdateEvent);
 
     return this.prisma.refundRequest.findUnique({ where: { id: requestId } });
+  }
+
+  /**
+   * A refund that lands after the event was paid out leaves the space owing
+   * the platform. Record by how much (capped at this refund) so admins see it
+   * on the request. Best-effort: the refund itself already settled.
+   */
+  private async flagPayoutShortfall(requestId: string, eventId: string, before: number, refundedNow: number) {
+    try {
+      const after = await this.payouts.eventOverdrawn(eventId);
+      const shortfall = money(Math.min(refundedNow, after - before));
+      if (shortfall <= 0) return;
+      this.logger.warn(`Refund ${requestId} exceeds what was left to pay out for event ${eventId} by ₹${shortfall}`);
+      await this.prisma.refundRequest.update({ where: { id: requestId }, data: { payoutShortfall: shortfall } });
+    } catch (err) {
+      this.logger.error(`Could not record payout shortfall for refund ${requestId}`, err);
+    }
   }
 
   /**
@@ -722,21 +813,26 @@ export class RefundsService {
       where: { registrationId: dto.registrationId, status: { in: OPEN_STATUSES } },
     });
     if (existing) {
-      throw new ConflictException('A refund request is already open for this registration');
+      throw new ConflictException(ALREADY_OPEN);
     }
 
-    const request = await this.prisma.refundRequest.create({
-      data: {
-        registrationId: dto.registrationId,
-        eventId: registration.eventId,
-        requestedById: adminId,
-        requesterRole: RefundRequesterRole.ADMIN,
-        reason: dto.reason,
-        requestedAmount: dto.approvedAmount != null ? money(dto.approvedAmount) : null,
-        status: RefundStatus.PENDING_ADMIN,
-      },
-      include: { registration: { include: { event: { select: { title: true } } } } },
-    });
+    const request = await this.prisma.refundRequest
+      .create({
+        data: {
+          registrationId: dto.registrationId,
+          eventId: registration.eventId,
+          requestedById: adminId,
+          requesterRole: RefundRequesterRole.ADMIN,
+          reason: dto.reason,
+          requestedAmount: dto.approvedAmount != null ? money(dto.approvedAmount) : null,
+          status: RefundStatus.PENDING_ADMIN,
+        },
+        include: { registration: { include: { event: { select: { title: true } } } } },
+      })
+      .catch((err) => {
+        if (isPrismaCode(err, 'P2002')) throw new ConflictException(ALREADY_OPEN);
+        throw err;
+      });
 
     return this.settleApprovedRefund(request, adminId, dto.approvedAmount, dto.reason);
   }
@@ -820,27 +916,39 @@ export class RefundsService {
     return request;
   }
 
+  /**
+   * Events whose refunds the caller handles: every event of a space whose money
+   * they manage (Space Admin), plus events they hold the money capability on
+   * directly (Curator). Same rule as `assertOrganiser`.
+   */
   private async organiserEventIds(
     userId: string,
     spaceId?: string,
   ): Promise<string[]> {
+    const user = { id: userId };
     const roles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: { not: null },
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-      select: { spaceId: true },
+      where: { userId, OR: [{ spaceId: { not: null } }, { eventId: { not: null } }] },
+      select: { spaceId: true, eventId: true },
     });
-    let spaceIds = roles.map((r) => r.spaceId).filter((s): s is string => !!s);
-    // Narrow to the requested space, but only if the caller actually administers
-    // it — an unentitled spaceId collapses the set to empty rather than leaking.
-    if (spaceId) {
-      spaceIds = spaceIds.filter((s) => s === spaceId);
-    }
-    if (spaceIds.length === 0) return [];
+    const keep = async (ids: string[], ok: (id: string) => Promise<boolean>) => {
+      const allowed = await Promise.all(ids.map(ok));
+      return ids.filter((_, i) => allowed[i]);
+    };
+    const spaceIds = await keep(
+      [...new Set(roles.filter((r) => r.spaceId && !r.eventId).map((r) => r.spaceId as string))],
+      (id) => this.authz.can(user, Action.SPACE_MANAGE_MONEY, { spaceId: id }),
+    );
+    const directEventIds = await keep(
+      [...new Set(roles.filter((r) => r.eventId).map((r) => r.eventId as string))],
+      (id) => this.authz.can(user, Action.EVENT_MANAGE_MONEY, { eventId: id }),
+    );
+    if (spaceIds.length === 0 && directEventIds.length === 0) return [];
+    // Narrowing to a space never widens: it intersects with the sets above.
     const events = await this.prisma.event.findMany({
-      where: { spaceId: { in: spaceIds } },
+      where: {
+        OR: [{ spaceId: { in: spaceIds } }, { id: { in: directEventIds } }],
+        ...(spaceId ? { spaceId } : {}),
+      },
       select: { id: true },
     });
     return events.map((e) => e.id);

@@ -257,6 +257,9 @@ enum PaymentStatus {
 enum RefundStatus {
   PENDING_CURATOR
   PENDING_ADMIN
+  /// Claimed by an admin approval while Razorpay is called. A row stuck here
+  /// means money may have moved but the DB write failed: repair by hand.
+  PROCESSING
   APPROVED
   REJECTED
 
@@ -2813,6 +2816,9 @@ model RefundRequest {
   cashRefunded     Decimal  @default(0) @map("cash_refunded") @db.Decimal(10, 2)
   coinsRefunded    Int      @default(0) @map("coins_refunded")
   razorpayRefundId String?  @map("razorpay_refund_id") @db.VarChar(100)
+  /// Set when this refund landed after the event was already paid out past
+  /// what it now earns: the amount the platform must recover from the space.
+  payoutShortfall  Decimal? @map("payout_shortfall") @db.Decimal(10, 2)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -2820,6 +2826,9 @@ model RefundRequest {
   @@index([registrationId])
   @@index([eventId])
   @@index([status])
+  // At most one open (PENDING_CURATOR / PENDING_ADMIN / PROCESSING) request per
+  // registration: partial unique index refund_requests_one_open_per_registration
+  // (migration 20261015130001). Prisma can't express it here.
   @@map("refund_requests")
 }
 
