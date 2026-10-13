@@ -193,8 +193,8 @@ export class EmailService {
               subscription: true,
               ...BRANDING_SPACE_SELECT,
               domains: {
-                where: { kind: 'EMAIL', status: 'verified' },
-                select: { hostname: true, emailLocalPart: true },
+                where: { status: 'verified' },
+                select: { kind: true, hostname: true, emailLocalPart: true },
               },
             },
           },
@@ -205,6 +205,8 @@ export class EmailService {
       const has = this.planConfig.getEffectiveLimits(space.subscription).hasRemoveBranding;
       const theme = resolveEventBranding(event, space, has);
       const sender = resolveEmailSender(space, has);
+      const mail = space.domains.find((d) => d.kind === 'EMAIL');
+      const web = space.domains.find((d) => d.kind === 'WEB');
       return {
         // An event-only colour override (no space theme) keeps Unifesto mail.
         brand: theme?.name
@@ -213,16 +215,15 @@ export class EmailService {
               logoUrl: theme.logoUrl,
               color: theme.color,
               hidePoweredBy: theme.hidePoweredBy,
-              url: `${WEB}/space/${space.slug}`,
+              url: web ? `https://${web.hostname}` : `${WEB}/space/${space.slug}`,
+              webBase: web ? `https://${web.hostname}` : WEB,
             }
           : null,
         sender: sender
           ? {
               fromName: sender.emailFromName || space.name,
               replyTo: sender.emailReplyTo,
-              fromAddress: space.domains[0]
-                ? `${space.domains[0].emailLocalPart || 'tickets'}@${space.domains[0].hostname}`
-                : null,
+              fromAddress: mail ? `${mail.emailLocalPart || 'tickets'}@${mail.hostname}` : null,
             }
           : undefined,
       };

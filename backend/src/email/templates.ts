@@ -19,6 +19,10 @@ type EventWhere = {
   onlineUrl?: string;
 };
 
+/** Branded mail points back at the space, not Unifesto's listing. */
+const moreEvents = (brand?: EmailBrand | null) =>
+  brand ? button(`More from ${brand.name}`, brand.url) : button('Find another event', `${WEB}/events`);
+
 /** "Online" with the join link, or "Venue, City". */
 function where(e: EventWhere): string | undefined {
   if (e.isOnline) return e.onlineUrl ? link('Join online', e.onlineUrl) : 'Online';
@@ -109,7 +113,7 @@ export function registrationConfirmationEmail(d: RegistrationConfirmationData): 
       ${p(`Your spot at ${strong(d.eventTitle)} is confirmed.`)}
       ${eventCard(d)}
       ${qr(d.qrCode, d.ticketCode)}
-      ${d.eventSlug ? button('View event', `${WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
+      ${d.eventSlug ? button('View event', `${d.brand?.webBase ?? WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
       ${small('Your ticket is also in the Unifesto app. See you there.')}`,
       `${d.eventDate}, ${d.eventTime}. Your ticket is inside.`,
       d.brand,
@@ -180,7 +184,7 @@ export function cancellationConfirmationEmail(d: CancellationConfirmationData): 
       ${d.razorpayRefundInitiated && d.razorpayRefundAmount
         ? note(`A refund of ${strong(inr(d.razorpayRefundAmount))} is on its way. It reaches your original payment method in 5 to 7 business days.`, 'success')
         : ''}
-      ${button('Find another event', `${WEB}/events`)}`,
+      ${moreEvents(d.brand)}`,
       '',
       d.brand,
     ),
@@ -274,7 +278,7 @@ export function eventCancelledEmail(d: EventCancelledData): Email {
       ${p(`We're sorry. ${strong(d.eventTitle)} on ${esc(d.eventDate)} has been cancelled by the organiser.`)}
       ${d.cancellationReason ? note(`Reason: ${esc(d.cancellationReason)}`) : ''}
       ${d.refundInfo ? note(esc(d.refundInfo), 'success') : ''}
-      ${button('Find another event', `${WEB}/events`)}`,
+      ${moreEvents(d.brand)}`,
       '',
       d.brand,
     ),

@@ -16,6 +16,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { SkipThrottle } from '@nestjs/throttler';
 import { uploadLimit } from '../common/upload-limits';
 import { RoleCode } from '@prisma/client';
 import type { User } from '@prisma/client';
@@ -25,6 +26,7 @@ import { Action, Can, CanGuard } from '../auth/authorization';
 import { WhiteLabelService } from './white-label.service';
 import {
   AddEmailDomainDto,
+  AddWebDomainDto,
   AdminApplyBrandingDto,
   SuspendBrandingDto,
   CreateWhiteLabelRequestDto,
@@ -159,6 +161,38 @@ export class WhiteLabelController {
   @Can(Action.SPACE_MANAGE_SETTINGS)
   async removeEmailDomain(@Param('spaceId') spaceId: string) {
     return this.whiteLabel.removeEmailDomain(spaceId);
+  }
+
+  @Post('spaces/:spaceId/domains/web')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async addWebDomain(@Param('spaceId') spaceId: string, @Body() dto: AddWebDomainDto) {
+    return this.whiteLabel.addWebDomain(spaceId, dto.hostname);
+  }
+
+  @Post('spaces/:spaceId/domains/web/verify')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async verifyWebDomain(@Param('spaceId') spaceId: string) {
+    return this.whiteLabel.verifyWebDomain(spaceId);
+  }
+
+  @Delete('spaces/:spaceId/domains/web')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.SPACE_MANAGE_SETTINGS)
+  async removeWebDomain(@Param('spaceId') spaceId: string) {
+    return this.whiteLabel.removeWebDomain(spaceId);
+  }
+
+  /**
+   * Public, for the web middleware: which space a custom hostname serves.
+   * Unthrottled: every custom-host page load asks (web caches it for a minute)
+   * and the calls all come from the web container's IP.
+   */
+  @Get('domains/resolve')
+  @SkipThrottle()
+  async resolveHost(@Query('host') host = '') {
+    return this.whiteLabel.resolveHost(host);
   }
 
   /** Curator sets or clears an event's accent override. */

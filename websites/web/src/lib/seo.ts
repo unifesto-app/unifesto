@@ -12,6 +12,8 @@ type Social = {
   type?: "website" | "article";
   /** false on routes with their own opengraph-image file, so that file wins. */
   image?: boolean;
+  /** og:site_name; a white-labelled page passes the space's name. */
+  siteName?: string;
 };
 
 function pageTitle(title: Metadata["title"]): string | undefined {
@@ -36,7 +38,7 @@ export function withSocial(meta: Metadata, s: Social = {}): Metadata {
     ...meta,
     openGraph: {
       type: s.type ?? "website",
-      siteName: SITE.name,
+      siteName: s.siteName ?? SITE.name,
       locale: "en_IN",
       title,
       description,

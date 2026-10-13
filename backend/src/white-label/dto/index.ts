@@ -125,3 +125,9 @@ export class AddEmailDomainDto {
   @Matches(/^[a-z0-9](?:[a-z0-9._-]{0,62}[a-z0-9])?$/i)
   localPart?: string;
 }
+
+export class AddWebDomainDto {
+  @IsString()
+  @MaxLength(253)
+  hostname: string;
+}

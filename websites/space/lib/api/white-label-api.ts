@@ -267,29 +267,29 @@ export async function getSpaceDomains(
   return apiCall<SpaceDomain[]>(backendClient.get(`/white-label/spaces/${spaceId}/domains`));
 }
 
-/** `POST /white-label/spaces/:spaceId/domains/email` — returns the DNS records to add. */
-export async function addEmailDomain(
+type DomainPath = "email" | "web";
+
+/** `POST /white-label/spaces/:spaceId/domains/:kind` — returns the DNS records to add. */
+export async function addDomain(
   spaceId: string,
-  hostname: string,
-  localPart?: string
+  kind: DomainPath,
+  body: { hostname: string; localPart?: string }
 ): Promise<{ data: SpaceDomain | null; error: ApiError | null }> {
-  return apiCall<SpaceDomain>(
-    backendClient.post(`/white-label/spaces/${spaceId}/domains/email`, { hostname, localPart })
-  );
+  return apiCall<SpaceDomain>(backendClient.post(`/white-label/spaces/${spaceId}/domains/${kind}`, body));
 }
 
-/** `POST /white-label/spaces/:spaceId/domains/email/verify` — check DNS now. */
-export async function verifyEmailDomain(
-  spaceId: string
+/** `POST /white-label/spaces/:spaceId/domains/:kind/verify` — check DNS now. */
+export async function verifyDomain(
+  spaceId: string,
+  kind: DomainPath
 ): Promise<{ data: SpaceDomain | null; error: ApiError | null }> {
-  return apiCall<SpaceDomain>(
-    backendClient.post(`/white-label/spaces/${spaceId}/domains/email/verify`)
-  );
+  return apiCall<SpaceDomain>(backendClient.post(`/white-label/spaces/${spaceId}/domains/${kind}/verify`));
 }
 
-/** `DELETE /white-label/spaces/:spaceId/domains/email`. */
-export async function removeEmailDomain(
-  spaceId: string
+/** `DELETE /white-label/spaces/:spaceId/domains/:kind`. */
+export async function removeDomain(
+  spaceId: string,
+  kind: DomainPath
 ): Promise<{ data: unknown | null; error: ApiError | null }> {
-  return apiCall(backendClient.delete(`/white-label/spaces/${spaceId}/domains/email`));
+  return apiCall(backendClient.delete(`/white-label/spaces/${spaceId}/domains/${kind}`));
 }

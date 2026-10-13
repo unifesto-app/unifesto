@@ -34,7 +34,10 @@ describe('EmailService brandFor', () => {
     whiteLabelEnabled: true, brandingSuspendedAt: null, brandColor: '#123456', brandLogoUrl: null,
     brandFont: null, brandMode: null, hidePoweredBy: false, faviconUrl: null,
     emailFromName: null, emailReplyTo: 'hi@acme.edu',
-    domains: [{ hostname: 'mail.acme.edu', emailLocalPart: 'tickets' }],
+    domains: [
+      { kind: 'EMAIL', hostname: 'mail.acme.edu', emailLocalPart: 'tickets' },
+      { kind: 'WEB', hostname: 'events.acme.edu', emailLocalPart: null },
+    ],
   };
   const build = (has: boolean) =>
     new EmailService(
@@ -45,7 +48,7 @@ describe('EmailService brandFor', () => {
 
   it('brands and sends from the verified domain when the plan allows', async () => {
     const r = await build(true).brandFor('e1');
-    expect(r.brand).toMatchObject({ name: 'Acme', color: '#123456', url: 'https://unifesto.app/space/acme' });
+    expect(r.brand).toMatchObject({ name: 'Acme', color: '#123456', url: 'https://events.acme.edu' });
     expect(r.sender).toEqual({ fromName: 'Acme', replyTo: 'hi@acme.edu', fromAddress: 'tickets@mail.acme.edu' });
   });
 

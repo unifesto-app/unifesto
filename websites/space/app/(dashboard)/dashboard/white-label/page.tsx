@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
-import { EmailDomainCard } from "@/components/white-label/EmailDomainCard";
+import { DomainCard } from "@/components/white-label/DomainCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -347,7 +347,8 @@ export default function BrandingStudioPage() {
 
           <EventOverrides events={data.events} spaceColor={data.live ? space.brandColor : null} onChanged={load} />
 
-          <EmailDomainCard spaceId={spaceId} />
+          <DomainCard spaceId={spaceId} kind="web" />
+          <DomainCard spaceId={spaceId} kind="email" />
         </>
       )}
     </div>

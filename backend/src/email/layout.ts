@@ -110,6 +110,8 @@ export interface EmailBrand {
   hidePoweredBy: boolean;
   /** Public space page, for the header link. */
   url: string;
+  /** Origin for event links: the space's custom domain, else Unifesto. */
+  webBase: string;
 }
 
 /** Black or white, whichever reads better on `hex` (WCAG relative luminance). */

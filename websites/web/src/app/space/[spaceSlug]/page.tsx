@@ -3,6 +3,7 @@ import { optimized } from "@/lib/img";
 import { notFound } from "next/navigation";
 import { preload } from "react-dom";
 import { withSocial } from "@/lib/seo";
+import { getTenant } from "@/lib/tenant";
 import { cache } from "react";
 import { getSpaceBySlug as fetchSpace } from "@/lib/api/spaces";
 import JsonLd from "@/components/site/JsonLd";
@@ -40,12 +41,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!space) notFound();
 
-  const title = `${space.name} | Unifesto`;
+  // White-labelled: no Unifesto in the title or share card. On its custom
+  // domain the space page is `/`, so canonical + OG URLs point there.
+  const brand = space.branding?.name ?? null;
+  const tenant = await getTenant();
+  const title = brand ? space.name : `${space.name} | Unifesto`;
   const description =
     toSummary(space.description) ??
-    `${space.name} on Unifesto — discover events, register, and connect with the community.`;
+    (brand
+      ? `Events by ${space.name}.`
+      : `${space.name} on Unifesto — discover events, register, and connect with the community.`);
 
-  const canonical = `/space/${space.slug}`;
+  const canonical = tenant ? "/" : `/space/${space.slug}`;
 
   // White-label favicon (already gated server-side); default icon otherwise.
   const faviconUrl = space.branding?.faviconUrl ?? null;
@@ -53,9 +60,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return withSocial({
     title: { absolute: title },
     description,
+    ...(tenant ? { metadataBase: new URL(`https://${tenant.host}`) } : {}),
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
-  }, { image: false });
+  }, { image: false, ...(brand ? { title, siteName: brand } : {}) });
 }
 
 export default async function SpacePage({ params }: Props) {

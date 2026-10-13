@@ -75,3 +75,15 @@ unifesto.app, www.unifesto.app {
 		lb_try_interval 250ms
 	}
 }
+
+# White-label custom domains (track H, P3). Cloudflare for SaaS terminates the
+# visitor's TLS for each verified customer hostname and forwards it here; the
+# web app resolves the host to its space (middleware.ts) and 404s/redirects
+# anything else. Host-less block = every other hostname on :443.
+https:// {
+	import cf_origin
+	reverse_proxy web:3000 {
+		lb_try_duration 15s
+		lb_try_interval 250ms
+	}
+}

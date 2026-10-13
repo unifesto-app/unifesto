@@ -6,6 +6,7 @@ const brand = {
   color: '#ffd400',
   hidePoweredBy: false,
   url: 'https://unifesto.app/space/acme',
+  webBase: 'https://unifesto.app',
 };
 
 describe('email layout branding', () => {

@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import {
-  addEmailDomain,
+  addDomain,
   getSpaceDomains,
-  removeEmailDomain,
-  verifyEmailDomain,
+  removeDomain,
+  verifyDomain,
   type SpaceDomain,
 } from "@/lib/api/white-label-api";
 
@@ -24,11 +24,30 @@ const STATUS: Record<string, { label: string; variant: "success" | "warning" | "
   failed: { label: "Failed", variant: "destructive" },
 };
 
+const COPY = {
+  email: {
+    title: "Sending domain",
+    blurb:
+      "Send attendee emails from your own address, like tickets@mail.yourorg.com. Until it's verified they go from Unifesto's address with your sender name.",
+    placeholder: "mail.yourorg.com",
+    hint: "Use a subdomain you don't send other mail from, so your existing email setup isn't touched.",
+  },
+  web: {
+    title: "Custom domain",
+    blurb:
+      "Put your space page and events on your own address, like events.yourorg.com. Your space page becomes its home page; event pages live under /event.",
+    placeholder: "events.yourorg.com",
+    hint: "Use a subdomain (not your main website). Branding must be on for the domain to serve your pages.",
+  },
+};
+
 /**
- * Own sending domain: the space adds the DKIM/SPF records shown here; once
- * verified, attendee mail goes from local@their-domain instead of ours.
+ * A domain the space owns, for email (DKIM/SPF via Resend) or the web (CNAME
+ * via Cloudflare). The space adds the records shown here; once verified, mail
+ * goes from local@their-domain, or their pages answer on their domain.
  */
-export function EmailDomainCard({ spaceId }: { spaceId: string }) {
+export function DomainCard({ spaceId, kind }: { spaceId: string; kind: "email" | "web" }) {
+  const copyText = COPY[kind];
   const [domain, setDomain] = useState<SpaceDomain | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [hostname, setHostname] = useState("");
@@ -40,9 +59,9 @@ export function EmailDomainCard({ spaceId }: { spaceId: string }) {
   const load = useCallback(async () => {
     const { data, error } = await getSpaceDomains(spaceId);
     if (error) setError(error.message);
-    else setDomain(data?.find((d) => d.kind === "EMAIL") ?? null);
+    else setDomain(data?.find((d) => d.kind === kind.toUpperCase()) ?? null);
     setLoaded(true);
-  }, [spaceId]);
+  }, [spaceId, kind]);
 
   useEffect(() => {
     void load();
@@ -71,49 +90,65 @@ export function EmailDomainCard({ spaceId }: { spaceId: string }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          Sending domain {status && <Badge variant={status.variant}>{status.label}</Badge>}
+          {copyText.title} {status && <Badge variant={status.variant}>{status.label}</Badge>}
         </CardTitle>
-        <CardDescription>
-          Send attendee emails from your own address, like tickets@mail.yourorg.com. Until it&rsquo;s
-          verified they go from Unifesto&rsquo;s address with your sender name.
-        </CardDescription>
+        <CardDescription>{copyText.blurb}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {error && <ErrorNotice message={error} />}
 
         {!domain ? (
           <div className="flex flex-wrap items-end gap-3">
-            <div className="w-32 space-y-1.5">
-              <Label htmlFor="dom-local">Mailbox</Label>
-              <Input id="dom-local" value={localPart} onChange={(e) => setLocalPart(e.target.value.trim())} />
-            </div>
-            <span className="pb-2.5 text-muted-foreground">@</span>
+            {kind === "email" && (
+              <>
+                <div className="w-32 space-y-1.5">
+                  <Label htmlFor={`dom-local-${kind}`}>Mailbox</Label>
+                  <Input
+                    id={`dom-local-${kind}`}
+                    value={localPart}
+                    onChange={(e) => setLocalPart(e.target.value.trim())}
+                  />
+                </div>
+                <span className="pb-2.5 text-muted-foreground">@</span>
+              </>
+            )}
             <div className="min-w-[220px] flex-1 space-y-1.5">
-              <Label htmlFor="dom-host">Domain</Label>
+              <Label htmlFor={`dom-host-${kind}`}>Domain</Label>
               <Input
-                id="dom-host"
+                id={`dom-host-${kind}`}
                 value={hostname}
                 onChange={(e) => setHostname(e.target.value.trim())}
-                placeholder="mail.yourorg.com"
+                placeholder={copyText.placeholder}
               />
             </div>
             <Button
-              disabled={busy || !hostname || !localPart}
-              onClick={() => run(() => addEmailDomain(spaceId, hostname, localPart))}
+              disabled={busy || !hostname || (kind === "email" && !localPart)}
+              onClick={() =>
+                run(() => addDomain(spaceId, kind, kind === "email" ? { hostname, localPart } : { hostname }))
+              }
             >
               {busy ? "Adding…" : "Add domain"}
             </Button>
-            <p className="w-full text-xs text-muted-foreground">
-              Use a subdomain you don&rsquo;t send other mail from, so your existing email setup isn&rsquo;t touched.
-            </p>
+            <p className="w-full text-xs text-muted-foreground">{copyText.hint}</p>
           </div>
         ) : (
           <>
             <p className="text-sm text-foreground">
-              Sending as{" "}
-              <span className="font-mono">
-                {domain.emailLocalPart ?? "tickets"}@{domain.hostname}
-              </span>
+              {kind === "email" ? "Sending as " : "Your pages at "}
+              {kind === "email" ? (
+                <span className="font-mono">
+                  {domain.emailLocalPart ?? "tickets"}@{domain.hostname}
+                </span>
+              ) : (
+                <a
+                  href={`https://${domain.hostname}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono underline"
+                >
+                  {domain.hostname}
+                </a>
+              )}
             </p>
 
             {domain.status !== "verified" && (
@@ -166,7 +201,7 @@ export function EmailDomainCard({ spaceId }: { spaceId: string }) {
 
             <div className="flex gap-2">
               {domain.status !== "verified" && (
-                <Button disabled={busy} onClick={() => run(() => verifyEmailDomain(spaceId))}>
+                <Button disabled={busy} onClick={() => run(() => verifyDomain(spaceId, kind))}>
                   {busy ? "Checking…" : "Check now"}
                 </Button>
               )}
@@ -174,7 +209,7 @@ export function EmailDomainCard({ spaceId }: { spaceId: string }) {
                 variant="outline"
                 disabled={busy}
                 onClick={() => {
-                  if (confirm(`Stop sending from ${domain.hostname}?`)) void run(() => removeEmailDomain(spaceId));
+                  if (confirm(`Remove ${domain.hostname}?`)) void run(() => removeDomain(spaceId, kind));
                 }}
               >
                 Remove
