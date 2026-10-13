@@ -25,7 +25,7 @@ function reloadNow() {
 
 /**
  * Decide what to do once an update has finished downloading while the app is
- * running (policy D1 in docs/version-4.md). Doing nothing is valid: expo-updates
+ * running (decision D1 in docs/version-5.md). Doing nothing is valid: expo-updates
  * applies it on the next cold start.
  *
  * @param backgroundedMs how long the app was in the background before this
