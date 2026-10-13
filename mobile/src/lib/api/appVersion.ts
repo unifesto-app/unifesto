@@ -2,6 +2,7 @@ import { makePublicRequest } from './helpers';
 
 /** Version policy for one platform, as returned by GET /app/version. */
 export interface PlatformVersionInfo {
+  /** Empty = no soft "update available" prompt. */
   latestVersion: string;
   minimumVersion: string;
   storeUrl: string;

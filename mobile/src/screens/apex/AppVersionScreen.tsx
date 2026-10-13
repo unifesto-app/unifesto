@@ -37,8 +37,11 @@ const sameStore = (a: StoreVersionPolicy, b: StoreVersionPolicy) =>
 /** First problem with the form, or '' when it can be saved. */
 function validate(v: AppVersionPolicy): string {
   for (const { key, title } of STORES) {
-    if (!VERSION_RE.test(v[key].latestVersion)) return `${title}: latest version should look like 2.1.0.`;
-    if (!VERSION_RE.test(v[key].minimumVersion)) return `${title}: minimum version should look like 2.0.0.`;
+    const { latestVersion, minimumVersion } = v[key];
+    if (latestVersion && !VERSION_RE.test(latestVersion)) return `${title}: latest version should look like 2.1.0, or stay empty.`;
+    if (!VERSION_RE.test(minimumVersion)) return `${title}: minimum version should look like 2.0.0.`;
+    // Builds up to 4.x skip the minimum when latest is empty.
+    if (!latestVersion && !/^0(\.0)*$/.test(minimumVersion)) return `${title}: set a latest version before raising the minimum.`;
     if (!URL_RE.test(v[key].storeUrl.trim())) return `${title}: store URL must start with https://`;
   }
   return '';
@@ -132,7 +135,7 @@ export default function AppVersionScreen() {
               icon={<ArrowCircleUp size={ICON} color={tokens.accent} weight="fill" />}
               value={draft[key].latestVersion}
               onChangeText={set(key, 'latestVersion')}
-              placeholder="2.1.0"
+              placeholder="Empty = no update prompt"
               keyboardType="decimal-pad"
               autoCorrect={false}
               trailing={hint('Latest')}
