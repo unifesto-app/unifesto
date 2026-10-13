@@ -678,8 +678,11 @@ export class WaitlistService {
         );
       }
 
-      const updated = await tx.eventRegistration.update({
-        where: { id: registrationId },
+      // Atomic claim: the client verify and the payment.captured webhook can
+      // both read OFFERED above; only the one that flips the row counts the
+      // attendee and issues tickets.
+      const claimed = await tx.eventRegistration.updateMany({
+        where: { id: registrationId, waitlistStatus: WaitlistStatus.OFFERED },
         data: {
           waitlistStatus: WaitlistStatus.CONVERTED,
           isWaitlisted: false,
@@ -691,6 +694,10 @@ export class WaitlistService {
           waitlistOfferExpiresAt: null,
         },
       });
+      const updated = await tx.eventRegistration.findUniqueOrThrow({
+        where: { id: registrationId },
+      });
+      if (claimed.count === 0) return updated; // converted concurrently
 
       // The seat was held at offer time, so only the event's attendee count
       // moves here.

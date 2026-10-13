@@ -54,8 +54,8 @@ describe('RegistrationsService payment replay guards', () => {
         })),
       },
       webhookEvent: {
-        createMany: jest.fn(async () => ({ count: opts.webhookFresh === false ? 0 : 1 })),
-        delete: jest.fn(async () => ({})),
+        findUnique: jest.fn(async () => (opts.webhookFresh === false ? { id: 'seen' } : null)),
+        createMany: jest.fn(async () => ({ count: 1 })),
       },
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
@@ -87,6 +87,16 @@ describe('RegistrationsService payment replay guards', () => {
     it('rejects a receipt for an order that is not this registration\'s', async () => {
       const { svc, prisma } = build({ row: reg(), orderNotes: { registrationId: 'other-reg' } });
       await expect(verify(svc, 'order_cheap')).rejects.toThrow(/different order/);
+      expect(prisma.eventRegistration.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('rejects a foreign receipt on a waiting-list offer too', async () => {
+      const { svc, prisma } = build({
+        row: reg({ waitlistStatus: 'OFFERED' }),
+        orderNotes: { registrationId: 'other-reg' },
+      });
+      await expect(verify(svc, 'order_cheap')).rejects.toThrow(/different order/);
+      expect((svc as any).waitlist.convert).not.toHaveBeenCalled();
       expect(prisma.eventRegistration.updateMany).not.toHaveBeenCalled();
     });
 
@@ -135,11 +145,18 @@ describe('RegistrationsService payment replay guards', () => {
       expect(complete).not.toHaveBeenCalled();
     });
 
-    it('releases the claim when processing throws so the retry runs', async () => {
+    it('records the event id only after processing succeeds', async () => {
       const { svc, prisma } = build({ row: reg() });
       prisma.eventRegistration.findFirst.mockRejectedValue(new Error('db down'));
       await expect(svc.handleRazorpayWebhook(body(), 'sig', 'evt_3')).rejects.toThrow('db down');
-      expect(prisma.webhookEvent.delete).toHaveBeenCalledWith({ where: { id: 'razorpay:evt_3' } });
+      expect(prisma.webhookEvent.createMany).not.toHaveBeenCalled();
+
+      prisma.eventRegistration.findFirst.mockResolvedValue(null);
+      await svc.handleRazorpayWebhook(body('payment.failed'), 'sig', 'evt_3');
+      expect(prisma.webhookEvent.createMany).toHaveBeenCalledWith({
+        data: [{ id: 'razorpay:evt_3', source: 'razorpay' }],
+        skipDuplicates: true,
+      });
     });
   });
 

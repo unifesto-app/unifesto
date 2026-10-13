@@ -4861,29 +4861,27 @@ export class RegistrationsService {
     }
 
     // Razorpay redelivers the same event (same x-razorpay-event-id) on retries.
-    // Claim the id first; a duplicate is acknowledged without re-running. If
-    // processing throws, release the claim so Razorpay's retry gets a go.
+    // A delivery already processed is acknowledged without re-running. The id
+    // is recorded only AFTER processing succeeds: claiming it first would drop
+    // the event for good if the process died mid-way (Razorpay's retry would be
+    // skipped and the captured money left unrecorded). Two overlapping
+    // deliveries may both run; every handler below is idempotent (atomic claims).
     const dedupId = razorpayEventId ? `razorpay:${razorpayEventId}` : null;
+    if (
+      dedupId &&
+      (await this.prisma.webhookEvent.findUnique({ where: { id: dedupId }, select: { id: true } }))
+    ) {
+      this.logger.log(`Razorpay webhook ${razorpayEventId} already processed — skipping`);
+      return { received: true };
+    }
+    const result = await this.processRazorpayWebhook(rawBody);
     if (dedupId) {
-      const fresh = await this.prisma.webhookEvent.createMany({
+      await this.prisma.webhookEvent.createMany({
         data: [{ id: dedupId, source: 'razorpay' }],
         skipDuplicates: true,
       });
-      if (fresh.count === 0) {
-        this.logger.log(`Razorpay webhook ${razorpayEventId} already processed — skipping`);
-        return { received: true };
-      }
     }
-    try {
-      return await this.processRazorpayWebhook(rawBody);
-    } catch (err) {
-      if (dedupId) {
-        await this.prisma.webhookEvent
-          .delete({ where: { id: dedupId } })
-          .catch(() => undefined);
-      }
-      throw err;
-    }
+    return result;
   }
 
   private async processRazorpayWebhook(rawBody: string) {
@@ -5505,7 +5503,9 @@ export class RegistrationsService {
     let claimedWin = false;
     await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.eventRegistration.updateMany({
-        where: { id: registrationId, paymentStatus: { not: PaymentStatus.PAID } },
+        // PENDING/FAILED only: a REFUNDED / PARTIALLY_REFUNDED row must never be
+        // revived (an admin reconcile may still settle a CANCELLED+PENDING row).
+        where: { id: registrationId, paymentStatus: { in: SETTLEABLE_PAYMENT } },
         data: {
           paymentStatus: PaymentStatus.PAID,
           paymentId,

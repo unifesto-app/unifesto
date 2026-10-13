@@ -142,9 +142,15 @@ function makeDb(opts: {
         if (include?.ticketType) out.ticketType = { ...ticketType };
         return out;
       },
+      findUniqueOrThrow: async () => ({ ...reg }),
       update: async ({ data }: any) => {
         applyData(reg, data);
         return { ...reg };
+      },
+      updateMany: async ({ where, data }: any) => {
+        if (where.waitlistStatus && reg.waitlistStatus !== where.waitlistStatus) return { count: 0 };
+        applyData(reg, data);
+        return { count: 1 };
       },
     },
     eventTicket: {
@@ -305,5 +311,22 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     expect(again.waitlistStatus).toBe(WaitlistStatus.CONVERTED);
     expect(db.tickets).toHaveLength(1);
     expect(db.event.registeredCount).toBe(1);
+  });
+
+  it('convert() racing itself (verify vs webhook) counts the attendee once', async () => {
+    const db = makeDb({
+      ticketType: { price: 500, totalQuantity: 5, soldCount: 5 },
+      reg: { quantity: 1, waitlistStatus: WaitlistStatus.OFFERED },
+    });
+    const { svc } = build(db);
+    // Both callers read OFFERED before either writes.
+    const stale = { ...db.reg };
+    db.prisma.eventRegistration.findUnique = async () => ({ ...stale });
+
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+
+    expect(db.event.registeredCount).toBe(1);
+    expect(db.tickets).toHaveLength(1);
   });
 });
