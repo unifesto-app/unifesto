@@ -874,7 +874,8 @@ export class PayoutsService {
     // Custom amount = exactly what to transfer; else the whole remaining balance.
     let netAmount: number;
     if (dto.netAmount != null) {
-      if (dto.netAmount <= 0) {
+      // `!(x > 0)` also rejects NaN, which slips past `x <= 0` (S29).
+      if (!(dto.netAmount > 0)) {
         throw new BadRequestException('Payout amount must be greater than zero');
       }
       if (round2(dto.netAmount) > balance.available) {

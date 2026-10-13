@@ -99,7 +99,7 @@ export class EventsController {
     return this.eventsService.getSpaceEvents(
       spaceId,
       page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
+      Math.min(Math.max(parseInt(limit ?? '', 10) || 20, 1), 100),
       status as EventStatus | undefined,
       // Anything other than the two explicit opt-ins means the normal list, so
       // a malformed value can never accidentally expose hidden events.
