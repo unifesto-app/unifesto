@@ -300,60 +300,6 @@ export class CacheService {
   }
 
   // =====================================================
-  // 9. FAILED LOGIN ATTEMPTS
-  // =====================================================
-
-  async trackFailedOtp(identifier: string): Promise<number> {
-    try {
-      const client = this.redis.getClient();
-      if (!client) return 0;
-
-      const key = `failed:otp:${identifier}`;
-      const count = await client.incr(key);
-      
-      if (count === 1) {
-        await client.expire(key, 900); // set TTL on first attempt
-      }
-      
-      this.logger.debug(`Failed OTP attempt ${count} for ${identifier}`);
-      return count;
-    } catch (error) {
-      this.logger.error(`Track failed OTP error for ${identifier}`, error);
-      return 0;
-    }
-  }
-
-  async isOtpBlocked(identifier: string): Promise<boolean> {
-    try {
-      const client = this.redis.getClient();
-      if (!client) return false;
-
-      const count = await client.get(`failed:otp:${identifier}`);
-      const attempts = parseInt(count || '0');
-      
-      if (attempts >= 5) {
-        this.logger.warn(`OTP blocked for ${identifier} (${attempts} attempts)`);
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      this.logger.error(`Check OTP blocked error for ${identifier}`, error);
-      return false; // Don't block if cache fails
-    }
-  }
-
-  async clearFailedOtp(identifier: string): Promise<void> {
-    try {
-      const key = `failed:otp:${identifier}`;
-      await this.redis.del(key);
-      this.logger.debug(`Cleared failed OTP attempts for ${identifier}`);
-    } catch (error) {
-      this.logger.error(`Clear failed OTP error for ${identifier}`, error);
-    }
-  }
-
-  // =====================================================
   // UTILITY METHODS
   // =====================================================
 

@@ -101,6 +101,7 @@ export class AuthController {
    * POST /auth/verify-mobile
    */
   @Post('verify-mobile')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async verifyMobile(@Body() dto: VerifyMobileDto): Promise<AuthResponseDto> {
     return this.authService.verifyMobile(dto);
@@ -141,7 +142,13 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(@Request() req): Promise<{ message: string }> {
-    return this.authService.logout(req.user.id);
+  async logout(
+    @Request() req,
+    @Body() body?: { refreshToken?: string; allDevices?: boolean },
+  ): Promise<{ message: string }> {
+    return this.authService.logout(req.user.id, {
+      refreshToken: body?.refreshToken,
+      allDevices: body?.allDevices,
+    });
   }
 }
