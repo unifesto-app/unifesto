@@ -515,36 +515,58 @@ export class WhatsAppService {
       : new Date();
     const inboundAt = Number.isFinite(sentAt.getTime()) ? sentAt : new Date();
 
-    const conversation = await this.prisma.whatsappConversation.upsert({
-      where: { waId },
-      create: {
-        waId,
-        profileName,
-        lastInboundAt: inboundAt,
-        lastMessageAt: inboundAt,
-        unreadCount: 1,
-      },
-      update: {
-        // Keep the freshest profile name Meta gives us.
-        ...(profileName ? { profileName } : {}),
-        lastInboundAt: inboundAt,
-        lastMessageAt: inboundAt,
-        unreadCount: { increment: 1 },
-      },
-    });
+    // Upsert + insert in one transaction: two concurrent deliveries of the same
+    // wamid both pass the findUnique above; the loser's insert hits the unique
+    // index and rolls back its unread bump, and it sends no admin push.
+    let conversation: { id: string; profileName: string | null };
+    try {
+      conversation = await this.prisma.$transaction(async (tx) => {
+        const conv = await tx.whatsappConversation.upsert({
+          where: { waId },
+          create: {
+            waId,
+            profileName,
+            lastInboundAt: inboundAt,
+            lastMessageAt: inboundAt,
+            unreadCount: 1,
+          },
+          update: {
+            // Keep the freshest profile name Meta gives us.
+            ...(profileName ? { profileName } : {}),
+            lastInboundAt: inboundAt,
+            lastMessageAt: inboundAt,
+            unreadCount: { increment: 1 },
+          },
+        });
 
-    await this.prisma.whatsappMessage.create({
-      data: {
-        conversationId: conversation.id,
-        direction: WhatsappMessageDirection.INBOUND,
-        waMessageId,
-        type,
-        body,
-        mediaNote,
-        mediaUrl,
-        createdAt: inboundAt,
-      },
-    });
+        await tx.whatsappMessage.create({
+          data: {
+            conversationId: conv.id,
+            direction: WhatsappMessageDirection.INBOUND,
+            waMessageId,
+            type,
+            body,
+            mediaNote,
+            mediaUrl,
+            createdAt: inboundAt,
+          },
+        });
+        return conv;
+      });
+    } catch (e: any) {
+      // Duplicate delivery: the other one stored it. (A P2002 from a racing
+      // conversation create is not that, so it still surfaces.)
+      if (
+        e?.code === 'P2002' &&
+        (await this.prisma.whatsappMessage.findUnique({
+          where: { waMessageId },
+          select: { id: true },
+        }))
+      ) {
+        return;
+      }
+      throw e;
+    }
 
     this.logger.log(`Stored inbound WhatsApp message from ${waId} (type=${type})`);
 

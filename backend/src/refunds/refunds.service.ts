@@ -438,6 +438,10 @@ export class RefundsService {
     const base = money(regBase + addons.reduce((sum, a) => sum + this.addonBase(a), 0));
     const totalRefunded = money(alreadyRefunded + addons.reduce((sum, a) => sum + Number(a.refundedAmount), 0));
     const maxRefundable = money(base - totalRefunded);
+    // A sold-out-mid-payment row is already being refunded in full automatically.
+    if (reg.refundDueAt) {
+      throw new BadRequestException('This payment is already being refunded in full automatically');
+    }
     if (maxRefundable <= 0) {
       throw new BadRequestException('This registration is already fully refunded');
     }
@@ -516,6 +520,16 @@ export class RefundsService {
 
     try {
       await this.prisma.$transaction(async (tx) => {
+        // Only a live row still holds seats: a cancelled one (cancelled
+        // before this refund, or never seated) already gave them back.
+        const holdsSeats = fullyRefunded
+          ? (
+              await tx.eventRegistration.updateMany({
+                where: { id: reg.id, status: { not: RegistrationStatus.CANCELLED } },
+                data: { status: RegistrationStatus.CANCELLED, cancelledAt: new Date() },
+              })
+            ).count === 1
+          : false;
         await tx.eventRegistration.update({
           where: { id: reg.id },
           data: {
@@ -523,9 +537,6 @@ export class RefundsService {
             paymentStatus: fullyRefunded
               ? PaymentStatus.REFUNDED
               : PaymentStatus.PARTIALLY_REFUNDED,
-            ...(fullyRefunded
-              ? { status: RegistrationStatus.CANCELLED, cancelledAt: new Date() }
-              : {}),
           },
         });
 
@@ -546,7 +557,7 @@ export class RefundsService {
         if (fullyRefunded) {
           // Release the seats and void tickets, mirroring a cancellation. A
           // group occupies groupSize seats, so release that many (not 1).
-          const seats = reg.groupSize ?? reg.quantity;
+          const seats = holdsSeats ? (reg.groupSize ?? reg.quantity) : 0;
           await tx.event.update({
             where: { id: reg.eventId },
             data: { registeredCount: { decrement: seats } },

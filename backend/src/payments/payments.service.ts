@@ -72,7 +72,9 @@ export class PaymentsService {
    */
   computeProcessingFee(basePrice: number): number {
     const percent = this.platformConfig.getProcessingFeePercent();
-    return (basePrice * percent) / 100;
+    // Rounded to the paise: an unrounded fee (₹12.345) drifts from what
+    // Razorpay charges (createOrder rounds to paise) and trips reconcile.
+    return Math.round(basePrice * percent + 1e-9) / 100;
   }
 
   /**

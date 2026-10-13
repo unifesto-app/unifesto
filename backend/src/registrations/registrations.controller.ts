@@ -826,12 +826,13 @@ export class RegistrationsController {
   async handleRazorpayWebhook(
     @Headers('x-razorpay-signature') signature: string,
     @Req() req: { rawBody?: Buffer },
+    @Headers('x-razorpay-event-id') razorpayEventId?: string,
   ) {
     // Razorpay signs the exact bytes it POSTs. Verify against req.rawBody
     // (preserved by `rawBody: true` in main.ts), never a re-serialised object —
     // re-stringifying the parsed body changes key order/whitespace and breaks
     // the HMAC, silently 400-ing every webhook.
     const rawBody = req.rawBody?.toString('utf8') ?? '';
-    return this.registrationsService.handleRazorpayWebhook(rawBody, signature);
+    return this.registrationsService.handleRazorpayWebhook(rawBody, signature, razorpayEventId);
   }
 }

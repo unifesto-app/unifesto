@@ -3,6 +3,7 @@ import {
   BadRequestException, ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
 import { EmailService } from '../email/email.service';
 import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccountStatusDto } from './dto';
 import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
@@ -23,6 +24,7 @@ export class PayoutsService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly authz: AuthorizationService,
+    private readonly planConfig: PlanConfigService,
   ) {}
 
   async addBankAccount(userId: string, dto: AddBankAccountDto) {
@@ -178,10 +180,7 @@ export class PayoutsService {
     billingModel: BillingModel;
     revenueSharePercent: Prisma.Decimal | null;
   } | null): number {
-    if (subscription?.billingModel === BillingModel.REVENUE_SHARE) {
-      return Number(subscription.revenueSharePercent ?? 0);
-    }
-    return 0;
+    return this.planConfig.resolvePlatformFeePercent(subscription);
   }
 
   /**
@@ -190,13 +189,25 @@ export class PayoutsService {
    * buyer on top of the ticket price and keeps in full).
    */
   private ticketRevenue(
-    registrations: Array<{ totalAmount: Prisma.Decimal; processingFee: Prisma.Decimal }>,
+    registrations: Array<{ totalAmount: Prisma.Decimal; processingFee: Prisma.Decimal; refundedAmount: Prisma.Decimal }>,
   ): number {
     return registrations.reduce(
-      (sum, r) => sum + (Number(r.totalAmount) - Number(r.processingFee)),
+      (sum, r) => sum + (Number(r.totalAmount) - Number(r.processingFee) - Number(r.refundedAmount)),
       0,
     );
   }
+
+  /**
+   * Money the organiser still holds: paid, or partly refunded (counted net of
+   * the refund, base-only). A row whose automatic full refund is still due
+   * (`refundDueAt`) is not theirs. Registrations and stays carry refundDueAt;
+   * seat add-ons don't.
+   */
+  private readonly HELD_PAYMENT = { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] };
+  private readonly HELD = { paymentStatus: this.HELD_PAYMENT, refundDueAt: null };
+  private readonly HELD_ADDON = { paymentStatus: this.HELD_PAYMENT };
+  private readonly HELD_SUM = { totalAmount: true, processingFee: true, refundedAmount: true } as const;
+  private readonly HELD_SELECT = { totalAmount: true, processingFee: true, refundedAmount: true } as const;
 
   /**
    * Unifesto Stay bookings paid online (through Razorpay) are event money like
@@ -208,9 +219,9 @@ export class PayoutsService {
       where: {
         eventId,
         paymentMode: StayPaymentMode.ONLINE,
-        paymentStatus: PaymentStatus.PAID,
+        ...this.HELD,
       },
-      select: { totalAmount: true, processingFee: true },
+      select: this.HELD_SELECT,
     });
   }
 
@@ -223,8 +234,8 @@ export class PayoutsService {
 
   private paidSeatAddons(eventId: string) {
     return this.prisma.groupSeatPurchase.findMany({
-      where: { eventId, paymentStatus: PaymentStatus.PAID, ...this.ADDON_ADDED },
-      select: { totalAmount: true, processingFee: true },
+      where: { eventId, ...this.HELD_ADDON, ...this.ADDON_ADDED },
+      select: this.HELD_SELECT,
     });
   }
 
@@ -251,8 +262,8 @@ export class PayoutsService {
 
     const [registrations, stays, addons] = await Promise.all([
       this.prisma.eventRegistration.findMany({
-        where: { eventId, paymentStatus: PaymentStatus.PAID },
-        select: { totalAmount: true, processingFee: true },
+        where: { eventId, ...this.HELD },
+        select: this.HELD_SELECT,
       }),
       this.paidStayBookings(eventId),
       this.paidSeatAddons(eventId),
@@ -262,7 +273,7 @@ export class PayoutsService {
     const platformFeePercent =
       feePercentOverride ??
       this.resolvePlatformFeePercent(event?.space?.subscription);
-    const platformFee = (gross * platformFeePercent) / 100;
+    const platformFee = platformShare(gross, platformFeePercent);
     const eventNet = gross - platformFee;
 
     const committedRows = await this.prisma.payout.findMany({
@@ -313,11 +324,8 @@ export class PayoutsService {
     }
 
     const registrations = await this.prisma.eventRegistration.findMany({
-      where: {
-        eventId,
-        paymentStatus: PaymentStatus.PAID,
-      },
-      select: { totalAmount: true, processingFee: true },
+      where: { eventId, ...this.HELD },
+      select: this.HELD_SELECT,
     });
 
     const grossRevenue = this.ticketRevenue([
@@ -369,7 +377,7 @@ export class PayoutsService {
    * "every event" (platform-wide); an empty array short-circuits to zeros.
    *   - collectedOverall: gross ever paid (incl. the app processing fee)
    *   - processingFees:   the app fee the platform keeps
-   *   - currentGross:     ticket revenue still held (PAID only, net of refunds)
+   *   - currentGross:     ticket revenue still held (PAID / PARTIALLY_REFUNDED, net of refunds)
    */
   private async aggregateRegistrations(eventIds?: string[]) {
     if (eventIds && eventIds.length === 0) {
@@ -384,8 +392,8 @@ export class PayoutsService {
         _sum: { totalAmount: true, processingFee: true },
       }),
       this.prisma.eventRegistration.aggregate({
-        where: { ...eventFilter, paymentStatus: PaymentStatus.PAID },
-        _sum: { totalAmount: true, processingFee: true },
+        where: { ...eventFilter, ...this.HELD },
+        _sum: this.HELD_SUM,
       }),
       // Unifesto Stay money paid online counts alongside tickets.
       this.prisma.stayBooking.aggregate({
@@ -393,8 +401,8 @@ export class PayoutsService {
         _sum: { totalAmount: true, processingFee: true },
       }),
       this.prisma.stayBooking.aggregate({
-        where: { ...eventFilter, ...online, paymentStatus: PaymentStatus.PAID },
-        _sum: { totalAmount: true, processingFee: true },
+        where: { ...eventFilter, ...online, ...this.HELD },
+        _sum: this.HELD_SUM,
       }),
       // Extra group seats bought after booking count with the group's ticket.
       this.prisma.groupSeatPurchase.aggregate({
@@ -402,21 +410,18 @@ export class PayoutsService {
         _sum: { totalAmount: true, processingFee: true },
       }),
       this.prisma.groupSeatPurchase.aggregate({
-        where: { ...eventFilter, ...added, paymentStatus: PaymentStatus.PAID },
-        _sum: { totalAmount: true, processingFee: true },
+        where: { ...eventFilter, ...added, ...this.HELD_ADDON },
+        _sum: this.HELD_SUM,
       }),
     ]);
     const n = (d: Prisma.Decimal | null) => Number(d ?? 0);
     return {
       collectedOverall: n(ever._sum.totalAmount) + n(stayEver._sum.totalAmount) + n(addonEver._sum.totalAmount),
       processingFees: n(ever._sum.processingFee) + n(stayEver._sum.processingFee) + n(addonEver._sum.processingFee),
-      currentGross:
-        n(current._sum.totalAmount) -
-        n(current._sum.processingFee) +
-        n(stayCurrent._sum.totalAmount) -
-        n(stayCurrent._sum.processingFee) +
-        n(addonCurrent._sum.totalAmount) -
-        n(addonCurrent._sum.processingFee),
+      currentGross: [current, stayCurrent, addonCurrent].reduce(
+        (sum, c) => sum + n(c._sum.totalAmount) - n(c._sum.processingFee) - n(c._sum.refundedAmount),
+        0,
+      ),
     };
   }
 
@@ -555,7 +560,7 @@ export class PayoutsService {
       this.aggregatePayouts(eventIds),
       this.aggregateRefunds(eventIds),
     ]);
-    const platformFee = (reg.currentGross * feePercent) / 100;
+    const platformFee = platformShare(reg.currentGross, feePercent);
     return this.buildFinancials(reg, payouts, refunded, platformFee);
   }
 
@@ -587,7 +592,7 @@ export class PayoutsService {
         })
       ).map((e) => e.id);
       const spaceReg = await this.aggregateRegistrations(evIds);
-      platformFee += (spaceReg.currentGross * feePercent) / 100;
+      platformFee += platformShare(spaceReg.currentGross, feePercent);
     }
 
     return {
@@ -641,8 +646,8 @@ export class PayoutsService {
         }),
         this.prisma.eventRegistration.groupBy({
           by: ['eventId'],
-          where: { paymentStatus: PaymentStatus.PAID },
-          _sum: { totalAmount: true, processingFee: true },
+          where: this.HELD,
+          _sum: this.HELD_SUM,
         }),
         this.prisma.payout.groupBy({
           by: ['eventId', 'status'],
@@ -661,8 +666,8 @@ export class PayoutsService {
         }),
         this.prisma.stayBooking.groupBy({
           by: ['eventId'],
-          where: { ...stayOnline, paymentStatus: PaymentStatus.PAID },
-          _sum: { totalAmount: true, processingFee: true },
+          where: { ...stayOnline, ...this.HELD },
+          _sum: this.HELD_SUM,
         }),
         this.prisma.stayBooking.groupBy({
           by: ['eventId'],
@@ -678,20 +683,24 @@ export class PayoutsService {
         }),
         this.prisma.groupSeatPurchase.groupBy({
           by: ['eventId'],
-          where: { ...this.ADDON_ADDED, paymentStatus: PaymentStatus.PAID },
-          _sum: { totalAmount: true, processingFee: true },
+          where: { ...this.ADDON_ADDED, ...this.HELD_ADDON },
+          _sum: this.HELD_SUM,
         }),
       ]);
 
     // Index every aggregate by eventId for O(1) lookup during assembly.
     const addTo = (
       map: Map<string, { total: number; fee: number }>,
-      rows: { eventId: string; _sum: { totalAmount: Prisma.Decimal | null; processingFee: Prisma.Decimal | null } }[],
+      rows: {
+        eventId: string;
+        _sum: { totalAmount: Prisma.Decimal | null; processingFee: Prisma.Decimal | null; refundedAmount?: Prisma.Decimal | null };
+      }[],
     ) => {
       for (const r of rows) {
         const prev = map.get(r.eventId) ?? { total: 0, fee: 0 };
+        // Held money nets out what was refunded (only the current-* sums carry it).
         map.set(r.eventId, {
-          total: prev.total + Number(r._sum.totalAmount ?? 0),
+          total: prev.total + Number(r._sum.totalAmount ?? 0) - Number(r._sum.refundedAmount ?? 0),
           fee: prev.fee + Number(r._sum.processingFee ?? 0),
         });
       }
@@ -767,7 +776,7 @@ export class PayoutsService {
           pending: pendingByEvent.get(e.id) ?? 0,
         };
         const refunded = refundByEventMap.get(e.id) ?? 0;
-        const platformFee = (reg.currentGross * feePercent) / 100;
+        const platformFee = platformShare(reg.currentGross, feePercent);
 
         // Fold this event's raw figures into the space accumulator.
         spaceAcc.collectedOverall += reg.collectedOverall;
@@ -786,7 +795,7 @@ export class PayoutsService {
         };
       });
 
-      const spaceFee = (spaceAcc.currentGross * feePercent) / 100;
+      const spaceFee = platformShare(spaceAcc.currentGross, feePercent);
 
       // Fold this space's raw figures into the platform accumulator.
       platformAcc.collectedOverall += spaceAcc.collectedOverall;

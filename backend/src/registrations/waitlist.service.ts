@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
 import { GroupSeatsService } from './group-seats.service';
+import { SoldOutError, takeTicketSeats } from './capacity.util';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { WaitlistOfferEvent } from '../notifications/notifications.events';
 import {
@@ -28,7 +29,7 @@ import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
  * person can't be let in" (skip, keep going) from "the event is full" (stop —
  * everyone behind them will fail identically). Still a 400 to the client.
  */
-class OutOfSeatsError extends BadRequestException {}
+const OutOfSeatsError = SoldOutError;
 
 /**
  * The waiting list for a sold-out ticket type.
@@ -531,10 +532,8 @@ export class WaitlistService {
 
       // Hold the seat. Note this counts against soldCount but leaves
       // isWaitlisted true — they occupy a seat without being an attendee yet.
-      await tx.eventTicketType.update({
-        where: { id: ticketType.id },
-        data: { soldCount: { increment: seats } },
-      });
+      // Atomic: the read above can race a buyer taking the same last seat.
+      await takeTicketSeats(tx, ticketType.id, seats, 'No seats are free right now. A seat must open up before you can let someone in.');
       await tx.event.update({
         where: { id: eventId },
         data: { waitlistCount: { decrement: 1 } },
@@ -678,8 +677,17 @@ export class WaitlistService {
         );
       }
 
-      const updated = await tx.eventRegistration.update({
-        where: { id: registrationId },
+      // Atomic claim: the client verify and the payment.captured webhook can
+      // both read OFFERED above; only the one that flips the row counts the
+      // attendee and issues tickets.
+      const claimed = await tx.eventRegistration.updateMany({
+        // Never revive an offer cancelled meanwhile: the cancel already gave
+        // its seat back, so converting it would count an attendee with no seat.
+        where: {
+          id: registrationId,
+          waitlistStatus: WaitlistStatus.OFFERED,
+          status: { not: RegistrationStatus.CANCELLED },
+        },
         data: {
           waitlistStatus: WaitlistStatus.CONVERTED,
           isWaitlisted: false,
@@ -691,6 +699,10 @@ export class WaitlistService {
           waitlistOfferExpiresAt: null,
         },
       });
+      const updated = await tx.eventRegistration.findUniqueOrThrow({
+        where: { id: registrationId },
+      });
+      if (claimed.count === 0) return updated; // converted concurrently
 
       // The seat was held at offer time, so only the event's attendee count
       // moves here.

@@ -405,18 +405,26 @@ export class SessionsService {
       },
     });
 
-    await this.prisma.session.update({
-      where: { id: sessionId },
+    // Claim the cancel: two overlapping requests must not both refund.
+    const claimed = await this.prisma.session.updateMany({
+      where: { id: sessionId, status: session.status },
       data: {
         status: SessionStatus.CANCELLED,
         cancelledAt: new Date(),
         cancellationReason: reason,
       },
     });
+    if (claimed.count !== 1) {
+      throw new BadRequestException('This session just changed. Refresh and try again.');
+    }
 
     let refunded = 0;
     for (const reg of paidRegistrations) {
-      const amount = Number(reg.razorpayAmount);
+      // Base only: the processing fee is kept, same as every other refund.
+      const amount = Math.max(
+        0,
+        Math.round((Number(reg.razorpayAmount) - Number(reg.processingFee)) * 100) / 100,
+      );
       try {
         if (amount > 0 && reg.paymentId) {
           await this.payments.refund(reg.paymentId, amount);
@@ -809,6 +817,13 @@ export class SessionsService {
     if (registration.userId !== userId) {
       throw new ForbiddenException('Unauthorized');
     }
+    // The signature proves a genuine payment, not that it paid for THIS row:
+    // PAID unlocks the LiveKit join token, so a cheap receipt must not replay.
+    // Strict match (no notes fallback): the row is reused per (session, user),
+    // so an earlier order's notes name it too, including a refunded one.
+    if (dto.razorpayOrderId !== registration.orderId) {
+      throw new BadRequestException('That payment is for a different order.');
+    }
     // The Razorpay webhook and this client-side verify race to confirm the same
     // payment. When the webhook wins, the row is already PAID by the time the
     // browser's verify arrives — that is success, not an error. The signature
@@ -821,10 +836,24 @@ export class SessionsService {
       );
       return { registrationId: registration.id, paid: true };
     }
+    // Never revive a refunded / cancelled row with its original receipt.
+    if (
+      registration.status === RegistrationStatus.CANCELLED ||
+      (registration.paymentStatus !== PaymentStatus.PENDING &&
+        registration.paymentStatus !== PaymentStatus.FAILED)
+    ) {
+      throw new BadRequestException('This registration can no longer be paid.');
+    }
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.sessionRegistration.update({
-        where: { id: registration.id },
+      // Atomic claim: two overlapping verifies both saw PENDING above; only the
+      // one that flips the row counts the seat.
+      const claimed = await tx.sessionRegistration.updateMany({
+        where: {
+          id: registration.id,
+          status: { not: RegistrationStatus.CANCELLED },
+          paymentStatus: { in: [PaymentStatus.PENDING, PaymentStatus.FAILED] },
+        },
         data: {
           paymentStatus: PaymentStatus.PAID,
           paymentId: dto.razorpayPaymentId,
@@ -832,6 +861,7 @@ export class SessionsService {
           paidAt: new Date(),
         },
       });
+      if (claimed.count === 0) return;
       await tx.session.update({
         where: { id: registration.sessionId },
         data: { registeredCount: { increment: 1 } },

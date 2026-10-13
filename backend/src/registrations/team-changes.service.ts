@@ -20,6 +20,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GroupSeatsService } from './group-seats.service';
+import { takeSeats } from './capacity.util';
 import { esc, h1, p, strong } from '../email/layout';
 
 const money = (n: number) => Math.round(n * 100) / 100;
@@ -324,15 +325,9 @@ export class TeamChangesService {
    * Taking is atomic against the ticket's capacity: it fails rather than oversell.
    */
   private async moveCapacity(tx: Prisma.TransactionClient, reg: Pick<Reg, 'eventId' | 'ticketTypeId'>, n: number) {
+    if (n > 0) return takeSeats(tx, reg, n, 'Not enough seats left on this ticket.');
     if (reg.ticketTypeId) {
-      if (n > 0) {
-        const took = await tx.$executeRaw`
-          UPDATE event_ticket_types SET sold_count = sold_count + ${n}
-          WHERE id = ${reg.ticketTypeId}::uuid AND (total_quantity IS NULL OR sold_count + ${n} <= total_quantity)`;
-        if (took !== 1) throw new BadRequestException('Not enough seats left on this ticket.');
-      } else {
-        await tx.eventTicketType.update({ where: { id: reg.ticketTypeId }, data: { soldCount: { increment: n } } });
-      }
+      await tx.eventTicketType.update({ where: { id: reg.ticketTypeId }, data: { soldCount: { increment: n } } });
     }
     await tx.event.update({ where: { id: reg.eventId }, data: { registeredCount: { increment: n } } });
   }

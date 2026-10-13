@@ -176,13 +176,7 @@ export class PlanConfigService implements OnModuleInit {
       sub.billingModel === BillingModel.REVENUE_SHARE
     ) {
       const m = this.getModelConfig(sub.billingModel);
-      let fee = 0;
-      if (sub.billingModel === BillingModel.REVENUE_SHARE) {
-        fee =
-          sub.revenueSharePercent != null
-            ? Number(sub.revenueSharePercent)
-            : (m.defaultRevenueSharePercent ?? 0);
-      }
+      const fee = this.resolvePlatformFeePercent(sub);
       return {
         spaces: m.spaces,
         eventsPerMonth: m.eventsPerMonth,
@@ -206,6 +200,24 @@ export class PlanConfigService implements OnModuleInit {
       };
     }
     return this.getLimits(sub.plan);
+  }
+
+  /**
+   * Platform fee % an organiser pays out of ticket sales — the single source
+   * for payouts, exports and plan limits. Only REVENUE_SHARE pays one: the
+   * space's own rate, else the model's default (a null rate is NOT 0%). FREE
+   * and SUBSCRIPTION pay 0.
+   */
+  resolvePlatformFeePercent(
+    sub?: {
+      billingModel: BillingModel;
+      revenueSharePercent?: number | { toString(): string } | null;
+    } | null,
+  ): number {
+    if (sub?.billingModel !== BillingModel.REVENUE_SHARE) return 0;
+    return sub.revenueSharePercent != null
+      ? Number(sub.revenueSharePercent)
+      : (this.getModelConfig(BillingModel.REVENUE_SHARE).defaultRevenueSharePercent ?? 0);
   }
 
   /** Admin edit of a Free / Revenue-share config. */
@@ -285,4 +297,9 @@ export class PlanConfigService implements OnModuleInit {
     this.cache.set(plan, merged);
     return { plan, ...merged };
   }
+}
+
+/** The platform's cut of `gross` at `percent`, rounded to the paise. */
+export function platformShare(gross: number, percent: number): number {
+  return Math.round(gross * percent + 1e-9) / 100;
 }

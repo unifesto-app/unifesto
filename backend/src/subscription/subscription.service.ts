@@ -197,16 +197,31 @@ export class SubscriptionService {
   async verifyAndActivateForSpace(spaceId: string, dto: VerifyUpgradeDto) {
     const subscription = await this.getSpaceSubscription(spaceId);
 
-    const signature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
-      .update(`${dto.orderId}|${dto.paymentId}`)
-      .digest('hex');
-
-    if (signature !== dto.signature) {
+    const expected = Buffer.from(
+      crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+        .update(`${dto.orderId}|${dto.paymentId}`)
+        .digest('hex'),
+    );
+    const given = Buffer.from(String(dto.signature ?? ''));
+    if (
+      expected.length !== given.length ||
+      !crypto.timingSafeEqual(expected, given)
+    ) {
       throw new BadRequestException('Invalid payment signature');
     }
 
+    // The signature proves a genuine payment, not that it paid for THIS space's
+    // upgrade: the order must be this space's and actually paid. The payment id
+    // is recorded once (unique on subscription_history), so a receipt can't be
+    // replayed onto another space or re-used next month.
     const order = await this.razorpay.orders.fetch(dto.orderId);
+    if (order.notes?.spaceId !== spaceId) {
+      throw new BadRequestException('That payment is for a different space.');
+    }
+    if (order.status !== 'paid') {
+      throw new BadRequestException('That order has not been paid.');
+    }
     const plan = order.notes?.plan as OrgPlan;
     const billingCycle = order.notes?.billingCycle as BillingCycle;
 
@@ -218,14 +233,24 @@ export class SubscriptionService {
     const oldPlan = subscription.plan;
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      await tx.subscriptionHistory.create({
-        data: {
-          subscriptionId: subscription.id,
-          fromPlan: subscription.plan,
-          toPlan: plan,
-          reason: 'Paid upgrade',
-        },
-      });
+      // Claim the payment first: a replayed id hits the unique index and the
+      // whole upgrade rolls back.
+      await tx.subscriptionHistory
+        .create({
+          data: {
+            subscriptionId: subscription.id,
+            fromPlan: subscription.plan,
+            toPlan: plan,
+            reason: 'Paid upgrade',
+            paymentId: dto.paymentId,
+          },
+        })
+        .catch((e) => {
+          if (e?.code === 'P2002') {
+            throw new BadRequestException('This payment has already been used.');
+          }
+          throw e;
+        });
 
       return tx.orgSubscription.update({
         where: { id: subscription.id },

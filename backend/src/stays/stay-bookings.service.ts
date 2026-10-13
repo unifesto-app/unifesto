@@ -699,7 +699,7 @@ export class StayBookingsService {
         where: { id: bookingId },
         data: confirm
           ? { ...paid, status: StayBookingStatus.CONFIRMED, paymentDueAt: null }
-          : paid,
+          : { ...paid, refundDueAt: new Date() },
       });
       return confirm ? ('confirmed' as const) : ('refund' as const);
     });
@@ -716,28 +716,62 @@ export class StayBookingsService {
         `Your Stay Pass for ${b.stay.name} is ready.`,
       );
     } else if (outcome === 'refund') {
-      const total = num(b.totalAmount);
-      try {
-        await this.payments.refund(paymentId, total);
-        await this.prisma.stayBooking.update({
-          where: { id: b.id },
-          data: {
-            paymentStatus: PaymentStatus.REFUNDED,
-            refundedAmount: total,
-          },
-        });
-        this.notify(
-          b.userId,
-          b.id,
-          'Stay payment refunded',
-          `Your payment for ${b.stay.name} arrived after the booking closed, so ${rupees(total)} is on its way back.`,
-        );
-      } catch (err) {
-        this.logger.error(
-          `Stay ${b.id}: late payment ${paymentId} could not be refunded automatically: ${err}`,
-        );
-      }
+      await this.refundDue(b.id);
     }
+  }
+
+  /**
+   * Send a late payment back in full. The row was marked `refundDueAt` with
+   * the payment, so a failed refund is retried by {@link retryDueRefunds}
+   * (and kept out of payouts) instead of sitting as PAID on a closed booking.
+   * Claimed by pushing `refundDueAt` an hour out, so it never runs twice.
+   */
+  async refundDue(bookingId: string): Promise<boolean> {
+    const now = new Date();
+    const claimed = await this.prisma.stayBooking.updateMany({
+      where: { id: bookingId, refundDueAt: { lte: now }, paymentStatus: PaymentStatus.PAID },
+      data: { refundDueAt: new Date(now.getTime() + 60 * 60_000) },
+    });
+    if (claimed.count !== 1) return false;
+    const b = await this.prisma.stayBooking.findUniqueOrThrow({
+      where: { id: bookingId },
+      include: BOOKING_INCLUDE,
+    });
+    const total = num(b.totalAmount);
+    try {
+      await this.payments.refund(b.paymentId!, total);
+    } catch (err) {
+      this.logger.error(
+        `CRITICAL: stay ${b.id}: late payment ${b.paymentId} could not be refunded, retrying later: ${err}`,
+      );
+      return false;
+    }
+    await this.prisma.stayBooking.update({
+      where: { id: b.id },
+      data: {
+        paymentStatus: PaymentStatus.REFUNDED,
+        refundedAmount: total,
+        refundDueAt: null,
+      },
+    });
+    this.notify(
+      b.userId,
+      b.id,
+      'Stay payment refunded',
+      `Your payment for ${b.stay.name} arrived after the booking closed, so ${rupees(total)} is on its way back.`,
+    );
+    return true;
+  }
+
+  /** Retry late-payment refunds that didn't go through the first time. */
+  @Cron('*/15 * * * *', { timeZone: 'Asia/Kolkata' })
+  async retryDueRefunds(): Promise<void> {
+    const due = await this.prisma.stayBooking.findMany({
+      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+      select: { id: true },
+      take: 100,
+    });
+    for (const b of due) await this.refundDue(b.id);
   }
 
   /** Release beds whose payment window closed. */
