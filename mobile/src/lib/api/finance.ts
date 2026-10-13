@@ -164,7 +164,7 @@ export function describeAccount(a: {
 
 // ── Refunds ──────────────────────────────────────────────────────────────────
 
-export type RefundStatus = 'PENDING_CURATOR' | 'PENDING_ADMIN' | 'APPROVED' | 'REJECTED';
+export type RefundStatus = 'PENDING_CURATOR' | 'PENDING_ADMIN' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
 
 export interface RefundRequest {
   id: string;

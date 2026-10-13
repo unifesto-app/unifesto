@@ -129,6 +129,8 @@ export interface EventPayoutSummary {
   committed: number;
   /** What a new payout can still draw — the custom-amount ceiling. */
   available: number;
+  /** Paid out beyond the entitlement (refunds after a payout). */
+  overdrawn?: number;
   existingPayout: Payout | null;
 }
 
@@ -233,6 +235,8 @@ export interface Financials {
   pending: number;
   /** Still available to request (netEntitlement − settled − pending). */
   available: number;
+  /** Paid out beyond net owed (refunds after a payout). */
+  overdrawn?: number;
 }
 
 /** Financials for the current space. `GET /payouts/space/:spaceId/financials`. */

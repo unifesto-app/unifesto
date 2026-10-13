@@ -30,6 +30,7 @@ const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN
 const STATUS: Record<RefundStatus, { label: string; variant: "warning" | "neutral" | "success" | "destructive" }> = {
   PENDING_CURATOR: { label: "Awaiting your review", variant: "warning" },
   PENDING_ADMIN: { label: "Forwarded to admin", variant: "neutral" },
+  PROCESSING: { label: "Processing", variant: "neutral" },
   APPROVED: { label: "Approved", variant: "success" },
   REJECTED: { label: "Rejected", variant: "destructive" },
 };

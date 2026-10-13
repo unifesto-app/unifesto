@@ -57,6 +57,7 @@ const STATUS_BADGE: Record<
 > = {
   PENDING_CURATOR: { label: "Awaiting curator", variant: "neutral" },
   PENDING_ADMIN: { label: "Awaiting admin", variant: "warning" },
+  PROCESSING: { label: "Processing", variant: "warning" },
   APPROVED: { label: "Approved", variant: "success" },
   REJECTED: { label: "Declined", variant: "destructive" },
 };
@@ -239,6 +240,11 @@ export default function RefundsPage() {
                       {r.curatorNote && (
                         <p className="mt-1 text-xs text-muted-foreground">
                           Curator: {r.curatorNote}
+                        </p>
+                      )}
+                      {Number(r.payoutShortfall ?? 0) > 0 && (
+                        <p className="mt-1 text-xs text-destructive">
+                          Event was already paid out: {money(r.payoutShortfall ?? 0)} to recover from the space
                         </p>
                       )}
                     </div>

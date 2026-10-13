@@ -8,6 +8,7 @@ import backendClient, { apiCall, ApiError } from "./backend-client";
 export type RefundStatus =
   | "PENDING_CURATOR"
   | "PENDING_ADMIN"
+  | "PROCESSING"
   | "APPROVED"
   | "REJECTED";
 

@@ -344,6 +344,8 @@ export interface PlatformFinancials {
   pending: number;
   /** Still owed but not yet paid (netEntitlement − settled − pending). */
   available: number;
+  /** Paid out beyond net owed (refunds after a payout); to recover. */
+  overdrawn: number;
   /** Platform take-home: processing fees + revenue-share cut. */
   platformEarnings: number;
 }
@@ -369,6 +371,7 @@ export interface FinancialsFigures {
   settled: number;
   pending: number;
   available: number;
+  overdrawn: number;
 }
 
 /** One event's financials inside a space. */
