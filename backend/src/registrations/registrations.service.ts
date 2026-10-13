@@ -20,7 +20,11 @@ import { PaymentsService } from '../payments/payments.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
-import { resolveSpaceSurfaces } from '../white-label/branding.util';
+import {
+  BRANDING_SPACE_SELECT,
+  type BrandSpace,
+  resolveEmailSender,
+} from '../white-label/branding.util';
 import { buildExportFile, type ExportFormat } from './export.util';
 import {
   buildTemplateSpec,
@@ -557,24 +561,19 @@ export class RegistrationsService {
    * Shared by RSVP completion and free-ticket completion in createPaymentOrder.
    */
   /**
-   * White-label email sender for a space, or `{}` when it doesn't apply. Runs
-   * the same two-check gate as public-page branding (white-label enabled + plan
-   * carries the perk), so a downgraded space silently reverts to the default
-   * Unifesto sender with no flag to flip.
+   * White-label email sender for a space, or `{}` when it doesn't apply. Same
+   * gate as public-page branding (on + plan perk + not suspended), so a
+   * downgraded space silently reverts to the default Unifesto sender.
    */
   private resolveEmailSender(
     space:
-      | {
-          whiteLabelEnabled: boolean;
-          faviconUrl: string | null;
-          emailFromName: string | null;
-          emailReplyTo: string | null;
+      | (BrandSpace & {
           subscription: {
             billingModel: BillingModel;
             plan: OrgPlan;
             revenueSharePercent?: number | { toString(): string } | null;
           } | null;
-        }
+        })
       | null
       | undefined,
   ): { brandFromName?: string | null; brandReplyTo?: string | null } {
@@ -582,7 +581,7 @@ export class RegistrationsService {
     const hasRemoveBranding = this.planConfig.getEffectiveLimits(
       space.subscription,
     ).hasRemoveBranding;
-    const surfaces = resolveSpaceSurfaces(space, hasRemoveBranding);
+    const surfaces = resolveEmailSender(space, hasRemoveBranding);
     if (!surfaces) return {};
     return {
       brandFromName: surfaces.emailFromName,
@@ -642,14 +641,7 @@ export class RegistrationsService {
             // Organiser name for the calendar (.ics) ORGANIZER line, plus the
             // white-label email-sender surfaces + plan (for the render gate).
             space: {
-              select: {
-                name: true,
-                whiteLabelEnabled: true,
-                faviconUrl: true,
-                emailFromName: true,
-                emailReplyTo: true,
-                subscription: true,
-              },
+              select: { ...BRANDING_SPACE_SELECT, subscription: true },
             },
           },
         },
@@ -951,14 +943,7 @@ export class RegistrationsService {
         event: {
           include: {
             space: {
-              select: {
-                name: true,
-                whiteLabelEnabled: true,
-                faviconUrl: true,
-                emailFromName: true,
-                emailReplyTo: true,
-                subscription: true,
-              },
+              select: { ...BRANDING_SPACE_SELECT, subscription: true },
             },
           },
         },
@@ -4177,14 +4162,7 @@ export class RegistrationsService {
           event: {
           include: {
             space: {
-              select: {
-                name: true,
-                whiteLabelEnabled: true,
-                faviconUrl: true,
-                emailFromName: true,
-                emailReplyTo: true,
-                subscription: true,
-              },
+              select: { ...BRANDING_SPACE_SELECT, subscription: true },
             },
           },
         },

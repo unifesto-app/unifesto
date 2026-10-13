@@ -1,3 +1,4 @@
+import type { Branding } from "@/components/BrandedChrome";
 // Universal module (no browser APIs): usable from both Client Components and
 // server code such as `generateMetadata` / the OG image routes. Do not add a
 // "use client" directive here or server-side callers will break.
@@ -59,11 +60,10 @@ export interface Event {
   created_at: string;
   updated_at: string;
   /**
-   * Organiser white-label branding, or null for the default Unifesto look.
-   * Present only when an admin approved white-label AND the space's plan
-   * still includes it (the backend enforces both).
+   * White-label theme, or null for the default Unifesto look. The backend
+   * gates it (switched on + plan perk + not suspended).
    */
-  branding?: { color: string | null; faviconUrl?: string | null } | null;
+  branding?: Branding | null;
   /** Spaces co-hosting alongside `space` ("by Host & Co-host"). */
   co_hosts?: { id: string; name: string; slug?: string; logo_url?: string }[];
   /**

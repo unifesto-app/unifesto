@@ -82,7 +82,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/billing", label: "Plan & billing", icon: CreditCard, requires: "space:manage-billing", keywords: "subscription plan upgrade" },
       { href: "/iam", label: "IAM", icon: ShieldCheck, requires: "space:manage-members", keywords: "roles permissions access" },
-      { href: "/white-label", label: "White-label", icon: PaintBrush, requires: "space:manage-billing", keywords: "branding colour color accent" },
+      { href: "/white-label", label: "Branding", icon: PaintBrush, requires: "space:manage-billing", keywords: "white-label branding colour color accent logo font domain" },
       { href: "/settings", label: "Settings", icon: Gear, requires: "space:manage-members" },
     ],
   },

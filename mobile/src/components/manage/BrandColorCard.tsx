@@ -56,7 +56,6 @@ export default function BrandColorCard({
   const seedColor = brandColor ?? latest?.brandColor ?? inherited ?? DEFAULT;
 
   const [color, setColor] = useState(seedColor);
-  const [note, setNote] = useState('');
   const [fromName, setFromName] = useState(surfaces?.emailFromName ?? '');
   const [replyTo, setReplyTo] = useState(surfaces?.emailReplyTo ?? '');
   const [busy, setBusy] = useState(false);
@@ -89,22 +88,22 @@ export default function BrandColorCard({
           spaceId,
           eventId,
           brandColor: color,
-          reason: note.trim() || `Requesting white-label for this ${eventId ? 'event' : 'space'}.`,
+          // Self-serve now: this turns branding on immediately.
+          reason: 'Self-serve',
         });
     setBusy(false);
     if (!res.ok) {
       setMessage({ text: res.message, bad: true });
       return;
     }
-    setNote('');
-    setMessage({ text: enabled ? 'Saved.' : 'Request sent.' });
+    setMessage({ text: enabled ? 'Saved.' : 'Branding is on.' });
     await onChanged();
   };
 
   return (
     <View>
       {eventId && !enabled && inherited ? (
-        <Text style={[styles.note, { color: c.muted }]}>Already uses your space colour. Request only if it needs its own.</Text>
+        <Text style={[styles.note, { color: c.muted }]}>Already uses your space colour. Set its own only if it needs one.</Text>
       ) : null}
 
       <View style={[styles.picker, { backgroundColor: fill, opacity: pending ? 0.5 : 1, pointerEvents: pending ? 'none' : 'auto' }]}>
@@ -159,20 +158,15 @@ export default function BrandColorCard({
           Waiting for review{latest?.requester?.fullName ? `, requested by ${latest.requester.fullName}` : ''}. You can change
           the colour any time once it's approved.
         </Text>
-      ) : !enabled ? (
-        <>
-          {latest?.status === 'REJECTED' && latest.reviewNote ? (
-            <Text style={[styles.note, { color: c.danger }]}>Last request declined: {latest.reviewNote}</Text>
-          ) : null}
-          <SettingsGroup plain surface={eventId ? c.tint : undefined}>
-            <FieldRow stacked multiline label="Note for the reviewer (optional)" value={note} onChangeText={setNote} />
-          </SettingsGroup>
-        </>
+      ) : !enabled && !eventId ? (
+        <Text style={[styles.note, { color: c.muted }]}>
+          Logo, font and page theme are in the Branding studio on space.unifesto.app.
+        </Text>
       ) : null}
 
       {!pending ? (
         <AuthButton
-          label={enabled ? 'Save colour' : 'Request own colour'}
+          label={enabled ? 'Save colour' : eventId ? 'Use own colour' : 'Turn on branding'}
           onPress={submit}
           loading={busy}
           disabled={!valid}

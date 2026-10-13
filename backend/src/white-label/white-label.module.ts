@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CacheModule } from '../cache/cache.module';
+import { StorageModule } from '../storage/storage.module';
 import { WhiteLabelController } from './white-label.controller';
 import { WhiteLabelService } from './white-label.service';
 
@@ -12,7 +13,7 @@ import { WhiteLabelService } from './white-label.service';
  * CacheModule to bust cached event pages when branding changes.
  */
 @Module({
-  imports: [AuthModule, CacheModule],
+  imports: [AuthModule, CacheModule, StorageModule],
   controllers: [WhiteLabelController],
   providers: [WhiteLabelService],
   exports: [WhiteLabelService],

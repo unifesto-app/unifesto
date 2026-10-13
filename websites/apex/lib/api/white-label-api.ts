@@ -154,3 +154,16 @@ export async function adminApplyEventBranding(
     backendClient.patch(`/white-label/admin/events/${eventId}`, input)
   );
 }
+
+/**
+ * `PATCH /white-label/admin/spaces/:spaceId/suspend` — platform kill switch.
+ * Suspended branding stops rendering everywhere; the stored theme is kept.
+ */
+export async function setSpaceBrandingSuspended(
+  spaceId: string,
+  suspended: boolean
+): Promise<{ data: { brandingSuspendedAt: string | null } | null; error: ApiError | null }> {
+  return apiCall<{ brandingSuspendedAt: string | null }>(
+    backendClient.patch(`/white-label/admin/spaces/${spaceId}/suspend`, { suspended })
+  );
+}

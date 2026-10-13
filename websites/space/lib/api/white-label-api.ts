@@ -1,10 +1,9 @@
 /**
- * White-label API — organiser accent-colour requests + admin review.
+ * White-label API. Backed by the NestJS `/white-label` controller.
  *
- * Backed by the NestJS `/white-label` controller. An organiser requests
- * white-label for a space or one of its events; an admin approves/rejects; on
- * approval the branding is applied and the target's `whiteLabelEnabled` flips
- * on. Requires the space's plan to include `hasRemoveBranding`.
+ * Self-serve: a space whose plan includes `hasRemoveBranding` edits its theme
+ * directly (Branding studio). The request/review calls remain for the legacy
+ * admin history only.
  */
 
 import backendClient, { apiCall, ApiError } from "./backend-client";
@@ -63,8 +62,16 @@ export async function getMyWhiteLabelRequests(
 /** Live white-label state of the space itself (source of truth, not requests). */
 export interface SpaceWhiteLabelState {
   id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
   whiteLabelEnabled: boolean;
+  brandingSuspendedAt: string | null;
   brandColor: string | null;
+  brandLogoUrl: string | null;
+  brandFont: BrandFontKey | null;
+  brandMode: "light" | "dark" | null;
+  hidePoweredBy: boolean;
   faviconUrl: string | null;
   emailFromName: string | null;
   emailReplyTo: string | null;
@@ -81,8 +88,10 @@ export interface EventWhiteLabelState {
 }
 
 export interface WhiteLabelOverview {
-  /** Whether the space's plan includes white-label (required to request/render). */
+  /** Whether the space's plan includes white-label (required to edit/render). */
   planHasBranding: boolean;
+  /** Switched on + plan + not suspended: attendees see it right now. */
+  live: boolean;
   space: SpaceWhiteLabelState;
   events: EventWhiteLabelState[];
   /** Every request raised for this space (any co-admin), newest first. */
@@ -127,16 +136,48 @@ export async function reviewWhiteLabelRequest(
   );
 }
 
+/** Font presets; must match BRAND_FONTS in backend branding.util.ts. */
+export const BRAND_FONTS = {
+  inter: "Inter",
+  "dm-sans": "DM Sans",
+  "space-grotesk": "Space Grotesk",
+  poppins: "Poppins",
+  montserrat: "Montserrat",
+  "ibm-plex-sans": "IBM Plex Sans",
+  "playfair-display": "Playfair Display",
+  lora: "Lora",
+} as const;
+export type BrandFontKey = keyof typeof BRAND_FONTS;
+
+/** `null` clears a field, omitted leaves it. Events only take `brandColor`. */
 export interface BrandingPatch {
-  brandColor?: string;
-  // Space-level surfaces (ignored on an event target). Effective only while the
-  // space's white-label is enabled and the plan carries the perk.
-  faviconUrl?: string;
-  emailFromName?: string;
-  emailReplyTo?: string;
+  enabled?: boolean;
+  brandColor?: string | null;
+  brandFont?: BrandFontKey | null;
+  brandMode?: "light" | "dark" | null;
+  hidePoweredBy?: boolean;
+  brandLogoUrl?: string | null;
+  faviconUrl?: string | null;
+  emailFromName?: string | null;
+  emailReplyTo?: string | null;
 }
 
-/** `PATCH /white-label/spaces/:spaceId/branding` — edit an approved space. */
+/** `POST /white-label/spaces/:spaceId/assets/:kind` — upload wordmark or favicon. */
+export async function uploadBrandAsset(
+  spaceId: string,
+  kind: "logo" | "favicon",
+  file: File
+): Promise<{ data: SpaceWhiteLabelState | null; error: ApiError | null }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiCall<SpaceWhiteLabelState>(
+    backendClient.post(`/white-label/spaces/${spaceId}/assets/${kind}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    })
+  );
+}
+
+/** `PATCH /white-label/spaces/:spaceId/branding` — edit the space theme. */
 export async function updateSpaceBranding(
   spaceId: string,
   patch: BrandingPatch
@@ -146,7 +187,7 @@ export async function updateSpaceBranding(
   );
 }
 
-/** `PATCH /white-label/events/:eventId/branding` — edit an approved event. */
+/** `PATCH /white-label/events/:eventId/branding` — set/clear an event's accent. */
 export async function updateEventBranding(
   eventId: string,
   patch: BrandingPatch
@@ -195,3 +236,4 @@ export async function adminApplyEventBranding(
     backendClient.patch(`/white-label/admin/events/${eventId}`, input)
   );
 }
+

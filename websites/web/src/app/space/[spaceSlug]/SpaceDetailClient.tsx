@@ -2,10 +2,11 @@
 
 import { optimized } from "@/lib/img";
 import Link from "next/link";
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect } from "react";
 import { ArrowUpRight, CalendarBlank, CaretRight, DeviceMobile, Globe, SealCheck, UsersThree } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { BrandFooter, BrandHeader, BrandTheme, brandStyle, hasBrandedChrome } from "@/components/BrandedChrome";
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import EventCard from "@/components/EventCard";
 import EventCardSkeleton from "@/components/EventCardSkeleton";
@@ -149,17 +150,13 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
     { label: eventCount === 1 ? "Event hosted" : "Events hosted", value: eventCount, ready: !detailsLoading },
   ];
 
-  // White-label: recolour the page to the organiser's accent by overriding the
-  // `--primary`/`--accent` CSS variables on this wrapper only. `branding` is
-  // null for non-white-labelled spaces, leaving the default look untouched.
-  const brandColor = space.branding?.color || undefined;
-  const brandStyle = brandColor
-    ? ({ "--primary": brandColor, "--accent": brandColor } as CSSProperties)
-    : undefined;
+  // White-label: theme the wrapper; a live space theme also swaps the chrome.
+  const branded = hasBrandedChrome(space.branding) ? space.branding : null;
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-canvas pb-24" style={brandStyle}>
-      <Navbar />
+    <main className="min-h-screen overflow-x-hidden bg-canvas pb-24" style={brandStyle(space.branding)}>
+      <BrandTheme branding={space.branding} />
+      {branded ? <BrandHeader branding={branded} href={`/space/${space.slug}`} /> : <Navbar />}
 
       {/* ── Hero: 4:3 banner beside the 1:1 logo, name and stats ── */}
       <section className="px-5 pt-28 sm:px-8 md:pt-32">
@@ -330,7 +327,7 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
         )}
       </div>
 
-      <Footer />
+      {branded ? <BrandFooter branding={branded} /> : <Footer />}
 
       <ActionBar label={memberCount === 1 ? "Member" : "Members"} value={memberCount.toLocaleString("en-IN")}>
         <a

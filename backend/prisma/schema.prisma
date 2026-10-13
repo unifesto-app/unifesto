@@ -907,22 +907,27 @@ model Space {
   logoUrl   String? @map("logo_url") @db.Text
   bannerUrl String? @map("banner_url") @db.Text
 
-  // White-label branding (attendee-facing only). Rendered on public space/event
-  // pages ONLY when `whiteLabelEnabled` (admin-approved via WhiteLabelRequest)
-  // AND the space's plan still includes `hasRemoveBranding`.
-  whiteLabelEnabled Boolean @default(false) @map("white_label_enabled")
-  brandColor        String? @map("brand_color") @db.VarChar(9)
-  brandLogoUrl      String? @map("brand_logo_url") @db.Text
-  // Additional white-label surfaces, all gated by the same two checks above.
-  // Editable in space settings; they only take effect once white-label is
-  // approved and the plan still carries the perk.
-  //   faviconUrl   — the tab icon on public space/event pages.
-  //   emailFromName — display name on confirmation emails (address is unchanged;
-  //                   a custom sending DOMAIN is a separate, later feature).
-  //   emailReplyTo — Reply-To on those emails, so replies reach the organiser.
-  faviconUrl        String? @map("favicon_url") @db.Text
-  emailFromName     String? @map("email_from_name") @db.VarChar(100)
-  emailReplyTo      String? @map("email_reply_to") @db.VarChar(255)
+  // White-label branding (attendee-facing). Self-serve: a curator switches
+  // `whiteLabelEnabled` on in the Branding studio. It renders ONLY while the
+  // space's plan includes `hasRemoveBranding` AND a platform admin hasn't set
+  // `brandingSuspendedAt` (see resolveSpaceBranding).
+  whiteLabelEnabled   Boolean   @default(false) @map("white_label_enabled")
+  brandingSuspendedAt DateTime? @map("branding_suspended_at") @db.Timestamptz(6)
+  brandColor          String?   @map("brand_color") @db.VarChar(9)
+  // Wide wordmark for the branded header; falls back to the square `logoUrl`.
+  brandLogoUrl        String?   @map("brand_logo_url") @db.Text
+  // Preset key (see BRAND_FONTS in branding.util), null = Unifesto's font.
+  brandFont           String?   @map("brand_font") @db.VarChar(40)
+  // 'light' | 'dark' forces the page theme; null = the visitor's choice.
+  brandMode           String?   @map("brand_mode") @db.VarChar(10)
+  // Drops the "Powered by Unifesto" line from branded pages and emails.
+  hidePoweredBy       Boolean   @default(false) @map("hide_powered_by")
+  //   faviconUrl    — the tab icon on public space/event pages.
+  //   emailFromName — display name on attendee emails.
+  //   emailReplyTo  — Reply-To on those emails, so replies reach the organiser.
+  faviconUrl          String?   @map("favicon_url") @db.Text
+  emailFromName       String?   @map("email_from_name") @db.VarChar(100)
+  emailReplyTo        String?   @map("email_reply_to") @db.VarChar(255)
 
   // Location
   city    String? @db.VarChar(100)
