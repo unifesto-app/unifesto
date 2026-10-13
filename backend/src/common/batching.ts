@@ -9,20 +9,22 @@ export const PAGE_SIZE = 500;
 /** Default number of sends in flight at once. */
 export const SEND_CONCURRENCY = 25;
 
+type PageArgs = {
+  take: number;
+  orderBy: { id: 'asc' };
+  cursor?: { id: string };
+  skip?: number;
+};
+
 /**
- * Keyset-paginate by `id`: `fetch` receives Prisma paging args to spread into
- * its findMany, and `fn` runs once per non-empty page.
+ * Keyset-paginate by `id` cursor: `fetch` receives Prisma paging args to
+ * spread into its findMany (it may override `orderBy`, as long as the order is
+ * total, e.g. ending in `id`). Yields each non-empty page.
  */
-export async function forEachPage<T extends { id: string }>(
-  fetch: (page: {
-    take: number;
-    orderBy: { id: 'asc' };
-    cursor?: { id: string };
-    skip?: number;
-  }) => Promise<T[]>,
-  fn: (rows: T[]) => Promise<void>,
+export async function* pages<T extends { id: string }>(
+  fetch: (page: PageArgs) => Promise<T[]>,
   take = PAGE_SIZE,
-): Promise<void> {
+): AsyncGenerator<T[]> {
   let after: string | undefined;
   for (;;) {
     const rows = await fetch({
@@ -31,10 +33,19 @@ export async function forEachPage<T extends { id: string }>(
       ...(after ? { cursor: { id: after }, skip: 1 } : {}),
     });
     if (rows.length === 0) return;
-    await fn(rows);
+    yield rows;
     if (rows.length < take) return;
     after = rows[rows.length - 1].id;
   }
+}
+
+/** `pages`, with `fn` run once per page. */
+export async function forEachPage<T extends { id: string }>(
+  fetch: (page: PageArgs) => Promise<T[]>,
+  fn: (rows: T[]) => Promise<void>,
+  take = PAGE_SIZE,
+): Promise<void> {
+  for await (const rows of pages(fetch, take)) await fn(rows);
 }
 
 /**

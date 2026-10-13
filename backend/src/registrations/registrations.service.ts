@@ -20,7 +20,13 @@ import { PaymentsService } from '../payments/payments.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
-import { buildExportFile, type ExportFormat } from './export.util';
+import {
+  buildExportFile,
+  csvChunks,
+  type ExportFormat,
+} from './export.util';
+import { Readable } from 'stream';
+import { pages } from '../common/batching';
 import {
   buildTemplateSpec,
   parseCsv,
@@ -2888,32 +2894,37 @@ export class RegistrationsService {
       throw new BadRequestException('Unauthorized');
     }
 
-    const registrations = await this.prisma.eventRegistration.findMany({
-      where: { eventId },
-      orderBy: { registeredAt: 'desc' },
-      include: {
-        user: {
-          select: {
-            fullName: true,
-            username: true,
-            mobileNumber: true,
-            identities: {
-              select: { email: true },
-              take: 1,
+    // Registrations are read a page at a time (newest first, as before), so a
+    // CSV streams out while it is read rather than being built whole.
+    const prisma = this.prisma;
+    const registrationPages = () =>
+      pages((page) =>
+        prisma.eventRegistration.findMany({
+          ...page,
+          where: { eventId },
+          orderBy: [{ registeredAt: 'desc' }, { id: 'desc' }],
+          include: {
+            user: {
+              select: {
+                fullName: true,
+                username: true,
+                mobileNumber: true,
+                identities: {
+                  select: { email: true },
+                  take: 1,
+                },
+              },
             },
+            ticketType: true,
           },
-        },
-        ticketType: true,
-      },
-    });
+        }),
+      );
 
     // Transactions export: payment/transaction data only, and only rows where
     // money actually moved (free RSVPs are excluded).
     if (type === 'transactions') {
-      const txns = registrations.filter(
-        (reg: any) =>
-          Number(reg.totalAmount) > 0 || reg.paymentId || reg.orderId,
-      );
+      const isTxn = (reg: any) =>
+        Number(reg.totalAmount) > 0 || reg.paymentId || reg.orderId;
       // Money model (all in INR, stored as Decimal):
       //   totalAmount   = base ticket price + processingFee  (the FULL amount
       //                   the attendee was charged)
@@ -2961,7 +2972,7 @@ export class RegistrationsService {
         'Order ID',
         'Paid At',
       ];
-      const rows = txns.map((reg: any) => {
+      const toRow = (reg: any) => {
         const captured = CAPTURED_STATUSES.has(reg.paymentStatus);
         const gross = Number(reg.totalAmount) || 0;
         const fee = Number(reg.processingFee) || 0;
@@ -2983,19 +2994,20 @@ export class RegistrationsService {
           reg.orderId || '',
           reg.paidAt ? reg.paidAt.toISOString() : '',
         ];
-      });
+      };
 
-      const file = await buildExportFile(
+      async function* txnPages() {
+        for await (const regs of registrationPages()) {
+          yield regs.filter(isTxn).map(toRow);
+        }
+      }
+      return exportOutput(
         format,
         `${event.title} — Transactions`,
         header,
-        rows,
+        txnPages(),
+        `${event.slug}-transactions`,
       );
-      return {
-        buffer: file.buffer,
-        contentType: file.contentType,
-        filename: `${event.slug}-transactions.${file.extension}`,
-      };
     }
 
     // Attendees export: full attendee data plus the custom form responses.
@@ -3065,148 +3077,149 @@ export class RegistrationsService {
       ...formFields.map((f) => f.label),
     ];
 
-    // Group seats (fast-registration Part 2) are the source of truth for a
-    // group's roster — a pay-first group has no `groupMembers` JSON at all, so
-    // expanding by seats is the only way to emit its members. Fetch all seats
-    // for the group registrations in one query, with the claimer's account for
-    // fallback identity.
-    const groupRegIds = (registrations as any[])
-      .filter((r) => (r.groupSize ?? 0) > 1)
-      .map((r) => r.id);
-    const allSeats = groupRegIds.length
-      ? await this.prisma.groupSeat.findMany({
-          where: { registrationId: { in: groupRegIds } },
-          orderBy: [{ registrationId: 'asc' }, { seatIndex: 'asc' }],
-          include: {
-            claimedBy: {
-              select: {
-                fullName: true,
-                username: true,
-                mobileNumber: true,
-                identities: { select: { email: true }, take: 1 },
+    // One page of registrations at a time; seats are fetched per page.
+    async function* attendeePages() {
+      for await (const registrations of registrationPages()) {
+        // Group seats (fast-registration Part 2) are the source of truth for a
+        // group's roster — a pay-first group has no `groupMembers` JSON at all, so
+        // expanding by seats is the only way to emit its members. Fetch all seats
+        // for the group registrations in one query, with the claimer's account for
+        // fallback identity.
+        const groupRegIds = (registrations as any[])
+          .filter((r) => (r.groupSize ?? 0) > 1)
+          .map((r) => r.id);
+        const allSeats = groupRegIds.length
+          ? await prisma.groupSeat.findMany({
+              where: { registrationId: { in: groupRegIds } },
+              orderBy: [{ registrationId: 'asc' }, { seatIndex: 'asc' }],
+              include: {
+                claimedBy: {
+                  select: {
+                    fullName: true,
+                    username: true,
+                    mobileNumber: true,
+                    identities: { select: { email: true }, take: 1 },
+                  },
+                },
               },
-            },
-          },
-        })
-      : [];
-    const seatsByReg = new Map<string, typeof allSeats>();
-    for (const s of allSeats) {
-      const list = seatsByReg.get(s.registrationId) ?? [];
-      list.push(s);
-      seatsByReg.set(s.registrationId, list);
-    }
-
-    const seatStatusLabel = (status: string) =>
-      status.charAt(0) + status.slice(1).toLowerCase(); // OPEN → Open
-
-    // A GROUP registration is a single row whose `user` is only the team lead;
-    // the whole team lives in seat rows (or legacy `groupMembers` JSON). Expand
-    // each such registration into one row per seat/member so no attendee is
-    // hidden. To keep the Amount column summable, the payment amount is
-    // attributed to seat 1 (the lead) only.
-    const rows: string[][] = [];
-    for (const reg of registrations as any[]) {
-      const responses = (reg.formResponses ?? {}) as Record<string, unknown>;
-      const members: any[] = Array.isArray(reg.groupMembers)
-        ? reg.groupMembers
-        : [];
-      const seats = seatsByReg.get(reg.id) ?? [];
-      const isGroup =
-        (reg.groupSize ?? 0) > 1 && (seats.length > 0 || members.length > 0);
-
-      if (isGroup && seats.length > 0) {
-        // Preferred path: one row per seat, with claim status.
-        for (const seat of seats) {
-          const md = (seat.memberDetails ?? {}) as any;
-          const flat = flattenMember(md);
-          const custom = (md?.customFields ?? {}) as Record<string, unknown>;
-          const isLead = seat.seatIndex === 1;
-          const claimer = seat.claimedBy;
-          const label = isLead ? 'Lead' : seatStatusLabel(seat.status);
-          rows.push([
-            pickMemberField(flat, MEMBER_ALIASES.name) ||
-              claimer?.fullName ||
-              (isLead ? reg.user.fullName || '' : ''),
-            claimer?.username || (isLead ? reg.user.username || '' : ''),
-            pickMemberField(flat, MEMBER_ALIASES.email) ||
-              claimer?.identities?.[0]?.email ||
-              (isLead ? reg.user.identities?.[0]?.email || '' : ''),
-            pickMemberField(flat, MEMBER_ALIASES.mobile) ||
-              claimer?.mobileNumber ||
-              (isLead ? reg.user.mobileNumber || '' : ''),
-            reg.ticketType?.name || 'RSVP',
-            '1',
-            reg.status,
-            reg.paymentStatus,
-            isLead ? Number(reg.totalAmount).toString() : '0',
-            reg.registeredAt.toISOString(),
-            reg.checkedInAt ? 'Yes' : 'No',
-            `Group of ${reg.groupSize} · Seat ${seat.seatIndex} · ${label}`,
-            ...formFields.map((f) =>
-              formatResponse(custom[f.id] ?? (isLead ? responses[f.id] : undefined)),
-            ),
-          ]);
+            })
+          : [];
+        const seatsByReg = new Map<string, typeof allSeats>();
+        for (const s of allSeats) {
+          const list = seatsByReg.get(s.registrationId) ?? [];
+          list.push(s);
+          seatsByReg.set(s.registrationId, list);
         }
-      } else if (isGroup) {
-        members.forEach((m, i) => {
-          const flat = flattenMember(m);
-          const custom = (m?.customFields ?? {}) as Record<string, unknown>;
-          // The lead (index 0) is a real user, so fall back to their account
-          // details when the stored member entry is blank (legacy rosters).
-          const leadName = i === 0 ? reg.user.fullName || '' : '';
-          const leadEmail = i === 0 ? reg.user.identities?.[0]?.email || '' : '';
-          const leadMobile = i === 0 ? reg.user.mobileNumber || '' : '';
-          rows.push([
-            pickMemberField(flat, MEMBER_ALIASES.name) || leadName,
-            i === 0 ? reg.user.username || '' : '',
-            pickMemberField(flat, MEMBER_ALIASES.email) || leadEmail,
-            pickMemberField(flat, MEMBER_ALIASES.mobile) || leadMobile,
-            reg.ticketType?.name || 'RSVP',
-            '1',
-            reg.status,
-            reg.paymentStatus,
-            i === 0 ? Number(reg.totalAmount).toString() : '0',
-            reg.registeredAt.toISOString(),
-            reg.checkedInAt ? 'Yes' : 'No',
-            `Group of ${reg.groupSize} · ${i === 0 ? 'Lead' : `Member ${i + 1}`}`,
-            // Custom answers: prefer the member's own, fall back to the shared
-            // registration responses for the lead row.
-            ...formFields.map((f) =>
-              formatResponse(custom[f.id] ?? (i === 0 ? responses[f.id] : undefined)),
-            ),
-          ]);
-        });
-      } else {
-        rows.push([
-          reg.user.fullName || '',
-          reg.user.username || '',
-          reg.user.identities?.[0]?.email || '',
-          reg.user.mobileNumber || '',
-          reg.ticketType?.name || 'RSVP',
-          reg.quantity.toString(),
-          reg.status,
-          reg.paymentStatus,
-          Number(reg.totalAmount).toString(),
-          reg.registeredAt.toISOString(),
-          reg.checkedInAt ? 'Yes' : 'No',
-          '',
-          ...formFields.map((f) => formatResponse(responses[f.id])),
-        ]);
+
+        const seatStatusLabel = (status: string) =>
+          status.charAt(0) + status.slice(1).toLowerCase(); // OPEN → Open
+
+        // A GROUP registration is a single row whose `user` is only the team lead;
+        // the whole team lives in seat rows (or legacy `groupMembers` JSON). Expand
+        // each such registration into one row per seat/member so no attendee is
+        // hidden. To keep the Amount column summable, the payment amount is
+        // attributed to seat 1 (the lead) only.
+        const rows: string[][] = [];
+        for (const reg of registrations as any[]) {
+          const responses = (reg.formResponses ?? {}) as Record<string, unknown>;
+          const members: any[] = Array.isArray(reg.groupMembers)
+            ? reg.groupMembers
+            : [];
+          const seats = seatsByReg.get(reg.id) ?? [];
+          const isGroup =
+            (reg.groupSize ?? 0) > 1 && (seats.length > 0 || members.length > 0);
+
+          if (isGroup && seats.length > 0) {
+            // Preferred path: one row per seat, with claim status.
+            for (const seat of seats) {
+              const md = (seat.memberDetails ?? {}) as any;
+              const flat = flattenMember(md);
+              const custom = (md?.customFields ?? {}) as Record<string, unknown>;
+              const isLead = seat.seatIndex === 1;
+              const claimer = seat.claimedBy;
+              const label = isLead ? 'Lead' : seatStatusLabel(seat.status);
+              rows.push([
+                pickMemberField(flat, MEMBER_ALIASES.name) ||
+                  claimer?.fullName ||
+                  (isLead ? reg.user.fullName || '' : ''),
+                claimer?.username || (isLead ? reg.user.username || '' : ''),
+                pickMemberField(flat, MEMBER_ALIASES.email) ||
+                  claimer?.identities?.[0]?.email ||
+                  (isLead ? reg.user.identities?.[0]?.email || '' : ''),
+                pickMemberField(flat, MEMBER_ALIASES.mobile) ||
+                  claimer?.mobileNumber ||
+                  (isLead ? reg.user.mobileNumber || '' : ''),
+                reg.ticketType?.name || 'RSVP',
+                '1',
+                reg.status,
+                reg.paymentStatus,
+                isLead ? Number(reg.totalAmount).toString() : '0',
+                reg.registeredAt.toISOString(),
+                reg.checkedInAt ? 'Yes' : 'No',
+                `Group of ${reg.groupSize} · Seat ${seat.seatIndex} · ${label}`,
+                ...formFields.map((f) =>
+                  formatResponse(custom[f.id] ?? (isLead ? responses[f.id] : undefined)),
+                ),
+              ]);
+            }
+          } else if (isGroup) {
+            members.forEach((m, i) => {
+              const flat = flattenMember(m);
+              const custom = (m?.customFields ?? {}) as Record<string, unknown>;
+              // The lead (index 0) is a real user, so fall back to their account
+              // details when the stored member entry is blank (legacy rosters).
+              const leadName = i === 0 ? reg.user.fullName || '' : '';
+              const leadEmail = i === 0 ? reg.user.identities?.[0]?.email || '' : '';
+              const leadMobile = i === 0 ? reg.user.mobileNumber || '' : '';
+              rows.push([
+                pickMemberField(flat, MEMBER_ALIASES.name) || leadName,
+                i === 0 ? reg.user.username || '' : '',
+                pickMemberField(flat, MEMBER_ALIASES.email) || leadEmail,
+                pickMemberField(flat, MEMBER_ALIASES.mobile) || leadMobile,
+                reg.ticketType?.name || 'RSVP',
+                '1',
+                reg.status,
+                reg.paymentStatus,
+                i === 0 ? Number(reg.totalAmount).toString() : '0',
+                reg.registeredAt.toISOString(),
+                reg.checkedInAt ? 'Yes' : 'No',
+                `Group of ${reg.groupSize} · ${i === 0 ? 'Lead' : `Member ${i + 1}`}`,
+                // Custom answers: prefer the member's own, fall back to the shared
+                // registration responses for the lead row.
+                ...formFields.map((f) =>
+                  formatResponse(custom[f.id] ?? (i === 0 ? responses[f.id] : undefined)),
+                ),
+              ]);
+            });
+          } else {
+            rows.push([
+              reg.user.fullName || '',
+              reg.user.username || '',
+              reg.user.identities?.[0]?.email || '',
+              reg.user.mobileNumber || '',
+              reg.ticketType?.name || 'RSVP',
+              reg.quantity.toString(),
+              reg.status,
+              reg.paymentStatus,
+              Number(reg.totalAmount).toString(),
+              reg.registeredAt.toISOString(),
+              reg.checkedInAt ? 'Yes' : 'No',
+              '',
+              ...formFields.map((f) => formatResponse(responses[f.id])),
+            ]);
+          }
+        }
+        yield rows;
       }
     }
 
-    const file = await buildExportFile(
+    return exportOutput(
       format,
       `${event.title} — Attendees`,
       header,
-      rows,
+      attendeePages(),
+      `${event.slug}-attendees`,
     );
-
-    return {
-      buffer: file.buffer,
-      contentType: file.contentType,
-      filename: `${event.slug}-attendees.${file.extension}`,
-    };
   }
 
   /**
@@ -5878,4 +5891,37 @@ export class RegistrationsService {
 
     return this.buildRegistrationDetail(eventId, registrationId);
   }
+}
+
+/**
+ * CSV streams page by page; xlsx/pdf are whole-file formats, so their rows are
+ * collected and built in memory as before.
+ */
+async function exportOutput(
+  format: ExportFormat,
+  title: string,
+  header: string[],
+  rowPages: AsyncIterable<string[][]>,
+  basename: string,
+): Promise<{
+  contentType: string;
+  filename: string;
+  stream?: Readable;
+  buffer?: Buffer;
+}> {
+  if (format === 'csv') {
+    return {
+      stream: Readable.from(csvChunks(header, rowPages)),
+      contentType: 'text/csv; charset=utf-8',
+      filename: `${basename}.csv`,
+    };
+  }
+  const rows: string[][] = [];
+  for await (const page of rowPages) rows.push(...page);
+  const file = await buildExportFile(format, title, header, rows);
+  return {
+    buffer: file.buffer,
+    contentType: file.contentType,
+    filename: `${basename}.${file.extension}`,
+  };
 }
