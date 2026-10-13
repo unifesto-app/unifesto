@@ -4,7 +4,7 @@
 # Builder — installs ALL deps (incl. dev), generates the Prisma
 # client, compiles TS, then prunes dev deps for a lean runtime.
 # ============================================================
-FROM node:22-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 
 # Prisma's query engine needs openssl. The native addons we depend on ship
@@ -33,7 +33,7 @@ RUN npm prune --omit=dev
 # ============================================================
 # Runner — minimal image that just runs the compiled app.
 # ============================================================
-FROM node:22-bookworm-slim AS runner
+FROM node:24-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
