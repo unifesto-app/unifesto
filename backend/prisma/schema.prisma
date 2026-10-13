@@ -1522,6 +1522,8 @@ model Event {
   @@index([parentEventId])
   // Series reconciliation lists occurrences by their parent.
   @@index([seriesParentId])
+  // One occurrence per slot: replicas reconciling at once can't duplicate.
+  @@unique([seriesParentId, startDateTime])
   @@index([payoutBankAccountId])
   @@map("events")
 }
