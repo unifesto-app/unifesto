@@ -3187,7 +3187,7 @@ export class RegistrationsService {
 
   /**
    * Full registration detail for the organiser attendee view.
-   * Backed by the attendee detail page. Organiser / co-organiser only.
+   * Backed by the attendee detail page. Space Admins only.
    */
   async getRegistrationDetail(
     userId: string,

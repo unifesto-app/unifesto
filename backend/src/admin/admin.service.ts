@@ -670,7 +670,7 @@ export class AdminService {
   /**
    * List ALL spaces across the platform (ADMIN only), mapped to the shape the
    * Apex dashboard expects. Each space is annotated with its member-role
-   * breakdown (Organiser / Co-Organiser / Member).
+   * breakdown (Space Admin / Member).
    */
   async getAllSpacesAdmin(params: {
     page?: number;

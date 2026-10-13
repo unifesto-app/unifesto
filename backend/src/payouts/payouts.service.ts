@@ -919,10 +919,9 @@ export class PayoutsService {
 
   /**
    * The set of users whose bank accounts an event may pay out to: the event
-   * creator plus anyone holding an ORGANISER or CO_ORGANISER role in the
-   * event's space. This is what lets an organiser route an event's earnings to
-   * a co-organiser's account. Co/organiser roles are space-scoped (eventId
-   * null), so a space grant covers every event (super or sub) under it.
+   * creator plus every Space Admin of the event's space. This is what lets an
+   * organiser route an event's earnings to another admin's account. Space Admin
+   * roles are space-scoped (eventId null), so a space grant covers every event (super or sub) under it.
    */
   private async getEligibleAccountUserIds(event: {
     createdBy: string;
@@ -950,8 +949,8 @@ export class PayoutsService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    // Anyone who can receive this event's payout (creator + space admins /
-    // co-organisers) may view the routing picker — not just the literal
+    // Anyone who can receive this event's payout (creator + Space Admins)
+    // may view the routing picker — not just the literal
     // creator, so a Space Admin managing the event isn't locked out.
     const eligibleUserIds = await this.getEligibleAccountUserIds(event);
     if (!eligibleUserIds.has(userId)) {

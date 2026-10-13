@@ -54,7 +54,7 @@ export class PayoutsController {
     return this.payoutsService.getSpaceFinancials(req.user.id, spaceId);
   }
 
-  /** Accounts this event's payout may be routed to (own + co-organisers'). */
+  /** Accounts this event's payout may be routed to (own + other Space Admins'). */
   @Get('event/:eventId/eligible-accounts')
   async getEligibleAccounts(@Request() req, @Param('eventId') eventId: string) {
     return this.payoutsService.getEligibleAccountsForEvent(eventId, req.user.id);

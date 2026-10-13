@@ -51,11 +51,11 @@ export class SessionsService {
   // ---------------------------------------------------------------------------
 
   /**
-   * ORGANISER / CO_ORGANISER of the owning space may manage its sessions, and
+   * Space Admins of the owning space may manage its sessions, and
    * only if the space's plan includes Sessions.
    *
    * The plan checked is the *space creator's*, not the acting user's: a
-   * co-organiser works under the owner's subscription, exactly like the ticket
+   * Space Admin works under the owner's subscription, exactly like the ticket
    * type and attendee limits do.
    *
    * Deliberately not applied to attendee-facing paths (joining, registering,
@@ -98,7 +98,7 @@ export class SessionsService {
   }
 
   /**
-   * A "host" for a session is either a space manager (organiser / co-organiser)
+   * A "host" for a session is either a space manager (Space Admin)
    * or a per-session co-host the organiser invited. Hosts get a host token on
    * join and cannot register as attendees.
    */
@@ -865,7 +865,7 @@ export class SessionsService {
   /**
    * Resolve join access for a session. Two paths:
    *
-   *   - Space managers (organiser / co-organiser) *host* the session. They get a
+   *   - Space managers (Space Admins) *host* the session. They get a
    *     host credential without registering or paying, and may open the room
    *     early to set up (no join-window gate).
    *   - Everyone else must be a paid registrant, and only inside the join window

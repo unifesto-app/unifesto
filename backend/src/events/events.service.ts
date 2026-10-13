@@ -1428,7 +1428,7 @@ export class EventsService {
     const canManage = await this.canManageEvent(userId, dto.spaceId);
     if (!canManage) {
       throw new ForbiddenException(
-        'You must be an organiser or co-organiser of this space',
+        'You must be a Space Admin of this space',
       );
     }
 

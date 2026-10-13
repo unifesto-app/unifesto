@@ -218,7 +218,7 @@ export async function getUserSpaces(accessToken: string): Promise<Space[]> {
 }
 
 /**
- * Get spaces where the current user is an ORGANISER or CO_ORGANISER.
+ * Get spaces where the current user is a Space Admin.
  * GET /users/me/spaces?role=organiser
  */
 export async function getMyOrganiserSpaces(): Promise<Space[]> {
