@@ -1,6 +1,5 @@
 /// <reference types="jest" />
 import { HttpException, UnauthorizedException } from '@nestjs/common';
-import { Provider } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import { AuthService, APP_REVIEW_LOGIN_ENV } from './auth.service';
 import { OtpService } from './otp.service';
@@ -16,9 +15,11 @@ const SECRET = 'test-secret';
 /** Minimal in-memory stand-in for the ioredis commands OtpService uses. */
 function fakeRedisClient() {
   const store = new Map<string, string>();
+  const ttls = new Map<string, number>();
   const tick = () => new Promise((r) => setImmediate(r));
   return {
     store,
+    ttls,
     async get(k: string) {
       await tick();
       return store.get(k) ?? null;
@@ -40,12 +41,18 @@ function fakeRedisClient() {
       store.set(k, String(n));
       return n;
     },
-    async expire() {
+    async expire(k: string, ttl: number) {
       await tick();
+      ttls.set(k, ttl);
       return 1;
+    },
+    async ttl(k: string) {
+      await tick();
+      return store.has(k) ? (ttls.get(k) ?? -1) : -2;
     },
     async del(k: string) {
       await tick();
+      ttls.delete(k);
       return store.delete(k) ? 1 : 0;
     },
   };
@@ -370,6 +377,16 @@ describe('S7: OTP brute force', () => {
     expect(await otp.verifyOtp('a@x.com', '222222')).toBe('blocked');
   });
 
+  it('re-arms the expiry on an attempt counter that lost its TTL', async () => {
+    const { otp, redis } = make();
+    // INCR landed but the process died before EXPIRE: no TTL, permanent lock.
+    redis.client.store.set('otp-limit:attempts:a@x.com', '3');
+    await otp.verifyOtp('a@x.com', '000000');
+    expect(redis.client.ttls.get('otp-limit:attempts:a@x.com')).toBe(
+      OtpService.ATTEMPT_WINDOW_SECONDS,
+    );
+  });
+
   it('a correct code works once', async () => {
     const { otp } = make();
     await otp.storeOtp('a@x.com', '111111');
@@ -413,6 +430,3 @@ describe('S8: App Review login is off by default', () => {
     expect(otp.verifyOtp).not.toHaveBeenCalled();
   });
 });
-
-// Keep the Provider import honest: temp tokens must carry a real enum value.
-it('Provider enum includes GOOGLE', () => expect(Provider.GOOGLE).toBe('GOOGLE'));

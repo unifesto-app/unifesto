@@ -52,9 +52,7 @@ export class OtpService {
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
-    const dailyKey = `otp-limit:daily:${identifier}`;
-    const sent = await client.incr(dailyKey);
-    if (sent === 1) await client.expire(dailyKey, 24 * 60 * 60);
+    const sent = await incrWithTtl(client, `otp-limit:daily:${identifier}`, 24 * 60 * 60);
     if (sent > OtpService.DAILY_SEND_CAP) {
       throw new HttpException(
         'Too many codes requested today. Please try again tomorrow.',
@@ -78,10 +76,7 @@ export class OtpService {
     const attemptsKey = `otp-limit:attempts:${identifier}`;
 
     // Count the guess first, atomically. Only then look at the code.
-    const attempts = await client.incr(attemptsKey);
-    if (attempts === 1) {
-      await client.expire(attemptsKey, OtpService.ATTEMPT_WINDOW_SECONDS);
-    }
+    const attempts = await incrWithTtl(client, attemptsKey, OtpService.ATTEMPT_WINDOW_SECONDS);
     if (attempts > OtpService.MAX_ATTEMPTS) {
       await client.del(key);
       this.logger.warn(`OTP locked for ${identifier} (${attempts} attempts)`);
@@ -103,6 +98,21 @@ export class OtpService {
     await client.del(attemptsKey);
     return 'ok';
   }
+}
+
+/**
+ * INCR, and make sure the counter expires. Also re-arms a TTL-less key (the
+ * process died between INCR and EXPIRE), which would otherwise lock the
+ * identifier out forever.
+ */
+async function incrWithTtl(
+  client: NonNullable<ReturnType<RedisService['getClient']>>,
+  key: string,
+  ttlSeconds: number,
+): Promise<number> {
+  const n = await client.incr(key);
+  if (n === 1 || (await client.ttl(key)) === -1) await client.expire(key, ttlSeconds);
+  return n;
 }
 
 function safeEqual(a: string, b: string): boolean {
