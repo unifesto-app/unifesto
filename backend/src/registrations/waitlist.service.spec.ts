@@ -57,6 +57,7 @@ type RegSeed = {
   groupMembers?: unknown[] | null;
   waitlistStatus?: WaitlistStatus;
   paymentStatus?: PaymentStatus;
+  status?: string;
 };
 
 function makeDb(opts: {
@@ -104,6 +105,7 @@ function makeDb(opts: {
     isWaitlisted: true,
     waitlistStatus: opts.reg.waitlistStatus ?? WaitlistStatus.WAITING,
     paymentStatus: opts.reg.paymentStatus ?? PaymentStatus.PENDING,
+    status: opts.reg.status ?? 'REGISTERED',
     waitlistedAt: new Date('2026-09-01T00:00:00Z'),
     waitlistOfferedAt: null,
     waitlistOfferExpiresAt: null,
@@ -149,6 +151,7 @@ function makeDb(opts: {
       },
       updateMany: async ({ where, data }: any) => {
         if (where.waitlistStatus && reg.waitlistStatus !== where.waitlistStatus) return { count: 0 };
+        if (where.status?.not && reg.status === where.status.not) return { count: 0 };
         applyData(reg, data);
         return { count: 1 };
       },
@@ -301,6 +304,18 @@ describe('WaitlistService — offer converts to a complete registration', () => 
 
     // soldCount is deliberately untouched by convert — the seat was held at offer.
     expect(db.ticketType.soldCount).toBe(10);
+  });
+
+  it('convert() never revives an offer cancelled meanwhile (its seat is already back)', async () => {
+    const db = makeDb({
+      ticketType: { price: 500, totalQuantity: 5, soldCount: 4 },
+      reg: { quantity: 1, waitlistStatus: WaitlistStatus.OFFERED, status: 'CANCELLED' },
+    });
+    const { svc } = build(db);
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    expect(db.reg.status).toBe('CANCELLED');
+    expect(db.tickets).toHaveLength(0);
+    expect(db.event.registeredCount).toBe(0);
   });
 
   it('convert() is idempotent: a second call issues no duplicate ticket', async () => {

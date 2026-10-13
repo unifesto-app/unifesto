@@ -273,3 +273,47 @@ describe('transfer review (S15)', () => {
     expect(prisma.eventRegistration.updateMany).not.toHaveBeenCalled();
   });
 });
+
+describe('after a sold-out refund (S10)', () => {
+  it('a retried verify does not report a confirmed spot', async () => {
+    const { svc, prisma } = build({
+      row: row({
+        status: RegistrationStatus.CANCELLED,
+        refundDueAt: new Date(),
+        razorpayAmount: 510,
+        cancellationReason: 'Sold out while the payment was in progress; refunded in full',
+      }),
+    });
+    await expect(
+      svc.verifyPayment('event-1', 'user-1', {
+        registrationId: 'reg-1',
+        razorpayOrderId: 'order_1',
+        razorpayPaymentId: 'pay_1',
+        razorpaySignature: 'sig',
+      } as any),
+    ).rejects.toThrow(/sold out/);
+    expect(prisma.eventTicket.findMany).not.toHaveBeenCalled();
+  });
+
+  it('the retry job only picks rows whose money is still held', async () => {
+    const { svc, prisma } = build();
+    await svc.retryDueRefunds();
+    expect(prisma.eventRegistration.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ paymentStatus: PaymentStatus.PAID }),
+      }),
+    );
+  });
+});
+
+describe('settling a cancelled checkout (S9 / S15)', () => {
+  it('records the money but takes no seats and issues no tickets', async () => {
+    const { svc, prisma } = build({
+      row: row({ status: RegistrationStatus.CANCELLED, paymentStatus: PaymentStatus.PENDING, razorpayAmount: 510 }),
+    });
+    await expect((svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBe('cancelled');
+    expect(prisma.$executeRaw).not.toHaveBeenCalled();
+    expect(prisma.event.update).not.toHaveBeenCalled();
+    expect(prisma.eventTicket.create).not.toHaveBeenCalled();
+  });
+});

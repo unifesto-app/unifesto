@@ -83,6 +83,8 @@ const SETTLEABLE = {
 };
 /** Payment states whose registration occupies its seats (free rows are PAID at ₹0). */
 const HOLDS_SEAT_PAYMENT: PaymentStatus[] = [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED];
+/** Reason stamped on a paid row cancelled because its ticket sold out mid-payment. */
+const SOLD_OUT_REASON = 'Sold out while the payment was in progress; refunded in full';
 const isSettleable = (r: { paymentStatus: PaymentStatus; status: RegistrationStatus }) =>
   SETTLEABLE_PAYMENT.includes(r.paymentStatus) && r.status !== RegistrationStatus.CANCELLED;
 
@@ -229,7 +231,7 @@ export class RegistrationsService {
       data: {
         status: RegistrationStatus.CANCELLED,
         cancelledAt: new Date(),
-        cancellationReason: 'Sold out while the payment was in progress; refunded in full',
+        cancellationReason: SOLD_OUT_REASON,
         refundDueAt: new Date(),
       },
     });
@@ -278,7 +280,7 @@ export class RegistrationsService {
   @Cron('*/15 * * * *')
   async retryDueRefunds(): Promise<void> {
     const due = await this.prisma.eventRegistration.findMany({
-      where: { refundDueAt: { lte: new Date() } },
+      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
       select: { id: true },
       take: 100,
     });
@@ -4584,6 +4586,13 @@ export class RegistrationsService {
     // genuine Razorpay payment, so return the confirmed registration
     // idempotently instead of surfacing a scary "Payment already completed"
     // 400 to someone who in fact paid successfully.
+    // Sold out while they paid (this call or the webhook got there first): the
+    // money is going back, so a retry must not read as a confirmed spot.
+    if (registration.refundDueAt || registration.cancellationReason === SOLD_OUT_REASON) {
+      throw new BadRequestException(
+        `This ticket sold out while you were paying. Your payment of ₹${Number(registration.razorpayAmount)} is being refunded in full.`,
+      );
+    }
     if (registration.paymentStatus === PaymentStatus.PAID) {
       const tickets = await this.prisma.eventTicket.findMany({
         where: { registrationId: registration.id },
@@ -5421,6 +5430,13 @@ export class RegistrationsService {
             data: { orderId: payment.orderId },
           });
         }
+        if (outcome === 'cancelled') {
+          return result(
+            PaymentStatus.PAID,
+            true,
+            'Captured payment recorded, but the registration is cancelled: no ticket was issued. Restore it or refund it',
+          );
+        }
         if (outcome === 'soldOut') {
           return result(
             PaymentStatus.PAID,
@@ -5556,7 +5572,7 @@ export class RegistrationsService {
     registrationId: string,
     paymentId: string,
     orderId: string,
-  ): Promise<'soldOut' | void> {
+  ): Promise<'soldOut' | 'cancelled' | void> {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
       include: {
@@ -5586,6 +5602,7 @@ export class RegistrationsService {
     // double and the attendee is confirmed twice.
     let claimedWin = false;
     let soldOut = false;
+    let settledCancelled = false;
     await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.eventRegistration.updateMany({
         // PENDING/FAILED only: a REFUNDED / PARTIALLY_REFUNDED row must never be
@@ -5599,6 +5616,15 @@ export class RegistrationsService {
       });
       if (claimed.count === 0) return; // another path already completed this
       claimedWin = true;
+
+      // An admin reconcile can settle a cancelled checkout. A cancelled row
+      // holds no seats (cancel released nothing for it), so record the money
+      // only: the team restores it (which takes seats) or refunds it.
+      if (registration.status === RegistrationStatus.CANCELLED) {
+        settledCancelled = true;
+        await this.coupons.confirmByRegistration(tx, registration.id);
+        return;
+      }
 
       // Sold out while they paid: cancel and queue a full refund instead.
       if (!(await this.takeSeatsOrQueueRefund(tx, registration))) {
@@ -5633,6 +5659,12 @@ export class RegistrationsService {
     if (soldOut) {
       await this.refundDue(registrationId);
       return 'soldOut';
+    }
+    if (settledCancelled) {
+      this.logger.warn(
+        `completeWebhookPayment: payment ${paymentId} recorded on CANCELLED registration ${registrationId} — no seats or tickets; restore or refund it`,
+      );
+      return 'cancelled';
     }
 
     // Lost the race — another path already completed this registration.

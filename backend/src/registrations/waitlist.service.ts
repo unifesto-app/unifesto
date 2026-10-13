@@ -681,7 +681,13 @@ export class WaitlistService {
       // both read OFFERED above; only the one that flips the row counts the
       // attendee and issues tickets.
       const claimed = await tx.eventRegistration.updateMany({
-        where: { id: registrationId, waitlistStatus: WaitlistStatus.OFFERED },
+        // Never revive an offer cancelled meanwhile: the cancel already gave
+        // its seat back, so converting it would count an attendee with no seat.
+        where: {
+          id: registrationId,
+          waitlistStatus: WaitlistStatus.OFFERED,
+          status: { not: RegistrationStatus.CANCELLED },
+        },
         data: {
           waitlistStatus: WaitlistStatus.CONVERTED,
           isWaitlisted: false,

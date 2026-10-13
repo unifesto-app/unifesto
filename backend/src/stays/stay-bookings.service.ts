@@ -765,7 +765,7 @@ export class StayBookingsService {
   @Cron('*/15 * * * *', { timeZone: 'Asia/Kolkata' })
   async retryDueRefunds(): Promise<void> {
     const due = await this.prisma.stayBooking.findMany({
-      where: { refundDueAt: { lte: new Date() } },
+      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
       select: { id: true },
       take: 100,
     });
