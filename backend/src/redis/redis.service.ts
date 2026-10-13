@@ -63,6 +63,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         maxRetriesPerRequest: 3,
         enableReadyCheck: true,
         lazyConnect: false, // Connect immediately
+        // ioredis 6 defaults to RESP3; keep the v5 wire protocol.
+        protocol: 2,
       });
 
       // Connection event handlers
@@ -162,6 +164,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       enableReadyCheck: true,
       lazyConnect: false,
       retryStrategy: (times) => Math.min(times * 200, 5000),
+      // ioredis 6 defaults to RESP3; BullMQ scripts, the socket.io adapter
+      // and the throttler store were built against RESP2 replies.
+      protocol: 2,
       ...overrides,
     });
   }
