@@ -2850,6 +2850,8 @@ model ApiLog {
   ipAddress    String? @map("ip_address") @db.VarChar(64)
   userAgent    String? @map("user_agent") @db.Text
   errorMessage String? @map("error_message") @db.Text
+  /// How many requests this row stands for (2xx GETs are sampled, S27).
+  weight       Int     @default(1)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -2857,6 +2859,8 @@ model ApiLog {
   @@index([statusCode])
   @@index([method])
   @@index([userId])
+  @@index([statusCode, createdAt])
+  @@index([userId, createdAt])
   @@map("api_logs")
 }
 

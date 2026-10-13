@@ -65,6 +65,8 @@ describe('traffic helpers', () => {
 });
 
 describe('TrafficService', () => {
+  // Visitor hashing needs a secret (S31: no hardcoded fallback).
+  process.env.TRAFFIC_HASH_SECRET ??= 'test-traffic-secret';
   const build = () => {
     const prisma: any = {
       shortLink: { findUnique: jest.fn(), update: jest.fn() },

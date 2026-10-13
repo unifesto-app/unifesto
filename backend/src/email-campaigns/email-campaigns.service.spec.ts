@@ -34,6 +34,17 @@ describe('EmailCampaignsService', () => {
       expect(svc.verify(url, 'not-a-real-signature')).toBe(false);
     });
 
+    it('signs with a dedicated key but still accepts pre-S31 JWT_SECRET links', () => {
+      const { createHmac } = require('crypto');
+      const url = 'https://unifesto.app/event/123';
+      const legacy = createHmac('sha256', 'test-secret').update(url).digest('base64url');
+      const svc = build();
+      expect(svc.sign(url)).not.toBe(legacy);
+      expect(svc.verify(url, legacy)).toBe(true);
+      const forged = createHmac('sha256', 'unifesto-email-tracking').update(url).digest('base64url');
+      expect(svc.verify(url, forged)).toBe(false);
+    });
+
     it('recordClick refuses to redirect an unsigned/forged link', async () => {
       const svc = build();
       // Bad signature short-circuits before any DB access.

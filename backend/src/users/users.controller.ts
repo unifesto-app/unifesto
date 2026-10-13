@@ -207,7 +207,8 @@ export class UsersController {
     @Query('search') search?: string,
   ) {
     const pageNum = page ? parseInt(page, 10) : 1;
-    const limitNum = limit ? parseInt(limit, 10) : 10;
+    // Clamp (S29): an unbounded `limit` is a full-table read.
+    const limitNum = Math.min(Math.max(parseInt(limit ?? '', 10) || 10, 1), 100);
 
     return this.usersService.getAllUsers({
       page: pageNum,

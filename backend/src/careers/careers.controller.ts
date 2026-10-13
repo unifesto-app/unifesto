@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { ApplicationStatus, RoleCode } from '@prisma/client';
 import type { User } from '@prisma/client';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
@@ -63,6 +64,8 @@ export class CareersController {
 
   /** PUBLIC — submit an application (with resume) to an open role. */
   @Post(':careerId/apply')
+  // Unauthenticated upload: a handful per IP per 10 minutes is plenty (S25).
+  @Throttle({ default: { limit: 5, ttl: 600000 } })
   // Public upload: cap at the multer layer so an oversized body is rejected
   // while streaming, not after being buffered whole into memory.
   @UseInterceptors(

@@ -1,14 +1,17 @@
 import {
   ConnectedSocket,
   MessageBody,
-  OnGatewayConnection,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Inject, Logger, forwardRef } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
+import { Namespace, Server, Socket } from 'socket.io';
+import * as jwt from 'jsonwebtoken';
 import { AuthService } from '../auth/auth.service';
+import { corsOriginCallback } from '../common/cors';
+import { RedisService } from '../redis/redis.service';
 import { LeaderboardService } from './leaderboard.service';
 
 interface AuthedSocket extends Socket {
@@ -16,6 +19,21 @@ interface AuthedSocket extends Socket {
 }
 
 const room = (eventId: string) => `board:${eventId}`;
+
+/** Reconnect storms re-read the same board; 2 s is fresh enough (S36). */
+const SNAPSHOT_CACHE_SECONDS = 2;
+const snapshotKey = (eventId: string) => `lb:snapshot:${eventId}`;
+const MAX_TIMER_MS = 2 ** 31 - 1;
+
+/**
+ * Milliseconds until this JWT expires, or null when it carries no `exp`.
+ * Clamped to setTimeout's ceiling (an early disconnect just reconnects).
+ */
+export function msUntilExpiry(token: string, now = Date.now()): number | null {
+  const exp = (jwt.decode(token) as { exp?: number } | null)?.exp;
+  if (!exp) return null;
+  return Math.min(Math.max(exp * 1000 - now, 0), MAX_TIMER_MS);
+}
 
 /**
  * Hackathon queue rooms. Only a "something changed" ping goes out on them
@@ -32,9 +50,9 @@ export const hackathonRooms = {
  * Real-time leaderboard namespace.
  *
  * Connections here may be ANONYMOUS: a public board is
- * viewable without a token. We authenticate opportunistically (to recognise
- * managers/judges and registered attendees) but never reject a tokenless
- * socket at connect time — authorization happens per-subscription in
+ * viewable without a token. We authenticate opportunistically in namespace
+ * middleware (to recognise managers/judges and registered attendees) but never
+ * reject a tokenless socket at connect time — authorization happens per-subscription in
  * LeaderboardService.canView, which is the single source of truth shared with
  * the HTTP endpoint.
  *
@@ -44,9 +62,9 @@ export const hackathonRooms = {
  */
 @WebSocketGateway({
   namespace: '/leaderboard',
-  cors: { origin: [/\.unifesto\.app$/, /^http:\/\/localhost/], credentials: true },
+  cors: { origin: corsOriginCallback, credentials: true },
 })
-export class LeaderboardGateway implements OnGatewayConnection {
+export class LeaderboardGateway implements OnGatewayInit {
   @WebSocketServer()
   server: Server;
 
@@ -56,9 +74,24 @@ export class LeaderboardGateway implements OnGatewayConnection {
     private readonly authService: AuthService,
     @Inject(forwardRef(() => LeaderboardService))
     private readonly leaderboard: LeaderboardService,
+    private readonly redis: RedisService,
   ) {}
 
-  async handleConnection(client: AuthedSocket) {
+  /**
+   * Authenticate in namespace middleware, so `userId` is settled before any
+   * message handler runs (an async handleConnection raced the first
+   * `hackathon:subscribe`). Tokenless or bad tokens still connect anonymously.
+   */
+  afterInit(ns: Namespace) {
+    ns.use((socket, next) => {
+      this.authenticate(socket as AuthedSocket).then(
+        () => next(),
+        () => next(),
+      );
+    });
+  }
+
+  async authenticate(client: AuthedSocket) {
     client.userId = null;
     const token =
       client.handshake.auth?.token ||
@@ -68,9 +101,31 @@ export class LeaderboardGateway implements OnGatewayConnection {
       const user = await this.authService.validateAccessToken(token);
       client.userId = user?.id ?? null;
     } catch {
-      // Bad token → treated as anonymous, not rejected.
-      client.userId = null;
+      return; // Bad token → treated as anonymous, not rejected.
     }
+    // Drop the socket when its token expires, so a revoked/expired session
+    // can't keep receiving pings; the client reconnects with a fresh token.
+    const ms = msUntilExpiry(token);
+    if (ms === null) return;
+    const timer = setTimeout(() => client.disconnect(true), ms);
+    timer.unref?.();
+    client.once('disconnect', () => clearTimeout(timer));
+  }
+
+  /** getPublicSnapshot behind a 2 s shared cache; fails open without Redis. */
+  async cachedSnapshot(eventId: string) {
+    const key = snapshotKey(eventId);
+    try {
+      const hit = await this.redis.get(key);
+      if (hit !== null) return JSON.parse(hit);
+    } catch {
+      /* Redis down: read through */
+    }
+    const snapshot = await this.leaderboard.getPublicSnapshot(eventId);
+    this.redis
+      .set(key, JSON.stringify(snapshot), SNAPSHOT_CACHE_SECONDS)
+      .catch(() => undefined);
+    return snapshot;
   }
 
   @SubscribeMessage('subscribe')
@@ -86,8 +141,7 @@ export class LeaderboardGateway implements OnGatewayConnection {
       return { error: 'not_authorized' };
     }
     client.join(room(eventId));
-    const snapshot = await this.leaderboard.getPublicSnapshot(eventId);
-    client.emit('snapshot', snapshot);
+    client.emit('snapshot', await this.cachedSnapshot(eventId));
     return { ok: true };
   }
 
@@ -146,6 +200,10 @@ export class LeaderboardGateway implements OnGatewayConnection {
   /** Push a fresh ranked snapshot to everyone watching this event's board. */
   broadcast(eventId: string, snapshot: unknown) {
     if (!snapshot) return;
+    // Refresh the cache too, so a subscribe right after never sees the old board.
+    this.redis
+      .set(snapshotKey(eventId), JSON.stringify(snapshot), SNAPSHOT_CACHE_SECONDS)
+      .catch(() => undefined);
     this.server.to(room(eventId)).emit('rank:update', snapshot);
   }
 }

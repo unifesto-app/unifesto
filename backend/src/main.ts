@@ -88,8 +88,14 @@ async function bootstrap() {
     maxAge: 86400, // 24 hours
   });
 
-  // Record every request to the api_logs table (admin "Logs" section).
-  app.use(createRequestLogger(app.get(LogsService)));
+  // Record requests to the api_logs table (admin "Logs" section). Successful
+  // GETs are sampled 1-in-N (API_LOG_GET_SAMPLE_RATE, default 10) with a weight.
+  app.use(
+    createRequestLogger(
+      app.get(LogsService),
+      Number(process.env.API_LOG_GET_SAMPLE_RATE) || 10,
+    ),
+  );
 
   // Catch-all exception filter: logs stack traces and returns clean JSON.
   app.useGlobalFilters(new GlobalExceptionFilter());

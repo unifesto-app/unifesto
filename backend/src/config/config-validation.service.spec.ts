@@ -26,11 +26,26 @@ describe('ConfigValidationService', () => {
     process.env.RAZORPAY_KEY_ID = 'rzp_test_key';
     process.env.RAZORPAY_KEY_SECRET = 'test-secret';
     process.env.RAZORPAY_WEBHOOK_SECRET = 'test-webhook-secret';
+    process.env.JWT_SECRET = 'test-jwt-secret';
+    process.env.DIRECT_URL = 'postgresql://user:pass@localhost:5432/db';
     process.env.DATABASE_URL =
       'postgresql://user:pass@localhost:5432/db?sslmode=require';
   };
 
   describe('onModuleInit', () => {
+    // S31: secrets + DB direct URL are checked at boot.
+    it.each(['JWT_SECRET', 'DIRECT_URL'])('throws when %s is missing', async (key) => {
+      setupValidEnvironment();
+      delete process.env[key];
+      await expect(new ConfigValidationService().onModuleInit()).rejects.toThrow(key);
+    });
+
+    it('throws on a non-numeric PORT', async () => {
+      setupValidEnvironment();
+      process.env.PORT = 'abc';
+      await expect(new ConfigValidationService().onModuleInit()).rejects.toThrow('PORT');
+    });
+
     it('should successfully validate when all required environment variables are present', async () => {
       setupValidEnvironment();
 

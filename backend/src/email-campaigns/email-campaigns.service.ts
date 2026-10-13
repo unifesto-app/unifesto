@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import { hmacSecret } from '../common/secrets';
 import {
   BadRequestException,
   ForbiddenException,
@@ -49,6 +50,7 @@ export class EmailCampaignsService {
   private readonly BATCH_SIZE = 100; // SES batch limit
   private readonly baseUrl: string;
   private readonly trackingSecret: string;
+  private readonly legacyTrackingSecret: string | null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -62,12 +64,11 @@ export class EmailCampaignsService {
       this.configService.get<string>('NEXT_PUBLIC_BACKEND_URL') ||
       'https://api.unifesto.app'
     ).replace(/\/+$/, '');
-    // Reuse JWT_SECRET when a dedicated tracking secret isn't set — signing only
-    // needs a stable server-side secret, and JWT_SECRET is always present.
-    this.trackingSecret =
-      this.configService.get<string>('EMAIL_TRACKING_SECRET') ||
-      this.configService.get<string>('JWT_SECRET') ||
-      'unifesto-email-tracking';
+    const get = (k: string) => this.configService.get<string>(k);
+    this.trackingSecret = hmacSecret('EMAIL_TRACKING_SECRET', 'email-tracking', get);
+    // Links in emails already sent were signed with the raw JWT_SECRET; keep
+    // accepting those during the transition (S31). Drop once old mail is stale.
+    this.legacyTrackingSecret = get('JWT_SECRET') || null;
   }
 
   // ==========================================================================
@@ -615,17 +616,22 @@ export class EmailCampaignsService {
   // ==========================================================================
 
   /** HMAC-sign a URL so the click endpoint can't be turned into an open redirect. */
-  sign(url: string): string {
-    return createHmac('sha256', this.trackingSecret)
-      .update(url)
-      .digest('base64url');
+  sign(url: string, secret = this.trackingSecret): string {
+    return createHmac('sha256', secret).update(url).digest('base64url');
   }
 
   verify(url: string, signature: string): boolean {
-    const expected = this.sign(url);
-    const a = Buffer.from(expected);
     const b = Buffer.from(signature);
-    return a.length === b.length && timingSafeEqual(a, b);
+    const matches = (secret: string) => {
+      const a = Buffer.from(this.sign(url, secret));
+      return a.length === b.length && timingSafeEqual(a, b);
+    };
+    return (
+      matches(this.trackingSecret) ||
+      (!!this.legacyTrackingSecret &&
+        this.legacyTrackingSecret !== this.trackingSecret &&
+        matches(this.legacyTrackingSecret))
+    );
   }
 
   /** Record an open. First open of a log also bumps the campaign's unique count. */

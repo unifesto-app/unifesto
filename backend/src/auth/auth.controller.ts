@@ -19,6 +19,9 @@ import {
   SendMobileOtpDto,
   VerifyMobileDto,
   AuthResponseDto,
+  CognitoLoginDto,
+  VerifyEmailOtpDto,
+  RefreshTokenDto,
 } from './dto';
 
 @Controller('auth')
@@ -54,7 +57,7 @@ export class AuthController {
   @Post('cognito')
   @ApiOperation({ summary: 'Login with Cognito ID token (Google/Apple via Cognito)' })
   @ApiResponse({ status: 200 })
-  async loginWithCognito(@Body() body: { idToken: string }): Promise<AuthResponseDto> {
+  async loginWithCognito(@Body() body: CognitoLoginDto): Promise<AuthResponseDto> {
     return this.authService.loginWithCognito(body.idToken);
   }
 
@@ -78,7 +81,7 @@ export class AuthController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async verifyEmailOtp(
-    @Body() body: { email: string; otp: string },
+    @Body() body: VerifyEmailOtpDto,
   ): Promise<AuthResponseDto> {
     return this.authService.verifyEmailOtp(body.email, body.otp);
   }
@@ -130,7 +133,7 @@ export class AuthController {
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async refresh(
-    @Body() body: { refreshToken: string },
+    @Body() body: RefreshTokenDto,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.refreshSession(body?.refreshToken);
   }

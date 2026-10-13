@@ -187,12 +187,14 @@ export class StatusService {
         createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
         path: { notIn: ['/', '/health'] },
       };
-      const [total, errors] = await Promise.all([
-        this.prisma.apiLog.count({ where }),
+      // Sum weights: sampled 2xx GETs each stand for `weight` requests.
+      const [sum, errors] = await Promise.all([
+        this.prisma.apiLog.aggregate({ where, _sum: { weight: true } }),
         this.prisma.apiLog.count({
           where: { ...where, statusCode: { gte: 500 } },
         }),
       ]);
+      const total = sum._sum.weight ?? 0;
       if (total >= API_MIN_REQUESTS && errors / total > API_MAX_5XX_RATIO) {
         problems.push(`${errors}/${total} requests failed with 5xx`);
       }

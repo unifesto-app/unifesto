@@ -792,9 +792,11 @@ export class SpacesService {
         OR: [
           { fullName: { contains: term, mode: 'insensitive' } },
           { username: { contains: term, mode: 'insensitive' } },
+          // Email only by exact match: substring search let any space
+          // admin harvest platform users' addresses (S24).
           {
             identities: {
-              some: { email: { contains: term, mode: 'insensitive' } },
+              some: { email: { equals: term, mode: 'insensitive' } },
             },
           },
         ],
@@ -814,7 +816,7 @@ export class SpacesService {
       orderBy: { fullName: 'asc' },
     });
 
-    return { users };
+    return { users: users.map((u) => maskSearchEmail(u, term)) };
   }
 
   /**
@@ -2398,3 +2400,19 @@ export class SpacesService {
   }
 }
 
+
+/**
+ * Member search reveals a user's email only to someone who already typed it
+ * exactly; name/username hits come back with an empty `identities` list.
+ */
+export function maskSearchEmail<
+  T extends { identities: { email: string | null }[] },
+>(user: T, term: string): T {
+  const needle = term.trim().toLowerCase();
+  return {
+    ...user,
+    identities: user.identities.filter(
+      (i) => !!i.email && i.email.toLowerCase() === needle,
+    ),
+  };
+}

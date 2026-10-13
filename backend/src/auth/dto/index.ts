@@ -4,3 +4,4 @@ export * from './email-login.dto';
 export * from './send-mobile-otp.dto';
 export * from './verify-mobile.dto';
 export * from './auth-response.dto';
+export * from './token-bodies.dto';
