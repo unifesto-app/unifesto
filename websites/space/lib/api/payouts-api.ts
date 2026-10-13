@@ -41,104 +41,6 @@ export interface Payout {
   };
 }
 
-export interface PayoutListResponse {
-  payouts: Payout[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
-}
-
-/** Admin: all payouts across the platform. `GET /payouts/admin`. */
-export async function getAllPayouts(params?: {
-  page?: number;
-  limit?: number;
-  status?: PayoutStatus;
-}): Promise<{ data: PayoutListResponse | null; error: ApiError | null }> {
-  return apiCall<PayoutListResponse>(
-    backendClient.get("/payouts/admin", { params })
-  );
-}
-
-/**
- * Fetch every payout by walking the paginated admin endpoint — used for the
- * dashboard summary, where per-page totals aren't enough. Payout volume is low
- * (roughly one per event), so loading them all is cheap.
- */
-export async function getAllPayoutsUnpaginated(
-  status?: PayoutStatus
-): Promise<{ data: Payout[] | null; error: ApiError | null }> {
-  const PAGE = 100;
-  const first = await getAllPayouts({ page: 1, limit: PAGE, status });
-  if (first.error) return { data: null, error: first.error };
-  if (!first.data) return { data: [], error: null };
-
-  const { payouts, pagination } = first.data;
-  if (pagination.totalPages <= 1) return { data: payouts, error: null };
-
-  const rest = await Promise.all(
-    Array.from({ length: pagination.totalPages - 1 }, (_, i) =>
-      getAllPayouts({ page: i + 2, limit: PAGE, status })
-    )
-  );
-  const all = [...payouts];
-  for (const r of rest) {
-    if (r.error) return { data: null, error: r.error };
-    if (r.data) all.push(...r.data.payouts);
-  }
-  return { data: all, error: null };
-}
-
-/** Organiser: their own payouts. `GET /payouts/my`. */
-export async function getMyPayouts(params?: {
-  page?: number;
-  limit?: number;
-}): Promise<{ data: PayoutListResponse | null; error: ApiError | null }> {
-  return apiCall<PayoutListResponse>(
-    backendClient.get("/payouts/my", { params })
-  );
-}
-
-/** Every payout for the current organiser (walks pages) — for summary tiles. */
-export async function getMyPayoutsUnpaginated(): Promise<{
-  data: Payout[] | null;
-  error: ApiError | null;
-}> {
-  const PAGE = 100;
-  const first = await getMyPayouts({ page: 1, limit: PAGE });
-  if (first.error) return { data: null, error: first.error };
-  if (!first.data) return { data: [], error: null };
-
-  const { payouts, pagination } = first.data;
-  if (pagination.totalPages <= 1) return { data: payouts, error: null };
-
-  const rest = await Promise.all(
-    Array.from({ length: pagination.totalPages - 1 }, (_, i) =>
-      getMyPayouts({ page: i + 2, limit: PAGE })
-    )
-  );
-  const all = [...payouts];
-  for (const r of rest) {
-    if (r.error) return { data: null, error: r.error };
-    if (r.data) all.push(...r.data.payouts);
-  }
-  return { data: all, error: null };
-}
-
-/** Mark a payout settled, recording the manual UTR/reference. `POST /payouts/admin/:id/process`. */
-export async function markPayoutPaid(
-  id: string,
-  payload?: { utr?: string; reference?: string }
-): Promise<{ data: Payout | null; error: ApiError | null }> {
-  return apiCall<Payout>(
-    backendClient.post(`/payouts/admin/${id}/process`, payload ?? {})
-  );
-}
-
-/** Cancel a pending payout. `PATCH /payouts/admin/:id/cancel`. */
-export async function cancelPayout(
-  id: string
-): Promise<{ data: Payout | null; error: ApiError | null }> {
-  return apiCall<Payout>(backendClient.patch(`/payouts/admin/${id}/cancel`));
-}
-
 // ── Bank accounts ──────────────────────────────────────────────────────────
 // Organisers add a payout bank account; an admin verifies it. A VERIFIED
 // primary account is required before the scheduler can queue payouts.
@@ -213,32 +115,6 @@ export async function deleteBankAccount(
   return apiCall(backendClient.delete(`/payouts/bank-accounts/${id}`));
 }
 
-export interface BankAccountListResponse {
-  accounts: BankAccount[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
-}
-
-/** Admin: all organiser bank accounts. `GET /payouts/admin/bank-accounts`. */
-export async function getAllBankAccounts(params?: {
-  page?: number;
-  limit?: number;
-  status?: BankAccountStatus;
-}): Promise<{ data: BankAccountListResponse | null; error: ApiError | null }> {
-  return apiCall<BankAccountListResponse>(
-    backendClient.get("/payouts/admin/bank-accounts", { params })
-  );
-}
-
-/** Admin: verify or reject a bank account. `PATCH /payouts/admin/bank-accounts/:id/status`. */
-export async function updateBankAccountStatus(
-  id: string,
-  payload: { status: "VERIFIED" | "REJECTED"; rejectionReason?: string }
-): Promise<{ data: BankAccount | null; error: ApiError | null }> {
-  return apiCall<BankAccount>(
-    backendClient.patch(`/payouts/admin/bank-accounts/${id}/status`, payload)
-  );
-}
-
 // ── Payout creation / request ──────────────────────────────────────────────
 
 export interface EventPayoutSummary {
@@ -256,36 +132,12 @@ export interface EventPayoutSummary {
   existingPayout: Payout | null;
 }
 
-/** Admin: net owed + any existing payout for an event. `GET /payouts/admin/event/:id/summary`. */
-export async function getAdminEventPayoutSummary(
-  eventId: string
-): Promise<{ data: EventPayoutSummary | null; error: ApiError | null }> {
-  return apiCall<EventPayoutSummary>(
-    backendClient.get(`/payouts/admin/event/${eventId}/summary`)
-  );
-}
-
 /** Organiser: net owed + any existing payout for one of my events. `GET /payouts/event/:id/summary`. */
 export async function getEventPayoutSummary(
   eventId: string
 ): Promise<{ data: EventPayoutSummary | null; error: ApiError | null }> {
   return apiCall<EventPayoutSummary>(
     backendClient.get(`/payouts/event/${eventId}/summary`)
-  );
-}
-
-/** Admin: create an on-demand payout for an event (auto-uses the organiser's
- *  verified primary account). `POST /payouts/admin/create-for-event`. */
-export async function adminCreatePayoutForEvent(
-  eventId: string,
-  /** Custom net amount to transfer; omit to pay out the whole available balance. */
-  amount?: number
-): Promise<{ data: Payout | null; error: ApiError | null }> {
-  return apiCall<Payout>(
-    backendClient.post("/payouts/admin/create-for-event", {
-      eventId,
-      ...(amount != null ? { amount } : {}),
-    })
   );
 }
 

@@ -413,25 +413,9 @@ interface JoinCta {
 }
 
 /**
- * TODO(learning): Decide the join/member CTA behaviour.
- *
- * This shapes the core action of the Space screen. The Event screen keeps its
- * bottom bar visible and swaps the button label per state; here you must also
- * decide what to do once someone is already a member (leaving is handled from
- * the header menu, so the bar has no obvious job for members).
- *
- * Consider:
- *  - Non-member, logged in    -> show member count + "Join {space}"
- *  - Not logged in            -> prompt to sign in (handleJoinLeave already alerts)
- *  - Joining in-flight        -> disable + "Joining..."
- *  - Already a member         -> hide the bar? Or keep it as a passive
- *                                "You're a member" strip with no button?
- *
- * Trade-offs: hiding the bar for members reclaims screen space and avoids a
- * dead button, but removes the at-a-glance member count. Keeping a passive
- * strip is informative but competes with the header's Leave action.
- *
- * Return a JoinCta describing the bar. Keep it a pure function of its inputs.
+ * Bottom bar for the Space screen. Non-members see the member count + "Join";
+ * members get no bar (leaving lives in the header menu, so it would be a dead
+ * button). Signed-out users are prompted by handleJoinLeave.
  */
 function resolveJoinCta(params: {
   isMember: boolean;
@@ -442,7 +426,6 @@ function resolveJoinCta(params: {
 }): JoinCta {
   const { isMember, joiningLoading, memberCount, spaceName } = params;
 
-  // Placeholder default so the screen compiles — replace with your decision.
   if (isMember) {
     return { hidden: true, infoLabel: '', infoValue: '', buttonLabel: '', disabled: true };
   }

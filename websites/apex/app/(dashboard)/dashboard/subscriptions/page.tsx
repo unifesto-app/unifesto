@@ -11,7 +11,6 @@ import {
   CurrencyInr,
   CheckCircle,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -88,9 +87,6 @@ function ModelIcon({ model }: { model: BillingModel | null }) {
  * NestJS `/subscription/admin/spaces*` endpoints.
  */
 export default function SubscriptionsPage() {
-  const { role } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [subs, setSubs] = useState<SpaceSubscription[]>([]);
   const [stats, setStats] = useState<BillingStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -122,12 +118,12 @@ export default function SubscriptionsPage() {
   }, [filter, search]);
 
   useEffect(() => {
-    if (isAdmin) loadList();
-  }, [isAdmin, loadList]);
+    loadList();
+  }, [loadList]);
 
   useEffect(() => {
-    if (isAdmin) loadStats();
-  }, [isAdmin, loadStats]);
+    loadStats();
+  }, [loadStats]);
 
   const statCards = useMemo(
     () => [
@@ -164,19 +160,6 @@ export default function SubscriptionsPage() {
     ],
     [stats]
   );
-
-  if (!isAdmin) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Subscriptions" />
-        <EmptyState
-          icon={CreditCard}
-          title="Admins only"
-          description="This surface is for platform staff. Space admins manage their plan inside their space."
-        />
-      </div>
-    );
-  }
 
   if (selected) {
     return (

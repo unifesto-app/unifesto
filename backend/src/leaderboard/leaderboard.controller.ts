@@ -6,8 +6,8 @@ import { SubmitJudgmentDto } from './dto';
 
 /**
  * What is left of the legacy competitive-dashboard API (hack.unifesto.app is
- * retired). Only routes a current client calls: Apex reads `manage` for board
- * status; mobile uses the participant view and the panelist judging routes.
+ * retired). Only routes a current client calls: mobile's participant view and the
+ * panelist judging routes.
  * Hackathon routes live in hackathon.controller.ts.
  */
 @ApiTags('Leaderboard')
@@ -22,15 +22,6 @@ export class LeaderboardController {
   @ApiOperation({ summary: 'Participant view: own round status, bracket, winners, own feedback' })
   participantView(@Request() req, @Param('eventId') eventId: string) {
     return this.leaderboard.getParticipantView(eventId, req.user.id);
-  }
-
-  // ── Manager ───────────────────────────────────────────────────────────────
-
-  @Get('events/:eventId/leaderboard/manage')
-  @ApiBearerAuth() @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Full curator view (rounds, metrics, entrants, panels, awards)' })
-  manageView(@Request() req, @Param('eventId') eventId: string) {
-    return this.leaderboard.getManageView(req.user.id, eventId);
   }
 
   // ── Panelist: my assignments + my own scores/review ───────────────────────

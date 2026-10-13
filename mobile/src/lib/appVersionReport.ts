@@ -29,9 +29,9 @@ async function sendReport(version: string, platform: string): Promise<boolean> {
 }
 
 /**
- * TODO(you): Decide whether we should actually hit the network this launch.
+ * Whether to hit the network this launch.
  *
- * Context: `maybeReportAppVersion()` runs every time a session becomes active
+ * Context:`maybeReportAppVersion()` runs every time a session becomes active
  * (app open, login, token refresh). Reporting on *every* call means a DB write
  * per launch per user. Gating avoids that — but the gate defines what the
  * admin's "last reported at" timestamp actually means.

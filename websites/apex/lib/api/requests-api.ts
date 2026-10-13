@@ -35,14 +35,6 @@ export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 /* Space requests (organisers requesting a new space)                         */
 /* -------------------------------------------------------------------------- */
 
-export interface CreateSpaceRequestInput {
-  name: string;
-  description?: string;
-  type?: string;
-  city?: string;
-  websiteUrl?: string;
-}
-
 export interface SpaceRequest {
   id: string;
   name: string;
@@ -63,21 +55,6 @@ export interface SpaceRequest {
   createdAt: string;
   updatedAt: string;
   user: RequestUser;
-}
-
-/** `POST /spaces/request` — submit a new space request. */
-export async function createSpaceRequest(
-  input: CreateSpaceRequestInput
-): Promise<{ data: SpaceRequest | null; error: ApiError | null }> {
-  return apiCall<SpaceRequest>(backendClient.post("/spaces/request", input));
-}
-
-/** `GET /spaces/my-requests` — get current user's space requests. */
-export async function getMySpaceRequests(): Promise<{
-  data: SpaceRequest[] | null;
-  error: ApiError | null;
-}> {
-  return apiCall<SpaceRequest[]>(backendClient.get("/spaces/my-requests"));
 }
 
 /** `GET /spaces/requests?status=` — returns a plain array (admin only). */

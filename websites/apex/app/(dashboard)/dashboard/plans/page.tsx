@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Stack,
   CheckCircle,
   ArrowClockwise,
   CaretLeft,
@@ -12,9 +11,7 @@ import {
   PencilSimple,
   CalendarX,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +51,6 @@ const FEATURE_FIELDS = [
   { key: "hasRemoveBranding", label: "Remove branding" },
   { key: "hasPrioritySupport", label: "Priority support" },
   { key: "hasSessions", label: "Sessions" },
-  { key: "hasLeaderboard", label: "Leaderboard" },
   { key: "hasCertificates", label: "Certificates" },
   { key: "hasSponsors", label: "Sponsors & leads" },
 ] as const;
@@ -102,9 +98,6 @@ function featureCount(data: PlanInfo | BillingModelConfig): number {
  * set here is what the payout service deducts from those organisers' sales.
  */
 export default function PlansPage() {
-  const { role } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [models, setModels] = useState<BillingModelConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,8 +117,8 @@ export default function PlansPage() {
   }, []);
 
   useEffect(() => {
-    if (isAdmin) load();
-  }, [isAdmin, load]);
+    load();
+  }, [load]);
 
   const rows: Row[] = useMemo(() => {
     const modelRows: Row[] = models.map((data) => ({
@@ -142,19 +135,6 @@ export default function PlansPage() {
     }));
     return [...modelRows, ...planRows];
   }, [models, plans]);
-
-  if (!isAdmin) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Plans & billing models" />
-        <EmptyState
-          icon={Stack}
-          title="Admins only"
-          description="Plan definitions are managed by platform staff."
-        />
-      </div>
-    );
-  }
 
   if (selected) {
     return (

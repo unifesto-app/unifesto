@@ -69,15 +69,6 @@ export async function getAllRefundRequests(
   );
 }
 
-/** Curator: requests they can verify/track for their events. `GET /refunds/curator/queue`. */
-export async function getCuratorRefundQueue(
-  params?: RefundListParams
-): Promise<{ data: RefundListResponse | null; error: ApiError | null }> {
-  return apiCall<RefundListResponse>(
-    backendClient.get("/refunds/curator/queue", { params })
-  );
-}
-
 /** The current user's own refund requests. `GET /refunds/my`. */
 export async function getMyRefundRequests(
   params?: { page?: number; limit?: number }
@@ -102,16 +93,6 @@ export async function createRefundRequest(payload: {
   supportTicketId?: string;
 }): Promise<{ data: RefundRequest | null; error: ApiError | null }> {
   return apiCall<RefundRequest>(backendClient.post("/refunds", payload));
-}
-
-/** Curator verification. `PATCH /refunds/:id/curator-review`. */
-export async function curatorReviewRefund(
-  id: string,
-  payload: { action: "FORWARD" | "REJECT"; note?: string }
-): Promise<{ data: RefundRequest | null; error: ApiError | null }> {
-  return apiCall<RefundRequest>(
-    backendClient.patch(`/refunds/${id}/curator-review`, payload)
-  );
 }
 
 /** Admin decision — approve (optionally partial) or reject. `PATCH /refunds/:id/admin-decision`. */

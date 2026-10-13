@@ -2,12 +2,23 @@
  * White-label API. Backed by the NestJS `/white-label` controller.
  *
  * Self-serve: a space whose plan includes `hasRemoveBranding` edits its theme
- * directly (Branding studio). The request/review calls remain for the legacy
- * admin history only.
+ * directly (Branding studio). Legacy requests are still returned in the
+ * overview for history.
  */
 
 import backendClient, { apiCall, ApiError } from "./backend-client";
-import type { RequestStatus, RequestUser } from "./requests-api";
+
+/** A person attached to a request (applicant). */
+export interface RequestUser {
+  id: string;
+  fullName: string | null;
+  username: string | null;
+  mobileNumber?: string | null;
+  avatarUrl?: string | null;
+  identities?: { email: string | null }[];
+}
+
+export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface WhiteLabelRequest {
   id: string;
@@ -25,38 +36,6 @@ export interface WhiteLabelRequest {
   reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface WhiteLabelRequestsResponse {
-  requests: WhiteLabelRequest[];
-  pagination: { page: number; limit: number; total: number; totalPages: number };
-}
-
-export interface CreateWhiteLabelRequestInput {
-  spaceId: string;
-  /** Omit for a space-level request; set for an event-level one. */
-  eventId?: string;
-  brandColor: string;
-  reason: string;
-}
-
-/** `POST /white-label/requests` — organiser submits a request. */
-export async function createWhiteLabelRequest(
-  input: CreateWhiteLabelRequestInput
-): Promise<{ data: WhiteLabelRequest | null; error: ApiError | null }> {
-  return apiCall<WhiteLabelRequest>(
-    backendClient.post("/white-label/requests", input)
-  );
-}
-
-/** `GET /white-label/requests/my` — this organiser's requests (optional space). */
-export async function getMyWhiteLabelRequests(
-  spaceId?: string
-): Promise<{ data: WhiteLabelRequest[] | null; error: ApiError | null }> {
-  const query = spaceId ? `?spaceId=${spaceId}` : "";
-  return apiCall<WhiteLabelRequest[]>(
-    backendClient.get(`/white-label/requests/my${query}`)
-  );
 }
 
 /** Live white-label state of the space itself (source of truth, not requests). */
@@ -104,35 +83,6 @@ export async function getWhiteLabelOverview(
 ): Promise<{ data: WhiteLabelOverview | null; error: ApiError | null }> {
   return apiCall<WhiteLabelOverview>(
     backendClient.get(`/white-label/spaces/${spaceId}`)
-  );
-}
-
-/** `GET /white-label/requests?status=` — admin inbox, `{ requests, pagination }`. */
-export async function getWhiteLabelRequests(
-  status?: RequestStatus,
-  page = 1,
-  limit = 50
-): Promise<{ data: WhiteLabelRequestsResponse | null; error: ApiError | null }> {
-  const params = new URLSearchParams();
-  if (status) params.set("status", status);
-  params.set("page", String(page));
-  params.set("limit", String(limit));
-  return apiCall<WhiteLabelRequestsResponse>(
-    backendClient.get(`/white-label/requests?${params.toString()}`)
-  );
-}
-
-/** `PATCH /white-label/requests/:id/review`. */
-export async function reviewWhiteLabelRequest(
-  id: string,
-  status: "APPROVED" | "REJECTED",
-  reviewNote?: string
-): Promise<{ data: unknown | null; error: ApiError | null }> {
-  return apiCall(
-    backendClient.patch(`/white-label/requests/${id}/review`, {
-      status,
-      reviewNote,
-    })
   );
 }
 
@@ -196,47 +146,6 @@ export async function updateEventBranding(
     backendClient.patch(`/white-label/events/${eventId}/branding`, patch)
   );
 }
-
-/** Admin apply/remove input — `enabled` toggles white-label on the target. */
-export interface AdminApplyBrandingInput {
-  enabled: boolean;
-  /** A hex string sets the accent; `null` clears it; omit to leave untouched. */
-  brandColor?: string | null;
-}
-
-export interface AdminApplyBrandingResult {
-  id: string;
-  whiteLabelEnabled: boolean;
-  brandColor: string | null;
-  /** True only when it will actually surface publicly right now. */
-  willRender: boolean;
-  /** Whether the owning space's plan currently includes white-label. */
-  planHasBranding: boolean;
-}
-
-/**
- * `PATCH /white-label/admin/spaces/:spaceId` — admin directly applies (or
- * removes) white-label on a space, skipping the organiser request flow.
- */
-export async function adminApplySpaceBranding(
-  spaceId: string,
-  input: AdminApplyBrandingInput
-): Promise<{ data: AdminApplyBrandingResult | null; error: ApiError | null }> {
-  return apiCall<AdminApplyBrandingResult>(
-    backendClient.patch(`/white-label/admin/spaces/${spaceId}`, input)
-  );
-}
-
-/** `PATCH /white-label/admin/events/:eventId` — admin applies/removes on an event. */
-export async function adminApplyEventBranding(
-  eventId: string,
-  input: AdminApplyBrandingInput
-): Promise<{ data: AdminApplyBrandingResult | null; error: ApiError | null }> {
-  return apiCall<AdminApplyBrandingResult>(
-    backendClient.patch(`/white-label/admin/events/${eventId}`, input)
-  );
-}
-
 
 /** A DNS record the space must add, as the provider returned it. */
 export interface DomainRecord {

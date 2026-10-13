@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Pulse,
   ArrowsClockwise,
   CheckCircle,
   WarningCircle,
@@ -11,7 +10,6 @@ import {
   Megaphone,
   Question,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -79,9 +77,6 @@ function fmtDate(iso: string): string {
  * uptime bars, and incidents. Backed by `/admin/status`.
  */
 export default function StatusPage() {
-  const { role } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [summary, setSummary] = useState<StatusSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -100,26 +95,12 @@ export default function StatusPage() {
   }, []);
 
   useEffect(() => {
-    if (!isAdmin) return;
     load();
     timer.current = setInterval(load, REFRESH_MS);
     return () => {
       if (timer.current) clearInterval(timer.current);
     };
-  }, [isAdmin, load]);
-
-  if (!isAdmin) {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="Status" />
-        <EmptyState
-          icon={Pulse}
-          title="Admins only"
-          description="Platform status is visible to platform staff."
-        />
-      </div>
-    );
-  }
+  }, [load]);
 
   // No summary yet means we don't know, not that everything is fine.
   const overall = summary?.overall ?? "unknown";

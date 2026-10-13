@@ -12,6 +12,9 @@ import { claimTokenFrom, isClaimLinkHandled, seenClaimLinkBefore } from '../src/
 export async function redirectSystemPath({ path, initial }: { path: string; initial: boolean }): Promise<string> {
   // Tagged event/space links (utm_*) are remembered for registration attribution.
   await captureUtmFromLink(path);
+  // AASA + Android intent filters still hand /signup links to the app; the
+  // signup route is gone, so send them to login.
+  if (/^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)signup(?:[/?#]|$)/i.test(path)) return '/login';
   try {
     const token = claimTokenFrom(path);
     if (token) {

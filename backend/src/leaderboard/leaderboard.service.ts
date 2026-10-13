@@ -1111,47 +1111,6 @@ export class LeaderboardService {
 
   // ── Read models ─────────────────────────────────────────────────────────
 
-  /**
-   * Curator/manager view: the full board including rounds, metrics, entrants,
-   * per-round standings, panelists, judgment completion, and awards. Restricted
-   * to managers — panelists never call this (it would expose every cell).
-   */
-  async getManageView(userId: string, eventId: string) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.prisma.leaderboard.findUnique({
-      where: { eventId },
-      include: {
-        rounds: { orderBy: { order: 'asc' } },
-        metrics: { orderBy: { displayOrder: 'asc' } },
-        entrants: {
-          orderBy: [{ rank: 'asc' }, { name: 'asc' }],
-          // The curator sees everything (privacy table row 4): raw judge cells,
-          // per-round standings, and every judgment (review text + `submittedAt`,
-          // which drives the review-completion matrix on the space console).
-          include: { scores: true, entrantRounds: true, judgments: true },
-        },
-        panelists: true,
-        awards: { orderBy: { order: 'asc' } },
-      },
-    });
-    if (!board) return null;
-
-    // Panelist `userId` is a soft ref (no FK) — hydrate display fields so the
-    // panels tab and completion matrix can label rows without a second call.
-    const panelistUserIds = [...new Set(board.panelists.map((p) => p.userId))];
-    const users = panelistUserIds.length
-      ? await this.prisma.user.findMany({
-          where: { id: { in: panelistUserIds } },
-          select: { id: true, fullName: true, username: true },
-        })
-      : [];
-    const byId = new Map(users.map((u) => [u.id, u]));
-    return {
-      ...board,
-      panelists: board.panelists.map((p) => ({ ...p, user: byId.get(p.userId) ?? null })),
-    };
-  }
-
   /** Public read model: ranked entrants + totals only, no raw judge cells. */
   async getPublicSnapshot(eventId: string) {
     const board = await this.prisma.leaderboard.findUnique({

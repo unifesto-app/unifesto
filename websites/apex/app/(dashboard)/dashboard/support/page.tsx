@@ -8,7 +8,6 @@ import {
   CheckCircle,
   Clock,
   CaretLeft,
-  Plus,
   UserCircle,
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
@@ -20,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
@@ -40,15 +38,12 @@ import {
   statusBadgeVariant,
   priorityBadgeVariant,
 } from "@/components/support/TicketThread";
-import { NewTicketForm } from "@/components/support/NewTicketForm";
 import {
   listTickets,
   getTicket,
   getSupportStats,
   replyToTicket,
   updateTicket,
-  closeOwnTicket,
-  reopenOwnTicket,
   requesterName,
   requesterEmail,
   STATUS_LABEL,
@@ -83,28 +78,22 @@ function timeAgo(iso: string) {
 }
 
 /**
- * Support — the shared helpdesk surface. Admins triage every ticket across the
- * platform; organisers raise issues and track their own conversations. Backed
- * by the NestJS `/support` controller (role-scoped server-side).
+ * Support — the platform helpdesk. Admins triage every ticket across the
+ * platform. Backed by the NestJS `/support` controller.
  */
 export default function SupportPage() {
-  const { role, user } = useSession();
-  const isAdmin = role === "platform_admin";
+  const { user } = useSession();
 
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [stats, setStats] = useState<SupportStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<SupportTicketStatus | "ALL">(
-    isAdmin ? "OPEN" : "ALL"
-  );
+  const [filter, setFilter] = useState<SupportTicketStatus | "ALL">("OPEN");
   const [search, setSearch] = useState("");
 
   const [selected, setSelected] = useState<SupportTicket | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [acting, setActing] = useState(false);
-
-  const [composing, setComposing] = useState(false);
 
   const loadStats = useCallback(async () => {
     const { data } = await getSupportStats();
@@ -178,30 +167,19 @@ export default function SupportPage() {
     setActing(false);
   };
 
-  const handleOwnerStatus = async (close: boolean) => {
-    if (!selected) return;
-    setActing(true);
-    const { error } = close
-      ? await closeOwnTicket(selected.id)
-      : await reopenOwnTicket(selected.id);
-    if (error) setError(error.message || "Could not update ticket.");
-    else await refreshAfterMutation(selected.id);
-    setActing(false);
-  };
-
   const statCards = useMemo(
     () => [
       {
         title: "Open",
         value: stats?.open ?? 0,
-        hint: isAdmin ? "Needs a reply" : "Waiting on support",
+        hint: "Needs a reply",
         icon: ChatCircleDots,
         tone: "neutral" as const,
       },
       {
         title: "Awaiting reply",
         value: stats?.pending ?? 0,
-        hint: isAdmin ? "With the requester" : "Your turn to respond",
+        hint: "With the requester",
         icon: Clock,
         tone: "neutral" as const,
       },
@@ -213,7 +191,7 @@ export default function SupportPage() {
         tone: "success" as const,
       },
     ],
-    [stats, isAdmin]
+    [stats]
   );
 
   /* ----------------------------- Detail view ----------------------------- */
@@ -265,138 +243,101 @@ export default function SupportPage() {
               ) : (
                 <TicketThread
                   messages={selected.messages}
-                  viewerIsStaff={isAdmin}
+                  viewerIsStaff
                   onReply={handleReply}
                   disabled={closed}
-                  disabledHint={
-                    isAdmin
-                      ? "This ticket is closed. Reopen it (set status to Open) to reply."
-                      : "This ticket is closed. Reopen it to continue the conversation."
-                  }
+                  disabledHint="This ticket is closed. Reopen it (set status to Open) to reply."
                 />
               )}
             </CardContent>
           </Card>
 
-          {/* Sidebar — admin triage or organiser actions */}
+          {/* Sidebar — admin triage */}
           <Card className="h-fit">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {isAdmin ? "Triage" : "Actions"}
-              </CardTitle>
+              <CardTitle className="text-base">Triage</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isAdmin ? (
-                <>
-                  <div className="space-y-1.5">
-                    <Label>Status</Label>
-                    <Select
-                      value={selected.status}
-                      onValueChange={(v) =>
-                        handleAdminUpdate({ status: v as SupportTicketStatus })
-                      }
-                    >
-                      <SelectTrigger disabled={acting}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUS_OPTIONS.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {STATUS_LABEL[s]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-1.5">
+                <Label>Status</Label>
+                <Select
+                  value={selected.status}
+                  onValueChange={(v) =>
+                    handleAdminUpdate({ status: v as SupportTicketStatus })
+                  }
+                >
+                  <SelectTrigger disabled={acting}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {STATUS_LABEL[s]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="space-y-1.5">
-                    <Label>Priority</Label>
-                    <Select
-                      value={selected.priority}
-                      onValueChange={(v) =>
-                        handleAdminUpdate({
-                          priority: v as SupportTicketPriority,
-                        })
-                      }
-                    >
-                      <SelectTrigger disabled={acting}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PRIORITY_OPTIONS.map((p) => (
-                          <SelectItem key={p} value={p}>
-                            {PRIORITY_LABEL[p]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-1.5">
+                <Label>Priority</Label>
+                <Select
+                  value={selected.priority}
+                  onValueChange={(v) =>
+                    handleAdminUpdate({
+                      priority: v as SupportTicketPriority,
+                    })
+                  }
+                >
+                  <SelectTrigger disabled={acting}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRIORITY_OPTIONS.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PRIORITY_LABEL[p]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="space-y-1.5">
-                    <Label>Assignee</Label>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <UserCircle className="h-4 w-4" />
-                      {selected.assignedTo
-                        ? selected.assignedTo.fullName ||
-                          selected.assignedTo.username ||
-                          "Assigned"
-                        : "Unassigned"}
-                    </div>
-                    {selected.assignedToId === user?.id ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        disabled={acting}
-                        onClick={() =>
-                          handleAdminUpdate({ assignedToId: null })
-                        }
-                      >
-                        Unassign me
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        disabled={acting || !user?.id}
-                        onClick={() =>
-                          handleAdminUpdate({ assignedToId: user!.id })
-                        }
-                      >
-                        Assign to me
-                      </Button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Opened {timeAgo(selected.createdAt)}. We’ll email you at{" "}
-                    {requesterEmail(selected) ?? "your account address"} when
-                    support replies.
-                  </p>
-                  {selected.status === "CLOSED" ? (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      disabled={acting}
-                      onClick={() => handleOwnerStatus(false)}
-                    >
-                      Reopen ticket
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      disabled={acting}
-                      onClick={() => handleOwnerStatus(true)}
-                    >
-                      Close ticket
-                    </Button>
-                  )}
-                </>
-              )}
+              <div className="space-y-1.5">
+                <Label>Assignee</Label>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <UserCircle className="h-4 w-4" />
+                  {selected.assignedTo
+                    ? selected.assignedTo.fullName ||
+                      selected.assignedTo.username ||
+                      "Assigned"
+                    : "Unassigned"}
+                </div>
+                {selected.assignedToId === user?.id ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={acting}
+                    onClick={() =>
+                      handleAdminUpdate({ assignedToId: null })
+                    }
+                  >
+                    Unassign me
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={acting || !user?.id}
+                    onClick={() =>
+                      handleAdminUpdate({ assignedToId: user!.id })
+                    }
+                  >
+                    Assign to me
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -409,18 +350,7 @@ export default function SupportPage() {
     <div className="space-y-6">
       <PageHeader
         title="Support"
-        subtitle={
-          isAdmin
-            ? "Tickets raised by organisers and attendees across the platform"
-            : "Raise an issue or track your open conversations"
-        }
-        actions={
-          !isAdmin ? (
-            <Button onClick={() => setComposing((v) => !v)}>
-              <Plus className="h-4 w-4" /> New ticket
-            </Button>
-          ) : undefined
-        }
+        subtitle="Tickets raised by organisers and attendees across the platform"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -428,17 +358,6 @@ export default function SupportPage() {
           <StatCard key={s.title} {...s} loading={!stats} />
         ))}
       </div>
-
-      {!isAdmin && composing && (
-        <NewTicketForm
-          onClose={() => setComposing(false)}
-          onCreated={async (id) => {
-            setComposing(false);
-            await Promise.all([loadList(), loadStats()]);
-            openTicket(id);
-          }}
-        />
-      )}
 
       <Card>
         <CardHeader className="gap-3">
@@ -496,22 +415,9 @@ export default function SupportPage() {
           ) : tickets.length === 0 ? (
             <EmptyState
               icon={Lifebuoy}
-              tone={isAdmin ? "neutral" : "positive"}
-              title={
-                isAdmin ? "Nothing needs attention" : "No tickets yet"
-              }
-              description={
-                isAdmin
-                  ? "Support requests from organisers and attendees will appear here as they come in."
-                  : "When you open a support ticket, you’ll be able to follow the conversation here."
-              }
-              action={
-                !isAdmin ? (
-                  <Button onClick={() => setComposing(true)}>
-                    <Plus className="h-4 w-4" /> New ticket
-                  </Button>
-                ) : undefined
-              }
+              tone="neutral"
+              title="Nothing needs attention"
+              description="Support requests from organisers and attendees will appear here as they come in."
             />
           ) : (
             <ul className="divide-y divide-border">
@@ -536,7 +442,7 @@ export default function SupportPage() {
                         )}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {isAdmin && <span>{requesterName(t)}</span>}
+                        <span>{requesterName(t)}</span>
                         <span>{CATEGORY_LABEL[t.category]}</span>
                         {t.space && <span>{t.space.name}</span>}
                         <span>Updated {timeAgo(t.lastMessageAt)}</span>

@@ -21,11 +21,8 @@ interface SessionContextValue {
   user: CurrentUser | null;
   /** Which Apex surface this user belongs to. */
   role: AppRole;
-  /** Organiser spaces the user can manage (organiser surface only). */
+  /** Spaces where the user holds a space-operator role (shown on Profile). */
   spaces: SpaceWithHierarchy[];
-  /** The currently-selected organiser space. */
-  currentSpace: SpaceWithHierarchy | null;
-  setCurrentSpace: (space: SpaceWithHierarchy) => void;
   loading: boolean;
   /** Force a re-fetch of the session. */
   refresh: () => Promise<void>;
@@ -35,30 +32,15 @@ const SessionContext = createContext<SessionContextValue>({
   user: null,
   role: "none",
   spaces: [],
-  currentSpace: null,
-  setCurrentSpace: () => {},
   loading: true,
   refresh: async () => {},
 });
-
-const STORAGE_KEY = "apex_current_space_id";
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [role, setRole] = useState<AppRole>("none");
   const [spaces, setSpaces] = useState<SpaceWithHierarchy[]>([]);
-  const [currentSpace, setCurrentSpaceState] =
-    useState<SpaceWithHierarchy | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const setCurrentSpace = useCallback((space: SpaceWithHierarchy) => {
-    setCurrentSpaceState(space);
-    try {
-      localStorage.setItem(STORAGE_KEY, space.id);
-    } catch {
-      /* ignore */
-    }
-  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,19 +49,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setUser(data);
       setRole(resolveAppRole(data));
 
-      const organiserSpaces = (data?.spaces ?? []).filter((s) =>
-        isSpaceOperatorRole(s.userRole?.code)
+      setSpaces(
+        (data?.spaces ?? []).filter((s) => isSpaceOperatorRole(s.userRole?.code))
       );
-      setSpaces(organiserSpaces);
-
-      let savedId: string | null = null;
-      try {
-        savedId = localStorage.getItem(STORAGE_KEY);
-      } catch {
-        /* ignore */
-      }
-      const saved = organiserSpaces.find((s) => s.id === savedId);
-      setCurrentSpaceState(saved || organiserSpaces[0] || null);
     } catch {
       setUser(null);
       setRole("none");
@@ -98,8 +70,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         user,
         role,
         spaces,
-        currentSpace,
-        setCurrentSpace,
         loading,
         refresh: load,
       }}

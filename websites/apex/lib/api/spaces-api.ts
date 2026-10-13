@@ -11,40 +11,6 @@ import type {
   SpaceRoleCode,
 } from "@/lib/types/rbac";
 
-/**
- * Get the spaces the current user belongs to, each annotated with the
- * user's role (`userRole.code`). Backed by `GET /users/me/spaces`.
- */
-export async function getMySpaces(): Promise<{
-  data: SpaceWithHierarchy[] | null;
-  error: ApiError | null;
-}> {
-  const { data, error } = await apiCall<SpaceWithHierarchy[]>(
-    backendClient.get("/users/me/spaces")
-  );
-  if (!data) return { data: null, error };
-  // `/users/me/spaces` returns the raw `status` (e.g. "ACTIVE") but no
-  // `is_active` flag. Derive it so the list badge doesn't default to
-  // "Inactive" for active spaces.
-  const normalized = data.map((raw) => {
-    const rec = raw as unknown as Record<string, unknown>;
-    const statusVal = rec.status as string | undefined;
-    // The raw `type` field is the structural kind (SUPER/REGULAR). Surface it
-    // as `spaceKind` so the list card can show Super/Regular instead of an
-    // empty organiser-category badge.
-    const rawKind = rec.type as string | undefined;
-    const spaceKind =
-      rec.spaceKind ??
-      (rawKind === "SUPER" || rawKind === "REGULAR" ? rawKind : undefined);
-    return {
-      ...raw,
-      spaceKind,
-      is_active: rec.is_active ?? statusVal === "ACTIVE",
-    } as SpaceWithHierarchy;
-  });
-  return { data: normalized, error: null };
-}
-
 /** Get a single space by ID. */
 export async function getSpace(
   id: string

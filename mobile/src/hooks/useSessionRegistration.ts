@@ -1,7 +1,7 @@
 /**
  * Register + pay for a session. Mirrors the event registration flow: create the
  * registration, and if it needs payment, open native Razorpay checkout and
- * verify. Free sessions resolve in one step. Razorpay-only (no coins) in v1.
+ * verify. Free sessions resolve in one step. Razorpay-only.
  */
 
 import { useState } from 'react';

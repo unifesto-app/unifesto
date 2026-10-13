@@ -157,11 +157,16 @@ export async function fetchAllRequests(tab: RequestTab): Promise<SourceResult[]>
 /**
  * Order the sections of the "All" view.
  *
- * TODO(you): decide what an admin should see first. Called with every source's
- * result for the current tab (in REQUEST_SOURCES order); return them in display
- * order. Empty sources are dropped by the screen afterwards.
+ * Open: the source whose oldest request has waited longest comes first.
+ * Approved/rejected: the most recently active source first. Ties and empty
+ * sources keep REQUEST_SOURCES order (the screen drops empty ones).
  */
 export function orderSections(results: SourceResult[], tab: RequestTab): SourceResult[] {
-  void tab;
-  return results;
+  const open = tab === 'open';
+  const key = (r: SourceResult) => {
+    const times = r.rows.map((row) => Date.parse(row.createdAt)).filter((t) => !Number.isNaN(t));
+    if (!times.length) return Infinity;
+    return open ? Math.min(...times) : -Math.max(...times);
+  };
+  return [...results].sort((a, b) => key(a) - key(b));
 }

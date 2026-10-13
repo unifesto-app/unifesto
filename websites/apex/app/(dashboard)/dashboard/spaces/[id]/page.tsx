@@ -15,7 +15,6 @@ import {
   Users,
   Stack,
   SealCheck,
-  Lock,
   MapPin,
   CalendarBlank,
   CheckCircle,
@@ -24,7 +23,6 @@ import {
   ArrowUp,
   ArrowDown,
   LinkBreak,
-  Eye,
   CaretRight,
   CaretLeft,
   MagnifyingGlass,
@@ -35,10 +33,8 @@ import {
   FloppyDisk,
   X,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import {
   getSpace,
-  getMySpaces,
   getSpaceChildren,
   approveSpace,
   rejectSpace,
@@ -65,7 +61,6 @@ import {
   createSubSpaceRequest,
   type SubSpaceRequestType,
 } from "@/lib/api/requests-api";
-import { isSpaceOperatorRole } from "@/lib/types/rbac";
 import type {
   SpaceWithHierarchy,
   SpaceStatus,
@@ -117,15 +112,9 @@ function formatDate(iso?: string) {
 export default function SpaceDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
-  const { role, loading: sessionLoading } = useSession();
-  const isAdmin = role === "platform_admin";
-
   const [space, setSpace] = useState<SpaceWithHierarchy | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Spaces the current user directly organises — used to detect whether they
-  // are a Space Admin of THIS space's parent (grants read-only access).
-  const [mySpaces, setMySpaces] = useState<SpaceWithHierarchy[]>([]);
 
   const reload = useCallback(async () => {
     if (!id) return;
@@ -140,39 +129,16 @@ export default function SpaceDetailPage() {
     (async () => {
       setLoading(true);
       setError("");
-      const [spaceRes, mineRes] = await Promise.all([
-        getSpace(id),
-        getMySpaces(),
-      ]);
+      const spaceRes = await getSpace(id);
       if (cancelled) return;
       if (spaceRes.error) setError(spaceRes.error.message);
       else setSpace(spaceRes.data);
-      setMySpaces(mineRes.data ?? []);
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [id]);
-
-  // Only Space Admins (or platform admins) may manage a space.
-  const canManage = useMemo(() => {
-    if (isAdmin) return true;
-    return isSpaceOperatorRole(space?.userRole?.code);
-  }, [isAdmin, space]);
-
-  // A user who organises this space's parent (SUPER) space may VIEW it read-only,
-  // even without a direct role here. They can see the child's data but not edit.
-  const isParentOrganiser = useMemo(() => {
-    if (canManage) return false;
-    const parentId = space?.parentSpaceId;
-    if (!parentId) return false;
-    return mySpaces.some(
-      (s) => s.id === parentId && isSpaceOperatorRole(s.userRole?.code)
-    );
-  }, [canManage, space, mySpaces]);
-
-  const busy = loading || sessionLoading;
 
   return (
     <div className="space-y-6">
@@ -184,7 +150,7 @@ export default function SpaceDetailPage() {
         Back to spaces
       </Link>
 
-      {busy ? (
+      {loading ? (
         <div className="space-y-6">
           <Skeleton className="h-16 w-72 rounded-lg" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -206,23 +172,8 @@ export default function SpaceDetailPage() {
             />
           </CardContent>
         </Card>
-      ) : !canManage && !isParentOrganiser ? (
-        <Card>
-          <CardContent className="p-0">
-            <EmptyState
-              icon={Lock}
-              title="You can't manage this space"
-              description="Space management is available to Space Admins only. Ask a Space Admin to grant you a role."
-            />
-          </CardContent>
-        </Card>
       ) : (
-        <SpaceManagement
-          space={space}
-          isAdmin={isAdmin}
-          readOnly={!canManage}
-          onChange={reload}
-        />
+        <SpaceManagement space={space} onChange={reload} />
       )}
     </div>
   );
@@ -251,35 +202,16 @@ const MANAGEABLE_STATUSES: SpaceStatus[] = [
 
 function SpaceManagement({
   space,
-  isAdmin,
-  readOnly = false,
   onChange,
 }: {
   space: SpaceWithHierarchy;
-  isAdmin: boolean;
-  /** True when the viewer may only VIEW this space (e.g. a parent organiser). */
-  readOnly?: boolean;
   onChange: () => Promise<void>;
 }) {
   const isSuper = space.spaceKind === "SUPER";
   const [tab, setTab] = useState<"overview" | "members">("overview");
   const [editing, setEditing] = useState(false);
-  // Parent organisers (readOnly) have no direct role here, so the members
-  // endpoint (SpaceRoleGuard) would 403 for them — hide the Members tab.
-  const canViewMembers = !readOnly && (isAdmin || isSpaceOperatorRole(space.userRole?.code));
-  const canEdit =
-    !readOnly && (isAdmin || isSpaceOperatorRole(space.userRole?.code));
   return (
     <div className="space-y-6">
-      {readOnly && (
-        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-          <Eye className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            You&apos;re viewing this space because you organise its parent
-            space. This view is read-only — you can&apos;t make changes here.
-          </span>
-        </div>
-      )}
       <PageHeader
         title={space.name}
         subtitle={
@@ -296,12 +228,12 @@ function SpaceManagement({
         }
         actions={
           <div className="flex items-center gap-2">
-            {isAdmin && space.spaceKind && (
+            {space.spaceKind && (
               <Badge variant={space.spaceKind === "SUPER" ? "brand" : "neutral"}>
                 {space.spaceKind === "SUPER" ? "Super" : "Regular"}
               </Badge>
             )}
-            {isAdmin && space.status && (
+            {space.status && (
               <Badge variant={STATUS_VARIANT[space.status]}>
                 {roleLabel(space.status) ?? space.status}
               </Badge>
@@ -309,19 +241,10 @@ function SpaceManagement({
             {roleLabel(space.userRole?.code) && (
               <Badge variant="brand">{roleLabel(space.userRole?.code)}</Badge>
             )}
-            {isAdmin && !space.userRole?.code && (
+            {!space.userRole?.code && (
               <Badge variant="outline">Admin view</Badge>
             )}
-            {readOnly && (
-              <Badge variant="outline" className="inline-flex items-center gap-1">
-                <Eye className="h-3 w-3" />
-                View only
-              </Badge>
-            )}
-            {!isAdmin && !space.is_active && (
-              <Badge variant="warning">Inactive</Badge>
-            )}
-            {canEdit && !editing && (
+            {!editing && (
               <Button
                 variant="outline"
                 size="sm"
@@ -336,7 +259,7 @@ function SpaceManagement({
         }
       />
 
-      {canEdit && editing && (
+      {editing && (
         <EditSpacePanel
           space={space}
           onChange={onChange}
@@ -344,25 +267,23 @@ function SpaceManagement({
         />
       )}
 
-      {canViewMembers && (
-        <div className="flex items-center gap-1 border-b border-border">
-          <TabButton
-            active={tab === "overview"}
-            onClick={() => setTab("overview")}
-          >
-            Overview
-          </TabButton>
-          <TabButton
-            active={tab === "members"}
-            onClick={() => setTab("members")}
-          >
-            Members
-          </TabButton>
-        </div>
-      )}
+      <div className="flex items-center gap-1 border-b border-border">
+        <TabButton
+          active={tab === "overview"}
+          onClick={() => setTab("overview")}
+        >
+          Overview
+        </TabButton>
+        <TabButton
+          active={tab === "members"}
+          onClick={() => setTab("members")}
+        >
+          Members
+        </TabButton>
+      </div>
 
-      {canViewMembers && tab === "members" ? (
-        <MembersPanel space={space} isAdmin={isAdmin} onChange={onChange} />
+      {tab === "members" ? (
+        <MembersPanel space={space} onChange={onChange} />
       ) : (
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
@@ -430,34 +351,26 @@ function SpaceManagement({
             </CardContent>
           </Card>
 
-          {isAdmin && !readOnly && <SpaceBrandingCard space={space} />}
+          <SpaceBrandingCard space={space} />
         </div>
 
         <div className="space-y-4">
-          {isAdmin && !readOnly && (
-            <AdminSpacePanel
-              spaceId={space.id}
-              status={space.status}
-              verified={space.is_verified}
-              onChange={onChange}
-            />
-          )}
+          <AdminSpacePanel
+            spaceId={space.id}
+            status={space.status}
+            verified={space.is_verified}
+            onChange={onChange}
+          />
 
-          {isSuper && <ChildSpacesPanel space={space} readOnly={readOnly} />}
+          {isSuper && <ChildSpacesPanel space={space} />}
 
-          {!readOnly && (
-            <OrganiserHierarchyPanel
-              space={space}
-              isAdmin={isAdmin}
-              onChange={onChange}
-            />
-          )}
+          <HierarchyPanel space={space} onChange={onChange} />
 
           <Card>
             <CardHeader>
               <CardTitle>Manage</CardTitle>
               <CardDescription>
-                {readOnly ? "View this space's activity." : "Common space actions."}
+                Common space actions.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-2">
@@ -467,29 +380,18 @@ function SpaceManagement({
                   View events
                 </Link>
               </Button>
-              {canViewMembers ? (
-                <Button
-                  variant="outline"
-                  className="justify-start"
-                  onClick={() => setTab("members")}
-                >
-                  <Users className="h-4 w-4" />
-                  Members
-                </Button>
-              ) : (
-                <Button variant="outline" className="justify-start" asChild>
-                  <Link href={`/dashboard/users?spaceId=${space.id}`}>
-                    <Users className="h-4 w-4" />
-                    Members
-                  </Link>
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                className="justify-start"
+                onClick={() => setTab("members")}
+              >
+                <Users className="h-4 w-4" />
+                Members
+              </Button>
             </CardContent>
           </Card>
 
-          {isAdmin && !readOnly && (
-            <DeleteSpaceCard spaceId={space.id} spaceSlug={space.slug} />
-          )}
+          <DeleteSpaceCard spaceId={space.id} spaceSlug={space.slug} />
         </div>
       </div>
       )}
@@ -668,19 +570,8 @@ const SPACE_ROLE_VARIANT: Record<
   MEMBER: "neutral",
 };
 
-/**
- * Roles the current actor may assign / manage — mirrors the backend
- * `manageableRolesFor`. Admins manage everything; a Space Admin manages
- * admin and member; everyone else manages nothing.
- */
-function manageableRoles(
-  isAdmin: boolean,
-  actorRole?: string | null
-): SpaceMemberRoleCode[] {
-  if (isAdmin) return ["SPACE_ADMIN", "MEMBER"];
-  if (actorRole === "SPACE_ADMIN") return ["SPACE_ADMIN", "MEMBER"];
-  return [];
-}
+/** Roles a platform admin may assign / manage (mirrors backend `manageableRolesFor`). */
+const ASSIGNABLE_ROLES: SpaceMemberRoleCode[] = ["SPACE_ADMIN", "MEMBER"];
 
 const MEMBERS_PAGE_SIZE = 15;
 
@@ -694,19 +585,13 @@ function initials(name?: string | null, fallback?: string | null) {
 
 function MembersPanel({
   space,
-  isAdmin,
   onChange,
 }: {
   space: SpaceWithHierarchy;
-  isAdmin: boolean;
   onChange: () => Promise<void>;
 }) {
   const spaceId = space.id;
-  const assignable = useMemo(
-    () => manageableRoles(isAdmin, space.userRole?.code),
-    [isAdmin, space.userRole?.code]
-  );
-  const canManageMembers = assignable.length > 0;
+  const assignable = ASSIGNABLE_ROLES;
 
   const [members, setMembers] = useState<SpaceMember[]>([]);
   const [page, setPage] = useState(1);
@@ -777,13 +662,11 @@ function MembersPanel({
 
   return (
     <div className="space-y-4">
-      {canManageMembers && (
-        <AddMemberCard
-          spaceId={spaceId}
-          assignable={assignable}
-          onAdded={reloadAll}
-        />
-      )}
+      <AddMemberCard
+        spaceId={spaceId}
+        assignable={assignable}
+        onAdded={reloadAll}
+      />
 
       <Card>
         <CardHeader>
@@ -833,8 +716,7 @@ function MembersPanel({
                 // Actor may edit this row only if they manage the member's
                 // CURRENT role. The organiser (space owner) row is protected
                 // on the backend; still surface it as non-editable here.
-                const canEditRow =
-                  canManageMembers && assignable.includes(roleCode);
+                const canEditRow = assignable.includes(roleCode);
                 const busyRow = rowBusy === m.id;
                 return (
                   <li
@@ -1564,17 +1446,11 @@ function DetailRow({
 
 /**
  * Lists the child spaces of a Super space. Each child links to its own detail
- * page, where a Space Admin of this parent can view it read-only.
+ * page.
  */
 const CHILD_SPACES_PAGE_SIZE = 8;
 
-function ChildSpacesPanel({
-  space,
-  readOnly,
-}: {
-  space: SpaceWithHierarchy;
-  readOnly: boolean;
-}) {
+function ChildSpacesPanel({ space }: { space: SpaceWithHierarchy }) {
   const [children, setChildren] = useState<ChildSpace[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -1610,9 +1486,7 @@ function ChildSpacesPanel({
               Child spaces
             </CardTitle>
             <CardDescription>
-              {readOnly
-                ? "Spaces under this super space. Open one to view its data."
-                : "Spaces that belong to this super space."}
+              Spaces that belong to this super space.
             </CardDescription>
           </div>
           {total > 0 && (
@@ -1692,7 +1566,7 @@ function ChildSpacesPanel({
 }
 
 /**
- * Organiser-facing panel for parent/child hierarchy requests. Every action
+ * Admin panel for parent/child hierarchy requests. Every action
  * here creates a `sub-space-request` that an admin must approve. The UI mirrors
  * the backend rules: a REGULAR space must be converted to SUPER before it can
  * accept children, and a SUPER space must have all children removed before it
@@ -1714,13 +1588,11 @@ type HierarchyCandidate = {
   parentSpaceId: string | null;
 };
 
-function OrganiserHierarchyPanel({
+function HierarchyPanel({
   space,
-  isAdmin,
   onChange,
 }: {
   space: SpaceWithHierarchy;
-  isAdmin: boolean;
   onChange: () => Promise<void>;
 }) {
   const [mySpaces, setMySpaces] = useState<HierarchyCandidate[]>([]);
@@ -1740,37 +1612,24 @@ function OrganiserHierarchyPanel({
     let cancelled = false;
     (async () => {
       setLoadingSpaces(true);
-      // Admins may attach ANY space in the platform, so pull the full admin
-      // list. Organisers can only work with spaces they belong to.
-      if (isAdmin) {
-        const { data } = await getAllSpacesAdmin({ page: 1, limit: 500 });
-        if (cancelled) return;
-        const candidates: HierarchyCandidate[] = (data?.spaces ?? []).map(
-          (s) => ({
-            id: s.id,
-            name: s.name,
-            spaceKind: s.type,
-            parentSpaceId: s.parent_space_id,
-          })
-        );
-        setMySpaces(candidates);
-      } else {
-        const { data } = await getMySpaces();
-        if (cancelled) return;
-        const candidates: HierarchyCandidate[] = (data ?? []).map((s) => ({
+      // Admins may attach ANY space in the platform, so pull the full list.
+      const { data } = await getAllSpacesAdmin({ page: 1, limit: 500 });
+      if (cancelled) return;
+      const candidates: HierarchyCandidate[] = (data?.spaces ?? []).map(
+        (s) => ({
           id: s.id,
           name: s.name,
-          spaceKind: s.spaceKind,
-          parentSpaceId: s.parentSpaceId ?? null,
-        }));
-        setMySpaces(candidates);
-      }
+          spaceKind: s.type,
+          parentSpaceId: s.parent_space_id,
+        })
+      );
+      setMySpaces(candidates);
       setLoadingSpaces(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [isAdmin]);
+  }, []);
 
   // Walk the parent chain of a candidate to decide whether THIS space is one
   // of its ancestors. Used to prevent cycles when picking a parent.

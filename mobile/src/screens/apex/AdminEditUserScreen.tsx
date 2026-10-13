@@ -40,22 +40,24 @@ export type EditableKey = keyof AdminUserPatch;
 export type UserFields = Record<EditableKey, string>;
 
 const KEYS: EditableKey[] = ['fullName', 'username', 'bio', 'linkedinUrl', 'instagramUrl', 'githubUrl', 'websiteUrl'];
+const REQUIRED = new Set<EditableKey>(['fullName', 'username']);
 
 const toFields = (u: AdminUserDetail): UserFields =>
   Object.fromEntries(KEYS.map((k) => [k, (u[k] as string | null) ?? ''])) as UserFields;
 
 /**
  * Turn the edited form into the PATCH body: only the fields that changed.
- *
- * TODO(you): decide what an emptied field means. See the note in chat.
+ * An emptied optional field is sent as null (clears it; '' would fail the
+ * backend's @IsUrl). Name and username can't be cleared, so emptying them is
+ * ignored.
  */
 export function buildUserPatch(original: UserFields, fields: UserFields): AdminUserPatch {
   const patch: AdminUserPatch = {};
   for (const key of KEYS) {
     const next = fields[key].trim();
     if (next === original[key]) continue;
-    // TODO(you): a field changed. What goes into `patch[key]` when `next` is ''?
-    patch[key] = next;
+    if (next) patch[key] = next;
+    else if (!REQUIRED.has(key)) patch[key] = null;
   }
   return patch;
 }

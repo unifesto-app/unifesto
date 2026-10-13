@@ -8,12 +8,9 @@ import {
   CheckCircle,
   XCircle,
 } from "@unifesto/unicon/react";
-import { useSession } from "@/lib/context/SessionContext";
 import {
   getAllRefundRequests,
-  getCuratorRefundQueue,
   adminDecideRefund,
-  curatorReviewRefund,
   refundableBase,
   type RefundRequest,
   type RefundStatus,
@@ -64,15 +61,13 @@ const STATUS_BADGE: Record<
   REJECTED: { label: "Declined", variant: "destructive" },
 };
 
-export default function RefundsPage() {
-  const { role, currentSpace } = useSession();
-  const isAdmin = role === "platform_admin";
+/** Platform admins act on requests a curator has already forwarded. */
+const ACTIONABLE: RefundStatus = "PENDING_ADMIN";
 
+export default function RefundsPage() {
   const [requests, setRequests] = useState<RefundRequest[]>([]);
   const [counts, setCounts] = useState({ awaiting: 0, approved: 0, declined: 0 });
-  const [statusFilter, setStatusFilter] = useState<RefundStatus | "all">(
-    isAdmin ? "PENDING_ADMIN" : "PENDING_CURATOR"
-  );
+  const [statusFilter, setStatusFilter] = useState<RefundStatus | "all">(ACTIONABLE);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -80,28 +75,22 @@ export default function RefundsPage() {
   const [error, setError] = useState("");
   const [active, setActive] = useState<RefundRequest | null>(null);
 
-  const fetchList = isAdmin ? getAllRefundRequests : getCuratorRefundQueue;
-  // Admins act on PENDING_ADMIN; curators verify PENDING_CURATOR.
-  const actionableStatus: RefundStatus = isAdmin
-    ? "PENDING_ADMIN"
-    : "PENDING_CURATOR";
-
   const loadCounts = useCallback(async () => {
-    const statuses: RefundStatus[] = [actionableStatus, "APPROVED", "REJECTED"];
+    const statuses: RefundStatus[] = [ACTIONABLE, "APPROVED", "REJECTED"];
     const [awaiting, approved, declined] = await Promise.all(
-      statuses.map((status) => fetchList({ status, limit: 1 }))
+      statuses.map((status) => getAllRefundRequests({ status, limit: 1 }))
     );
     setCounts({
       awaiting: awaiting.data?.pagination.total ?? 0,
       approved: approved.data?.pagination.total ?? 0,
       declined: declined.data?.pagination.total ?? 0,
     });
-  }, [fetchList, actionableStatus]);
+  }, []);
 
   const loadList = useCallback(async () => {
     setLoading(true);
     setError("");
-    const { data, error } = await fetchList({
+    const { data, error } = await getAllRefundRequests({
       status: statusFilter === "all" ? undefined : statusFilter,
       page,
       limit: PAGE_SIZE,
@@ -112,7 +101,7 @@ export default function RefundsPage() {
       setTotalPages(data.pagination.totalPages || 1);
     }
     setLoading(false);
-  }, [fetchList, statusFilter, page]);
+  }, [statusFilter, page]);
 
   useEffect(() => {
     void loadCounts();
@@ -148,11 +137,7 @@ export default function RefundsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Refunds"
-        subtitle={
-          isAdmin
-            ? "Refund requests across every space"
-            : `Refund requests for ${currentSpace?.name ?? "your events"}`
-        }
+        subtitle="Refund requests across every space"
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -200,7 +185,7 @@ export default function RefundsPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={actionableStatus}>Awaiting action</SelectItem>
+            <SelectItem value={ACTIONABLE}>Awaiting action</SelectItem>
             <SelectItem value="APPROVED">Approved</SelectItem>
             <SelectItem value="REJECTED">Declined</SelectItem>
             <SelectItem value="all">All requests</SelectItem>
@@ -225,11 +210,7 @@ export default function RefundsPage() {
             <EmptyState
               icon={ArrowsClockwise}
               title="No refund requests"
-              description={
-                isAdmin
-                  ? "When attendees request refunds, they'll queue here for review."
-                  : "If someone requests a refund for one of your events, it will show up here."
-              }
+              description="When attendees request refunds, they'll queue here for review."
             />
           ) : (
             <div className="divide-y">
@@ -280,7 +261,7 @@ export default function RefundsPage() {
                           base refundable {money(remaining)}
                         </p>
                       </div>
-                      {r.status === actionableStatus && (
+                      {r.status === ACTIONABLE && (
                         <Button size="sm" onClick={() => setActive(r)}>
                           Review
                         </Button>
@@ -323,7 +304,6 @@ export default function RefundsPage() {
       {active && (
         <RefundReviewDialog
           request={active}
-          isAdmin={isAdmin}
           onClose={() => setActive(null)}
           onDone={() => {
             setActive(null);
@@ -337,12 +317,10 @@ export default function RefundsPage() {
 
 function RefundReviewDialog({
   request,
-  isAdmin,
   onClose,
   onDone,
 }: {
   request: RefundRequest;
-  isAdmin: boolean;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -362,36 +340,22 @@ function RefundReviewDialog({
       return;
     }
     setSubmitting(true);
-    if (isAdmin) {
-      const amt = Number(amount);
-      if (approve && (!(amt > 0) || amt > maxBase)) {
-        setErr(`Amount must be between ₹1 and ${money(maxBase)}.`);
-        setSubmitting(false);
-        return;
-      }
-      const { error } = await adminDecideRefund(request.id, {
-        action: approve ? "APPROVE" : "REJECT",
-        approvedAmount: approve ? amt : undefined,
-        note: note.trim() || undefined,
-      });
-      if (error) {
-        setErr(error.message);
-        setSubmitting(false);
-      } else {
-        onDone();
-      }
+    const amt = Number(amount);
+    if (approve && (!(amt > 0) || amt > maxBase)) {
+      setErr(`Amount must be between ₹1 and ${money(maxBase)}.`);
+      setSubmitting(false);
+      return;
+    }
+    const { error } = await adminDecideRefund(request.id, {
+      action: approve ? "APPROVE" : "REJECT",
+      approvedAmount: approve ? amt : undefined,
+      note: note.trim() || undefined,
+    });
+    if (error) {
+      setErr(error.message);
+      setSubmitting(false);
     } else {
-      // Curator: FORWARD to admin, or REJECT.
-      const { error } = await curatorReviewRefund(request.id, {
-        action: approve ? "FORWARD" : "REJECT",
-        note: note.trim() || undefined,
-      });
-      if (error) {
-        setErr(error.message);
-        setSubmitting(false);
-      } else {
-        onDone();
-      }
+      onDone();
     }
   };
 
@@ -399,9 +363,7 @@ function RefundReviewDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isAdmin ? "Review refund" : "Verify refund request"}
-          </DialogTitle>
+          <DialogTitle>Review refund</DialogTitle>
           <DialogDescription>
             {request.event?.title} · {name(request.registration?.user)}
           </DialogDescription>
@@ -413,41 +375,35 @@ function RefundReviewDialog({
             <p className="mt-0.5">&ldquo;{request.reason}&rdquo;</p>
           </div>
 
-          {isAdmin && (
-            <div>
-              <label className="text-sm font-medium" htmlFor="refund-amount">
-                Refund amount (base only)
-              </label>
-              <Input
-                id="refund-amount"
-                type="number"
-                min={0}
-                max={maxBase}
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="mt-1"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Max refundable base is {money(maxBase)}. The processing fee is not
-                refunded. Enter a lower value for a partial refund.
-              </p>
-            </div>
-          )}
+          <div>
+            <label className="text-sm font-medium" htmlFor="refund-amount">
+              Refund amount (base only)
+            </label>
+            <Input
+              id="refund-amount"
+              type="number"
+              min={0}
+              max={maxBase}
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="mt-1"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Max refundable base is {money(maxBase)}. The processing fee is not
+              refunded. Enter a lower value for a partial refund.
+            </p>
+          </div>
 
           <div>
             <label className="text-sm font-medium" htmlFor="refund-note">
-              {isAdmin ? "Note (optional; required to decline)" : "Note to admin"}
+              Note (optional; required to decline)
             </label>
             <Textarea
               id="refund-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={
-                isAdmin
-                  ? "Add context for this decision"
-                  : "Why you're forwarding or rejecting this"
-              }
+              placeholder="Add context for this decision"
               className="mt-1"
               rows={3}
             />
@@ -462,14 +418,10 @@ function RefundReviewDialog({
             onClick={() => submit(false)}
             disabled={submitting}
           >
-            {isAdmin ? "Decline" : "Reject"}
+            Decline
           </Button>
           <Button onClick={() => submit(true)} disabled={submitting}>
-            {submitting
-              ? "Saving…"
-              : isAdmin
-                ? "Approve & refund"
-                : "Forward to admin"}
+            {submitting ? "Saving…" : "Approve & refund"}
           </Button>
         </DialogFooter>
       </DialogContent>
