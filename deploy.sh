@@ -118,17 +118,82 @@ if [ "${DEPLOY_BACKEND}" = true ]; then
     "cd ${REMOTE_DIR} && docker compose run --rm backend-migrate"
 fi
 
+# Roll the API one replica at a time (S17). `docker compose up -d backend`
+# recreated all 3 replicas at once while boot takes up to 40s and Caddy only
+# retries for 5s: that gap was the 502/503 flood on every backend deploy. For
+# each OLD replica: add one NEW replica from the freshly built image, wait for
+# its healthcheck, give Caddy's 10s DNS refresh time to see it, then stop the
+# old one with the 60s drain. Peak is replicas+1 (4 x 1G, 4 x 10 DB conns).
+# A new replica that never turns healthy is removed and the deploy fails with
+# the old replicas still serving.
+if [ "${DEPLOY_BACKEND}" = true ]; then
+  echo "==> Rolling backend replicas one at a time"
+  ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" <<'ROLLOUT'
+set -euo pipefail
+cd "$1"
+OLD="$(docker compose ps -q backend)"
+if [ -z "${OLD}" ]; then
+  docker compose up -d --no-deps backend
+  exit 0
+fi
+for old in ${OLD}; do
+  before="$(docker compose ps -q backend | sort)"
+  count="$(printf '%s\n' "${before}" | grep -c .)"
+  docker compose up -d --no-deps --no-recreate --scale "backend=$((count + 1))" backend
+  new="$(comm -13 <(printf '%s\n' "${before}") <(docker compose ps -q backend | sort))"
+  if [ -z "${new}" ]; then
+    echo "!! no new backend replica appeared" >&2
+    exit 1
+  fi
+  status=""
+  for _ in $(seq 1 48); do
+    status="$(docker inspect -f '{{.State.Health.Status}}' ${new})"
+    [ "${status}" = healthy ] && break
+    sleep 5
+  done
+  if [ "${status}" != healthy ]; then
+    echo "!! new backend replica ${new} is '${status}' after 240s; removing it, old replicas keep serving" >&2
+    docker logs --tail 50 ${new} >&2 || true
+    docker rm -f ${new} >/dev/null
+    exit 1
+  fi
+  echo "    ${new:0:12} healthy; draining ${old:0:12}"
+  sleep 12
+  docker stop -t 60 "${old}" >/dev/null
+  docker rm "${old}" >/dev/null
+done
+ROLLOUT
+fi
+
 echo "==> Starting services on the server"
 # Images are already built above, so `up -d` (no --build) just (re)creates the
 # named services; already-running dependencies (e.g. caddy) are left untouched.
+# The backend was rolled above, so it is excluded here (--no-deps keeps compose
+# from recreating it as a dependency of the web apps).
 # --remove-orphans stops containers for services deleted from the compose file
 # (e.g. the retired `hack` app) instead of leaving them running unrouted.
-ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" \
-  "cd ${REMOTE_DIR} && docker compose up -d --remove-orphans ${SERVICES} && docker compose ps"
+if [ -n "${SERVICES}" ]; then
+  OTHERS="$(printf '%s\n' ${SERVICES} | grep -vx backend | xargs || true)"
+  # cert-worker runs the backend image, so it follows every backend deploy.
+  if [ "${DEPLOY_BACKEND}" = true ]; then OTHERS="${OTHERS} cert-worker"; fi
+else
+  OTHERS="$(ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" \
+    "cd ${REMOTE_DIR} && docker compose config --services" | grep -vxE 'backend|backend-migrate' | xargs)"
+fi
+if [ -n "${OTHERS}" ]; then
+  ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" \
+    "cd ${REMOTE_DIR} && docker compose up -d --no-deps --remove-orphans ${OTHERS}"
+fi
+ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && docker compose ps"
 
 # Reload the proxy only when the Caddyfile actually changed (see note above).
 if [ "${CADDY_LOCAL}" != "${CADDY_REMOTE}" ]; then
-  echo "==> Caddyfile changed — restarting caddy to load the new config"
+  echo "==> Caddyfile changed — validating, then restarting caddy to load it"
+  # A throwaway container (fresh bind mount, no published ports) validates the
+  # synced file first, so a bad Caddyfile fails the deploy instead of taking
+  # every site down.
+  ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" \
+    "cd ${REMOTE_DIR} && docker compose run --rm --no-deps caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile"
   ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "cd ${REMOTE_DIR} && docker compose restart caddy"
 else
   echo "==> Caddyfile unchanged — leaving caddy running"

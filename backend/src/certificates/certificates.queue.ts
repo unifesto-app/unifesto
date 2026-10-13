@@ -1,6 +1,7 @@
 import {
   Injectable,
   Logger,
+  ServiceUnavailableException,
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
@@ -13,9 +14,10 @@ import { CertificatesService } from './certificates.service';
 
 const QUEUE_NAME = 'certificate-issuance';
 
-interface IssuanceJobData {
-  batchId: string;
-}
+/** `issue` jobs carry a batch; `reissue-revoked` jobs an event + requester. */
+type IssuanceJobData =
+  | { batchId: string }
+  | { eventId: string; userId: string };
 
 /**
  * BullMQ-backed queue for certificate issuance.
@@ -32,9 +34,15 @@ interface IssuanceJobData {
  * to avoid a construction-time circular dependency (the service enqueues here;
  * the worker calls back into the service).
  *
- * REDIS-OPTIONAL: if Redis is not configured, {@link add} returns false and the
- * caller processes the batch inline — the feature still works, just without the
- * memory bound (matches how the throttler and socket adapter degrade).
+ * WHERE IT RUNS (S20): in production the worker lives only in the separate
+ * `cert-worker` container (its own memory limit), and the API replicas set
+ * `CERT_WORKER=false` so a render can never OOM a replica serving traffic.
+ * Unset = the worker runs in-process too (local dev, single-process setups).
+ *
+ * REDIS-OPTIONAL: if Redis is not configured at all (local dev), {@link add}
+ * returns false and the caller processes the batch inline. When Redis IS
+ * configured but unreachable, enqueueing fails fast with a 503 instead of
+ * rendering inline on the request path.
  */
 @Injectable()
 export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
@@ -54,7 +62,12 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
     // Two dedicated connections: BullMQ requires maxRetriesPerRequest:null
     // (which createClient() sets) and recommends separate connections per
     // Queue/Worker rather than sharing the cache client's command pipeline.
-    this.queueConnection = this.redis.createClient();
+    // The producer fails fast (no offline queue), so a Redis outage surfaces
+    // as a 503 on Issue instead of a request hanging until Redis returns.
+    this.queueConnection = this.redis.createClient({
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+    });
     this.workerConnection = this.redis.createClient();
 
     if (!this.queueConnection || !this.workerConnection) {
@@ -80,6 +93,15 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
       Number(this.config.get('CERT_WORKER_CONCURRENCY')) || 1,
     );
 
+    if (this.config.get<string>('CERT_WORKER') === 'false') {
+      this.workerConnection.disconnect();
+      this.workerConnection = null;
+      this.logger.log(
+        'Certificate issuance queue ready (worker runs in cert-worker)',
+      );
+      return;
+    }
+
     this.worker = new Worker<IssuanceJobData>(
       QUEUE_NAME,
       async (job: Job<IssuanceJobData>) => {
@@ -87,14 +109,16 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
         const service = this.moduleRef.get(CertificatesService, {
           strict: false,
         });
-        await service.processBatch(job.data.batchId);
+        const data = job.data;
+        if ('batchId' in data) await service.processBatch(data.batchId);
+        else await service.reissueAllRevokedNow(data.userId, data.eventId);
       },
       { connection: this.workerConnection, concurrency },
     );
 
     this.worker.on('failed', (job, err) => {
       this.logger.error(
-        `Issuance job ${job?.id} (batch ${job?.data.batchId}) failed: ${err.message}`,
+        `Certificate job ${job?.id} (${job?.name}) failed: ${err.message}`,
       );
     });
 
@@ -114,22 +138,37 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Enqueue a batch for processing. Returns true when it was queued, false when
-   * no queue is available (Redis absent) — the caller then runs it inline.
+   * no queue is available (Redis not configured) — the caller then runs it
+   * inline. Throws 503 when Redis is configured but unreachable.
    */
-  async add(batchId: string): Promise<boolean> {
+  add(batchId: string): Promise<boolean> {
+    return this.enqueue('issue', { batchId });
+  }
+
+  /** Enqueue "reissue every revoked certificate" for an event (same contract). */
+  addReissueRevoked(eventId: string, userId: string): Promise<boolean> {
+    return this.enqueue('reissue-revoked', { eventId, userId });
+  }
+
+  private async enqueue(name: string, data: IssuanceJobData): Promise<boolean> {
     if (!this.queue) return false;
-    await this.queue.add(
-      'issue',
-      { batchId },
-      {
+    try {
+      await this.queue.add(name, data, {
         // A crash mid-batch leaves the job for BullMQ to retry; processBatch is
         // idempotent (already-issued recipients are skipped), so a retry resumes.
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: { age: 86_400, count: 500 },
         removeOnFail: { age: 604_800 },
-      },
-    );
+      });
+    } catch (err) {
+      this.logger.error(
+        `Could not enqueue certificate job ${name}: ${(err as Error).message}`,
+      );
+      throw new ServiceUnavailableException(
+        'Certificate processing is temporarily unavailable. Please try again in a minute.',
+      );
+    }
     return true;
   }
 }

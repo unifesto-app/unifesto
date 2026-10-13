@@ -318,8 +318,10 @@ export default function EventCertificatesPage() {
     if (err || !data)
       return setError(err?.message ?? "Failed to reissue certificates");
     setReissueMessage(
-      `${data.reissued} reissued, ${data.emailed} emailed` +
-        (data.failed > 0 ? `, ${data.failed} failed` : "")
+      data.queued
+        ? `Reissuing ${data.total} certificate${data.total === 1 ? "" : "s"} in the background. Refresh in a minute to see them.`
+        : `${data.reissued} reissued, ${data.emailed} emailed` +
+            (data.failed > 0 ? `, ${data.failed} failed` : "")
     );
     const certs = await getEventCertificates(eventId);
     setCertificates(certs.data ?? []);

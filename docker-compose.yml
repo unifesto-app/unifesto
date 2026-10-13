@@ -61,6 +61,9 @@ services:
       # Cap the V8 heap so a memory-heavy path (node-canvas certificate/PDF
       # rendering) can't balloon a replica and OOM the shared 4 GB host.
       NODE_OPTIONS: "--max-old-space-size=512"
+      # Certificate renders run only in `cert-worker` (below), never on a
+      # replica serving traffic.
+      CERT_WORKER: "false"
     expose:
       - "8080"
     # Health-gate the replica so Docker's embedded DNS (which Caddy's `dynamic a`
@@ -82,6 +85,11 @@ services:
     depends_on:
       backend-migrate:
         condition: service_completed_successfully
+    # SIGTERM -> Nest enableShutdownHooks closes the HTTP server and BullMQ
+    # worker; give in-flight requests and a running cert render time to finish
+    # before Docker sends SIGKILL (default was 10s). deploy.sh rolls replicas,
+    # so the old ones drain while the new ones already serve.
+    stop_grace_period: 60s
     # Host is t3.large (2 vCPU / 8 GB) shared with Caddy + 4 Next.js apps.
     # Three API replicas fit the 8 GB comfortably (3 x 1G cap = 3 GB) and give
     # more concurrency headroom than the 2 vCPUs alone; the extra replica
@@ -101,6 +109,40 @@ services:
       resources:
         limits:
           memory: 1G
+
+  # Certificate render worker (S20). Same image as the API, but the only
+  # process that consumes the BullMQ certificate queue, so Skia's native memory
+  # spikes are bounded by THIS container's limit and an OOM here never takes an
+  # API replica down (jobs retry). Not routed by Caddy (different service name).
+  # deploy.sh recreates it whenever the backend is deployed.
+  cert-worker:
+    image: unifesto-backend:latest
+    restart: unless-stopped
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    environment:
+      RUN_MIGRATIONS: "false"
+      NODE_OPTIONS: "--max-old-space-size=512"
+      CERT_WORKER: "true"
+    healthcheck:
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('http').get('http://127.0.0.1:8080/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      backend-migrate:
+        condition: service_completed_successfully
+    # A running render finishes (or BullMQ retries it) before SIGKILL.
+    stop_grace_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
 
   apex:
     build:
@@ -139,6 +181,11 @@ services:
     image: unifesto-web:latest
     restart: unless-stopped
     env_file: ./websites/web/.env.local
+    environment:
+      # SSR calls the API over the Docker network (skips Cloudflare + Caddy).
+      # Only used once INTERNAL_API_KEY is set in websites/web/.env.local and
+      # the same value in backend/.env (see src/lib/api/internal.ts).
+      API_INTERNAL_URL: http://backend:8080
     expose:
       - "3000"
     depends_on:
