@@ -4,7 +4,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { PayoutsService } from './payouts.service';
-import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
+import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -54,7 +54,7 @@ export class PayoutsController {
     return this.payoutsService.getSpaceFinancials(req.user.id, spaceId);
   }
 
-  /** Accounts this event's payout may be routed to (own + co-organisers'). */
+  /** Accounts this event's payout may be routed to (own + other Space Admins'). */
   @Get('event/:eventId/eligible-accounts')
   async getEligibleAccounts(@Request() req, @Param('eventId') eventId: string) {
     return this.payoutsService.getEligibleAccountsForEvent(eventId, req.user.id);
@@ -77,7 +77,7 @@ export class PayoutsController {
   @Post('request')
   async requestPayout(
     @Request() req,
-    @Body() body: { eventId: string; amount?: number; bankAccountId?: string },
+    @Body() body: RequestPayoutDto,
   ) {
     return this.payoutsService.requestPayout(
       req.user.id,
@@ -143,7 +143,7 @@ export class PayoutsController {
   @Roles(RoleCode.ADMIN)
   async createForEvent(
     @Request() req,
-    @Body() body: { eventId: string; amount?: number },
+    @Body() body: CreateEventPayoutDto,
   ) {
     return this.payoutsService.createEventPayout(
       body.eventId,

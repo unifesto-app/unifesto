@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getCrashlytics, setUserId as setCrashlyticsUserId } from '@react-native-firebase/crashlytics';
-import { getToken, saveToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest } from '../lib/api/helpers';
+import { getToken, getRefreshToken, saveToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest } from '../lib/api/helpers';
 import OneSignalService from '../services/OneSignalService';
 import { maybeReportAppVersion } from '../lib/appVersionReport';
 import { syncPushDevice, unregisterPushDevice } from '../lib/pushDeviceReport';
@@ -309,6 +309,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     // Detach the device server-side first — the DELETE needs the auth token.
     await unregisterPushDevice();
+    // Revoke this device's refresh token server-side. Best effort: offline or
+    // expired just means it dies at its own expiry.
+    const [access, refresh] = await Promise.all([getToken(), getRefreshToken()]);
+    if (access && refresh) {
+      await makePublicRequest('/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${access}` },
+        body: JSON.stringify({ refreshToken: refresh }),
+      });
+    }
     try {
       OneSignalService.logout();
     } catch (error) {

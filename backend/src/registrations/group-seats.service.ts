@@ -1035,14 +1035,18 @@ export class GroupSeatsService {
 
     // WhatsApp group invite for the member who just claimed — their phone is
     // only known now. Best-effort, send-once (stamps the seat), never blocks.
-    void this.sendClaimWhatsAppInvite(seat.id, seat.registrationId, claimerUserId);
+    void this.sendClaimWhatsAppInvite(seat.id, seat.registrationId, claimerUserId).catch((err) =>
+      this.logger.error(`sendClaimWhatsAppInvite(${seat.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
 
     // The usual "you're registered" email (with the member's own QR) and
     // WhatsApp confirmation, same as any registration. Best-effort.
     void this.sendClaimConfirmations(seat.registrationId, claimerUserId, claimerEmail, details, {
       qrCode: ticket.qrCode,
       ticketCode: ticket.ticketCode,
-    });
+    }).catch((err) =>
+      this.logger.error(`sendClaimConfirmations(${seat.registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
 
     return {
       seatIndex: seat.seatIndex,
@@ -1407,7 +1411,7 @@ export class GroupSeatsService {
         inviteEmail: { not: null },
         registration: {
           status: { not: RegistrationStatus.CANCELLED },
-          event: { startDateTime: { gt: now, lte: in48h } },
+          event: { deletedAt: null, startDateTime: { gt: now, lte: in48h } },
         },
       },
       select: {

@@ -8,8 +8,8 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 
 # Prisma's query engine needs openssl. The native addons we depend on ship
-# prebuilt binaries — @napi-rs/canvas (certificate PNGs, statically-linked Skia),
-# bcrypt (node-gyp-build prebuilds), and sharp — so there is no compile step and
+# prebuilt binaries — @napi-rs/canvas (certificate PNGs, statically-linked Skia)
+# and sharp — so there is no compile step and
 # no build toolchain / graphics -dev headers to install.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \

@@ -187,12 +187,14 @@ export class StatusService {
         createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
         path: { notIn: ['/', '/health'] },
       };
-      const [total, errors] = await Promise.all([
-        this.prisma.apiLog.count({ where }),
+      // Sum weights: sampled 2xx GETs each stand for `weight` requests.
+      const [sum, errors] = await Promise.all([
+        this.prisma.apiLog.aggregate({ where, _sum: { weight: true } }),
         this.prisma.apiLog.count({
           where: { ...where, statusCode: { gte: 500 } },
         }),
       ]);
+      const total = sum._sum.weight ?? 0;
       if (total >= API_MIN_REQUESTS && errors / total > API_MAX_5XX_RATIO) {
         problems.push(`${errors}/${total} requests failed with 5xx`);
       }
@@ -502,6 +504,10 @@ export class StatusService {
 
   /** Keep ~HISTORY_DAYS of samples. */
   @Cron(CronExpression.EVERY_DAY_AT_4AM)
+  async cleanupCron(): Promise<void> {
+    await this.redis.runExclusive('cron:healthCleanup', 60 * 60, () => this.cleanup());
+  }
+
   async cleanup(): Promise<void> {
     const cutoff = new Date();
     cutoff.setUTCDate(cutoff.getUTCDate() - (HISTORY_DAYS + 1));

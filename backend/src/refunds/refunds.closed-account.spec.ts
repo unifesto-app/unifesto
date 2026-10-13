@@ -24,7 +24,7 @@ function setup(holderDeletedAt: Date | null, status: RefundStatus) {
     },
     user: { findUnique: jest.fn(async () => ({ deletedAt: holderDeletedAt })) },
   };
-  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any);
+  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any);
   const s = service as any;
   s.assertOrganiser = jest.fn(async () => undefined);
   s.userContact = jest.fn(async () => ({ email: null, name: 'there' }));
@@ -66,12 +66,26 @@ describe('refund approval for a closed account', () => {
   function approve(holderDeletedAt: Date | null) {
     const txRequestUpdate = jest.fn(async () => ({}));
     const tx = {
-      eventRegistration: { update: jest.fn(async () => ({})) },
+      eventRegistration: { update: jest.fn(async () => ({})), updateMany: jest.fn(async () => ({ count: 1 })) },
       event: { update: jest.fn(async () => ({})) },
       eventTicketType: { update: jest.fn(async () => ({})) },
       eventTicket: { updateMany: jest.fn(async () => ({})) },
       groupSeatPurchase: { update: jest.fn(async () => ({})) },
       refundRequest: { update: txRequestUpdate },
+    };
+    const registration = {
+      id: 'reg-1',
+      userId: 'holder',
+      eventId: 'ev-1',
+      totalAmount: 105,
+      processingFee: 5,
+      razorpayAmount: 105,
+      refundedAmount: 0,
+      paymentId: 'pay_1',
+      groupSize: null,
+      quantity: 1,
+      ticketTypeId: null,
+      event: { title: 'Fest' },
     };
     const prisma = {
       refundRequest: {
@@ -79,27 +93,17 @@ describe('refund approval for a closed account', () => {
           id: 'rr-1',
           status: RefundStatus.PENDING_ADMIN,
           eventId: 'ev-1',
-          registration: {
-            id: 'reg-1',
-            userId: 'holder',
-            eventId: 'ev-1',
-            totalAmount: 105,
-            processingFee: 5,
-            razorpayAmount: 105,
-            refundedAmount: 0,
-            paymentId: 'pay_1',
-            groupSize: null,
-            quantity: 1,
-            ticketTypeId: null,
-            event: { title: 'Fest' },
-          },
+          registrationId: 'reg-1',
+          registration,
         })),
+        update: jest.fn(async () => ({})),
       },
+      eventRegistration: { findUniqueOrThrow: jest.fn(async () => registration) },
       groupSeatPurchase: { findMany: jest.fn(async () => []) },
       user: { findUnique: jest.fn(async () => ({ deletedAt: holderDeletedAt })) },
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     };
-    const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any);
+    const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any);
     const s = service as any;
     const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
     s.razorpay = { payments: { refund } };

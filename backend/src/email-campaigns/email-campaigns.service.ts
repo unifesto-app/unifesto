@@ -1,4 +1,5 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import { hmacSecret } from '../common/secrets';
 import {
   BadRequestException,
   ForbiddenException,
@@ -18,6 +19,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
 import { CreateCampaignDto, SegmentFiltersDto } from './dto/campaign.dto';
+import { EmailCampaignQueue } from './email-campaigns.queue';
+
+/** A SENDING campaign with no progress for this long is treated as stranded. */
+export const STALE_SENDING_MS = 15 * 60 * 1000;
+/** Stranded longer than this, resuming would surprise people: mark FAILED. */
+export const ABANDONED_SENDING_MS = 24 * 60 * 60 * 1000;
 
 /** A recipient resolved for a campaign, with the fields merge-vars need. */
 interface Recipient {
@@ -49,11 +56,13 @@ export class EmailCampaignsService {
   private readonly BATCH_SIZE = 100; // SES batch limit
   private readonly baseUrl: string;
   private readonly trackingSecret: string;
+  private readonly legacyTrackingSecret: string | null;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    private readonly queue: EmailCampaignQueue,
   ) {
     // Public host that serves the tracking endpoints (must be reachable by
     // recipients' mail clients, so it is the API's public URL, not localhost).
@@ -62,12 +71,11 @@ export class EmailCampaignsService {
       this.configService.get<string>('NEXT_PUBLIC_BACKEND_URL') ||
       'https://api.unifesto.app'
     ).replace(/\/+$/, '');
-    // Reuse JWT_SECRET when a dedicated tracking secret isn't set — signing only
-    // needs a stable server-side secret, and JWT_SECRET is always present.
-    this.trackingSecret =
-      this.configService.get<string>('EMAIL_TRACKING_SECRET') ||
-      this.configService.get<string>('JWT_SECRET') ||
-      'unifesto-email-tracking';
+    const get = (k: string) => this.configService.get<string>(k);
+    this.trackingSecret = hmacSecret('EMAIL_TRACKING_SECRET', 'email-tracking', get);
+    // Links in emails already sent were signed with the raw JWT_SECRET; keep
+    // accepting those during the transition (S31). Drop once old mail is stale.
+    this.legacyTrackingSecret = get('JWT_SECRET') || null;
   }
 
   // ==========================================================================
@@ -108,9 +116,8 @@ export class EmailCampaignsService {
     });
 
     if (!dto.scheduledAt) {
-      // Fire-and-forget: don't block the request on the whole send. Errors are
-      // caught inside processCampaign and recorded on the row.
-      void this.processCampaign(campaign.id);
+      // Claim + queue only; the send runs on the campaign worker.
+      await this.startCampaign(campaign.id);
     }
 
     return { success: true, campaignId: campaign.id };
@@ -233,35 +240,92 @@ export class EmailCampaignsService {
 
   /** Called by the scheduler cron for any scope. */
   processScheduledCampaign(campaignId: string): Promise<void> {
-    return this.processCampaign(campaignId);
+    return this.startCampaign(campaignId);
   }
 
   // ==========================================================================
   // PROCESS + SEND
   // ==========================================================================
 
-  private async processCampaign(campaignId: string): Promise<void> {
-    try {
-      // Atomically claim the campaign: only one caller can move it out of a
-      // pre-send state into SENDING. This is the authoritative guard against
-      // double-sending when several replicas' cron sweeps (or a send-now plus a
-      // retry) reach the same row concurrently — a plain update() would let them
-      // all pass. `count === 0` means someone else already claimed it.
-      const claim = await this.prisma.emailCampaign.updateMany({
-        where: {
-          id: campaignId,
-          status: {
-            in: [EmailCampaignStatus.PENDING, EmailCampaignStatus.SCHEDULED],
-          },
+  /**
+   * Atomically claim the campaign (PENDING/SCHEDULED → SENDING) and hand it
+   * to the worker. Only one caller can win the claim, which is the guard
+   * against double-sending when replicas' cron sweeps (or a send-now plus a
+   * retry) reach the same row together.
+   */
+  private async startCampaign(campaignId: string): Promise<void> {
+    const claim = await this.prisma.emailCampaign.updateMany({
+      where: {
+        id: campaignId,
+        status: {
+          in: [EmailCampaignStatus.PENDING, EmailCampaignStatus.SCHEDULED],
         },
-        data: { status: EmailCampaignStatus.SENDING },
-      });
-      if (claim.count === 0) return;
+      },
+      data: { status: EmailCampaignStatus.SENDING },
+    });
+    if (claim.count === 0) return;
+    await this.dispatch(campaignId);
+  }
 
+  /** Queue the send, or run it in the background when there is no queue. */
+  private async dispatch(campaignId: string): Promise<void> {
+    const queued = await this.queue.add(campaignId).catch((err) => {
+      this.logger.warn(`Campaign ${campaignId}: queue unavailable (${err.message}), sending inline`);
+      return false;
+    });
+    if (!queued) {
+      void this.runCampaign(campaignId, { lastAttempt: true }).catch(() => undefined);
+    }
+  }
+
+  /**
+   * Re-dispatch SENDING campaigns that stopped making progress (the process
+   * died mid-send); ones stuck for over a day are marked FAILED instead. `updatedAt` is the heartbeat: every batch bumps it. The
+   * conditional update makes one replica the owner of each restart.
+   */
+  async sweepStaleCampaigns(now = new Date()): Promise<number> {
+    const cutoff = new Date(now.getTime() - STALE_SENDING_MS);
+    await this.prisma.emailCampaign.updateMany({
+      where: {
+        status: EmailCampaignStatus.SENDING,
+        updatedAt: { lt: new Date(now.getTime() - ABANDONED_SENDING_MS) },
+      },
+      data: { status: EmailCampaignStatus.FAILED },
+    });
+    const stale = await this.prisma.emailCampaign.findMany({
+      where: { status: EmailCampaignStatus.SENDING, updatedAt: { lt: cutoff } },
+      select: { id: true },
+      take: 20,
+    });
+    let restarted = 0;
+    for (const { id } of stale) {
+      const owned = await this.prisma.emailCampaign.updateMany({
+        where: { id, status: EmailCampaignStatus.SENDING, updatedAt: { lt: cutoff } },
+        data: { updatedAt: now },
+      });
+      if (owned.count === 0) continue;
+      this.logger.warn(`Campaign ${id} stalled in SENDING; resuming`);
+      await this.dispatch(id);
+      restarted++;
+    }
+    return restarted;
+  }
+
+  /**
+   * Send a claimed (SENDING) campaign. Resumable: recipients that already have
+   * a log row for this campaign were sent (or failed) in an earlier run and
+   * are skipped, so a retry never mails anyone twice. Throws on failure so the
+   * queue can retry; the last attempt marks the campaign FAILED.
+   */
+  async runCampaign(
+    campaignId: string,
+    opts: { lastAttempt: boolean },
+  ): Promise<void> {
+    try {
       const campaign = await this.prisma.emailCampaign.findUnique({
         where: { id: campaignId },
       });
-      if (!campaign) return;
+      if (!campaign || campaign.status !== EmailCampaignStatus.SENDING) return;
 
       const resolved = await this.getRecipients(campaign);
       // Marketing mail: drop users who turned email off.
@@ -269,38 +333,48 @@ export class EmailCampaignsService {
         this.prisma,
         resolved.flatMap((r) => (r.userId ? [r.userId] : [])),
       );
-      const recipients = resolved.filter(
-        (r) => !r.userId || !optedOut.has(r.userId),
+      // Checkpoint: everyone with a log row has been handled already.
+      const done = new Set(
+        (
+          await this.prisma.emailCampaignLog.findMany({
+            where: { campaignId },
+            select: { recipientEmail: true },
+          })
+        ).map((l) => l.recipientEmail),
       );
-      if (recipients.length === 0) {
-        await this.prisma.emailCampaign.update({
-          where: { id: campaignId },
-          data: {
-            status: EmailCampaignStatus.SENT,
-            totalSent: 0,
-            sentAt: new Date(),
-          },
-        });
-        return;
-      }
+      const recipients = resolved.filter(
+        (r) => (!r.userId || !optedOut.has(r.userId)) && !done.has(r.email),
+      );
 
       const variants = this.assignVariants(
         recipients.length,
         campaign.subjectB ? (campaign.abSplitPct ?? 50) : null,
       );
 
-      let totalSent = 0;
-      let failedCount = 0;
-
       for (let i = 0; i < recipients.length; i += this.BATCH_SIZE) {
         const batch = recipients.slice(i, i + this.BATCH_SIZE);
         const batchVariants = variants.slice(i, i + this.BATCH_SIZE);
         const results = await this.sendBatch(campaign, batch, batchVariants);
-        totalSent += results.sent;
-        failedCount += results.failed;
+        // Progress + heartbeat (bumps updatedAt) for the stale sweep.
+        await this.prisma.emailCampaign.update({
+          where: { id: campaignId },
+          data: {
+            totalSent: { increment: results.sent },
+            failedCount: { increment: results.failed },
+          },
+        });
         await new Promise((resolve) => setTimeout(resolve, 1000)); // rate limit
       }
 
+      // Final totals from the logs, so they stay right across resumed runs.
+      const [totalSent, failedCount] = await Promise.all([
+        this.prisma.emailCampaignLog.count({
+          where: { campaignId, status: EmailLogStatus.SENT },
+        }),
+        this.prisma.emailCampaignLog.count({
+          where: { campaignId, status: EmailLogStatus.FAILED },
+        }),
+      ]);
       await this.prisma.emailCampaign.update({
         where: { id: campaignId },
         data: {
@@ -315,12 +389,14 @@ export class EmailCampaignsService {
       );
     } catch (error) {
       this.logger.error(`Campaign ${campaignId} failed: ${error.message}`);
+      if (!opts.lastAttempt) throw error;
       await this.prisma.emailCampaign
         .update({
           where: { id: campaignId },
           data: { status: EmailCampaignStatus.FAILED },
         })
         .catch(() => undefined);
+      throw error;
     }
   }
 
@@ -613,17 +689,22 @@ export class EmailCampaignsService {
   // ==========================================================================
 
   /** HMAC-sign a URL so the click endpoint can't be turned into an open redirect. */
-  sign(url: string): string {
-    return createHmac('sha256', this.trackingSecret)
-      .update(url)
-      .digest('base64url');
+  sign(url: string, secret = this.trackingSecret): string {
+    return createHmac('sha256', secret).update(url).digest('base64url');
   }
 
   verify(url: string, signature: string): boolean {
-    const expected = this.sign(url);
-    const a = Buffer.from(expected);
     const b = Buffer.from(signature);
-    return a.length === b.length && timingSafeEqual(a, b);
+    const matches = (secret: string) => {
+      const a = Buffer.from(this.sign(url, secret));
+      return a.length === b.length && timingSafeEqual(a, b);
+    };
+    return (
+      matches(this.trackingSecret) ||
+      (!!this.legacyTrackingSecret &&
+        this.legacyTrackingSecret !== this.trackingSecret &&
+        matches(this.legacyTrackingSecret))
+    );
   }
 
   /** Record an open. First open of a log also bumps the campaign's unique count. */

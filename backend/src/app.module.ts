@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { FailOpenThrottlerStorage } from './common/throttler/fail-open-throttler.storage';
 import { APP_GUARD } from '@nestjs/core';
 import { UserAwareThrottlerGuard } from './common/guards/user-aware-throttler.guard';
 import { CategoriesModule } from './categories/categories.module';
@@ -14,14 +15,11 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { IamModule } from './iam/iam.module';
 import { UsersModule } from './users/users.module';
-import { RolesModule } from './roles/roles.module';
 import { SpacesModule } from './spaces/spaces.module';
-import { DiscussionsModule } from './discussions/discussions.module';
 import { StorageModule } from './storage/storage.module';
 import { RedisModule } from './redis/redis.module';
 import { RedisService } from './redis/redis.service';
 import { AdminModule } from './admin/admin.module';
-import { AwsModule } from './aws/aws.module';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { EventsModule } from './events/events.module';
 import { RegistrationsModule } from './registrations/registrations.module';
@@ -52,9 +50,29 @@ import { PartnerLinksModule } from './partner-links/partner-links.module';
 import { TrafficModule } from './traffic/traffic.module';
 import { DefaultImagesModule } from './default-images/default-images.module';
 import { StaysModule } from './stays/stays.module';
+import { LoggerModule } from 'nestjs-pino';
+import { jsonLogsEnabled, requestIdFor } from './common/observability';
 
 @Module({
   imports: [
+    // Structured JSON logs, only with LOG_FORMAT=json (Nest's text logger otherwise).
+    ...(jsonLogsEnabled()
+      ? [
+          LoggerModule.forRoot({
+            pinoHttp: {
+              level: process.env.LOG_LEVEL || 'info',
+              genReqId: (req, res) => {
+                const id = requestIdFor(req);
+                res.setHeader('x-request-id', id);
+                return id;
+              },
+              redact: ['req.headers.authorization', 'req.headers.cookie'],
+              // The external uptime probe would otherwise be most of the log.
+              autoLogging: { ignore: (req) => req.url === '/health' },
+            },
+          }),
+        ]
+      : []),
     CategoriesModule,
     // Load environment variables from .env file
     NestConfigModule.forRoot({
@@ -68,8 +86,7 @@ import { StaysModule } from './stays/stays.module';
     EventEmitterModule.forRoot(),
     // Global throttler configuration with Redis-backed storage
     ThrottlerModule.forRootAsync({
-      imports: [
-    CategoriesModule,RedisModule],
+      imports: [RedisModule],
       useFactory: (redisService: RedisService) => {
         const logger = new Logger('ThrottlerModule');
         // Dedicated connection (not the shared cache client): this factory runs
@@ -78,7 +95,17 @@ import { StaysModule } from './stays/stays.module';
         // in-memory storage. createClient() returns a connecting client that
         // buffers until ready, so the store is Redis-backed and shared across
         // replicas.
-        const redisClient = redisService.createClient();
+        //
+        // Fail fast, never queue: with the shared defaults
+        // (maxRetriesPerRequest: null + offline queue) a Redis outage made every
+        // throttled request wait forever, the health probe included, so Caddy
+        // ejected all replicas at once. Here a dead Redis errors immediately and
+        // FailOpenThrottlerStorage lets the request through.
+        const redisClient = redisService.createClient({
+          maxRetriesPerRequest: 0,
+          enableOfflineQueue: false,
+          commandTimeout: 500,
+        });
 
         if (redisClient) {
           logger.log('Throttler using Redis storage backend');
@@ -92,7 +119,9 @@ import { StaysModule } from './stays/stays.module';
                 limit: 300, // 300 requests per 60 seconds
               },
             ],
-            storage: new ThrottlerStorageRedisService(redisClient),
+            storage: new FailOpenThrottlerStorage(
+              new ThrottlerStorageRedisService(redisClient),
+            ),
           };
         } else {
           logger.warn(
@@ -123,11 +152,8 @@ import { StaysModule } from './stays/stays.module';
     StorageModule,
     AuthModule,
     UsersModule,
-    RolesModule,
     SpacesModule,
-    DiscussionsModule,
     AdminModule,
-    AwsModule,
     // Event Tech Platform Modules
     SubscriptionModule,
     EventsModule,

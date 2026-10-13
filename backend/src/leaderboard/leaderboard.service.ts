@@ -24,14 +24,9 @@ import { Action, AuthorizationService } from '../auth/authorization';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { LeaderboardGateway } from './leaderboard.gateway';
 import {
-  CreateAwardDto,
-  CreateEntrantDto,
-  CreateLeaderboardDto,
   CreateRoundDto,
   SetEntrantRoundStatusDto,
   SubmitJudgmentDto,
-  UpdateAwardDto,
-  UpdateRoundDto,
 } from './dto';
 import {
   EntrantInput,
@@ -127,19 +122,10 @@ export class LeaderboardService {
   }
 
   /**
-   * Rejects when the event's space owner's plan does not include the dashboard.
-   * Mirrors Sessions: the plan checked is the space *creator's*, and a missing
-   * subscription is left alone rather than locking a not-yet-billed space out.
+   * Whether the event's space plan includes the competitive dashboard. A
+   * missing subscription is left alone rather than locking a not-yet-billed
+   * space out.
    */
-  async assertPlanAllows(eventId: string) {
-    if (!(await this.planAllows(eventId))) {
-      throw new ForbiddenException(
-        'The competitive dashboard is not included in this plan. Ask an admin to enable it.',
-      );
-    }
-  }
-
-  /** Non-throwing form of {@link assertPlanAllows}, for screens that explain the gate. */
   async planAllows(eventId: string): Promise<boolean> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -190,96 +176,10 @@ export class LeaderboardService {
     }
   }
 
-  // ── Board lifecycle ───────────────────────────────────────────────────────
-
-  async createForEvent(userId: string, eventId: string, dto: CreateLeaderboardDto) {
-    await this.assertCanManage(userId, eventId);
-    await this.assertPlanAllows(eventId);
-
-    const existing = await this.prisma.leaderboard.findUnique({ where: { eventId } });
-    if (existing) {
-      throw new BadRequestException('This event already has a leaderboard');
-    }
-
-    const board = await this.prisma.leaderboard.create({
-      data: {
-        eventId,
-        mode: dto.mode,
-        entrantKind: dto.entrantKind,
-        visibility: dto.visibility,
-        title: dto.title,
-        description: dto.description,
-        tieBreak: dto.tieBreak,
-        tieBreakMetricId: dto.tieBreakMetricId,
-        createdBy: userId,
-      },
-    });
-    // A board always has at least one round, so scoring code never special-cases
-    // "no round". The implicit first round is ACTIVE so it is scoreable at once.
-    await this.ensureDefaultRound(board.id);
-    return board;
-  }
-
   private async getBoardByEventOrThrow(eventId: string) {
     const board = await this.prisma.leaderboard.findUnique({ where: { eventId } });
     if (!board) throw new NotFoundException('This event has no leaderboard');
     return board;
-  }
-
-  /** Materialise a "Round 1" (ACTIVE) if the board has no rounds yet. */
-  private async ensureDefaultRound(leaderboardId: string) {
-    const count = await this.prisma.leaderboardRound.count({ where: { leaderboardId } });
-    if (count > 0) return;
-    await this.prisma.leaderboardRound.create({
-      data: {
-        leaderboardId,
-        name: 'Round 1',
-        order: 1,
-        status: LeaderboardRoundStatus.ACTIVE,
-      },
-    });
-  }
-
-  // ── Metrics ───────────────────────────────────────────────────────────────
-
-  // ── Entrants ──────────────────────────────────────────────────────────────
-
-  async createEntrant(userId: string, eventId: string, dto: CreateEntrantDto) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    await this.assertRegistrationOnEvent(eventId, dto.registrationId);
-    const entrant = await this.prisma.leaderboardEntrant.create({
-      data: {
-        leaderboardId: board.id,
-        name: dto.name,
-        registrationId: dto.registrationId,
-        userId: dto.userId,
-        meta: dto.meta as Prisma.InputJsonValue,
-      },
-    });
-    // Give the entrant a standing (PENDING) in every existing round so the
-    // bracket and completion matrix have a row to render immediately.
-    const rounds = await this.prisma.leaderboardRound.findMany({
-      where: { leaderboardId: board.id },
-      select: { id: true },
-    });
-    if (rounds.length) {
-      await this.prisma.leaderboardEntrantRound.createMany({
-        data: rounds.map((r) => ({ entrantId: entrant.id, roundId: r.id })),
-        skipDuplicates: true,
-      });
-    }
-    return entrant;
-  }
-
-  /** A linked registration must be for this event (its team gets this board's pushes). */
-  private async assertRegistrationOnEvent(eventId: string, registrationId?: string | null) {
-    if (!registrationId) return;
-    const reg = await this.prisma.eventRegistration.findFirst({
-      where: { id: registrationId, eventId },
-      select: { id: true },
-    });
-    if (!reg) throw new BadRequestException('That registration is not for this event');
   }
 
   // ── Rounds ──────────────────────────────────────────────────────────────
@@ -290,15 +190,6 @@ export class LeaderboardService {
     });
     if (!round) throw new NotFoundException('Round not found on this board');
     return round;
-  }
-
-  async listRounds(userId: string, eventId: string) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    return this.prisma.leaderboardRound.findMany({
-      where: { leaderboardId: board.id },
-      orderBy: { order: 'asc' },
-    });
   }
 
   async createRound(userId: string, eventId: string, dto: CreateRoundDto) {
@@ -326,21 +217,6 @@ export class LeaderboardService {
       });
     }
     return round;
-  }
-
-  async updateRound(
-    userId: string,
-    eventId: string,
-    roundId: string,
-    dto: UpdateRoundDto,
-  ) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    await this.getRoundOrThrow(board.id, roundId);
-    return this.prisma.leaderboardRound.update({
-      where: { id: roundId },
-      data: { name: dto.name },
-    });
   }
 
   async deleteRound(userId: string, eventId: string, roundId: string) {
@@ -841,61 +717,6 @@ export class LeaderboardService {
     return row;
   }
 
-  // ── Awards ────────────────────────────────────────────────────────────────
-
-  async listAwards(userId: string, eventId: string) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    return this.prisma.leaderboardAward.findMany({
-      where: { leaderboardId: board.id },
-      orderBy: { order: 'asc' },
-    });
-  }
-
-  async createAward(userId: string, eventId: string, dto: CreateAwardDto) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    this.assertNotHackathonAwards(board);
-    const entrant = await this.prisma.leaderboardEntrant.findFirst({
-      where: { id: dto.entrantId, leaderboardId: board.id },
-      select: { id: true },
-    });
-    if (!entrant) throw new NotFoundException('Entrant not found on this board');
-    return this.prisma.leaderboardAward.create({
-      data: {
-        leaderboardId: board.id,
-        entrantId: dto.entrantId,
-        title: dto.title,
-        order: dto.order ?? 0,
-      },
-    });
-  }
-
-  async updateAward(userId: string, eventId: string, awardId: string, dto: UpdateAwardDto) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    this.assertNotHackathonAwards(board);
-    await this.getAwardOrThrow(board.id, awardId);
-    if (dto.entrantId) {
-      const entrant = await this.prisma.leaderboardEntrant.findFirst({
-        where: { id: dto.entrantId, leaderboardId: board.id },
-        select: { id: true },
-      });
-      if (!entrant) throw new NotFoundException('Entrant not found on this board');
-    }
-    return this.prisma.leaderboardAward.update({ where: { id: awardId }, data: dto });
-  }
-
-  async deleteAward(userId: string, eventId: string, awardId: string) {
-    await this.assertCanManage(userId, eventId);
-    const board = await this.getBoardByEventOrThrow(eventId);
-    this.assertNotHackathonAwards(board);
-    await this.getAwardOrThrow(board.id, awardId);
-    await this.prisma.leaderboardAward.delete({ where: { id: awardId } });
-    await this.recomputeAndBroadcast(board.id);
-    return { ok: true };
-  }
-
   // ── Participant notifications ───────────────────────────────────────────
 
   /**
@@ -973,24 +794,6 @@ export class LeaderboardService {
     if (reviewed.length) await this.notifyTeams(eventId, reviewed, { kind: 'FEEDBACK' });
   }
 
-  /**
-   * Hackathon winners are declared through the hackathon routes, which need
-   * `event:declare-hackathon-winners` (Curator / Space Admin, not Co-Curator).
-   */
-  private assertNotHackathonAwards(board: { isHackathon: boolean }) {
-    if (board.isHackathon) {
-      throw new BadRequestException('Declare hackathon winners from the hackathon screen in the Unifesto app.');
-    }
-  }
-
-  private async getAwardOrThrow(leaderboardId: string, awardId: string) {
-    const award = await this.prisma.leaderboardAward.findFirst({
-      where: { id: awardId, leaderboardId },
-    });
-    if (!award) throw new NotFoundException('Award not found on this board');
-    return award;
-  }
-
   // ── Ranking ─────────────────────────────────────────────────────────────
 
   /**
@@ -1008,12 +811,22 @@ export class LeaderboardService {
           include: {
             scores: true,
             judgments: { where: { submittedAt: { not: null } }, select: { roundId: true, panelistUserId: true } },
+            entrantRounds: { select: { roundId: true, roundScore: true, rank: true } },
           },
         },
       },
     });
     if (!board) return;
     if (board.rounds.length === 0) return; // nothing to rank yet
+
+    // Only write rows whose score or rank moved: a recompute runs on every
+    // submitted mark, and usually changes a handful of rows, not rounds x teams.
+    // Compared at the column's 4 decimal places.
+    const same = (stored: Prisma.Decimal | null | undefined, next: number) =>
+      stored != null && Math.round(Number(stored) * 1e4) === Math.round(next * 1e4);
+    const storedRound = new Map(
+      board.entrants.flatMap((e) => e.entrantRounds.map((r) => [`${e.id}:${r.roundId}`, r] as const)),
+    );
 
     const updates: Prisma.PrismaPromise<unknown>[] = [];
     // roundId -> (entrantId -> {score, rank}) so we can lift the last round onto totals.
@@ -1057,7 +870,9 @@ export class LeaderboardService {
       });
 
       for (const r of ranked) {
-        updates.push(
+        const stored = storedRound.get(`${r.entrantId}:${round.id}`);
+        const unchanged = stored && same(stored.roundScore, r.totalScore) && stored.rank === r.rank;
+        if (!unchanged) updates.push(
           this.prisma.leaderboardEntrantRound.upsert({
             where: { entrantId_roundId: { entrantId: r.entrantId, roundId: round.id } },
             create: {
@@ -1094,15 +909,18 @@ export class LeaderboardService {
     // Final ranking = the last round's ranking (or the cumulative one), mirrored to entrant totals.
     for (const e of board.entrants) {
       const final = lastRoundResult.get(e.id);
+      const score = final?.score ?? 0;
+      const rank = final?.rank ?? null;
+      if (same(e.totalScore, score) && e.rank === rank) continue;
       updates.push(
         this.prisma.leaderboardEntrant.update({
           where: { id: e.id },
-          data: { totalScore: final?.score ?? 0, rank: final?.rank ?? null },
+          data: { totalScore: score, rank },
         }),
       );
     }
 
-    await this.prisma.$transaction(updates);
+    if (updates.length) await this.prisma.$transaction(updates);
 
     if (board.status !== 'FROZEN' && board.status !== 'DRAFT') {
       this.gateway.broadcast(board.eventId, await this.getPublicSnapshot(board.eventId));

@@ -46,21 +46,10 @@ const WHATSAPP_INVITE_HOST = 'chat.whatsapp.com';
  *              'community' (big/parent event) link — used only for the wording
  *              of error messages, since the URL shape is identical.
  *
- * TODO(you): implement the validation + normalization. Consider:
- *   - Empty / whitespace-only input → { ok: true } (means "no link set"), so
- *     an organiser can remove a previously-saved link.
- *   - Tolerate a missing scheme ("chat.whatsapp.com/AbC..") by prepending
- *     https:// before parsing, and trim surrounding whitespace.
- *   - Reject anything whose host is not exactly WHATSAPP_INVITE_HOST — a
- *     wa.me/ number link, a google form, a random URL — with a clear error.
- *   - Require a non-empty invite code path segment ([A-Za-z0-9] of a sane
- *     length, e.g. >= 10). Strip query strings / fragments so tracking junk
- *     never gets stored.
- *   - Return the canonical `https://chat.whatsapp.com/<code>` on success.
- *
- * Trade-off to weigh: how strict is the invite-code check? Too loose and a
- * typo'd code sails through to attendees; too strict (hard-coding "exactly 22
- * chars") risks rejecting valid links if WhatsApp ever changes code length.
+ * Empty input means "no link" (so a saved link can be cleared). A missing
+ * scheme is tolerated, the host must be exactly WHATSAPP_INVITE_HOST, the
+ * invite code must look sane, and query strings / fragments are dropped. On
+ * success `normalized` is the canonical `https://chat.whatsapp.com/<code>`.
  */
 export function validateWhatsAppInviteLink(
   raw: string | null | undefined,

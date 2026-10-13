@@ -18,8 +18,16 @@ import {
   TicketStatus,
 } from '@prisma/client';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin, isSpaceAdmin } from '../events/event-access';
 import { NOT_DELETED } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
+
+/** See CheckinService.newBatch. */
+interface CheckinBatch {
+  points: Map<string, Promise<{ id: string; name: string } | null>>;
+  allowed: Map<string, Promise<boolean>>;
+  regs: Map<string, any>;
+}
 
 @Injectable()
 export class CheckinService {
@@ -32,23 +40,6 @@ export class CheckinService {
   ) {}
 
   /**
-   * True when the user is a Space Admin of the space — the role allowed to
-   * *manage* an event (including delegating check-in access). Legacy
-   * ORGANISER/CO_ORGANISER are kept alongside SPACE_ADMIN so any un-backfilled
-   * row still resolves; post-P2.2 the canonical code is SPACE_ADMIN.
-   */
-  async isSpaceOrganiser(userId: string, spaceId: string): Promise<boolean> {
-    const count = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    return count > 0;
-  }
-
-  /**
    * True when the user may act on check-in for an event at all (any point):
    * an organiser of the event's space, or a member with any check-in grant.
    */
@@ -57,7 +48,7 @@ export class CheckinService {
     spaceId: string,
     eventId?: string,
   ): Promise<boolean> {
-    if (await this.isSpaceOrganiser(userId, spaceId)) return true;
+    if (await isSpaceAdmin(this.prisma, userId, spaceId)) return true;
 
     if (eventId) {
       const grant = await this.prisma.eventCheckinAccess.findFirst({
@@ -80,7 +71,7 @@ export class CheckinService {
     eventId: string,
     checkinTypeId: string,
   ): Promise<boolean> {
-    if (await this.isSpaceOrganiser(userId, spaceId)) return true;
+    if (await isSpaceAdmin(this.prisma, userId, spaceId)) return true;
     const grant = await this.prisma.eventCheckinAccess.findFirst({
       where: {
         eventId,
@@ -323,25 +314,64 @@ export class CheckinService {
     };
   }
 
+  /**
+   * Per-request memo for a batch (offline sync, bulk) — one user, one event —
+   * so the point lookup and the permission check run once per point instead
+   * of once per item, and the check-in cache is invalidated once at the end.
+   */
+  private newBatch(): CheckinBatch {
+    return { points: new Map(), allowed: new Map(), regs: new Map() };
+  }
+
+  private once<T>(
+    memo: Map<string, Promise<T>> | undefined,
+    key: string,
+    load: () => Promise<T>,
+  ): Promise<T> {
+    if (!memo) return load();
+    let hit = memo.get(key);
+    if (!hit) {
+      hit = load();
+      memo.set(key, hit);
+    }
+    return hit;
+  }
+
+  /** One query for every registration a batch names. Callers still check the event. */
+  private async preloadRegistrations(batch: CheckinBatch, ids: string[]) {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return;
+    const rows = await this.prisma.eventRegistration.findMany({
+      where: { id: { in: unique } },
+      include: this.regInclude,
+    });
+    for (const r of rows) batch.regs.set(r.id, r);
+  }
+
   /** Shared guard: the point belongs to the event and the user may work it. */
   private async assertCanCheckin(
     userId: string,
     registration: any,
     checkinTypeId: string,
+    batch?: CheckinBatch,
   ) {
-    const checkinType = await this.prisma.eventCheckinType.findFirst({
-      where: { id: checkinTypeId, eventId: registration.event.id },
-      select: { id: true, name: true },
-    });
+    const checkinType = await this.once(batch?.points, checkinTypeId, () =>
+      this.prisma.eventCheckinType.findFirst({
+        where: { id: checkinTypeId, eventId: registration.event.id },
+        select: { id: true, name: true },
+      }),
+    );
     if (!checkinType) {
       throw new BadRequestException('Invalid check-in point for this event');
     }
     if (
-      !(await this.canCheckinAtType(
-        userId,
-        registration.event.spaceId,
-        registration.event.id,
-        checkinTypeId,
+      !(await this.once(batch?.allowed, checkinTypeId, () =>
+        this.canCheckinAtType(
+          userId,
+          registration.event.spaceId,
+          registration.event.id,
+          checkinTypeId,
+        ),
       ))
     ) {
       throw new BadRequestException(
@@ -365,11 +395,14 @@ export class CheckinService {
     memberIndexes: number[],
     /** When the check-in happened (offline sync); defaults to now. */
     at: Date = new Date(),
+    batch?: CheckinBatch,
   ) {
-    const registration = await this.prisma.eventRegistration.findUnique({
-      where: { id: registrationId },
-      include: this.regInclude,
-    });
+    const registration =
+      batch?.regs.get(registrationId) ??
+      (await this.prisma.eventRegistration.findUnique({
+        where: { id: registrationId },
+        include: this.regInclude,
+      }));
     if (!registration) throw new NotFoundException('Registration not found');
     if (!this.isGroupRegistration(registration)) {
       throw new BadRequestException('Not a group registration');
@@ -379,6 +412,7 @@ export class CheckinService {
       userId,
       registration,
       checkinTypeId,
+      batch,
     );
 
     // Seats are the source of truth when present; only CLAIMED seats may be
@@ -470,6 +504,21 @@ export class CheckinService {
         });
       }
     });
+    if (isFirstEver) this.markAttended(registration, userId, at);
+
+    if (batch) {
+      // The batch invalidates once at the end, and its caller only reads
+      // `alreadyIn`, so skip rebuilding the roster per item.
+      return {
+        success: true,
+        registrationId,
+        checkinType: checkinType.name,
+        checkedInCount: indexes.length,
+        total: memberCount,
+        members: [],
+        alreadyIn,
+      };
+    }
     await this.cache.invalidateCheckinCache(registration.event.id);
 
     // Return the refreshed roster for this point (seat-aware, matching the
@@ -494,6 +543,16 @@ export class CheckinService {
   }
 
   /**
+   * Mirror the first check-in onto the in-memory row, so a later item in the
+   * same batch for the same registration doesn't treat it as first-ever again.
+   */
+  private markAttended(registration: any, userId: string, at: Date) {
+    registration.checkedInAt = at;
+    registration.checkedInBy = userId;
+    registration.status = RegistrationStatus.ATTENDED;
+  }
+
+  /**
    * Record a check-in of a registration at a check-in point. Idempotent per
    * (registration, point). The first-ever check-in also flips the registration
    * to ATTENDED.
@@ -504,29 +563,14 @@ export class CheckinService {
     checkinTypeId: string,
     /** When the check-in happened (offline sync); defaults to now. */
     at: Date = new Date(),
+    batch?: CheckinBatch,
   ) {
-    const checkinType = await this.prisma.eventCheckinType.findFirst({
-      where: { id: checkinTypeId, eventId: registration.event.id },
-      select: { id: true, name: true },
-    });
-    if (!checkinType) {
-      throw new BadRequestException('Invalid check-in point for this event');
-    }
-
-    if (
-      !(await this.canCheckinAtType(
-        userId,
-        registration.event.spaceId,
-        registration.event.id,
-        checkinTypeId,
-      ))
-    ) {
-      throw new BadRequestException(
-        'You are not authorized to check in at this point',
-      );
-    }
-
-    this.assertCheckinable(registration);
+    const checkinType = await this.assertCanCheckin(
+      userId,
+      registration,
+      checkinTypeId,
+      batch,
+    );
 
     const attendee = registration.user;
     const ticketType = registration.ticketType?.name || 'RSVP';
@@ -601,7 +645,8 @@ export class CheckinService {
       }
       throw e;
     }
-    await this.cache.invalidateCheckinCache(registration.event.id);
+    if (isFirstEver) this.markAttended(registration, userId, at);
+    if (!batch) await this.cache.invalidateCheckinCache(registration.event.id);
 
     this.logger.log(
       `Checked in registration ${registration.id} at point ${checkinType.name}`,
@@ -1018,13 +1063,16 @@ export class CheckinService {
       };
     }[] = [];
 
+    const batch = this.newBatch();
+    await this.preloadRegistrations(
+      batch,
+      items.map((i) => i.registrationId),
+    );
+
     for (const item of items) {
       const at = this.offlineCheckinTime(item.scannedAt);
       try {
-        const registration = await this.prisma.eventRegistration.findUnique({
-          where: { id: item.registrationId },
-          include: this.regInclude,
-        });
+        const registration = batch.regs.get(item.registrationId);
         if (!registration || registration.event.id !== eventId) {
           results.push({ id: item.id, status: 'rejected', message: 'Not a registration for this event' });
           continue;
@@ -1038,6 +1086,7 @@ export class CheckinService {
             item.checkinTypeId,
             item.memberIndexes,
             at,
+            batch,
           );
           const dups = res.alreadyIn.filter((a) => a.checkedInAt.getTime() !== at.getTime());
           const requested = new Set(item.memberIndexes).size;
@@ -1058,7 +1107,7 @@ export class CheckinService {
               : {}),
           });
         } else {
-          const res = await this.recordCheckin(userId, registration, item.checkinTypeId, at);
+          const res = await this.recordCheckin(userId, registration, item.checkinTypeId, at, batch);
           const prior = 'alreadyCheckedIn' in res && res.alreadyCheckedIn ? res : null;
           const duplicate = prior && new Date(prior.checkedInAt).getTime() !== at.getTime();
           results.push({
@@ -1083,6 +1132,9 @@ export class CheckinService {
           throw e;
         }
       }
+    }
+    if (results.some((r) => r.status === 'ok')) {
+      await this.cache.invalidateCheckinCache(eventId);
     }
 
     const counts = results.reduce<Record<string, number>>((acc, r) => {
@@ -1195,12 +1247,13 @@ export class CheckinService {
       alreadyCheckedIn: Array<{ id: string; name: string | null }>;
     } = { success: [], failed: [], alreadyCheckedIn: [] };
 
+    // One read for every registration instead of one per id.
+    const batch = this.newBatch();
+    await this.preloadRegistrations(batch, registrationIds);
+
     for (const regId of registrationIds) {
       try {
-        const registration = await this.prisma.eventRegistration.findUnique({
-          where: { id: regId },
-          include: this.regInclude,
-        });
+        const registration = batch.regs.get(regId);
         if (!registration) {
           results.failed.push({ id: regId, reason: 'Not found' });
           continue;
@@ -1212,7 +1265,7 @@ export class CheckinService {
 
         // Route through the same path as a scan: writes an EventCheckinRecord,
         // and enforces attendee eligibility (idempotently).
-        const res = await this.recordCheckin(userId, registration, point.id);
+        const res = await this.recordCheckin(userId, registration, point.id, undefined, batch);
         const name = registration.user.fullName;
         if ('alreadyCheckedIn' in res && res.alreadyCheckedIn) {
           results.alreadyCheckedIn.push({ id: regId, name });
@@ -1223,6 +1276,8 @@ export class CheckinService {
         results.failed.push({ id: regId, reason: error.message });
       }
     }
+
+    if (results.success.length) await this.cache.invalidateCheckinCache(eventId);
 
     this.logger.log(
       `Bulk check-in for event ${eventId}: ${results.success.length} success, ${results.alreadyCheckedIn.length} already, ${results.failed.length} failed`,
@@ -1237,16 +1292,14 @@ export class CheckinService {
   // ---------------------------------------------------------------------------
 
   /** Loads the event or throws, and asserts the caller is a space organiser. */
-  private async assertEventOrganiser(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true, spaceId: true, title: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-    if (!(await this.isSpaceOrganiser(userId, event.spaceId))) {
-      throw new BadRequestException('Only space organisers can manage check-in access');
-    }
-    return event;
+  private assertEventOrganiser(userId: string, eventId: string) {
+    return assertEventSpaceAdmin(
+      this.prisma,
+      userId,
+      eventId,
+      'Only space organisers can manage check-in access',
+      { title: true },
+    );
   }
 
   // ---------------------------------------------------------------------------

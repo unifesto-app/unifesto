@@ -45,7 +45,10 @@ export class ContentReportsService {
         });
 
     this.logger.log(`Report ${report.id}: ${dto.targetType} ${dto.targetId} (${reason}) by ${userId}`);
-    if (!existing) void this.notifyReviewers(report.id, dto.targetType, label, reason, details);
+    if (!existing)
+      void this.notifyReviewers(report.id, dto.targetType, label, reason, details).catch((err) =>
+        this.logger.error(`notifyReviewers(${report.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
 
     return { id: report.id, alreadyReported: !!existing };
   }

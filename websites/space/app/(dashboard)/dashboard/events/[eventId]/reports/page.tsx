@@ -57,17 +57,28 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data, error } = await getEventReports(eventId);
-    if (error) setError(error.message);
-    else setReports(data ?? []);
-    setLoading(false);
-  }, [eventId]);
+  const load = useCallback(
+    async (quiet = false) => {
+      if (!quiet) setLoading(true);
+      const { data, error } = await getEventReports(eventId);
+      if (error) setError(error.message);
+      else setReports(data ?? []);
+      if (!quiet) setLoading(false);
+    },
+    [eventId],
+  );
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Reports render in the background: poll while any is still PENDING.
+  const anyPending = reports.some((r) => r.status === "PENDING");
+  useEffect(() => {
+    if (!anyPending) return;
+    const t = setTimeout(() => void load(true), 3000);
+    return () => clearTimeout(t);
+  }, [anyPending, reports, load]);
 
   const toggleSection = (key: ReportSection) => {
     setSections((prev) => {

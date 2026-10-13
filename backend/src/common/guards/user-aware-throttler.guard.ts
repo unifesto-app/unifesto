@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
+import { createHash, timingSafeEqual } from 'crypto';
 import { Reflector } from '@nestjs/core';
 import {
   ThrottlerGuard,
@@ -42,6 +43,18 @@ export class UserAwareThrottlerGuard extends ThrottlerGuard {
     super(options, storageService, reflector);
   }
 
+  /**
+   * Server-side rendering on the web app calls the API over the private Docker
+   * network (`http://backend:8080`) with `x-internal-key`. Every SSR request
+   * would otherwise share the web container's single IP bucket, so a busy page
+   * would 429 the whole public site. Unset INTERNAL_API_KEY = never skip.
+   */
+  protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest<Record<string, any>>();
+    if (isInternalRequest(req?.headers?.['x-internal-key'])) return true;
+    return super.shouldSkip(context);
+  }
+
   protected async getTracker(req: Record<string, any>): Promise<string> {
     const auth: unknown = req.headers?.authorization;
 
@@ -63,4 +76,14 @@ export class UserAwareThrottlerGuard extends ThrottlerGuard {
       Array.isArray(req.ips) && req.ips.length > 0 ? req.ips[0] : req.ip;
     return `ip:${ip}`;
   }
+}
+
+const digest = (v: string) => createHash('sha256').update(v).digest();
+
+export function isInternalRequest(
+  presented: unknown,
+  expected: string | undefined = process.env.INTERNAL_API_KEY,
+): boolean {
+  if (!expected || typeof presented !== 'string' || !presented) return false;
+  return timingSafeEqual(digest(presented), digest(expected));
 }

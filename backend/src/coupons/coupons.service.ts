@@ -404,12 +404,36 @@ export class CouponsService {
    * registration carried no coupon.
    */
   async confirmByRegistration(tx: Tx, registrationId: string): Promise<void> {
-    await tx.couponRedemption.updateMany({
+    const promoted = await tx.couponRedemption.updateMany({
       where: {
         registrationId,
         status: CouponRedemptionStatus.RESERVED,
       },
       data: { status: CouponRedemptionStatus.CONFIRMED, reservedUntil: null },
+    });
+    if (promoted.count === 1) return;
+
+    // No reservation left to promote. Either there never was a coupon, it is
+    // already confirmed, or the sweep released it while the order was still
+    // payable (Razorpay orders outlive the 30-minute hold). In the last case
+    // the discount was honoured, so the use must count: re-take the slot even
+    // past the cap (the money is already captured) and record it.
+    const reg = await tx.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: { couponId: true, couponDiscount: true, userId: true },
+    });
+    if (!reg?.couponId) return;
+    if (await tx.couponRedemption.findUnique({ where: { registrationId } })) return;
+    await tx.$executeRaw`
+      UPDATE event_coupons SET used_count = used_count + 1, updated_at = now()
+      WHERE id = ${reg.couponId}::uuid
+    `;
+    await this.writeRedemption(tx, {
+      couponId: reg.couponId,
+      registrationId,
+      userId: reg.userId,
+      discount: Number(reg.couponDiscount),
+      status: CouponRedemptionStatus.CONFIRMED,
     });
   }
 
@@ -425,7 +449,12 @@ export class CouponsService {
     if (!redemption || redemption.status !== CouponRedemptionStatus.RESERVED) {
       return;
     }
-    await tx.couponRedemption.delete({ where: { id: redemption.id } });
+    // Conditional delete: a payment may confirm this row between the read
+    // above and here. Only a still-RESERVED row gives its slot back.
+    const removed = await tx.couponRedemption.deleteMany({
+      where: { id: redemption.id, status: CouponRedemptionStatus.RESERVED },
+    });
+    if (removed.count !== 1) return;
     await tx.$executeRaw`
       UPDATE event_coupons
       SET used_count = GREATEST(used_count - 1, 0), updated_at = now()

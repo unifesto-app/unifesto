@@ -36,14 +36,25 @@ export default function useHackathonSocket(eventId: string | undefined, onChange
       if (cancelled || !token) return;
       // Websocket only: the API runs several replicas behind a round-robin
       // proxy, and long-polling would need sticky sessions.
-      socket = io(`${API_URL}/leaderboard`, { transports: ['websocket'], auth: { token }, reconnectionDelayMax: 10_000 });
+      // auth as a callback: every (re)connect sends the current token, not the
+      // one from mount time.
+      socket = io(`${API_URL}/leaderboard`, {
+        transports: ['websocket'],
+        auth: (cb) => void getToken().then((t) => cb({ token: t ?? token })),
+        reconnectionDelayMax: 10_000,
+      });
       socket.on('connect', () => {
         socket?.emit('hackathon:subscribe', { eventId }, (res: { ok?: boolean } | undefined) => {
           setLive(!!res?.ok);
         });
         fire(); // catch up on anything missed while disconnected
       });
-      socket.on('disconnect', () => setLive(false));
+      socket.on('disconnect', (reason) => {
+        setLive(false);
+        // The server drops the socket when the token expires; socket.io won't
+        // retry a server-side disconnect on its own.
+        if (reason === 'io server disconnect' && !cancelled) socket?.connect();
+      });
       socket.on('connect_error', () => setLive(false));
       socket.on('hackathon:changed', (p: { eventId?: string }) => {
         if (!p?.eventId || p.eventId === eventId) fire();

@@ -16,6 +16,8 @@ export class ConfigValidationService implements OnModuleInit {
       'REDIS_PORT',
       'REDIS_TLS',
       'DATABASE_URL',
+      'DIRECT_URL',
+      'JWT_SECRET',
       'RAZORPAY_KEY_ID',
       'RAZORPAY_KEY_SECRET',
       'RAZORPAY_WEBHOOK_SECRET',
@@ -37,6 +39,20 @@ export class ConfigValidationService implements OnModuleInit {
         'DATABASE_URL must include sslmode=require parameter for secure RDS connection';
       this.logger.error(errorMessage);
       throw new Error(errorMessage);
+    }
+
+    if (process.env.PORT && !/^\d{1,5}$/.test(process.env.PORT)) {
+      const errorMessage = `PORT must be a number, got "${process.env.PORT}"`;
+      this.logger.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // S31: HMAC secrets. Unset = a key derived from JWT_SECRET (see
+    // common/secrets.ts), which works but ties them to JWT rotation.
+    for (const key of ['EMAIL_TRACKING_SECRET', 'TRAFFIC_HASH_SECRET']) {
+      if (!process.env[key]) {
+        this.logger.warn(`${key} not set: using a key derived from JWT_SECRET`);
+      }
     }
 
     this.logger.log('Environment configuration validated successfully');

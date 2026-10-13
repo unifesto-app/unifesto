@@ -1,5 +1,12 @@
 // Unifesto Authentication & User System
 // Prisma Schema - Single Source of Truth
+//
+// Migrations: hand-written, additive, one new unique timestamp per migration
+// (check `ls prisma/migrations` first; never reuse or rename one). Known
+// history quirks, applied in prod and left as they are:
+//   - 20260930120000 is shared by _hidden_tickets and _hackathon_foundation.
+//   - 20260929120000_unifesto_stay and 20260930120000_hackathon_foundation
+//     were committed after migrations that sort later than them.
 
 generator client {
   provider = "prisma-client-js"
@@ -257,6 +264,9 @@ enum PaymentStatus {
 enum RefundStatus {
   PENDING_CURATOR
   PENDING_ADMIN
+  /// Claimed by an admin approval while Razorpay is called. A row stuck here
+  /// means money may have moved but the DB write failed: repair by hand.
+  PROCESSING
   APPROVED
   REJECTED
 
@@ -418,6 +428,10 @@ model User {
   // Stamped by JwtAuthGuard, throttled to one write per user per 5 minutes.
   lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(6)
 
+  // Every access/refresh token carries the value it was issued under (`tv`);
+  // bumping it revokes all of the user's sessions (logout-all, refresh theft).
+  tokenVersion Int @default(0) @map("token_version")
+
   // Account deletion is a request with a 30-day grace period. The user can
   // cancel any time before it's due; after that a daily job closes the account.
   deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz(6)
@@ -548,6 +562,7 @@ model UserNotification {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, eventId, readAt])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("user_notifications")
 }
 
@@ -1211,8 +1226,20 @@ model SubscriptionHistory {
   toPlan    OrgPlan  @map("to_plan")
   reason    String?  @db.VarChar(500)
   changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  // Razorpay payment that paid for this change; unique so one receipt upgrades once.
+  paymentId String?  @unique @map("payment_id") @db.VarChar(255)
 
   @@map("subscription_history")
+}
+
+/// Provider webhook deliveries already processed (Razorpay `x-razorpay-event-id`),
+/// so a retried delivery is acknowledged without re-running its side effects.
+model WebhookEvent {
+  id         String   @id @db.VarChar(255)
+  source     String   @db.VarChar(32)
+  receivedAt DateTime @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  @@map("webhook_events")
 }
 
 // Admin-editable definition of what each subscription plan includes.
@@ -1522,6 +1549,8 @@ model Event {
   @@index([parentEventId])
   // Series reconciliation lists occurrences by their parent.
   @@index([seriesParentId])
+  // One occurrence per slot: replicas reconciling at once can't duplicate.
+  @@unique([seriesParentId, startDateTime])
   @@index([payoutBankAccountId])
   @@map("events")
 }
@@ -1890,8 +1919,12 @@ model EventRegistration {
   razorpayAmount Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
   processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
   refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  /// Set while a captured payment that couldn't be honoured (sold out / closed
+  /// while it was being paid) still has to go back in full. A retry job clears
+  /// it on success; payouts never count such a row.
+  refundDueAt    DateTime?     @map("refund_due_at") @db.Timestamptz(6)
   paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId      String?       @map("payment_id") @db.VarChar(255)
+  paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
   orderId        String?       @map("order_id") @db.VarChar(255)
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
 
@@ -1988,6 +2021,7 @@ model EventRegistration {
   // sync with the pre-create cleanup in RegistrationsService.createPaymentOrder.
   @@index([eventId])
   @@index([eventId, updatedAt])
+  @@index([orderId])
   @@index([userId])
   @@index([qrCode])
   @@index([paymentStatus])
@@ -2595,6 +2629,7 @@ model EmailCampaignLog {
   @@index([campaignId])
   @@index([userId])
   @@index([status])
+  @@index([sentAt]) // retention sweep (RetentionService)
   @@map("email_campaign_logs")
 }
 
@@ -2790,6 +2825,9 @@ model RefundRequest {
   cashRefunded     Decimal  @default(0) @map("cash_refunded") @db.Decimal(10, 2)
   coinsRefunded    Int      @default(0) @map("coins_refunded")
   razorpayRefundId String?  @map("razorpay_refund_id") @db.VarChar(100)
+  /// Set when this refund landed after the event was already paid out past
+  /// what it now earns: the amount the platform must recover from the space.
+  payoutShortfall  Decimal? @map("payout_shortfall") @db.Decimal(10, 2)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -2797,6 +2835,9 @@ model RefundRequest {
   @@index([registrationId])
   @@index([eventId])
   @@index([status])
+  // At most one open (PENDING_CURATOR / PENDING_ADMIN / PROCESSING) request per
+  // registration: partial unique index refund_requests_one_open_per_registration
+  // (migration 20261015130001). Prisma can't express it here.
   @@map("refund_requests")
 }
 
@@ -2818,6 +2859,8 @@ model ApiLog {
   ipAddress    String? @map("ip_address") @db.VarChar(64)
   userAgent    String? @map("user_agent") @db.Text
   errorMessage String? @map("error_message") @db.Text
+  /// How many requests this row stands for (2xx GETs are sampled, S27).
+  weight       Int     @default(1)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -2825,6 +2868,8 @@ model ApiLog {
   @@index([statusCode])
   @@index([method])
   @@index([userId])
+  @@index([statusCode, createdAt])
+  @@index([userId, createdAt])
   @@map("api_logs")
 }
 
@@ -3100,7 +3145,7 @@ model SessionRegistration {
   processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
   refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId      String?       @map("payment_id") @db.VarChar(255)
+  paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
   orderId        String?       @map("order_id") @db.VarChar(255)
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
 
@@ -3117,6 +3162,7 @@ model SessionRegistration {
   @@index([sessionId])
   @@index([userId])
   @@index([paymentStatus])
+  @@index([orderId])
   @@map("session_registrations")
 }
 
@@ -4637,6 +4683,7 @@ model PushLog {
   @@index([userId])
   @@index([status])
   @@index([category])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("push_logs")
 }
 
@@ -4757,6 +4804,7 @@ model WhatsappMessage {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([conversationId, createdAt])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("whatsapp_messages")
 }
 
@@ -4926,6 +4974,7 @@ model ShortLinkClick {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([shortLinkId, createdAt])
+  @@index([createdAt]) // retention sweep (RetentionService)
   @@map("short_link_clicks")
 }
 
@@ -5171,6 +5220,10 @@ model StayBooking {
   orderId        String?         @map("order_id") @db.VarChar(255)
   paidAt         DateTime?       @map("paid_at") @db.Timestamptz(6)
   refundedAmount Decimal         @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  /// Set while a captured payment that couldn't be honoured (sold out / closed
+  /// while it was being paid) still has to go back in full. A retry job clears
+  /// it on success; payouts never count such a row.
+  refundDueAt    DateTime?       @map("refund_due_at") @db.Timestamptz(6)
   paymentDueAt   DateTime?       @map("payment_due_at") @db.Timestamptz(6)
 
   reviewedById    String?   @map("reviewed_by_id") @db.Uuid

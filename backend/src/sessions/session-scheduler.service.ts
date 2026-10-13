@@ -6,6 +6,8 @@ import { RedisService } from '../redis/redis.service';
 import { PaymentStatus, RegistrationStatus, SessionStatus } from '@prisma/client';
 import { JOIN_GRACE_MINUTES_AFTER_END } from './session-policy';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { NOT_DELETED } from '../common/soft-delete';
+import { forEachPage, inChunks } from '../common/batching';
 import { button, details, esc, greet, h1, small } from '../email/layout';
 
 /**
@@ -52,6 +54,7 @@ export class SessionSchedulerService {
   private async remindSessionsStarting(from: Date, to: Date, lead: string) {
     const sessions = await this.prisma.session.findMany({
       where: {
+        ...NOT_DELETED,
         status: SessionStatus.PUBLISHED,
         startDateTime: { gte: from, lte: to },
       },
@@ -70,47 +73,54 @@ export class SessionSchedulerService {
       );
       if (!first) continue;
 
-      const registrations = await this.prisma.sessionRegistration.findMany({
-        where: {
-          sessionId: session.id,
-          status: RegistrationStatus.REGISTERED,
-          paymentStatus: PaymentStatus.PAID,
-        },
-        include: {
-          user: {
+      let sent = 0;
+      // A page of attendees at a time, a few sends in flight at once.
+      await forEachPage(
+        (page) =>
+          this.prisma.sessionRegistration.findMany({
+            ...page,
+            where: {
+              sessionId: session.id,
+              status: RegistrationStatus.REGISTERED,
+              paymentStatus: PaymentStatus.PAID,
+            },
             include: {
-              identities: {
-                where: { email: { not: null } },
-                select: { email: true },
-                take: 1,
+              user: {
+                include: {
+                  identities: {
+                    where: { email: { not: null } },
+                    select: { email: true },
+                    take: 1,
+                  },
+                },
               },
             },
-          },
+          }),
+        async (registrations) => {
+          const optedOut = await emailOptedOutUserIds(
+            this.prisma,
+            registrations.map((r) => r.userId),
+          );
+          sent += registrations.length;
+          await inChunks(registrations, async (reg) => {
+            const email = reg.user.identities[0]?.email;
+            if (!email || optedOut.has(reg.userId)) return;
+            const name = reg.user.fullName || reg.user.username || 'there';
+            await this.email
+              .sendRawEmail(
+                email,
+                `${lead}: ${session.title}`,
+                this.reminderHtml(name, session, lead),
+              )
+              .catch((err) =>
+                this.logger.error('Session reminder email failed', err),
+              );
+          });
         },
-      });
-
-      const optedOut = await emailOptedOutUserIds(
-        this.prisma,
-        registrations.map((r) => r.userId),
       );
 
-      for (const reg of registrations) {
-        const email = reg.user.identities[0]?.email;
-        if (!email || optedOut.has(reg.userId)) continue;
-        const name = reg.user.fullName || reg.user.username || 'there';
-        this.email
-          .sendRawEmail(
-            email,
-            `${lead}: ${session.title}`,
-            this.reminderHtml(name, session, lead),
-          )
-          .catch((err) =>
-            this.logger.error('Session reminder email failed', err),
-          );
-      }
-
       this.logger.log(
-        `Sent "${lead}" reminders for session ${session.id} to ${registrations.length} attendees`,
+        `Sent "${lead}" reminders for session ${session.id} to ${sent} attendees`,
       );
     }
   }
@@ -146,6 +156,12 @@ export class SessionSchedulerService {
    */
   @Cron(CronExpression.EVERY_HOUR)
   async markCompletedSessions(): Promise<void> {
+    await this.redis.runExclusive('cron:sessionsComplete', 50 * 60, () =>
+      this.runMarkCompletedSessions(),
+    );
+  }
+
+  private async runMarkCompletedSessions(): Promise<void> {
     const now = Date.now();
     const candidates = await this.prisma.session.findMany({
       where: {

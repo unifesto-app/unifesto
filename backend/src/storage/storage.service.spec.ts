@@ -79,6 +79,8 @@ describe('StorageService', () => {
     it('should initialize S3Client with correct region', () => {
       expect(S3Client).toHaveBeenCalledWith({
         region: 'ap-south-1',
+        // S32: a hung S3 call must not hold the request forever.
+        requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000 },
       });
     });
 

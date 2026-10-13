@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, IsUUID, IsBoolean, IsNumber, Min, Max, IsEnum, ValidateIf } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsUUID, IsBoolean, IsNumber, IsPositive, Min, Max, IsEnum, ValidateIf } from 'class-validator';
 
 /**
  * Add a payout method — a BANK account. UPI is no longer an accepted method
@@ -45,6 +45,28 @@ export class SetEventPayoutAccountDto {
   @ValidateIf((o) => o.bankAccountId !== null)
   @IsUUID()
   bankAccountId?: string | null;
+}
+
+/**
+ * `POST /payouts/request` (organiser) and, without `bankAccountId`,
+ * `POST /payouts/admin/create-for-event`. `amount` omitted = whole available
+ * balance; when present it must be a finite positive number (S29: "abc" used to
+ * become NaN and slip past every `<=`/`>` guard).
+ */
+export class CreateEventPayoutDto {
+  @IsUUID()
+  eventId: string;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @IsPositive()
+  amount?: number;
+}
+
+export class RequestPayoutDto extends CreateEventPayoutDto {
+  @IsOptional()
+  @IsUUID()
+  bankAccountId?: string;
 }
 
 export class CreatePayoutDto {

@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { eventMoneyRecords, sessionMoneyRecords } from '../common/money-records';
 import { NOT_DELETED } from '../common/soft-delete';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
@@ -37,6 +38,7 @@ import {
   SpaceVisibility,
 } from '@prisma/client';
 import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
+import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
@@ -139,15 +141,6 @@ export class SpacesService {
   /**
    * Get all spaces with filters
    */
-  private async isPlatformAdmin(userId?: string): Promise<boolean> {
-    if (!userId) return false;
-    const admin = await this.prisma.userRole.findFirst({
-      where: { userId, role: { code: RoleCode.ADMIN } },
-      select: { id: true },
-    });
-    return !!admin;
-  }
-
   async getAllSpaces(params: {
     page?: number;
     limit?: number;
@@ -161,7 +154,7 @@ export class SpacesService {
     const skip = (page - 1) * limit;
 
     // Private spaces only list for their members (platform admins see all).
-    const where: any = (await this.isPlatformAdmin(viewerId))
+    const where: any = (await isPlatformAdmin(this.prisma, viewerId))
       ? {}
       : { AND: [visibleSpacesWhere(viewerId)] };
 
@@ -584,9 +577,10 @@ export class SpacesService {
 
   /**
    * Permanently delete a space (ADMIN only). This cascades: every event under
-   * the space and all their registrations, tickets, payments and payouts go
-   * with it (see the `onDelete: Cascade` relations in the schema). It cannot be
-   * undone, so the Apex UI gates it behind a typed confirmation.
+   * the space and all their registrations and tickets go with it (see the
+   * `onDelete: Cascade` relations in the schema), so it is refused while any
+   * money was taken. It cannot be undone, so the Apex UI gates it behind a
+   * typed confirmation.
    *
    * A SUPER space with sub-spaces is refused: the self-relation has no cascade,
    * so a raw delete would fail with an opaque FK error — we surface a clear one
@@ -605,6 +599,16 @@ export class SpacesService {
     if (space._count.childSpaces > 0) {
       throw new BadRequestException(
         'This space has sub-spaces. Detach or delete them before deleting this space.',
+      );
+    }
+
+    // The cascade would erase every payment, refund and payout under the space.
+    const money =
+      (await eventMoneyRecords(this.prisma, { spaceId: id })) +
+      (await sessionMoneyRecords(this.prisma, { spaceId: id }));
+    if (money > 0) {
+      throw new BadRequestException(
+        'This space has payment, refund or payout records and cannot be deleted.',
       );
     }
 
@@ -752,7 +756,7 @@ export class SpacesService {
 
   /**
    * Search users who can be added to a space (excludes existing members).
-   * Available to admins and organisers/co-organisers of the space.
+   * Available to platform admins and Space Admins of the space.
    */
   async searchAddableUsers(spaceId: string, search?: string) {
     const space = await this.prisma.space.findUnique({
@@ -780,9 +784,11 @@ export class SpacesService {
         OR: [
           { fullName: { contains: term, mode: 'insensitive' } },
           { username: { contains: term, mode: 'insensitive' } },
+          // Email only by exact match: substring search let any space
+          // admin harvest platform users' addresses (S24).
           {
             identities: {
-              some: { email: { contains: term, mode: 'insensitive' } },
+              some: { email: { equals: term, mode: 'insensitive' } },
             },
           },
         ],
@@ -802,7 +808,7 @@ export class SpacesService {
       orderBy: { fullName: 'asc' },
     });
 
-    return { users };
+    return { users: users.map((u) => maskSearchEmail(u, term)) };
   }
 
   /**
@@ -1250,7 +1256,7 @@ export class SpacesService {
 
   /**
    * Approve a space request (ADMIN)
-   * Creates the Space (ACTIVE) and grants the requester the ORGANISER role
+   * Creates the Space (ACTIVE) and grants the requester the SPACE_ADMIN role
    * scoped to the new space, all within a single transaction.
    */
   async approveSpaceRequest(requestId: string, adminId: string) {
@@ -1672,8 +1678,8 @@ export class SpacesService {
   }
 
   /**
-   * Admin decision on a transfer. Approving moves `createdBy`, promotes the new
-   * owner to Organiser and steps the outgoing creator down to Co-Organiser, all
+   * Admin decision on a transfer. Approving moves `createdBy`, makes sure the new
+   * owner holds Space Admin and keeps the outgoing creator on as Space Admin, all
    * in one transaction — a space must never be left with no owner or two.
    */
   async reviewSpaceOwnershipRequest(
@@ -2386,3 +2392,19 @@ export class SpacesService {
   }
 }
 
+
+/**
+ * Member search reveals a user's email only to someone who already typed it
+ * exactly; name/username hits come back with an empty `identities` list.
+ */
+export function maskSearchEmail<
+  T extends { identities: { email: string | null }[] },
+>(user: T, term: string): T {
+  const needle = term.trim().toLowerCase();
+  return {
+    ...user,
+    identities: user.identities.filter(
+      (i) => !!i.email && i.email.toLowerCase() === needle,
+    ),
+  };
+}

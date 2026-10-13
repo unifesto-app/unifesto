@@ -57,6 +57,7 @@ type RegSeed = {
   groupMembers?: unknown[] | null;
   waitlistStatus?: WaitlistStatus;
   paymentStatus?: PaymentStatus;
+  status?: string;
 };
 
 function makeDb(opts: {
@@ -104,6 +105,7 @@ function makeDb(opts: {
     isWaitlisted: true,
     waitlistStatus: opts.reg.waitlistStatus ?? WaitlistStatus.WAITING,
     paymentStatus: opts.reg.paymentStatus ?? PaymentStatus.PENDING,
+    status: opts.reg.status ?? 'REGISTERED',
     waitlistedAt: new Date('2026-09-01T00:00:00Z'),
     waitlistOfferedAt: null,
     waitlistOfferExpiresAt: null,
@@ -126,8 +128,8 @@ function makeDb(opts: {
       },
     },
     userRole: {
-      // Non-empty ⇒ the caller passes the organiser check.
-      findMany: async () => [{ id: 'role-1', role: { code: 'SPACE_ADMIN' } }],
+      // Non-zero ⇒ the caller passes the organiser check.
+      count: async () => 1,
     },
     eventTicketType: {
       findUnique: async () => ({ ...ticketType }),
@@ -142,9 +144,16 @@ function makeDb(opts: {
         if (include?.ticketType) out.ticketType = { ...ticketType };
         return out;
       },
+      findUniqueOrThrow: async () => ({ ...reg }),
       update: async ({ data }: any) => {
         applyData(reg, data);
         return { ...reg };
+      },
+      updateMany: async ({ where, data }: any) => {
+        if (where.waitlistStatus && reg.waitlistStatus !== where.waitlistStatus) return { count: 0 };
+        if (where.status?.not && reg.status === where.status.not) return { count: 0 };
+        applyData(reg, data);
+        return { count: 1 };
       },
     },
     eventTicket: {
@@ -167,6 +176,12 @@ function makeDb(opts: {
     // recipient() short-circuits on a null identity, so no email is sent.
     userIdentity: { findFirst: async () => null },
     user: { findUnique: async () => null },
+    // takeTicketSeats' conditional UPDATE: (sql, n, ticketTypeId, n).
+    $executeRaw: async (_sql: TemplateStringsArray, n: number) => {
+      if (ticketType.totalQuantity != null && ticketType.soldCount + n > ticketType.totalQuantity) return 0;
+      ticketType.soldCount += n;
+      return 1;
+    },
     $transaction: async (fn: any) => fn(prisma),
   };
 
@@ -291,6 +306,18 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     expect(db.ticketType.soldCount).toBe(10);
   });
 
+  it('convert() never revives an offer cancelled meanwhile (its seat is already back)', async () => {
+    const db = makeDb({
+      ticketType: { price: 500, totalQuantity: 5, soldCount: 4 },
+      reg: { quantity: 1, waitlistStatus: WaitlistStatus.OFFERED, status: 'CANCELLED' },
+    });
+    const { svc } = build(db);
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    expect(db.reg.status).toBe('CANCELLED');
+    expect(db.tickets).toHaveLength(0);
+    expect(db.event.registeredCount).toBe(0);
+  });
+
   it('convert() is idempotent: a second call issues no duplicate ticket', async () => {
     const db = makeDb({
       ticketType: { price: 500, totalQuantity: 5, soldCount: 5 },
@@ -305,5 +332,22 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     expect(again.waitlistStatus).toBe(WaitlistStatus.CONVERTED);
     expect(db.tickets).toHaveLength(1);
     expect(db.event.registeredCount).toBe(1);
+  });
+
+  it('convert() racing itself (verify vs webhook) counts the attendee once', async () => {
+    const db = makeDb({
+      ticketType: { price: 500, totalQuantity: 5, soldCount: 5 },
+      reg: { quantity: 1, waitlistStatus: WaitlistStatus.OFFERED },
+    });
+    const { svc } = build(db);
+    // Both callers read OFFERED before either writes.
+    const stale = { ...db.reg };
+    db.prisma.eventRegistration.findUnique = async () => ({ ...stale });
+
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+
+    expect(db.event.registeredCount).toBe(1);
+    expect(db.tickets).toHaveLength(1);
   });
 });

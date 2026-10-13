@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
 import { GroupSeatsService } from './group-seats.service';
+import { SoldOutError, takeTicketSeats } from './capacity.util';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { WaitlistOfferEvent } from '../notifications/notifications.events';
 import {
@@ -19,7 +20,7 @@ import {
   RegistrationStatus,
   WaitlistStatus,
 } from '@prisma/client';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin } from '../events/event-access';
 
 /**
  * Raised when a spot cannot be offered because the seats are gone.
@@ -28,7 +29,7 @@ import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
  * person can't be let in" (skip, keep going) from "the event is full" (stop —
  * everyone behind them will fail identically). Still a 400 to the client.
  */
-class OutOfSeatsError extends BadRequestException {}
+const OutOfSeatsError = SoldOutError;
 
 /**
  * The waiting list for a sold-out ticket type.
@@ -89,27 +90,15 @@ export class WaitlistService {
     return r.groupSize && r.groupSize > 0 ? r.groupSize : r.quantity || 1;
   }
 
-  /** Rejects anyone who is not an organiser or co-organiser of the event's space. */
-  private async assertOrganiser(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true, spaceId: true, title: true, startDateTime: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-
-    const roles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (roles.length === 0) {
-      throw new ForbiddenException(
-        'Only the event organisers can manage the waiting list',
-      );
-    }
-    return event;
+  /** Rejects anyone who is not a Space Admin of the event's space. */
+  private assertOrganiser(userId: string, eventId: string) {
+    return assertEventSpaceAdmin(
+      this.prisma,
+      userId,
+      eventId,
+      'Only the event organisers can manage the waiting list',
+      { title: true, startDateTime: true },
+    );
   }
 
   /**
@@ -531,10 +520,8 @@ export class WaitlistService {
 
       // Hold the seat. Note this counts against soldCount but leaves
       // isWaitlisted true — they occupy a seat without being an attendee yet.
-      await tx.eventTicketType.update({
-        where: { id: ticketType.id },
-        data: { soldCount: { increment: seats } },
-      });
+      // Atomic: the read above can race a buyer taking the same last seat.
+      await takeTicketSeats(tx, ticketType.id, seats, 'No seats are free right now. A seat must open up before you can let someone in.');
       await tx.event.update({
         where: { id: eventId },
         data: { waitlistCount: { decrement: 1 } },
@@ -678,8 +665,17 @@ export class WaitlistService {
         );
       }
 
-      const updated = await tx.eventRegistration.update({
-        where: { id: registrationId },
+      // Atomic claim: the client verify and the payment.captured webhook can
+      // both read OFFERED above; only the one that flips the row counts the
+      // attendee and issues tickets.
+      const claimed = await tx.eventRegistration.updateMany({
+        // Never revive an offer cancelled meanwhile: the cancel already gave
+        // its seat back, so converting it would count an attendee with no seat.
+        where: {
+          id: registrationId,
+          waitlistStatus: WaitlistStatus.OFFERED,
+          status: { not: RegistrationStatus.CANCELLED },
+        },
         data: {
           waitlistStatus: WaitlistStatus.CONVERTED,
           isWaitlisted: false,
@@ -691,6 +687,10 @@ export class WaitlistService {
           waitlistOfferExpiresAt: null,
         },
       });
+      const updated = await tx.eventRegistration.findUniqueOrThrow({
+        where: { id: registrationId },
+      });
+      if (claimed.count === 0) return updated; // converted concurrently
 
       // The seat was held at offer time, so only the event's attendee count
       // moves here.

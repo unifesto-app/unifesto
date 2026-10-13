@@ -20,6 +20,7 @@ import {
   ReviewWhiteLabelRequestDto,
   UpdateBrandingDto,
 } from './dto';
+import { OUTBOUND_TIMEOUT_MS } from '../common/http/outbound-timeouts';
 
 /**
  * White-label, self-serve. A space whose plan includes `hasRemoveBranding`
@@ -487,6 +488,7 @@ export class WhiteLabelService {
         method,
         headers: { Authorization: `Bearer ${this.cf.token}`, 'Content-Type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS),
       },
     );
     const json = (await res.json().catch(() => ({}))) as {

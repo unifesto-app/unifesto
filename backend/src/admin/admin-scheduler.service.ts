@@ -204,5 +204,10 @@ export class AdminSchedulerService {
         },
       );
     }
+
+    // Resume campaigns a deploy or crash left stuck in SENDING.
+    await this.redis.runExclusive('cron:campaignStaleSweep', 9 * 60, async () => {
+      await this.campaigns.sweepStaleCampaigns();
+    });
   }
 }

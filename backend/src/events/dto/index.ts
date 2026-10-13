@@ -1152,10 +1152,11 @@ export class EventFilterDto {
   @Min(1)
   page?: number;
 
-  @ApiPropertyOptional({ example: 20 })
+  @ApiPropertyOptional({ example: 20, maximum: 100 })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(100)
   limit?: number;
 
   @ApiPropertyOptional({

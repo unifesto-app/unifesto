@@ -35,7 +35,11 @@ describe('CheckinService offline check-in', () => {
       },
       eventRegistration: {
         findUnique: jest.fn().mockResolvedValue(overrides.reg === undefined ? baseReg : overrides.reg),
-        findMany: jest.fn(),
+        // The sync preloads every named registration in one findMany.
+        findMany: jest.fn().mockImplementation(async () => {
+          const reg = overrides.reg === undefined ? baseReg : overrides.reg;
+          return reg ? [{ ...reg }] : []; // a copy: check-in mutates the row
+        }),
         update: jest.fn().mockResolvedValue({}),
       },
       eventCheckinType: { findFirst: jest.fn().mockResolvedValue({ id: POINT, name: 'Entry' }) },
@@ -92,19 +96,53 @@ describe('CheckinService offline check-in', () => {
 
   it('rejects one item without failing the rest of the batch', async () => {
     const { svc, prisma } = build();
-    prisma.eventRegistration.findUnique
-      .mockResolvedValueOnce({ ...baseReg, status: 'CANCELLED' })
-      .mockResolvedValueOnce(baseReg);
+    prisma.eventRegistration.findMany.mockResolvedValue([
+      { ...baseReg, status: 'CANCELLED' },
+      { ...baseReg, id: 'reg-2' },
+    ]);
 
     const { results } = await svc.syncOfflineCheckins(USER, EVENT, [
       item(),
-      { ...item(), id: 'c2' },
+      { ...item(), id: 'c2', registrationId: 'reg-2' },
     ]);
 
     expect(results[0]).toEqual(
       expect.objectContaining({ id: 'c1', status: 'rejected', message: 'Registration has been cancelled' }),
     );
     expect(results[1]).toEqual(expect.objectContaining({ id: 'c2', status: 'ok' }));
+  });
+
+  it('S34: a batch reads registrations, the point and permissions once, not per item', async () => {
+    const { svc, prisma } = build({ organiser: false });
+    prisma.eventCheckinAccess.findFirst.mockResolvedValue({ id: 'grant' });
+    const regs = ['reg-1', 'reg-2', 'reg-3'].map((id) => ({ ...baseReg, id }));
+    prisma.eventRegistration.findMany.mockResolvedValue(regs);
+    const invalidate = (svc as any).cache.invalidateCheckinCache as jest.Mock;
+
+    const { results } = await svc.syncOfflineCheckins(
+      USER,
+      EVENT,
+      regs.map((r, i) => ({ ...item(), id: `c${i}`, registrationId: r.id })),
+    );
+
+    expect(results.map((r) => r.status)).toEqual(['ok', 'ok', 'ok']);
+    expect(prisma.eventRegistration.findMany).toHaveBeenCalledTimes(1);
+    expect(prisma.eventRegistration.findUnique).not.toHaveBeenCalled();
+    expect(prisma.eventCheckinType.findFirst).toHaveBeenCalledTimes(1);
+    expect(prisma.userRole.count).toHaveBeenCalledTimes(1);
+    expect(prisma.eventCheckinAccess.findFirst).toHaveBeenCalledTimes(1);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('S34: two items for one registration only flip it to ATTENDED once', async () => {
+    const { svc, prisma } = build();
+    prisma.eventCheckinType.findFirst.mockImplementation(async ({ where }: any) => ({ id: where.id, name: where.id }));
+    const { results } = await svc.syncOfflineCheckins(USER, EVENT, [
+      item(),
+      { ...item(), id: 'c2', checkinTypeId: 'point-2' },
+    ]);
+    expect(results.map((r) => r.status)).toEqual(['ok', 'ok']);
+    expect(prisma.eventRegistration.update).toHaveBeenCalledTimes(1);
   });
 
   describe('duplicate flagging', () => {

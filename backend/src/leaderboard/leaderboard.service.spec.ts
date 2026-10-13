@@ -394,4 +394,69 @@ describe('LeaderboardService (privacy rules)', () => {
       expect(where.overallReview).toEqual({ not: null });
     });
   });
+
+  describe('recomputeAndBroadcast (S34: write only what moved)', () => {
+    const boardWith = (stored: { a?: any; b?: any; totals?: any }) => ({
+      id: BOARD,
+      eventId: EVENT,
+      isHackathon: false,
+      mode: 'RUBRIC',
+      tieBreak: null,
+      tieBreakMetricId: null,
+      status: 'DRAFT',
+      metrics: [{ id: 'm1', roundId: null, weight: 1, isPrimary: true }],
+      rounds: [{ id: ROUND, order: 1 }],
+      entrants: ['a', 'b'].map((id, i) => ({
+        id,
+        createdAt: new Date(0),
+        totalScore: stored.totals?.[id]?.score ?? 0,
+        rank: stored.totals?.[id]?.rank ?? null,
+        judgments: [],
+        scores: [{ roundId: ROUND, entrantId: id, metricId: 'm1', judgeUserId: JUDGE, value: 10 - i, createdAt: new Date(0) }],
+        entrantRounds: stored[id as 'a' | 'b'] ? [{ roundId: ROUND, ...stored[id as 'a' | 'b'] }] : [],
+      })),
+    });
+
+    const run = async (board: any) => {
+      const upsert = jest.fn((args: any) => args);
+      const update = jest.fn((args: any) => args);
+      const { svc, prisma } = build({
+        leaderboard: { findUnique: jest.fn().mockResolvedValue(board) },
+        leaderboardEntrantRound: { upsert },
+        leaderboardEntrant: { update },
+      });
+      await svc.recomputeAndBroadcast(BOARD);
+      return { upsert, update, prisma };
+    };
+
+    it('skips the write entirely when nothing changed', async () => {
+      const first = await run(boardWith({}));
+      expect(first.upsert).toHaveBeenCalledTimes(2);
+      const rows = Object.fromEntries(
+        first.upsert.mock.calls.map(([a]: any) => [a.create.entrantId, { roundScore: a.create.roundScore, rank: a.create.rank }]),
+      );
+      const totals = Object.fromEntries(
+        first.update.mock.calls.map(([a]: any) => [a.where.id, { score: a.data.totalScore, rank: a.data.rank }]),
+      );
+
+      const again = await run(boardWith({ a: rows.a, b: rows.b, totals }));
+      expect(again.upsert).not.toHaveBeenCalled();
+      expect(again.update).not.toHaveBeenCalled();
+      expect(again.prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('rewrites only the row whose score moved', async () => {
+      const first = await run(boardWith({}));
+      const rows = Object.fromEntries(
+        first.upsert.mock.calls.map(([a]: any) => [a.create.entrantId, { roundScore: a.create.roundScore, rank: a.create.rank }]),
+      );
+      const totals = Object.fromEntries(
+        first.update.mock.calls.map(([a]: any) => [a.where.id, { score: a.data.totalScore, rank: a.data.rank }]),
+      );
+      const stale = { ...rows.b, roundScore: 0 };
+      const again = await run(boardWith({ a: rows.a, b: stale, totals }));
+      expect(again.upsert).toHaveBeenCalledTimes(1);
+      expect(again.upsert.mock.calls[0][0].create.entrantId).toBe('b');
+    });
+  });
 });

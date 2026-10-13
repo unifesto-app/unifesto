@@ -1,10 +1,11 @@
+import { apiBase, withInternal } from "@/lib/api/internal";
 import type { Branding } from "@/components/BrandedChrome";
 // Universal module (no browser APIs): usable from both Client Components and
 // server code such as `generateMetadata` / the OG image routes. Do not add a
 // "use client" directive here or server-side callers will break.
 // Call the NestJS backend directly. The backend exposes events under `/events`.
 // See backends/unifesto-backend/src/events/events.controller.ts.
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000");
 
 export interface Event {
   id: string;
@@ -139,10 +140,10 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout:
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(url, withInternal({
       ...options,
       signal: controller.signal,
-    });
+    }));
     clearTimeout(timeoutId);
     return response;
   } catch (error) {

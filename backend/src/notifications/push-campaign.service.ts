@@ -74,7 +74,9 @@ export class PushCampaignService {
 
     // Immediate broadcasts fire now; scheduled ones are picked up by the worker.
     if (!scheduledAt) {
-      void this.dispatch(campaign.id);
+      void this.dispatch(campaign.id).catch((err) =>
+        this.logger.error(`dispatch(${campaign.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+      );
     }
     return campaign;
   }
@@ -90,7 +92,9 @@ export class PushCampaignService {
     if (!sendable.includes(campaign.status)) {
       throw new BadRequestException(`Campaign is ${campaign.status}, cannot send`);
     }
-    void this.dispatch(id);
+    void this.dispatch(id).catch((err) =>
+      this.logger.error(`dispatch(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
     return { status: 'dispatching' };
   }
 
@@ -159,7 +163,7 @@ export class PushCampaignService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    // Scoped auth: only an organiser/co-organiser of this event (or a co-host).
+    // Scoped auth: only a Space Admin of this event's space (or a co-host).
     const canManage = await this.events.canManageEvent(userId, event.spaceId, event.id);
     if (!canManage) {
       throw new ForbiddenException('You cannot announce to this event');
@@ -189,7 +193,9 @@ export class PushCampaignService {
         status: PushCampaignStatus.DRAFT,
       },
     });
-    void this.dispatch(campaign.id);
+    void this.dispatch(campaign.id).catch((err) =>
+      this.logger.error(`dispatch(${campaign.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
     return campaign;
   }
 

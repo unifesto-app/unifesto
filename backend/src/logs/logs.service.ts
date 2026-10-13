@@ -1,5 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -12,6 +11,8 @@ export interface ApiLogEntry {
   ipAddress?: string | null;
   userAgent?: string | null;
   errorMessage?: string | null;
+  /** How many requests this row stands for (sampled 2xx GETs). */
+  weight?: number;
 }
 
 interface QueryParams {
@@ -23,33 +24,57 @@ interface QueryParams {
   limit?: number;
 }
 
-/** How long request logs are kept. CERT-In Directions (Apr 2022) require 180 days. */
-const RETENTION_DAYS = 180;
+/** Buffered writes: flush every FLUSH_MS or once FLUSH_AT rows are queued. */
+const FLUSH_MS = 2000;
+const FLUSH_AT = 200;
+/** Drop (not grow) if the DB is down long enough to back up this far. */
+const MAX_BUFFER = 5000;
+// Retention (180d, CERT-In) lives in RetentionService.
 
 @Injectable()
-export class LogsService {
+export class LogsService implements OnModuleDestroy {
   private readonly logger = new Logger(LogsService.name);
+  private buffer: Prisma.ApiLogCreateManyInput[] = [];
+  private timer: NodeJS.Timeout | null = null;
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Fire-and-forget write from the interceptor — never blocks the request. */
+  /** Fire-and-forget: queue the row; a batched createMany writes it (S27). */
   record(entry: ApiLogEntry): void {
-    this.prisma.apiLog
-      .create({
-        data: {
-          method: entry.method.slice(0, 10),
-          path: (entry.path || '').slice(0, 2048),
-          statusCode: entry.statusCode,
-          durationMs: entry.durationMs,
-          userId: entry.userId ?? null,
-          ipAddress: entry.ipAddress?.slice(0, 64) ?? null,
-          userAgent: entry.userAgent?.slice(0, 1024) ?? null,
-          errorMessage: entry.errorMessage?.slice(0, 2048) ?? null,
-        },
-      })
+    if (this.buffer.length >= MAX_BUFFER) return;
+    this.buffer.push({
+      method: entry.method.slice(0, 10),
+      path: (entry.path || '').slice(0, 2048),
+      statusCode: entry.statusCode,
+      durationMs: entry.durationMs,
+      userId: entry.userId ?? null,
+      ipAddress: entry.ipAddress?.slice(0, 64) ?? null,
+      userAgent: entry.userAgent?.slice(0, 1024) ?? null,
+      errorMessage: entry.errorMessage?.slice(0, 2048) ?? null,
+      weight: entry.weight ?? 1,
+    });
+    if (this.buffer.length >= FLUSH_AT) void this.flush();
+    else if (!this.timer) {
+      this.timer = setTimeout(() => void this.flush(), FLUSH_MS);
+      this.timer.unref?.();
+    }
+  }
+
+  async flush(): Promise<void> {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = null;
+    if (!this.buffer.length) return;
+    const rows = this.buffer;
+    this.buffer = [];
+    await this.prisma.apiLog
+      .createMany({ data: rows })
       .catch((err) =>
-        this.logger.debug(`Failed to persist api log: ${err?.message}`),
+        this.logger.debug(`Failed to persist ${rows.length} api logs: ${err?.message}`),
       );
+  }
+
+  onModuleDestroy() {
+    return this.flush();
   }
 
   private statusWhere(
@@ -81,9 +106,11 @@ export class LogsService {
     if (params.userId) where.userId = params.userId;
     if (params.search) {
       const search = params.search.trim();
+      // Paths are route templates now: a prefix match covers the viewer's
+      // needs and, unlike ILIKE '%x%', can stop at the LIMIT (S27).
       where.OR = [
-        { path: { contains: search, mode: 'insensitive' } },
-        { ipAddress: { contains: search } },
+        { path: { startsWith: search } },
+        { ipAddress: search },
         ...(/^\d+$/.test(search)
           ? [{ statusCode: Number(search) }]
           : []),
@@ -108,9 +135,13 @@ export class LogsService {
 
   async getStats() {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // Sum weights, not rows: sampled 2xx GETs stand for `weight` requests.
     const [total, last24h, errors24h, agg] = await Promise.all([
-      this.prisma.apiLog.count(),
-      this.prisma.apiLog.count({ where: { createdAt: { gte: since } } }),
+      this.prisma.apiLog.aggregate({ _sum: { weight: true } }),
+      this.prisma.apiLog.aggregate({
+        where: { createdAt: { gte: since } },
+        _sum: { weight: true },
+      }),
       this.prisma.apiLog.count({
         where: { createdAt: { gte: since }, statusCode: { gte: 400 } },
       }),
@@ -121,20 +152,10 @@ export class LogsService {
     ]);
 
     return {
-      total,
-      last24h,
+      total: total._sum.weight ?? 0,
+      last24h: last24h._sum.weight ?? 0,
       errors24h,
       avgDurationMs: Math.round(agg._avg.durationMs ?? 0),
     };
-  }
-
-  /** Daily cleanup so the table doesn't grow unbounded. */
-  @Cron(CronExpression.EVERY_DAY_AT_3AM)
-  async cleanup(): Promise<void> {
-    const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    const { count } = await this.prisma.apiLog.deleteMany({
-      where: { createdAt: { lt: cutoff } },
-    });
-    if (count > 0) this.logger.log(`Pruned ${count} old api logs`);
   }
 }

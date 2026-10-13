@@ -233,8 +233,8 @@ export class HackathonTeamsService {
               teamNameSource: t.nameSource,
             })),
           });
-          // Every team gets a (PENDING) standing in every existing round, as
-          // LeaderboardService.createEntrant does for hand-added entrants.
+          // Every team gets a (PENDING) standing in every existing round so the
+          // bracket and completion matrix have a row to render immediately.
           if (rounds.length) {
             await tx.leaderboardEntrantRound.createMany({
               data: created.flatMap((t) => rounds.map((r) => ({ entrantId: t.id, roundId: r.id }))),

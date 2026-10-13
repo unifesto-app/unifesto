@@ -1,0 +1,11 @@
+-- S22: one occurrence per (series, start). The daily recurrence reconcile ran on
+-- every replica with a read-then-create, so occurrences could duplicate.
+-- NULL series_parent_id (every non-series event) never conflicts.
+--
+-- Run on prod BEFORE deploying; this migration fails if it returns any row:
+--   SELECT series_parent_id, start_date_time, count(*)
+--   FROM events
+--   WHERE series_parent_id IS NOT NULL
+--   GROUP BY 1, 2
+--   HAVING count(*) > 1;
+CREATE UNIQUE INDEX "events_series_parent_id_start_date_time_key" ON "events"("series_parent_id", "start_date_time");

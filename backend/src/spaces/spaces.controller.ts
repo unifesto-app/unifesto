@@ -348,7 +348,7 @@ export class SpacesController {
 
   /**
    * Aggregated analytics for a space and its whole sub-space subtree.
-   * Organisers / co-organisers of the space (or platform admins) only.
+   * Space Admins of the space (or platform admins) only.
    * GET /spaces/:id/analytics
    */
   @Get(':id/analytics')
@@ -441,7 +441,7 @@ export class SpacesController {
 
   /**
    * Upload space logo. Allowed for platform admins and the space's own
-   * Organiser / Co-Organiser (same access as PATCH /spaces/:id).
+   * Space Admin (same access as PATCH /spaces/:id).
    * POST /spaces/:id/logo
    */
   @Post(':id/logo')
@@ -465,7 +465,7 @@ export class SpacesController {
 
   /**
    * Upload space banner. Allowed for platform admins and the space's own
-   * Organiser / Co-Organiser (same access as PATCH /spaces/:id).
+   * Space Admin (same access as PATCH /spaces/:id).
    * POST /spaces/:id/banner
    */
   @Post(':id/banner')
@@ -489,7 +489,7 @@ export class SpacesController {
 
   /**
    * Get space members with pagination and search.
-   * Accessible by platform admins and the space's organiser/co-organiser team.
+   * Accessible by platform admins and the space's Space Admins.
    * GET /spaces/:id/members?page=1&limit=20&search=&role=MEMBER
    */
   @Get(':id/members')
@@ -526,7 +526,7 @@ export class SpacesController {
 
   /**
    * Add a member to a space with a given role.
-   * Admins may assign any role; organisers may assign co-organiser and below.
+   * Platform admins and Space Admins may assign any manageable space role.
    * POST /spaces/:id/members
    */
   @Post(':id/members')

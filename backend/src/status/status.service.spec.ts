@@ -48,7 +48,10 @@ function makeHarness() {
         return row;
       }),
     },
-    apiLog: { count: jest.fn(async () => 0) },
+    apiLog: {
+      count: jest.fn(async () => 0),
+      aggregate: jest.fn(async () => ({ _sum: { weight: 0 } })),
+    },
   };
 
   const health = { database: true, redis: true, storage: true };
@@ -188,9 +191,8 @@ describe('StatusService', () => {
 
   it('marks the API down on a high 5xx rate', async () => {
     const h = makeHarness();
-    h.prisma.apiLog.count
-      .mockResolvedValueOnce(100) // total
-      .mockResolvedValueOnce(50); // 5xx
+    h.prisma.apiLog.aggregate.mockResolvedValueOnce({ _sum: { weight: 100 } }); // total
+    h.prisma.apiLog.count.mockResolvedValueOnce(50); // 5xx
     await h.service.sample();
     const rows = await h.prisma.healthCheck.findMany({ where: { service: 'api' } });
     expect(rows[0].up).toBe(false);

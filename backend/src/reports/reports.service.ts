@@ -12,8 +12,9 @@ import {
   ReportStatus,
   ReportType,
 } from '@prisma/client';
+import slugify from 'slugify';
 import { PrismaService } from '../prisma/prisma.service';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService } from '../auth/authorization';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { StorageService } from '../storage/storage.service';
 import { ReportDataService, ReportWindow } from './report-data.service';
@@ -21,6 +22,9 @@ import { ReportRenderService } from './report-render.service';
 import { CreateReportDto } from './dto';
 
 /** Every section, in canonical order — the content of a DEFAULT report. */
+/** A PENDING report older than this was cut off mid-render. */
+export const REPORT_STALE_MS = 15 * 60 * 1000;
+
 export const ALL_SECTIONS: ReportSection[] = [
   ReportSection.OVERVIEW,
   ReportSection.CHECKINS,
@@ -39,6 +43,7 @@ export class ReportsService {
     private readonly data: ReportDataService,
     private readonly render: ReportRenderService,
     private readonly storage: StorageService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   // =====================================================
@@ -65,15 +70,13 @@ export class ReportsService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    const membership = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (membership === 0) {
+    // Reports carry revenue, so the money capability: the event's Curator, a
+    // Space Admin of its space, or a platform admin.
+    const user = { id: userId };
+    const allowed =
+      (await this.authz.can(user, Action.EVENT_MANAGE_MONEY, { eventId })) ||
+      (await this.authz.can(user, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }));
+    if (!allowed) {
       throw new ForbiddenException(
         'Only an organiser of this event can generate reports',
       );
@@ -160,11 +163,11 @@ export class ReportsService {
   // =====================================================
 
   /**
-   * Create a report row and generate its PDF. The row is written PENDING first
-   * so a failed render still leaves an auditable record (flipped to FAILED with
-   * the reason) rather than vanishing. Generation is synchronous for v1; the
-   * obvious next step for large events is to return the PENDING row immediately
-   * and render on a queue.
+   * Create a report row and generate its PDF in the background. The PENDING
+   * row is returned straight away (the space app polls the list until it is
+   * READY or FAILED); a failed render flips it to FAILED with the reason. A
+   * render cut off by a restart is failed lazily by `list` after
+   * REPORT_STALE_MS, so it never spins forever.
    */
   async create(userId: string, eventId: string, dto: CreateReportDto) {
     const event = await this.assertCanManage(eventId, userId);
@@ -197,6 +200,19 @@ export class ReportsService {
       },
     });
 
+    void this.generate(report.id, event, eventId, sections, window, title);
+    return report;
+  }
+
+  private async generate(
+    reportId: string,
+    event: Awaited<ReturnType<ReportsService['assertCanManage']>>,
+    eventId: string,
+    sections: ReportSection[],
+    window: ReportWindow,
+    title: string,
+  ): Promise<void> {
+    const report = { id: reportId };
     try {
       const data = await this.data.gather(eventId, sections, window);
       const generatedAt = new Date();
@@ -216,14 +232,14 @@ export class ReportsService {
         generatedAt,
       });
 
-      const fileName = `${slugify(title)}.pdf`;
+      const fileName = `${slugify(title, { lower: true, strict: true }).slice(0, 60) || 'event-report'}.pdf`;
       const fileUrl = await this.storage.uploadBuffer(
         pdf,
         `reports/${report.id}.pdf`,
         'application/pdf',
       );
 
-      return this.prisma.eventReport.update({
+      await this.prisma.eventReport.update({
         where: { id: report.id },
         data: {
           status: ReportStatus.READY,
@@ -237,11 +253,12 @@ export class ReportsService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Report ${report.id} generation failed: ${message}`);
-      await this.prisma.eventReport.update({
-        where: { id: report.id },
-        data: { status: ReportStatus.FAILED, error: message.slice(0, 500) },
-      });
-      throw new BadRequestException(`Failed to generate report: ${message}`);
+      await this.prisma.eventReport
+        .update({
+          where: { id: report.id },
+          data: { status: ReportStatus.FAILED, error: message.slice(0, 500) },
+        })
+        .catch(() => undefined);
     }
   }
 
@@ -269,6 +286,15 @@ export class ReportsService {
 
   async list(userId: string, eventId: string, type?: ReportType) {
     await this.assertCanManage(eventId, userId);
+    // A render the process never finished (deploy, crash) stays PENDING.
+    await this.prisma.eventReport.updateMany({
+      where: {
+        eventId,
+        status: ReportStatus.PENDING,
+        createdAt: { lt: new Date(Date.now() - REPORT_STALE_MS) },
+      },
+      data: { status: ReportStatus.FAILED, error: 'Generation was interrupted. Please try again.' },
+    });
     return this.prisma.eventReport.findMany({
       where: { eventId, ...(type ? { type } : {}) },
       orderBy: { createdAt: 'desc' },
@@ -300,14 +326,4 @@ export class ReportsService {
     await this.prisma.eventReport.delete({ where: { id: reportId } });
     return { deleted: true };
   }
-}
-
-function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || 'event-report'
-  );
 }

@@ -1,0 +1,80 @@
+import { BadRequestException } from '@nestjs/common';
+import { EventStatus, SessionStatus } from '@prisma/client';
+import { EventsService } from '../events/events.service';
+import { SessionsService } from '../sessions/sessions.service';
+import { SpacesService } from '../spaces/spaces.service';
+
+/**
+ * S14: deleting a cancelled event / session, or a space, cascades over paid
+ * registrations, refund requests and stay bookings. Refuse while any exist.
+ */
+
+function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'session', number>> = {}) {
+  return {
+    eventRegistration: { count: jest.fn(async () => counts.reg ?? 0) },
+    refundRequest: { count: jest.fn(async () => counts.refund ?? 0) },
+    stayBooking: { count: jest.fn(async () => counts.stay ?? 0) },
+    payout: { count: jest.fn(async () => counts.payout ?? 0) },
+    sessionRegistration: { count: jest.fn(async () => counts.session ?? 0) },
+    event: {
+      findUnique: jest.fn(async () => ({ id: 'ev-1', slug: 'ev', spaceId: 'sp-1', status: EventStatus.CANCELLED })),
+      delete: jest.fn(async () => ({ id: 'ev-1' })),
+    },
+    session: { delete: jest.fn(async () => ({})) },
+    space: {
+      findUnique: jest.fn(async () => ({ id: 'sp-1', _count: { childSpaces: 0 } })),
+      delete: jest.fn(async () => ({})),
+    },
+  };
+}
+
+function events(prisma: ReturnType<typeof db>) {
+  const s = Object.create(EventsService.prototype);
+  Object.assign(s, { prisma, cache: { invalidateEventCache: jest.fn() } });
+  s.canManageEvent = jest.fn(async () => true);
+  return s as EventsService;
+}
+
+describe('delete is refused while money rows exist (S14)', () => {
+  it('a cancelled event with a paid (since refunded) registration is not deleted', async () => {
+    const prisma = db({ reg: 1 });
+    await expect(events(prisma).permanentDeleteEvent('u', 'ev-1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.event.delete).not.toHaveBeenCalled();
+    // Counted by a taken payment, not by status alone: free rows carry no paymentId.
+    expect(prisma.eventRegistration.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ event: { id: 'ev-1' }, paymentId: { not: null } }),
+    });
+  });
+
+  it('a refund request or a stay booking also blocks it', async () => {
+    for (const counts of [{ refund: 1 }, { stay: 1 }]) {
+      const prisma = db(counts);
+      await expect(events(prisma).permanentDeleteEvent('u', 'ev-1')).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.event.delete).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a cancelled event with no money rows is deleted', async () => {
+    const prisma = db();
+    await events(prisma).permanentDeleteEvent('u', 'ev-1');
+    expect(prisma.event.delete).toHaveBeenCalled();
+  });
+
+  it('a cancelled session with a paid registration is not deleted', async () => {
+    const prisma = db({ session: 1 });
+    const s = Object.create(SessionsService.prototype);
+    Object.assign(s, { prisma });
+    s.loadManagedSession = jest.fn(async () => ({ id: 'se-1', status: SessionStatus.CANCELLED }));
+    await expect(s.permanentDeleteSession('u', 'se-1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.session.delete).not.toHaveBeenCalled();
+  });
+
+  it('a space with money rows under it is not deleted', async () => {
+    const prisma = db({ payout: 1 });
+    const s = Object.create(SpacesService.prototype);
+    Object.assign(s, { prisma });
+    await expect(s.deleteSpace('sp-1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.space.delete).not.toHaveBeenCalled();
+    expect(prisma.payout.count).toHaveBeenCalledWith({ where: { event: { spaceId: 'sp-1' } } });
+  });
+});

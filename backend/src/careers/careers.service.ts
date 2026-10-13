@@ -16,11 +16,16 @@ import { ApplyDto, CreateCareerDto, UpdateCareerDto } from './dto';
 
 /** Resume upload constraints. */
 export const RESUME_MAX_BYTES = 5 * 1024 * 1024;
-const RESUME_MIME_TYPES = [
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
+const RESUME_EXT: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    'docx',
+};
+const RESUME_MIME_TYPES = Object.keys(RESUME_EXT);
+/** Résumés live under private/ and are only reached via short signed links. */
+export const RESUME_PRIVATE_PREFIX = 'private/career-resumes/';
+const RESUME_LINK_SECONDS = 15 * 60;
 
 @Injectable()
 export class CareersService {
@@ -178,11 +183,10 @@ export class CareersService {
       throw new BadRequestException('Resume must be 5MB or smaller');
     }
 
-    const resumeUrl = await this.storage.uploadFile(
-      resume,
-      'career-resumes/',
-      randomUUID(),
-    );
+    // Stored as a private key (S25); listApplications swaps it for a signed
+    // link. Legacy rows keep their old public URL.
+    const resumeUrl = `${RESUME_PRIVATE_PREFIX}${randomUUID()}.${RESUME_EXT[resume.mimetype]}`;
+    await this.storage.uploadPrivate(resume.buffer, resumeUrl, resume.mimetype);
 
     await this.prisma.careerApplication.create({
       data: {
@@ -214,7 +218,17 @@ export class CareersService {
         orderBy: { createdAt: 'desc' },
       }),
     ]);
-    return { career, applications };
+    return {
+      career,
+      applications: await Promise.all(
+        applications.map(async (a) => ({
+          ...a,
+          resumeUrl: a.resumeUrl.startsWith(RESUME_PRIVATE_PREFIX)
+            ? await this.storage.signedGetUrl(a.resumeUrl, RESUME_LINK_SECONDS)
+            : a.resumeUrl,
+        })),
+      ),
+    };
   }
 
   async updateApplicationStatus(id: string, status: ApplicationStatus) {
@@ -227,7 +241,12 @@ export class CareersService {
 
   async removeApplication(id: string) {
     await this.ensureApplicationExists(id);
-    await this.prisma.careerApplication.delete({ where: { id } });
+    const removed = await this.prisma.careerApplication.delete({
+      where: { id },
+    });
+    if (removed.resumeUrl?.startsWith(RESUME_PRIVATE_PREFIX)) {
+      await this.storage.deleteObject(removed.resumeUrl);
+    }
     return { deleted: true };
   }
 

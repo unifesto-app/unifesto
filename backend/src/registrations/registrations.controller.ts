@@ -1,4 +1,5 @@
 import {
+  Logger,
   Controller,
   Get,
   Post,
@@ -305,7 +306,7 @@ export class RegistrationsController {
         ? format
         : 'csv';
     const exportType = type === 'transactions' ? 'transactions' : 'attendees';
-    const { buffer, contentType, filename } =
+    const { buffer, stream, contentType, filename } =
       await this.registrationsService.exportRegistrations(
         req.user.id,
         id,
@@ -317,7 +318,19 @@ export class RegistrationsController {
       'Content-Disposition',
       `attachment; filename="${filename}"`,
     );
-    res.setHeader('Content-Length', buffer.length.toString());
+    if (stream) {
+      // CSV streams as it is read. A failure mid-stream can't become an error
+      // status any more, so cut the connection rather than send a short file.
+      stream.on('error', (err) => {
+        new Logger('RegistrationsExport').error(
+          `Export ${id} failed mid-stream: ${err.message}`,
+        );
+        res.destroy(err);
+      });
+      stream.pipe(res);
+      return;
+    }
+    res.setHeader('Content-Length', buffer!.length.toString());
     res.end(buffer);
   }
 
@@ -826,12 +839,13 @@ export class RegistrationsController {
   async handleRazorpayWebhook(
     @Headers('x-razorpay-signature') signature: string,
     @Req() req: { rawBody?: Buffer },
+    @Headers('x-razorpay-event-id') razorpayEventId?: string,
   ) {
     // Razorpay signs the exact bytes it POSTs. Verify against req.rawBody
     // (preserved by `rawBody: true` in main.ts), never a re-serialised object —
     // re-stringifying the parsed body changes key order/whitespace and breaks
     // the HMAC, silently 400-ing every webhook.
     const rawBody = req.rawBody?.toString('utf8') ?? '';
-    return this.registrationsService.handleRazorpayWebhook(rawBody, signature);
+    return this.registrationsService.handleRazorpayWebhook(rawBody, signature, razorpayEventId);
   }
 }

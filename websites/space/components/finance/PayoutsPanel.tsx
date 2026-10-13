@@ -284,6 +284,12 @@ export function RequestPayoutDialog({
                 <span className="text-muted-foreground">Available</span>
                 <span className="font-semibold">{money(summary.available)}</span>
               </div>
+              {(summary.overdrawn ?? 0) > 0 && (
+                <div className="flex justify-between text-destructive">
+                  <span>Overdrawn (refunds after payout)</span>
+                  <span className="font-semibold">−{money(summary.overdrawn ?? 0)}</span>
+                </div>
+              )}
             </div>
 
             {available <= 0 ? (

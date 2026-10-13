@@ -292,6 +292,9 @@ function MoneyFlow({
         <div className="mt-auto space-y-1.5 pt-4">
           <NodeRow label="Settled" value={money(fin.settled)} />
           <NodeRow label="Pending" value={money(fin.pending)} muted />
+          {(fin.overdrawn ?? 0) > 0 && (
+            <NodeRow label="Overdrawn (refunds after payout)" value={`−${money(fin.overdrawn ?? 0)}`} />
+          )}
           {fin.available > 0 && onRequestPayout && (
             <button
               type="button"

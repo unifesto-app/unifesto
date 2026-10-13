@@ -12,6 +12,11 @@ import {
 } from '../white-label/branding.util';
 import { layout, WEB, type EmailBrand } from './layout';
 import * as T from './templates';
+import {
+  AWS_HTTP_TIMEOUTS,
+  OUTBOUND_TIMEOUT_MS,
+  withTimeout,
+} from '../common/http/outbound-timeouts';
 
 interface CustomCampaignData {
   to: string | string[];
@@ -66,7 +71,7 @@ export class EmailService {
     this.fromTransactional = `Unifesto <${this.transactionalAddress}>`;
 
     const sesRegion = this.configService.get<string>('AWS_SES_REGION', 'ap-south-1');
-    this.sesClient = new SESClient({ region: sesRegion });
+    this.sesClient = new SESClient({ region: sesRegion, ...AWS_HTTP_TIMEOUTS });
     this.bulkAddress = this.configService.get<string>(
       'EMAIL_FROM_BULK',
       'no-reply@updates.unifesto.app',
@@ -107,14 +112,18 @@ export class EmailService {
         ? `${sender.fromName} <${sender.fromAddress || this.transactionalAddress}>`
         : this.fromTransactional;
 
-      const { data, error } = await this.resend.emails.send({
-        from,
-        to,
-        subject,
-        html,
-        ...(sender?.replyTo ? { replyTo: sender.replyTo } : {}),
-        ...(attachments?.length ? { attachments } : {}),
-      });
+      const { data, error } = await withTimeout(
+        this.resend.emails.send({
+          from,
+          to,
+          subject,
+          html,
+          ...(sender?.replyTo ? { replyTo: sender.replyTo } : {}),
+          ...(attachments?.length ? { attachments } : {}),
+        }),
+        OUTBOUND_TIMEOUT_MS,
+        'Resend send',
+      );
 
       if (error) {
         this.logger.error(`Resend error: ${error.message}`);

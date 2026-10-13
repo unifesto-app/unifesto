@@ -3,6 +3,7 @@ import { existsSync } from 'fs';
 import axios from 'axios';
 import PDFDocument from 'pdfkit';
 import * as QRCode from 'qrcode';
+import sharp from 'sharp';
 import {
   createCanvas,
   loadImage,
@@ -62,6 +63,32 @@ export interface CertificateRenderInput {
   verifyUrl: string;
   /** The verification code, printed beside/beneath the QR. */
   verifyCode: string;
+}
+
+/**
+ * Raster ceiling: A4 at 300 dpi (3508 x 2480). Templates may be authored up to
+ * 10000 px a side; a canvas that size is ~400 MB of native Skia memory per
+ * render, which OOM-killed replicas (S20). Output above this is scaled down;
+ * layout stays in template coordinates, so only the resolution changes.
+ */
+export const MAX_RENDER_SIDE = 3508;
+export const MAX_RENDER_PIXELS = 3508 * 2480;
+
+/** Scale factor (<= 1) that fits w x h inside the raster ceiling. */
+export function renderScale(w: number, h: number): number {
+  return Math.min(
+    1,
+    MAX_RENDER_SIDE / Math.max(w, h),
+    Math.sqrt(MAX_RENDER_PIXELS / (w * h)),
+  );
+}
+
+/** Background + QR bytes, fetched once and shared by both renderers. */
+interface RenderAssets {
+  background: Buffer;
+  qr: Buffer;
+  /** Output scale for the PNG (see {@link renderScale}). */
+  scale: number;
 }
 
 /** Where the QR + its caption sit, in canvas coordinates. */
@@ -240,19 +267,71 @@ export class CertificateRenderService {
   // PNG  (node-canvas — reliable custom fonts via registerFont)
   // ==========================================================================
 
-  async renderPng(input: CertificateRenderInput): Promise<Buffer> {
-    ensureCanvasFonts(this.logger);
-    const placement = this.qrPlacement(input);
-    const [bgBuf, qrBuf] = await Promise.all([
+  /**
+   * Both artifacts for one certificate. The background is downloaded once (it
+   * used to be fetched by each renderer) and capped to the raster ceiling, and
+   * the two renders run one after the other so peak native memory is one
+   * canvas, not two.
+   */
+  async renderAll(
+    input: CertificateRenderInput,
+  ): Promise<{ pdf: Buffer; png: Buffer }> {
+    const scale = renderScale(input.canvasWidth, input.canvasHeight);
+    const [rawBackground, qr] = await Promise.all([
       this.fetchBackground(input.backgroundUrl),
       this.qrPng(input.verifyUrl),
     ]);
+    const background = await this.capBackground(
+      rawBackground,
+      Math.floor(input.canvasWidth * scale),
+      Math.floor(input.canvasHeight * scale),
+    );
+    const assets = { background, qr, scale };
+    const pdf = await this.renderPdf(input, assets);
+    const png = await this.renderPng(input, assets);
+    return { pdf, png };
+  }
 
-    const canvas = createCanvas(input.canvasWidth, input.canvasHeight);
+  /**
+   * Shrink an oversized background to the output size with libvips (streams,
+   * shrink-on-load) before Skia ever decodes it at full size. Smaller images,
+   * or bytes sharp can't read, pass through untouched.
+   */
+  private async capBackground(
+    buf: Buffer,
+    width: number,
+    height: number,
+  ): Promise<Buffer> {
+    try {
+      const meta = await sharp(buf).metadata();
+      if ((meta.width ?? 0) <= width && (meta.height ?? 0) <= height) return buf;
+      return await sharp(buf)
+        .resize(width, height, { fit: 'fill' })
+        .png({ compressionLevel: 1 })
+        .toBuffer();
+    } catch {
+      return buf;
+    }
+  }
+
+  private async renderPng(
+    input: CertificateRenderInput,
+    assets: RenderAssets,
+  ): Promise<Buffer> {
+    ensureCanvasFonts(this.logger);
+    const placement = this.qrPlacement(input);
+    const { scale } = assets;
+
+    const canvas = createCanvas(
+      Math.floor(input.canvasWidth * scale),
+      Math.floor(input.canvasHeight * scale),
+    );
     const ctx = canvas.getContext('2d');
+    // Draw in template coordinates; the transform does the downscale.
+    ctx.scale(scale, scale);
 
     // Full-bleed background.
-    const bg = await loadImage(bgBuf);
+    const bg = await loadImage(assets.background);
     ctx.drawImage(bg, 0, 0, input.canvasWidth, input.canvasHeight);
 
     // Text fields.
@@ -288,7 +367,7 @@ export class CertificateRenderService {
     }
 
     // Verify QR + caption.
-    const qrImg = await loadImage(qrBuf);
+    const qrImg = await loadImage(assets.qr);
     ctx.drawImage(
       qrImg,
       placement.qrX,
@@ -312,7 +391,9 @@ export class CertificateRenderService {
     ctx.fillText(line1, capX, cap.topY, cap.width);
     ctx.fillText(line2, capX, cap.topY + cap.font * 1.2, cap.width);
 
-    return canvas.toBuffer('image/png');
+    // Async encode: the sync toBuffer blocked the event loop for the whole
+    // PNG compression, stalling every request on this replica.
+    return canvas.encode('png');
   }
 
   /** Word-wrap `text` into `maxW` and draw each line; `ctx.textAlign` set by caller. */
@@ -344,12 +425,11 @@ export class CertificateRenderService {
   // PDF  (pdfkit — bundled fonts registered per document)
   // ==========================================================================
 
-  async renderPdf(input: CertificateRenderInput): Promise<Buffer> {
+  private async renderPdf(
+    input: CertificateRenderInput,
+    { background, qr }: RenderAssets,
+  ): Promise<Buffer> {
     const placement = this.qrPlacement(input);
-    const [background, qr] = await Promise.all([
-      this.fetchBackground(input.backgroundUrl),
-      this.qrPng(input.verifyUrl),
-    ]);
 
     return new Promise<Buffer>((resolve, reject) => {
       try {

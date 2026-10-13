@@ -15,6 +15,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
+import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
 
 /**
  * Keys are timestamped and never overwritten, so an object's bytes never
@@ -77,6 +78,7 @@ export class StorageService implements OnModuleInit {
     // Initialize S3 Client with IAM role credentials (no hardcoded keys)
     this.s3Client = new S3Client({
       region: this.region,
+      ...AWS_HTTP_TIMEOUTS,
       // Credentials automatically obtained from EC2 instance profile
     });
   }

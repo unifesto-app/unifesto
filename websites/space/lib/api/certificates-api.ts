@@ -366,6 +366,8 @@ export interface ReissueAllSummary {
   reissued: number;
   emailed: number;
   failed: number;
+  /** True when the reissue runs in the background; counts are then all 0. */
+  queued?: boolean;
 }
 
 /**
