@@ -18,7 +18,7 @@ import { RedisService } from '../../redis/redis.service';
  * realtime then only works correctly on a single replica.
  */
 export class RedisIoAdapter extends IoAdapter {
-  private readonly logger = new Logger(RedisIoAdapter.name);
+  protected override readonly logger = new Logger(RedisIoAdapter.name);
   private adapterConstructor?: ReturnType<typeof createAdapter>;
 
   constructor(private readonly appContext: INestApplicationContext) {
