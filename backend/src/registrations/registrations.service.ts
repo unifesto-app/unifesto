@@ -44,8 +44,7 @@ import {
   EventVisibility,
   FormFieldType,
 } from '@prisma/client';
-import { canAccessSpaceOnlyEvent } from '../events/event-access';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin, canAccessSpaceOnlyEvent, isSpaceAdmin } from '../events/event-access';
 import {
   RegisterForEventDto,
   VerifyRegistrationDto,
@@ -1828,15 +1827,8 @@ export class RegistrationsService {
       throw new NotFoundException('Event not found');
     }
 
-    const userRoles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (userRoles.length === 0) {
-      throw new BadRequestException('Unauthorized');
+    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+      throw new ForbiddenException('Unauthorized');
     }
 
     const registrations = await this.prisma.eventRegistration.findMany({
@@ -2706,16 +2698,8 @@ export class RegistrationsService {
       throw new NotFoundException('Event not found');
     }
 
-    const userRoles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-
-    if (userRoles.length === 0) {
-      throw new BadRequestException('Unauthorized');
+    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+      throw new ForbiddenException('Unauthorized');
     }
 
     const skip = (page - 1) * limit;
@@ -2876,16 +2860,8 @@ export class RegistrationsService {
       throw new BadRequestException('Bulk export not available in your plan');
     }
 
-    const userRoles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-
-    if (userRoles.length === 0) {
-      throw new BadRequestException('Unauthorized');
+    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+      throw new ForbiddenException('Unauthorized');
     }
 
     const registrations = await this.prisma.eventRegistration.findMany({
@@ -3226,16 +3202,8 @@ export class RegistrationsService {
       throw new NotFoundException('Event not found');
     }
 
-    const userRoles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-
-    if (userRoles.length === 0) {
-      throw new BadRequestException('Unauthorized');
+    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+      throw new ForbiddenException('Unauthorized');
     }
 
     return this.buildRegistrationDetail(eventId, registrationId);
@@ -3324,22 +3292,9 @@ export class RegistrationsService {
     };
   }
 
-  /** Assert the user is an organiser / co-organiser of the event's space. */
+  /** Assert the user is a Space Admin of the event's space. */
   private async assertEventOrganiser(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { spaceId: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-
-    const roles = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (roles === 0) throw new BadRequestException('Unauthorized');
+    await assertEventSpaceAdmin(this.prisma, userId, eventId, 'Unauthorized');
   }
 
   /**

@@ -28,6 +28,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin, isPlatformAdmin } from '../events/event-access';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 import { esc, h1, small, strong } from '../email/layout';
@@ -109,24 +110,9 @@ export class RefundsService {
     return money(Number(a.totalAmount) - Number(a.processingFee));
   }
 
-  /** Ensure the user is an organiser/co-organiser of the event's space. */
+  /** Ensure the user is a Space Admin of the event's space. */
   private async assertOrganiser(userId: string, eventId: string): Promise<void> {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { spaceId: true },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-    const roles = await this.prisma.userRole.findMany({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-      select: { id: true },
-    });
-    if (roles.length === 0) {
-      throw new ForbiddenException('Not an organiser of this event');
-    }
+    await assertEventSpaceAdmin(this.prisma, userId, eventId, 'Not an organiser of this event');
   }
 
   // --- Notifications --------------------------------------------------------
@@ -796,10 +782,7 @@ export class RefundsService {
     const isOwner =
       request.registration.userId === userId || request.requestedById === userId;
     if (!isOwner) {
-      const isAdmin = await this.prisma.userRole.count({
-        where: { userId, role: { code: 'ADMIN' } },
-      });
-      if (!isAdmin) {
+      if (!(await isPlatformAdmin(this.prisma, userId))) {
         // Throws ForbiddenException if the user isn't an organiser of the event.
         await this.assertOrganiser(userId, request.eventId);
       }

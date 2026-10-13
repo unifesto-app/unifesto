@@ -13,7 +13,7 @@ import {
   ReportType,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin } from '../events/event-access';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { StorageService } from '../storage/storage.service';
 import { ReportDataService, ReportWindow } from './report-data.service';
@@ -46,11 +46,12 @@ export class ReportsService {
   // =====================================================
 
   private async assertCanManage(eventId: string, userId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: {
-        id: true,
-        spaceId: true,
+    const event = await assertEventSpaceAdmin(
+      this.prisma,
+      userId,
+      eventId,
+      'Only an organiser of this event can generate reports',
+      {
         title: true,
         slug: true,
         status: true,
@@ -62,22 +63,7 @@ export class ReportsService {
         capacity: true,
         space: { select: { name: true } },
       },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-
-    const membership = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (membership === 0) {
-      throw new ForbiddenException(
-        'Only an organiser of this event can generate reports',
-      );
-    }
+    );
 
     if (!(await this.spaceHasAnalyticsPlan(event.spaceId))) {
       throw new ForbiddenException(

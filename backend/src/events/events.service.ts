@@ -50,6 +50,7 @@ import {
 import { assertCanViewSpace } from '../spaces/space-access';
 import {
   canAccessSpaceOnlyEvent,
+  isSpaceAdmin,
   listableEventsWhere,
   memberSpaceIds,
 } from './event-access';
@@ -722,7 +723,7 @@ export class EventsService {
   ) {
     const request = await this.loadPendingAttachRequest(requestId);
 
-    if (!(await this.isSpaceAdminOf(userId, request.ownerSpaceId))) {
+    if (!(await isSpaceAdmin(this.prisma, userId, request.ownerSpaceId))) {
       throw new ForbiddenException(
         'Only a Space Admin of the owning space can accept this',
       );
@@ -789,7 +790,7 @@ export class EventsService {
     reviewNote?: string,
   ) {
     const request = await this.loadPendingAttachRequest(requestId);
-    if (!(await this.isSpaceAdminOf(userId, request.ownerSpaceId))) {
+    if (!(await isSpaceAdmin(this.prisma, userId, request.ownerSpaceId))) {
       throw new ForbiddenException(
         'Only a Space Admin of the owning space can decline this',
       );
@@ -806,7 +807,7 @@ export class EventsService {
     const request = await this.loadPendingAttachRequest(requestId);
     const allowed =
       request.requestedBy === userId ||
-      (await this.isSpaceAdminOf(userId, request.requestingSpaceId));
+      (await isSpaceAdmin(this.prisma, userId, request.requestingSpaceId));
     if (!allowed) {
       throw new ForbiddenException('You cannot cancel this request');
     }
@@ -968,19 +969,6 @@ export class EventsService {
   // move is deliberate and re-validated at accept time.
   // ---------------------------------------------------------------------------
 
-  /** True if `userId` holds a Space-Admin-tier role in `spaceId` (space scope). */
-  private async isSpaceAdminOf(userId: string, spaceId: string): Promise<boolean> {
-    const count = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    return count > 0;
-  }
-
   /** The single PENDING transfer for an event, or 404 if there isn't one. */
   private async loadPendingTransfer(eventId: string) {
     const transfer = await this.prisma.eventOwnershipTransfer.findFirst({
@@ -1015,7 +1003,7 @@ export class EventsService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    if (!(await this.isSpaceAdminOf(userId, event.spaceId))) {
+    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
       throw new ForbiddenException(
         'Only a Space Admin of the host space can transfer ownership',
       );
@@ -1082,7 +1070,7 @@ export class EventsService {
   ) {
     const transfer = await this.loadPendingTransfer(eventId);
 
-    if (!(await this.isSpaceAdminOf(userId, transfer.toSpaceId))) {
+    if (!(await isSpaceAdmin(this.prisma, userId, transfer.toSpaceId))) {
       throw new ForbiddenException(
         'Only a Space Admin of the receiving space can accept this transfer',
       );
@@ -1165,7 +1153,7 @@ export class EventsService {
     reviewNote?: string,
   ) {
     const transfer = await this.loadPendingTransfer(eventId);
-    if (!(await this.isSpaceAdminOf(userId, transfer.toSpaceId))) {
+    if (!(await isSpaceAdmin(this.prisma, userId, transfer.toSpaceId))) {
       throw new ForbiddenException(
         'Only a Space Admin of the receiving space can decline this transfer',
       );
@@ -1185,7 +1173,7 @@ export class EventsService {
   /** Rescind a pending offer. Space Admins of the host (from) space only. */
   async cancelOwnershipTransfer(userId: string, eventId: string) {
     const transfer = await this.loadPendingTransfer(eventId);
-    if (!(await this.isSpaceAdminOf(userId, transfer.fromSpaceId))) {
+    if (!(await isSpaceAdmin(this.prisma, userId, transfer.fromSpaceId))) {
       throw new ForbiddenException(
         'Only a Space Admin of the host space can cancel this transfer',
       );
@@ -1208,10 +1196,11 @@ export class EventsService {
     avatarUrl: true,
   };
 
+  /** Loads the event (id, spaceId, slug for cache busting) or 404s; 403s unless the caller may manage it. */
   private async assertCanManageEvent(userId: string, eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { id: true, spaceId: true },
+      select: { id: true, spaceId: true, slug: true },
     });
     if (!event) throw new NotFoundException('Event not found');
     if (!(await this.canManageEvent(userId, event.spaceId, eventId))) {
@@ -3552,32 +3541,13 @@ export class EventsService {
   // so the public page reflects edits immediately.
   // ---------------------------------------------------------------------------
 
-  /**
-   * Ensure the caller may manage the event and return the fields needed to
-   * mutate a child section and bust the event cache.
-   */
-  private async assertManageableEvent(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: { id: true, spaceId: true, slug: true },
-    });
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot manage this event');
-    }
-    return event;
-  }
-
   async updateAgenda(
     userId: string,
     eventId: string,
     agendaId: string,
     dto: UpdateAgendaDto,
   ) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventAgenda.findUnique({
       where: { id: agendaId },
     });
@@ -3600,7 +3570,7 @@ export class EventsService {
   }
 
   async deleteAgenda(userId: string, eventId: string, agendaId: string) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventAgenda.findUnique({
       where: { id: agendaId },
     });
@@ -3618,7 +3588,7 @@ export class EventsService {
     speakerId: string,
     dto: UpdateSpeakerDto,
   ) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventSpeaker.findUnique({
       where: { id: speakerId },
     });
@@ -3642,7 +3612,7 @@ export class EventsService {
   }
 
   async deleteSpeaker(userId: string, eventId: string, speakerId: string) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventSpeaker.findUnique({
       where: { id: speakerId },
     });
@@ -3655,7 +3625,7 @@ export class EventsService {
   }
 
   async createPrize(userId: string, eventId: string, dto: CreatePrizeDto) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const prize = await this.prisma.eventPrize.create({
       data: {
         eventId,
@@ -3676,7 +3646,7 @@ export class EventsService {
     prizeId: string,
     dto: UpdatePrizeDto,
   ) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventPrize.findUnique({
       where: { id: prizeId },
     });
@@ -3698,7 +3668,7 @@ export class EventsService {
   }
 
   async deletePrize(userId: string, eventId: string, prizeId: string) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventPrize.findUnique({
       where: { id: prizeId },
     });
@@ -3711,7 +3681,7 @@ export class EventsService {
   }
 
   async createContact(userId: string, eventId: string, dto: CreateContactDto) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const contact = await this.prisma.eventContact.create({
       data: {
         eventId,
@@ -3732,7 +3702,7 @@ export class EventsService {
     contactId: string,
     dto: UpdateContactDto,
   ) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventContact.findUnique({
       where: { id: contactId },
     });
@@ -3754,7 +3724,7 @@ export class EventsService {
   }
 
   async deleteContact(userId: string, eventId: string, contactId: string) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventContact.findUnique({
       where: { id: contactId },
     });
@@ -3767,7 +3737,7 @@ export class EventsService {
   }
 
   async createFaq(userId: string, eventId: string, dto: CreateFaqDto) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const faq = await this.prisma.eventFaq.create({
       data: {
         eventId,
@@ -3786,7 +3756,7 @@ export class EventsService {
     faqId: string,
     dto: UpdateFaqDto,
   ) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventFaq.findUnique({
       where: { id: faqId },
     });
@@ -3806,7 +3776,7 @@ export class EventsService {
   }
 
   async deleteFaq(userId: string, eventId: string, faqId: string) {
-    const event = await this.assertManageableEvent(userId, eventId);
+    const event = await this.assertCanManageEvent(userId, eventId);
     const item = await this.prisma.eventFaq.findUnique({
       where: { id: faqId },
     });

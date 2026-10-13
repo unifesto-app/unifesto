@@ -37,6 +37,7 @@ import {
   SpaceVisibility,
 } from '@prisma/client';
 import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
+import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
@@ -139,15 +140,6 @@ export class SpacesService {
   /**
    * Get all spaces with filters
    */
-  private async isPlatformAdmin(userId?: string): Promise<boolean> {
-    if (!userId) return false;
-    const admin = await this.prisma.userRole.findFirst({
-      where: { userId, role: { code: RoleCode.ADMIN } },
-      select: { id: true },
-    });
-    return !!admin;
-  }
-
   async getAllSpaces(params: {
     page?: number;
     limit?: number;
@@ -161,7 +153,7 @@ export class SpacesService {
     const skip = (page - 1) * limit;
 
     // Private spaces only list for their members (platform admins see all).
-    const where: any = (await this.isPlatformAdmin(viewerId))
+    const where: any = (await isPlatformAdmin(this.prisma, viewerId))
       ? {}
       : { AND: [visibleSpacesWhere(viewerId)] };
 

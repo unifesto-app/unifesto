@@ -18,7 +18,7 @@ import {
 } from '@prisma/client';
 import { CertificateIssuanceQueue } from './certificates.queue';
 import { PrismaService } from '../prisma/prisma.service';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventSpaceAdmin } from '../events/event-access';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { StorageService } from '../storage/storage.service';
@@ -96,32 +96,18 @@ export class CertificatesService {
    * certificates. Returns the event's `spaceId` and `title` for downstream use.
    */
   private async assertCanManage(eventId: string, userId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      select: {
-        id: true,
-        spaceId: true,
+    const event = await assertEventSpaceAdmin(
+      this.prisma,
+      userId,
+      eventId,
+      'Only an organiser of this event can manage certificates',
+      {
         title: true,
         slug: true,
         endDateTime: true,
         space: { select: { name: true } },
       },
-    });
-    if (!event) throw new NotFoundException('Event not found');
-
-    const membership = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId: event.spaceId,
-        eventId: null,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (membership === 0) {
-      throw new ForbiddenException(
-        'Only an organiser of this event can manage certificates',
-      );
-    }
+    );
 
     if (!(await this.spaceHasCertificatesPlan(event.spaceId))) {
       throw new ForbiddenException(

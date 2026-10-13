@@ -126,8 +126,8 @@ function makeDb(opts: {
       },
     },
     userRole: {
-      // Non-empty ⇒ the caller passes the organiser check.
-      findMany: async () => [{ id: 'role-1', role: { code: 'SPACE_ADMIN' } }],
+      // Non-zero ⇒ the caller passes the organiser check.
+      count: async () => 1,
     },
     eventTicketType: {
       findUnique: async () => ({ ...ticketType }),
