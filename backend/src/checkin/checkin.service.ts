@@ -95,7 +95,7 @@ export class CheckinService {
    * A registration may only be checked in when it's a confirmed attendee — the
    * same bar (`COUNTS_AS_ATTENDING`) used for every other headcount in the app.
    * This blocks scanning in someone who hasn't paid (PENDING) or is still on the
-   * waiting list, which would otherwise flip them to ATTENDED and award coins.
+   * waiting list, which would otherwise flip them to ATTENDED.
    */
   private assertCheckinable(registration: {
     status: RegistrationStatus;
@@ -356,8 +356,7 @@ export class CheckinService {
    * Check the selected group members in at a point. Idempotent per member.
    * The registration-level check-in record still tracks the group as a whole:
    * the first member checked in (at any point) flips the registration to
-   * ATTENDED, marks tickets used, and awards attendance coins once — to the
-   * lead, since members have no accounts.
+   * ATTENDED and marks tickets used.
    */
   async checkinGroupMembers(
     userId: string,
@@ -446,8 +445,8 @@ export class CheckinService {
         skipDuplicates: true, // re-checking an already-in member is a no-op
       });
 
-      // Keep the registration-level record so existing stats + the ATTENDED /
-      // coins flow still treat the group as checked in (once ≥1 member is in).
+      // Keep the registration-level record so existing stats + the ATTENDED
+      // flow still treat the group as checked in (once ≥1 member is in).
       await tx.eventCheckinRecord.upsert({
         where: {
           registrationId_checkinTypeId: { registrationId, checkinTypeId },
@@ -497,7 +496,7 @@ export class CheckinService {
   /**
    * Record a check-in of a registration at a check-in point. Idempotent per
    * (registration, point). The first-ever check-in also flips the registration
-   * to ATTENDED and awards the attendance coins (once).
+   * to ATTENDED.
    */
   private async recordCheckin(
     userId: string,
@@ -1212,7 +1211,7 @@ export class CheckinService {
         }
 
         // Route through the same path as a scan: writes an EventCheckinRecord,
-        // enforces attendee eligibility, and awards coins once (idempotently).
+        // and enforces attendee eligibility (idempotently).
         const res = await this.recordCheckin(userId, registration, point.id);
         const name = registration.user.fullName;
         if ('alreadyCheckedIn' in res && res.alreadyCheckedIn) {

@@ -4930,7 +4930,7 @@ export class RegistrationsService {
    * Reconcile a stuck PENDING registration against Razorpay's own record of the
    * order — the backstop when neither the client verify nor the webhook settled
    * it. Fetches every payment attempt on the order and applies the truth:
-   *   - a captured payment  → mark PAID (full seat/ticket/coin settlement)
+   *   - a captured payment  → mark PAID (full seat/ticket settlement)
    *   - only failed attempts → mark FAILED
    *   - still in progress / no attempt → leave PENDING
    * Idempotent and safe to re-run; already-settled rows are returned unchanged.
@@ -5059,8 +5059,7 @@ export class RegistrationsService {
           // Re-home the registration onto what was *actually* captured so its
           // per-registration numbers are cash-accurate. `razorpayAmount` is the
           // amount charged via Razorpay, so it becomes the captured value. To
-          // preserve the razorpayAmount ≤ totalAmount invariant (coins only ever
-          // reduce the charge, never inflate it), lift `totalAmount` when the
+          // preserve the razorpayAmount ≤ totalAmount invariant, lift `totalAmount` when the
           // capture exceeds it. The extra is treated as processing fee, not
           // ticket price: bump `processingFee` by the same delta so the ticket
           // base (totalAmount − processingFee) — and hence the refundable amount,
@@ -5181,7 +5180,7 @@ export class RegistrationsService {
    * Apply the true Razorpay outcome of a single payment to a PENDING
    * registration. Branches on refunds so a captured-then-refunded payment is
    * never mistaken for a clean confirmation:
-   *   - captured, not refunded  → PAID (full seat/ticket/coin settlement)
+   *   - captured, not refunded  → PAID (full seat/ticket settlement)
    *   - captured, fully refunded → REFUNDED + registration CANCELLED, no tickets
    *   - captured, partially refunded → left PENDING and reported (needs a human;
    *     issuing a ticket vs. treating as cancelled is a judgement call)
@@ -5236,7 +5235,7 @@ export class RegistrationsService {
         ) / 100;
 
       if (refunded <= 0) {
-        // Clean capture — full settlement (tickets, seats, coins, confirmation).
+        // Clean capture — full settlement (tickets, seats, confirmation).
         await this.completeWebhookPayment(
           registration.id,
           payment.paymentId,
@@ -5758,9 +5757,8 @@ export class RegistrationsService {
    * This is the inverse of the seat/ticket side of {@link cancelRegistration}:
    * it re-consumes the seat, re-activates the tickets and clears the cancel
    * stamp. It deliberately does NOT touch money — a refund that was already paid
-   * out, coins that were returned, or reclaimed cashback are not reversed here;
-   * those are handled through the refund tools so a restore can never silently
-   * grant a free ticket or double-credit a wallet. The typical case this exists
+   * out is not reversed here; that is handled through the refund tools so a
+   * restore can never silently grant a free ticket. The typical case this exists
    * for is a paid attendee whose payment landed just after they cancelled.
    *
    * Guarded (see below) against the cases where a blind un-cancel would corrupt

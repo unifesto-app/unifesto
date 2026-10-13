@@ -95,8 +95,6 @@ export class AuthService {
     private readonly cache: CacheService,
     private readonly cognitoJwtService?: CognitoJwtService, // Optional injection for future Cognito flows
   ) {
-    // Note: WalletService and SubscriptionService are injected via lazy loading pattern
-    // to avoid circular dependencies
     this.jwtSecret = this.configService.get<string>('JWT_SECRET')!;
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '7d');
     // Refresh token lives well beyond the access token so the app can silently
