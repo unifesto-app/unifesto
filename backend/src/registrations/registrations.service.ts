@@ -69,6 +69,19 @@ import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { seatPhone, seatMemberName, type SeatLike } from './group-invite.util';
 import * as crypto from 'crypto';
 
+/**
+ * A payment may settle a registration only while its money is unsettled and
+ * the row is live: never revive a refunded or cancelled row (a replayed
+ * receipt or a late capture of a superseded checkout).
+ */
+const SETTLEABLE_PAYMENT: PaymentStatus[] = [PaymentStatus.PENDING, PaymentStatus.FAILED];
+const SETTLEABLE = {
+  paymentStatus: { in: SETTLEABLE_PAYMENT },
+  status: { not: RegistrationStatus.CANCELLED },
+};
+const isSettleable = (r: { paymentStatus: PaymentStatus; status: RegistrationStatus }) =>
+  SETTLEABLE_PAYMENT.includes(r.paymentStatus) && r.status !== RegistrationStatus.CANCELLED;
+
 @Injectable()
 export class RegistrationsService {
   private readonly logger = new Logger(RegistrationsService.name);
@@ -3951,7 +3964,23 @@ export class RegistrationsService {
       // Both steps run in one transaction so the slot and the row go together.
       await this.prisma.$transaction(async (tx) => {
         await this.coupons.releaseByRegistration(tx, stale.id);
-        await tx.eventRegistration.delete({ where: { id: stale.id } });
+        if (stale.orderId) {
+          if (stale.status === RegistrationStatus.CANCELLED) return; // already superseded
+          // Reached checkout: a Razorpay order names this row, and the attendee
+          // may still pay it in another tab. Deleting would orphan that money,
+          // so cancel instead (same as registerForEvent); the partial unique
+          // index exempts CANCELLED rows, so the new attempt can still insert.
+          await tx.eventRegistration.update({
+            where: { id: stale.id },
+            data: {
+              status: RegistrationStatus.CANCELLED,
+              cancelledAt: new Date(),
+              cancellationReason: 'Superseded by a new checkout attempt',
+            },
+          });
+        } else {
+          await tx.eventRegistration.delete({ where: { id: stale.id } });
+        }
       });
     }
 
@@ -4459,6 +4488,22 @@ export class RegistrationsService {
       throw new BadRequestException('Unauthorized');
     }
 
+    // The signature proves a genuine payment, not that it paid for THIS row.
+    // Both checks run before every branch below (PAID, waitlist, fresh).
+    if (registration.eventId !== eventId) {
+      throw new BadRequestException('That registration is for a different event.');
+    }
+    // A retry overwrites orderId; an earlier order that got paid still belongs
+    // to this registration if its notes say so (same as stays).
+    if (dto.razorpayOrderId !== registration.orderId) {
+      const notes = await this.payments
+        .fetchOrderNotes(dto.razorpayOrderId)
+        .catch((): Record<string, string> => ({}));
+      if (notes.registrationId !== registration.id) {
+        throw new BadRequestException('That payment is for a different order.');
+      }
+    }
+
     // The Razorpay webhook (`payment.captured`) and this client-side verify
     // call race to confirm the same payment. When the webhook wins, the row is
     // already PAID by the time the browser's verify arrives — that is success,
@@ -4480,6 +4525,15 @@ export class RegistrationsService {
         qrCode: registration.qrCode,
         tickets,
       };
+    }
+
+    // Only unsettled money can settle. Replaying the original receipt of a
+    // refunded or cancelled row must not revive it (re-issued tickets, seats
+    // counted twice); a capture on a superseded row is resolved via reconcile.
+    if (!isSettleable(registration)) {
+      throw new BadRequestException(
+        'This registration can no longer be paid. If you were charged, contact support.',
+      );
     }
 
     // A waiting list offer already claimed its seat when the organiser let the
@@ -4523,7 +4577,7 @@ export class RegistrationsService {
     let claimedWin = false;
     await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.eventRegistration.updateMany({
-        where: { id: registration.id, paymentStatus: { not: PaymentStatus.PAID } },
+        where: { id: registration.id, ...SETTLEABLE },
         data: {
           paymentStatus: PaymentStatus.PAID,
           paymentId: dto.razorpayPaymentId,
@@ -4791,7 +4845,11 @@ export class RegistrationsService {
     return null;
   }
 
-  async handleRazorpayWebhook(rawBody: string, signature: string) {
+  async handleRazorpayWebhook(
+    rawBody: string,
+    signature: string,
+    razorpayEventId?: string,
+  ) {
     // Verify the signature against the exact bytes Razorpay signed. Parsing the
     // payload only *after* the check means we act on the same bytes we verified.
     if (
@@ -4802,6 +4860,33 @@ export class RegistrationsService {
       throw new BadRequestException('Invalid webhook signature');
     }
 
+    // Razorpay redelivers the same event (same x-razorpay-event-id) on retries.
+    // Claim the id first; a duplicate is acknowledged without re-running. If
+    // processing throws, release the claim so Razorpay's retry gets a go.
+    const dedupId = razorpayEventId ? `razorpay:${razorpayEventId}` : null;
+    if (dedupId) {
+      const fresh = await this.prisma.webhookEvent.createMany({
+        data: [{ id: dedupId, source: 'razorpay' }],
+        skipDuplicates: true,
+      });
+      if (fresh.count === 0) {
+        this.logger.log(`Razorpay webhook ${razorpayEventId} already processed — skipping`);
+        return { received: true };
+      }
+    }
+    try {
+      return await this.processRazorpayWebhook(rawBody);
+    } catch (err) {
+      if (dedupId) {
+        await this.prisma.webhookEvent
+          .delete({ where: { id: dedupId } })
+          .catch(() => undefined);
+      }
+      throw err;
+    }
+  }
+
+  private async processRazorpayWebhook(rawBody: string) {
     const payload = JSON.parse(rawBody);
     const event = payload.event;
     const paymentData = payload.payload.payment.entity;
@@ -4847,7 +4932,7 @@ export class RegistrationsService {
 
       const registration = await this.prisma.eventRegistration.findUnique({
         where: { id: registrationId },
-        select: { id: true, paymentStatus: true },
+        select: { id: true, paymentStatus: true, status: true },
       });
       if (!registration) {
         this.logger.error(
@@ -4857,6 +4942,17 @@ export class RegistrationsService {
       }
       if (registration.paymentStatus === PaymentStatus.PAID) {
         this.logger.log(`Registration ${registrationId} already paid — webhook idempotent`);
+        return { received: true };
+      }
+      // A refunded or cancelled row must never be revived to PAID by a late or
+      // replayed capture (it would re-issue tickets and re-count seats). The
+      // payment stays unattached, so it shows on the orphaned-payments view
+      // for an admin to resolve.
+      if (!isSettleable(registration)) {
+        this.logger.error(
+          `payment.captured for ${registration.status}/${registration.paymentStatus} registration ${registrationId} ` +
+            `(order ${orderId}, payment ${paymentId}) — not settled. Resolve via orphaned payments.`,
+        );
         return { received: true };
       }
 
