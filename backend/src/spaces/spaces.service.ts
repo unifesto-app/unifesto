@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { eventMoneyRecords, sessionMoneyRecords } from '../common/money-records';
 import { NOT_DELETED } from '../common/soft-delete';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
@@ -584,9 +585,10 @@ export class SpacesService {
 
   /**
    * Permanently delete a space (ADMIN only). This cascades: every event under
-   * the space and all their registrations, tickets, payments and payouts go
-   * with it (see the `onDelete: Cascade` relations in the schema). It cannot be
-   * undone, so the Apex UI gates it behind a typed confirmation.
+   * the space and all their registrations and tickets go with it (see the
+   * `onDelete: Cascade` relations in the schema), so it is refused while any
+   * money was taken. It cannot be undone, so the Apex UI gates it behind a
+   * typed confirmation.
    *
    * A SUPER space with sub-spaces is refused: the self-relation has no cascade,
    * so a raw delete would fail with an opaque FK error — we surface a clear one
@@ -605,6 +607,16 @@ export class SpacesService {
     if (space._count.childSpaces > 0) {
       throw new BadRequestException(
         'This space has sub-spaces. Detach or delete them before deleting this space.',
+      );
+    }
+
+    // The cascade would erase every payment, refund and payout under the space.
+    const money =
+      (await eventMoneyRecords(this.prisma, { spaceId: id })) +
+      (await sessionMoneyRecords(this.prisma, { spaceId: id }));
+    if (money > 0) {
+      throw new BadRequestException(
+        'This space has payment, refund or payout records and cannot be deleted.',
       );
     }
 
