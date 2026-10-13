@@ -418,6 +418,10 @@ model User {
   // Stamped by JwtAuthGuard, throttled to one write per user per 5 minutes.
   lastSeenAt DateTime? @map("last_seen_at") @db.Timestamptz(6)
 
+  // Every access/refresh token carries the value it was issued under (`tv`);
+  // bumping it revokes all of the user's sessions (logout-all, refresh theft).
+  tokenVersion Int @default(0) @map("token_version")
+
   // Account deletion is a request with a 30-day grace period. The user can
   // cancel any time before it's due; after that a daily job closes the account.
   deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz(6)

@@ -1,20 +1,21 @@
 import {
   Injectable,
   UnauthorizedException,
-  ConflictException,
   BadRequestException,
+  HttpException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { CacheService } from '../cache/cache.service';
+import { RedisService } from '../redis/redis.service';
 import * as jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import jwksClient from 'jwks-rsa';
 import { Provider, User } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { OtpService } from './otp.service';
+import { OtpService, OtpVerifyResult } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
 import {
   GoogleLoginDto,
@@ -26,14 +27,41 @@ import {
   UserProfileDto,
 } from './dto';
 
-interface DecodedToken {
-  userId?: string;
-  provider: string;
+/** Mobile-verification temp token (`type: 'temp'`). */
+interface TempTokenPayload {
+  type: 'temp';
+  provider: Provider;
   providerUserId: string;
   email?: string;
-  iat: number;
-  exp: number;
+  emailVerified?: boolean;
 }
+
+/** Access and refresh token claims. `type`/`tv`/`jti` are absent on tokens issued before S6. */
+interface SessionTokenPayload {
+  userId?: unknown;
+  type?: unknown;
+  tv?: unknown;
+  jti?: unknown;
+  exp?: number;
+}
+
+type TokenUser = { id: string; tokenVersion: number };
+
+/** IdPs send `email_verified` as a boolean or the string "true". */
+const isVerified = (v: unknown): boolean => v === true || v === 'true';
+
+/**
+ * A rotated refresh token still works for this long (a client retrying a
+ * rotate whose response was lost). After that, and after logout, it is refused.
+ * ponytail: no reuse-triggered revoke-all (flaky networks would log people
+ * out); add it if refresh-token theft shows up in the logs.
+ */
+const REFRESH_REUSE_GRACE_MS = 60 * 1000;
+
+/** App Store review login bypass; off unless this env var is exactly "true". */
+export const APP_REVIEW_LOGIN_ENV = 'APP_REVIEW_LOGIN_ENABLED';
+const APP_REVIEW_EMAIL = 'test-user@unifesto.app';
+const APP_REVIEW_OTP = '098765';
 
 interface GoogleTokenPayload {
   sub: string;
@@ -46,7 +74,7 @@ interface GoogleTokenPayload {
 interface AppleTokenPayload {
   sub: string;
   email?: string;
-  email_verified?: boolean;
+  email_verified?: boolean | string;
 }
 
 /** Minimum gap between `users.last_seen_at` writes for one user. */
@@ -54,22 +82,22 @@ const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 
 /**
  * AuthService handles multi-provider authentication for Unifesto.
- * 
+ *
  * AUTHENTICATION FLOW PRESERVATION:
  * This service maintains all existing authentication flows:
  * - Google OAuth login
  * - Apple Sign-In
  * - Email OTP login
  * - Mobile OTP verification
- * 
+ *
  * CUSTOM JWT TOKEN SYSTEM:
  * All authentication flows continue to use custom JWT tokens (signed with JWT_SECRET)
  * for session management after initial authentication. This is NOT replaced by Cognito tokens.
- * 
+ *
  * COGNITO INTEGRATION:
  * CognitoJwtService is optionally injected for future Cognito-based authentication flows.
  * It is NOT currently used in the existing Google/Apple/Email/Mobile authentication flows.
- * 
+ *
  * MOBILE VERIFICATION WORKFLOW:
  * The temp token system for mobile verification remains unchanged:
  * 1. User authenticates via Google/Apple/Email
@@ -92,7 +120,7 @@ export class AuthService {
     private readonly emailService: EmailService,
     private readonly whatsappService: WhatsAppService,
     private readonly otpService: OtpService,
-    private readonly cache: CacheService,
+    private readonly redis: RedisService,
     private readonly cognitoJwtService?: CognitoJwtService, // Optional injection for future Cognito flows
   ) {
     this.jwtSecret = this.configService.get<string>('JWT_SECRET')!;
@@ -159,7 +187,7 @@ export class AuthService {
         Provider.APPLE,
         decoded.sub,
         decoded.email,
-        decoded.email_verified,
+        isVerified(decoded.email_verified),
       );
     } catch (error) {
       this.logger.error('Apple login failed', error);
@@ -200,13 +228,14 @@ export class AuthService {
   // EMAIL LOGIN
   // =====================================================
   async loginWithEmail(dto: EmailLoginDto): Promise<{ message: string }> {
+    await this.otpService.assertCanSend(dto.email);
     try {
       // Generate OTP
       const otp = this.otpService.generateOtp();
-      
+
       // Store OTP
       await this.otpService.storeOtp(dto.email, otp);
-      
+
       // Send OTP via Resend
       await this.emailService.sendOtpEmail(dto.email, otp);
 
@@ -221,8 +250,13 @@ export class AuthService {
 
   async verifyEmailOtp(email: string, otp: string): Promise<AuthResponseDto> {
     try {
-      // Apple App Review bypass — static test account
-      if (email === 'test-user@unifesto.app' && otp === '098765') {
+      // Apple App Review bypass: static test account, only while the env flag
+      // is on (turn it on for a review, off afterwards).
+      if (
+        this.configService.get<string>(APP_REVIEW_LOGIN_ENV) === 'true' &&
+        email === APP_REVIEW_EMAIL &&
+        otp === APP_REVIEW_OTP
+      ) {
         return await this.handleProviderLogin(
           Provider.EMAIL,
           email,
@@ -231,29 +265,10 @@ export class AuthService {
         );
       }
 
-      // Check if OTP attempts are blocked
-      const isBlocked = await this.cache.isOtpBlocked(email);
-      if (isBlocked) {
-        throw new UnauthorizedException('Too many failed attempts. Please try again in 15 minutes.');
-      }
-      
-      // Verify OTP
-      const isValid = await this.otpService.verifyOtp(email, otp);
-      
-      this.logger.log(`OTP validation result: ${isValid}`);
-      
-      if (!isValid) {
-        // Track failed attempt
-        const failCount = await this.cache.trackFailedOtp(email);
-        this.logger.warn(`Failed OTP attempt ${failCount} for ${email}`);
-        throw new UnauthorizedException('Invalid or expired OTP');
-      }
-
-      // Clear failed attempts on success
-      await this.cache.clearFailedOtp(email);
+      this.assertOtpOk(await this.otpService.verifyOtp(email, otp));
 
       this.logger.log(`Handling provider login for email: ${email}`);
-      
+
       return await this.handleProviderLogin(
         Provider.EMAIL,
         email, // Use email as provider user ID for email auth
@@ -274,15 +289,15 @@ export class AuthService {
   // =====================================================
   async sendMobileOtp(dto: SendMobileOtpDto): Promise<{ message: string }> {
     try {
-      // Verify temp token
-      const decoded = this.verifyTempToken(dto.tempToken);
+      this.verifyTempToken(dto.tempToken);
+      await this.otpService.assertCanSend(dto.mobileNumber);
 
       // Generate OTP
       const otp = this.otpService.generateOtp();
-      
+
       // Store OTP
       await this.otpService.storeOtp(dto.mobileNumber, otp);
-      
+
       // Send OTP via WhatsApp
       await this.whatsappService.sendOtp(dto.mobileNumber, otp);
 
@@ -290,6 +305,7 @@ export class AuthService {
         message: 'OTP sent to your WhatsApp',
       };
     } catch (error) {
+      if (error instanceof HttpException && error.getStatus() === 429) throw error;
       this.logger.error('Mobile OTP send failed', error);
       throw new BadRequestException('Failed to send mobile OTP');
     }
@@ -300,31 +316,23 @@ export class AuthService {
       // Verify temp token
       const decoded = this.verifyTempToken(dto.tempToken);
 
-      // Check if OTP attempts are blocked
-      const isBlocked = await this.cache.isOtpBlocked(dto.mobileNumber);
-      if (isBlocked) {
-        throw new UnauthorizedException('Too many failed attempts. Please try again in 15 minutes.');
-      }
+      this.assertOtpOk(
+        await this.otpService.verifyOtp(dto.mobileNumber, dto.otp),
+      );
 
-      // Verify OTP
-      const isValid = await this.otpService.verifyOtp(dto.mobileNumber, dto.otp);
-      
-      if (!isValid) {
-        // Track failed attempt
-        const failCount = await this.cache.trackFailedOtp(dto.mobileNumber);
-        this.logger.warn(`Failed mobile OTP attempt ${failCount} for ${dto.mobileNumber}`);
-        throw new UnauthorizedException('Invalid or expired OTP');
-      }
-
-      // Clear failed attempts on success
-      await this.cache.clearFailedOtp(dto.mobileNumber);
-
-      // Check if a Cognito user already exists with this provider identity (placeholder mobile)
-      const cognitoUser = await this.prisma.userIdentity.findFirst({
-        where: {
-          provider: decoded.provider as Provider,
+      // verifyTempToken guarantees provider + providerUserId are non-empty, and
+      // the unique-key lookups below make Prisma throw rather than drop an
+      // undefined filter (S4: an empty filter matched every identity).
+      const identityKey = {
+        unique_provider_user: {
+          provider: decoded.provider,
           providerUserId: decoded.providerUserId,
         },
+      };
+
+      // Check if a Cognito user already exists with this provider identity (placeholder mobile)
+      const cognitoUser = await this.prisma.userIdentity.findUnique({
+        where: identityKey,
         include: { user: true },
       });
 
@@ -337,25 +345,20 @@ export class AuthService {
         if (existingMobileUser) {
           // Mobile belongs to existing user
           // Transfer the Cognito identity from placeholder to existing user
-          await this.prisma.userIdentity.updateMany({
-            where: {
-              provider: decoded.provider as Provider,
-              providerUserId: decoded.providerUserId,
-            },
+          await this.prisma.userIdentity.update({
+            where: identityKey,
             data: { userId: existingMobileUser.id },
           });
           // Delete placeholder user (identities already moved)
           await this.prisma.user.delete({
             where: { id: cognitoUser.user.id },
           }).catch(() => {});
-          const accessToken = this.generateAccessToken(existingMobileUser.id);
           const userRoles = await this.prisma.userRole.findMany({
             where: { userId: existingMobileUser.id },
             include: { role: { select: { code: true, name: true } } },
           });
           return {
-            accessToken,
-            refreshToken: this.generateRefreshToken(existingMobileUser.id),
+            ...this.tokensFor(existingMobileUser),
             user: UserProfileDto.fromUser(existingMobileUser, userRoles),
             requiresMobileVerification: false,
             isNewUser: false,
@@ -370,10 +373,8 @@ export class AuthService {
             mobileVerified: true,
           },
         });
-        const accessToken = this.generateAccessToken(updatedUser.id);
         return {
-          accessToken,
-          refreshToken: this.generateRefreshToken(updatedUser.id),
+          ...this.tokensFor(updatedUser),
           user: UserProfileDto.fromUser(updatedUser),
           requiresMobileVerification: false,
         };
@@ -388,17 +389,14 @@ export class AuthService {
         // Link identity to existing user
         await this.linkIdentityToUser(
           existingUser.id,
-          decoded.provider as Provider,
+          decoded.provider,
           decoded.providerUserId,
           decoded.email,
+          decoded.emailVerified === true,
         );
 
-        // Generate access token
-        const accessToken = this.generateAccessToken(existingUser.id);
-
         return {
-          accessToken,
-          refreshToken: this.generateRefreshToken(existingUser.id),
+          ...this.tokensFor(existingUser),
           user: UserProfileDto.fromUser(existingUser),
           requiresMobileVerification: false,
           isNewUser: false,
@@ -407,16 +405,14 @@ export class AuthService {
         // Create new user
         const newUser = await this.createUser(
           dto.mobileNumber,
-          decoded.provider as Provider,
+          decoded.provider,
           decoded.providerUserId,
           decoded.email,
+          decoded.emailVerified === true,
         );
 
-        const accessToken = this.generateAccessToken(newUser.id);
-
         return {
-          accessToken,
-          refreshToken: this.generateRefreshToken(newUser.id),
+          ...this.tokensFor(newUser),
           user: UserProfileDto.fromUser(newUser),
           requiresMobileVerification: false,
           isNewUser: true,
@@ -460,7 +456,7 @@ export class AuthService {
 
       if (!user.mobileVerified) {
         // Generate temp token for mobile verification
-        const tempToken = this.generateTempToken(provider, providerUserId, email);
+        const tempToken = this.generateTempToken(provider, providerUserId, email, emailVerified);
 
         return {
           accessToken: '',
@@ -475,21 +471,20 @@ export class AuthService {
         where: { userId: user.id },
         include: { role: { select: { code: true, name: true } } },
       });
-      // Generate access token
-      const accessToken = this.generateAccessToken(user.id);
-
       return {
-        accessToken,
-        refreshToken: this.generateRefreshToken(user.id),
+        ...this.tokensFor(user),
         user: UserProfileDto.fromUser(user, userRoles),
         requiresMobileVerification: false,
       };
     }
 
-    // No exact identity match — check if email already exists on another identity
-    if (email) {
+    // No exact identity match: link to an existing account by email, but only
+    // when the IdP vouches for the email AND the existing identity's email was
+    // verified (S5). Otherwise fall through to the new-user path: mobile OTP,
+    // which links to the existing account only if they prove its mobile.
+    if (email && emailVerified) {
       const existingByEmail = await this.prisma.userIdentity.findFirst({
-        where: { email },
+        where: { email, emailVerified: true },
         include: {
           user: true,
         },
@@ -499,10 +494,10 @@ export class AuthService {
         const user = existingByEmail.user;
 
         // Link this new provider to the existing account
-        await this.linkIdentityToUser(user.id, provider, providerUserId, email);
+        await this.linkIdentityToUser(user.id, provider, providerUserId, email, true);
 
         if (!user.mobileVerified) {
-          const tempToken = this.generateTempToken(provider, providerUserId, email);
+          const tempToken = this.generateTempToken(provider, providerUserId, email, true);
           return {
             accessToken: '',
             user: UserProfileDto.fromUser(user),
@@ -515,10 +510,8 @@ export class AuthService {
           where: { userId: user.id },
           include: { role: { select: { code: true, name: true } } },
         });
-        const accessToken = this.generateAccessToken(user.id);
         return {
-          accessToken,
-          refreshToken: this.generateRefreshToken(user.id),
+          ...this.tokensFor(user),
           user: UserProfileDto.fromUser(user, userRoles),
           requiresMobileVerification: false,
         };
@@ -526,7 +519,7 @@ export class AuthService {
     }
 
     // Truly new user - need mobile verification
-    const tempToken = this.generateTempToken(provider, providerUserId, email);
+    const tempToken = this.generateTempToken(provider, providerUserId, email, emailVerified);
 
     return {
       accessToken: '',
@@ -541,6 +534,7 @@ export class AuthService {
     provider: Provider,
     providerUserId: string,
     email?: string,
+    emailVerified = false,
   ): Promise<User> {
     const user = await this.prisma.$transaction(async (tx) => {
       // Create user
@@ -553,7 +547,7 @@ export class AuthService {
               provider,
               providerUserId,
               email,
-              emailVerified: !!email,
+              emailVerified: !!email && emailVerified,
             },
           },
         },
@@ -584,6 +578,7 @@ export class AuthService {
     provider: Provider,
     providerUserId: string,
     email?: string,
+    emailVerified = false,
   ): Promise<void> {
     try {
       await this.prisma.userIdentity.create({
@@ -592,7 +587,7 @@ export class AuthService {
           provider,
           providerUserId,
           email,
-          emailVerified: !!email,
+          emailVerified: !!email && emailVerified,
         },
       });
     } catch (error) {
@@ -601,90 +596,194 @@ export class AuthService {
     }
   }
 
-  private generateAccessToken(userId: string): string {
-    return jwt.sign({ userId }, this.jwtSecret, {
-      expiresIn: this.jwtExpiresIn,
-    } as jwt.SignOptions);
+  /** Throw the right 401 for a failed OTP check. */
+  private assertOtpOk(result: OtpVerifyResult): void {
+    if (result === 'blocked') {
+      throw new UnauthorizedException(
+        'Too many failed attempts. Please try again in 15 minutes.',
+      );
+    }
+    if (result !== 'ok') {
+      throw new UnauthorizedException('Invalid or expired OTP');
+    }
   }
 
   /**
-   * A long-lived refresh token. Stateless (like the access token) and marked
-   * with `type: 'refresh'` so it can never be used as an access token. The app
-   * stores it and exchanges it at /auth/refresh when the access token expires.
+   * Issue an access + refresh pair. Both carry `type` (so neither can stand in
+   * for the other) and `tv`, the user's tokenVersion: bumping it revokes every
+   * token issued before. The refresh token also carries a `jti` so it can be
+   * revoked on its own (one-time use on rotate, and on logout).
    */
-  private generateRefreshToken(userId: string): string {
-    return jwt.sign({ userId, type: 'refresh' }, this.jwtSecret, {
-      expiresIn: this.refreshExpiresIn,
-    } as jwt.SignOptions);
-  }
-
-  /** Issue a fresh access + refresh token pair for a user. */
-  issueTokens(userId: string): { accessToken: string; refreshToken: string } {
+  private tokensFor(user: TokenUser): { accessToken: string; refreshToken: string } {
+    const tv = user.tokenVersion ?? 0;
     return {
-      accessToken: this.generateAccessToken(userId),
-      refreshToken: this.generateRefreshToken(userId),
+      accessToken: jwt.sign(
+        { userId: user.id, type: 'access', tv },
+        this.jwtSecret,
+        { expiresIn: this.jwtExpiresIn } as jwt.SignOptions,
+      ),
+      refreshToken: jwt.sign(
+        { userId: user.id, type: 'refresh', tv, jti: randomUUID() },
+        this.jwtSecret,
+        { expiresIn: this.refreshExpiresIn } as jwt.SignOptions,
+      ),
     };
   }
 
   /**
+   * Redis key that marks a refresh token as spent. Keyed by `jti`; refresh
+   * tokens issued before S6 have none, so those are keyed by a hash of the
+   * token itself. That keeps 4.0.5 sessions working: their old token is
+   * accepted exactly once, then they hold a new jti token.
+   */
+  private spentRefreshKey(decoded: SessionTokenPayload, token: string): string {
+    const id =
+      typeof decoded.jti === 'string' && decoded.jti
+        ? decoded.jti
+        : `h:${createHash('sha256').update(token).digest('hex')}`;
+    return `auth:refresh:spent:${id}`;
+  }
+
+  /** Seconds until the token expires (TTL for its spent marker). */
+  private secondsLeft(decoded: SessionTokenPayload): number {
+    const exp = typeof decoded.exp === 'number' ? decoded.exp : 0;
+    return Math.max(1, exp - Math.floor(Date.now() / 1000));
+  }
+
+  /**
+   * Mark a refresh token spent. Returns true when this call spent it, false
+   * when it was already spent. Fails open (returns true) if Redis is down:
+   * refresh then behaves as before S6 rather than logging everyone out.
+   */
+  private async spendRefreshToken(
+    decoded: SessionTokenPayload,
+    token: string,
+    marker: string,
+  ): Promise<boolean> {
+    try {
+      return await this.redis.setNx(
+        this.spentRefreshKey(decoded, token),
+        marker,
+        this.secondsLeft(decoded),
+      );
+    } catch (err) {
+      this.logger.warn(`refresh revocation store unavailable: ${(err as Error)?.message ?? err}`);
+      return true;
+    }
+  }
+
+  private async bumpTokenVersion(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  }
+
+  /**
    * Exchange a valid refresh token for a new access + refresh pair (rotation).
-   * Rejects access tokens or anything not signed as a refresh token, and
-   * confirms the user still exists.
+   * The presented token is spent: after REFRESH_REUSE_GRACE_MS it can't be
+   * exchanged again.
    */
   async refreshSession(
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    let decoded: { userId?: string; type?: string };
+    let decoded: SessionTokenPayload;
     try {
-      decoded = jwt.verify(refreshToken, this.jwtSecret) as {
-        userId?: string;
-        type?: string;
-      };
+      decoded = jwt.verify(refreshToken, this.jwtSecret) as SessionTokenPayload;
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
-    if (decoded.type !== 'refresh' || !decoded.userId) {
+    if (decoded.type !== 'refresh' || typeof decoded.userId !== 'string' || !decoded.userId) {
       throw new UnauthorizedException('Invalid refresh token');
     }
     const user = await this.prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, deletedAt: true },
+      select: { id: true, deletedAt: true, tokenVersion: true },
     });
     if (!user || user.deletedAt) {
       throw new UnauthorizedException('User no longer exists');
     }
-    return this.issueTokens(user.id);
+    if ((decoded.tv ?? 0) !== user.tokenVersion) {
+      throw new UnauthorizedException('Session revoked');
+    }
+    const spent = await this.spendRefreshToken(decoded, refreshToken, String(Date.now()));
+    if (!spent) {
+      // Already rotated. Inside the grace window this is a client retrying a
+      // rotate whose response it lost, so it gets a fresh pair instead of being
+      // logged out; after that the token is dead.
+      const spentAt = Number(
+        await this.redis.get(this.spentRefreshKey(decoded, refreshToken)).catch(() => null),
+      );
+      if (!spentAt || Date.now() - spentAt > REFRESH_REUSE_GRACE_MS) {
+        this.logger.warn(`Spent refresh token reused for user ${user.id}`);
+        throw new UnauthorizedException('Refresh token already used');
+      }
+    }
+    return this.tokensFor(user);
   }
 
   private generateTempToken(
     provider: Provider,
     providerUserId: string,
     email?: string,
+    emailVerified?: boolean,
   ): string {
-    return jwt.sign(
-      {
-        provider,
-        providerUserId,
-        email,
-      },
-      this.jwtSecret,
-      {
-        expiresIn: '15m', // Temp token expires in 15 minutes
-      } as jwt.SignOptions,
-    );
+    const payload: TempTokenPayload = {
+      type: 'temp',
+      provider,
+      providerUserId,
+      email,
+      emailVerified: emailVerified === true,
+    };
+    return jwt.sign(payload, this.jwtSecret, {
+      expiresIn: '15m', // Temp token expires in 15 minutes
+    } as jwt.SignOptions);
   }
 
-  private verifyTempToken(token: string): DecodedToken {
+  /**
+   * Only a real temp token passes (S4): `type: 'temp'`, a known provider and a
+   * non-empty providerUserId. Access/refresh tokens are signed with the same
+   * secret, so the type claim is what keeps them out.
+   */
+  private verifyTempToken(token: string): TempTokenPayload {
+    let decoded: Partial<TempTokenPayload> & { type?: unknown };
     try {
-      return jwt.verify(token, this.jwtSecret) as DecodedToken;
-    } catch (error) {
+      decoded = jwt.verify(token, this.jwtSecret) as typeof decoded;
+    } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+    if (
+      decoded?.type !== 'temp' ||
+      typeof decoded.provider !== 'string' ||
+      !(Object.values(Provider) as string[]).includes(decoded.provider) ||
+      typeof decoded.providerUserId !== 'string' ||
+      !decoded.providerUserId
+    ) {
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+    return {
+      type: 'temp',
+      provider: decoded.provider,
+      providerUserId: decoded.providerUserId,
+      email: typeof decoded.email === 'string' ? decoded.email : undefined,
+      emailVerified: decoded.emailVerified === true,
+    };
   }
 
+  /**
+   * Accepts access tokens only. Tokens issued before S6 have no `type`/`tv`
+   * and stay valid; refresh and temp tokens are refused. `tv` must match the
+   * user's tokenVersion (bumped by logout with allDevices).
+   */
   async validateAccessToken(token: string): Promise<User> {
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as { userId: string };
+      const decoded = jwt.verify(token, this.jwtSecret) as SessionTokenPayload;
+      if (decoded.type !== undefined && decoded.type !== 'access') {
+        throw new UnauthorizedException('Invalid token');
+      }
+      if (typeof decoded.userId !== 'string' || !decoded.userId) {
+        throw new UnauthorizedException('Invalid token');
+      }
 
       const user = await this.prisma.user.findUnique({
         where: { id: decoded.userId },
@@ -692,6 +791,9 @@ export class AuthService {
 
       if (!user || user.deletedAt) {
         throw new UnauthorizedException('Invalid token');
+      }
+      if ((decoded.tv ?? 0) !== user.tokenVersion) {
+        throw new UnauthorizedException('Session revoked');
       }
 
       return user;
@@ -724,16 +826,40 @@ export class AuthService {
     );
   }
 
-  async logout(userId: string): Promise<{ message: string }> {
-    // In a stateless JWT system, logout is handled client-side
-    // Optionally, implement token blacklisting here
+  /**
+   * Revoke the caller's refresh token when they send it (4.0.5 clients don't,
+   * for them this stays a no-op as before). `allDevices` bumps tokenVersion,
+   * which kills every access and refresh token of the user at once.
+   */
+  async logout(
+    userId: string,
+    opts: { refreshToken?: unknown; allDevices?: unknown } = {},
+  ): Promise<{ message: string }> {
+    if (typeof opts.refreshToken === 'string' && opts.refreshToken) {
+      try {
+        const decoded = jwt.verify(opts.refreshToken, this.jwtSecret) as SessionTokenPayload;
+        if (decoded.type === 'refresh' && decoded.userId === userId) {
+          // Overwrite (not NX) so a token inside its rotate grace window dies too.
+          await this.redis.set(
+            this.spentRefreshKey(decoded, opts.refreshToken),
+            'logout',
+            this.secondsLeft(decoded),
+          );
+        }
+      } catch {
+        // Expired or forged: nothing to revoke.
+      }
+    }
+    if (opts.allDevices === true) {
+      await this.bumpTokenVersion(userId);
+    }
     return { message: 'Logged out successfully' };
   }
 
   /**
    * Get user by ID (for Cognito JWT authentication flow)
    * Used by JwtAuthGuard when verifying Cognito tokens
-   * 
+   *
    * @param userId - User ID from Cognito 'sub' claim
    * @returns User object
    * @throws UnauthorizedException if user not found
@@ -767,6 +893,7 @@ export class AuthService {
 
     const payload = await this.cognitoJwtService.verifyCognitoToken(idToken);
     const email = payload.email;
+    const emailVerified = isVerified(payload.email_verified);
     const cognitoSub = payload.sub;
     const rawProvider = payload['identities']?.[0]?.providerName?.toLowerCase() || 'cognito';
     const providerEnum = rawProvider === 'signinwithapple' ? Provider.APPLE : Provider.GOOGLE;
@@ -788,36 +915,38 @@ export class AuthService {
       user = existingIdentity.user;
     }
 
-    // Step 2: Find user by email identity (any provider)
-    if (!user) {
+    // Steps 2-3 link by email, only when Cognito says the email is verified
+    // (S5). Unverified: a new placeholder user is created below and the mobile
+    // OTP step moves the identity onto the existing account if they prove its
+    // mobile number.
+    // Step 2: Find user by verified email identity (any provider)
+    if (!user && emailVerified) {
       const identityByEmail = await this.prisma.userIdentity.findFirst({
-        where: { email },
+        where: { email, emailVerified: true },
         include: { user: { include: { roles: { include: { role: true } } } } },
       });
       if (identityByEmail) {
         user = identityByEmail.user;
-        await this.linkIdentityToUser(user.id, providerEnum, cognitoSub, email);
+        await this.linkIdentityToUser(user.id, providerEnum, cognitoSub, email, true);
       }
     }
 
     // Step 3: Find user by EMAIL provider identity (email OTP users)
-    if (!user) {
+    if (!user && emailVerified) {
       const emailIdentity = await this.prisma.userIdentity.findFirst({
         where: { provider: Provider.EMAIL, providerUserId: email },
         include: { user: { include: { roles: { include: { role: true } } } } },
       });
       if (emailIdentity) {
         user = emailIdentity.user;
-        await this.linkIdentityToUser(user.id, providerEnum, cognitoSub, email);
+        await this.linkIdentityToUser(user.id, providerEnum, cognitoSub, email, true);
       }
     }
 
     // Step 4: User found + mobile verified → login directly
     if (user && user.mobileVerified) {
-      const accessToken = this.generateAccessToken(user.id);
       return {
-        accessToken,
-        refreshToken: this.generateRefreshToken(user.id),
+        ...this.tokensFor(user),
         user: UserProfileDto.fromUser(user, user.roles),
         requiresMobileVerification: false,
       };
@@ -825,7 +954,7 @@ export class AuthService {
 
     // Step 5: User found + mobile not verified → require mobile OTP
     if (user && !user.mobileVerified) {
-      const tempToken = this.generateTempToken(providerEnum, cognitoSub, email);
+      const tempToken = this.generateTempToken(providerEnum, cognitoSub, email, emailVerified);
       return {
         accessToken: '',
         user: UserProfileDto.fromUser(user, user.roles),
@@ -845,14 +974,14 @@ export class AuthService {
             provider: providerEnum,
             providerUserId: cognitoSub,
             email,
-            emailVerified: true,
+            emailVerified,
           },
         },
       },
       include: { roles: { include: { role: true } } },
     });
 
-    const tempToken = this.generateTempToken(providerEnum, cognitoSub, email);
+    const tempToken = this.generateTempToken(providerEnum, cognitoSub, email, emailVerified);
     return {
       accessToken: '',
       user: UserProfileDto.fromUser(newUser, []),

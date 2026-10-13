@@ -8,7 +8,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { OtpService } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
-import { CacheService } from '../cache/cache.service';
+import { RedisService } from '../redis/redis.service';
 
 /**
  * Test suite for AuthService.getUserById method
@@ -82,12 +82,8 @@ describe('AuthService - getUserById', () => {
           },
         },
         {
-          provide: CacheService,
-          useValue: {
-            isOtpBlocked: jest.fn(),
-            trackFailedOtp: jest.fn(),
-            clearFailedOtp: jest.fn(),
-          },
+          provide: RedisService,
+          useValue: { setNx: jest.fn(), get: jest.fn() },
         },
       ],
     }).compile();
