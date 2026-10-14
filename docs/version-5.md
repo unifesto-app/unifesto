@@ -58,6 +58,7 @@ Worked back from the date, with room for one store rejection. Only the release d
 | S | **Fixes merged (#110), not deployed: P0 exploits stay live until the backend deploys.** Before `./deploy.sh`: run the duplicate-check SQL from #110 on prod; confirm `JWT_SECRET`, `DIRECT_URL`, `INTERNAL_API_KEY` (backend + web), `APP_REVIEW_LOGIN_ENABLED` unset; `migrate deploy` before the new backend starts (index migrations off-peak); then backend, web, space, apex. Then S48 | next |
 | O | Guards merged (#109), secrets + `native` label done. OTA stays blocked until 5.0.0 on **2 Dec** (D6); `update:production` now refuses until the 5.0.0 runtime is recorded. Left: deploy #109 migrations + Apex with the S deploy, compare CI fingerprint once with `eas fingerprint:compare`, then O2–O5 on the [schedule](#500--release-wed-2-dec-2026) | next |
 | H | White-label P1–P3 merged (#106), not deployed. **Needs you:** Cloudflare SSL for SaaS + env (H8), then deploy (H10) and verify (H11) | next |
+| P | Marketing to 5.0.0: "What is Unifesto?" is live (P0). Next: accounts, templates, baseline, content bank (P1–P4), W1 video Tue 20 Oct | next |
 
 ## Suggested order
 
@@ -430,11 +431,83 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 | N2 | Kiosk self check-in (tablet mode: scan or search your name) | planned |
 | N3 | Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | planned |
 
+### P · Marketing to 5.0.0 (14 Oct → 2 Dec)
+
+Seven weeks of content that ends on the 5.0.0 launch. The only track with dates, because it works back from D6.
+
+**Rules**
+
+- **Market only what is live in prod.** Web and Space features can be shown once deployed. Mobile changes are teasers only until 2 Dec (D6): never say "update now" before the stores show 5.0.0. White-label waits for H11. Never post about security fixes (Track S).
+- **Copy voice:** organiser-first, experience-side ("no queues on event day"), short headlines, no em dashes, "My X" in UI shots. Brand names: Unifesto Huddle, Unifesto Sprint, Unifesto Stay.
+- **One recording feeds everything.** Each week: record one long video, then cut it into 3 shorts, 1 LinkedIn video, 1 carousel and 1 blog. Never make a channel-only piece when a cut will do.
+- **Every link is tracked** (K5 short links, or UTM `?utm_source=<channel>&utm_campaign=v5-wN` until K5 lands).
+- Real events and spaces only with the organiser's OK. Banners stay 4:3, verticals 9:16.
+
+**Weekly cadence** (Mon 19 Oct → Wed 2 Dec = 7 weeks)
+
+| Channel | Per week | Total by 2 Dec | Source |
+|---|---|---|---|
+| YouTube long (6–10 min) | 1 | 7 | Recorded Mon, published Tue |
+| YouTube Shorts / IG Reels (same file) | 3 | 21 | Cut from the long video + 1 POV/meme |
+| Instagram posts (carousel) | 2 | 14 | 1 how-to from the video, 1 event/organiser story |
+| Instagram stories | daily | ~50 | Polls, behind the scenes, reshared event posts, countdown sticker from W5 |
+| LinkedIn posts | 3 | 21 | 2 founder (build in public, lessons), 1 company page (feature) |
+| LinkedIn video | 1 | 7 | 60–90s horizontal cut of the long video |
+| Website blog: guide | 1 | 7 | SEO guide on the week's topic, published from Apex blog admin |
+| Website blog: comparison | 1 | 7 | "Unifesto vs X" on the week's topic (P11), plus 1 "X vs Unifesto" carousel from it |
+| Email to curators (own email campaigns) | every 2 weeks | 4 | Roundup of the week's video + blog. Dogfoods the campaigns module |
+| Outreach DMs to fest/club pages | 10 | 70 | Send the week's video, invite them to make a Space |
+
+**Day plan** (repeat each week)
+
+| Mon | Tue | Wed | Thu | Fri | Sat/Sun |
+|---|---|---|---|---|---|
+| Record long video. LinkedIn founder post. Short 1 | YouTube long. LinkedIn video | Blog. IG carousel (how-to). Short 2 | LinkedIn company post. Outreach DMs | Comparison blog + its carousel. Short 3. LinkedIn founder post | Stories only. Batch next week's edits |
+
+**Weeks**
+
+| Week | Theme | YouTube long | Blog (SEO target) | Comparison blog |
+|---|---|---|---|---|
+| W0 · 14–18 Oct | Setup (P1–P4) | none | none | none |
+| W1 · 19–25 Oct | One Space for your whole team | "Set up your Space and team in 10 minutes" | "How to plan a college fest: the 8-week checklist" | Unifesto vs Google Forms + UPI + spreadsheets |
+| W2 · 26 Oct–1 Nov | Tickets that sell themselves | "Tickets, group registrations and coupons" | "Group registration for fests without the spreadsheet" | Unifesto vs Townscript |
+| W3 · 2–8 Nov | Beyond fests: Sprint + Huddle | "Run a hackathon with Unifesto Sprint" (only parts live in prod) | "Hackathon organiser's guide: teams, judging, help desk" | Unifesto vs Devfolio (hackathons) |
+| W4 · 9–15 Nov | Money and sponsors | "Know exactly what your event earned" (financials, payouts, sponsor leads) | "How to pitch sponsors for a college fest" | Unifesto vs KonfHub |
+| W5 · 16–22 Nov | Event day, no panic | "Event day: check-in, WhatsApp groups, certificates". **Teaser starts:** "Something new on 2 Dec" | "Event day runbook for organisers" | Unifesto vs Eventbrite |
+| W6 · 23–29 Nov | Countdown | "Unifesto 5: first look" (screens from the TestFlight build, no "update now") | "What's coming in Unifesto 5" | Unifesto vs Luma |
+| W7 · 30 Nov–2 Dec | **Launch** (P9) | "Unifesto 5 is here" | "Unifesto 5 release notes" | Best event platforms for college fests in India (2026) roundup |
+
+**Recurring short formats:** "Event day in 30 seconds", "Organiser POV", "Spreadsheet vs Space" (before/after), "Shipped this week" (founder, web/Space only until 2 Dec), "Fest of the week" (with permission).
+
+| # | Item | Status |
+|---|---|---|
+| P0 | "What is Unifesto?" video on YouTube, link shared on Instagram + LinkedIn. Cut it into the first 2–3 shorts for W0 | done |
+| P1 | Accounts ready: YouTube channel art + playlists (Guides, Shorts, Launch), IG + LinkedIn bios, link-in-bio page on web, same handle everywhere | next |
+| P2 | Templates (not Canva): carousel (how-to + story), short cover, YT thumbnail, LinkedIn video frame, countdown story, all on the cosmos look | next |
+| P3 | Baseline: followers per channel, weekly site visits, Spaces + events created, app installs. Record in a sheet every Monday; set targets after W1 | next |
+| P4 | Content bank: screen-record Space flows on a demo Space with seed data (no real attendee data on screen), collect organiser OKs + event photos | next |
+| P5 | W1–W2 published (2 long, 6 shorts, 4 carousels, 6 LinkedIn, 2 blogs, 1 email) | planned |
+| P6 | W3–W4 published | planned |
+| P7 | W5–W6 published, teaser running; launch assets drafted and approved by 24 Nov | planned |
+| P8 | Launch kit ready by 27 Nov: launch video, 3 shorts, carousel, LinkedIn founder post + video, blog release notes, email, push copy, store screenshots/what's-new text matching the video | planned |
+| P9 | **Launch 2 Dec:** after both stores show 5.0.0 live, publish in this order: YouTube, blog, LinkedIn (founder then company), IG carousel + stories, email to all users, push via Apex broadcast. Then reply to every comment that day | planned |
+| P11 | Comparison blogs (rules): "as of <date>" on every price/feature, link each rival's public pricing/feature page, a "where X is better" section (we're INR-only, no live polls/Q&A yet, no built-in audience), our gaps never hidden, no rival logos, no claims about features we haven't deployed. Our side uses the fees from `/pricing` (`PLANS` in `websites/web/src/lib/site.ts`). Slugs `/blog/unifesto-vs-<x>`; later: Zoho Backstage, Explara, BookMyShow | planned |
+| P12 | **SEO + AI search, already live (no work):** `robots.ts` allows every AI crawler (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…); `/llms.txt`; JSON-LD for Organization, WebSite, MobileApplication, WebApplication, Event, Space, FAQ, Breadcrumb; sitemap with events + spaces | done |
+| P13 | Blog SEO gaps, **before the first blog on 21 Oct**: each `/blog/<slug>` in the sitemap (only `/blog` is today), `BlogPosting` JSON-LD (author, dates, image), canonical, RSS; blog + comparison posts listed in `llms.txt`. Overlaps K2/K3 | next |
+| P14 | Google Search Console + Bing Webmaster Tools verified, sitemap submitted, IndexNow pinged on publish. Bing matters: ChatGPT search and Copilot read Bing's index | next |
+| P15 | Keyword map: one search query per blog and video, e.g. "college fest registration app", "hackathon platform India", "event ticketing with Razorpay", "Townscript alternative", "KonfHub alternative", "Devfolio alternative". Title, H1, slug, YouTube title match it | next |
+| P16 | Write posts so AI can quote them: first 2 sentences answer the query directly; one fact per sentence; tables for comparisons; FAQ block (FAQPage schema) at the end; "as of <date>"; real numbers from `PROOF` in `site.ts` | planned |
+| P17 | Same facts everywhere: one-line description, founding city, the numbers, pricing. Website, LinkedIn, YouTube about, Instagram, both app stores, Crunchbase, Wikidata, Google Business Profile | planned |
+| P18 | **Be mentioned elsewhere** (chatbots trust other sites more than ours): list on G2, Capterra, SaaSworthy, AlternativeTo (as an alternative to Townscript, KonfHub, Devfolio, Eventbrite, Luma), Product Hunt launch on 2 Dec; ask 10 organisers for reviews; honest, disclosed answers on Reddit/Quora fest + hackathon threads; college newspapers and club newsletters | planned |
+| P19 | YouTube for search: titles from P15, chapters, uploaded captions, description with summary + tracked links. Google AI Overviews cite YouTube often | planned |
+| P20 | Measure every 2 weeks: fixed list of ~15 prompts ("best app to run a college fest in India", "Townscript alternatives", "how to run a hackathon in India"…) in ChatGPT, Claude, Gemini, Perplexity, Google AI Overviews; note whether Unifesto appears, its position and the cited source. Plus Search Console clicks/impressions and visits from chatgpt.com / perplexity.ai. Nobody can guarantee a top spot; this shows what is working | planned |
+| P10 | Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
+
 ### Parked and dropped
 
 | Item | Status | Why |
 |---|---|---|
-| Project management system inside Apex (v4 W8) | parked | It's a whole product. Use an off-the-shelf tool until the team outgrows it. |
+| Project management system inside Apex (v4 W8) | in progress | Un-parked 2026-10-14 as a small board, not a full PM product: Apex → Product (tracks, tasks, activity) + `/pm/mcp` so Claude Code reads and updates it. Branch `claude/pm-dashboard`. |
 | Stays: new features | parked | Niche. Check real booking counts before investing; keep it working. |
 | White-label request queue | dropped | Replaced by plan-gated self-serve + suspend (H). |
 | App Clip | dropped | Removed 2026-10-08. |
@@ -466,3 +539,8 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 - **2026-10-14** · Track 0.8 closed in #108: Space join bar hidden for members; Space tab summary "N check-ins live · M events coming up"; Apex edit-user sends null for cleared optional fields (name/username can't be cleared); Apex requests "All" orders open by oldest waiting, history by most recent; push-device report only on user/subscription/opt-in change or every 24h. Track 0 done.
 - **2026-10-14** · Track S built in 4 lanes (S1–S13, S15–S22, S24–S41, S43, S44, S47 done; S14 + S23 partial), adversarially reviewed on auth/payments/money/refunds, merged in #110. Backend jest 734/734. 9 additive migrations `20261015100000`–`20261015160000`. Not deployed. Follow-ups logged as S48–S56; S42 + S46 still open.
 - **2026-10-14** · Track O phase 2 + O1 + O6 merged in #109 (O1 is a native change, rides 5.0.0). `OTA-safe` CI check live; secrets `GOOGLE_MAPS_ANDROID_API_KEY` + `OTA_STATUS_SECRET` added; `native` label created. Migrations `20261015220000`, `20261015230000`. Not deployed.
+- **2026-10-14** · Track P added: marketing plan to the 5.0.0 launch (YouTube, Shorts/Reels, Instagram, LinkedIn, blog, curator email, outreach), weekly themes W0–W7, launch-day order.
+- **2026-10-14** · P0 done: "What is Unifesto?" posted on YouTube, link shared on Instagram + LinkedIn.
+- **2026-10-14** · P11 added: one "Unifesto vs X" comparison blog per week (Google Forms, Townscript, Devfolio, KonfHub, Eventbrite, Luma, then a roundup at launch).
+- **2026-10-14** · P12–P20 added: SEO + AI search plan. Already live: AI-crawler robots, llms.txt, most JSON-LD. Gap before the first blog: blog posts missing from sitemap + no BlogPosting schema (P13).
+- **2026-10-14** · Apex Product board + Claude MCP endpoint built on `claude/pm-dashboard` (migration `20261016100000_product_management`, `backend/src/pm`, Apex `/dashboard/product`). Not deployed. After deploy: create a token in Apex, add the MCP server in Claude Code, have Claude import this file's tracks.

@@ -12,7 +12,7 @@ import axios, {
 } from "axios";
 import { getAuthToken, clearAuthToken } from "@/lib/utils/auth";
 
-const BACKEND_URL =
+export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
   "http://localhost:4000";
