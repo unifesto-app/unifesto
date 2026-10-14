@@ -123,7 +123,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   }
 
   const banner = coverOr(defaults, space.id, spaceBanner(space));
-  const logo = logoOr(defaults, space.id, spaceLogo(space));
+  const logo = logoOr(defaults, space.id, space.branding?.logoUrl || spaceLogo(space));
   const place = [space.city, space.state].filter(Boolean).join(', ');
   const meta = [place || null, space.visibility === 'PRIVATE' ? 'Private space' : 'Public space'].filter(Boolean).join(' · ');
   const eventCount = s.upcoming.length + s.past.length;

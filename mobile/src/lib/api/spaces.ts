@@ -56,7 +56,7 @@ export interface Space {
    * Organiser white-label branding, or null for the default Unifesto look.
    * Set by the backend only when admin-approved AND the plan includes it.
    */
-  branding?: { color: string | null; faviconUrl?: string | null } | null;
+  branding?: { color: string | null; faviconUrl?: string | null; logoUrl?: string | null } | null;
   city: string | null;
   state: string | null;
   country: string | null;
