@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -17,6 +18,16 @@ import { font } from '../theme/fontHelpers';
 
 const GUTTER = spacing[6];
 const DEVICE_LABEL: Record<string, string> = { ios: 'iPhone / iPad', android: 'Android', desktop: 'Computer' };
+
+/** "IN" → "India" where the engine has Intl.DisplayNames, else the code; null → "Unknown". */
+function countryLabel(code: string | null): string {
+  if (!code) return 'Unknown';
+  try {
+    return new Intl.DisplayNames(['en-IN'], { type: 'region' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
 
 /** One short link: clicks over the last 30 days, where they came from, what they turned into. */
 export default function ShortLinkStatsScreen() {
@@ -126,6 +137,28 @@ export default function ShortLinkStatsScreen() {
               </SettingsGroup>
             </View>
           ) : null}
+
+          {data.countries.length > 0 ? (
+            <View style={{ marginTop: spacing[8] }}>
+              <SettingsGroup title="Countries" plain>
+                {data.countries.map((c) => (
+                  <SettingsRow key={c.country ?? 'unknown'} label={countryLabel(c.country)} value={fmt(c.clicks)} />
+                ))}
+              </SettingsGroup>
+            </View>
+          ) : null}
+
+          <View style={{ marginTop: spacing[8] }}>
+            <SettingsGroup title="QR code">
+              <View style={styles.qr}>
+                <QRCode value={data.shortUrl} size={160} color="#000000" backgroundColor="#ffffff" />
+              </View>
+              <SettingsRow label="Download PNG" onPress={() => void Linking.openURL(`${data.qrUrl}?format=png`)} />
+            </SettingsGroup>
+            <Text style={[styles.note, { color: tokens.textMuted }]}>
+              For posters, standees and slides. Scans count as clicks.
+            </Text>
+          </View>
         </>
       ) : null}
     </ScrollView>
@@ -136,6 +169,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   title: { fontSize: typography.fontSize.xl, marginBottom: spacing[2], ...font('heading') },
+  qr: { alignItems: 'center', padding: spacing[4], backgroundColor: '#ffffff' },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
   error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
 });

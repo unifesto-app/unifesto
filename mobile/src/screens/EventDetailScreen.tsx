@@ -432,7 +432,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
         ) : null}
         {d.faqs.length > 0 ? <FaqSection items={d.faqs} /> : null}
         <HostedBySection
-          space={event.space}
+          space={event.space ? { ...event.space, logoUrl: event.branding?.logoUrl || event.space.logoUrl } : event.space}
           coHosts={event.coHosts}
           curators={event.curators}
           contacts={d.contacts}

@@ -99,6 +99,10 @@ function shortLinkLabel(l: ShortLink): string {
 
 const DEVICE_LABEL: Record<string, string> = { ios: "iPhone / iPad", android: "Android", desktop: "Computer" };
 
+const countryNames = new Intl.DisplayNames(["en-IN"], { type: "region" });
+/** "IN" → "India"; null (Cloudflare didn't know) → "Unknown". */
+const countryLabel = (code: string | null) => (code ? (countryNames.of(code) ?? code) : "Unknown");
+
 function ShortLinkStatsView({ scope, linkId }: { scope: TrafficScope; linkId: string }) {
   const [data, setData] = useState<ShortLinkStats | null>(null);
   const [error, setError] = useState("");
@@ -134,13 +138,36 @@ function ShortLinkStatsView({ scope, linkId }: { scope: TrafficScope; linkId: st
             ))}
           </ListGroup>
         )}
+        {data.countries.length > 0 && (
+          <ListGroup title="Countries">
+            {data.countries.map((c) => (
+              <ListRow key={c.country ?? "unknown"} label={countryLabel(c.country)} value={fmt(c.clicks)} />
+            ))}
+          </ListGroup>
+        )}
+        <ListGroup title="QR code" description="For posters, standees and slides. Scans count as clicks.">
+          <div className="flex items-center gap-4 p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element -- served by the API, not optimisable */}
+            <img src={data.qrUrl} alt={`QR code for ${data.shortUrl}`} className="h-28 w-28 rounded-md bg-white p-1" />
+            <div className="flex flex-col gap-2">
+              <Button size="sm" variant="outline" asChild>
+                <a href={`${data.qrUrl}?format=png`}>Download PNG</a>
+              </Button>
+              <Button size="sm" variant="ghost" asChild>
+                <a href={data.qrUrl} target="_blank" rel="noreferrer">
+                  Open SVG
+                </a>
+              </Button>
+            </div>
+          </div>
+        </ListGroup>
       </div>
     </div>
   );
 }
 
 /**
- * Tracked short links (api.unifesto.app/l/<code>) for an event or a space:
+ * Tracked short links (unifesto.app/l/<code>) for an event or a space:
  * create, copy, expand for stats, turn off. Mirrors mobile's ShortLinksScreen.
  */
 export function ShortLinksPanel({ scope, canEdit, destination }: { scope: TrafficScope; canEdit: boolean; destination: string }) {
