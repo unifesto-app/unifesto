@@ -24,11 +24,12 @@ export const SITE = {
 
 /* Official profiles. The footer links and the Organization JSON-LD
    `sameAs` both read this, which is how search engines and AI assistants
-   tie these accounts to one company. Mobile mirrors it in ProfileScreen. */
+   tie these accounts to one company. Mobile mirrors these in ProfileScreen (Help and more). */
 export const SOCIAL = {
   instagram: "https://www.instagram.com/unifesto.app/",
   linkedin: "https://www.linkedin.com/company/unifesto",
   x: "https://x.com/unifestoapp",
+  youtube: "https://www.youtube.com/@unifesto-app",
 } as const;
 
 /* Proof. Keep this honest and dated: these numbers ship in copy and in
