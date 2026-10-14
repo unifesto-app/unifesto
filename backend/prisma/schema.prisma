@@ -5361,6 +5361,7 @@ enum PmTaskStatus {
   PLANNED
   IN_PROGRESS
   BLOCKED
+  IN_REVIEW // PR open, waiting on a human to merge
   DONE
   PARKED
   DROPPED

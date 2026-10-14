@@ -9,6 +9,7 @@ export const PM_STATUSES = [
   "NEXT",
   "IN_PROGRESS",
   "BLOCKED",
+  "IN_REVIEW",
   "PLANNED",
   "DONE",
   "PARKED",

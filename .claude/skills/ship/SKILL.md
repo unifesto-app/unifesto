@@ -45,5 +45,5 @@ publish mobile OTA/EAS builds.
 6. **PR** against `main` with `gh pr create` (or the session's PR action):
    summary, checks run, and a "Deploy needs" line (migrate? which services:
    backend / apex / space / web / mobile). Then `add_note`
-   `PR <url> ready for review; deploy: <services>` — keep status `IN_PROGRESS`
+   `PR <url> ready for review; deploy: <services>` and set status `IN_REVIEW`
    (the human merges and marks DONE).
