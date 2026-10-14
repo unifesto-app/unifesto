@@ -104,13 +104,6 @@ export class PmController {
     return this.pm.getTask(key);
   }
 
-  @Post('tasks/:key/start')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
-  startWork(@CurrentUser() user: User, @Param('key') key: string) {
-    return this.pm.startWork(key, actorOf(user));
-  }
-
   @Post('notes')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)

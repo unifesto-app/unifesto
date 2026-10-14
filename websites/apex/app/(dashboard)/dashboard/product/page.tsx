@@ -22,7 +22,6 @@ import {
   PM_MCP_URL,
   PM_STATUSES,
   createToken,
-  startWork,
   getActivity,
   getBoard,
   getTokens,
@@ -475,17 +474,6 @@ function TaskDialog({
           : nextKey(tracks.find((t) => t.key === e.target.value)),
     }));
 
-  // Fires the Claude Code cloud routine; it reports back on this card.
-  const start = async () => {
-    if (!task) return;
-    setSaving(true);
-    const { data, error: err } = await startWork(task.key);
-    setSaving(false);
-    if (err) return setError(err.message);
-    if (data?.sessionUrl) window.open(data.sessionUrl, "_blank", "noopener");
-    onSaved();
-  };
-
   const save = async () => {
     if (!form.key.trim() || !form.title.trim()) return setError("Key and title are required.");
     setSaving(true);
@@ -557,11 +545,6 @@ function TaskDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
-          {task && !["DONE", "DROPPED"].includes(task.status) && (
-            <Button variant="outline" className="sm:mr-auto" onClick={start} disabled={saving}>
-              Start work on Claude Code
-            </Button>
-          )}
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
