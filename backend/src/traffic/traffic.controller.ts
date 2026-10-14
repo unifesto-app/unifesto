@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { User } from '@prisma/client';
 import { ApiExcludeEndpoint, ApiTags } from '@nestjs/swagger';
@@ -28,7 +41,7 @@ export class TrafficController {
     return this.traffic.recordView(dto);
   }
 
-  /** Short link redirect: https://api.unifesto.app/l/<code>. */
+  /** Short link redirect: https://unifesto.app/l/<code> (also on api.unifesto.app). */
   @Get('l/:code')
   @ApiExcludeEndpoint()
   async redirect(@Param('code') code: string, @Req() req: Request, @Res() res: Response) {
@@ -36,10 +49,24 @@ export class TrafficController {
       ip: req.ip,
       ua: req.get('user-agent'),
       referer: req.get('referer'),
+      country: req.get('cf-ipcountry'),
     });
     // Never cached, so every click reaches us and is counted.
     res.set('Cache-Control', 'no-store');
     res.redirect(302, url);
+  }
+
+  /** QR of a short link: /l/<code>/qr (SVG) or /l/<code>/qr?format=png. */
+  @Get('l/:code/qr')
+  @ApiExcludeEndpoint()
+  async qr(@Param('code') code: string, @Query('format') format: string | undefined, @Res() res: Response) {
+    const png = format === 'png';
+    const body = await this.traffic.qr(code, png ? 'png' : 'svg');
+    if (!body) throw new NotFoundException('Short link not found');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.type(png ? 'png' : 'image/svg+xml');
+    if (png) res.attachment(`unifesto-${code}.png`);
+    res.send(body);
   }
 
   // ---- Event ----
