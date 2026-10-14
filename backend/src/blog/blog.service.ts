@@ -3,6 +3,7 @@ import { BlogStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { CreateBlogDto, UpdateBlogDto } from './dto';
+import { blogChangeUrls, pingIndexNow } from '../common/indexnow';
 
 @Injectable()
 export class BlogService {
@@ -46,7 +47,7 @@ export class BlogService {
   async create(dto: CreateBlogDto, adminId: string) {
     const slug = await this.uniqueSlug(dto.slug || dto.title);
     const status = (dto.status as BlogStatus) ?? BlogStatus.DRAFT;
-    return this.prisma.blogPost.create({
+    const post = await this.prisma.blogPost.create({
       data: {
         slug,
         title: dto.title,
@@ -62,6 +63,8 @@ export class BlogService {
         createdBy: adminId,
       },
     });
+    pingIndexNow(blogChangeUrls(null, post));
+    return post;
   }
 
   async update(id: string, dto: UpdateBlogDto) {
@@ -93,13 +96,19 @@ export class BlogService {
       }
     }
 
-    return this.prisma.blogPost.update({ where: { id }, data });
+    const post = await this.prisma.blogPost.update({ where: { id }, data });
+    pingIndexNow(blogChangeUrls(existing, post));
+    return post;
   }
 
   async remove(id: string) {
-    const found = await this.prisma.blogPost.count({ where: { id } });
-    if (found === 0) throw new NotFoundException('Post not found');
+    const existing = await this.prisma.blogPost.findUnique({
+      where: { id },
+      select: { slug: true, status: true },
+    });
+    if (!existing) throw new NotFoundException('Post not found');
     await this.prisma.blogPost.delete({ where: { id } });
+    pingIndexNow(blogChangeUrls(existing, null));
     return { deleted: true };
   }
 
