@@ -27,6 +27,7 @@ export interface PmTask {
   owner: string | null;
   dueDate: string | null;
   sortOrder: number;
+  labels: string[];
   updatedAt: string;
 }
 

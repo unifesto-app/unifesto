@@ -94,6 +94,7 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [trackFilter, setTrackFilter] = useState<string | null>(null);
+  const [labelFilter, setLabelFilter] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showShelved, setShowShelved] = useState(false);
   const [editing, setEditing] = useState<Editing>(null);
@@ -116,15 +117,17 @@ export default function ProductPage() {
   const all = useMemo(() => tracks.flatMap((t) => t.tasks), [tracks]);
   const overall = progress(all);
   const trackName = useMemo(() => new Map(tracks.map((t) => [t.key, t.name])), [tracks]);
+  const allLabels = useMemo(() => [...new Set(all.flatMap((t) => t.labels))].sort(), [all]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     return all.filter(
       (t) =>
         (!trackFilter || t.trackKey === trackFilter) &&
-        (!q || `${t.key} ${t.title} ${t.owner ?? ""} ${t.notes ?? ""}`.toLowerCase().includes(q))
+        (!labelFilter || t.labels.includes(labelFilter)) &&
+        (!q || `${t.key} ${t.title} ${t.owner ?? ""} ${t.notes ?? ""} ${t.labels.join(" ")}`.toLowerCase().includes(q))
     );
-  }, [all, trackFilter, query]);
+  }, [all, trackFilter, labelFilter, query]);
 
   /** Optimistic: the card lands at once; a failed save reloads the truth. */
   const move = async (key: string, status: PmStatus) => {
@@ -206,7 +209,7 @@ export default function ProductPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Filter by key, title, owner…"
+                placeholder="Filter by key, title, owner, label…"
                 className="pl-9"
               />
             </div>
@@ -220,6 +223,27 @@ export default function ProductPage() {
               Show parked &amp; dropped
             </label>
           </div>
+
+          {allLabels.length > 0 && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter by label">
+              {allLabels.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  aria-pressed={labelFilter === l}
+                  onClick={() => setLabelFilter(labelFilter === l ? null : l)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-0.5 text-xs transition-colors",
+                    labelFilter === l
+                      ? "border-border-strong bg-primary-soft text-foreground"
+                      : "border-border text-muted-foreground hover:border-border-strong hover:text-foreground"
+                  )}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
 
           {loading ? (
             <div className="flex gap-4 overflow-hidden">
@@ -419,6 +443,15 @@ function TaskCard({
         {trackName && <span className="truncate">{trackName}</span>}
       </div>
       <p className="mt-1.5 line-clamp-3 text-sm leading-snug text-foreground">{task.title}</p>
+      {task.labels.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {task.labels.map((l) => (
+            <span key={l} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+              {l}
+            </span>
+          ))}
+        </div>
+      )}
       {(task.owner || task.dueDate) && (
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
           {task.owner && <span>{task.owner}</span>}
@@ -458,6 +491,7 @@ function TaskDialog({
     status: task?.status ?? defaultStatus,
     owner: task?.owner ?? "",
     dueDate: task?.dueDate?.slice(0, 10) ?? "",
+    labels: task?.labels.join(", ") ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -485,6 +519,7 @@ function TaskDialog({
       status: form.status,
       owner: form.owner.trim() || null,
       dueDate: form.dueDate || null,
+      labels: form.labels.split(","),
     });
     setSaving(false);
     if (err) setError(err.message);
@@ -537,6 +572,10 @@ function TaskDialog({
               <Label htmlFor="pm-due">Due</Label>
               <Input id="pm-due" type="date" value={form.dueDate} onChange={set("dueDate")} />
             </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="pm-labels">Labels</Label>
+            <Input id="pm-labels" value={form.labels} onChange={set("labels")} placeholder="mobile, launch" />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="pm-notes">Notes</Label>

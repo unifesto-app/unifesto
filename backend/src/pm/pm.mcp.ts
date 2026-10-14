@@ -24,10 +24,14 @@ const TOOLS = [
   {
     name: 'list_tasks',
     description:
-      'List plan tasks. Filter by track key (e.g. "S", "P") and/or statuses. Start here to see what is next.',
+      'List plan tasks. Filter by track key (e.g. "S", "P"), statuses and/or one label. Start here to see what is next.',
     inputSchema: {
       type: 'object',
-      properties: { track: str, statuses: { type: 'array', items: status } },
+      properties: {
+        track: str,
+        statuses: { type: 'array', items: status },
+        label: str,
+      },
     },
   },
   {
@@ -58,6 +62,12 @@ const TOOLS = [
           description: 'YYYY-MM-DD, or empty to clear',
         },
         sortOrder: { type: 'integer' },
+        labels: {
+          type: 'array',
+          items: str,
+          description:
+            'Replaces all labels (lowercased). Send [] to clear; omit to keep.',
+        },
       },
       required: ['key'],
     },
@@ -95,6 +105,16 @@ const opt = (v: unknown, name: string): string | undefined => {
   if (v === undefined || v === null) return undefined;
   if (typeof v !== 'string') throw new ToolError(`${name} must be a string`);
   return v;
+};
+const optLabels = (v: unknown): string[] | undefined => {
+  if (v === undefined || v === null) return undefined;
+  if (
+    !Array.isArray(v) ||
+    v.length > 20 ||
+    v.some((l) => typeof l !== 'string' || l.length > 40)
+  )
+    throw new ToolError('labels must be up to 20 strings of 40 chars');
+  return v as string[];
 };
 const asStatus = (v: unknown): PmTaskStatus | undefined => {
   if (v === undefined) return undefined;
@@ -164,6 +184,7 @@ export class PmMcp {
         return this.pm.listTasks({
           trackKey: opt(a.track, 'track'),
           status: statuses as PmTaskStatus[] | undefined,
+          label: opt(a.label, 'label'),
         });
       }
       case 'get_task':
@@ -183,6 +204,7 @@ export class PmMcp {
             dueDate: due === undefined ? undefined : due || null,
             sortOrder:
               typeof a.sortOrder === 'number' ? a.sortOrder : undefined,
+            labels: optLabels(a.labels),
           },
           actor,
         );

@@ -1,4 +1,6 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsIn,
   IsInt,
   IsOptional,
@@ -36,6 +38,12 @@ export class UpsertTaskDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/)
   dueDate?: string | null;
   @IsOptional() @IsInt() sortOrder?: number;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  labels?: string[];
 }
 
 export class AddNoteDto {
