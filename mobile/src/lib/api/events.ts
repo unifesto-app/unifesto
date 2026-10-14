@@ -78,7 +78,7 @@ export interface Event {
    * Organiser white-label branding, or null for the default Unifesto look.
    * Set by the backend only when admin-approved AND the plan includes it.
    */
-  branding?: { color: string | null; faviconUrl?: string | null } | null;
+  branding?: { color: string | null; faviconUrl?: string | null; logoUrl?: string | null } | null;
   /**
    * The parent "big event" this event is a sub-event of, or null for a
    * top-level event. Present on the event-detail response.
