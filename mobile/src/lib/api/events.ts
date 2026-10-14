@@ -1,5 +1,22 @@
 import { makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
 
+/**
+ * Organiser white-label theme (backend `branding.util`). Set only when the
+ * space's branding is on, its plan allows it and it isn't suspended; an event
+ * may carry just a colour override, with `name` null.
+ */
+export interface Branding {
+  /** Space name for the branded header; null when only an event colour applies. */
+  name?: string | null;
+  color: string | null;
+  /** Header logo: the wide brand wordmark, else the square space logo. */
+  logoUrl?: string | null;
+  font?: string | null;
+  mode?: 'light' | 'dark' | null;
+  hidePoweredBy?: boolean;
+  faviconUrl?: string | null;
+}
+
 export interface Event {
   id: string;
   title: string;
@@ -74,11 +91,8 @@ export interface Event {
    * attendee "I'm interested" opt-in button. Empty for events with no sponsors.
    */
   sponsors?: EventSponsor[];
-  /**
-   * Organiser white-label branding, or null for the default Unifesto look.
-   * Set by the backend only when admin-approved AND the plan includes it.
-   */
-  branding?: { color: string | null; faviconUrl?: string | null; logoUrl?: string | null } | null;
+  /** Organiser white-label branding, or null for the default Unifesto look. */
+  branding?: Branding | null;
   /**
    * The parent "big event" this event is a sub-event of, or null for a
    * top-level event. Present on the event-detail response.
