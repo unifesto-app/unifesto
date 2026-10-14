@@ -3,7 +3,7 @@
  * Handles all space-related API calls to the backend
  */
 
-import { Event, PaletteColor } from './events';
+import { Branding, Event, PaletteColor } from './events';
 import { makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
 
 /**
@@ -52,11 +52,8 @@ export interface Space {
   logo_url?: string | null;
   bannerUrl?: string | null;
   banner_url?: string | null;
-  /**
-   * Organiser white-label branding, or null for the default Unifesto look.
-   * Set by the backend only when admin-approved AND the plan includes it.
-   */
-  branding?: { color: string | null; faviconUrl?: string | null } | null;
+  /** Organiser white-label branding, or null for the default Unifesto look. */
+  branding?: Branding | null;
   city: string | null;
   state: string | null;
   country: string | null;

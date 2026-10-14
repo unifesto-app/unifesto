@@ -19,6 +19,7 @@ import { useSpaceDetail, type SpaceDetail } from '../hooks/useSpaceDetail';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { useBannerAccent } from '../hooks/useBannerPalette';
 import ReportSheet from '../components/ReportSheet';
+import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import type { Event } from '../lib/api/events';
 import { relativeWhen, shortPrice, spaceBanner, spaceLogo } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
@@ -71,6 +72,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      ...brandHeaderOptions(space?.branding),
       headerRight: () => (
         <HeaderActions>
           <HeaderIconButton onPress={s.share} label="Share space">

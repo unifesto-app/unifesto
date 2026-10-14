@@ -350,7 +350,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H1 | P1 migration `20261014120000_white_label_theme`: `brandFont`, `brandMode`, `hidePoweredBy`, `brandingSuspendedAt` (`brandLogoUrl` revived) | done, not deployed |
 | H2 | P1 `branding.util` resolvers (on && plan && !suspended; payload adds name/logo/font/mode/hidePoweredBy, 5-test spec); `/white-label` routes self-serve via `@Can`; logo/favicon upload; admin suspend; private brand fields stripped from public space payloads | done, not deployed |
 | H3 | P1 web: `components/BrandedChrome.tsx` replaces Navbar/Footer on space + event pages when the space theme is live; Google font + forced light/dark | done, not visually verified |
-| H4 | P1 Space Branding studio (all fields + uploads + live preview + event colours + upsell) done; Apex Manage page Suspend/Restore done; mobile manage card self-serve copy done. Mobile logo on space/event screens still open | in progress |
+| H4 | P1 Space Branding studio (all fields + uploads + live preview + event colours + upsell); Apex Manage page Suspend/Restore; mobile manage card self-serve copy; mobile space + event screens show the brand logo as the header title and light the sky with the brand colour | done, mobile not visually verified |
 | H5 | P2 branded email layout (logo/name header, accent buttons, "Sent by X via Unifesto") on all 12 attendee templates; `EmailService.brandFor(eventId)` resolves theme + sender centrally | done, not deployed (#106) |
 | H6 | P2 `SpaceDomain` (migration `20261014140000_space_domains`) + Resend Domains add/verify/remove + studio card; mail sends from `<local>@<verified domain>` | done, not deployed (#106) |
 | H7 | P3 custom web domains: Cloudflare custom hostnames add/verify/remove, public `GET /white-label/domains/resolve`, Caddy catch-all, web middleware tenant routing (+ `scripts/middleware.check.mts`), per-host canonical/OG, emails link to the custom domain | done, not deployed (#106) |
@@ -358,7 +358,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H9 | Bring-your-own WhatsApp sender per space (today it's one env number) | planned |
 | H10 | Deploy #106: read migrations `20261014120000_white_label_theme` + `20261014140000_space_domains`, `migrate deploy`, rebuild backend + web + space + apex, Caddy reload, mobile OTA (manage-card copy) | planned |
 | H11 | Verify after deploy: branded space + event page (header/footer, font, forced mode), Branding studio uploads + preview, a branded registration email in Gmail + Apple Mail (light/dark), suspend/restore from Apex. None of this was seen rendered | planned |
-| H12 | Mobile: show the space logo (`branding.logoUrl`) on space + event screens; consider `branding.font` | planned |
+| H12 | Mobile: `branding.font` on space + event screens (logo shipped with H4) | planned |
 | H13 | Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | planned |
 | H14 | Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | planned |
 | H15 | Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
