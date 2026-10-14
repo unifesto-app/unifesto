@@ -4,7 +4,9 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { getPost, postMeta } from "@/lib/api/blog";
+import { SITE } from "@/lib/site";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -20,7 +22,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return withSocial({
     title: { absolute: title },
     description: post.excerpt,
-    alternates: { canonical: `/blog/${post.slug}` },
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+      types: { "application/rss+xml": "/blog/rss.xml" },
+    },
   }, { type: "article", image: false });
 }
 
@@ -90,9 +95,37 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   const { date, readTime } = postMeta(post);
+  const url = `${SITE.url}/blog/${post.slug}`;
+  const postLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: post.title,
+    description: post.excerpt,
+    url,
+    mainEntityOfPage: url,
+    image: post.coverImageUrl ?? `${url}/opengraph-image`,
+    datePublished: post.publishedAt ?? post.createdAt,
+    dateModified: post.updatedAt,
+    articleSection: post.category,
+    author: { "@type": "Person", name: post.author },
+    publisher: {
+      "@type": "Organization",
+      name: SITE.name,
+      logo: { "@type": "ImageObject", url: SITE.logo },
+    },
+  };
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
+      <JsonLd
+        data={[
+          postLd,
+          breadcrumbLd([
+            { name: "Blog", path: "/blog" },
+            { name: post.title, path: `/blog/${post.slug}` },
+          ]),
+        ]}
+      />
       <Navbar />
 
       <header className="surface-night px-5 pb-12 pt-32 sm:px-8 md:pt-40">
