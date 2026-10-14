@@ -495,6 +495,8 @@ function TaskDialog({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Clicking a card reads first; editing is one deliberate step away.
+  const [editMode, setEditMode] = useState(!task);
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
   // A new task's key follows its track until the user types their own.
@@ -525,6 +527,63 @@ function TaskDialog({
     if (err) setError(err.message);
     else onSaved();
   };
+
+  if (task && !editMode) {
+    const overdue = isOverdue(task);
+    const meta = STATUS[task.status];
+    const track = tracks.find((t) => t.key === task.trackKey);
+    return (
+      <Dialog open onOpenChange={(o) => !o && onClose()}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-mono text-foreground">{task.key}</span>
+              {track && <span className="truncate">{track.name}</span>}
+            </div>
+            <DialogTitle className="leading-snug">{task.title}</DialogTitle>
+          </DialogHeader>
+          <dl className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">Status</dt>
+              <dd className="mt-1 flex items-center gap-2">
+                <span className={cn("h-2 w-2 rounded-full", meta.dot)} aria-hidden />
+                {meta.label}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Owner</dt>
+              <dd className="mt-1">{task.owner || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Due</dt>
+              <dd className={cn("mt-1", overdue && "font-medium text-destructive")}>
+                {task.dueDate ? `${overdue ? "Overdue · " : ""}${fmtDate(task.dueDate)}` : "—"}
+              </dd>
+            </div>
+          </dl>
+          {task.labels.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {task.labels.map((l) => (
+                <span key={l} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                  {l}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
+            {task.notes || <span className="text-muted-foreground">No notes.</span>}
+          </div>
+          <p className="text-xs text-muted-foreground">Updated {fmtDate(task.updatedAt)}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+            <Button onClick={() => setEditMode(true)}>Edit</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
