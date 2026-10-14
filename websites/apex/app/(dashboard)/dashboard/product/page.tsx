@@ -22,6 +22,7 @@ import {
   PM_MCP_URL,
   PM_STATUSES,
   createToken,
+  startWork,
   getActivity,
   getBoard,
   getTokens,
@@ -41,13 +42,14 @@ const STATUS: Record<PmStatus, { label: string; dot: string }> = {
   NEXT: { label: "Next", dot: "bg-primary" },
   IN_PROGRESS: { label: "In progress", dot: "bg-warning" },
   BLOCKED: { label: "Blocked", dot: "bg-destructive" },
+  IN_REVIEW: { label: "In review", dot: "bg-success/50" },
   DONE: { label: "Done", dot: "bg-success" },
   PARKED: { label: "Parked", dot: "bg-border-strong" },
   DROPPED: { label: "Dropped", dot: "bg-border-strong" },
 };
 
 /** Left-to-right flow of work. Parked / dropped only show when asked for. */
-const FLOW: PmStatus[] = ["PLANNED", "NEXT", "IN_PROGRESS", "BLOCKED", "DONE"];
+const FLOW: PmStatus[] = ["PLANNED", "NEXT", "IN_PROGRESS", "BLOCKED", "IN_REVIEW", "DONE"];
 const SHELVED: PmStatus[] = ["PARKED", "DROPPED"];
 
 /** Done out of everything still in scope (parked and dropped don't count). */
@@ -473,6 +475,17 @@ function TaskDialog({
           : nextKey(tracks.find((t) => t.key === e.target.value)),
     }));
 
+  // Fires the Claude Code cloud routine; it reports back on this card.
+  const start = async () => {
+    if (!task) return;
+    setSaving(true);
+    const { data, error: err } = await startWork(task.key);
+    setSaving(false);
+    if (err) return setError(err.message);
+    if (data?.sessionUrl) window.open(data.sessionUrl, "_blank", "noopener");
+    onSaved();
+  };
+
   const save = async () => {
     if (!form.key.trim() || !form.title.trim()) return setError("Key and title are required.");
     setSaving(true);
@@ -544,6 +557,11 @@ function TaskDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
         <DialogFooter>
+          {task && !["DONE", "DROPPED"].includes(task.status) && (
+            <Button variant="outline" className="sm:mr-auto" onClick={start} disabled={saving}>
+              Start work on Claude Code
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>

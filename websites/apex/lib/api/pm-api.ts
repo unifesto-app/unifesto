@@ -9,6 +9,7 @@ export const PM_STATUSES = [
   "NEXT",
   "IN_PROGRESS",
   "BLOCKED",
+  "IN_REVIEW",
   "PLANNED",
   "DONE",
   "PARKED",
@@ -64,6 +65,8 @@ export const upsertTask = (input: PmTaskInput): Result<PmTask> =>
   apiCall(backendClient.put("/pm/tasks", input));
 export const upsertTrack = (input: { key: string; name: string; sortOrder?: number }): Result<PmTrack> =>
   apiCall(backendClient.put("/pm/tracks", input));
+export const startWork = (key: string): Result<{ sessionUrl: string | null }> =>
+  apiCall(backendClient.post(`/pm/tasks/${encodeURIComponent(key)}/start`));
 export const getTokens = (): Result<PmToken[]> => apiCall(backendClient.get("/pm/tokens"));
 export const createToken = (name: string): Result<{ id: string; name: string; token: string }> =>
   apiCall(backendClient.post("/pm/tokens", { name }));
