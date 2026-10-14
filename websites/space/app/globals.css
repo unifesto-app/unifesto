@@ -1,18 +1,6 @@
 @import "tailwindcss";
 
 /* ============================================================================
-   Apex — Unifesto Control · Design Foundation
-   Unified admin + organiser operator console. Light mode ONLY (WCAG 2.1 AA).
-   Blue leads to the next step (≤10% of a view). Green celebrates earned
-   progress. The neutral ramp is tinted a hair toward blue so white surfaces
-   feel part of the Unifesto world, never clinical.
-
-   Tailwind v4: design tokens live as CSS custom properties in :root, and are
-   surfaced to utilities via @theme inline (so `bg-primary`, `text-muted-
-   foreground`, `border-border`, `rounded-lg`, `shadow-md` all resolve).
-   ============================================================================ */
-
-/* ============================================================================
    Space — Unifesto operator console · Monochrome cosmos
    The 2026 web brand (websites/web/src/app/globals.css) mapped onto this
    app's shadcn roles: black ground, light type, one starlight-silver accent.
@@ -125,70 +113,6 @@
     --shadow-md: 0 4px 12px -2px hsl(240 10% 4% / 0.08), 0 2px 6px -2px hsl(240 10% 4% / 0.05);
     --shadow-lg: 0 8px 24px -4px hsl(240 10% 4% / 0.12), 0 4px 8px -4px hsl(240 10% 4% / 0.06);
   }
-}
-
-@theme inline (so `bg-primary`, `text-muted-
-   foreground`, `border-border`, `rounded-lg`, `shadow-md` all resolve).
-   ============================================================================ */
-
-:root {
-  /* --- Surfaces & ink (zinc neutrals, faintly cool) --- */
-  --background: 240 20% 99%;          /* app canvas — a touch off pure white */
-  --foreground: 240 10% 3.9%;         /* ink */
-  --card: 0 0% 100%;                  /* raised surfaces sit brighter than canvas */
-  --card-foreground: 240 10% 3.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 3.9%;
-
-  /* --- Brand: Unifesto Blue --- */
-  --primary: 221 83% 53%;             /* #1a75ff */
-  --primary-foreground: 0 0% 100%;
-  --primary-hover: 221 100% 50%;      /* #0062ff */
-  --primary-soft: 221 100% 97%;       /* tinted wash behind active items */
-
-  /* --- Neutrals --- */
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 6% 10%;
-  --muted: 240 5% 96%;
-  --muted-foreground: 240 4% 46%;     /* #71717a */
-  --accent: 240 5% 96%;
-  --accent-foreground: 240 6% 10%;
-
-  /* --- Second neutral layer for chrome (sidebar / toolbar) --- */
-  --sidebar: 240 14% 98%;
-  --sidebar-foreground: 240 10% 3.9%;
-
-  /* --- Feedback --- */
-  --success: 142 71% 45%;             /* #16a34a — earned progress only */
-  --success-foreground: 0 0% 100%;
-  --success-soft: 138 76% 96%;        /* #dcfce7 */
-  --warning: 32 95% 44%;
-  --warning-foreground: 0 0% 100%;
-  --warning-soft: 48 100% 96%;
-  --destructive: 358 75% 59%;         /* #e5484d */
-  --destructive-foreground: 0 0% 100%;
-  --destructive-soft: 0 86% 97%;
-
-  /* --- Lines & controls --- */
-  --border: 240 6% 90%;               /* #e4e4e7 */
-  --border-strong: 240 5% 84%;
-  --input: 240 6% 90%;
-  --ring: 221 83% 53%;
-
-  /* --- Radius (8px family) --- */
-  --radius: 0.5rem;                   /* lg 8px · md 6px · sm 4px */
-
-  /* --- Elevation: overlays earn shadow (Calm-Form Rule) --- */
-  --shadow-xs: 0 1px 2px 0 hsl(240 10% 4% / 0.04);
-  --shadow-sm: 0 1px 3px 0 hsl(240 10% 4% / 0.06), 0 1px 2px -1px hsl(240 10% 4% / 0.05);
-  --shadow-md: 0 4px 12px -2px hsl(240 10% 4% / 0.08), 0 2px 6px -2px hsl(240 10% 4% / 0.05);
-  --shadow-lg: 0 8px 24px -4px hsl(240 10% 4% / 0.12), 0 4px 8px -4px hsl(240 10% 4% / 0.06);
-
-  /* --- Motion --- */
-  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-fast: 150ms;
-  --duration-base: 200ms;
 }
 
 @theme inline {
