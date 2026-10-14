@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-/** Set by middleware.ts on requests that arrive on a space's custom domain. */
+/** Set by src/proxy.ts on requests that arrive on a space's custom domain. */
 export const TENANT_HOST = "x-tenant-host";
 export const TENANT_SPACE = "x-tenant-space";
 
