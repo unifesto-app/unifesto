@@ -88,88 +88,88 @@ Read-only audit of `backend/` in four passes: inventory, security, money/data, r
 
 | # | Item | Status |
 |---|---|---|
-| S1 | **Payment receipt replay.** `verifyPayment` (`registrations.service.ts:4480-4611`) checks the Razorpay signature but never that `dto.razorpayOrderId === registration.orderId`, and overwrites `orderId` with the caller's. One ₹10 receipt confirms any number of ₹5,000 registrations; the waitlist-convert branch too. Fix: require the order match + `registration.eventId === eventId`; partial unique indexes on `event_registrations.payment_id` / `order_id` (also fixes the unindexed webhook lookups). Copy the pattern from `team-changes.service.ts:450` and stays `:620` | done (#110), not deployed |
-| S2 | Same replay in sessions verify (`sessions.service.ts:794-840`); PAID unlocks the LiveKit join token | done (#110), not deployed |
-| S3 | Subscription upgrade verify (`subscription.service.ts:197-240`): no `order.notes.spaceId === spaceId`, no payment-id dedup, `!==` signature compare. Pay once, upgrade every space, replay monthly. Fix: check space + `order.status`, unique payment id, `timingSafeEqual` | done (#110), not deployed |
-| S4 | **Mass identity takeover.** `verifyTempToken` (`auth.service.ts:679`) accepts any JWT (access/refresh too). With no `provider`/`providerUserId`, Prisma drops the filters, so `verifyMobile` (`:325-350`) `findFirst({})` returns any identity and `updateMany({})` repoints **every** `user_identities` row to the caller. Fix: `type: 'temp'` claim required, reject empty provider fields, never pass possibly-undefined values into `updateMany` filters | done (#110), not deployed |
-| S5 | Account takeover by email auto-link: `handleProviderLogin` (`:493-520`) and `loginWithCognito` (`:795-818`) link a new IdP identity to an existing account by email without checking `email_verified`. Fix: link only when verified, otherwise OTP to the existing email/mobile | done (#110), not deployed |
-| S6 | Refresh tokens accepted as access tokens (`validateAccessToken` `:687` ignores `type`); no revocation on rotate/logout. Fix: reject non-access types; store refresh `jti` in Redis, revoke on rotate + logout, per-user `tokenVersion` | done (#110), not deployed |
-| S7 | OTP brute force: non-atomic attempt counter (concurrent guesses), `Math.random()` codes, counter reset per send, `verify-mobile` unthrottled. Fix: `crypto.randomInt`, atomic `INCR` checked before compare, per-identifier send cooldown + daily cap (also stops WhatsApp OTP cost abuse) | done (#110), not deployed |
-| S8 | Hardcoded App Review login `test-user@unifesto.app` / `098765` (`auth.service.ts:227`) bypasses OTP for anyone. Fix: env flag, off in production except during review | done (#110), not deployed |
+| S1 | **Payment receipt replay in verifyPayment.** `verifyPayment` (`registrations.service.ts:4480-4611`) checks the Razorpay signature but never that `dto.razorpayOrderId === registration.orderId`, and overwrites `orderId` with the caller's. One ₹10 receipt confirms any number of ₹5,000 registrations; the waitlist-convert branch too. Fix: require the order match + `registration.eventId === eventId`; partial unique indexes on `event_registrations.payment_id` / `order_id` (also fixes the unindexed webhook lookups). Copy the pattern from `team-changes.service.ts:450` and stays `:620` | done (#110), not deployed |
+| S2 | **Payment replay in sessions verify.** Same replay in sessions verify (`sessions.service.ts:794-840`); PAID unlocks the LiveKit join token | done (#110), not deployed |
+| S3 | **Subscription upgrade verify replay.** Subscription upgrade verify (`subscription.service.ts:197-240`): no `order.notes.spaceId === spaceId`, no payment-id dedup, `!==` signature compare. Pay once, upgrade every space, replay monthly. Fix: check space + `order.status`, unique payment id, `timingSafeEqual` | done (#110), not deployed |
+| S4 | **Mass identity takeover via verifyTempToken.** `verifyTempToken` (`auth.service.ts:679`) accepts any JWT (access/refresh too). With no `provider`/`providerUserId`, Prisma drops the filters, so `verifyMobile` (`:325-350`) `findFirst({})` returns any identity and `updateMany({})` repoints **every** `user_identities` row to the caller. Fix: `type: 'temp'` claim required, reject empty provider fields, never pass possibly-undefined values into `updateMany` filters | done (#110), not deployed |
+| S5 | **Account takeover via unverified email auto-link.** Account takeover by email auto-link: `handleProviderLogin` (`:493-520`) and `loginWithCognito` (`:795-818`) link a new IdP identity to an existing account by email without checking `email_verified`. Fix: link only when verified, otherwise OTP to the existing email/mobile | done (#110), not deployed |
+| S6 | **Refresh tokens accepted as access tokens.** Refresh tokens accepted as access tokens (`validateAccessToken` `:687` ignores `type`); no revocation on rotate/logout. Fix: reject non-access types; store refresh `jti` in Redis, revoke on rotate + logout, per-user `tokenVersion` | done (#110), not deployed |
+| S7 | **OTP brute force hardening.** OTP brute force: non-atomic attempt counter (concurrent guesses), `Math.random()` codes, counter reset per send, `verify-mobile` unthrottled. Fix: `crypto.randomInt`, atomic `INCR` checked before compare, per-identifier send cooldown + daily cap (also stops WhatsApp OTP cost abuse) | done (#110), not deployed |
+| S8 | **Hardcoded App Review login bypasses OTP.** Hardcoded App Review login `test-user@unifesto.app` / `098765` (`auth.service.ts:227`) bypasses OTP for anyone. Fix: env flag, off in production except during review | done (#110), not deployed |
 
 **P1: money and data integrity**
 
 | # | Item | Status |
 |---|---|---|
-| S9 | Cancelling an unpaid PENDING registration decrements `soldCount`/`registeredCount` it never incremented (`registrations.service.ts:5677-5734`); repeatable, so it unlocks unlimited overselling. Only decrement for PAID / PARTIALLY_REFUNDED; release the coupon | done (#110), not deployed |
-| S10 | Overselling on paid checkout, free/RSVP, import, complimentary add and restore: capacity is a plain read, increments are unconditional. Use the atomic `UPDATE … WHERE sold_count + n <= total_quantity` from `team-changes.service.ts:326` (`moveCapacity`) and auto-refund on a lost race | done (#110), not deployed |
-| S11 | Double refund: `adminDecide` (`refunds.service.ts:368-483`) calls Razorpay without claiming the request; `refundedAmount` written absolute. Claim with `updateMany where status=PENDING_ADMIN → PROCESSING`; partial unique index on open requests per registration | done (#110), not deployed |
-| S12 | Payouts: create races (compute then insert), mark-paid/cancel with no status condition (paid then cancelled frees the money again), refunds after payout hidden by `Math.max(0, …)`. Lock the event row/advisory lock around compute+insert, conditional status changes, show negative balances and flag refunds that exceed what's left | done (#110), not deployed |
-| S13 | Checkout retry hard-deletes PENDING rows that already have a live Razorpay order (`:3990-4004`), creating orphaned payments. Cancel instead, like `:362` | done (#110), not deployed |
-| S14 | Deleting a cancelled event cascade-deletes paid registrations, refund requests and stay bookings (`events.service.ts:2462`; same for sessions and space delete). `cancelEvent` promises refunds but issues none. Block delete while paid rows exist; decide the cancel-refund flow | in progress: delete blocked while paid rows exist (#110); `cancelEvent` refund flow needs your decision |
-| S15 | Smaller money bugs: partial refund removes the whole ticket from payouts (count PARTIALLY_REFUNDED minus `refundedAmount`); restore revives refunded/unpaid rows; verify/webhook revive CANCELLED or REFUNDED rows to PAID; waitlist convert and session verify double-count; `payment.failed` can overwrite PAID; session cancel refunds the fee too; coupon cap leaks (30-min release while order still payable, release/confirm race); transfer request not claimed atomically; stay late-payment refund failure leaves PAID+CANCELLED | done (#110), not deployed |
-| S16 | One fee source of truth: null `revenueSharePercent` = 0% in payouts but platform default in plan-config; export "Net" disagrees with `netEntitlement`; `computeProcessingFee` unrounded (paise drift trips reconcile). Single `resolvePlatformFeePercent` + round to paise | done (#110), not deployed |
+| S9 | **Cancelling unpaid registration corrupts sold counts.** Cancelling an unpaid PENDING registration decrements `soldCount`/`registeredCount` it never incremented (`registrations.service.ts:5677-5734`); repeatable, so it unlocks unlimited overselling. Only decrement for PAID / PARTIALLY_REFUNDED; release the coupon | done (#110), not deployed |
+| S10 | **Overselling across checkout and add paths.** Overselling on paid checkout, free/RSVP, import, complimentary add and restore: capacity is a plain read, increments are unconditional. Use the atomic `UPDATE … WHERE sold_count + n <= total_quantity` from `team-changes.service.ts:326` (`moveCapacity`) and auto-refund on a lost race | done (#110), not deployed |
+| S11 | **Double refund in admin refund decision.** Double refund: `adminDecide` (`refunds.service.ts:368-483`) calls Razorpay without claiming the request; `refundedAmount` written absolute. Claim with `updateMany where status=PENDING_ADMIN → PROCESSING`; partial unique index on open requests per registration | done (#110), not deployed |
+| S12 | **Payout races and unguarded status changes.** Payouts: create races (compute then insert), mark-paid/cancel with no status condition (paid then cancelled frees the money again), refunds after payout hidden by `Math.max(0, …)`. Lock the event row/advisory lock around compute+insert, conditional status changes, show negative balances and flag refunds that exceed what's left | done (#110), not deployed |
+| S13 | **Checkout retry orphans live Razorpay payments.** Checkout retry hard-deletes PENDING rows that already have a live Razorpay order (`:3990-4004`), creating orphaned payments. Cancel instead, like `:362` | done (#110), not deployed |
+| S14 | **Event delete cascades paid data; cancel refunds.** Deleting a cancelled event cascade-deletes paid registrations, refund requests and stay bookings (`events.service.ts:2462`; same for sessions and space delete). `cancelEvent` promises refunds but issues none. Block delete while paid rows exist; decide the cancel-refund flow | in progress: delete blocked while paid rows exist (#110); `cancelEvent` refund flow needs your decision |
+| S15 | **Smaller money bugs across refunds and payments.** Smaller money bugs: partial refund removes the whole ticket from payouts (count PARTIALLY_REFUNDED minus `refundedAmount`); restore revives refunded/unpaid rows; verify/webhook revive CANCELLED or REFUNDED rows to PAID; waitlist convert and session verify double-count; `payment.failed` can overwrite PAID; session cancel refunds the fee too; coupon cap leaks (30-min release while order still payable, release/confirm race); transfer request not claimed atomically; stay late-payment refund failure leaves PAID+CANCELLED | done (#110), not deployed |
+| S16 | **One platform fee source of truth.** One fee source of truth: null `revenueSharePercent` = 0% in payouts but platform default in plan-config; export "Net" disagrees with `netEntitlement`; `computeProcessingFee` unrounded (paise drift trips reconcile). Single `resolvePlatformFeePercent` + round to paise | done (#110), not deployed |
 
 **P1: outage risks**
 
 | # | Item | Status |
 |---|---|---|
-| S17 | Deploys recreate all 3 replicas at once while Caddy retries for 5s and boot takes up to 40s (likely the 502/503 floods). Roll one replica at a time (`docker rollout` or scale 6 → healthy → 3); `stop_grace_period: 60s` | done (#110), not deployed |
-| S18 | A Redis outage hangs every request incl. the health probe (throttler client `maxRetriesPerRequest: null` + offline queue; `GET /` not `@SkipThrottle`), so all replicas get ejected together. Own client, fail open, skip throttle on health | done (#110), not deployed |
-| S19 | Rate limits keyed to Cloudflare edge IPs (no `trusted_proxies` / `client_ip_headers` in Caddy) = 429 storms; SSR calls the public API and shares one bucket. Trust Cloudflare CIDRs + `Cf-Connecting-Ip`; SSR via `http://backend:8080` with an internal header | done (#110), not deployed |
-| S20 | Cert render OOM: canvas up to 10000², PDF+PNG in parallel each re-downloading the background, sync PNG encode blocks the loop, `reissueAllRevoked` on the request path, inline fallback when Redis is down. Cap ~3508×2480, fetch once, `await canvas.encode`, queue everything, separate `cert-worker` with its own memory limit | done (#110), not deployed |
-| S21 | Unhandled rejections kill a replica (Node 22): `void sendRegistrationConfirmations` right after payment, `void dispatch` in push campaigns. `.catch(log)` at every `void` call + a global `unhandledRejection` logger | done (#110), not deployed |
-| S22 | Recurrence cron runs on all 3 replicas, unlocked, read-then-create, so occurrences can duplicate. `runExclusive` + `@@unique([seriesParentId, startDateTime])` | done (#110), not deployed |
+| S17 | **Roll deploys one replica at a time.** Deploys recreate all 3 replicas at once while Caddy retries for 5s and boot takes up to 40s (likely the 502/503 floods). Roll one replica at a time (`docker rollout` or scale 6 → healthy → 3); `stop_grace_period: 60s` | done (#110), not deployed |
+| S18 | **Redis outage hangs every request.** A Redis outage hangs every request incl. the health probe (throttler client `maxRetriesPerRequest: null` + offline queue; `GET /` not `@SkipThrottle`), so all replicas get ejected together. Own client, fail open, skip throttle on health | done (#110), not deployed |
+| S19 | **Rate limits keyed to Cloudflare edge IPs.** Rate limits keyed to Cloudflare edge IPs (no `trusted_proxies` / `client_ip_headers` in Caddy) = 429 storms; SSR calls the public API and shares one bucket. Trust Cloudflare CIDRs + `Cf-Connecting-Ip`; SSR via `http://backend:8080` with an internal header | done (#110), not deployed |
+| S20 | **Certificate render out-of-memory crashes.** Cert render OOM: canvas up to 10000², PDF+PNG in parallel each re-downloading the background, sync PNG encode blocks the loop, `reissueAllRevoked` on the request path, inline fallback when Redis is down. Cap ~3508×2480, fetch once, `await canvas.encode`, queue everything, separate `cert-worker` with its own memory limit | done (#110), not deployed |
+| S21 | **Unhandled rejections kill a replica.** Unhandled rejections kill a replica (Node 22): `void sendRegistrationConfirmations` right after payment, `void dispatch` in push campaigns. `.catch(log)` at every `void` call + a global `unhandledRejection` logger | done (#110), not deployed |
+| S22 | **Recurrence cron duplicates occurrences.** Recurrence cron runs on all 3 replicas, unlocked, read-then-create, so occurrences can duplicate. `runExclusive` + `@@unique([seriesParentId, startDateTime])` | done (#110), not deployed |
 
 **P2: hardening**
 
 | # | Item | Status |
 |---|---|---|
-| S23 | Payout separation of duty: request/payout-account routes allow any Space Admin or the creator, bypassing `EVENT_MANAGE_MONEY` (`payouts.service.ts:927`). Gate on `assertCan`. Same family: certificates (`:98`) and reports (`:48`) hand-roll role checks that wrongly refuse platform admins and event curators. Move every inline `SPACE_ADMIN_ROLE_CODES` check (15 files) to `@Can` | in progress: money, cert, report, refund checks on `@Can` (#110); inline `SPACE_ADMIN_ROLE_CODES` left in sessions, checkin, events, waitlist, registrations, hackathon-help, spaces |
-| S24 | Member search returns any platform user's email by substring (`spaces.service.ts:759`): email harvesting. Exact match only | done (#110), not deployed |
-| S25 | Career résumés uploaded public and unthrottled (`careers.service.ts:181`). `uploadPrivate` + signed URLs + throttle | done (#110), not deployed |
-| S26 | CORS: `startsWith('http://localhost')` and http `*.unifesto.app` allowed. Exact regex, https only | done (#110), not deployed |
-| S27 | api_logs store raw paths with bearer claim tokens and spoofable IPs; one insert per request; `ILIKE` scans. Log the route template + `req.ip`, sample 2xx GETs, batch retention, better indexes | done (#110), not deployed |
-| S28 | Webhook dedup: store Razorpay event id / Meta message id unique; captured handler skips REFUNDED/CANCELLED | done (#110), not deployed |
-| S29 | Inline auth/payout body types skip validation (payout `amount: "abc"` → NaN passes guards). Real DTOs; `@Max(100)` on list `limit`s (`GET /events`, users) | done (#110), not deployed |
-| S30 | Stays `mark-paid` gated by check-in permission. Use attendee-manage or money capability | done (#110), not deployed |
-| S31 | Secrets: `JWT_SECRET` reused for email-tracking + traffic HMACs with hardcoded fallbacks; not validated at boot. Dedicated secrets; Joi/zod env schema in `ConfigModule` (JWT_SECRET, PORT, DIRECT_URL…) | done (#110), not deployed; secrets validated by the existing ConfigValidationService, not a new schema lib |
-| S32 | Timeouts on every outbound client: WhatsApp (8 axios calls), Razorpay, S3/SES/Resend, LiveKit | done (#110), not deployed |
-| S33 | Fan-out: event/session reminders fire every attendee at once and ignore soft-deleted events; email campaigns run in-process and stick in SENDING after a deploy; reports + exports build in memory on the request. Chunk with a limit, BullMQ campaign jobs with checkpoints + stale sweep, stream CSV | done (#110), not deployed |
-| S34 | DB: N+1s on the check-in gate path (offline sync, bulk), payouts, leaderboard upserts, `canManage`; retention for `page_views`, `push_logs`, `user_notifications`, `email_campaign_logs`, `short_link_clicks`, `whatsapp_messages`; `runExclusive` on unlocked cleanup crons | done (#110), not deployed |
-| S35 | Observability: nestjs-pino with request id from `cf-ray`, Sentry for 5xx + cron failures, drop Prisma `query` log in prod, cache `/health` 5–10s (it hits S3 every probe), delete `getPm2Logs` `execSync` | done (#110), not deployed |
-| S36 | Socket gateway: auth in `io.use`, disconnect on token expiry, 2s Redis cache for `getPublicSnapshot` (reconnect storms) | done (#110), not deployed |
-| S37 | CI lint: fail migrations containing `DROP COLUMN`/`DROP TABLE` unless marked as a contract step | done (#110), not deployed |
+| S23 | **Payout separation of duty and capability checks.** Payout separation of duty: request/payout-account routes allow any Space Admin or the creator, bypassing `EVENT_MANAGE_MONEY` (`payouts.service.ts:927`). Gate on `assertCan`. Same family: certificates (`:98`) and reports (`:48`) hand-roll role checks that wrongly refuse platform admins and event curators. Move every inline `SPACE_ADMIN_ROLE_CODES` check (15 files) to `@Can` | in progress: money, cert, report, refund checks on `@Can` (#110); inline `SPACE_ADMIN_ROLE_CODES` left in sessions, checkin, events, waitlist, registrations, hackathon-help, spaces |
+| S24 | **Member search leaks user emails.** Member search returns any platform user's email by substring (`spaces.service.ts:759`): email harvesting. Exact match only | done (#110), not deployed |
+| S25 | **Career résumés uploaded public and unthrottled.** Career résumés uploaded public and unthrottled (`careers.service.ts:181`). `uploadPrivate` + signed URLs + throttle | done (#110), not deployed |
+| S26 | **Tighten CORS origin allowlist.** CORS: `startsWith('http://localhost')` and http `*.unifesto.app` allowed. Exact regex, https only | done (#110), not deployed |
+| S27 | **API logs leak tokens and scale poorly.** api_logs store raw paths with bearer claim tokens and spoofable IPs; one insert per request; `ILIKE` scans. Log the route template + `req.ip`, sample 2xx GETs, batch retention, better indexes | done (#110), not deployed |
+| S28 | **Webhook event dedup.** Webhook dedup: store Razorpay event id / Meta message id unique; captured handler skips REFUNDED/CANCELLED | done (#110), not deployed |
+| S29 | **Validate auth and payout request bodies.** Inline auth/payout body types skip validation (payout `amount: "abc"` → NaN passes guards). Real DTOs; `@Max(100)` on list `limit`s (`GET /events`, users) | done (#110), not deployed |
+| S30 | **Stays mark-paid gated by wrong permission.** Stays `mark-paid` gated by check-in permission. Use attendee-manage or money capability | done (#110), not deployed |
+| S31 | **Dedicated secrets and boot-time env validation.** Secrets: `JWT_SECRET` reused for email-tracking + traffic HMACs with hardcoded fallbacks; not validated at boot. Dedicated secrets; Joi/zod env schema in `ConfigModule` (JWT_SECRET, PORT, DIRECT_URL…) | done (#110), not deployed; secrets validated by the existing ConfigValidationService, not a new schema lib |
+| S32 | **Timeouts on every outbound client.** Timeouts on every outbound client: WhatsApp (8 axios calls), Razorpay, S3/SES/Resend, LiveKit | done (#110), not deployed |
+| S33 | **Chunk reminder, campaign and export fan-out.** Fan-out: event/session reminders fire every attendee at once and ignore soft-deleted events; email campaigns run in-process and stick in SENDING after a deploy; reports + exports build in memory on the request. Chunk with a limit, BullMQ campaign jobs with checkpoints + stale sweep, stream CSV | done (#110), not deployed |
+| S34 | **DB N+1s, table retention and cron locks.** DB: N+1s on the check-in gate path (offline sync, bulk), payouts, leaderboard upserts, `canManage`; retention for `page_views`, `push_logs`, `user_notifications`, `email_campaign_logs`, `short_link_clicks`, `whatsapp_messages`; `runExclusive` on unlocked cleanup crons | done (#110), not deployed |
+| S35 | **Observability: structured logs, Sentry, health cache.** Observability: nestjs-pino with request id from `cf-ray`, Sentry for 5xx + cron failures, drop Prisma `query` log in prod, cache `/health` 5–10s (it hits S3 every probe), delete `getPm2Logs` `execSync` | done (#110), not deployed |
+| S36 | **Socket gateway auth and reconnect-storm cache.** Socket gateway: auth in `io.use`, disconnect on token expiry, 2s Redis cache for `getPublicSnapshot` (reconnect storms) | done (#110), not deployed |
+| S37 | **CI lint blocks destructive migrations.** CI lint: fail migrations containing `DROP COLUMN`/`DROP TABLE` unless marked as a contract step | done (#110), not deployed |
 
 **P3: cleanup and tests**
 
 | # | Item | Status |
 |---|---|---|
-| S38 | Delete dead modules: `aws` (22 routes, includes the `$queryRawUnsafe` table-name injection), `roles`, `discussions` (plus mobile's orphan API fns calling a non-existent replies route; also has a pin/lock bypass via `PATCH`), `firebase` + `AdminDevice` + admin device-token routes | done (#110), not deployed |
-| S39 | Delete ~25 dead legacy leaderboard routes (`leaderboard.controller.ts`); trim `leaderboard.service.ts` method by method (hackathon shares it) | done (#110), not deployed |
-| S40 | Remove the duplicate `CategoriesModule` pasted inside `ThrottlerModule.forRootAsync` imports (`app.module.ts:72`) | done (#110), not deployed |
-| S41 | Unused deps: `googleapis`, `firebase-admin`, `bcrypt`, `docx`, passport ×4, `ws`, `@types/socket.io`, 7 AWS SDK clients (after S38); fix `ts-jest`/`jest` and `pdfkit` types mismatches | done (#110), not deployed |
-| S42 | Dormant schema: `Referral`, `referralCode`, `referralUpdates`, coins/cashback columns, `SKIPPED_MUTE`; finish GroupSeat consolidation (drop `groupMembers` fallbacks); stop writing the "do not read" WhatsApp URL fields. Contract migrations, one at a time | planned |
-| S43 | Duplication: one event-access helper (8 variants today), one `isAdmin`, shared CSV util, shared admin/space email controller, `slugify` dep instead of local copy | done (#110), not deployed |
-| S44 | Stale comments: wallet/coins wording, ORGANISER role comments, done `TODO(you)` markers. Real open decision: sponsor override inheritance (`sponsors.util.ts:32`) | done (#110), not deployed |
-| S45 | Tests on the money paths, written alongside S9–S16: register → pay → cancel → refund → payout, verify/webhook race, coupon cap, capacity race. Today payouts, main refunds, core registrations, stays bookings, coupons service, events, spaces have no spec; no e2e | planned |
-| S46 | Split `registrations.service.ts` (5,934 lines) into checkout, verify/webhook, cancel/restore, export services as S9–S16 touch them | planned |
-| S47 | Migration hygiene: two migrations share `20260930120000`; two were committed out of timestamp order. Note it; never reuse a timestamp | done (#110), not deployed |
+| S38 | **Delete dead backend modules.** Delete dead modules: `aws` (22 routes, includes the `$queryRawUnsafe` table-name injection), `roles`, `discussions` (plus mobile's orphan API fns calling a non-existent replies route; also has a pin/lock bypass via `PATCH`), `firebase` + `AdminDevice` + admin device-token routes | done (#110), not deployed |
+| S39 | **Delete dead legacy leaderboard routes.** Delete ~25 dead legacy leaderboard routes (`leaderboard.controller.ts`); trim `leaderboard.service.ts` method by method (hackathon shares it) | done (#110), not deployed |
+| S40 | **Remove duplicate CategoriesModule import.** Remove the duplicate `CategoriesModule` pasted inside `ThrottlerModule.forRootAsync` imports (`app.module.ts:72`) | done (#110), not deployed |
+| S41 | **Remove unused backend dependencies.** Unused deps: `googleapis`, `firebase-admin`, `bcrypt`, `docx`, passport ×4, `ws`, `@types/socket.io`, 7 AWS SDK clients (after S38); fix `ts-jest`/`jest` and `pdfkit` types mismatches | done (#110), not deployed |
+| S42 | **Drop dormant schema via contract migrations.** Dormant schema: `Referral`, `referralCode`, `referralUpdates`, coins/cashback columns, `SKIPPED_MUTE`; finish GroupSeat consolidation (drop `groupMembers` fallbacks); stop writing the "do not read" WhatsApp URL fields. Contract migrations, one at a time | planned |
+| S43 | **Deduplicate shared helpers and controllers.** Duplication: one event-access helper (8 variants today), one `isAdmin`, shared CSV util, shared admin/space email controller, `slugify` dep instead of local copy | done (#110), not deployed |
+| S44 | **Clean up stale code comments.** Stale comments: wallet/coins wording, ORGANISER role comments, done `TODO(you)` markers. Real open decision: sponsor override inheritance (`sponsors.util.ts:32`) | done (#110), not deployed |
+| S45 | **Tests on the money paths.** Tests on the money paths, written alongside S9–S16: register → pay → cancel → refund → payout, verify/webhook race, coupon cap, capacity race. Today payouts, main refunds, core registrations, stays bookings, coupons service, events, spaces have no spec; no e2e | planned |
+| S46 | **Split the registrations service.** Split `registrations.service.ts` (5,934 lines) into checkout, verify/webhook, cancel/restore, export services as S9–S16 touch them | planned |
+| S47 | **Migration timestamp hygiene.** Migration hygiene: two migrations share `20260930120000`; two were committed out of timestamp order. Note it; never reuse a timestamp | done (#110), not deployed |
 
 
 **P1: follow-ups found while building S (2026-10-14)**
 
 | # | Item | Status |
 |---|---|---|
-| S48 | `verifyMobile` deletes the "placeholder" user when the mobile already belongs to someone, swallowing errors; that user can be a real email-OTP account, so its identities and data cascade-delete. Merge or refuse instead | next |
-| S49 | OTP lockout abuse: 6 wrong guesses lock a victim out for 15 min, and the 10/day send cap can lock them out for 24 h. Add a per-IP send/verify limit | planned |
-| S50 | Session capacity is not taken atomically on register/verify (S10 covered events only) | planned |
-| S51 | Refund paths outside `refunds.service` (sessions `:429`, stay-bookings `:719/:1026`, team-changes `:512`) don't use the S11 claim | planned |
-| S52 | Smaller money gaps: refund totals ignore automatic sold-out refunds; `eventMoneyRecords` misses `GroupSeatPurchase`; transfer requests can race; a lost waitlist-convert race sends a duplicate confirmation; sessions register can revive a REFUNDED/CANCELLED row | planned |
-| S53 | Data: legacy `user_identities` rows stored `emailVerified = !!email`, so they're still trusted for email linking. Decide and clean up | planned |
-| S54 | S20/S33/S34 remainders: cert-worker also runs every cron and serves on 8080; Resend timeout can't abort the fetch; reports render in-process; campaign recipient lists and xlsx/pdf exports build in memory; no `text_pattern_ops` index for api_logs path prefix search (S27) | planned |
-| S55 | After the #110 deploy: confirm retention periods before the first sweep (04:15 IST), recount `sold_count`/`registered_count` (S9/S15 drift), watch logout reports (60 s refresh-reuse grace, `REFRESH_REUSE_GRACE_MS`), check the Cognito pool maps `email_verified` | next |
-| S56 | Product decisions left in code: sponsor override inheritance (`sponsors.util.ts:32`), Space transactions net formula; S43 admin/space email controllers not merged | planned |
+| S48 | **Mobile verify can delete a real user account.** `verifyMobile` deletes the "placeholder" user when the mobile already belongs to someone, swallowing errors; that user can be a real email-OTP account, so its identities and data cascade-delete. Merge or refuse instead | next |
+| S49 | **OTP lockout abuse; add per-IP limits.** OTP lockout abuse: 6 wrong guesses lock a victim out for 15 min, and the 10/day send cap can lock them out for 24 h. Add a per-IP send/verify limit | planned |
+| S50 | **Take session capacity atomically.** Session capacity is not taken atomically on register/verify (S10 covered events only) | planned |
+| S51 | **Apply refund claim to all refund paths.** Refund paths outside `refunds.service` (sessions `:429`, stay-bookings `:719/:1026`, team-changes `:512`) don't use the S11 claim | planned |
+| S52 | **Smaller money gaps in refunds and transfers.** Smaller money gaps: refund totals ignore automatic sold-out refunds; `eventMoneyRecords` misses `GroupSeatPurchase`; transfer requests can race; a lost waitlist-convert race sends a duplicate confirmation; sessions register can revive a REFUNDED/CANCELLED row | planned |
+| S53 | **Clean up legacy unverified identity rows.** Data: legacy `user_identities` rows stored `emailVerified = !!email`, so they're still trusted for email linking. Decide and clean up | planned |
+| S54 | **Cert, fan-out and DB hardening remainders.** S20/S33/S34 remainders: cert-worker also runs every cron and serves on 8080; Resend timeout can't abort the fetch; reports render in-process; campaign recipient lists and xlsx/pdf exports build in memory; no `text_pattern_ops` index for api_logs path prefix search (S27) | planned |
+| S55 | **Post-deploy checks after #110.** After the #110 deploy: confirm retention periods before the first sweep (04:15 IST), recount `sold_count`/`registered_count` (S9/S15 drift), watch logout reports (60 s refresh-reuse grace, `REFRESH_REUSE_GRACE_MS`), check the Cognito pool maps `email_verified` | next |
+| S56 | **Product decisions left in code.** Product decisions left in code: sponsor override inheritance (`sponsors.util.ts:32`), Space transactions net formula; S43 admin/space email controllers not merged | planned |
 
 **Done when:** S1–S8 are deployed; the money path has tests that fail on the S1 and S9–S12 scenarios; and a deploy no longer drops traffic.
 
@@ -203,28 +203,28 @@ It's a major because it removes the App Clip.
 
 | # | Item | Status |
 |---|---|---|
-| O0 | **Hotfix lane until 2 Dec** (only if something is badly broken for live users): branch `hotfix/4.1` from `e87540f` (the 4.1.1 OTA commit), cherry-pick the JS-only fix, run `ota:preflight` (it passes on the 4.0.5 runtimes), and publish with the `--skip-bundler` recipe. Never merge `hotfix/4.1` back into `main`; land the same fix on `main` separately | standby |
-| O1 | Batch in fingerprint fixes that need a store build anyway: `platforms: ["ios", "android"]` in `app.config.js` (makes `npm run update:production` work and retires `--skip-bundler`), and `sourceSkips: SourceSkips.PackageJsonScriptsAll` in `fingerprint.config.js` (editing npm scripts never changes the runtime again). Pull in any other native work wanted soon, such as C7 rich push, or consciously leave it for the next window. Land before the 20 Nov freeze | done (#109), not deployed |
-| O2 | Version → 5.0.0; `eas build --profile production --platform all` from `main` after the 20 Nov freeze | planned |
-| O3 | Device QA on TestFlight / internal testing. This is the first time 76 commits run on a phone. Smoke-test login, Home, event → register free + paid, ticket + QR, group claim, check-in scanner (online + offline), Space tab manage screens, Apex tab, app icon picker, haptics, light/dark, push + deep link | planned |
-| O4 | Record runtimes **from EAS metadata** (`eas build:list --json` → `runtime.version`), not `ota:record`, which hashes the local tree. Keep the 4.0.5 entries until O6 | planned |
-| O5 | `eas submit` on 25 Nov with manual release; release on **2 Dec**, then publish a tiny 5.0.1 OTA at 20% and confirm a real phone receives it (Profile › About shows the update id) | planned |
-| O6 | Move people off the 4.0.x runtimes, which can never get another OTA. Show a soft update prompt as soon as 5.0.0 is live on both stores, then raise the minimum version to 5.0.0 once most active users have moved (decision for you: how long between soft and hard) | done (#109): soft prompt built, off until latest version is set in Apex › App version on 2 Dec. Gap between soft and hard is still your call |
+| O0 | **Hotfix lane on hotfix/4.1 until 2 Dec.** (only if something is badly broken for live users): branch `hotfix/4.1` from `e87540f` (the 4.1.1 OTA commit), cherry-pick the JS-only fix, run `ota:preflight` (it passes on the 4.0.5 runtimes), and publish with the `--skip-bundler` recipe. Never merge `hotfix/4.1` back into `main`; land the same fix on `main` separately | standby |
+| O1 | **Batch fingerprint fixes into the next store build.** Batch in fingerprint fixes that need a store build anyway: `platforms: ["ios", "android"]` in `app.config.js` (makes `npm run update:production` work and retires `--skip-bundler`), and `sourceSkips: SourceSkips.PackageJsonScriptsAll` in `fingerprint.config.js` (editing npm scripts never changes the runtime again). Pull in any other native work wanted soon, such as C7 rich push, or consciously leave it for the next window. Land before the 20 Nov freeze | done (#109), not deployed |
+| O2 | **Bump to 5.0.0 and run the production EAS build.** Version → 5.0.0; `eas build --profile production --platform all` from `main` after the 20 Nov freeze | planned |
+| O3 | **Device QA of the 5.0.0 build on TestFlight.** Device QA on TestFlight / internal testing. This is the first time 76 commits run on a phone. Smoke-test login, Home, event → register free + paid, ticket + QR, group claim, check-in scanner (online + offline), Space tab manage screens, Apex tab, app icon picker, haptics, light/dark, push + deep link | planned |
+| O4 | **Record runtimes from EAS build metadata.** Record runtimes **from EAS metadata** (`eas build:list --json` → `runtime.version`), not `ota:record`, which hashes the local tree. Keep the 4.0.5 entries until O6 | planned |
+| O5 | **Submit 25 Nov, release 2 Dec, verify a 5.0.1 OTA.** `eas submit` on 25 Nov with manual release; release on **2 Dec**, then publish a tiny 5.0.1 OTA at 20% and confirm a real phone receives it (Profile › About shows the update id) | planned |
+| O6 | **Move users off 4.0.x runtimes with update prompts.** Move people off the 4.0.x runtimes, which can never get another OTA. Show a soft update prompt as soon as 5.0.0 is live on both stores, then raise the minimum version to 5.0.0 once most active users have moved (decision for you: how long between soft and hard) | done (#109): soft prompt built, off until latest version is set in Apex › App version on 2 Dec. Gap between soft and hard is still your call |
 
 **Phase 2: make it impossible to repeat**
 
 | # | Item | Status |
 |---|---|---|
-| O7 | **CI "OTA-safe" check** on every PR touching `mobile/`: run preflight with `GOOGLE_MAPS_ANDROID_API_KEY` as a GitHub secret (the only env var feeding the config). If the PR's head no longer matches a live runtime while its base did, the check fails with "native change: needs a store build" | done (#109), not deployed |
-| O8 | **Native PR rule (from 2 Dec on):** PRs that change the runtime get a `native` label and stay open until the next store-build window, when they merge together right before the build. JS PRs never wait. Before 2 Dec, native PRs merge normally into the 5.0.0 build. All PRs still base on `main` | done (#109); `native` label created |
-| O9 | PR template: replace the free-text "Ships as" with the CI result (OTA-safe ✓ / store build) | done (#109), not deployed |
-| O10 | `scripts/ota-record-build.js`: fetch the latest finished production build per platform from EAS and write its runtime to `runtime-fingerprints.json`. Delete `ota:record` | done (#109), not deployed |
-| O11 | Make `update:production` refuse to publish while another rollout on the channel is below 100%. Promote it or revert it first, so one rollout runs at a time | done (#109), not deployed |
-| O12 | **Stale-OTA alarm:** Apex › OTA updates shows how many mobile commits on `main` are newer than the last published update, plus whether `main` is OTA-safe. That makes "nothing shipped for 10 days" visible | done (#109), not deployed |
-| O13 | **Adoption:** add `runtimeVersion` + `updateId` to the app-version report (`src/lib/appVersionReport.ts` sends only version + platform today) and a backend column, so Apex shows the share of active users on each update and runtime | done (#109), not deployed |
-| O14 | Test promote / revert / republish on the `preview` channel once, with an internal preview build. The Apex mutations are still untested. Use the preview channel to QA risky OTAs before production | planned |
-| O15 | Publish habit: OTA whenever a batch of mobile PRs has merged and been checked on a device. Don't let JS sit on `main` unshipped | planned |
-| O16 | Rewrite `mobile/docs/OTA.md` for the new flow (drop the `--skip-bundler` section, add the native-window rule, record-from-EAS and the one-rollout rule) | done (#109), not deployed |
+| O7 | **CI OTA-safe check on mobile PRs.** on every PR touching `mobile/`: run preflight with `GOOGLE_MAPS_ANDROID_API_KEY` as a GitHub secret (the only env var feeding the config). If the PR's head no longer matches a live runtime while its base did, the check fails with "native change: needs a store build" | done (#109), not deployed |
+| O8 | **Native PRs wait for the next store-build window.** PRs that change the runtime get a `native` label and stay open until the next store-build window, when they merge together right before the build. JS PRs never wait. Before 2 Dec, native PRs merge normally into the 5.0.0 build. All PRs still base on `main` | done (#109); `native` label created |
+| O9 | **PR template shows the OTA-safe CI result.** PR template: replace the free-text "Ships as" with the CI result (OTA-safe ✓ / store build) | done (#109), not deployed |
+| O10 | **Record build runtimes from EAS, retire ota:record.** `scripts/ota-record-build.js`: fetch the latest finished production build per platform from EAS and write its runtime to `runtime-fingerprints.json`. Delete `ota:record` | done (#109), not deployed |
+| O11 | **One OTA rollout at a time per channel.** Make `update:production` refuse to publish while another rollout on the channel is below 100%. Promote it or revert it first, so one rollout runs at a time | done (#109), not deployed |
+| O12 | **Stale-OTA alarm in Apex OTA updates.** Apex › OTA updates shows how many mobile commits on `main` are newer than the last published update, plus whether `main` is OTA-safe. That makes "nothing shipped for 10 days" visible | done (#109), not deployed |
+| O13 | **Show OTA update and runtime adoption in Apex.** add `runtimeVersion` + `updateId` to the app-version report (`src/lib/appVersionReport.ts` sends only version + platform today) and a backend column, so Apex shows the share of active users on each update and runtime | done (#109), not deployed |
+| O14 | **Test promote, revert and republish on preview channel.** Test promote / revert / republish on the `preview` channel once, with an internal preview build. The Apex mutations are still untested. Use the preview channel to QA risky OTAs before production | planned |
+| O15 | **Publish OTAs regularly after mobile PRs merge.** Publish habit: OTA whenever a batch of mobile PRs has merged and been checked on a device. Don't let JS sit on `main` unshipped | planned |
+| O16 | **Rewrite mobile OTA docs for the new flow.** Rewrite `mobile/docs/OTA.md` for the new flow (drop the `--skip-bundler` section, add the native-window rule, record-from-EAS and the one-rollout rule) | done (#109), not deployed |
 
 **Done when:** a phone on the latest store build receives every OTA published from `main`; CI has flagged at least one native PR; and Apex shows update adoption.
 
@@ -234,40 +234,40 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| 0.1 | Apex: delete orphan pre-pivot pages `billing/`, `settlements/`, `spaces/request/`, `events/new/` (broken for admins: needs `currentSpace`) | done (#108) |
-| 0.2 | Apex: strip organiser branches from `spaces/page.tsx` (`loadMine`), `spaces/[id]` (`OrganiserHierarchyPanel`, parent-organiser mode), `payouts` (`getMyPayouts`), `refunds` (curator queue), `support` (`NewTicketForm`, own-ticket close); then `currentSpace` in `SessionContext`, the `space_admin` path, redundant "Admins only" guards (plans, status, subscriptions, logs) | done (#108) |
-| 0.3 | Apex: delete dead components `CertificateDesigner`, `ticket-editor`, `EventContentSections`, `SectionEditor`; dead API modules `certificates-api`, `leaderboard-api`, `reports-api`, `sessions-api`, `waitlist-api`, unused parts of `events-api`/`registrations-api`; `lib/hack.ts`; `hasLeaderboard` in plans; unused nav icons | done (#108) |
-| 0.4 | Space: delete redirect-only routes `payouts/`, `refunds/`, `bank-account/`, and the copied admin functions never called in `payouts-api`, `refunds-api`, `requests-api`, `spaces-api`, `white-label-api`, `categories-api`, `registrations-api` | done (#108) |
-| 0.5 | Mobile: delete `SettingsScreen.tsx`, `App.tsx`, `index.ts`, `src/navigation/*.ts.old`, `GlassyButton`, `GradientText`, `Footer`, `PasscodeInput`, `StepIndicator`, `RegistrationTimer`, `PocketWordmark`, `useRegistrationPayment`, `utils/iconMapper.ts`, `lib/spacesPlaceholder.ts`, `lib/api/device.ts`, `eventHelpers.ts`, `deepLinking.ts`, unused `constants.ts` exports; routes `spaces-list`, `signup`, `seats/[registrationId]`; stale wallet/coins comments | done (#108) |
-| 0.6 | Backend: legacy non-hackathon routes in `leaderboard/leaderboard.controller.ts` (rounds, metrics, panelists, awards). **Careful:** the hackathon services live in the same folder; delete only the controller routes with no callers | done (#107) |
-| 0.7 | Backend: referral and wallet leftovers (dormant tables decided separately) | done (#107) |
-| 0.8 | Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | done (#108) |
+| 0.1 | **Apex: delete orphan pre-pivot pages.** Apex: delete orphan pre-pivot pages `billing/`, `settlements/`, `spaces/request/`, `events/new/` (broken for admins: needs `currentSpace`) | done (#108) |
+| 0.2 | **Apex: strip leftover organiser branches.** Apex: strip organiser branches from `spaces/page.tsx` (`loadMine`), `spaces/[id]` (`OrganiserHierarchyPanel`, parent-organiser mode), `payouts` (`getMyPayouts`), `refunds` (curator queue), `support` (`NewTicketForm`, own-ticket close); then `currentSpace` in `SessionContext`, the `space_admin` path, redundant "Admins only" guards (plans, status, subscriptions, logs) | done (#108) |
+| 0.3 | **Apex: delete dead components and API modules.** Apex: delete dead components `CertificateDesigner`, `ticket-editor`, `EventContentSections`, `SectionEditor`; dead API modules `certificates-api`, `leaderboard-api`, `reports-api`, `sessions-api`, `waitlist-api`, unused parts of `events-api`/`registrations-api`; `lib/hack.ts`; `hasLeaderboard` in plans; unused nav icons | done (#108) |
+| 0.4 | **Space: delete redirect-only routes and unused API code.** Space: delete redirect-only routes `payouts/`, `refunds/`, `bank-account/`, and the copied admin functions never called in `payouts-api`, `refunds-api`, `requests-api`, `spaces-api`, `white-label-api`, `categories-api`, `registrations-api` | done (#108) |
+| 0.5 | **Mobile: delete dead screens, components and routes.** Mobile: delete `SettingsScreen.tsx`, `App.tsx`, `index.ts`, `src/navigation/*.ts.old`, `GlassyButton`, `GradientText`, `Footer`, `PasscodeInput`, `StepIndicator`, `RegistrationTimer`, `PocketWordmark`, `useRegistrationPayment`, `utils/iconMapper.ts`, `lib/spacesPlaceholder.ts`, `lib/api/device.ts`, `eventHelpers.ts`, `deepLinking.ts`, unused `constants.ts` exports; routes `spaces-list`, `signup`, `seats/[registrationId]`; stale wallet/coins comments | done (#108) |
+| 0.6 | **Backend: remove legacy non-hackathon leaderboard routes.** Backend: legacy non-hackathon routes in `leaderboard/leaderboard.controller.ts` (rounds, metrics, panelists, awards). **Careful:** the hackathon services live in the same folder; delete only the controller routes with no callers | done (#107) |
+| 0.7 | **Backend: remove referral and wallet leftovers.** Backend: referral and wallet leftovers (dormant tables decided separately) | done (#107) |
+| 0.8 | **Close the open TODO(you) decisions.** Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | done (#108) |
 
 ### A · Money and trust
 
 | # | Item | Status |
 |---|---|---|
-| A1 | **Space plan upgrade checkout**: wire Razorpay checkout + `verifySpaceUpgrade` (`websites/space/.../billing/page.tsx:117-161` stops at "not wired up yet") | next |
-| A2 | Apex confirm dialogs on irreversible actions: orphaned-payment `attach()`, request approve/reject, IAM grant toggle, subscription override, WhatsApp send-to-all, event publish/hide | next |
-| A3 | Settle money TODOs: Space transactions net formula (`transactions/page.tsx:136`), Apex financials default sort (`financials/page.tsx:79`) | planned |
-| A4 | Money-path review end to end: payments, refunds, payouts, reconciliation; webhook idempotency (from W1) | planned |
-| A5 | Platform ledger: every fee, refund, payout and gateway charge as ledger entries; monthly close report (from W9) | planned |
-| A6 | GST tax invoices for platform fees, GSTR-ready monthly export; TDS/TCS check with CA (from W9) | planned |
-| A7 | Revenue analytics in Apex: GMV, net revenue, take rate per space/month, cohorts (from W9) | planned |
+| A1 | **Space plan upgrade checkout via Razorpay.** : wire Razorpay checkout + `verifySpaceUpgrade` (`websites/space/.../billing/page.tsx:117-161` stops at "not wired up yet") | next |
+| A2 | **Apex: confirm dialogs on irreversible actions.** Apex confirm dialogs on irreversible actions: orphaned-payment `attach()`, request approve/reject, IAM grant toggle, subscription override, WhatsApp send-to-all, event publish/hide | next |
+| A3 | **Settle open money TODOs in Space and Apex.** Settle money TODOs: Space transactions net formula (`transactions/page.tsx:136`), Apex financials default sort (`financials/page.tsx:79`) | planned |
+| A4 | **End-to-end money-path review.** Money-path review end to end: payments, refunds, payouts, reconciliation; webhook idempotency (from W1) | planned |
+| A5 | **Platform ledger with monthly close report.** Platform ledger: every fee, refund, payout and gateway charge as ledger entries; monthly close report (from W9) | planned |
+| A6 | **GST invoices for platform fees and monthly export.** GST tax invoices for platform fees, GSTR-ready monthly export; TDS/TCS check with CA (from W9) | planned |
+| A7 | **Revenue analytics in Apex.** Revenue analytics in Apex: GMV, net revenue, take rate per space/month, cohorts (from W9) | planned |
 | A8 | Zoho Books monthly revenue sync + runway/burn summary (D4) | planned |
 
 ### B · Operator productivity
 
 | # | Item | Status |
 |---|---|---|
-| B1 | **Announce to attendees** button on Space event page (backend `POST /events/:eventId/announcements` exists, no UI) | next |
-| B2 | Bulk check-in in Space (`POST /checkin/event/:id/bulk` + client `registrations-api.ts:850` exist) | next |
+| B1 | **Announce-to-attendees button on Space event page.** button on Space event page (backend `POST /events/:eventId/announcements` exists, no UI) | next |
+| B2 | **Bulk check-in in Space.** Bulk check-in in Space (`POST /checkin/event/:id/bulk` + client `registrations-api.ts:850` exist) | next |
 | B3 | Session edit after create in Space (`updateSession` exists) | next |
-| B4 | Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | planned |
-| B5 | CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | planned |
-| B6 | Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: content reports, request queues, support, orphaned payments | planned |
-| B7 | Apex: one tabbed request inbox replacing 7 queues (mobile `queue/[kind]` pattern) | planned |
-| B8 | Apex web: OTA, default images, stats recipients, system health, seat-count reconcile (mobile-only or backend-only today) | planned |
+| B4 | **Team-change window toggle in event settings.** Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | planned |
+| B5 | **CSV exports for Space and Apex lists.** CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | planned |
+| B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: content reports, request queues, support, orphaned payments | planned |
+| B7 | **Apex: one tabbed request inbox.** Apex: one tabbed request inbox replacing 7 queues (mobile `queue/[kind]` pattern) | planned |
+| B8 | **Apex web: add admin tools that are mobile-only today.** Apex web: OTA, default images, stats recipients, system health, seat-count reconcile (mobile-only or backend-only today) | planned |
 | B9 | Subspace link requests from Space (`createSubSpaceRequest` unused) | planned |
 | B10 | Discussion moderation (pin, lock, delete) in Space + Apex | planned |
 | B11 | Support stats header (`GET /support/tickets/stats`) | planned |
@@ -276,13 +276,13 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| C1 | **In-app notification inbox** (bell on Home), read/unread, backed by a delivery log | next |
-| C2 | One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | planned |
-| C3 | Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | planned |
-| C4 | Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
-| C5 | Provider webhooks: SES bounces/complaints → suppress, WhatsApp status, OneSignal delivery | planned |
+| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | next |
+| C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | planned |
+| C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | planned |
+| C4 | **Notification preferences grid and quiet hours.** Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
+| C5 | **Provider delivery webhooks and email suppression.** Provider webhooks: SES bounces/complaints → suppress, WhatsApp status, OneSignal delivery | planned |
 | C6 | Apex per-user message history + failure dashboard | planned |
-| C7 | Native (store build): iOS Notification Service Extension for images, push action buttons | planned |
+| C7 | **Native: rich push images and action buttons.** Native (store build): iOS Notification Service Extension for images, push action buttons | planned |
 
 ### D · Support complete (from 4.2.0)
 
@@ -290,9 +290,9 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 |---|---|---|
 | D1 | Push + email on new ticket, reply, status change (both directions) | planned |
 | D2 | Attachments via `StorageService` | planned |
-| D3 | Optional event/registration context on tickets; "Get help" from ticket detail, pre-filled | planned |
+| D3 | **Event context on support tickets and Get help.** Optional event/registration context on tickets; "Get help" from ticket detail, pre-filled | planned |
 | D4 | Unread state (per-side `lastReadAt`) + badges | planned |
-| D5 | Organiser inbox in Space web + mobile, escalate to Unifesto (decision D2) | planned |
+| D5 | **Organiser support inbox with escalation.** Organiser inbox in Space web + mobile, escalate to Unifesto (decision D2) | planned |
 | D6 | Canned replies, first-response/resolution time, SLA by priority | planned |
 | D7 | Auto-close resolved after 7 days, satisfaction rating | planned |
 | D8 | `unifesto.app/help` contact form creates a ticket | planned |
@@ -301,23 +301,23 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| E1 | Shared collaborator invite: email → find-or-create → invite → claim on first login | planned |
-| E2 | Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | planned |
+| E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | planned |
+| E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | planned |
 | E3 | Sponsor portal: lead notes + status, per-event booth stats | planned |
 | E4 | Partner: multiple links, share kit (tracked link + QR) | planned |
-| E5 | Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
+| E5 | **Hackathon project submissions.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
 | E6 | Hackathon certificates from awards | planned |
-| E7 | Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
+| E7 | **Offline queue for BoothScan and StayScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
 
 ### F · Feedback and user IAM (from 4.4.0)
 
 | # | Item | Status |
 |---|---|---|
-| F1 | Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | planned |
-| F2 | Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
-| F3 | Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
-| F4 | User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | planned |
-| F5 | Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
+| F1 | **Per-event attendee feedback form.** Event feedback: per-event form (rating 1–5, NPS, organiser questions using registration question types), one response per attendee | planned |
+| F2 | **Feedback request timing and reminders.** Trigger to checked-in attendees 2 h after end, reminder at 48 h, closes at 7 days; optional "feedback unlocks certificate" | planned |
+| F3 | **Feedback results and public rating.** Results in Space web + mobile (averages, NPS, distribution, comments, CSV); opt-in public rating at N ≥ 5 | planned |
+| F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | planned |
+| F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
 | F6 | Apex user detail: their registrations and payments | planned |
 | F7 | In-app "What's new" sheet after an OTA applies | planned |
 
@@ -325,14 +325,14 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| G1 | "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | planned |
-| G2 | Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | planned |
-| G3 | Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | planned |
-| G4 | Long lists → `FlatList`: Waitlist, ManualCheckin results, HackathonTeams, Queues, Results, Leads, Coupons, `sessions.tsx`, `group/[registrationId]` | planned |
-| G5 | Space web page pattern: Stays pages on `PageHeader`/`EmptyState`; `EmptyState` on attendees, checkin, transactions, tracking, IAM, settings | planned |
-| G6 | Remaining web → mobile parity, on-site parts only: certificates issue, reports view, sessions list | planned |
+| G1 | **Open-on-web handoffs for desk work on mobile.** "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | planned |
+| G2 | **Polish the on-site tools kept on mobile.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | planned |
+| G3 | **Cosmos migration of the remaining mobile screens.** Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | planned |
+| G4 | **Move long mobile lists to FlatList.** Long lists → `FlatList`: Waitlist, ManualCheckin results, HackathonTeams, Queues, Results, Leads, Coupons, `sessions.tsx`, `group/[registrationId]` | planned |
+| G5 | **Space web: PageHeader and EmptyState rollout.** Space web page pattern: Stays pages on `PageHeader`/`EmptyState`; `EmptyState` on attendees, checkin, transactions, tracking, IAM, settings | planned |
+| G6 | **Remaining on-site web-to-mobile parity.** Remaining web → mobile parity, on-site parts only: certificates issue, reports view, sessions list | planned |
 | G7 | Unicon: redraw glyphs in our own style, tab bar + Home first | planned |
-| G8 | Organiser "event day" mode on mobile: one cockpit with live check-in count, today's revenue, announce, help-desk queue | planned |
+| G8 | **Organiser event-day mode on mobile.** Organiser "event day" mode on mobile: one cockpit with live check-in count, today's revenue, announce, help-desk queue | planned |
 
 ### H · White-label, the big version
 
@@ -347,24 +347,24 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 
 | # | Item | Status |
 |---|---|---|
-| H1 | P1 migration `20261014120000_white_label_theme`: `brandFont`, `brandMode`, `hidePoweredBy`, `brandingSuspendedAt` (`brandLogoUrl` revived) | done, not deployed |
-| H2 | P1 `branding.util` resolvers (on && plan && !suspended; payload adds name/logo/font/mode/hidePoweredBy, 5-test spec); `/white-label` routes self-serve via `@Can`; logo/favicon upload; admin suspend; private brand fields stripped from public space payloads | done, not deployed |
-| H3 | P1 web: `components/BrandedChrome.tsx` replaces Navbar/Footer on space + event pages when the space theme is live; Google font + forced light/dark | done, not visually verified |
-| H4 | P1 Space Branding studio (all fields + uploads + live preview + event colours + upsell); Apex Manage page Suspend/Restore; mobile manage card self-serve copy; mobile space + event screens show the brand logo as the header title and light the sky with the brand colour | done, mobile not visually verified |
-| H5 | P2 branded email layout (logo/name header, accent buttons, "Sent by X via Unifesto") on all 12 attendee templates; `EmailService.brandFor(eventId)` resolves theme + sender centrally | done, not deployed (#106) |
-| H6 | P2 `SpaceDomain` (migration `20261014140000_space_domains`) + Resend Domains add/verify/remove + studio card; mail sends from `<local>@<verified domain>` | done, not deployed (#106) |
-| H7 | P3 custom web domains: Cloudflare custom hostnames add/verify/remove, public `GET /white-label/domains/resolve`, Caddy catch-all, web middleware tenant routing (+ `scripts/middleware.check.mts`), per-host canonical/OG, emails link to the custom domain | done, not deployed (#106) |
-| H8 | **Needs you:** enable SSL for SaaS on the zone, create fallback origin `domains.unifesto.app`, API token → `CLOUDFLARE_ZONE_ID` + `CLOUDFLARE_API_TOKEN`; check the Resend plan's domain limit | planned; also confirm Full (strict) TLS works for custom hostnames with the `*.unifesto.app` origin cert |
+| H1 | **P1 white-label theme migration.** P1 migration `20261014120000_white_label_theme`: `brandFont`, `brandMode`, `hidePoweredBy`, `brandingSuspendedAt` (`brandLogoUrl` revived) | done, not deployed |
+| H2 | **P1 branding resolvers and self-serve white-label API.** P1 `branding.util` resolvers (on && plan && !suspended; payload adds name/logo/font/mode/hidePoweredBy, 5-test spec); `/white-label` routes self-serve via `@Can`; logo/favicon upload; admin suspend; private brand fields stripped from public space payloads | done, not deployed |
+| H3 | **P1 web: branded chrome on space and event pages.** P1 web: `components/BrandedChrome.tsx` replaces Navbar/Footer on space + event pages when the space theme is live; Google font + forced light/dark | done, not visually verified |
+| H4 | **P1 Space Branding studio and mobile brand logo.** P1 Space Branding studio (all fields + uploads + live preview + event colours + upsell); Apex Manage page Suspend/Restore; mobile manage card self-serve copy; mobile space + event screens show the brand logo as the header title and light the sky with the brand colour | done, mobile not visually verified |
+| H5 | **P2 branded email layout for attendee emails.** P2 branded email layout (logo/name header, accent buttons, "Sent by X via Unifesto") on all 12 attendee templates; `EmailService.brandFor(eventId)` resolves theme + sender centrally | done, not deployed (#106) |
+| H6 | **P2 custom sending domains per space.** P2 `SpaceDomain` (migration `20261014140000_space_domains`) + Resend Domains add/verify/remove + studio card; mail sends from `<local>@<verified domain>` | done, not deployed (#106) |
+| H7 | **P3 custom web domains per space.** P3 custom web domains: Cloudflare custom hostnames add/verify/remove, public `GET /white-label/domains/resolve`, Caddy catch-all, web middleware tenant routing (+ `scripts/middleware.check.mts`), per-host canonical/OG, emails link to the custom domain | done, not deployed (#106) |
+| H8 | **Needs you: Cloudflare for SaaS and Resend setup.** enable SSL for SaaS on the zone, create fallback origin `domains.unifesto.app`, API token → `CLOUDFLARE_ZONE_ID` + `CLOUDFLARE_API_TOKEN`; check the Resend plan's domain limit | planned; also confirm Full (strict) TLS works for custom hostnames with the `*.unifesto.app` origin cert |
 | H9 | Bring-your-own WhatsApp sender per space (today it's one env number) | planned |
-| H10 | Deploy #106: read migrations `20261014120000_white_label_theme` + `20261014140000_space_domains`, `migrate deploy`, rebuild backend + web + space + apex, Caddy reload, mobile OTA (manage-card copy) | planned |
-| H11 | Verify after deploy: branded space + event page (header/footer, font, forced mode), Branding studio uploads + preview, a branded registration email in Gmail + Apple Mail (light/dark), suspend/restore from Apex. None of this was seen rendered | planned |
-| H12 | Mobile: `branding.font` on space + event screens (logo shipped with H4) | planned |
-| H13 | Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | planned |
-| H14 | Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | planned |
-| H15 | Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
-| H16 | Space app `Capability` type has no `space:manage-settings`, so the Branding nav item gates on `manage-billing` (backend enforces manage-settings). Add the capability to the space RBAC types | planned |
-| H17 | Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | planned |
-| H18 | Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
+| H10 | **Deploy #106 white-label release.** Deploy #106: read migrations `20261014120000_white_label_theme` + `20261014140000_space_domains`, `migrate deploy`, rebuild backend + web + space + apex, Caddy reload, mobile OTA (manage-card copy) | planned |
+| H11 | **Verify white-label rendering after deploy.** Verify after deploy: branded space + event page (header/footer, font, forced mode), Branding studio uploads + preview, a branded registration email in Gmail + Apple Mail (light/dark), suspend/restore from Apex. None of this was seen rendered | planned |
+| H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | planned |
+| H13 | **Use the custom domain in calendar and share links.** Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | planned |
+| H14 | **Send certificate emails from the space's address.** Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | planned |
+| H15 | **Retire the legacy white-label request flow.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
+| H16 | **Space app: gate Branding on manage-settings capability.** Space app `Capability` type has no `space:manage-settings`, so the Branding nav item gates on `manage-billing` (backend enforces manage-settings). Add the capability to the space RBAC types | planned |
+| H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | planned |
+| H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
 
 ### I · Legal (from W6)
 
@@ -372,10 +372,10 @@ Drafts need a human lawyer's sign-off before publishing.
 
 | # | Item | Status |
 |---|---|---|
-| I1 | Terms (attendees), Organiser/Space Agreement, Privacy Policy (DPDP 2023), Refund & Cancellation, Acceptable Use, Sponsor & Partner terms, Cookie Policy, Grievance page (IT Rules 2021) | planned |
-| I2 | Versioned legal documents with acceptance per user; re-acceptance on next launch on every client | planned |
+| I1 | **Legal documents: terms, privacy, refund and other policies.** Terms (attendees), Organiser/Space Agreement, Privacy Policy (DPDP 2023), Refund & Cancellation, Acceptable Use, Sponsor & Partner terms, Cookie Policy, Grievance page (IT Rules 2021) | planned |
+| I2 | **Versioned legal docs with per-user acceptance.** Versioned legal documents with acceptance per user; re-acceptance on next launch on every client | planned |
 | I3 | DPDP erasure on account close (#41): needs backend rebuild | in progress |
-| I4 | Privacy Policy retention line for erased question answers, once I1 + I3 land | planned |
+| I4 | **Privacy Policy retention line for erased answers.** Privacy Policy retention line for erased question answers, once I1 + I3 land | planned |
 
 ### J · Scale and reliability (from W1/W2)
 
@@ -383,24 +383,24 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 
 | # | Item | Status |
 |---|---|---|
-| J1 | → S4–S8, S23–S31 (audit done). Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
-| J2 | → S21, S22, S34 (audit done). Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
+| J1 | **Endpoint guard audit, input validation and rate limits.** → S4–S8, S23–S31 (audit done). Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
+| J2 | **Silent catches, replica-safe crons, graceful shutdown.** → S21, S22, S34 (audit done). Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
 | J3 | → S1, S34 (audit done). Missing indexes, N+1s, unbounded `findMany` | planned |
-| J4 | → S35 (audit done). Structured logs + request ids + error alerting; deeper `/health` | planned |
-| J5 | → S20, S33 (audit done). Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
-| J6 | k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
-| J7 | Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
+| J4 | **Structured logs, request ids, alerting, deeper health.** → S35 (audit done). Structured logs + request ids + error alerting; deeper `/health` | planned |
+| J5 | **Queue heavy work off the request path.** → S20, S33 (audit done). Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
+| J6 | **k6 load tests for real peaks on staging.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
+| J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
 
 ### K · Growth and discovery
 
 | # | Item | Status |
 |---|---|---|
-| K1 | Discovery marketplace on web + mobile: browse by city/college/category, "trending near you" | planned |
-| K2 | SEO: sitemap (events, spaces, blog, careers), JSON-LD (Event, Article, JobPosting), RSS, canonicals (from W7) | planned |
-| K3 | Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
-| K4 | Careers: application form with private resume upload + applicant pipeline in Apex | planned |
-| K5 | Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
-| K6 | Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
+| K1 | **Discovery marketplace on web and mobile.** Discovery marketplace on web + mobile: browse by city/college/category, "trending near you" | planned |
+| K2 | **SEO: sitemap, JSON-LD, RSS and canonicals.** SEO: sitemap (events, spaces, blog, careers), JSON-LD (Event, Article, JobPosting), RSS, canonicals (from W7) | planned |
+| K3 | **Blog: authors, tags, scheduling and related posts.** Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
+| K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | planned |
+| K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
+| K6 | **Referrer capture by domain and backlink import.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
 | K7 | Help articles + legal pages managed in Apex | planned |
 
 ### L · Live engagement (new)
@@ -409,7 +409,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| L1 | Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | planned |
+| L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | planned |
 | L2 | Q&A with upvotes + moderation, per session/track | planned |
 | L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | planned |
 | L4 | Projector view on web (results, Q&A wall) | planned |
@@ -418,10 +418,10 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| M1 | Draft event description, agenda and FAQs from a few lines or an imported link | planned |
+| M1 | **AI: draft event content from a few lines or a link.** Draft event description, agenda and FAQs from a few lines or an imported link | planned |
 | M2 | Email/WhatsApp copy suggestions in campaigns | planned |
 | M3 | Post-event report summary (attendance, revenue, feedback themes) | planned |
-| M4 | "Who to nudge": past attendees likely to register, for a curator-approved campaign | planned |
+| M4 | **Who to nudge: past attendees likely to register.** "Who to nudge": past attendees likely to register, for a curator-approved campaign | planned |
 
 ### N · On-site (new)
 
@@ -429,7 +429,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 |---|---|---|
 | N1 | Badge/pass printing (PDF sheets + label printers) from the roster | planned |
 | N2 | Kiosk self check-in (tablet mode: scan or search your name) | planned |
-| N3 | Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | planned |
+| N3 | **Attendee networking: who's going and connect requests.** Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | planned |
 
 ### P · Marketing to 5.0.0 (14 Oct → 2 Dec)
 
@@ -510,27 +510,27 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 
 | # | Item | Status |
 |---|---|---|
-| P0 | "What is Unifesto?" video on YouTube, link shared on Instagram + LinkedIn. Cut it into the first 2–3 shorts for W0 | done |
-| P1 | Accounts ready: YouTube channel art + playlists (Guides, Shorts, Launch), IG + LinkedIn bios, link-in-bio page on web, same handle everywhere | next |
-| P2 | Templates (not Canva): carousel (how-to + story), short cover, YT thumbnail, LinkedIn video frame, countdown story, all on the cosmos look | next |
-| P3 | Baseline: followers per channel, weekly site visits, Spaces + events created, app installs. Record in a sheet every Monday; set targets after W1 | next |
-| P4 | Content bank: screen-record Space flows on a demo Space with seed data (no real attendee data on screen), collect organiser OKs + event photos | next |
-| P5 | W1–W2 published (2 long, 6 shorts, 4 carousels, 6 LinkedIn, 2 blogs, 1 email) | planned |
+| P0 | **"What is Unifesto?" video on YouTube.** "What is Unifesto?" video on YouTube, link shared on Instagram + LinkedIn. Cut it into the first 2–3 shorts for W0 | done |
+| P1 | **Social accounts set up with one handle everywhere.** Accounts ready: YouTube channel art + playlists (Guides, Shorts, Launch), IG + LinkedIn bios, link-in-bio page on web, same handle everywhere | next |
+| P2 | **Content templates on the cosmos look.** Templates (not Canva): carousel (how-to + story), short cover, YT thumbnail, LinkedIn video frame, countdown story, all on the cosmos look | next |
+| P3 | **Baseline growth metrics recorded weekly.** Baseline: followers per channel, weekly site visits, Spaces + events created, app installs. Record in a sheet every Monday; set targets after W1 | next |
+| P4 | **Content bank of demo Space recordings and photos.** Content bank: screen-record Space flows on a demo Space with seed data (no real attendee data on screen), collect organiser OKs + event photos | next |
+| P5 | **W1–W2 content published.** W1–W2 published (2 long, 6 shorts, 4 carousels, 6 LinkedIn, 2 blogs, 1 email) | planned |
 | P6 | W3–W4 published | planned |
-| P7 | W5–W6 published, teaser running; launch assets drafted and approved by 24 Nov | planned |
-| P8 | Launch kit ready by 27 Nov: launch video, 3 shorts, carousel, LinkedIn founder post + video, blog release notes, email, push copy, store screenshots/what's-new text matching the video | planned |
-| P9 | **Launch 2 Dec:** after both stores show 5.0.0 live, publish in this order: YouTube, blog, LinkedIn (founder then company), IG carousel + stories, email to all users, push via Apex broadcast. Then reply to every comment that day | planned |
-| P11 | Comparison blogs (rules): "as of <date>" on every price/feature, link each rival's public pricing/feature page, a "where X is better" section (we're INR-only, no live polls/Q&A yet, no built-in audience), our gaps never hidden, no rival logos, no claims about features we haven't deployed. Our side uses the fees from `/pricing` (`PLANS` in `websites/web/src/lib/site.ts`). Slugs `/blog/unifesto-vs-<x>`; later: Zoho Backstage, Explara, BookMyShow | planned |
-| P12 | **SEO + AI search, already live (no work):** `robots.ts` allows every AI crawler (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…); `/llms.txt`; JSON-LD for Organization, WebSite, MobileApplication, WebApplication, Event, Space, FAQ, Breadcrumb; sitemap with events + spaces | done |
-| P13 | Blog SEO gaps, **before the first blog on 21 Oct**: each `/blog/<slug>` in the sitemap (only `/blog` is today), `BlogPosting` JSON-LD (author, dates, image), canonical, RSS; blog + comparison posts listed in `llms.txt`. Overlaps K2/K3 | done |
-| P14 | Google Search Console + Bing Webmaster Tools verified, sitemap submitted, IndexNow pinged on publish. Bing matters: ChatGPT search and Copilot read Bing's index | done |
-| P15 | Keyword map: one search query per blog and video, e.g. "college fest registration app", "hackathon platform India", "event ticketing with Razorpay", "Townscript alternative", "KonfHub alternative", "Devfolio alternative". Title, H1, slug, YouTube title match it | done |
-| P16 | Write posts so AI can quote them: first 2 sentences answer the query directly; one fact per sentence; tables for comparisons; FAQ block (FAQPage schema) at the end; "as of <date>"; real numbers from `PROOF` in `site.ts` | done |
-| P17 | Same facts everywhere: one-line description, founding city, the numbers, pricing. Website, LinkedIn, YouTube about, Instagram, both app stores, Crunchbase, Wikidata, Google Business Profile | in progress |
-| P18 | **Be mentioned elsewhere** (chatbots trust other sites more than ours): list on G2, Capterra, SaaSworthy, AlternativeTo (as an alternative to Townscript, KonfHub, Devfolio, Eventbrite, Luma), Product Hunt launch on 2 Dec; ask 10 organisers for reviews; honest, disclosed answers on Reddit/Quora fest + hackathon threads; college newspapers and club newsletters | next |
-| P19 | YouTube for search: titles from P15, chapters, uploaded captions, description with summary + tracked links. Google AI Overviews cite YouTube often | planned |
-| P20 | Measure every 2 weeks: fixed list of ~15 prompts ("best app to run a college fest in India", "Townscript alternatives", "how to run a hackathon in India"…) in ChatGPT, Claude, Gemini, Perplexity, Google AI Overviews; note whether Unifesto appears, its position and the cited source. Plus Search Console clicks/impressions and visits from chatgpt.com / perplexity.ai. Nobody can guarantee a top spot; this shows what is working | planned |
-| P10 | Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
+| P7 | **W5–W6 published and launch assets approved.** W5–W6 published, teaser running; launch assets drafted and approved by 24 Nov | planned |
+| P8 | **Launch kit ready by 27 Nov.** Launch kit ready by 27 Nov: launch video, 3 shorts, carousel, LinkedIn founder post + video, blog release notes, email, push copy, store screenshots/what's-new text matching the video | planned |
+| P9 | **Launch day on 2 Dec: publish across all channels.** after both stores show 5.0.0 live, publish in this order: YouTube, blog, LinkedIn (founder then company), IG carousel + stories, email to all users, push via Apex broadcast. Then reply to every comment that day | planned |
+| P11 | **Comparison blogs against rival platforms.** Comparison blogs (rules): "as of <date>" on every price/feature, link each rival's public pricing/feature page, a "where X is better" section (we're INR-only, no live polls/Q&A yet, no built-in audience), our gaps never hidden, no rival logos, no claims about features we haven't deployed. Our side uses the fees from `/pricing` (`PLANS` in `websites/web/src/lib/site.ts`). Slugs `/blog/unifesto-vs-<x>`; later: Zoho Backstage, Explara, BookMyShow | planned |
+| P12 | **SEO and AI search basics already live.** `robots.ts` allows every AI crawler (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…); `/llms.txt`; JSON-LD for Organization, WebSite, MobileApplication, WebApplication, Event, Space, FAQ, Breadcrumb; sitemap with events + spaces | done |
+| P13 | **Close blog SEO gaps before the first post on 21 Oct.** Blog SEO gaps, **before the first blog on 21 Oct**: each `/blog/<slug>` in the sitemap (only `/blog` is today), `BlogPosting` JSON-LD (author, dates, image), canonical, RSS; blog + comparison posts listed in `llms.txt`. Overlaps K2/K3 | done |
+| P14 | **Search Console and Bing Webmaster Tools verified.** Google Search Console + Bing Webmaster Tools verified, sitemap submitted, IndexNow pinged on publish. Bing matters: ChatGPT search and Copilot read Bing's index | done |
+| P15 | **Keyword map for every blog and video.** Keyword map: one search query per blog and video, e.g. "college fest registration app", "hackathon platform India", "event ticketing with Razorpay", "Townscript alternative", "KonfHub alternative", "Devfolio alternative". Title, H1, slug, YouTube title match it | done |
+| P16 | **Write blog posts that AI can quote.** Write posts so AI can quote them: first 2 sentences answer the query directly; one fact per sentence; tables for comparisons; FAQ block (FAQPage schema) at the end; "as of <date>"; real numbers from `PROOF` in `site.ts` | done |
+| P17 | **Same company facts on every profile.** Same facts everywhere: one-line description, founding city, the numbers, pricing. Website, LinkedIn, YouTube about, Instagram, both app stores, Crunchbase, Wikidata, Google Business Profile | in progress |
+| P18 | **Get mentioned on review sites and communities.** (chatbots trust other sites more than ours): list on G2, Capterra, SaaSworthy, AlternativeTo (as an alternative to Townscript, KonfHub, Devfolio, Eventbrite, Luma), Product Hunt launch on 2 Dec; ask 10 organisers for reviews; honest, disclosed answers on Reddit/Quora fest + hackathon threads; college newspapers and club newsletters | next |
+| P19 | **YouTube videos optimised for search.** YouTube for search: titles from P15, chapters, uploaded captions, description with summary + tracked links. Google AI Overviews cite YouTube often | planned |
+| P20 | **Measure AI search visibility every 2 weeks.** Measure every 2 weeks: fixed list of ~15 prompts ("best app to run a college fest in India", "Townscript alternatives", "how to run a hackathon in India"…) in ChatGPT, Claude, Gemini, Perplexity, Google AI Overviews; note whether Unifesto appears, its position and the cited source. Plus Search Console clicks/impressions and visits from chatgpt.com / perplexity.ai. Nobody can guarantee a top spot; this shows what is working | planned |
+| P10 | **Post-launch review and 5.x plan.** Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
 | P21 | Wikidata item for Unifesto, once P18 brings independent coverage to cite (items without sources get deleted); then add it to `SOCIAL`/`sameAs` | planned |
 | P22 | Google Business Profile: verifiable address (Malla Reddy University R&D Center) or a service-area business; category Software company | planned |
 
@@ -579,3 +579,4 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 - **2026-10-15** · P13 done (#126): per-post sitemap, `BlogPosting` + breadcrumb JSON-LD, `/blog/rss.xml`, blog list in llms.txt. P16 done (#130): GFM tables (were raw pipes) + `FAQPage` JSON-LD from a `## FAQ` section. P14 code done (#127, IndexNow on blog changes, prod only); Search Console + Bing set up by hand; P14 done. Deploy web before backend.
 - **2026-10-15** · P17 (#131): one `SOCIAL` list feeds the footer + Organization `sameAs` (adds IG + LinkedIn); mobile X link was a 404 (`HeyUnifesto`). Paste-ready profile copy on the board. YouTube missing from `sameAs`: `@unifesto` is someone else's channel. P18 kit on the board; first step is the Product Hunt maker account (~30 days of activity before 2 Dec).
 - **2026-10-15** · P17 profiles updated by hand: Instagram, LinkedIn, App Store promo text, Crunchbase (logo, descriptions, phone). Store long descriptions moved to P8; Wikidata and Google Business Profile split out as P21 and P22.
+- **2026-10-15** · Task rows now lead with the board's short title in bold (175 rows); full text kept after it. Board task view opens read-only (#132); apex + web deployed.
