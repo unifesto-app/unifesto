@@ -5350,3 +5350,90 @@ model HackathonHelpQuery {
   @@index([notifiedUserIds], type: Gin)
   @@map("hackathon_help_queries")
 }
+
+// =====================================================
+// PRODUCT MANAGEMENT (Apex /dashboard/product + Claude MCP)
+// =====================================================
+
+/// Same vocabulary as docs/version-5.md.
+enum PmTaskStatus {
+  NEXT
+  PLANNED
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  PARKED
+  DROPPED
+}
+
+/// A workstream, e.g. "S · Backend audit", "P · Marketing to 5.0.0".
+model PmTrack {
+  /// Short letter/number used in task keys ("S", "P", "0").
+  key       String   @id @db.VarChar(16)
+  name      String   @db.VarChar(160)
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  tasks PmTask[]
+
+  @@map("pm_tracks")
+}
+
+/// One plan item. Never deleted: mark DROPPED with a reason in notes instead.
+model PmTask {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Human key from the plan, e.g. "S48", "P13". Unique across tracks.
+  key       String       @unique @db.VarChar(32)
+  trackKey  String       @map("track_key") @db.VarChar(16)
+  title     String       @db.Text
+  notes     String?      @db.Text
+  status    PmTaskStatus @default(PLANNED)
+  /// Free text: who is on it ("Abhinav", "Claude").
+  owner     String?      @db.VarChar(80)
+  dueDate   DateTime?    @map("due_date") @db.Date
+  sortOrder Int          @default(0) @map("sort_order")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  track    PmTrack      @relation(fields: [trackKey], references: [key], onUpdate: Cascade)
+  activity PmActivity[]
+
+  @@index([trackKey, sortOrder])
+  @@index([status])
+  @@map("pm_tasks")
+}
+
+/// Append-only log: status changes and notes, from Apex or from Claude.
+model PmActivity {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  taskId  String? @map("task_id") @db.Uuid
+  /// "Abhinav (apex)", "Claude (token: laptop)".
+  actor   String  @db.VarChar(160)
+  message String  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  task PmTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([taskId, createdAt])
+  @@map("pm_activity")
+}
+
+/// Personal access token for the /pm/mcp endpoint (Claude Code, claude.ai).
+/// Only the SHA-256 hash is stored; the raw token is shown once on creation.
+model PmApiToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String    @db.VarChar(80)
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  /// Platform admin who created it; the token acts as them and stops working
+  /// if they lose ADMIN.
+  userId     String    @map("user_id") @db.Uuid
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("pm_api_tokens")
+}

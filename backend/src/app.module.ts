@@ -40,6 +40,7 @@ import { FreeAttendeeAddModule } from './free-attendee-add/free-attendee-add.mod
 import { CertificatesModule } from './certificates/certificates.module';
 import { ReportsModule } from './reports/reports.module';
 import { CareersModule } from './careers/careers.module';
+import { PmModule } from './pm/pm.module';
 import { ContentReportsModule } from './content-reports/content-reports.module';
 import { BlogModule } from './blog/blog.module';
 import { NotificationsModule } from './notifications/notifications.module';
@@ -175,6 +176,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     CertificatesModule,
     ReportsModule,
     CareersModule,
+    PmModule,
     ContentReportsModule,
     BlogModule,
     NotificationsModule,

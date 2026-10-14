@@ -33,6 +33,7 @@ import {
   Megaphone,
   LinkBreak,
   Flag,
+  Lightning,
 } from "@unifesto/unicon/react";
 
 export interface NavItem {
@@ -148,6 +149,7 @@ export const adminNav: NavGroup[] = [
   {
     label: "Operations",
     items: [
+      { href: "/dashboard/product", label: "Product", icon: Lightning },
       { href: "/dashboard/careers", label: "Careers", icon: Briefcase },
       { href: "/dashboard/blog", label: "Blog", icon: Article },
       { href: "/dashboard/notifications", label: "Notifications", icon: BellRinging },
