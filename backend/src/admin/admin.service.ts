@@ -1534,11 +1534,14 @@ export class AdminService {
    * and would otherwise drift (or go negative when an old group is cancelled).
    * A registration occupies seats when it is confirmed (PAID or partially
    * refunded), not cancelled, and not waitlisted — mirroring the increment /
-   * decrement conditions in the registration + refund flows. Idempotent.
+   * decrement conditions in the registration + refund flows. A waiting list
+   * OFFERED row also holds its ticket seat (WaitlistService takes it on offer)
+   * but is not an attendee, so it counts toward soldCount only. Idempotent.
    */
   async reconcileSeatCounts() {
     const CONFIRMED = "payment_status IN ('PAID','PARTIALLY_REFUNDED')";
     const ACTIVE = `status <> 'CANCELLED' AND is_waitlisted = false AND ${CONFIRMED}`;
+    const HOLDS_TICKET_SEAT = `(${ACTIVE}) OR (status <> 'CANCELLED' AND waitlist_status = 'OFFERED')`;
 
     // All four statements run in ONE transaction so counts are never observed
     // at the intermediate reset-to-zero state by concurrent reads.
@@ -1551,7 +1554,7 @@ export class AdminService {
         FROM (
           SELECT ticket_type_id, SUM(COALESCE(group_size, quantity))::int AS seats
           FROM event_registrations
-          WHERE ticket_type_id IS NOT NULL AND ${ACTIVE}
+          WHERE ticket_type_id IS NOT NULL AND (${HOLDS_TICKET_SEAT})
           GROUP BY ticket_type_id
         ) sub
         WHERE t.id = sub.ticket_type_id
