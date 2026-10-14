@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import { PmTaskStatus, RoleCode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -123,54 +118,6 @@ export class PmService {
     if (changes.length)
       await this.log(actor, `${task.key}: ${changes.join(', ')}`, task.id);
     return task;
-  }
-
-  /**
-   * "Start work" on the board: fire the Claude Code cloud routine with the
-   * task key as its payload. The routine runs /ship (implement → checks →
-   * PR) and reports progress back through the MCP endpoint.
-   */
-  async startWork(key: string, actor: string) {
-    const task = await this.getTask(key);
-    if (task.status === 'DONE' || task.status === 'DROPPED') {
-      throw new BadRequestException(`${key} is ${task.status}`);
-    }
-    const url = process.env.CLAUDE_ROUTINE_FIRE_URL;
-    const token = process.env.CLAUDE_ROUTINE_TOKEN;
-    if (!url || !token) {
-      throw new ServiceUnavailableException(
-        'CLAUDE_ROUTINE_FIRE_URL / CLAUDE_ROUTINE_TOKEN not set',
-      );
-    }
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'anthropic-beta': 'experimental-cc-routine-2026-04-01',
-        'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text: key }),
-    });
-    const body = (await res.json().catch(() => ({}))) as {
-      claude_code_session_url?: string;
-      error?: { message?: string };
-    };
-    if (!res.ok) {
-      throw new ServiceUnavailableException(
-        `Routine fire failed (${res.status}): ${body.error?.message ?? 'unknown'}`,
-      );
-    }
-    await this.upsertTask(
-      { key, status: PmTaskStatus.IN_PROGRESS, owner: 'Claude' },
-      actor,
-    );
-    await this.log(
-      actor,
-      `${key}: started Claude Code session ${body.claude_code_session_url ?? ''}`.trim(),
-      task.id,
-    );
-    return { sessionUrl: body.claude_code_session_url ?? null };
   }
 
   async addNote(actor: string, message: string, key?: string) {
