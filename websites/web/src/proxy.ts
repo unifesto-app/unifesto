@@ -40,16 +40,15 @@ async function tenantSlug(host: string): Promise<string | null> {
  *    `/event/*` its events (the page 404s other spaces' events), static files
  *    pass, and every other path goes to the main site.
  */
-export async function middleware(request: NextRequest) {
-  const { pathname, hostname } = request.nextUrl;
+export async function proxy(request: NextRequest) {
+  const { pathname, search } = request.nextUrl;
+  // Standalone Next reports its bind address (0.0.0.0) in nextUrl, not the
+  // visitor's host; Caddy passes the real one through in Host.
+  const hostname = (request.headers.get('host') ?? request.nextUrl.hostname).toLowerCase().replace(/:\d+$/, '');
 
   if (pathname.startsWith('/.well-known/')) return NextResponse.next();
 
-  if (hostname === 'unifesto.app') {
-    const url = request.nextUrl.clone();
-    url.hostname = 'www.unifesto.app';
-    return NextResponse.redirect(url, 308);
-  }
+  if (hostname === 'unifesto.app') return NextResponse.redirect(`${MAIN}${pathname}${search}`, 308);
 
   if (isOwnHost(hostname)) return NextResponse.next();
 
@@ -65,7 +64,7 @@ export async function middleware(request: NextRequest) {
     url.pathname = `/space/${slug}`;
     return NextResponse.rewrite(url, { request: { headers } });
   }
-  if (pathname === `/space/${slug}`) return NextResponse.redirect(new URL('/', request.url), 308);
+  if (pathname === `/space/${slug}`) return NextResponse.redirect(`https://${hostname}/`, 308);
   if (
     pathname.startsWith('/event/') ||
     pathname.startsWith(`/space/${slug}/`) || // its OG image
@@ -74,7 +73,7 @@ export async function middleware(request: NextRequest) {
   ) {
     return NextResponse.next({ request: { headers } });
   }
-  return NextResponse.redirect(`${MAIN}${pathname}${request.nextUrl.search}`, 307);
+  return NextResponse.redirect(`${MAIN}${pathname}${search}`, 307);
 }
 
 export const config = {
