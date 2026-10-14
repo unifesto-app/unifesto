@@ -9,8 +9,6 @@ import { apiBase, withInternal } from "@/lib/api/internal";
  * shapes the event page renders.
  */
 
-"use client";
-
 // Call the NestJS backend directly, mirroring src/lib/api/events.ts.
 const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000");
 
