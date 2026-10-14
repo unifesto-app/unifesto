@@ -5395,6 +5395,8 @@ model PmTask {
   owner     String?      @db.VarChar(80)
   dueDate   DateTime?    @map("due_date") @db.Date
   sortOrder Int          @default(0) @map("sort_order")
+  /// Free-form tags, lowercased and de-duplicated ("mobile", "launch").
+  labels    String[]     @default([])
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -5404,6 +5406,7 @@ model PmTask {
 
   @@index([trackKey, sortOrder])
   @@index([status])
+  @@index([labels], type: Gin)
   @@map("pm_tasks")
 }
 

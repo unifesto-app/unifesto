@@ -113,7 +113,8 @@ describe('TrafficService', () => {
     prisma.shortLink.findUnique.mockResolvedValueOnce({ revokedAt: new Date() });
     await expect(service.qr('Ab3xYz9', 'svg')).resolves.toBeNull();
     await expect(service.qr('../etc', 'svg')).resolves.toBeNull();
-  });
+    // First qrcode/pngjs load under jest's VM modules can take ~5s on CI.
+  }, 20_000);
 
   it('sends unknown, revoked and malformed codes home without recording', async () => {
     const { prisma, service } = build();

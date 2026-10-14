@@ -74,3 +74,13 @@ describe('PmMcp', () => {
     expect((await call('resources/list')).error.code).toBe(-32601);
   });
 });
+
+describe('cleanLabels', () => {
+  it('trims, lowercases and de-duplicates', () => {
+    const { cleanLabels } = require('./pm.service');
+    expect(cleanLabels([' Mobile', 'mobile', '', 'Launch '])).toEqual([
+      'mobile',
+      'launch',
+    ]);
+  });
+});

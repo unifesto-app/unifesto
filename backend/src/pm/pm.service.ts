@@ -14,7 +14,13 @@ export interface TaskInput {
   owner?: string | null;
   dueDate?: string | null;
   sortOrder?: number;
+  labels?: string[];
 }
+
+/** Trim, lowercase, drop blanks and repeats, so "Mobile " and "mobile" are one label. */
+export const cleanLabels = (labels: string[]) => [
+  ...new Set(labels.map((l) => l.trim().toLowerCase()).filter(Boolean)),
+];
 
 const TOKEN_PREFIX = 'upm_';
 const hash = (raw: string) => createHash('sha256').update(raw).digest('hex');
@@ -35,11 +41,18 @@ export class PmService {
     });
   }
 
-  listTasks(filter: { trackKey?: string; status?: PmTaskStatus[] }) {
+  listTasks(filter: {
+    trackKey?: string;
+    status?: PmTaskStatus[];
+    label?: string;
+  }) {
     return this.prisma.pmTask.findMany({
       where: {
         trackKey: filter.trackKey,
         status: filter.status?.length ? { in: filter.status } : undefined,
+        labels: filter.label
+          ? { has: filter.label.trim().toLowerCase() }
+          : undefined,
       },
       orderBy: [{ trackKey: 'asc' }, { sortOrder: 'asc' }, { key: 'asc' }],
     });
@@ -81,6 +94,7 @@ export class PmService {
           ? undefined
           : input.dueDate && new Date(input.dueDate),
       sortOrder: input.sortOrder,
+      labels: input.labels && cleanLabels(input.labels),
     };
 
     if (!existing) {
@@ -113,6 +127,11 @@ export class PmService {
       if (input[f] !== undefined && input[f] !== existing[f])
         changes.push(`${f} edited`);
     }
+    if (
+      data.labels &&
+      data.labels.join(',') !== existing.labels.join(',')
+    )
+      changes.push(`labels ${data.labels.join(', ') || 'cleared'}`);
     if (input.dueDate !== undefined)
       changes.push(`due ${input.dueDate ?? 'cleared'}`);
     if (changes.length)
