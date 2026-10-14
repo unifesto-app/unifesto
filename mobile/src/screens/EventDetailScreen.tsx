@@ -48,6 +48,7 @@ import { useBannerAccent } from '../hooks/useBannerPalette';
 import { useEventStays } from '../hooks/useEventStays';
 import useTopSpacing from '../hooks/useTopSpacing';
 import ReportSheet from '../components/ReportSheet';
+import { brandHeaderOptions } from '../components/BrandHeaderTitle';
 import { countdownLabel, dateChip, formatTime, relativeWhen, shortPrice } from '../utils/eventFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -83,12 +84,14 @@ function orderSubEvents(subs: SubEvent[]): SubEvent[] {
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const d = useEventDetail(id);
-  // Fusion: the cosmos sky lit by the banner's most frequent hue. Null (plain
-  // sky) until extracted, or for a banner that's only white / black / grey.
-  const hue = useBannerAccent(
+  // Fusion: the cosmos sky lit by the organiser's brand colour, else the
+  // banner's most frequent hue. Null (plain sky) until extracted, or for a
+  // banner that's only white / black / grey.
+  const bannerHue = useBannerAccent(
     d.event?.coverImageUrl,
     d.event ? { event: d.event.slug ?? d.event.id } : null,
   );
+  const hue = d.event?.branding?.color || bannerHue;
   return (
     <CosmosWash active={!!hue}>
       <EventDetailView id={id} d={d} hue={hue} />
@@ -120,6 +123,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   // Header actions: save + one overflow menu. Plain icons, no backgrounds.
   useLayoutEffect(() => {
     navigation.setOptions({
+      ...brandHeaderOptions(event?.branding),
       headerRight: () => (
         <HeaderActions>
           {event ? (
@@ -428,7 +432,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
         ) : null}
         {d.faqs.length > 0 ? <FaqSection items={d.faqs} /> : null}
         <HostedBySection
-          space={event.space}
+          space={event.space ? { ...event.space, logoUrl: event.branding?.logoUrl || event.space.logoUrl } : event.space}
           coHosts={event.coHosts}
           curators={event.curators}
           contacts={d.contacts}

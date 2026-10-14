@@ -36,7 +36,7 @@ export function shortLinkLabel(l: ShortLink): string {
 }
 
 /**
- * Tracked short links (api.unifesto.app/l/<code>) for one event, one space
+ * Tracked short links (unifesto.app/l/<code>) for one event, one space
  * (its page and its events' links), or the whole platform (Apex). Each link
  * counts clicks and the registrations it brings in.
  */
