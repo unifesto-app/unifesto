@@ -111,7 +111,7 @@ function Tile({ label, value, hint, tone }: { label: string; value: string; hint
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={`mt-1 text-lg font-semibold ${
-          tone === "danger" ? "text-[hsl(358_65%_44%)]" : tone === "ok" ? "text-[hsl(142_71%_45%)]" : "text-foreground"
+          tone === "danger" ? "text-destructive" : tone === "ok" ? "text-success" : "text-foreground"
         }`}
       >
         {value}
@@ -176,7 +176,7 @@ function BalanceCard() {
           {loading ? (
             <Skeleton className="mt-1 h-8 w-40 rounded-md" />
           ) : error ? (
-            <p className="mt-1 text-sm text-[hsl(358_65%_44%)]">{error}</p>
+            <p className="mt-1 text-sm text-destructive">{error}</p>
           ) : data ? (
             <>
               <p className="mt-1 text-3xl font-semibold text-foreground">
@@ -285,7 +285,7 @@ function Row({ label, value, strong, danger }: { label: string; value: string; s
   return (
     <div className={`flex justify-between ${strong ? "border-t border-border pt-2" : ""}`}>
       <span className="text-muted-foreground">{label}</span>
-      <span className={`${strong ? "font-semibold" : "font-medium"} ${danger ? "text-[hsl(358_65%_44%)]" : "text-foreground"}`}>
+      <span className={`${strong ? "font-semibold" : "font-medium"} ${danger ? "text-destructive" : "text-foreground"}`}>
         {value}
       </span>
     </div>

@@ -60,16 +60,18 @@ empty, error, success are designed, never left to chance.
    view, progressive disclosure over walls of options.
 3. **State is never ambiguous.** Skeletons for loading (not spinners mid-content),
    empty states that teach the interface, honest error states.
-4. **One blue leads the way.** Unifesto Blue (`#1a75ff`) is reserved for the
-   primary action / current selection / key state — never decoration, ≤10% of any
-   view (the *Wayfinding Blue Rule*).
+4. **One silver leads the way.** The cosmos theme is monochrome: starlight
+   silver (`--primary`) marks the primary action / current selection / key
+   state only — never decoration, ≤10% of any view.
 5. **Green celebrates progress.** Success green marks *earned* completion only —
    a finished step, an approved event (the *Celebrate-Progress Rule*). Admins
    rarely see it; organisers see it when they win.
 6. **Consistency over surprise.** The same button, the same form control, the
    same icon style everywhere. Delight lives in moments, not on every page.
-7. **Light-mode only, WCAG 2.1 AA.** A bright, trustworthy operator surface;
-   `prefers-reduced-motion` always honoured.
+7. **Cosmos, WCAG 2.1 AA.** Same monochrome cosmos as unifesto.app and the
+   space app: night by default, follows the OS to the light set. Michroma
+   for page titles, Hanken Grotesk for UI. `prefers-reduced-motion` always
+   honoured.
 
 ## Anti-references (what Apex is NOT)
 

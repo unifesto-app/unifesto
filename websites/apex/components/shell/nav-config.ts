@@ -1,6 +1,7 @@
 import type { Icon } from "@unifesto/unicon/react";
 import {
   SquaresFour,
+  RocketLaunch,
   Users,
   Buildings,
   CalendarBlank,
@@ -33,7 +34,7 @@ import {
   Megaphone,
   LinkBreak,
   Flag,
-  Lightning,
+  Coins,
 } from "@unifesto/unicon/react";
 
 export interface NavItem {
@@ -41,126 +42,95 @@ export interface NavItem {
   label: string;
   icon: Icon;
   exact?: boolean;
+  /** Extra terms the ⌘K palette matches beyond the label. */
+  keywords?: string;
 }
 
 export interface NavGroup {
-  label: string;
+  /** Omitted for the lead group so Dashboard + Product read as top items. */
+  label?: string;
   items: NavItem[];
 }
 
 /**
- * Platform-staff navigation. Everything lives under a single `/dashboard`
- * tree; AppShell only renders the sidebar for platform admins.
+ * Platform-staff navigation, grouped by job rather than by data type. One
+ * source feeds the desktop rail, the mobile drawer and the ⌘K palette.
  */
 export const adminNav: NavGroup[] = [
   {
-    label: "Overview",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: SquaresFour, exact: true },
+      { href: "/dashboard", label: "Dashboard", icon: SquaresFour, exact: true, keywords: "home overview analytics" },
+      { href: "/dashboard/product", label: "Product", icon: RocketLaunch, keywords: "kanban board roadmap tasks plan pm" },
     ],
   },
   {
-    label: "People & Spaces",
+    label: "Directory",
     items: [
-      { href: "/dashboard/users", label: "Users", icon: Users },
-      { href: "/dashboard/spaces", label: "Spaces", icon: Buildings },
+      { href: "/dashboard/users", label: "Users", icon: Users, keywords: "people accounts" },
+      { href: "/dashboard/spaces", label: "Spaces", icon: Buildings, keywords: "orgs tenants verify" },
       { href: "/dashboard/events", label: "Events", icon: CalendarBlank },
-      { href: "/dashboard/sessions", label: "Sessions", icon: VideoCamera },
+      { href: "/dashboard/sessions", label: "Sessions", icon: VideoCamera, keywords: "huddle live" },
       { href: "/dashboard/categories", label: "Categories", icon: Tag },
-    ],
-  },
-  {
-    label: "Access Control",
-    items: [
-      { href: "/dashboard/iam", label: "IAM", icon: ShieldCheck },
     ],
   },
   {
     label: "Requests",
     items: [
-      {
-        href: "/dashboard/requests",
-        label: "Space Requests",
-        icon: ClipboardText,
-        exact: true,
-      },
-      {
-        href: "/dashboard/requests/subspace",
-        label: "SubSpace Requests",
-        icon: Stack,
-      },
-      {
-        href: "/dashboard/requests/status",
-        label: "Status Requests",
-        icon: ArrowsLeftRight,
-      },
-      {
-        href: "/dashboard/requests/ownership",
-        label: "Ownership Transfers",
-        icon: HandArrowUp,
-      },
-      {
-        href: "/dashboard/requests/ticket-transfers",
-        label: "Ticket Transfers",
-        icon: Ticket,
-      },
-      {
-        href: "/dashboard/requests/free-adds",
-        label: "Free-add Requests",
-        icon: Gift,
-      },
+      { href: "/dashboard/requests", label: "New spaces", icon: ClipboardText, exact: true, keywords: "space requests approve" },
+      { href: "/dashboard/requests/subspace", label: "Sub-spaces", icon: Stack },
+      { href: "/dashboard/requests/status", label: "Status changes", icon: ArrowsLeftRight },
+      { href: "/dashboard/requests/ownership", label: "Ownership", icon: HandArrowUp, keywords: "transfer handover" },
+      { href: "/dashboard/requests/ticket-transfers", label: "Ticket transfers", icon: Ticket },
+      { href: "/dashboard/requests/free-adds", label: "Free adds", icon: Gift },
+      { href: "/dashboard/requests/white-label", label: "White-label", icon: PaintBrush, exact: true, keywords: "branding history" },
+      { href: "/dashboard/requests/white-label/apply", label: "Apply branding", icon: MagicWand, keywords: "white-label manage" },
     ],
   },
   {
-    label: "White-label",
+    label: "Money",
     items: [
-      {
-        href: "/dashboard/requests/white-label",
-        label: "History",
-        icon: PaintBrush,
-        exact: true,
-      },
-      {
-        href: "/dashboard/requests/white-label/apply",
-        label: "Manage",
-        icon: MagicWand,
-      },
-    ],
-  },
-  {
-    label: "Finance",
-    items: [
-      { href: "/dashboard/financials", label: "Financials", icon: Wallet },
-      { href: "/dashboard/transactions", label: "Transactions", icon: Receipt },
-      { href: "/dashboard/reconciliation", label: "Reconciliation", icon: ArrowsLeftRight },
-      { href: "/dashboard/orphaned-payments", label: "Orphaned Payments", icon: LinkBreak },
+      { href: "/dashboard/financials", label: "Financials", icon: Wallet, keywords: "revenue earnings" },
+      { href: "/dashboard/transactions", label: "Transactions", icon: Receipt, keywords: "payments razorpay" },
       { href: "/dashboard/payouts", label: "Payouts", icon: Money },
-      { href: "/dashboard/bank-accounts", label: "Bank Accounts", icon: Bank },
-      {
-        href: "/dashboard/subscriptions",
-        label: "Subscriptions",
-        icon: CreditCard,
-        exact: true,
-      },
-      { href: "/dashboard/plans", label: "Plans", icon: Stack },
       { href: "/dashboard/refunds", label: "Refunds", icon: ArrowsClockwise },
+      { href: "/dashboard/reconciliation", label: "Reconciliation", icon: Coins },
+      { href: "/dashboard/orphaned-payments", label: "Orphaned payments", icon: LinkBreak },
+      { href: "/dashboard/bank-accounts", label: "Bank accounts", icon: Bank },
+      { href: "/dashboard/subscriptions", label: "Subscriptions", icon: CreditCard, exact: true },
+      { href: "/dashboard/plans", label: "Plans", icon: Stack, keywords: "pricing tiers" },
     ],
   },
   {
-    label: "Operations",
+    label: "Reach",
     items: [
-      { href: "/dashboard/product", label: "Product", icon: Lightning },
-      { href: "/dashboard/careers", label: "Careers", icon: Briefcase },
+      { href: "/dashboard/notifications", label: "Push", icon: BellRinging, keywords: "notifications onesignal broadcast" },
+      { href: "/dashboard/email", label: "Email", icon: EnvelopeSimple, keywords: "campaigns templates" },
+      { href: "/dashboard/whatsapp", label: "WhatsApp inbox", icon: WhatsappLogo, exact: true },
+      { href: "/dashboard/whatsapp/broadcast", label: "WhatsApp blast", icon: Megaphone },
       { href: "/dashboard/blog", label: "Blog", icon: Article },
-      { href: "/dashboard/notifications", label: "Notifications", icon: BellRinging },
-      { href: "/dashboard/email", label: "Email", icon: EnvelopeSimple },
-      { href: "/dashboard/whatsapp", label: "WhatsApp", icon: WhatsappLogo, exact: true },
-      { href: "/dashboard/whatsapp/broadcast", label: "WhatsApp Blast", icon: Megaphone },
-      { href: "/dashboard/support", label: "Support", icon: Lifebuoy },
-      { href: "/dashboard/content-reports", label: "Content Reports", icon: Flag },
-      { href: "/dashboard/status", label: "Status", icon: Pulse },
-      { href: "/dashboard/logs", label: "Logs", icon: ListChecks },
-      { href: "/dashboard/app-version", label: "App Version", icon: DeviceMobile },
+      { href: "/dashboard/careers", label: "Careers", icon: Briefcase, keywords: "jobs hiring" },
+    ],
+  },
+  {
+    label: "Trust & support",
+    items: [
+      { href: "/dashboard/support", label: "Support", icon: Lifebuoy, keywords: "tickets help" },
+      { href: "/dashboard/content-reports", label: "Content reports", icon: Flag, keywords: "moderation abuse" },
+      { href: "/dashboard/iam", label: "Access control", icon: ShieldCheck, keywords: "iam roles capabilities permissions" },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { href: "/dashboard/status", label: "Status", icon: Pulse, keywords: "uptime health" },
+      { href: "/dashboard/logs", label: "Logs", icon: ListChecks, keywords: "api audit" },
+      { href: "/dashboard/app-version", label: "App versions", icon: DeviceMobile, keywords: "ota updates mobile" },
     ],
   },
 ];
+
+export function isNavActive(pathname: string, item: NavItem) {
+  return item.exact
+    ? pathname === item.href
+    : pathname === item.href || pathname.startsWith(item.href + "/");
+}

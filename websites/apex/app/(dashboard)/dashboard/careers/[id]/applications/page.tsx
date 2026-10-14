@@ -42,11 +42,11 @@ const STATUSES: ApplicationStatus[] = [
 ];
 
 const STATUS_DOT: Record<ApplicationStatus, string> = {
-  NEW: "bg-blue-500",
-  REVIEWING: "bg-amber-500",
-  SHORTLISTED: "bg-violet-500",
-  REJECTED: "bg-red-500",
-  HIRED: "bg-emerald-500",
+  NEW: "bg-primary",
+  REVIEWING: "bg-warning",
+  SHORTLISTED: "bg-muted-foreground",
+  REJECTED: "bg-destructive",
+  HIRED: "bg-success",
 };
 
 export default function CareerApplicationsPage() {

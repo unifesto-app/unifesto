@@ -199,7 +199,7 @@ export default function AdminCategoriesPage() {
       {error && (
         <Card className="border-destructive/30 bg-destructive-soft">
           <CardContent className="py-4">
-            <p className="text-sm text-[hsl(358_65%_44%)]">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -261,7 +261,7 @@ export default function AdminCategoriesPage() {
             />
 
             {formError && (
-              <p className="text-sm text-[hsl(358_65%_44%)]">{formError}</p>
+              <p className="text-sm text-destructive">{formError}</p>
             )}
 
             <div className="flex justify-end gap-2">
@@ -378,7 +378,7 @@ export default function AdminCategoriesPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-[hsl(358_65%_44%)] hover:text-[hsl(358_65%_44%)]"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
                               disabled={busy}
                               onClick={() => handleDelete(cat)}
                               aria-label={`Deactivate ${cat.name}`}

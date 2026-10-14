@@ -36,7 +36,7 @@ import { RangeSwitcher } from "./RangeSwitcher";
  * Resolve a design token (e.g. "--primary" → "221 83% 53%") into a usable
  * `hsl(...)` string. Recharts writes colours as SVG attributes, which do NOT
  * resolve CSS `var()`, so we read the computed values from :root once on mount.
- * Apex is a light-only surface, so a single read is enough (no theme observer).
+ * Re-read when the OS flips light/dark, since the cosmos theme follows it.
  */
 function useTokenColors() {
   const [colors, setColors] = useState({
@@ -49,19 +49,25 @@ function useTokenColors() {
   });
 
   useEffect(() => {
-    const root = getComputedStyle(document.documentElement);
-    const read = (token: string, fallback: string) => {
-      const raw = root.getPropertyValue(token).trim();
-      return raw ? `hsl(${raw})` : fallback;
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const sync = () => {
+      const root = getComputedStyle(document.documentElement);
+      const read = (token: string, fallback: string) => {
+        const raw = root.getPropertyValue(token).trim();
+        return raw ? `hsl(${raw})` : fallback;
+      };
+      setColors({
+        primary: read("--primary", "hsl(221 83% 53%)"),
+        success: read("--success", "hsl(142 71% 45%)"),
+        destructive: read("--destructive", "hsl(358 75% 59%)"),
+        warning: read("--warning", "hsl(32 95% 44%)"),
+        grid: read("--border", "hsl(240 6% 90%)"),
+        axis: read("--muted-foreground", "hsl(240 4% 46%)"),
+      });
     };
-    setColors({
-      primary: read("--primary", "hsl(221 83% 53%)"),
-      success: read("--success", "hsl(142 71% 45%)"),
-      destructive: read("--destructive", "hsl(358 75% 59%)"),
-      warning: read("--warning", "hsl(32 95% 44%)"),
-      grid: read("--border", "hsl(240 6% 90%)"),
-      axis: read("--muted-foreground", "hsl(240 4% 46%)"),
-    });
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   return colors;
@@ -144,7 +150,8 @@ export function FinancialGraphs() {
     minTickGap: 16,
     ...axisProps,
   };
-  const hasData = data && data.some((m) => m.collected || m.refunded || m.settled);
+  const hasData =
+    data && data.some((m) => m.collected || m.refunded || m.settled);
 
   return (
     <section className="space-y-4">
@@ -192,7 +199,8 @@ export function FinancialGraphs() {
             <CardHeader>
               <CardTitle className="text-base">Revenue &amp; refunds</CardTitle>
               <CardDescription>
-                Ticket revenue and refunds each month, with net revenue overlaid.
+                Ticket revenue and refunds each month, with net revenue
+                overlaid.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -260,12 +268,34 @@ export function FinancialGraphs() {
                 >
                   <defs>
                     <linearGradient id="fillNet" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={colors.primary} stopOpacity={0.28} />
-                      <stop offset="100%" stopColor={colors.primary} stopOpacity={0} />
+                      <stop
+                        offset="0%"
+                        stopColor={colors.primary}
+                        stopOpacity={0.28}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={colors.primary}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
-                    <linearGradient id="fillSettled" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={colors.success} stopOpacity={0.28} />
-                      <stop offset="100%" stopColor={colors.success} stopOpacity={0} />
+                    <linearGradient
+                      id="fillSettled"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="0%"
+                        stopColor={colors.success}
+                        stopOpacity={0.28}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={colors.success}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -317,8 +347,16 @@ export function FinancialGraphs() {
                 >
                   <defs>
                     <linearGradient id="fillFees" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={colors.warning} stopOpacity={0.3} />
-                      <stop offset="100%" stopColor={colors.warning} stopOpacity={0} />
+                      <stop
+                        offset="0%"
+                        stopColor={colors.warning}
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={colors.warning}
+                        stopOpacity={0}
+                      />
                     </linearGradient>
                   </defs>
                   <CartesianGrid

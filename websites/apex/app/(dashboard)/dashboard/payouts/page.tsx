@@ -426,7 +426,7 @@ function CreatePayoutDialog({
                       placeholder={`Up to ₹${available.toLocaleString("en-IN")}`}
                     />
                     {customInvalid && amount !== "" && (
-                      <p className="text-xs text-[hsl(358_65%_44%)]">
+                      <p className="text-xs text-destructive">
                         Enter an amount between ₹1 and ₹{available.toLocaleString("en-IN")}.
                       </p>
                     )}
@@ -436,7 +436,7 @@ function CreatePayoutDialog({
             </div>
           )}
 
-          {err && <p className="text-sm text-[hsl(358_65%_44%)]">{err}</p>}
+          {err && <p className="text-sm text-destructive">{err}</p>}
         </div>
 
         <DialogFooter className="gap-2">

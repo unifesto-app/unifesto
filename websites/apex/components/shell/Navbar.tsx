@@ -4,13 +4,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { SignOut, User } from "@unifesto/unicon/react";
+import { List, MagnifyingGlass, SignOut, User } from "@unifesto/unicon/react";
 import backendClient from "@/lib/api/backend-client";
 import { clearAuthToken } from "@/lib/utils/auth";
 import { useSession } from "@/lib/context/SessionContext";
+import { useCommandPalette } from "@/lib/context/CommandPaletteContext";
 
-export function Navbar() {
+export function Navbar({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
+  const { setOpen: openPalette } = useCommandPalette();
   const { user } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -47,20 +49,49 @@ export function Navbar() {
   };
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-card px-6">
-      <Link href={home} className="flex items-center" aria-label="Apex home">
-        <Image
-          src="/UnifestoAppWordmark.png"
-          alt="Unifesto"
-          width={120}
-          height={32}
-          priority
-          className="h-8 w-auto"
-          style={{ height: "auto", width: "auto" }}
-        />
-      </Link>
+    <header className="fixed left-0 right-0 top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card/80 px-4 backdrop-blur-md sm:px-6">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={onMenu}
+          aria-label="Open navigation"
+          className="-ml-1 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground lg:hidden"
+        >
+          <List className="h-5 w-5" />
+        </button>
+        <Link href={home} className="flex items-center gap-3" aria-label="Apex home">
+          <Image
+            src="/UnifestoAppWordmark.png"
+            alt="Unifesto"
+            width={64}
+            height={26}
+            priority
+            className="wordmark h-7 w-auto"
+          />
+          <span className="font-display hidden text-xs tracking-[0.2em] text-muted-foreground sm:inline">
+            APEX
+          </span>
+        </Link>
+      </div>
 
       <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => openPalette(true)}
+          className="hidden h-9 items-center gap-2 rounded-lg border border-input bg-background px-3 text-sm text-muted-foreground transition-colors hover:border-border-strong hover:text-foreground md:flex"
+        >
+          <MagnifyingGlass className="h-4 w-4" />
+          <span>Jump to…</span>
+          <kbd className="ml-4 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium">⌘K</kbd>
+        </button>
+        <button
+          type="button"
+          onClick={() => openPalette(true)}
+          aria-label="Search"
+          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:hidden"
+        >
+          <MagnifyingGlass className="h-5 w-5" />
+        </button>
         <div className="relative" ref={menuRef}>
           <button
             type="button"
@@ -80,7 +111,7 @@ export function Navbar() {
                 className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-muted text-sm font-semibold text-foreground">
                 {initials}
               </span>
             )}
@@ -89,7 +120,7 @@ export function Navbar() {
           {menuOpen && (
             <div
               role="menu"
-              className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-md border border-border bg-card py-1 shadow-md"
+              className="absolute right-0 top-full z-30 mt-2 w-48 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-lg"
             >
               {user?.name && (
                 <div className="border-b border-border px-3 py-2">

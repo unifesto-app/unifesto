@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/context/SessionContext";
 import { spaceUrl } from "@/lib/types/rbac";
+import { CommandPaletteProvider } from "@/lib/context/CommandPaletteContext";
 import { Navbar } from "./Navbar";
+import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,6 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { role, loading } = useSession();
+  const [navOpen, setNavOpen] = useState(false);
+  const closeNav = useCallback(() => setNavOpen(false), []);
 
   useEffect(() => {
     if (loading || role === "platform_admin") return;
@@ -35,13 +39,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <Sidebar />
-      <main className="min-h-screen pt-16 pl-60">
-        <div className="mx-auto max-w-6xl p-8">{children}</div>
-      </main>
-    </div>
+    <CommandPaletteProvider>
+      <div className="min-h-screen bg-background">
+        <Navbar onMenu={() => setNavOpen((o) => !o)} />
+        <Sidebar open={navOpen} onClose={closeNav} />
+        <CommandPalette />
+        <main className="min-h-screen pt-16 lg:pl-60">
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:p-8">{children}</div>
+        </main>
+      </div>
+    </CommandPaletteProvider>
   );
 }
 

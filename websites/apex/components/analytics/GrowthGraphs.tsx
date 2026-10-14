@@ -39,8 +39,8 @@ import { RangeSwitcher } from "./RangeSwitcher";
 /**
  * Resolve design tokens (e.g. "--primary" → "221 83% 53%") into `hsl(...)`
  * strings once on mount. Recharts writes colours as SVG attributes, which do
- * NOT resolve CSS `var()`. Apex is a light-only surface, so a single read is
- * enough. `violet`/`teal` have no token, so they are fixed brand-adjacent hues
+ * NOT resolve CSS `var()`. Re-read when the OS flips light/dark (the cosmos theme
+ * follows it). `violet`/`teal` have no token, so they are fixed brand-adjacent hues
  * that keep each entity a distinct, consistent colour across every chart.
  */
 function useTokenColors() {
@@ -56,20 +56,26 @@ function useTokenColors() {
   });
 
   useEffect(() => {
-    const root = getComputedStyle(document.documentElement);
-    const read = (token: string, fallback: string) => {
-      const raw = root.getPropertyValue(token).trim();
-      return raw ? `hsl(${raw})` : fallback;
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const sync = () => {
+      const root = getComputedStyle(document.documentElement);
+      const read = (token: string, fallback: string) => {
+        const raw = root.getPropertyValue(token).trim();
+        return raw ? `hsl(${raw})` : fallback;
+      };
+      setColors((c) => ({
+        ...c,
+        primary: read("--primary", c.primary),
+        success: read("--success", c.success),
+        destructive: read("--destructive", c.destructive),
+        warning: read("--warning", c.warning),
+        grid: read("--border", c.grid),
+        axis: read("--muted-foreground", c.axis),
+      }));
     };
-    setColors((c) => ({
-      ...c,
-      primary: read("--primary", c.primary),
-      success: read("--success", c.success),
-      destructive: read("--destructive", c.destructive),
-      warning: read("--warning", c.warning),
-      grid: read("--border", c.grid),
-      axis: read("--muted-foreground", c.axis),
-    }));
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   return colors;
@@ -173,7 +179,7 @@ export function GrowthGraphs() {
       colors.destructive,
       colors.axis,
     ],
-    [colors]
+    [colors],
   );
 
   if (loading) {
@@ -539,7 +545,11 @@ function StatusDonut({
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4 sm:flex-row">
-            <ResponsiveContainer width="100%" height={200} className="sm:!w-1/2">
+            <ResponsiveContainer
+              width="100%"
+              height={200}
+              className="sm:!w-1/2"
+            >
               <PieChart>
                 <Pie
                   data={sorted}

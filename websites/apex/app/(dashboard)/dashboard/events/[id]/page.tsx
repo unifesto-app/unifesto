@@ -223,7 +223,7 @@ export default function AdminEventDetailPage() {
                 </p>
               )}
               {event.status === "CANCELLED" && event.cancellationReason && (
-                <p className="mt-2 text-xs text-[hsl(358_65%_44%)]">
+                <p className="mt-2 text-xs text-destructive">
                   Cancelled: {event.cancellationReason}
                 </p>
               )}
@@ -489,7 +489,7 @@ export default function AdminEventDetailPage() {
                           <td className="py-2.5 pr-4 text-right tabular-nums text-foreground">
                             {money(r.totalAmount)}
                             {Number(r.refundedAmount) > 0 && (
-                              <span className="ml-1 text-xs text-[hsl(358_65%_44%)]">−{money(r.refundedAmount)}</span>
+                              <span className="ml-1 text-xs text-destructive">−{money(r.refundedAmount)}</span>
                             )}
                           </td>
                           <td className="py-2.5 pr-4">
@@ -528,7 +528,7 @@ export default function AdminEventDetailPage() {
                   rows={3}
                   placeholder="Shared with attendees, e.g. venue became unavailable."
                 />
-                {actionError && <p className="text-sm text-[hsl(358_65%_44%)]">{actionError}</p>}
+                {actionError && <p className="text-sm text-destructive">{actionError}</p>}
               </div>
               <DialogFooter>
                 <Button variant="ghost" size="sm" disabled={acting} onClick={() => setCancelOpen(false)}>

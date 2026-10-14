@@ -183,9 +183,9 @@ function Tile({
       <p
         className={`mt-1 text-lg font-semibold ${
           tone === "danger"
-            ? "text-[hsl(358_65%_44%)]"
+            ? "text-destructive"
             : tone === "warn"
-              ? "text-[hsl(32_95%_34%)]"
+              ? "text-warning"
               : "text-foreground"
         }`}
       >
@@ -303,8 +303,8 @@ function OrphanRow({
               {state.busy ? "Attaching…" : `Attach anyway — record ${money(row.amount)}`}
             </Button>
           )}
-          {state.ok && <span className="text-xs font-medium text-[hsl(142_71%_29%)]">{state.ok}</span>}
-          {state.err && <span className="text-xs font-medium text-[hsl(358_65%_44%)]">{state.err}</span>}
+          {state.ok && <span className="text-xs font-medium text-success">{state.ok}</span>}
+          {state.err && <span className="text-xs font-medium text-destructive">{state.err}</span>}
         </div>
       </CardContent>
     </Card>

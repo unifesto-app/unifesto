@@ -158,7 +158,7 @@ export default function TransactionDetailPage() {
       ) : error ? (
         <Card className="border-destructive/30 bg-destructive-soft">
           <CardContent className="py-6 text-center">
-            <p className="text-sm text-[hsl(358_65%_44%)]">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
             <Button
               variant="outline"
               size="sm"
@@ -252,7 +252,7 @@ export default function TransactionDetailPage() {
             <div
               className={
                 actionErr
-                  ? "rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-[hsl(358_65%_44%)]"
+                  ? "rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive"
                   : "rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
               }
             >
@@ -631,7 +631,7 @@ function ResolvePendingDialog({
           </div>
 
           {err && (
-            <div className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-[hsl(358_65%_44%)]">
+            <div className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
               {err}
             </div>
           )}
@@ -741,7 +741,7 @@ function AdminRefundDialog({
           </div>
 
           {err && (
-            <div className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-[hsl(358_65%_44%)]">
+            <div className="rounded-md border border-destructive/30 bg-destructive-soft px-3 py-2 text-sm text-destructive">
               {err}
             </div>
           )}
