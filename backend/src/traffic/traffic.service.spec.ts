@@ -1,5 +1,6 @@
 import {
   TrafficService,
+  countryOf,
   deviceOf,
   fillDays,
   isAllowedDestination,
@@ -62,6 +63,15 @@ describe('traffic helpers', () => {
     expect(sourceSlug('Instagram Bio!')).toBe('instagram-bio');
     expect(sourceSlug('  ')).toBe('link');
   });
+
+  it('keeps real Cloudflare countries and drops unknown, Tor and junk', () => {
+    expect(countryOf('IN')).toBe('IN');
+    expect(countryOf(' us ')).toBe('US');
+    expect(countryOf('XX')).toBeNull();
+    expect(countryOf('T1')).toBeNull();
+    expect(countryOf('India')).toBeNull();
+    expect(countryOf(undefined)).toBeNull();
+  });
 });
 
 describe('TrafficService', () => {
@@ -83,9 +93,26 @@ describe('TrafficService', () => {
   it('resolves an active code to its destination and records the click', async () => {
     const { prisma, service } = build();
     prisma.shortLink.findUnique.mockResolvedValue({ id: 'l1', url: 'https://www.unifesto.app/event/x', revokedAt: null });
-    await expect(service.resolve('Ab3xYz9', browser)).resolves.toBe('https://www.unifesto.app/event/x');
+    await expect(service.resolve('Ab3xYz9', { ...browser, country: 'IN' })).resolves.toBe(
+      'https://www.unifesto.app/event/x',
+    );
     await new Promise((r) => setImmediate(r));
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.shortLinkClick.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ shortLinkId: 'l1', device: 'ios', country: 'IN' }),
+    });
+  });
+
+  it('renders a QR of the short URL for active links only', async () => {
+    const { prisma, service } = build();
+    prisma.shortLink.findUnique.mockResolvedValueOnce({ revokedAt: null });
+    await expect(service.qr('Ab3xYz9', 'svg')).resolves.toContain('<svg');
+    prisma.shortLink.findUnique.mockResolvedValueOnce({ revokedAt: null });
+    const png = (await service.qr('Ab3xYz9', 'png')) as Buffer;
+    expect(png.subarray(1, 4).toString()).toBe('PNG');
+    prisma.shortLink.findUnique.mockResolvedValueOnce({ revokedAt: new Date() });
+    await expect(service.qr('Ab3xYz9', 'svg')).resolves.toBeNull();
+    await expect(service.qr('../etc', 'svg')).resolves.toBeNull();
   });
 
   it('sends unknown, revoked and malformed codes home without recording', async () => {

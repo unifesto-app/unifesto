@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma, TrafficTarget } from '@prisma/client';
 import { createHmac, randomInt } from 'crypto';
+import * as QRCode from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { CreateAdminShortLinkDto, CreateShortLinkDto, RecordViewDto } from './dto';
@@ -13,9 +14,13 @@ export const SHORT_LINK_MEDIUM = 'short_link';
 const VIEW_DEDUPE_MS = 30 * 60_000;
 
 const WEB_URL = () => (process.env.WEB_URL || 'https://www.unifesto.app').replace(/\/$/, '');
-const SHORT_BASE = () => (process.env.SHORT_LINK_BASE_URL || 'https://api.unifesto.app').replace(/\/$/, '');
+// unifesto.app/l/* is proxied straight to the backend by Caddy (K5).
+const SHORT_BASE = () => (process.env.SHORT_LINK_BASE_URL || 'https://unifesto.app').replace(/\/$/, '');
 
 export const shortUrl = (code: string) => `${SHORT_BASE()}/l/${code}`;
+export const qrUrl = (code: string) => `${shortUrl(code)}/qr`;
+
+const CODE_RE = /^[A-Za-z0-9]{4,16}$/;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -80,6 +85,12 @@ export function referrerDomain(referer: string | undefined): string | null {
   }
 }
 
+/** Cloudflare's Cf-Ipcountry → "IN"; null for unknown (XX), Tor (T1) or junk. */
+export function countryOf(header: string | undefined): string | null {
+  const c = header?.trim().toUpperCase();
+  return c && /^[A-Z]{2}$/.test(c) && c !== 'XX' && c !== 'T1' ? c : null;
+}
+
 /** Only our own pages can be short-link destinations (no open redirect). */
 export function isAllowedDestination(url: string): boolean {
   try {
@@ -110,6 +121,8 @@ export function sourceSlug(name: string | undefined): string {
     .slice(0, 60);
   return slug || 'link';
 }
+
+type Visitor = { ip?: string; ua?: string; referer?: string; country?: string };
 
 type Daily = { day: string; views: number; visitors: number };
 
@@ -363,6 +376,7 @@ export class TrafficService {
       id: link.id,
       code: link.code,
       shortUrl: shortUrl(link.code),
+      qrUrl: qrUrl(link.code),
       url: link.url,
       title: link.title,
       source: link.source,
@@ -398,7 +412,7 @@ export class TrafficService {
     return links.map((l) => this.view(l, regs.get(l.code) ?? 0));
   }
 
-  /** One link's clicks over time, unique visitors, referrers and devices. */
+  /** One link's clicks over time, unique visitors, referrers, devices and countries. */
   async stats(linkId: string, scope: Prisma.ShortLinkWhereInput, days = 30) {
     const link = await this.prisma.shortLink.findFirst({
       where: { ...scope, id: linkId, revokedAt: null },
@@ -408,7 +422,7 @@ export class TrafficService {
 
     const keys = lastDays(days);
     const since = startOfIstDay(keys[0]);
-    const [regs, uniques, daily, referrers, devices] = await Promise.all([
+    const [regs, uniques, daily, referrers, devices, countries] = await Promise.all([
       this.registrationsByCode([link.code]),
       this.prisma.$queryRaw<{ visitors: number }[]>`
         SELECT count(DISTINCT visitor_hash)::int AS visitors
@@ -425,6 +439,10 @@ export class TrafficService {
         SELECT device, count(*)::int AS clicks
         FROM short_link_clicks WHERE short_link_id = ${link.id}::uuid
         GROUP BY 1 ORDER BY 2 DESC`,
+      this.prisma.$queryRaw<{ country: string | null; clicks: number }[]>`
+        SELECT country, count(*)::int AS clicks
+        FROM short_link_clicks WHERE short_link_id = ${link.id}::uuid
+        GROUP BY 1 ORDER BY 2 DESC LIMIT 10`,
     ]);
 
     return {
@@ -434,6 +452,7 @@ export class TrafficService {
       daily: fillDays(keys, daily, { clicks: 0 }).map(({ day, clicks }) => ({ date: day, clicks })),
       referrers,
       devices,
+      countries,
     };
   }
 
@@ -452,8 +471,8 @@ export class TrafficService {
    * Where `/l/<code>` sends the visitor. Unknown or revoked codes go to the
    * website home. The click is recorded off the response path.
    */
-  async resolve(code: string, visitor: { ip?: string; ua?: string; referer?: string }): Promise<string> {
-    const link = /^[A-Za-z0-9]{4,16}$/.test(code)
+  async resolve(code: string, visitor: Visitor): Promise<string> {
+    const link = CODE_RE.test(code)
       ? await this.prisma.shortLink.findUnique({ where: { code }, select: { id: true, url: true, revokedAt: true } })
       : null;
     if (!link || link.revokedAt) return WEB_URL();
@@ -465,7 +484,19 @@ export class TrafficService {
     return link.url;
   }
 
-  private async recordClick(shortLinkId: string, visitor: { ip?: string; ua?: string; referer?: string }) {
+  /** QR code of an active link's short URL, for posters and slides. Null when unknown or revoked. */
+  async qr(code: string, format: 'svg' | 'png'): Promise<string | Buffer | null> {
+    const link = CODE_RE.test(code)
+      ? await this.prisma.shortLink.findUnique({ where: { code }, select: { revokedAt: true } })
+      : null;
+    if (!link || link.revokedAt) return null;
+    const opts = { margin: 2, color: { dark: '#000000', light: '#ffffff' } };
+    return format === 'png'
+      ? QRCode.toBuffer(shortUrl(code), { ...opts, type: 'png', width: 1024 })
+      : QRCode.toString(shortUrl(code), { ...opts, type: 'svg' });
+  }
+
+  private async recordClick(shortLinkId: string, visitor: Visitor) {
     const visitorHash = createHmac('sha256', hmacSecret('TRAFFIC_HASH_SECRET', 'traffic'))
       .update(`${visitor.ip ?? ''}|${visitor.ua ?? ''}`)
       .digest('hex');
@@ -476,6 +507,7 @@ export class TrafficService {
           visitorHash,
           referrerDomain: referrerDomain(visitor.referer),
           device: deviceOf(visitor.ua),
+          country: countryOf(visitor.country),
         },
       }),
       this.prisma.shortLink.update({ where: { id: shortLinkId }, data: { clickCount: { increment: 1 } } }),

@@ -2,7 +2,7 @@ import { call } from './call';
 
 /*
  * Traffic: page views of event/space pages and tracked short links
- * (api.unifesto.app/l/<code>). Event endpoints are gated server-side by
+ * (unifesto.app/l/<code>). Event endpoints are gated server-side by
  * event:view / event:edit, space ones by space:view / space:manage-settings,
  * admin ones by platform:manage. Page views are sent by services/pageViews.
  */
@@ -57,8 +57,10 @@ export const getTraffic = <T extends TrafficStats = TrafficStats>(scope: Traffic
 export interface ShortLink {
   id: string;
   code: string;
-  /** https://api.unifesto.app/l/<code> — what gets shared. */
+  /** https://unifesto.app/l/<code> — what gets shared. */
   shortUrl: string;
+  /** QR of shortUrl: SVG, or PNG with `?format=png`. */
+  qrUrl: string;
   /** Destination, utm tags included. */
   url: string;
   title: string | null;
@@ -78,6 +80,8 @@ export interface ShortLinkStats extends ShortLink {
   daily: { date: string; clicks: number }[];
   referrers: { domain: string | null; clicks: number }[];
   devices: { device: string; clicks: number }[];
+  /** ISO country code ("IN"); null when unknown. */
+  countries: { country: string | null; clicks: number }[];
 }
 
 export interface NewShortLink {
