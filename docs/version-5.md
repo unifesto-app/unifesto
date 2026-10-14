@@ -477,6 +477,35 @@ Seven weeks of content that ends on the 5.0.0 launch. The only track with dates,
 | W6 · 23–29 Nov | Countdown | "Unifesto 5: first look" (screens from the TestFlight build, no "update now") | "What's coming in Unifesto 5" | Unifesto vs Luma |
 | W7 · 30 Nov–2 Dec | **Launch** (P9) | "Unifesto 5 is here" | "Unifesto 5 release notes" | Best event platforms for college fests in India (2026) roundup |
 
+**Keyword map (P15).** One search query per blog and long video, checked against Google and YouTube autocomplete (India, `hl=en-IN`) on 15 Oct. Autocomplete shows that people search the phrase, not how many do; re-check with Search Console data after W2 (P14). Rules: the query goes, word for word, in the blog title, H1 and slug, and at the front of the YouTube title (under 60 characters). Comparison slugs stay `/blog/unifesto-vs-<x>` (P11). Avoid "college event management system" (students looking for project code) and "group registration" (Kedarnath and IRCTC).
+
+| Week | Piece | Target query | Title / H1 (YouTube title) | Slug |
+|---|---|---|---|---|
+| P0 | Video (live) | unifesto | What is Unifesto? | n/a |
+| W1 | Video | how to run a college club | How to run a college club: your Space and team in 10 minutes | n/a |
+| W1 | Blog | how to organize a college fest | How to organize a college fest: the 8-week checklist | `how-to-organize-a-college-fest` |
+| W1 | Comparison | google forms for event registration | Google Forms for event registration vs Unifesto | `unifesto-vs-google-forms` |
+| W2 | Video | how to sell event tickets online | How to sell event tickets online: tickets, groups and coupons | n/a |
+| W2 | Blog | team registration form | Team registration form for college fests (template + a better way) | `team-registration-form` |
+| W2 | Comparison | townscript alternatives | Townscript alternatives: Unifesto vs Townscript (2026) | `unifesto-vs-townscript` |
+| W3 | Video | how to organize a hackathon | How to organize a hackathon in college with Unifesto Sprint | n/a |
+| W3 | Blog | hackathon judging criteria | Hackathon judging criteria: rubric template and how to run judging | `hackathon-judging-criteria` |
+| W3 | Comparison | devfolio alternatives (also: hackathon platform india) | Devfolio alternatives: Unifesto vs Devfolio for hackathons in India | `unifesto-vs-devfolio` |
+| W4 | Video | how to collect payment for an event | How to collect payment for an event and see what it earned | n/a |
+| W4 | Blog | how to get sponsors for college fest | How to get sponsors for a college fest (with a pitch template) | `how-to-get-sponsors-for-college-fest` |
+| W4 | Comparison | konfhub alternatives (also: konfhub pricing) | KonfHub alternatives: Unifesto vs KonfHub pricing and features (2026) | `unifesto-vs-konfhub` |
+| W5 | Video | event check in app | Event check in app: QR passes, WhatsApp groups and certificates | n/a |
+| W5 | Blog | event day checklist | Event day checklist for organisers | `event-day-checklist` |
+| W5 | Comparison | eventbrite alternatives | Eventbrite alternatives for events in India: Unifesto vs Eventbrite | `unifesto-vs-eventbrite` |
+| W6 | Video | unifesto 5 | Unifesto 5: first look | n/a |
+| W6 | Blog | unifesto 5 | What's coming in Unifesto 5 | `whats-coming-in-unifesto-5` |
+| W6 | Comparison | luma alternatives | Luma alternatives: Unifesto vs Luma for events (2026) | `unifesto-vs-luma` |
+| W7 | Video | unifesto app | Unifesto app: version 5 is here | n/a |
+| W7 | Blog | unifesto 5 release notes | Unifesto 5 release notes | `unifesto-5-release-notes` |
+| W7 | Roundup | best event ticketing platform in india | Best event ticketing platforms in India (2026): for college fests, clubs and hackathons | `best-event-ticketing-platforms-india` |
+
+Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a hackathon on unstop", "unstop alternatives"); add `unifesto-vs-unstop` after W3 or name it in the Devfolio post. Short and carousel captions reuse the week's video query.
+
 **Recurring short formats:** "Event day in 30 seconds", "Organiser POV", "Spreadsheet vs Space" (before/after), "Shipped this week" (founder, web/Space only until 2 Dec), "Fest of the week" (with permission).
 
 | # | Item | Status |
@@ -495,7 +524,7 @@ Seven weeks of content that ends on the 5.0.0 launch. The only track with dates,
 | P12 | **SEO + AI search, already live (no work):** `robots.ts` allows every AI crawler (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…); `/llms.txt`; JSON-LD for Organization, WebSite, MobileApplication, WebApplication, Event, Space, FAQ, Breadcrumb; sitemap with events + spaces | done |
 | P13 | Blog SEO gaps, **before the first blog on 21 Oct**: each `/blog/<slug>` in the sitemap (only `/blog` is today), `BlogPosting` JSON-LD (author, dates, image), canonical, RSS; blog + comparison posts listed in `llms.txt`. Overlaps K2/K3 | next |
 | P14 | Google Search Console + Bing Webmaster Tools verified, sitemap submitted, IndexNow pinged on publish. Bing matters: ChatGPT search and Copilot read Bing's index | next |
-| P15 | Keyword map: one search query per blog and video, e.g. "college fest registration app", "hackathon platform India", "event ticketing with Razorpay", "Townscript alternative", "KonfHub alternative", "Devfolio alternative". Title, H1, slug, YouTube title match it | next |
+| P15 | Keyword map: one search query per blog and video, e.g. "college fest registration app", "hackathon platform India", "event ticketing with Razorpay", "Townscript alternative", "KonfHub alternative", "Devfolio alternative". Title, H1, slug, YouTube title match it | done |
 | P16 | Write posts so AI can quote them: first 2 sentences answer the query directly; one fact per sentence; tables for comparisons; FAQ block (FAQPage schema) at the end; "as of <date>"; real numbers from `PROOF` in `site.ts` | planned |
 | P17 | Same facts everywhere: one-line description, founding city, the numbers, pricing. Website, LinkedIn, YouTube about, Instagram, both app stores, Crunchbase, Wikidata, Google Business Profile | planned |
 | P18 | **Be mentioned elsewhere** (chatbots trust other sites more than ours): list on G2, Capterra, SaaSworthy, AlternativeTo (as an alternative to Townscript, KonfHub, Devfolio, Eventbrite, Luma), Product Hunt launch on 2 Dec; ask 10 organisers for reviews; honest, disclosed answers on Reddit/Quora fest + hackathon threads; college newspapers and club newsletters | planned |
@@ -544,3 +573,4 @@ Seven weeks of content that ends on the 5.0.0 launch. The only track with dates,
 - **2026-10-14** · P11 added: one "Unifesto vs X" comparison blog per week (Google Forms, Townscript, Devfolio, KonfHub, Eventbrite, Luma, then a roundup at launch).
 - **2026-10-14** · P12–P20 added: SEO + AI search plan. Already live: AI-crawler robots, llms.txt, most JSON-LD. Gap before the first blog: blog posts missing from sitemap + no BlogPosting schema (P13).
 - **2026-10-14** · Apex Product board + Claude MCP endpoint built on `claude/pm-dashboard` (migration `20261016100000_product_management`, `backend/src/pm`, Apex `/dashboard/product`). Not deployed. After deploy: create a token in Apex, add the MCP server in Claude Code, have Claude import this file's tracks.
+- **2026-10-15** · P15 keyword map added under the P weeks (autocomplete-checked; W2 blog retargeted to "team registration form", W3 blog to "hackathon judging criteria", W7 roundup to "best event ticketing platform in india"). P13 (#126) and P14 (#127) in review.
