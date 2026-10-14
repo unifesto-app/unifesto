@@ -97,7 +97,7 @@ export function AdminOverview() {
       {error && (
         <Card className="border-destructive/30 bg-destructive-soft">
           <CardContent className="py-4">
-            <p className="text-sm text-[hsl(358_65%_44%)]">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           </CardContent>
         </Card>
       )}

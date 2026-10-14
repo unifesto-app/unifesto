@@ -309,7 +309,7 @@ export default function WhatsAppBroadcastPage() {
       <div className="mx-auto max-w-2xl space-y-6">
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <CheckCircle className="h-12 w-12 text-emerald-500" weight="fill" />
+            <CheckCircle className="h-12 w-12 text-success" weight="fill" />
             <h2 className="text-xl font-semibold text-foreground">Broadcast started</h2>
             <p className="text-sm text-muted-foreground">
               Sending <span className="font-medium text-foreground">{selectedTemplate?.name}</span>{" "}
@@ -413,7 +413,7 @@ export default function WhatsAppBroadcastPage() {
           )}
 
           {audience === "ALL" && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+            <div className="flex items-start gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
               <Warning className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 This messages <strong>every user in the app</strong> that has a mobile

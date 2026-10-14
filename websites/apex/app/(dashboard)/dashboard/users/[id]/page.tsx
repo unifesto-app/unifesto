@@ -217,7 +217,7 @@ export default function UserDetailPage() {
       ) : error ? (
         <Card className="border-destructive/30 bg-destructive-soft">
           <CardContent className="py-6 text-center">
-            <p className="text-sm text-[hsl(358_65%_44%)]">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
             <Button
               variant="outline"
               size="sm"
@@ -273,7 +273,7 @@ export default function UserDetailPage() {
                   type="button"
                   onClick={() => void onRemoveAvatar()}
                   disabled={avatarBusy}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-[hsl(358_65%_44%)] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash className="h-3.5 w-3.5" />
                   Remove
@@ -289,7 +289,7 @@ export default function UserDetailPage() {
                 {fmtDate(user.createdAt)}
               </p>
               {avatarError && (
-                <p className="mt-1 text-xs text-[hsl(358_65%_44%)]">
+                <p className="mt-1 text-xs text-destructive">
                   {avatarError}
                 </p>
               )}
@@ -402,7 +402,7 @@ export default function UserDetailPage() {
                   </div>
                 </div>
                 {saveError && (
-                  <p className="text-sm text-[hsl(358_65%_44%)]">{saveError}</p>
+                  <p className="text-sm text-destructive">{saveError}</p>
                 )}
                 <div className="flex items-center gap-2">
                   <Button
@@ -737,12 +737,12 @@ function ContactRow({
             <p className="truncate text-sm text-foreground">{value}</p>
             {verified ? (
               <CheckCircle
-                className="h-4 w-4 flex-shrink-0 text-[hsl(142_71%_45%)]"
+                className="h-4 w-4 flex-shrink-0 text-success"
                 weight="fill"
               />
             ) : (
               <XCircle
-                className="h-4 w-4 flex-shrink-0 text-[hsl(32_95%_44%)]"
+                className="h-4 w-4 flex-shrink-0 text-warning"
                 weight="fill"
               />
             )}

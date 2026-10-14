@@ -308,7 +308,7 @@ function ReportRow({
             </Button>
           )}
           {state.busy && <span className="text-xs text-muted-foreground">Saving…</span>}
-          {state.err && <span className="text-xs font-medium text-[hsl(358_65%_44%)]">{state.err}</span>}
+          {state.err && <span className="text-xs font-medium text-destructive">{state.err}</span>}
         </div>
       </CardContent>
     </Card>

@@ -129,7 +129,7 @@ export default function BlogPage() {
                     {p.title}
                   </p>
                   {p.featured && (
-                    <Star className="h-3.5 w-3.5 text-amber-500" weight="fill" />
+                    <Star className="h-3.5 w-3.5 text-warning" weight="fill" />
                   )}
                   <Badge variant={p.status === "PUBLISHED" ? "success" : "warning"}>
                     {p.status === "PUBLISHED" ? "Published" : "Draft"}

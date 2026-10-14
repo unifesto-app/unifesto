@@ -150,7 +150,7 @@ export default function AdminBankAccountsPage() {
                       {a.user?.mobileNumber ? ` · ${a.user.mobileNumber}` : ""}
                     </p>
                     {a.status === "REJECTED" && a.rejectionReason && (
-                      <p className="mt-1 text-xs text-[hsl(358_65%_44%)]">Reason: {a.rejectionReason}</p>
+                      <p className="mt-1 text-xs text-destructive">Reason: {a.rejectionReason}</p>
                     )}
                   </div>
                   {a.status === "PENDING" && (

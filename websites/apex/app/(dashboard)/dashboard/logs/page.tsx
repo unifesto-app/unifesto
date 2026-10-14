@@ -68,14 +68,14 @@ function fullTime(iso: string) {
 function methodColor(method: string): string {
   switch (method) {
     case "GET":
-      return "text-blue-600";
+      return "text-primary";
     case "POST":
-      return "text-green-600";
+      return "text-success";
     case "PATCH":
     case "PUT":
-      return "text-amber-600";
+      return "text-warning";
     case "DELETE":
-      return "text-red-600";
+      return "text-destructive";
     default:
       return "text-muted-foreground";
   }

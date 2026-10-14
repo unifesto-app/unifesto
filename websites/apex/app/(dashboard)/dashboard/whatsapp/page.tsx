@@ -113,7 +113,7 @@ function MediaAttachment({ m }: { m: WhatsappMessage }) {
       target="_blank"
       rel="noopener noreferrer"
       download
-      className="mb-1 flex items-center gap-2 rounded-lg bg-black/5 px-3 py-2 text-sm underline dark:bg-white/10"
+      className="mb-1 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm underline"
     >
       <FileArrowDown className="h-4 w-4 shrink-0" />
       <span className="truncate">{label}</span>

@@ -188,7 +188,7 @@ export default function AppVersionPage() {
         </div>
       )}
       {saved && !error && (
-        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400">
+        <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success-soft px-4 py-3 text-sm text-success">
           <CheckCircle className="h-4 w-4 shrink-0" weight="fill" />
           Version policy saved. New app launches will see it immediately.
         </div>
