@@ -22,6 +22,10 @@ publish mobile OTA/EAS builds.
    owner `Claude` (skip if already). Read `docs/version-5.md` for context on the key.
    If the task is too vague to implement, set `BLOCKED` with the question in a
    note and stop.
+   If the code is already on `main` and only a deploy or manual check remains
+   (e.g. "needs backend rebuild"), set `IN_REVIEW` with a note naming the
+   commit and the services to deploy, and stop. Don't set `BLOCKED`: the human
+   deploys and marks DONE, so nothing should re-fire `/ship` for it.
 2. **Branch.** From latest `main`: `claude/<key-lowercase>-<short-slug>`. Base is
    always `main`, never another feature branch. Running locally (not in a cloud
    routine)? Use a git worktree under `.claude/worktrees/` so the main checkout is untouched.
