@@ -19,6 +19,7 @@ export interface BlogPost {
   status: "DRAFT" | "PUBLISHED";
   publishedAt: string | null;
   createdAt: string;
+  updatedAt: string;
 }
 
 /** All published posts, newest first. Returns [] on any failure. */

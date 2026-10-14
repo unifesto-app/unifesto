@@ -12,16 +12,22 @@ import {
   SITE,
   inr,
 } from "@/lib/site";
+import { getPosts } from "@/lib/api/blog";
 
 /* /llms.txt: a plain-language brief of Unifesto for AI assistants and
    answer engines (llmstxt.org format). Built from the same content source
-   as the pages, so it can never drift from what the site says. */
-export const dynamic = "force-static";
+   as the pages, so it can never drift from what the site says. Blog
+   posts come from the API, so this regenerates hourly. */
+export const revalidate = 3600;
 
 const plan = (p: (typeof PLANS)[number]) =>
   `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}; ${p.fee}% per paid ticket (standard ${p.standardFee}%). Includes: ${p.includes.join("; ")}.`;
 
-export function GET() {
+export async function GET() {
+  const posts = await getPosts();
+  const blog = posts.length
+    ? `\n## Blog\n\n${posts.map((p) => `- [${p.title}](${SITE.url}/blog/${p.slug}): ${p.excerpt}`).join("\n")}\n`
+    : "";
   const body = `# ${SITE.name}
 
 > ${SITE.description}
@@ -78,6 +84,7 @@ ${FAQ_PRICING.map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ${FAQ_HOME.map((f) => `### ${f.q}\n${f.a}`).join("\n\n")}
 
+${blog}
 ## Contact
 
 ${SITE.email}

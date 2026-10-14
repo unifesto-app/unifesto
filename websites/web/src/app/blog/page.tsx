@@ -8,7 +8,7 @@ import Section from "@/components/site/Section";
 import { getPosts, postMeta, type BlogPost } from "@/lib/api/blog";
 
 export const metadata: Metadata = withSocial({
-  alternates: { canonical: "/blog" },
+  alternates: { canonical: "/blog", types: { "application/rss+xml": "/blog/rss.xml" } },
   title: "Blog",
   description:
     "Stories, insights, and updates from the Unifesto team about events, community life, and event management best practices.",

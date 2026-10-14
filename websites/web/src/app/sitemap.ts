@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next'
 import { getEvents } from '@/lib/api/events'
 import { getSpaces } from '@/lib/api/spaces'
+import { getPosts } from '@/lib/api/blog'
 import { SITE } from '@/lib/site'
 
 const baseUrl = SITE.url
@@ -65,6 +66,17 @@ async function getSpaceRoutes(): Promise<MetadataRoute.Sitemap> {
   }
 }
 
+/** Every published blog post. getPosts() already returns [] on failure. */
+async function getBlogRoutes(): Promise<MetadataRoute.Sitemap> {
+  const posts = await getPosts()
+  return posts.map((p) => ({
+    url: `${baseUrl}/blog/${p.slug}`,
+    lastModified: new Date(p.updatedAt),
+    changeFrequency: 'monthly' as const,
+    priority: 0.6,
+  }))
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const currentDate = new Date()
 
@@ -108,10 +120,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/delete-account', 'yearly', 0.2),
   ]
 
-  const [eventRoutes, spaceRoutes] = await Promise.all([
+  const [eventRoutes, spaceRoutes, blogRoutes] = await Promise.all([
     getEventRoutes(),
     getSpaceRoutes(),
+    getBlogRoutes(),
   ])
 
-  return [...staticRoutes, ...eventRoutes, ...spaceRoutes]
+  return [...staticRoutes, ...eventRoutes, ...spaceRoutes, ...blogRoutes]
 }
