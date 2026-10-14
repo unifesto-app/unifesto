@@ -77,16 +77,9 @@ const COLUMNS: { key: FigureKey; label: string; hint: string }[] = [
   { key: "overdrawn", label: "Overdrawn", hint: "Paid out beyond net owed (refunds after payout); to recover" },
 ];
 
-// ─── Default breakdown ordering ───────────────────────────────────────────────
-// TODO(product decision — see the note in chat): which space should an admin
-// see FIRST when they open Financials? This default is what ranks the table
-// before anyone clicks a column header. The trade-off:
-//   • "available"        → who we still OWE the most (payout backlog first)
-//   • "collectedOverall" → biggest partners / most revenue first
-//   • "netEntitlement"   → largest total obligation first
-// Adjust DEFAULT_SORT_KEY (and, if you like, the comparator) to match how the
-// payouts desk actually works.
-const DEFAULT_SORT_KEY: FigureKey = "available";
+// Default ranking before anyone clicks a header: largest net owed first
+// (decided in version-5 A3).
+const DEFAULT_SORT_KEY: FigureKey = "netEntitlement";
 
 export default function PlatformFinancialsPage() {
   const [totals, setTotals] = useState<PlatformFinancials | null>(null);
