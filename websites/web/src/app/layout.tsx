@@ -5,7 +5,7 @@ import FloatingSupport from "@/components/FloatingSupport";
 import UtmCapture from "@/components/UtmCapture";
 import MotionRuntime from "@/components/MotionRuntime";
 import JsonLd from "@/components/site/JsonLd";
-import { SITE } from "@/lib/site";
+import { SITE, SOCIAL } from "@/lib/site";
 
 const michroma = Michroma({
   weight: "400",
@@ -103,7 +103,7 @@ const orgLd = [
     description: SITE.description,
     foundingLocation: { "@type": "Place", name: "Hyderabad, Telangana, India" },
     areaServed: "IN",
-    sameAs: [SITE.appStore, SITE.playStore, "https://x.com/unifestoapp"],
+    sameAs: [SITE.appStore, SITE.playStore, ...Object.values(SOCIAL)],
   },
   {
     "@context": "https://schema.org",

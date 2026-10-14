@@ -22,6 +22,15 @@ export const SITE = {
   spaceApp: "https://space.unifesto.app",
 } as const;
 
+/* Official profiles. The footer links and the Organization JSON-LD
+   `sameAs` both read this, which is how search engines and AI assistants
+   tie these accounts to one company. Mobile mirrors it in ProfileScreen. */
+export const SOCIAL = {
+  instagram: "https://www.instagram.com/unifesto.app/",
+  linkedin: "https://www.linkedin.com/company/unifesto",
+  x: "https://x.com/unifestoapp",
+} as const;
+
 /* Proof. Keep this honest and dated: these numbers ship in copy and in
    structured data. spacesLive was read from the public API on 2026-10-05;
    the attendee and event totals are the founders' figures. */

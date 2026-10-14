@@ -156,7 +156,7 @@ export default function ProfileScreen() {
         <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
         <SettingsRow icon={icon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
         <SettingsRow icon={icon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />
-        <SettingsRow icon={icon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/HeyUnifesto', 'X')} />
+        <SettingsRow icon={icon('x-logo')} label="X" external onPress={() => openExternal('https://x.com/unifestoapp', 'X')} />
       </SettingsGroup>
     </Section>
   );
