@@ -531,6 +531,8 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 | P19 | YouTube for search: titles from P15, chapters, uploaded captions, description with summary + tracked links. Google AI Overviews cite YouTube often | planned |
 | P20 | Measure every 2 weeks: fixed list of ~15 prompts ("best app to run a college fest in India", "Townscript alternatives", "how to run a hackathon in India"…) in ChatGPT, Claude, Gemini, Perplexity, Google AI Overviews; note whether Unifesto appears, its position and the cited source. Plus Search Console clicks/impressions and visits from chatgpt.com / perplexity.ai. Nobody can guarantee a top spot; this shows what is working | planned |
 | P10 | Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
+| P21 | Wikidata item for Unifesto, once P18 brings independent coverage to cite (items without sources get deleted); then add it to `SOCIAL`/`sameAs` | planned |
+| P22 | Google Business Profile: verifiable address (Malla Reddy University R&D Center) or a service-area business; category Software company | planned |
 
 ### Parked and dropped
 
@@ -576,3 +578,4 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 - **2026-10-15** · P15 keyword map added under the P weeks (autocomplete-checked; W2 blog retargeted to "team registration form", W3 blog to "hackathon judging criteria", W7 roundup to "best event ticketing platform in india"). P13 (#126) and P14 (#127) in review.
 - **2026-10-15** · P13 done (#126): per-post sitemap, `BlogPosting` + breadcrumb JSON-LD, `/blog/rss.xml`, blog list in llms.txt. P16 done (#130): GFM tables (were raw pipes) + `FAQPage` JSON-LD from a `## FAQ` section. P14 code done (#127, IndexNow on blog changes, prod only); Search Console + Bing set up by hand; P14 done. Deploy web before backend.
 - **2026-10-15** · P17 (#131): one `SOCIAL` list feeds the footer + Organization `sameAs` (adds IG + LinkedIn); mobile X link was a 404 (`HeyUnifesto`). Paste-ready profile copy on the board. YouTube missing from `sameAs`: `@unifesto` is someone else's channel. P18 kit on the board; first step is the Product Hunt maker account (~30 days of activity before 2 Dec).
+- **2026-10-15** · P17 profiles updated by hand: Instagram, LinkedIn, App Store promo text, Crunchbase (logo, descriptions, phone). Store long descriptions moved to P8; Wikidata and Google Business Profile split out as P21 and P22.
