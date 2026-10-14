@@ -91,16 +91,7 @@ interface FinancialSummary {
 
 /**
  * Aggregate the event's transactions into the numbers shown on the summary tiles.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * BUSINESS RULE — please confirm/adjust the `net` line below.
- * The gross figures (collected / pending / refunded / fees) are unambiguous, but
- * "net revenue" depends on how money flows on Unifesto:
- *   • If the organiser ABSORBS the Razorpay processing fee, subtract it (default).
- *   • If the fee is PASSED ON to the attendee (added on top of ticket price),
- *     it isn't the organiser's cost — do NOT subtract it: `net = collected - refunded`.
- * Only you know which of these is true, so this one line is left for you to own.
- * ─────────────────────────────────────────────────────────────────────────────
+ * Net = collected − processing fees − refunded (decided in version-5 A3).
  */
 function computeFinancialSummary(txns: Registration[]): FinancialSummary {
   let collected = 0;
@@ -131,7 +122,6 @@ function computeFinancialSummary(txns: Registration[]): FinancialSummary {
     }
   }
 
-  // TODO(business rule): confirm this matches Unifesto's money flow (see above).
   const net = collected - refunded - processingFees;
 
   return {
