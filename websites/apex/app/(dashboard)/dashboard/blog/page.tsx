@@ -282,6 +282,10 @@ function PostDialog({
               placeholder={"# Heading\n\nWrite your post in Markdown…"}
               className="font-mono text-sm"
             />
+            <p className="text-xs text-muted-foreground">
+              Tables use | pipes |. End with a <code>## FAQ</code> section of <code>### Question?</code> + answer
+              pairs and search engines get it as FAQ data.
+            </p>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
+import JsonLd, { breadcrumbLd, faqLd } from "@/components/site/JsonLd";
 import { getPost, postMeta } from "@/lib/api/blog";
 import { SITE } from "@/lib/site";
+import { postFaqs } from "@/lib/blog-faq";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -67,6 +69,18 @@ const mdComponents = {
     <img className="mt-8 w-full rounded-2xl" {...p} />
   ),
   hr: () => <hr className="my-12 h-px border-0 bg-paper/15" />,
+  // GFM tables (comparison posts). Scroll sideways on phones instead of squashing.
+  table: (p: React.ComponentProps<"table">) => (
+    <div className="mt-8 overflow-x-auto">
+      <table className="w-full border-collapse text-left text-[0.95rem] text-paper/80" {...p} />
+    </div>
+  ),
+  th: (p: React.ComponentProps<"th">) => (
+    <th className="border-b border-paper/25 px-3 py-2.5 font-semibold text-paper" {...p} />
+  ),
+  td: (p: React.ComponentProps<"td">) => (
+    <td className="border-b border-paper/10 px-3 py-2.5 align-top" {...p} />
+  ),
 };
 
 export default async function BlogPostPage({ params }: Props) {
@@ -114,6 +128,7 @@ export default async function BlogPostPage({ params }: Props) {
       logo: { "@type": "ImageObject", url: SITE.logo },
     },
   };
+  const faqs = postFaqs(post.content);
 
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
@@ -124,6 +139,7 @@ export default async function BlogPostPage({ params }: Props) {
             { name: "Blog", path: "/blog" },
             { name: post.title, path: `/blog/${post.slug}` },
           ]),
+          ...(faqs.length ? [faqLd(faqs)] : []),
         ]}
       />
       <Navbar />
@@ -167,7 +183,7 @@ export default async function BlogPostPage({ params }: Props) {
 
       <article className="surface-paper px-5 py-16 sm:px-8 md:py-24" data-surface="light">
         <div className="mx-auto max-w-[68ch]">
-          <ReactMarkdown components={mdComponents}>{post.content}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{post.content}</ReactMarkdown>
         </div>
       </article>
 
