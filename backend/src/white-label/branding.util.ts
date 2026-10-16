@@ -46,6 +46,8 @@ export interface Branding {
   hidePoweredBy: boolean;
   /** Tab icon. */
   faviconUrl: string | null;
+  /** Verified custom web domain (e.g. `events.acme.edu`), the space's canonical home. */
+  customDomain: string | null;
 }
 
 /** Space columns every branding resolver needs. Spread into a Prisma `select`. */
@@ -62,6 +64,8 @@ export const BRANDING_SPACE_SELECT = {
   faviconUrl: true,
   emailFromName: true,
   emailReplyTo: true,
+  // Verified custom web domain only (one per space).
+  domains: { where: { kind: 'WEB', status: 'verified' }, select: { hostname: true } },
 } as const;
 
 export interface BrandSpace {
@@ -77,6 +81,8 @@ export interface BrandSpace {
   faviconUrl: string | null;
   emailFromName: string | null;
   emailReplyTo: string | null;
+  /** From BRANDING_SPACE_SELECT; callers that skip it get no custom domain. */
+  domains?: { hostname: string }[];
 }
 
 export function isSpaceBrandingLive(
@@ -99,6 +105,7 @@ export function resolveSpaceBranding(
     mode: BRAND_MODES.includes(space.brandMode as BrandMode) ? (space.brandMode as BrandMode) : null,
     hidePoweredBy: space.hidePoweredBy,
     faviconUrl: space.faviconUrl ?? null,
+    customDomain: space.domains?.[0]?.hostname ?? null,
   };
 }
 
@@ -120,7 +127,7 @@ export function resolveEventBranding(
       : null;
   if (!override) return base;
   return {
-    ...(base ?? { name: null, logoUrl: null, font: null, mode: null, hidePoweredBy: false, faviconUrl: null }),
+    ...(base ?? { name: null, logoUrl: null, font: null, mode: null, hidePoweredBy: false, faviconUrl: null, customDomain: null }),
     color: override,
   };
 }

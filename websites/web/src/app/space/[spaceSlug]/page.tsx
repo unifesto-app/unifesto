@@ -41,10 +41,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!space) notFound();
 
-  // White-labelled: no Unifesto in the title or share card. On its custom
-  // domain the space page is `/`, so canonical + OG URLs point there.
+  // White-labelled: no Unifesto in the title or share card. A space with a
+  // live custom domain lives at `/` there, so canonical + OG URLs point there,
+  // also when this page is viewed on www (no redirect: old links keep working).
   const brand = space.branding?.name ?? null;
   const tenant = await getTenant();
+  const home = tenant?.host ?? space.branding?.customDomain ?? null;
   const title = brand ? space.name : `${space.name} | Unifesto`;
   const description =
     toSummary(space.description) ??
@@ -52,7 +54,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       ? `Events by ${space.name}.`
       : `${space.name} on Unifesto — discover events, register, and connect with the community.`);
 
-  const canonical = tenant ? "/" : `/space/${space.slug}`;
+  const canonical = home ? "/" : `/space/${space.slug}`;
 
   // White-label favicon (already gated server-side); default icon otherwise.
   const faviconUrl = space.branding?.faviconUrl ?? null;
@@ -60,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return withSocial({
     title: { absolute: title },
     description,
-    ...(tenant ? { metadataBase: new URL(`https://${tenant.host}`) } : {}),
+    ...(home ? { metadataBase: new URL(`https://${home}`) } : {}),
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
   }, { image: false, ...(brand ? { title, siteName: brand } : {}) });

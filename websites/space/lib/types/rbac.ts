@@ -184,6 +184,7 @@ export function apexUrl(): string {
 
 export type Capability =
   | "space:manage-billing" // view/upgrade the space plan, pay
+  | "space:manage-settings" // profile, white-label, sub-spaces
   | "space:manage-members" // invite/remove admins, curators, crew
   | "space:manage-money" // bank account, payouts, refunds
   | "space:manage-email" // compose/send email campaigns, manage templates
@@ -198,6 +199,7 @@ export type Capability =
 const CAPABILITIES: Record<SpaceAppRole, Capability[]> = {
   space_admin: [
     "space:manage-billing",
+    "space:manage-settings",
     "space:manage-members",
     "space:manage-money",
     "space:manage-email",

@@ -232,6 +232,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
     endIso: event.end_date,
     description: event.description,
     location: isOnline ? null : venueQuery || null,
+    customDomain: event.branding?.customDomain,
   };
   const calItem = "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-paper/[0.06]";
 

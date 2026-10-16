@@ -13,7 +13,7 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { resolveSpaceBranding } from '../white-label/branding.util';
+import { BRANDING_SPACE_SELECT, resolveSpaceBranding } from '../white-label/branding.util';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
@@ -259,6 +259,7 @@ export class SpacesService {
         // Space's own plan (per-space billing), for the white-label gate.
         // Stripped from the response below.
         subscription: true,
+        domains: BRANDING_SPACE_SELECT.domains,
         creator: {
           select: {
             id: true,
@@ -356,6 +357,7 @@ export class SpacesService {
       brandingSuspendedAt, // internal; `branding` already reflects it
       emailFromName,
       emailReplyTo,
+      domains, // surfaced as branding.customDomain
       ...publicSpace
     } = space as any;
 
@@ -372,6 +374,7 @@ export class SpacesService {
         // Space's own plan (per-space billing), for the white-label gate.
         // Stripped from the response below.
         subscription: true,
+        domains: BRANDING_SPACE_SELECT.domains,
         creator: {
           select: {
             id: true,
@@ -416,6 +419,7 @@ export class SpacesService {
       brandingSuspendedAt, // internal; `branding` already reflects it
       emailFromName,
       emailReplyTo,
+      domains, // surfaced as branding.customDomain
       creator,
       ...rest
     } = space as any;

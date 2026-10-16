@@ -75,6 +75,8 @@ export interface WhiteLabelOverview {
   events: EventWhiteLabelState[];
   /** Every request raised for this space (any co-admin), newest first. */
   requests: WhiteLabelRequest[];
+  /** Font presets a space can pick: stored key → Google Fonts family. */
+  fonts: Record<BrandFontKey, string>;
 }
 
 /** `GET /white-label/spaces/:spaceId` — the space's white-label page data. */
@@ -86,18 +88,8 @@ export async function getWhiteLabelOverview(
   );
 }
 
-/** Font presets; must match BRAND_FONTS in backend branding.util.ts. */
-export const BRAND_FONTS = {
-  inter: "Inter",
-  "dm-sans": "DM Sans",
-  "space-grotesk": "Space Grotesk",
-  poppins: "Poppins",
-  montserrat: "Montserrat",
-  "ibm-plex-sans": "IBM Plex Sans",
-  "playfair-display": "Playfair Display",
-  lora: "Lora",
-} as const;
-export type BrandFontKey = keyof typeof BRAND_FONTS;
+/** Font preset key (e.g. "dm-sans"); the list comes from the overview's `fonts`. */
+export type BrandFontKey = string;
 
 /** `null` clears a field, omitted leaves it. Events only take `brandColor`. */
 export interface BrandingPatch {
