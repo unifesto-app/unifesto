@@ -432,7 +432,7 @@ describe('coupon cap at checkout (S45)', () => {
     (ctx.payments as any).computeProcessingFee = () => 10;
     (ctx.payments as any).createOrder = jest.fn(async () => ({ orderId: 'order_x' }));
     const real = new CouponsService(prisma);
-    (ctx.svc as any).coupons = real;
+    (ctx.svc.checkout as any).coupons = real;
     return { ...ctx, real };
   }
   const dto = { ticketTypeId: 'tt-1', quantity: 1, couponCode: 'last' } as any;

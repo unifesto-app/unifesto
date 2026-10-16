@@ -164,8 +164,8 @@ describe('RegistrationsService payment replay guards', () => {
   describe('createPaymentOrder retry cleanup (S13)', () => {
     const run = async (stale: any) => {
       const { svc, prisma } = build({ eventRegs: [stale] });
-      (svc as any).assertMayRegister = jest.fn();
-      (svc as any).assertTicketNotBlocked = jest.fn();
+      (svc.checkout as any).assertMayRegister = jest.fn();
+      (svc.checkout as any).assertTicketNotBlocked = jest.fn();
       // No ticket types → throws right after the cleanup; we only assert the cleanup.
       await expect(
         svc.createPaymentOrder(EVENT, USER, { ticketTypeId: 'tt-1' } as any),
