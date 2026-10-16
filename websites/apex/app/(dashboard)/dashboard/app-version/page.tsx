@@ -27,6 +27,10 @@ import {
   type AppVersionConfig,
   type PlatformVersionInfo,
 } from "@/lib/api/app-version-api";
+import {
+  getPlatformConfig,
+  updatePlatformConfig,
+} from "@/lib/api/subscriptions-api";
 
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
 const ZERO_RE = /^0(\.0)*$/;
@@ -108,6 +112,69 @@ function PlatformCard({
             onChange={(e) => onChange({ ...value, storeUrl: e.target.value })}
           />
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** On/off for the fixed App Review test login. Saves on click, on its own. */
+function AppReviewLoginCard() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getPlatformConfig().then(({ data, error }) => {
+      if (error) setError(error.message || "Failed to load");
+      else if (data) setEnabled(data.appReviewLoginEnabled);
+    });
+  }, []);
+
+  const toggle = async () => {
+    if (enabled === null) return;
+    setBusy(true);
+    setError(null);
+    const { data, error } = await updatePlatformConfig({
+      appReviewLoginEnabled: !enabled,
+    });
+    if (error) setError(error.message || "Failed to save");
+    else if (data) setEnabled(data.appReviewLoginEnabled);
+    setBusy(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Warning className="h-5 w-5" weight="fill" /> App Review login
+        </CardTitle>
+        <CardDescription>
+          Lets the store review team sign in with the fixed test account
+          without a real code. Anyone who knows the code can use it while it is
+          on. Turn it on for a review and off as soon as the review ends.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3">
+        {enabled === null && !error ? (
+          <Skeleton className="h-9 w-40" />
+        ) : (
+          <p className="text-sm">
+            Status:{" "}
+            <span
+              className={`font-semibold ${enabled ? "text-destructive" : "text-success"}`}
+            >
+              {enabled ? "On" : "Off"}
+            </span>
+          </p>
+        )}
+        <Button
+          variant={enabled ? "default" : "outline"}
+          onClick={toggle}
+          disabled={busy || enabled === null}
+        >
+          {busy ? "Saving" : enabled ? "Turn off" : "Turn on"}
+        </Button>
+        {error && <p className="w-full text-xs text-destructive">{error}</p>}
       </CardContent>
     </Card>
   );
@@ -213,6 +280,8 @@ export default function AppVersionPage() {
           />
         </div>
       )}
+
+      <AppReviewLoginCard />
 
       <p className="flex items-start gap-2 text-xs text-muted-foreground">
         <DeviceMobile className="mt-0.5 h-4 w-4 shrink-0" />

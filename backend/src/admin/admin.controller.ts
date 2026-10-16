@@ -81,6 +81,11 @@ export class AdminController {
         dto.postEventActionWindowDays,
       );
     }
+    if (dto.appReviewLoginEnabled !== undefined) {
+      await this.platformConfig.setAppReviewLoginEnabled(
+        dto.appReviewLoginEnabled,
+      );
+    }
     return this.platformConfig.getConfig();
   }
 

@@ -182,6 +182,8 @@ export interface PlatformConfig {
    * import/add attendees. 0 closes those actions the moment the event ends.
    */
   postEventActionWindowDays: number;
+  /** Fixed App Review test login allowed. Store review only. */
+  appReviewLoginEnabled: boolean;
 }
 
 /** `GET /admin/platform-config` — read app-wide settings (admin). */
