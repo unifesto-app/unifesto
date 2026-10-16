@@ -1,5 +1,15 @@
 import type { Request } from 'express';
-import { loggedPath, sampleWeight, shouldSkipLog } from './logging.middleware';
+import { loggedError, loggedPath, sampleWeight, shouldSkipLog } from './logging.middleware';
+
+describe('loggedError', () => {
+  it('drops the raw URL Nest echoes for unmatched routes', () => {
+    expect(loggedError('GET', 'Cannot GET /groups/claim/abcdefabcdefabcdefabcdefabcdef?token=x')).toBe('Route not found');
+  });
+  it('keeps real error messages', () => {
+    expect(loggedError('GET', 'Invalid or expired token')).toBe('Invalid or expired token');
+    expect(loggedError('GET', undefined)).toBeNull();
+  });
+});
 
 describe('shouldSkipLog', () => {
   it('skips healthchecks, preflights and the log viewer', () => {
