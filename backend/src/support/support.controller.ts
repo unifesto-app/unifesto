@@ -96,6 +96,13 @@ export class SupportController {
     return this.supportService.addMessage(id, dto, req.user.id);
   }
 
+  /** Hand a space-desk case to Unifesto (requester or the space desk). */
+  @Post('tickets/:id/escalate')
+  @ApiOperation({ summary: 'Escalate a ticket to Unifesto' })
+  escalate(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.supportService.escalate(id, req.user.id);
+  }
+
   /** Requester closes their own ticket. */
   @Patch('tickets/:id/close')
   @ApiOperation({ summary: 'Close your own ticket' })

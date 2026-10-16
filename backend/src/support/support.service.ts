@@ -6,13 +6,14 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { isPlatformAdmin } from '../events/event-access';
+import { Action, AuthorizationService } from '../auth/authorization';
 import {
   Prisma,
   SupportTicketStatus,
   SupportTicketCategory,
   SupportTicketPriority,
   SupportCaseKind,
+  SupportDesk,
   SupportMessageSide,
 } from '@prisma/client';
 import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
@@ -57,11 +58,51 @@ function cleanClientInfo(info: Record<string, unknown>): Prisma.InputJsonObject 
   return out;
 }
 
+/** Categories that are Unifesto's to answer even with event context (decision D2). */
+const PLATFORM_CATEGORIES: SupportTicketCategory[] = [
+  SupportTicketCategory.ACCOUNT,
+  SupportTicketCategory.PAYMENTS,
+  SupportTicketCategory.TECHNICAL,
+];
+
+/** The case fields access is decided on. */
+type CaseAccess = { requesterId: string; desk: SupportDesk; eventId: string | null };
+
 @Injectable()
 export class SupportService {
   private readonly logger = new Logger(SupportService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly authz: AuthorizationService,
+  ) {}
+
+  /* ---------------------------------------------------------------------- */
+  /* Access (decision D2)                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  private isPlatform(userId: string) {
+    return this.authz.can({ id: userId }, Action.PLATFORM_MANAGE);
+  }
+
+  /** Space-side support access for the case's event (Space Admin by inheritance). */
+  private isSpaceSupport(userId: string, c: CaseAccess) {
+    return c.eventId
+      ? this.authz.can({ id: userId }, Action.SPACE_MANAGE_SUPPORT, { eventId: c.eventId })
+      : Promise.resolve(false);
+  }
+
+  /** Requester, Platform, or the event's space support team (which keeps read after escalation). */
+  async canSeeCase(userId: string, c: CaseAccess): Promise<boolean> {
+    if (c.requesterId === userId) return true;
+    return (await this.isPlatform(userId)) || this.isSpaceSupport(userId, c);
+  }
+
+  /** Works the desk the case is on now. Platform sees and works everything. */
+  private async isDeskMember(userId: string, c: CaseAccess): Promise<boolean> {
+    if (await this.isPlatform(userId)) return true;
+    return c.desk === SupportDesk.SPACE && this.isSpaceSupport(userId, c);
+  }
 
   /* ---------------------------------------------------------------------- */
   /* Create                                                                  */
@@ -89,25 +130,38 @@ export class SupportService {
         throw new NotFoundException('Registration not found');
       }
       eventId = reg.eventId;
-    } else if (eventId) {
+    }
+    let eventSpaceId: string | null = null;
+    if (eventId) {
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
-        select: { id: true },
+        select: { spaceId: true },
       });
       if (!event) {
         throw new NotFoundException('Event not found');
       }
+      eventSpaceId = event.spaceId;
     }
+
+    // Routing (decision D2): an event question goes to the event's space desk;
+    // account, payment and app issues, other kinds, or no event go to Platform.
+    const kind = dto.kind ?? SupportCaseKind.HELP;
+    const category = dto.category ?? SupportTicketCategory.GENERAL;
+    const toSpace =
+      !!eventSpaceId &&
+      kind === SupportCaseKind.HELP &&
+      !PLATFORM_CATEGORIES.includes(category);
 
     const ticket = await this.prisma.supportTicket.create({
       data: {
         subject: dto.subject,
-        category: dto.category ?? SupportTicketCategory.GENERAL,
+        category,
         priority: dto.priority ?? SupportTicketPriority.NORMAL,
         requesterId,
-        spaceId: dto.spaceId ?? null,
+        spaceId: toSpace ? eventSpaceId : dto.spaceId ?? null,
+        desk: toSpace ? SupportDesk.SPACE : SupportDesk.PLATFORM,
         contactEmail: dto.contactEmail ?? null,
-        kind: dto.kind ?? SupportCaseKind.HELP,
+        kind,
         eventId,
         registrationId: dto.registrationId ?? null,
         requesterLastReadAt: new Date(),
@@ -136,7 +190,8 @@ export class SupportService {
   /* ---------------------------------------------------------------------- */
 
   async listTickets(userId: string, params: ListParams) {
-    const admin = await isPlatformAdmin(this.prisma, userId);
+    // ponytail: space desks don't list their cases yet; the Space inbox is D9.
+    const admin = await this.isPlatform(userId);
     const { page = 1, limit = 20 } = params;
     const take = Math.min(Math.max(limit, 1), 100);
     const skip = (Math.max(page, 1) - 1) * take;
@@ -196,7 +251,6 @@ export class SupportService {
   /* ---------------------------------------------------------------------- */
 
   async getTicket(id: string, userId: string) {
-    const admin = await isPlatformAdmin(this.prisma, userId);
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
       include: {
@@ -204,8 +258,6 @@ export class SupportService {
         assignedTo: { select: userSelect },
         space: { select: spaceSelect },
         messages: {
-          // Internal desk notes never reach the requester.
-          ...(admin ? {} : { where: { internal: false } }),
           orderBy: { createdAt: 'asc' },
           include: { author: { select: userSelect } },
         },
@@ -216,8 +268,13 @@ export class SupportService {
       throw new NotFoundException('Support ticket not found');
     }
 
-    if (!admin && ticket.requesterId !== userId) {
+    if (!(await this.canSeeCase(userId, ticket))) {
       throw new ForbiddenException('You cannot view this ticket');
+    }
+
+    // Internal desk notes never reach the requester.
+    if (ticket.requesterId === userId) {
+      ticket.messages = ticket.messages.filter((m) => !m.internal);
     }
 
     return ticket;
@@ -230,13 +287,23 @@ export class SupportService {
   async addMessage(id: string, dto: CreateMessageDto, userId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true, requesterId: true, status: true, firstResponseAt: true },
+      select: {
+        id: true,
+        requesterId: true,
+        status: true,
+        firstResponseAt: true,
+        desk: true,
+        eventId: true,
+      },
     });
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');
     }
 
-    const admin = await isPlatformAdmin(this.prisma, userId);
+    // The requester writes as the requester; otherwise only the current desk
+    // replies (a space keeps read, not write, after escalation).
+    const admin =
+      ticket.requesterId !== userId && (await this.isDeskMember(userId, ticket));
     if (!admin && ticket.requesterId !== userId) {
       throw new ForbiddenException('You cannot reply to this ticket');
     }
@@ -301,7 +368,7 @@ export class SupportService {
     }
 
     if (dto.assignedToId) {
-      const admin = await isPlatformAdmin(this.prisma, dto.assignedToId);
+      const admin = await this.isPlatform(dto.assignedToId);
       if (!admin) {
         throw new BadRequestException('Tickets can only be assigned to admins');
       }
@@ -367,12 +434,45 @@ export class SupportService {
     });
   }
 
+  /**
+   * Escalate a space-desk case to Platform (decision D2). Only the requester or
+   * the space desk may; there is no auto-escalation. The space keeps read.
+   */
+  async escalate(id: string, userId: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id },
+      select: { id: true, requesterId: true, desk: true, eventId: true, status: true },
+    });
+    if (!ticket) {
+      throw new NotFoundException('Support ticket not found');
+    }
+    if (ticket.requesterId !== userId && !(await this.isDeskMember(userId, ticket))) {
+      throw new ForbiddenException('You cannot escalate this ticket');
+    }
+    if (ticket.desk !== SupportDesk.SPACE) {
+      throw new BadRequestException('This ticket is already with Unifesto');
+    }
+    if (ticket.status === SupportTicketStatus.CLOSED) {
+      throw new BadRequestException('This ticket is closed. Open a new ticket to continue.');
+    }
+
+    return this.prisma.supportTicket.update({
+      where: { id },
+      data: {
+        desk: SupportDesk.PLATFORM,
+        escalatedAt: new Date(),
+        status: SupportTicketStatus.OPEN,
+        resolvedAt: null,
+      },
+    });
+  }
+
   /* ---------------------------------------------------------------------- */
   /* Stats                                                                    */
   /* ---------------------------------------------------------------------- */
 
   async getStats(userId: string) {
-    const admin = await isPlatformAdmin(this.prisma, userId);
+    const admin = await this.isPlatform(userId);
     const scope: Prisma.SupportTicketWhereInput = admin
       ? {}
       : { requesterId: userId };

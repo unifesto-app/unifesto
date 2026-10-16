@@ -50,6 +50,7 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
     // Curators run sponsors + lead capture for their events (SPACE-scoped,
     // resolved against the space the curator holds a role in).
     Action.SPACE_MANAGE_SPONSORS,
+    Action.SPACE_MANAGE_SUPPORT,
   ],
 
   [RoleCode.CO_CURATOR]: [
@@ -59,6 +60,7 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
     Action.EVENT_CHECK_IN,
     Action.EVENT_MANAGE_ATTENDEES,
     Action.EVENT_MANAGE_LEADERBOARD,
+    Action.SPACE_MANAGE_SUPPORT,
     // deliberately NO publish / cancel / manage-money
   ],
 
