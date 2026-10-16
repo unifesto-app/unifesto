@@ -183,9 +183,8 @@ export class CheckinService {
   }
 
   /**
-   * A group registration: booked for more than one seat. The roster itself may
-   * come from `GroupSeat` rows (fast-registration Part 2, incl. pay-first groups
-   * with no upfront member list) or the legacy `groupMembers` JSON.
+   * A group registration: booked for more than one seat. The roster lives in
+   * `GroupSeat` rows (S42: the legacy `groupMembers` JSON is no longer read).
    */
   private isGroupRegistration(registration: any): boolean {
     return (registration?.groupSize ?? 0) > 1;
@@ -238,8 +237,7 @@ export class CheckinService {
     });
     const doneByIndex = new Map(done.map((d) => [d.memberIndex, d.checkedInAt]));
 
-    // Prefer GroupSeat rows: they're the source of truth for pay-first groups
-    // (which have no `groupMembers` JSON) and carry per-seat claim status.
+    // GroupSeat rows are the roster and carry per-seat claim status.
     const seats = await this.prisma.groupSeat.findMany({
       where: { registrationId: registration.id },
       orderBy: { seatIndex: 'asc' },
@@ -272,24 +270,6 @@ export class CheckinService {
           seatIndex: s.seatIndex,
           status: s.status,
           claimable,
-          name,
-          email,
-          checkedInAtPoint: doneByIndex.get(index)?.toISOString() ?? null,
-        };
-      });
-    } else if (
-      Array.isArray(registration.groupMembers) &&
-      registration.groupMembers.length > 0
-    ) {
-      // Legacy fallback: registrations booked before seats existed and never
-      // backfilled. Every stored member is checkable.
-      members = (registration.groupMembers as any[]).map((m, index) => {
-        const { name, email } = this.memberIdentity(m);
-        return {
-          index,
-          seatIndex: index + 1,
-          status: null,
-          claimable: true,
           name,
           email,
           checkedInAtPoint: doneByIndex.get(index)?.toISOString() ?? null,
@@ -413,19 +393,15 @@ export class CheckinService {
       batch,
     );
 
-    // Seats are the source of truth when present; only CLAIMED seats may be
-    // checked in (OPEN/INVITED seats have no attendee behind them). Fall back to
-    // the legacy JSON roster for un-backfilled groups.
+    // Seats are the roster; only CLAIMED seats may be checked in (OPEN/INVITED
+    // seats have no attendee behind them).
     const seats = await this.prisma.groupSeat.findMany({
       where: { registrationId },
       orderBy: { seatIndex: 'asc' },
       select: { id: true, seatIndex: true, status: true },
     });
     const seatByIndex = new Map(seats.map((s) => [s.seatIndex - 1, s]));
-    const memberCount =
-      seats.length > 0
-        ? seats.length
-        : (registration.groupMembers as any[] | null)?.length ?? 0;
+    const memberCount = seats.length;
 
     const indexes = Array.from(new Set(memberIndexes));
     if (indexes.some((i) => i < 0 || i >= memberCount)) {
@@ -943,7 +919,6 @@ export class CheckinService {
         isWaitlisted: true,
         paymentStatus: true,
         groupSize: true,
-        groupMembers: true,
         user: { select: { fullName: true, username: true } },
         ticketType: { select: { name: true } },
         tickets: { select: { qrCode: true } },
@@ -980,7 +955,7 @@ export class CheckinService {
       if (this.isGroupRegistration(r)) {
         const memberCheckins = (index: number) =>
           byPoint(r.groupMemberCheckins.filter((c) => c.memberIndex === index));
-        // Same roster rules as buildGroupCheckinView: seats first, legacy JSON after.
+        // Same roster rules as buildGroupCheckinView: seats only.
         if (r.groupSeats.length > 0) {
           group = {
             members: r.groupSeats.map((seat) => {
@@ -992,15 +967,6 @@ export class CheckinService {
                 checkins: memberCheckins(index),
               };
             }),
-          };
-        } else if (Array.isArray(r.groupMembers) && r.groupMembers.length > 0) {
-          group = {
-            members: (r.groupMembers as any[]).map((m, index) => ({
-              index,
-              name: this.memberIdentity(m).name,
-              claimable: true,
-              checkins: memberCheckins(index),
-            })),
           };
         }
       }
@@ -1489,7 +1455,7 @@ export class CheckinService {
 
     // Also match GROUP / TEAM members, not just the registering lead. Their
     // details live in JSONB Prisma cannot substring-search
-    // (`event_registrations.group_members` and `group_seats.member_details`),
+    // (`group_seats.member_details`),
     // plus a seat's invite email and a claimed seat's own account. We resolve
     // the matching registration ids for this event in one raw query (casting
     // each JSONB to text for a case-insensitive ILIKE) and fold them into the
@@ -1505,8 +1471,7 @@ export class CheckinService {
       LEFT JOIN user_identities ci ON ci.user_id = cu.id
       WHERE r.event_id = ${eventId}::uuid
         AND (
-          r.group_members::text ILIKE ${like}
-          OR gs.member_details::text ILIKE ${like}
+          gs.member_details::text ILIKE ${like}
           OR gs.invite_email ILIKE ${like}
           OR cu.full_name ILIKE ${like}
           OR cu.username ILIKE ${like}
@@ -1565,7 +1530,6 @@ export class CheckinService {
     registrations: Array<{
       id: string;
       groupSize: number | null;
-      groupMembers: Prisma.JsonValue;
       user: { id: string; fullName: string | null; username: string | null; avatarUrl: string | null };
       ticketType: { name: string } | null;
     }>,
@@ -1640,46 +1604,26 @@ export class CheckinService {
 
       const leadName = r.user.fullName || r.user.username || null;
       const regSeats = seats.filter((s) => s.registrationId === r.id);
-      const members: Array<Row & { matches: boolean }> = regSeats.length
-        ? regSeats.map((s) => {
-            const index = s.seatIndex - 1;
-            const who = this.seatIdentity(s);
-            const account = s.claimedBy ?? (index === 0 ? r.user : null);
-            return {
-              registrationId: r.id,
-              memberIndex: index,
-              attendee: {
-                id: account?.id ?? null,
-                fullName: who.name ?? account?.fullName ?? null,
-                username: account?.username ?? null,
-                avatarUrl: account?.avatarUrl ?? null,
-              },
-              ticketType,
-              checkedInAtPoint: memberIn.get(`${r.id}:${index}`) ?? null,
-              groupLeadName: leadName,
-              claimable: s.status === GroupSeatStatus.CLAIMED,
-              matches: hit(who.name, who.email, s.inviteEmail, account?.fullName, account?.username),
-            };
-          })
-        : (Array.isArray(r.groupMembers) ? (r.groupMembers as any[]) : []).map((m, index) => {
-            const who = this.memberIdentity(m);
-            const account = index === 0 ? r.user : null;
-            return {
-              registrationId: r.id,
-              memberIndex: index,
-              attendee: {
-                id: account?.id ?? null,
-                fullName: who.name ?? account?.fullName ?? null,
-                username: account?.username ?? null,
-                avatarUrl: account?.avatarUrl ?? null,
-              },
-              ticketType,
-              checkedInAtPoint: memberIn.get(`${r.id}:${index}`) ?? null,
-              groupLeadName: leadName,
-              claimable: true,
-              matches: hit(who.name, who.email, account?.fullName, account?.username),
-            };
-          });
+      const members: Array<Row & { matches: boolean }> = regSeats.map((s) => {
+        const index = s.seatIndex - 1;
+        const who = this.seatIdentity(s);
+        const account = s.claimedBy ?? (index === 0 ? r.user : null);
+        return {
+          registrationId: r.id,
+          memberIndex: index,
+          attendee: {
+            id: account?.id ?? null,
+            fullName: who.name ?? account?.fullName ?? null,
+            username: account?.username ?? null,
+            avatarUrl: account?.avatarUrl ?? null,
+          },
+          ticketType,
+          checkedInAtPoint: memberIn.get(`${r.id}:${index}`) ?? null,
+          groupLeadName: leadName,
+          claimable: s.status === GroupSeatStatus.CLAIMED,
+          matches: hit(who.name, who.email, s.inviteEmail, account?.fullName, account?.username),
+        };
+      });
 
       if (members.length === 0) {
         // No roster stored: the registration is the only thing to check in.

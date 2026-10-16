@@ -8,7 +8,6 @@ import {
   EnvelopeSimple,
   Phone,
   User,
-  UsersThree,
   Ticket,
   CurrencyInr,
   Clock,
@@ -377,17 +376,11 @@ export default function AttendeeDetailPage() {
     ? Object.entries(registration.formResponses)
     : [];
 
-  const groupMembers = registration?.groupMembers ?? [];
   const groupSeats = registration?.groupSeats ?? [];
-  // A group is defined by its size, not by the legacy JSON roster — a pay-first
-  // group has seats but no `groupMembers`. GroupSeat rows are the source of truth
-  // for the roster; the JSON "Group members" card below is a fallback shown only
-  // when a group has no seats yet (un-backfilled legacy).
-  const isGroup = (registration?.groupSize ?? 0) > 1 || groupMembers.length > 0;
-  const groupView = buildGroupView(groupMembers, fieldLabels);
-  // Seat-based groups carry each member's filled details on the seat itself
-  // (`memberDetails`), so run them through the same normaliser as the legacy
-  // JSON roster: team-wide answers (Team Name, College…) hoist to a shared
+  // A group is defined by its size; GroupSeat rows are its roster.
+  const isGroup = (registration?.groupSize ?? 0) > 1;
+  // Each member's filled details live on the seat (`memberDetails`); the
+  // normaliser hoists team-wide answers (Team Name, College…) to a shared
   // summary, and each seat keeps only what differs per person (gender, GitHub…).
   // Positional: seat i (ordered by seatIndex) aligns with member view i.
   const seatView = buildGroupView(
@@ -926,120 +919,6 @@ export default function AttendeeDetailPage() {
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Group members (legacy fallback) — the whole team from the JSON
-              roster. Shown only for a group with no GroupSeat rows yet; once a
-              group has seats, the "Group seats" card above is the roster. */}
-          {groupSeats.length === 0 && groupMembers.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <UsersThree className="h-4 w-4" />
-                  Group members ({groupMembers.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Team-wide details (same for everyone) shown once, so each
-                    member card only carries what's actually theirs. */}
-                {groupView.sharedFields.length > 0 && (
-                  <div className="rounded-lg border border-border bg-muted/40 px-3.5 py-3">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Team details
-                    </p>
-                    <div className="flex flex-wrap gap-x-8 gap-y-2">
-                      {groupView.sharedFields.map((f, j) => (
-                        <div key={j} className="flex flex-col">
-                          <span className="text-[11px] text-muted-foreground">
-                            {f.label}
-                          </span>
-                          <span className="text-sm font-medium">{f.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {groupView.members.map((mem) => (
-                  <div
-                    key={mem.index}
-                    className="rounded-lg border border-border p-3.5 transition-colors hover:bg-muted/30"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                        {initials(mem.name)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold">
-                            {mem.name || `Member ${mem.index + 1}`}
-                          </p>
-                          {mem.index === 0 && (
-                            <Badge variant="neutral">Lead</Badge>
-                          )}
-                          {mem.gender && (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] capitalize text-muted-foreground">
-                              {mem.gender}
-                            </span>
-                          )}
-                        </div>
-
-                        {(mem.email || mem.mobile) && (
-                          <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            {mem.email && (
-                              <a
-                                href={`mailto:${mem.email}`}
-                                className="flex items-center gap-1 hover:text-foreground hover:underline"
-                              >
-                                <EnvelopeSimple className="h-3.5 w-3.5 flex-shrink-0" />
-                                <span className="truncate">{mem.email}</span>
-                              </a>
-                            )}
-                            {mem.mobile && (
-                              <a
-                                href={`tel:${mem.mobile}`}
-                                className="flex items-center gap-1 hover:text-foreground hover:underline"
-                              >
-                                <Phone className="h-3.5 w-3.5 flex-shrink-0" />
-                                {mem.mobile}
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        {mem.extras.length > 0 && (
-                          <div className="mt-2.5 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-                            {mem.extras.map((e, j) => (
-                              <div key={j} className="flex flex-col">
-                                <span className="text-[11px] text-muted-foreground">
-                                  {e.label}
-                                </span>
-                                <span className="text-sm">
-                                <AnswerValue eventId={eventId} value={e.raw} />
-                              </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Legacy group registrations (from an older app build)
-                            stored no per-member details — only the lead
-                            survived, in the form responses below. */}
-                        {!mem.name &&
-                          !mem.email &&
-                          !mem.mobile &&
-                          !mem.gender &&
-                          mem.extras.length === 0 && (
-                            <p className="mt-0.5 text-xs italic text-muted-foreground">
-                              Details not recorded at registration
-                            </p>
-                          )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
               </CardContent>
             </Card>
           )}

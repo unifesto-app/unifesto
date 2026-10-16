@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 /**
  * Unit tests for the orphaned-payment guards in
@@ -69,7 +70,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
         ...opts.payment,
       })),
     };
-    const svc = new RegistrationsService(
+    const svc = buildRegistrationsService(
       prisma as any, // prisma
       {} as any, // email
       {} as any, // whatsapp
@@ -123,7 +124,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
   it('re-homes a clean orphan onto the target registration (reaches settlement)', async () => {
     const { svc, payments } = build({ ownerExists: false });
     const settle = jest
-      .spyOn(svc as any, 'applyReconciledPayment')
+      .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     const result = await svc.reconcilePendingPayment(REG_ID, {
@@ -154,7 +155,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
       payment: { notes: { registrationId: REG_ID } },
     });
     const settle = jest
-      .spyOn(svc as any, 'applyReconciledPayment')
+      .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     await svc.reconcilePendingPayment(REG_ID, { paymentId: PAYMENT_ID });
@@ -163,7 +164,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
 
   it('leaves an already-settled registration untouched', async () => {
     const { svc, payments } = build({ ownerExists: false });
-    (svc as any).prisma.eventRegistration.findUnique = jest.fn(() => ({
+    (svc.settlement as any).prisma.eventRegistration.findUnique = jest.fn(() => ({
       ...targetRegistration,
       paymentStatus: PaymentStatus.PAID,
     }));
@@ -178,11 +179,11 @@ describe('RegistrationsService — reconcile orphan guards', () => {
     // registration since deleted) is still owed to them. Attaching must settle.
     const { svc, payments } = build({ ownerExists: false });
     const failedTarget = { ...targetRegistration, paymentStatus: PaymentStatus.FAILED };
-    (svc as any).prisma.eventRegistration.findUnique = jest.fn(({ where }: any) =>
+    (svc.settlement as any).prisma.eventRegistration.findUnique = jest.fn(({ where }: any) =>
       where.id === REG_ID ? failedTarget : null,
     );
     const settle = jest
-      .spyOn(svc as any, 'applyReconciledPayment')
+      .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     const result = await svc.reconcilePendingPayment(REG_ID, {

@@ -156,9 +156,9 @@ export class GroupSeatsService {
   }
 
   /**
-   * Materialise seats for a group registration that has none yet — a group
-   * booked before seat-seeding shipped (its members still live only in the
-   * legacy `groupMembers` JSON). Seat-based flows (the WhatsApp member blast,
+   * Materialise seats for a group registration that has none yet, from the
+   * checkout-time `groupMembers` carrier (S42: never expected after the
+   * 20261020130100 backfill; a safety net, not a roster read). Seat-based flows (the WhatsApp member blast,
    * roster edits) silently skip a seatless group's members, so callers that
    * fan out per member seat should run this first. Self-transacting and
    * idempotent: a no-op when seats already exist or it isn't a group.
@@ -301,8 +301,7 @@ export class GroupSeatsService {
    * The group's roster projected out of its seats, in the flat
    * `{ name, email, mobile, gender }` shape the lead's "complete roster" screen
    * expects — one entry per seat, ordered by seat index. Blank fields are normal
-   * for OPEN / not-yet-filled seats. Returns null when the group has no seats
-   * (caller falls back to the legacy JSON during the transition).
+   * for OPEN / not-yet-filled seats. Returns null when the group has no seats.
    */
   async getRoster(registrationId: string): Promise<
     | {

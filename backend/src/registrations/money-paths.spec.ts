@@ -1,6 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
-import { PaymentStatus, RegistrationStatus } from '@prisma/client';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { PaymentStatus, Prisma, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
+import { CouponsService } from '../coupons/coupons.service';
 import { SoldOutError, takeSeats } from './capacity.util';
 
 jest.mock('./form-answers.policy', () => ({
@@ -64,7 +66,7 @@ function build(opts: { row?: any; seatsLeft?: number; updateManyCount?: number }
     createSeatsForRegistration: jest.fn(async () => undefined),
     notifyGroupCancelled: jest.fn(async () => undefined),
   };
-  const svc = new RegistrationsService(
+  const svc = buildRegistrationsService(
     prisma, { sendCancellationConfirmation: jest.fn() } as any, {} as any, cache as any, {} as any, {} as any,
     payments as any, { convert: jest.fn() } as any, { emit: jest.fn() } as any, groupSeats as any, {} as any,
     coupons as any, {} as any, {} as any, { can: async () => true } as any,
@@ -245,7 +247,7 @@ describe('restore (S10 / S15)', () => {
 describe('payment.failed (S15)', () => {
   it('never downgrades a row that a capture already made PAID', async () => {
     const { svc, prisma } = build({ updateManyCount: 0 });
-    await (svc as any).markRegistrationFailed({
+    await (svc.settlement as any).markRegistrationFailed({
       id: 'reg-1',
       razorpayAmount: 510,
       event: { id: 'event-1', title: 'Fest', slug: 'fest' },
@@ -297,7 +299,7 @@ describe('after a sold-out refund (S10)', () => {
 
   it('the retry job only picks rows whose money is still held', async () => {
     const { svc, prisma } = build();
-    await svc.retryDueRefunds();
+    await svc.settlement.retryDueRefunds();
     expect(prisma.eventRegistration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ paymentStatus: PaymentStatus.PAID }),
@@ -311,9 +313,158 @@ describe('settling a cancelled checkout (S9 / S15)', () => {
     const { svc, prisma } = build({
       row: row({ status: RegistrationStatus.CANCELLED, paymentStatus: PaymentStatus.PENDING, razorpayAmount: 510 }),
     });
-    await expect((svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBe('cancelled');
+    await expect((svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBe('cancelled');
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
     expect(prisma.event.update).not.toHaveBeenCalled();
     expect(prisma.eventTicket.create).not.toHaveBeenCalled();
+  });
+});
+
+/* ---------------------------------------------------------------------------
+ * S45: the races and the end-to-end flow on top of the per-guard tests above.
+ * ------------------------------------------------------------------------- */
+
+const verifyDto = {
+  registrationId: 'reg-1',
+  razorpayOrderId: 'order_1',
+  razorpayPaymentId: 'pay_1',
+  razorpaySignature: 'sig',
+} as any;
+const pending = () =>
+  row({ paymentStatus: PaymentStatus.PENDING, totalAmount: 510, razorpayAmount: 510, processingFee: 10 });
+
+describe('verify vs webhook race (S45)', () => {
+  it('both settle the same payment: seats, tickets and coupon move once', async () => {
+    const { svc, prisma, coupons } = build({ row: pending() });
+    // Both read the row as PENDING; only the first conditional claim wins.
+    prisma.eventRegistration.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+
+    await svc.verifyPayment('event-1', 'user-1', verifyDto).catch(() => undefined);
+    await expect((svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBeUndefined();
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1); // one seat take
+    expect(prisma.event.update).toHaveBeenCalledTimes(1); // one attendee count
+    expect(prisma.eventTicket.create).toHaveBeenCalledTimes(1);
+    expect(coupons.confirmByRegistration).toHaveBeenCalledTimes(1);
+  });
+
+  it('webhook first, verify second: verify returns success and settles nothing', async () => {
+    const { svc, prisma } = build({ row: pending() });
+    prisma.eventRegistration.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 });
+
+    await (svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1').catch(() => undefined);
+    const res = await svc.verifyPayment('event-1', 'user-1', verifyDto);
+
+    expect(res.message).toMatch(/verified/);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(prisma.eventTicket.create).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('waitlist convert race (S52)', () => {
+  const offered = () => row({ paymentStatus: PaymentStatus.PENDING, waitlistStatus: 'OFFERED', razorpayAmount: 510 });
+
+  it.each([
+    ['verify', (svc: any) => svc.verifyPayment('event-1', 'user-1', verifyDto)],
+    ['webhook', (svc: any) => svc.settlement.completeWebhookPayment('reg-1', 'pay_1', 'order_1')],
+  ])('the losing %s sends no second confirmation', async (_name, call) => {
+    const { svc } = build({ row: offered() });
+    (svc.settlement as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: false }));
+    (svc.settlement as any).cache.incrementEventScore = jest.fn(async () => undefined);
+    const confirm = jest.spyOn(svc.confirmations, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
+    await call(svc);
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('the winner confirms once', async () => {
+    const { svc } = build({ row: offered() });
+    (svc.settlement as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: true }));
+    (svc.settlement as any).cache.incrementEventScore = jest.fn(async () => undefined);
+    const confirm = jest.spyOn(svc.confirmations, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
+    await svc.verifyPayment('event-1', 'user-1', verifyDto);
+    expect(confirm).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('transfer request race (S52)', () => {
+  it('a second concurrent request hits the one-pending index and is a 409', async () => {
+    const { svc, prisma } = build({ row: row() });
+    jest.spyOn(svc.transfers as any, 'assertEventOrganiser').mockResolvedValue(undefined);
+    prisma.registrationTransferRequest.findFirst = jest.fn(async () => null); // both see none
+    prisma.registrationTransferRequest.create = jest.fn(async () => {
+      throw new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '6' });
+    });
+    await expect(
+      svc.requestRegistrationTransfer('curator', 'event-1', 'reg-1', 'b@x.in'),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('coupon cap at checkout (S45)', () => {
+  /** A real CouponsService on the same mock, so the soft read and the hard reserve both run. */
+  function checkout(slotsLeft: number) {
+    const ctx = build();
+    const { prisma } = ctx;
+    prisma.$executeRaw = jest.fn(async () => (slotsLeft-- > 0 ? 1 : 0));
+    prisma.event.findUnique = jest.fn(async () => ({
+      id: 'event-1',
+      spaceId: 'space-1',
+      visibility: 'PUBLIC',
+      status: 'PUBLISHED',
+      isRecurring: false,
+      registrations: [],
+      ticketTypes: [
+        { id: 'tt-1', kind: 'INDIVIDUAL', price: 500, isActive: true, isVisible: true, totalQuantity: 10, soldCount: 0, perUserLimit: 5 },
+      ],
+    }));
+    prisma.ticketTypeBlock = { findMany: jest.fn(async () => []) };
+    prisma.eventCoupon = {
+      findUnique: jest.fn(async () => ({
+        id: 'c-1', code: 'LAST', isActive: true, appliesToTicketTypeIds: [], usageLimit: 1, usedCount: 0,
+        perUserLimit: 1, discountType: 'FLAT', discountValue: 100, maxDiscountAmount: null, minPurchaseAmount: null,
+      })),
+    };
+    prisma.couponRedemption = { count: jest.fn(async () => 0), create: jest.fn(async () => ({})) };
+    (ctx.payments as any).computeProcessingFee = () => 10;
+    (ctx.payments as any).createOrder = jest.fn(async () => ({ orderId: 'order_x' }));
+    const real = new CouponsService(prisma);
+    (ctx.svc.checkout as any).coupons = real;
+    return { ...ctx, real };
+  }
+  const dto = { ticketTypeId: 'tt-1', quantity: 1, couponCode: 'last' } as any;
+
+  it('two buyers who both passed the soft check: the second is refused, no Razorpay order', async () => {
+    const a = checkout(1);
+    await a.svc.createPaymentOrder('event-1', 'user-1', dto);
+    expect((a.payments as any).createOrder).toHaveBeenCalledTimes(1);
+
+    const b = checkout(0); // the slot is gone by the time the second reserves
+    await expect(b.svc.createPaymentOrder('event-1', 'user-2', dto)).rejects.toThrow(/usage limit/);
+    expect((b.payments as any).createOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe('register → pay → cancel (S45 flow)', () => {
+  it('once paid, the ticket cannot be cancelled around the refund flow', async () => {
+    // Pay: the claim settles the PENDING row.
+    const state: any = pending();
+    const { svc, prisma } = build({ row: state });
+    prisma.eventRegistration.updateMany.mockImplementationOnce(async ({ data }: any) => {
+      Object.assign(state, data);
+      return { count: 1 };
+    });
+    await svc.verifyPayment('event-1', 'user-1', verifyDto).catch(() => undefined);
+    expect(state.paymentStatus).toBe(PaymentStatus.PAID);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
+
+    // Cancel: a paid ticket must go through refunds, and gives no seat back here.
+    prisma.event.update.mockClear();
+    await expect(svc.cancelMyRegistration('reg-1', 'user-1')).rejects.toThrow(/refund request/);
+    expect(prisma.event.update).not.toHaveBeenCalled();
+    expect(prisma.eventTicketType.update).not.toHaveBeenCalled();
   });
 });

@@ -556,7 +556,7 @@ export class WaitlistService {
     // A free ticket has nothing to pay for — don't make someone sit through a
     // payment step for ₹0.
     if (result.totalAmount === 0) {
-      const converted = await this.convert(registrationId, {
+      const { registration: converted } = await this.convert(registrationId, {
         paymentId: null,
         orderId: null,
       });
@@ -653,6 +653,11 @@ export class WaitlistService {
    * Deliberately does *not* touch `soldCount` — the seat was already claimed
    * when the offer was made. Incrementing here would double-count it.
    */
+  /**
+   * `converted` is true only for the caller that flipped OFFERED → CONVERTED;
+   * a racing loser (verify vs webhook) gets false and must not send the
+   * confirmation again.
+   */
   async convert(
     registrationId: string,
     payment: { paymentId: string | null; orderId: string | null },
@@ -662,7 +667,9 @@ export class WaitlistService {
         where: { id: registrationId },
       });
       if (!reg) throw new NotFoundException('Registration not found');
-      if (reg.waitlistStatus === WaitlistStatus.CONVERTED) return reg;
+      if (reg.waitlistStatus === WaitlistStatus.CONVERTED) {
+        return { registration: reg, converted: false };
+      }
       if (reg.waitlistStatus !== WaitlistStatus.OFFERED) {
         throw new BadRequestException(
           'This registration does not have an open waiting list offer',
@@ -694,7 +701,7 @@ export class WaitlistService {
       const updated = await tx.eventRegistration.findUniqueOrThrow({
         where: { id: registrationId },
       });
-      if (claimed.count === 0) return updated; // converted concurrently
+      if (claimed.count === 0) return { registration: updated, converted: false }; // converted concurrently
 
       // The seat was held at offer time, so only the event's attendee count
       // moves here.
@@ -728,7 +735,7 @@ export class WaitlistService {
           (reg as { groupMembers?: unknown[] | null }).groupMembers ?? null,
       });
 
-      return updated;
+      return { registration: updated, converted: true };
     });
   }
 

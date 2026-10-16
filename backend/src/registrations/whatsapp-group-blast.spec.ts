@@ -1,4 +1,4 @@
-import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 /**
  * End-to-end proof of the per-member WhatsApp group blast, run against an
@@ -113,15 +113,15 @@ function makeHarness() {
     },
   };
 
-  // Build a real RegistrationsService instance without running its heavy DI
-  // constructor, then inject only what the blast touches.
-  const svc = Object.create(RegistrationsService.prototype) as RegistrationsService;
-  (svc as any).prisma = prisma;
-  (svc as any).whatsappService = whatsappService;
-  // The blast materialises seats for legacy seatless groups first; these
-  // fixtures already carry their seats, so the ensure step is a no-op stub.
-  (svc as any).groupSeats = { ensureSeatsForRegistration: async () => undefined };
-  (svc as any).logger = { error: () => undefined, log: () => undefined };
+  // Real services wired with only what the blast touches. The blast
+  // materialises seats for legacy seatless groups first; these fixtures already
+  // carry their seats, so the ensure step is a no-op stub.
+  const groupSeats = { ensureSeatsForRegistration: async () => undefined };
+  const none = {} as any;
+  const svc = buildRegistrationsService(
+    prisma, none, whatsappService, none, none, none, none, none, none, groupSeats,
+    none, none, none, none, none,
+  );
 
   return { svc, registrations, sends };
 }

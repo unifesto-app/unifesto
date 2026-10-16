@@ -1,5 +1,6 @@
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 jest.mock('./form-answers.policy', () => ({
   enforceFormAnswers: jest.fn(async () => undefined),
@@ -43,7 +44,7 @@ describe('transactions export Net', () => {
       getEffectiveLimits: jest.fn(() => ({ hasBulkExport: true })),
       resolvePlatformFeePercent: jest.fn(() => 5),
     };
-    const svc = new RegistrationsService(
+    const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any, {} as any,
       {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { can: async () => true } as any,
     );

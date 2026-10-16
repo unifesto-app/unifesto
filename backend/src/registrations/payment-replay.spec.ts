@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 jest.mock('./form-answers.policy', () => ({
   enforceFormAnswers: jest.fn(async () => undefined),
@@ -66,7 +67,7 @@ describe('RegistrationsService payment replay guards', () => {
     };
     const coupons = { releaseByRegistration: jest.fn(async () => undefined) };
     const waitlist = { convert: jest.fn() };
-    const svc = new RegistrationsService(
+    const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, { redis: { getClient: () => null } } as any, {} as any, {} as any,
       payments as any, waitlist as any, {} as any, {} as any, {} as any,
       coupons as any, { completeFromWebhook: jest.fn(async () => false) } as any,
@@ -96,7 +97,7 @@ describe('RegistrationsService payment replay guards', () => {
         orderNotes: { registrationId: 'other-reg' },
       });
       await expect(verify(svc, 'order_cheap')).rejects.toThrow(/different order/);
-      expect((svc as any).waitlist.convert).not.toHaveBeenCalled();
+      expect((svc.settlement as any).waitlist.convert).not.toHaveBeenCalled();
       expect(prisma.eventRegistration.updateMany).not.toHaveBeenCalled();
     });
 
@@ -140,7 +141,7 @@ describe('RegistrationsService payment replay guards', () => {
     it('does not settle a capture onto a cancelled registration', async () => {
       const { svc, prisma } = build({ row: reg({ status: RegistrationStatus.CANCELLED }) });
       prisma.eventRegistration.findFirst.mockResolvedValue({ id: 'reg-1' });
-      const complete = jest.spyOn(svc as any, 'completeWebhookPayment');
+      const complete = jest.spyOn(svc.settlement as any, 'completeWebhookPayment');
       await svc.handleRazorpayWebhook(body(), 'sig', 'evt_2');
       expect(complete).not.toHaveBeenCalled();
     });
@@ -163,8 +164,8 @@ describe('RegistrationsService payment replay guards', () => {
   describe('createPaymentOrder retry cleanup (S13)', () => {
     const run = async (stale: any) => {
       const { svc, prisma } = build({ eventRegs: [stale] });
-      (svc as any).assertMayRegister = jest.fn();
-      (svc as any).assertTicketNotBlocked = jest.fn();
+      (svc.checkout as any).assertMayRegister = jest.fn();
+      (svc.checkout as any).assertTicketNotBlocked = jest.fn();
       // No ticket types → throws right after the cleanup; we only assert the cleanup.
       await expect(
         svc.createPaymentOrder(EVENT, USER, { ticketTypeId: 'tt-1' } as any),

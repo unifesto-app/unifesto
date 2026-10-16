@@ -329,7 +329,8 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     const again = await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
 
     // Second call short-circuits on the already-CONVERTED guard.
-    expect(again.waitlistStatus).toBe(WaitlistStatus.CONVERTED);
+    expect(again.registration.waitlistStatus).toBe(WaitlistStatus.CONVERTED);
+    expect(again.converted).toBe(false);
     expect(db.tickets).toHaveLength(1);
     expect(db.event.registeredCount).toBe(1);
   });
@@ -344,9 +345,11 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     const stale = { ...db.reg };
     db.prisma.eventRegistration.findUnique = async () => ({ ...stale });
 
-    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
-    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    const first = await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    const second = await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
 
+    // S52: only the winner reports a conversion, so only it sends the confirmation.
+    expect([first.converted, second.converted]).toEqual([true, false]);
     expect(db.event.registeredCount).toBe(1);
     expect(db.tickets).toHaveLength(1);
   });
