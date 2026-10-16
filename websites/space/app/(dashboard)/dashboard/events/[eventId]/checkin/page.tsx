@@ -111,7 +111,7 @@ export default function EventCheckinPage() {
 
       {/* Stats for the selected point */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Registered" value={(stats?.total ?? 0).toString()} icon={Users} />
+        <StatCard title="Bookings" value={(stats?.total ?? 0).toString()} icon={Users} hint="Confirmed, one per ticket or group" />
         <StatCard
           title={`Checked In${activeType ? ` · ${activeType.name}` : ""}`}
           value={(stats?.checkedIn ?? 0).toString()}

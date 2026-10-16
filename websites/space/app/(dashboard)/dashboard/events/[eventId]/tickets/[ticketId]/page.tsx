@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -228,7 +229,7 @@ export default function TicketDetailPage() {
   }
 
   const isGroup = ticket.kind === "GROUP";
-  const status = SALE_STATUS_META[ticketSaleStatus(ticket)];
+  const status = SALE_STATUS_META[ticketSaleStatus(ticket, event)];
   const offSale = isOffSale(ticket);
   const { stats } = ticket;
 
@@ -280,7 +281,7 @@ export default function TicketDetailPage() {
         {stats.revenue != null && (
           <MiniStat
             label="Net revenue"
-            value={`₹${stats.revenue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`}
+            value={inr(stats.revenue)}
           />
         )}
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -16,11 +17,13 @@ import {
   EyeSlash,
 } from "@unifesto/unicon/react";
 import {
+  getEventById,
   getManageTicketTypes,
   createTicketType,
   updateTicketType,
   deleteTicketType,
   reorderTicketTypes,
+  type Event,
   type EventTicketType,
   type ManagedTicketType,
 } from "@/lib/api/events-api";
@@ -51,15 +54,21 @@ export default function EventTicketsPage() {
 
   // Every tier of the event (incl. RSVP + hidden), in display order.
   const [allTickets, setAllTickets] = useState<ManagedTicketType[]>([]);
+  // Only for the sale status: a finished event reads "Sales ended".
+  const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await getManageTicketTypes(eventId);
+    const [{ data, error }, ev] = await Promise.all([
+      getManageTicketTypes(eventId),
+      getEventById(eventId),
+    ]);
     if (error) setError(error.message);
     else setAllTickets(data ?? []);
+    if (ev.data) setEvent(ev.data);
     setLoading(false);
   }, [eventId]);
 
@@ -262,6 +271,7 @@ export default function EventTicketsPage() {
             <TicketRow
               key={t.id}
               ticket={t}
+              event={event}
               isFirst={i === 0}
               isLast={i === tickets.length - 1}
               onOpen={() => router.push(ticketHref(t.id))}
@@ -278,7 +288,7 @@ export default function EventTicketsPage() {
 }
 
 function formatInr(n: number) {
-  return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+  return inr(n);
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -294,6 +304,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function TicketRow({
   ticket,
+  event,
   isFirst,
   isLast,
   onOpen,
@@ -303,6 +314,7 @@ function TicketRow({
   onDelete,
 }: {
   ticket: ManagedTicketType;
+  event: Event | null;
   isFirst: boolean;
   isLast: boolean;
   onOpen: () => void;
@@ -313,7 +325,7 @@ function TicketRow({
 }) {
   const price = Number(ticket.price);
   const isGroup = ticket.kind === "GROUP";
-  const status = SALE_STATUS_META[ticketSaleStatus(ticket)];
+  const status = SALE_STATUS_META[ticketSaleStatus(ticket, event)];
   const offSale = isOffSale(ticket);
   const { stats } = ticket;
   const waitlist = stats.waitlistWaiting + stats.waitlistOffered;
@@ -336,7 +348,7 @@ function TicketRow({
       }`}
       onClick={onOpen}
     >
-      <CardContent className="flex items-center justify-between gap-4 py-4">
+      <CardContent className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4 sm:flex-nowrap">
         <div className="flex shrink-0 flex-col">
           <Button
             variant="ghost"
@@ -380,7 +392,7 @@ function TicketRow({
           )}
           <p className="mt-1 text-xs text-muted-foreground">
             {price > 0
-              ? `₹${price.toLocaleString("en-IN")}${
+              ? `${inr(price)}${
                   isGroup
                     ? ticket.groupPricingMode === "PER_PERSON"
                       ? " / person"
@@ -406,7 +418,8 @@ function TicketRow({
             </div>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        {/* Own row on phones so the details keep the full width. */}
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
           <Button
             variant="ghost"
             size="sm"

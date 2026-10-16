@@ -75,6 +75,9 @@ export const ACTION_LABELS: Record<string, string> = {
   "event:assign-crew": "Assign crew",
   "event:manage-attendees": "Manage attendees",
   "event:check-in": "Check-in / scan",
+  "event:manage-leaderboard": "Run hackathon",
+  "event:declare-hackathon-winners": "Declare winners",
+  "event:manage-support": "Help desk",
 };
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -84,7 +87,10 @@ export const ROLE_LABELS: Record<string, string> = {
 };
 
 export function actionLabel(key: string): string {
-  return ACTION_LABELS[key] ?? key;
+  if (ACTION_LABELS[key]) return ACTION_LABELS[key];
+  // Unlabelled new capability: "event:manage-foo" → "Manage foo", never the raw code.
+  const words = (key.split(":")[1] ?? key).replace(/-/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function roleLabel(code: string): string {

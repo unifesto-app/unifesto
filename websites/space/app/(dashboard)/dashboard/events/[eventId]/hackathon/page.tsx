@@ -115,7 +115,7 @@ export default function HackathonHubPage() {
   const venueName = h?.venue.name || data?.eventVenue.name || data?.eventVenue.address;
 
   return (
-    <HackPage eventId={eventId} back={null} title="Hackathon" subtitle="Teams, problem statements, judging and winners." error={error} ready={!!data}>
+    <HackPage eventId={eventId} back={null} title="Sprint" subtitle="Hackathon teams, problem statements, judging and winners." error={error} ready={!!data}>
       {data && (
         <>
           <Notice message={notice} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowsClockwise, CheckCircle, XCircle, Clock, ArrowRight } from "@unifesto/unicon/react";
 import {
@@ -25,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = (v: number | string) => inr(v);
 
 const STATUS: Record<RefundStatus, { label: string; variant: "warning" | "neutral" | "success" | "destructive" }> = {
   PENDING_CURATOR: { label: "Awaiting your review", variant: "warning" },

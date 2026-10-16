@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -50,7 +51,7 @@ const ITEMS_PER_PAGE = 20;
 
 /** ₹ formatting, matching the attendee views (amounts are stored in rupees). */
 function money(value: number): string {
-  return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+  return inr(value);
 }
 
 function formatDate(value?: string | null): string {

@@ -1,4 +1,4 @@
-import type { EventTicketType } from "@/lib/api/events-api";
+import type { Event, EventTicketType } from "@/lib/api/events-api";
 
 export type TicketSaleStatus =
   | "off-sale"
@@ -33,10 +33,19 @@ export function isOffSale(t: Pick<EventTicketType, "isVisible" | "isActive">) {
  */
 export function ticketSaleStatus(
   t: EventTicketType,
+  event?: Pick<Event, "status" | "endDateTime"> | null,
   now: Date = new Date()
 ): TicketSaleStatus {
   if (isOffSale(t)) return "off-sale";
   if (t.totalQuantity != null && t.soldCount >= t.totalQuantity) return "sold-out";
+  // A finished event can't sell, whatever the ticket's own window says.
+  if (
+    event &&
+    (event.status === "COMPLETED" ||
+      event.status === "CANCELLED" ||
+      new Date(event.endDateTime) <= now)
+  )
+    return "ended";
   if (t.saleEndsAt && new Date(t.saleEndsAt) <= now) return "ended";
   if (t.saleStartsAt && new Date(t.saleStartsAt) > now) return "scheduled";
   return "on-sale";

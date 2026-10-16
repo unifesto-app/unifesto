@@ -697,7 +697,21 @@ export class SpacesService {
     // `eventId: null` keeps the roster to space-level memberships only. Without
     // it, event-scoped grants (Curator / Co-Curator / Crew on an event in this
     // space) would leak into the space members list.
-    const where: any = { spaceId, eventId: null };
+    const where: any = {
+      spaceId,
+      eventId: null,
+      // One row per person: a MEMBER grant is implied by any higher space
+      // role, so hide it when the user also holds one (else the owner lists
+      // twice, as Member and Space Admin).
+      NOT: {
+        role: { code: RoleCode.MEMBER },
+        user: {
+          roles: {
+            some: { spaceId, eventId: null, role: { code: { not: RoleCode.MEMBER } } },
+          },
+        },
+      },
+    };
     if (options.roleCode) {
       where.role = { code: options.roleCode };
     }

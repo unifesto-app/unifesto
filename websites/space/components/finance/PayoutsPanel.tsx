@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 
@@ -31,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = (v: number | string) => inr(v);
 
 /** Short label for an eligible payout account (bank ****last4 or UPI id). */
 const accountLabel = (a: EligibleAccount) =>

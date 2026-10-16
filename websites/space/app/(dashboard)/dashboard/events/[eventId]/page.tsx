@@ -230,7 +230,7 @@ export default function EventOverviewPage() {
           tone="success"
           hint={
             stats && stats.total > 0
-              ? `${parseFloat(stats.checkInRate).toFixed(0)}% check-in rate`
+              ? `${parseFloat(stats.checkInRate).toFixed(0)}% of ${stats.total} bookings`
               : undefined
           }
         />
@@ -238,6 +238,7 @@ export default function EventOverviewPage() {
           title="Pending Check-in"
           value={(stats?.remaining ?? 0).toString()}
           icon={Clock}
+          hint="Bookings not yet checked in"
         />
       </div>
 

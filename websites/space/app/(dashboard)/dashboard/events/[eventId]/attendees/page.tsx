@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -281,7 +282,7 @@ export default function EventRegistrationsPage() {
             : `${total.toLocaleString("en-IN")} ${total === 1 ? "registration" : "registrations"}`
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={handleSendWhatsappInvite}
@@ -506,7 +507,7 @@ export default function EventRegistrationsPage() {
                       )}
                       {reg.totalAmount > 0 && (
                         <span className="text-sm font-medium">
-                          ₹{Number(reg.totalAmount).toLocaleString("en-IN")}
+                          {inr(reg.totalAmount)}
                         </span>
                       )}
                       <CaretRightIcon className="hidden h-4 w-4 flex-shrink-0 text-muted-foreground sm:block" />

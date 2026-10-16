@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Money,
@@ -32,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = (v: number | string) => inr(v);
 
 /** Compact ₹ for chart axes. */
 const moneyShort = (v: number) => {
