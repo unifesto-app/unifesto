@@ -46,6 +46,7 @@ import { BlogModule } from './blog/blog.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { EmailCampaignsModule } from './email-campaigns/email-campaigns.module';
 import { SponsorsModule } from './sponsors/sponsors.module';
+import { MeAccessModule } from './me-access/me-access.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { PartnerLinksModule } from './partner-links/partner-links.module';
 import { TrafficModule } from './traffic/traffic.module';
@@ -188,6 +189,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     NotificationsModule,
     EmailCampaignsModule,
     SponsorsModule,
+    MeAccessModule,
     CouponsModule,
     PartnerLinksModule,
     TrafficModule,

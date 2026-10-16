@@ -113,7 +113,8 @@ export function useTicketDetail(ticketParam: unknown) {
     if (!registrationId) return;
     const jobs = [
       getRegistrationCheckins(registrationId).then(setCheckins),
-      getMyGroupMembers(registrationId).then(setRoster),
+      // The roster is lead-only; a teammate's ticket carries the lead's registration.
+      ticket?.isGroupMember ? Promise.resolve() : getMyGroupMembers(registrationId).then(setRoster),
       getRegistrationWhatsappGroup(registrationId).then(setWaGroup),
       getMyDetails(registrationId).then((res) => setDetails(res.ok ? res.data : null)),
     ];

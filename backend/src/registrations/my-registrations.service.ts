@@ -226,8 +226,10 @@ export class MyRegistrationsService {
     if (!registration) {
       throw new NotFoundException('Registration not found');
     }
-    if (registration.userId !== userId) {
-      throw new BadRequestException('Unauthorized');
+    // Check-ins are per registration, so a group's history is shared with
+    // every teammate who claimed a seat on it.
+    if (registration.userId !== userId && !(await this.claimedSeatOf(userId, registrationId))) {
+      throw new ForbiddenException('Not your registration');
     }
 
     const records = await this.prisma.eventCheckinRecord.findMany({
@@ -266,7 +268,7 @@ export class MyRegistrationsService {
       },
     });
     if (!reg) throw new NotFoundException('Registration not found');
-    if (reg.userId !== userId) throw new BadRequestException('Unauthorized');
+    if (reg.userId !== userId) throw new ForbiddenException('Not your registration');
 
     const groupSize = reg.groupSize ?? 0;
 
