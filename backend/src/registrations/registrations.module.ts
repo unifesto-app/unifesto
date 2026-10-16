@@ -1,6 +1,7 @@
 import { AuthModule } from '../auth/auth.module';
 import { Module } from '@nestjs/common';
 import { RegistrationsService } from './registrations.service';
+import { RegistrationImportService } from './registration-import.service';
 import { RegistrationExportService } from './registration-export.service';
 import { RegistrationTransfersService } from './registration-transfers.service';
 import { RegistrationAttendeesService } from './registration-attendees.service';
@@ -39,7 +40,7 @@ import { TeamChangesService } from './team-changes.service';
     NotificationsModule,
   ],
   controllers: [RegistrationsController, GroupSeatsController, FormUploadsController, AttendeeDetailsController],
-  providers: [RegistrationsService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService],
+  providers: [RegistrationsService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService],
   exports: [RegistrationsService, WaitlistService, GroupSeatsService, TeamChangesService],
 })
 export class RegistrationsModule {}
