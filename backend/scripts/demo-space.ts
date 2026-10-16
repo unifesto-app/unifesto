@@ -118,7 +118,7 @@ async function create(ownerEmail: string) {
       name: 'Aurora Tech Club',
       slug: SLUG,
       description:
-        'The student tech club behind Aurora Fest, Build Night and weekly workshops. Demo space for Unifesto guides.',
+        'The student tech club behind Aurora Fest, Build Night and weekly workshops. Builders, designers and first-timers welcome.',
       city: 'Hyderabad',
       state: 'Telangana',
       country: 'India',
