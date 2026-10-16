@@ -158,7 +158,8 @@ async function create(ownerEmail: string) {
     registrationType: RegistrationType;
     tickets: TicketSpec[];
     attendees: number; // registrations to create
-    checkInShare: number; // 0..1, only for past events
+    checkInShare: number; // 0..1, only for past/live events
+    hackathon?: boolean; // seed Sprint: rounds, scores, rooms, help desk
   };
 
   const events: EventSpec[] = [
@@ -182,15 +183,18 @@ async function create(ownerEmail: string) {
       title: 'Build Night: 24h Hackathon',
       slug: 'build-night-24h-hackathon-demo',
       description: '24 hours, teams of 3, mentors on call and prizes for the top three builds.',
-      status: EventStatus.PUBLISHED,
-      start: at(20, 18),
-      end: at(21, 18),
+      // Live right now (half-way through) so Sprint screens have scores,
+      // an active round and open help-desk queries. Re-seed before recording.
+      status: EventStatus.ONGOING,
+      start: new Date(Date.now() - 12 * 3_600_000),
+      end: new Date(Date.now() + 12 * 3_600_000),
       registrationType: RegistrationType.TICKETED,
       tickets: [
         { name: 'Team of 3', price: 450, total: 90, kind: TicketKind.GROUP, groupSize: 3 },
       ],
       attendees: 8,
-      checkInShare: 0,
+      checkInShare: 0.9,
+      hackathon: true,
     },
     {
       title: 'Figma for beginners',
@@ -285,6 +289,7 @@ async function create(ownerEmail: string) {
     });
 
     let seatsTaken = 0;
+    const regs: { id: string; lead: (typeof people)[number] }[] = [];
     for (let i = 0; i < spec.attendees; i++) {
       // Weight towards the cheaper/regular tickets; every 6th is a group.
       const tt = ticketTypes[i % 6 === 5 ? ticketTypes.length - 1 : i % Math.max(1, ticketTypes.length - 1)];
@@ -353,12 +358,166 @@ async function create(ownerEmail: string) {
         data: { soldCount: { increment: seats } },
       });
       seatsTaken += seats;
+      regs.push({ id: reg.id, lead });
     }
     await prisma.event.update({ where: { id: event.id }, data: { registeredCount: seatsTaken } });
+    if (spec.hackathon) await seedHackathon(event.id, regs, team, owner.userId, roles);
     console.log(`  ${spec.title}: ${spec.attendees} registrations, ${seatsTaken} seats`);
   }
 
   console.log(`Demo space ready: /${SLUG} (owner ${ownerEmail} is Space Admin).`);
+}
+
+const TEAM_NAMES = ['Null Pointers', 'Byte Me', 'Ctrl Alt Elite', 'Stack Smashers', 'The Debuggers', 'Pixel Pirates', 'Code Brew', 'Lambda Squad'];
+
+/** Unifesto Sprint data for the live hackathon: everything the curator and
+ * judge screens show, mid-event (round 1 scored, round 2 judging). */
+async function seedHackathon(
+  eventId: string,
+  regs: { id: string; lead: { id: string; name: string } }[],
+  team: { id: string }[],
+  ownerId: string,
+  roles: Record<RoleCode, string>,
+) {
+  const now = Date.now();
+  const board = await prisma.leaderboard.create({
+    data: {
+      eventId,
+      mode: 'RUBRIC',
+      isHackathon: true,
+      enabled: true,
+      status: 'LIVE',
+      title: 'Build Night leaderboard',
+      teamCodePrefix: 'BN',
+      teamCodeNext: regs.length + 1,
+      venueName: 'Innovation Lab, Block C',
+      createdBy: ownerId,
+    },
+  });
+
+  const rooms = await Promise.all(
+    ['Lab 1', 'Lab 2'].map((name) =>
+      prisma.hackathonRoom.create({ data: { leaderboardId: board.id, name, capacity: 20 } }),
+    ),
+  );
+  const themes = await Promise.all(
+    ['Campus life', 'Fintech for students', 'Open innovation'].map((name) =>
+      prisma.hackathonTheme.create({ data: { leaderboardId: board.id, name } }),
+    ),
+  );
+  for (const name of ['Wi-Fi and power', 'Mentor help', 'APIs and credits']) {
+    await prisma.hackathonHelpTopic.create({ data: { leaderboardId: board.id, name } });
+  }
+
+  const round1 = await prisma.leaderboardRound.create({
+    data: { leaderboardId: board.id, name: 'Idea pitch', order: 0, status: 'CLOSED', startAt: new Date(now - 10 * 3_600_000), endAt: new Date(now - 8 * 3_600_000) },
+  });
+  await prisma.leaderboardRound.create({
+    data: { leaderboardId: board.id, name: 'Mid-build demo', order: 1, status: 'ACTIVE', startAt: new Date(now - 3_600_000) },
+  });
+  await prisma.leaderboardRound.create({
+    data: { leaderboardId: board.id, name: 'Final demo', order: 2, startAt: new Date(now + 10 * 3_600_000) },
+  });
+
+  const criteria = [
+    ['innovation', 'Innovation'],
+    ['execution', 'Execution'],
+    ['impact', 'Impact'],
+    ['presentation', 'Presentation'],
+  ];
+  const metrics = await Promise.all(
+    criteria.map(([key, label], i) =>
+      prisma.leaderboardMetric.create({
+        data: { leaderboardId: board.id, key, label, maxValue: 10, displayOrder: i, isPrimary: i === 0 },
+      }),
+    ),
+  );
+
+  // Judge + mentor from the demo team.
+  await prisma.leaderboardPanelist.createMany({
+    data: [
+      { leaderboardId: board.id, userId: team[4].id, kind: 'JUDGE' },
+      { leaderboardId: board.id, userId: team[3].id, kind: 'MENTOR' },
+    ],
+  });
+  await prisma.userRole.createMany({
+    data: [{ userId: team[4].id, roleId: roles.JUDGE, eventId }],
+    skipDuplicates: true,
+  });
+
+  const entrants: { entrant: { id: string }; lead: { id: string; name: string }; total: number }[] = [];
+  for (const [i, r] of regs.entries()) {
+    // Deterministic, spread-out round-1 scores (out of 10 per criterion).
+    const scores = metrics.map((_, m) => 5 + ((i * 3 + m * 2) % 5));
+    const total = scores.reduce((a, b) => a + b, 0);
+    const entrant = await prisma.leaderboardEntrant.create({
+      data: {
+        leaderboardId: board.id,
+        name: TEAM_NAMES[i % TEAM_NAMES.length],
+        registrationId: r.id,
+        userId: r.lead.id,
+        teamCode: `BN${String(i + 1).padStart(3, '0')}`,
+        teamSeq: i + 1,
+        teamNameSource: 'LEAD',
+        roomId: rooms[i % 2].id,
+        themeId: themes[i % 3].id,
+        totalScore: total,
+      },
+    });
+    await prisma.leaderboardScore.createMany({
+      data: metrics.map((metric, m) => ({
+        entrantId: entrant.id,
+        metricId: metric.id,
+        roundId: round1.id,
+        value: scores[m],
+      })),
+    });
+    entrants.push({ entrant, lead: r.lead, total });
+  }
+
+  // Ranks by round-1 total.
+  const ranked = [...entrants].sort((a, b) => b.total - a.total);
+  for (const [rank, e] of ranked.entries()) {
+    await prisma.leaderboardEntrant.update({ where: { id: e.entrant.id }, data: { rank: rank + 1 } });
+  }
+
+  // Help desk: one open, one acknowledged, one resolved.
+  const queries: [number, string, string, 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'][] = [
+    [0, 'Wi-Fi and power', 'Our table has no power strip, two laptops are about to die.', 'OPEN'],
+    [2, 'APIs and credits', 'The maps API key from the kit returns 403.', 'ACKNOWLEDGED'],
+    [5, 'Mentor help', 'Can a mentor review our database design before the demo?', 'RESOLVED'],
+  ];
+  for (const [i, topicName, message, status] of queries) {
+    const e = entrants[i % entrants.length];
+    await prisma.hackathonHelpQuery.create({
+      data: {
+        leaderboardId: board.id,
+        entrantId: e.entrant.id,
+        topicName,
+        roomId: rooms[i % 2].id,
+        roomName: rooms[i % 2].name,
+        message,
+        status,
+        raisedBy: e.lead.id,
+        handledBy: status === 'OPEN' ? null : team[2].id,
+        acknowledgedAt: status === 'OPEN' ? null : new Date(now - 20 * 60_000),
+        resolvedAt: status === 'RESOLVED' ? new Date(now - 5 * 60_000) : null,
+        createdAt: new Date(now - (30 + i * 10) * 60_000),
+      },
+    });
+  }
+
+  await prisma.hackathonAnnouncement.create({
+    data: {
+      leaderboardId: board.id,
+      audience: 'ALL',
+      title: 'Mid-build demos start now',
+      body: 'Judges are coming to your table in team-code order. Have your demo ready.',
+      createdBy: ownerId,
+    },
+  });
+
+  console.log(`  Sprint: ${entrants.length} teams, 3 rounds, judge + mentor, help desk`);
 }
 
 async function main() {
