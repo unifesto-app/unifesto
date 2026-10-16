@@ -8,8 +8,8 @@
  * attendees. PRIVATE keeps it out of every public listing, sitemap and search.
  * `--owner` gets Space Admin so they can log in to space.unifesto.app and record.
  *
- *   npx ts-node scripts/demo-space.ts --owner=you@unifesto.app   # create (re-run = rebuild)
- *   npx ts-node scripts/demo-space.ts --remove                   # delete space + demo users
+ *   npx ts-node -T scripts/demo-space.ts --owner=you@unifesto.app   # create (re-run = rebuild)
+ *   npx ts-node -T scripts/demo-space.ts --remove                   # delete space + demo users
  *
  * Demo accounts are marked by a `+0999` mobile and a `demo.N@example.com` email
  * (example.com is reserved, so nothing can ever be delivered to them). They do
