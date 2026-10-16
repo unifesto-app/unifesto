@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  ConflictException,
   HttpException,
   Logger,
 } from '@nestjs/common';
@@ -12,7 +13,7 @@ import { RedisService } from '../redis/redis.service';
 import * as jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import jwksClient from 'jwks-rsa';
-import { Provider, User } from '@prisma/client';
+import { Prisma, Provider, User } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { OtpService, OtpVerifyResult } from './otp.service';
@@ -26,6 +27,43 @@ import {
   AuthResponseDto,
   UserProfileDto,
 } from './dto';
+
+/**
+ * S48: what verifyMobile reads before deleting the account a login came from.
+ * Every User relation is counted (from the Prisma schema, so new relations are
+ * covered automatically); the placeholder must have none of them.
+ */
+const USER_RELATIONS = Prisma.dmmf.datamodel.models
+  .find((m) => m.name === 'User')!
+  .fields.filter((f) => f.kind === 'object');
+const PLACEHOLDER_PROBE = {
+  mobileNumber: true,
+  mobileVerified: true,
+  fullName: true,
+  identities: { select: { provider: true } },
+  _count: {
+    select: Object.fromEntries(
+      USER_RELATIONS.filter((f) => f.isList && f.name !== 'identities').map((f) => [f.name, true]),
+    ),
+  },
+  ...Object.fromEntries(
+    USER_RELATIONS.filter((f) => !f.isList).map((f) => [f.name, { select: { id: true } }]),
+  ),
+} as const;
+
+/**
+ * The account loginWithCognito mints for a new Google/Apple sign-in: synthetic
+ * `+0` mobile, never verified, no name, its only identity is this Google/Apple
+ * login, and nothing else points at it. Manual-add and judge placeholders also
+ * use `+0` but carry an EMAIL identity, so they never qualify.
+ */
+function isEmptyCognitoPlaceholder(u: any, provider: Provider): boolean {
+  if (!u || u.mobileVerified || u.fullName || !u.mobileNumber?.startsWith('+0')) return false;
+  if (provider !== Provider.GOOGLE && provider !== Provider.APPLE) return false;
+  if (u.identities.length !== 1 || u.identities[0].provider !== provider) return false;
+  if (Object.values(u._count).some((n) => n !== 0)) return false;
+  return USER_RELATIONS.filter((f) => !f.isList).every((f) => u[f.name] == null);
+}
 
 /** Mobile-verification temp token (`type: 'temp'`). */
 interface TempTokenPayload {
@@ -227,8 +265,8 @@ export class AuthService {
   // =====================================================
   // EMAIL LOGIN
   // =====================================================
-  async loginWithEmail(dto: EmailLoginDto): Promise<{ message: string }> {
-    await this.otpService.assertCanSend(dto.email);
+  async loginWithEmail(dto: EmailLoginDto, ip?: string): Promise<{ message: string }> {
+    await this.otpService.assertCanSend(dto.email, ip);
     try {
       // Generate OTP
       const otp = this.otpService.generateOtp();
@@ -248,7 +286,7 @@ export class AuthService {
     }
   }
 
-  async verifyEmailOtp(email: string, otp: string): Promise<AuthResponseDto> {
+  async verifyEmailOtp(email: string, otp: string, ip?: string): Promise<AuthResponseDto> {
     try {
       // Apple App Review bypass: static test account, only while the env flag
       // is on (turn it on for a review, off afterwards).
@@ -265,7 +303,7 @@ export class AuthService {
         );
       }
 
-      this.assertOtpOk(await this.otpService.verifyOtp(email, otp));
+      this.assertOtpOk(await this.otpService.verifyOtp(email, otp, ip));
 
       this.logger.log(`Handling provider login for email: ${email}`);
 
@@ -287,10 +325,10 @@ export class AuthService {
   // =====================================================
   // MOBILE VERIFICATION
   // =====================================================
-  async sendMobileOtp(dto: SendMobileOtpDto): Promise<{ message: string }> {
+  async sendMobileOtp(dto: SendMobileOtpDto, ip?: string): Promise<{ message: string }> {
     try {
       this.verifyTempToken(dto.tempToken);
-      await this.otpService.assertCanSend(dto.mobileNumber);
+      await this.otpService.assertCanSend(dto.mobileNumber, ip);
 
       // Generate OTP
       const otp = this.otpService.generateOtp();
@@ -311,13 +349,13 @@ export class AuthService {
     }
   }
 
-  async verifyMobile(dto: VerifyMobileDto): Promise<AuthResponseDto> {
+  async verifyMobile(dto: VerifyMobileDto, ip?: string): Promise<AuthResponseDto> {
     try {
       // Verify temp token
       const decoded = this.verifyTempToken(dto.tempToken);
 
       this.assertOtpOk(
-        await this.otpService.verifyOtp(dto.mobileNumber, dto.otp),
+        await this.otpService.verifyOtp(dto.mobileNumber, dto.otp, ip),
       );
 
       // verifyTempToken guarantees provider + providerUserId are non-empty, and
@@ -342,17 +380,42 @@ export class AuthService {
           where: { mobileNumber: dto.mobileNumber },
         });
 
-        if (existingMobileUser) {
-          // Mobile belongs to existing user
-          // Transfer the Cognito identity from placeholder to existing user
-          await this.prisma.userIdentity.update({
-            where: identityKey,
-            data: { userId: existingMobileUser.id },
+        if (existingMobileUser && existingMobileUser.id !== cognitoUser.user.id) {
+          // Mobile belongs to another account: move this login onto it, but
+          // only delete the account we came from if it's an empty Cognito
+          // placeholder (S48). Anything else may be a real account (manual
+          // add, judge invite, email-OTP user) and must never cascade-delete.
+          await this.prisma.$transaction(async (tx) => {
+            const from = await tx.user.findUnique({
+              where: { id: cognitoUser.user.id },
+              select: PLACEHOLDER_PROBE,
+            });
+            // Hackathon tables hold a user id with no Prisma relation, so the
+            // probe can't see them; an email invite can attach to a placeholder.
+            const id = cognitoUser.user.id;
+            const unlinkedRefs = await Promise.all([
+              tx.leaderboardEntrant.count({ where: { userId: id } }),
+              tx.leaderboardPanelist.count({ where: { userId: id } }),
+              tx.leaderboardScore.count({ where: { judgeUserId: id } }),
+              tx.leaderboardJudgment.count({ where: { panelistUserId: id } }),
+              tx.hackathonJudgeProfile.count({ where: { userId: id } }),
+              tx.hackathonPanelMember.count({ where: { userId: id } }),
+              tx.hackathonEvalRequest.count({ where: { judgeUserId: id } }),
+            ]);
+            if (
+              !isEmptyCognitoPlaceholder(from, decoded.provider) ||
+              unlinkedRefs.some((n) => n > 0)
+            ) {
+              throw new ConflictException(
+                'This mobile number belongs to another Unifesto account. Sign in to that account instead, or use a different number.',
+              );
+            }
+            await tx.userIdentity.update({
+              where: identityKey,
+              data: { userId: existingMobileUser.id },
+            });
+            await tx.user.delete({ where: { id: cognitoUser.user.id } });
           });
-          // Delete placeholder user (identities already moved)
-          await this.prisma.user.delete({
-            where: { id: cognitoUser.user.id },
-          }).catch(() => {});
           const userRoles = await this.prisma.userRole.findMany({
             where: { userId: existingMobileUser.id },
             include: { role: { select: { code: true, name: true } } },
@@ -420,7 +483,7 @@ export class AuthService {
       }
     } catch (error) {
       this.logger.error('Mobile verification failed', error);
-      if (error instanceof UnauthorizedException) {
+      if (error instanceof UnauthorizedException || error instanceof ConflictException) {
         throw error;
       }
       throw new UnauthorizedException('Mobile verification failed');

@@ -1,5 +1,5 @@
 /// <reference types="jest" />
-import { HttpException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, HttpException, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { AuthService, APP_REVIEW_LOGIN_ENV } from './auth.service';
 import { OtpService } from './otp.service';
@@ -38,6 +38,12 @@ function fakeRedisClient() {
     async incr(k: string) {
       await tick();
       const n = Number(store.get(k) ?? 0) + 1;
+      store.set(k, String(n));
+      return n;
+    },
+    async decr(k: string) {
+      await tick();
+      const n = Number(store.get(k) ?? 0) - 1;
       store.set(k, String(n));
       return n;
     },
@@ -106,6 +112,17 @@ function setup(env: Record<string, string> = {}) {
       create: jest.fn(),
     },
     userRole: { findMany: jest.fn().mockResolvedValue([]) },
+    ...Object.fromEntries(
+      [
+        'leaderboardEntrant',
+        'leaderboardPanelist',
+        'leaderboardScore',
+        'leaderboardJudgment',
+        'hackathonJudgeProfile',
+        'hackathonPanelMember',
+        'hackathonEvalRequest',
+      ].map((m) => [m, { count: jest.fn().mockResolvedValue(0) }]),
+    ),
     $transaction: jest.fn((fn: any) => fn(prisma)),
   };
   const config: any = {
@@ -166,7 +183,9 @@ describe('S4: temp token is required for mobile verification', () => {
     const { service, prisma } = setup();
     const placeholder = user({ id: 'placeholder', mobileVerified: false });
     prisma.userIdentity.findUnique.mockResolvedValue({ user: placeholder });
-    prisma.user.findUnique.mockResolvedValue(user({ id: 'owner' }));
+    prisma.user.findUnique
+      .mockResolvedValueOnce(user({ id: 'owner' }))
+      .mockResolvedValueOnce(freshPlaceholder());
     const temp = sign({ type: 'temp', provider: 'GOOGLE', providerUserId: 'g-1' }, '15m');
 
     const res = await service.verifyMobile(dto(temp));
@@ -177,6 +196,89 @@ describe('S4: temp token is required for mobile verification', () => {
       where: { unique_provider_user: { provider: 'GOOGLE', providerUserId: 'g-1' } },
       data: { userId: 'owner' },
     });
+  });
+});
+
+/** What the S48 probe returns for a just-minted Cognito placeholder. */
+const freshPlaceholder = (over: Record<string, any> = {}) => ({
+  mobileNumber: '+0123456789',
+  mobileVerified: false,
+  fullName: null,
+  identities: [{ provider: 'GOOGLE' }],
+  _count: { registrations: 0, roles: 0 },
+  referredBy: null,
+  notificationSettings: null,
+  ...over,
+});
+
+describe('S48: verify-mobile never deletes a real account', () => {
+  const temp = (provider = 'GOOGLE') =>
+    sign({ type: 'temp', provider, providerUserId: 'p-1' }, '15m');
+  const dto = (provider?: string) => ({
+    mobileNumber: '+919999999999',
+    otp: '123456',
+    tempToken: temp(provider),
+  });
+  const arrange = (probe: any, provider = 'GOOGLE') => {
+    const ctx = setup();
+    ctx.prisma.userIdentity.findUnique.mockResolvedValue({
+      user: user({ id: 'from', mobileVerified: false }),
+    });
+    ctx.prisma.user.findUnique
+      .mockResolvedValueOnce(user({ id: 'owner' }))
+      .mockResolvedValueOnce(probe);
+    return { ...ctx, call: () => ctx.service.verifyMobile(dto(provider)) };
+  };
+
+  it('deletes an empty Cognito placeholder and signs into the mobile owner', async () => {
+    const { prisma, call } = arrange(freshPlaceholder());
+    const res = await call();
+    expect(res.user.id).toBe('owner');
+    expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'from' } });
+  });
+
+  it.each([
+    ['has registrations', freshPlaceholder({ _count: { registrations: 2 } })],
+    ['has another identity', freshPlaceholder({ identities: [{ provider: 'GOOGLE' }, { provider: 'EMAIL' }] })],
+    ['has a real mobile', freshPlaceholder({ mobileNumber: '+918888888888' })],
+    ['has a name (manual add / judge invite)', freshPlaceholder({ fullName: 'Asha' })],
+    ['has a 1:1 relation row', freshPlaceholder({ notificationSettings: { id: 'n' } })],
+  ])('refuses with 409 when the source account %s', async (_n, probe) => {
+    const { prisma, call } = arrange(probe);
+    await expect(call()).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+    expect(prisma.userIdentity.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses for an email-OTP account (EMAIL identity)', async () => {
+    const { prisma, call } = arrange(freshPlaceholder({ identities: [{ provider: 'EMAIL' }] }), 'EMAIL');
+    await expect(call()).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+  });
+
+  it('refuses when a hackathon table references the account', async () => {
+    const { prisma, call } = arrange(freshPlaceholder());
+    prisma.hackathonJudgeProfile.count.mockResolvedValue(1);
+    await expect(call()).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+  });
+
+  it('does not swallow a failed delete', async () => {
+    const { prisma, call } = arrange(freshPlaceholder());
+    prisma.user.delete.mockRejectedValue(new Error('fk'));
+    await expect(call()).rejects.toBeDefined();
+  });
+
+  it('verifying your own unverified number just marks it verified', async () => {
+    const { service, prisma } = setup();
+    const self = user({ id: 'self', mobileVerified: false });
+    prisma.userIdentity.findUnique.mockResolvedValue({ user: self });
+    prisma.user.findUnique.mockResolvedValue(self);
+    prisma.user.update.mockResolvedValue({ ...self, mobileVerified: true });
+    const res = await service.verifyMobile(dto());
+    expect(res.user.id).toBe('self');
+    expect(prisma.user.delete).not.toHaveBeenCalled();
+    expect(prisma.user.update).toHaveBeenCalled();
   });
 });
 
@@ -403,11 +505,94 @@ describe('S7: OTP brute force', () => {
     await expect(otp.assertCanSend('+911')).rejects.toBeInstanceOf(HttpException);
     // Past the cooldown, the daily cap still applies.
     for (let i = 1; i < OtpService.DAILY_SEND_CAP; i++) {
-      redis.client.store.delete('otp-limit:cooldown:+911');
+      redis.client.store.delete('otp-limit:cooldown:+911:unknown');
       await otp.assertCanSend('+911');
     }
-    redis.client.store.delete('otp-limit:cooldown:+911');
+    redis.client.store.delete('otp-limit:cooldown:+911:unknown');
     await expect(otp.assertCanSend('+911')).rejects.toMatchObject({ status: 429 });
+  });
+});
+
+describe('S49: OTP lockout abuse is contained per IP', () => {
+  const make = () => {
+    const redis = fakeRedisService();
+    return { otp: new OtpService(redis as any), redis };
+  };
+  const ATTACKER = '6.6.6.6';
+  const VICTIM = '1.2.3.4';
+
+  it("an attacker's wrong guesses lock only the attacker's IP", async () => {
+    const { otp } = make();
+    await otp.storeOtp('v@x.com', '111111');
+    for (let i = 0; i < 20; i++) await otp.verifyOtp('v@x.com', '000000', ATTACKER);
+    expect(await otp.verifyOtp('v@x.com', '111111', ATTACKER)).toBe('blocked');
+    // The victim's code survived and still works from their own IP.
+    expect(await otp.verifyOtp('v@x.com', '111111', VICTIM)).toBe('ok');
+  });
+
+  it('many IPs together still hit the identifier-wide cap', async () => {
+    const { otp } = make();
+    await otp.storeOtp('v@x.com', '111111');
+    let invalid = 0;
+    for (let ip = 0; ip < 10; ip++) {
+      for (let i = 0; i < OtpService.MAX_ATTEMPTS; i++) {
+        if ((await otp.verifyOtp('v@x.com', '000000', `10.0.0.${ip}`)) === 'invalid') invalid++;
+      }
+    }
+    expect(invalid).toBe(OtpService.MAX_ATTEMPTS_TOTAL);
+    expect(await otp.verifyOtp('v@x.com', '111111', VICTIM)).toBe('blocked');
+  });
+
+  it('one IP spraying many identifiers hits its own cap', async () => {
+    const { otp } = make();
+    let invalid = 0;
+    for (let i = 0; i < OtpService.IP_MAX_ATTEMPTS + 10; i++) {
+      if ((await otp.verifyOtp(`u${i}@x.com`, '000000', ATTACKER)) === 'invalid') invalid++;
+    }
+    expect(invalid).toBe(OtpService.IP_MAX_ATTEMPTS);
+  });
+
+  it('correct codes do not use up the IP bucket (shared campus NAT)', async () => {
+    const { otp } = make();
+    for (let i = 0; i < OtpService.IP_MAX_ATTEMPTS + 5; i++) {
+      await otp.storeOtp(`u${i}@x.com`, '111111');
+      expect(await otp.verifyOtp(`u${i}@x.com`, '111111', VICTIM)).toBe('ok');
+    }
+  });
+
+  it("an attacker spamming sends can't use up the victim's daily cap", async () => {
+    const { otp, redis } = make();
+    const send = async (ip: string) => {
+      redis.client.store.delete(`otp-limit:cooldown:+911:${ip}`);
+      return otp.assertCanSend('+911', ip);
+    };
+    for (let i = 0; i < OtpService.DAILY_SEND_CAP; i++) await send(ATTACKER);
+    await expect(send(ATTACKER)).rejects.toMatchObject({ status: 429 });
+    await expect(send(VICTIM)).resolves.toBeUndefined();
+  });
+
+  it('the identifier-wide send cap still bounds many IPs', async () => {
+    const { otp } = make();
+    for (let i = 0; i < OtpService.DAILY_SEND_CAP_TOTAL; i++) {
+      await otp.assertCanSend('+911', `10.0.0.${i}`);
+    }
+    await expect(otp.assertCanSend('+911', '10.0.1.1')).rejects.toMatchObject({ status: 429 });
+  });
+
+  it('one IP spraying many identifiers hits the per-IP send cap', async () => {
+    const { otp } = make();
+    for (let i = 0; i < OtpService.IP_HOURLY_SEND_CAP; i++) {
+      await otp.assertCanSend(`+91${i}`, ATTACKER);
+    }
+    await expect(otp.assertCanSend('+91x', ATTACKER)).rejects.toMatchObject({ status: 429 });
+  });
+
+  it('auth service passes the caller IP through', async () => {
+    const { service, otp } = setup();
+    await service.loginWithEmail({ email: 'a@x.com' } as any, VICTIM);
+    expect(otp.assertCanSend).toHaveBeenCalledWith('a@x.com', VICTIM);
+    await service.verifyEmailOtp('a@x.com', '123456', VICTIM).catch(() => undefined);
+    expect(otp.verifyOtp).toHaveBeenCalledWith('a@x.com', '123456', VICTIM);
   });
 });
 
