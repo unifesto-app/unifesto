@@ -797,9 +797,9 @@ export async function bulkCheckin(
   registrationIds: string[]
 ): Promise<{
   data: {
-    success: number;
-    failed: number;
-    results: Array<{ id: string; success: boolean; message?: string }>;
+    success: Array<{ id: string; name: string | null }>;
+    alreadyCheckedIn: Array<{ id: string; name: string | null }>;
+    failed: Array<{ id: string; reason: string }>;
   } | null;
   error: ApiError | null;
 }> {
