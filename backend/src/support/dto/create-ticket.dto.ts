@@ -8,12 +8,22 @@ import {
   MaxLength,
   MinLength,
   IsObject,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  SupportCaseKind,
   SupportTicketCategory,
   SupportTicketPriority,
 } from '@prisma/client';
+
+/** Kinds a requester can open directly; the rest are opened by their own flows (refunds, requests…). */
+export const SELF_SERVE_CASE_KINDS: SupportCaseKind[] = [
+  SupportCaseKind.HELP,
+  SupportCaseKind.REPORT,
+  SupportCaseKind.PRIVACY,
+  SupportCaseKind.GRIEVANCE,
+];
 
 export class CreateTicketDto {
   @ApiProperty({ example: 'My QR ticket did not arrive' })
@@ -58,4 +68,19 @@ export class CreateTicketDto {
   @IsOptional()
   @IsEmail()
   contactEmail?: string;
+
+  @ApiPropertyOptional({ enum: SELF_SERVE_CASE_KINDS, default: SupportCaseKind.HELP })
+  @IsOptional()
+  @IsIn(SELF_SERVE_CASE_KINDS)
+  kind?: SupportCaseKind;
+
+  @ApiPropertyOptional({ description: 'Event this case is about' })
+  @IsOptional()
+  @IsUUID()
+  eventId?: string;
+
+  @ApiPropertyOptional({ description: "Requester's own registration this case is about (sets eventId)" })
+  @IsOptional()
+  @IsUUID()
+  registrationId?: string;
 }

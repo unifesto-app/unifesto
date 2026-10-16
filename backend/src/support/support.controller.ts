@@ -11,9 +11,14 @@ import {
   ParseUUIDPipe,
   DefaultValuePipe,
   ParseIntPipe,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { SupportService } from './support.service';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { uploadLimit } from '../common/upload-limits';
+import { ATTACHMENT_MAX_MB, SupportService } from './support.service';
 import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -94,6 +99,36 @@ export class SupportController {
     @Req() req: any,
   ) {
     return this.supportService.addMessage(id, dto, req.user.id);
+  }
+
+  /** Attach a file to your own message (stored privately). */
+  @Post('tickets/:id/messages/:messageId/attachments')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @UseInterceptors(FileInterceptor('file', uploadLimit(ATTACHMENT_MAX_MB)))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Attach an image or PDF to a ticket message' })
+  addAttachment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('messageId', ParseUUIDPipe) messageId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.supportService.addAttachment(id, messageId, req.user.id, file);
+  }
+
+  /** A 5-minute signed link to an attachment (anyone who can see the case). */
+  @Get('attachments/:attachmentId/url')
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @ApiOperation({ summary: 'Signed link to a ticket attachment' })
+  attachmentUrl(@Param('attachmentId', ParseUUIDPipe) attachmentId: string, @Req() req: any) {
+    return this.supportService.attachmentUrl(attachmentId, req.user.id);
+  }
+
+  /** Hand a space-desk case to Unifesto (requester or the space desk). */
+  @Post('tickets/:id/escalate')
+  @ApiOperation({ summary: 'Escalate a ticket to Unifesto' })
+  escalate(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.supportService.escalate(id, req.user.id);
   }
 
   /** Requester closes their own ticket. */
