@@ -16,6 +16,7 @@ import {
   Trash,
   EyeSlash,
   ArrowCounterClockwise,
+  PencilSimple,
 } from "@unifesto/unicon/react";
 import {
   getSpaceSessionById,
@@ -346,6 +347,16 @@ export default function ManageSessionPage() {
           >
             <Stop className="h-4 w-4" weight="fill" />
             End session
+          </Button>
+        )}
+        {canCancel && (
+          <Button
+            variant="outline"
+            onClick={() => router.push(`/dashboard/sessions/${sessionId}/edit`)}
+            disabled={busy}
+          >
+            <PencilSimple className="h-4 w-4" />
+            Edit
           </Button>
         )}
         <Button variant="outline" onClick={handleDuplicate} disabled={busy}>

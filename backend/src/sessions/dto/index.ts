@@ -162,6 +162,11 @@ export class UpdateSessionDto {
   @IsOptional()
   @IsEnum(SessionVisibility)
   visibility?: SessionVisibility;
+
+  @ApiPropertyOptional({ description: 'UNIFESTO_LIVE only.' })
+  @IsOptional()
+  @IsBoolean()
+  interactive?: boolean;
 }
 
 export class CancelSessionDto {
