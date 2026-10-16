@@ -634,7 +634,7 @@ export class RegistrationsService {
         registrationId: registration.id,
         leadUserId: registration.userId,
         seatCount: seats,
-        groupMembers: (registration as { groupMembers?: unknown[] | null }).groupMembers ?? dto.groupMembers ?? null,
+        groupMembers: dto.groupMembers ?? null,
       });
     });
 
@@ -828,7 +828,7 @@ export class RegistrationsService {
     }
 
     await this.sendGroupMemberConfirmations(
-      fullRegistration,
+      fullRegistration.id,
       fullRegistration.event,
       fullRegistration.qrCode,
       undefined,
@@ -852,17 +852,20 @@ export class RegistrationsService {
    * duplicate member emails. Non-blocking: a failed send never breaks the flow.
    */
   private async sendGroupMemberConfirmations(
-    registration: any,
+    // A registration id reads the roster from its GroupSeat rows (S42); an
+    // explicit list sends to just those members (a roster edit's new ones).
+    roster: string | Array<{ name?: string | null; email?: string | null; mobile?: string | null }>,
     event: any,
     qrCode: string,
     ticketCode: string | undefined,
     leadEmail: string | null,
   ): Promise<void> {
-    const members: GroupMemberDto[] = Array.isArray(registration?.groupMembers)
-      ? registration.groupMembers
-      : [];
+    const members: Array<{ name?: string | null; email?: string | null; mobile?: string | null }> =
+      typeof roster === 'string'
+        ? ((await this.groupSeats.getRoster(roster)) ?? [])
+        : roster;
     this.logger.log(
-      `[group-email] reg ${registration?.id}: ${members.length} member(s), lead=${leadEmail ?? 'none'}`,
+      `[group-email] ${members.length} member(s), lead=${leadEmail ?? 'none'}`,
     );
     if (members.length === 0) return;
 
@@ -948,8 +951,6 @@ export class RegistrationsService {
           ticketTypeId: dto.ticketTypeId,
           quantity: dto.quantity || 1,
           groupSize: dto.groupSize ?? null,
-          groupMembers:
-          (dto.groupMembers as unknown as Prisma.InputJsonValue) ?? undefined,
           totalAmount: new Prisma.Decimal(0),
           paymentStatus: PaymentStatus.PAID,
           paidAt: new Date(),
@@ -979,7 +980,7 @@ export class RegistrationsService {
         registrationId: reg.id,
         leadUserId: userId,
         seatCount: this.seatsFor(reg),
-        groupMembers: (reg as { groupMembers?: unknown[] | null }).groupMembers ?? dto.groupMembers ?? null,
+        groupMembers: dto.groupMembers ?? null,
       });
 
       return reg;
@@ -1069,7 +1070,7 @@ export class RegistrationsService {
     // Email the shared ticket to each group member (skips the lead + dupes).
     if (fullRegistration) {
       await this.sendGroupMemberConfirmations(
-        fullRegistration,
+        fullRegistration.id,
         fullRegistration.event,
         fullRegistration.qrCode,
         undefined,
@@ -1256,9 +1257,8 @@ export class RegistrationsService {
       );
     }
 
-    // A group booked before seat-seeding shipped has its members only in the
-    // legacy `groupMembers` JSON, so the seat-based member send below would skip
-    // them. Materialise seats first (idempotent) so every member is reachable.
+    // Materialise seats for any seatless group first (idempotent; none are
+    // expected after the backfills) so every member seat is reachable.
     const groupRegs = await this.prisma.eventRegistration.findMany({
       where: { eventId, ...COUNTS_AS_ATTENDING, groupSize: { gt: 1 } },
       select: { id: true },
@@ -1609,7 +1609,6 @@ export class RegistrationsService {
       select: {
         userId: true,
         groupSize: true,
-        groupMembers: true,
         eventId: true,
         ticketTypeId: true,
       },
@@ -1619,33 +1618,10 @@ export class RegistrationsService {
 
     const groupSize = reg.groupSize ?? 0;
 
-    // GroupSeat rows are the source of truth for the roster. Fall back to the
-    // legacy `groupMembers` JSON only for a group that somehow has no seats yet
-    // (un-backfilled) — transitional, removed when the column is dropped.
-    const fromSeats = await this.groupSeats.getRoster(registrationId);
-    const members =
-      fromSeats ??
-      (() => {
-        const stored = Array.isArray(reg.groupMembers) ? reg.groupMembers : [];
-        // Normalise each slot; blanks are expected for legacy/incomplete rosters.
-        return Array.from({ length: Math.max(groupSize, stored.length) }).map(
-          (_, i) => {
-            const m = (stored[i] ?? {}) as Record<string, any>;
-            const isObj = m && typeof m === 'object' && !Array.isArray(m);
-            const custom =
-              isObj && m.customFields && typeof m.customFields === 'object' && !Array.isArray(m.customFields)
-                ? (m.customFields as Record<string, any>)
-                : {};
-            return {
-              name: isObj && typeof m.name === 'string' ? m.name : '',
-              email: isObj && typeof m.email === 'string' ? m.email : '',
-              mobile: isObj && typeof m.mobile === 'string' ? m.mobile : '',
-              gender: isObj && typeof m.gender === 'string' ? m.gender : '',
-              customFields: custom,
-            };
-          },
-        );
-      })();
+    // GroupSeat rows are the roster (S42). A seatless group (never expected
+    // after the backfills) is materialised first so the screen still has slots.
+    await this.groupSeats.ensureSeatsForRegistration(registrationId);
+    const members = (await this.groupSeats.getRoster(registrationId)) ?? [];
 
     // eventId + ticketTypeId let the client fetch the event's custom-field
     // definitions and render the per-member "additional information" inputs.
@@ -1710,7 +1686,7 @@ export class RegistrationsService {
 
     if (filledMembers.length > 0) {
       await this.sendGroupMemberConfirmations(
-        { groupMembers: filledMembers },
+        filledMembers,
         reg.event,
         reg.qrCode,
         reg.tickets[0]?.ticketCode,
@@ -2319,8 +2295,6 @@ export class RegistrationsService {
           ticketTypeId,
           quantity: 1,
           groupSize: opts.groupSize,
-          groupMembers:
-            (opts.groupMembers as unknown as Prisma.InputJsonValue) ?? undefined,
           totalAmount: new Prisma.Decimal(0),
           paymentStatus: PaymentStatus.PAID,
           paidAt: new Date(),
@@ -2825,10 +2799,8 @@ export class RegistrationsService {
 
       // Also match on the details of GROUP / TEAM members — the people on a
       // registration who are not the registering lead (the `user` matched
-      // above). Their captured details live in two JSONB blobs that Prisma
-      // cannot substring-search: `event_registrations.group_members` (the older
-      // shared-ticket capture) and `group_seats.member_details` (the
-      // invite/claim flow), alongside a seat's invite email and — once a member
+      // above). Their captured details live in `group_seats.member_details`,
+      // JSONB that Prisma cannot substring-search, alongside a seat's invite email and — once a member
       // claims their seat — that member's own account. We resolve the matching
       // registration ids for this event with one raw query (casting each JSONB
       // to text for a case-insensitive ILIKE) and fold them into the same OR, so
@@ -2843,8 +2815,7 @@ export class RegistrationsService {
         LEFT JOIN user_identities ci ON ci.user_id = cu.id
         WHERE r.event_id = ${eventId}::uuid
           AND (
-            r.group_members::text ILIKE ${like}
-            OR gs.member_details::text ILIKE ${like}
+            gs.member_details::text ILIKE ${like}
             OR gs.invite_email ILIKE ${like}
             OR cu.full_name ILIKE ${like}
             OR cu.username ILIKE ${like}
@@ -3141,9 +3112,7 @@ export class RegistrationsService {
     // One page of registrations at a time; seats are fetched per page.
     async function* attendeePages() {
       for await (const registrations of registrationPages()) {
-        // Group seats (fast-registration Part 2) are the source of truth for a
-        // group's roster — a pay-first group has no `groupMembers` JSON at all, so
-        // expanding by seats is the only way to emit its members. Fetch all seats
+        // Group seats are the group's roster (S42). Fetch all seats
         // for the group registrations in one query, with the claimer's account for
         // fallback identity.
         const groupRegIds = (registrations as any[])
@@ -3176,22 +3145,18 @@ export class RegistrationsService {
           status.charAt(0) + status.slice(1).toLowerCase(); // OPEN → Open
 
         // A GROUP registration is a single row whose `user` is only the team lead;
-        // the whole team lives in seat rows (or legacy `groupMembers` JSON). Expand
-        // each such registration into one row per seat/member so no attendee is
+        // the whole team lives in seat rows. Expand
+        // each such registration into one row per seat so no attendee is
         // hidden. To keep the Amount column summable, the payment amount is
         // attributed to seat 1 (the lead) only.
         const rows: string[][] = [];
         for (const reg of registrations as any[]) {
           const responses = (reg.formResponses ?? {}) as Record<string, unknown>;
-          const members: any[] = Array.isArray(reg.groupMembers)
-            ? reg.groupMembers
-            : [];
           const seats = seatsByReg.get(reg.id) ?? [];
-          const isGroup =
-            (reg.groupSize ?? 0) > 1 && (seats.length > 0 || members.length > 0);
+          const isGroup = (reg.groupSize ?? 0) > 1 && seats.length > 0;
 
-          if (isGroup && seats.length > 0) {
-            // Preferred path: one row per seat, with claim status.
+          if (isGroup) {
+            // One row per seat, with claim status.
             for (const seat of seats) {
               const md = (seat.memberDetails ?? {}) as any;
               const flat = flattenMember(md);
@@ -3223,35 +3188,6 @@ export class RegistrationsService {
                 ),
               ]);
             }
-          } else if (isGroup) {
-            members.forEach((m, i) => {
-              const flat = flattenMember(m);
-              const custom = (m?.customFields ?? {}) as Record<string, unknown>;
-              // The lead (index 0) is a real user, so fall back to their account
-              // details when the stored member entry is blank (legacy rosters).
-              const leadName = i === 0 ? reg.user.fullName || '' : '';
-              const leadEmail = i === 0 ? reg.user.identities?.[0]?.email || '' : '';
-              const leadMobile = i === 0 ? reg.user.mobileNumber || '' : '';
-              rows.push([
-                pickMemberField(flat, MEMBER_ALIASES.name) || leadName,
-                i === 0 ? reg.user.username || '' : '',
-                pickMemberField(flat, MEMBER_ALIASES.email) || leadEmail,
-                pickMemberField(flat, MEMBER_ALIASES.mobile) || leadMobile,
-                reg.ticketType?.name || 'RSVP',
-                '1',
-                reg.status,
-                reg.paymentStatus,
-                i === 0 ? Number(reg.totalAmount).toString() : '0',
-                reg.registeredAt.toISOString(),
-                reg.checkedInAt ? 'Yes' : 'No',
-                `Group of ${reg.groupSize} · ${i === 0 ? 'Lead' : `Member ${i + 1}`}`,
-                // Custom answers: prefer the member's own, fall back to the shared
-                // registration responses for the lead row.
-                ...formFields.map((f) =>
-                  formatResponse(custom[f.id] ?? (i === 0 ? responses[f.id] : undefined)),
-                ),
-              ]);
-            });
           } else {
             rows.push([
               reg.user.fullName || '',
@@ -3780,7 +3716,7 @@ export class RegistrationsService {
 
   /**
    * Tickets where the caller is a GROUP MEMBER of someone else's registration
-   * (matched by their email in `groupMembers`), not the lead. Lets a member see
+   * (a seat filled with their email, or one they claimed), not the lead. Lets a member see
    * the shared ticket in their own app. Read-only — the registration still
    * belongs to the lead. Excludes the caller's own registrations (they already
    * see those via getMyRegistrations).
@@ -3796,23 +3732,23 @@ export class RegistrationsService {
       .map((i) => i.email)
       .filter((e): e is string => !!e);
 
-    // JSONB @> containment matches a member object that *contains* {email},
-    // even though it also has name/mobile/etc. Case-sensitive, so emails must
-    // match as stored (both are normally lowercase).
+    // Seats the lead filled with my email (CLAIMED, no claimer account). JSONB
+    // @> containment matches a member object that *contains* {email}, even
+    // though it also has name/mobile/etc. Case-sensitive, so emails must match
+    // as stored (both are normally lowercase).
     const matchers = emails.map(
-      (e) =>
-        Prisma.sql`r.group_members @> ${JSON.stringify([{ email: e }])}::jsonb`,
+      (e) => Prisma.sql`gs.member_details @> ${JSON.stringify({ email: e })}::jsonb`,
     );
-    // Legacy JSON roster match needs an email; claimed seats (below) don't.
     const idRows = emails.length === 0 ? [] : await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-      SELECT r.id FROM event_registrations r
+      SELECT DISTINCT r.id FROM event_registrations r
+      JOIN group_seats gs ON gs.registration_id = r.id
       WHERE r.payment_status IN ('PAID', 'PARTIALLY_REFUNDED')
         AND r.status <> 'CANCELLED'
         AND r.user_id <> ${userId}::uuid
+        AND gs.status = 'CLAIMED'
         AND (${Prisma.join(matchers, ' OR ')})
     `);
-    // Seats I claimed from an invite live on GroupSeat (not the legacy JSON),
-    // so they're matched by claimer, not email.
+    // Seats I claimed from an invite are matched by claimer, not email.
     const claimedSeats = await this.prisma.groupSeat.findMany({
       where: {
         claimedByUserId: userId,
@@ -4831,7 +4767,7 @@ export class RegistrationsService {
 
       // Email the shared ticket to each group member (skips the lead + dupes).
       await this.sendGroupMemberConfirmations(
-        updatedRegistration,
+        registration.id,
         registration.event,
         registration.qrCode,
         updatedRegistration!.tickets[0]?.ticketCode || undefined,
@@ -5708,7 +5644,7 @@ export class RegistrationsService {
     // this fallback path sends the lead no dedicated email, so if the lead is
     // among the members they should still receive their copy here.
     await this.sendGroupMemberConfirmations(
-      registration,
+      registration.id,
       registration.event,
       registration.qrCode,
       undefined,

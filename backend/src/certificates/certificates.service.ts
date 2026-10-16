@@ -385,11 +385,8 @@ export class CertificatesService {
       id: true,
       userId: true,
       groupSize: true,
-      groupMembers: true, // legacy fallback only (dropped in a later migration)
       formResponses: true,
-      // GroupSeat rows are the source of truth for a group's roster — a pay-first
-      // group has no `groupMembers` JSON at all, so seats are the only way to
-      // certify its members. CLAIMED seats are the attendees.
+      // GroupSeat rows are the group's roster (S42); CLAIMED seats are the attendees.
       groupSeats: {
         orderBy: { seatIndex: 'asc' as const },
         select: {
@@ -445,7 +442,7 @@ export class CertificatesService {
 
   /**
    * Turn one registration into its recipients. A GROUP registration (its team
-   * in `groupMembers`) becomes one recipient per member — each with their own
+   * in GroupSeat rows) becomes one recipient per member — each with their own
    * name from the member data — so no teammate is left off. An individual
    * becomes a single recipient whose name is read from the form responses,
    * falling back to the account only when a response has none.
@@ -455,7 +452,6 @@ export class CertificatesService {
       id: string;
       userId: string;
       groupSize: number | null;
-      groupMembers: Prisma.JsonValue;
       groupSeats?: {
         seatIndex: number;
         status: GroupSeatStatus;
@@ -478,7 +474,7 @@ export class CertificatesService {
       reg.user.identities.find((i) => i.email)?.email ??
       null;
 
-    // GROUP (seat model, preferred) — one certificate per CLAIMED seat. The
+    // GROUP — one certificate per CLAIMED seat. The
     // memberIndex stays `seatIndex - 1` so it lines up with check-in and any
     // certificate already issued against the legacy 0-based array index.
     const claimedSeats = (reg.groupSeats ?? []).filter(
@@ -504,23 +500,6 @@ export class CertificatesService {
             'Attendee',
           email:
             fromDetails.email || claimerEmail || (isLead ? leadEmail : null),
-        };
-      });
-    }
-
-    // GROUP (legacy JSON fallback) — a group not yet backfilled onto seats.
-    const members = Array.isArray(reg.groupMembers) ? reg.groupMembers : [];
-    if (members.length > 0) {
-      return members.map((raw, index) => {
-        const { name, email } = this.memberIdentity(raw);
-        return {
-          registrationId: reg.id,
-          memberIndex: index,
-          userId: reg.userId, // filed under the lead's account
-          // Index 0 is the lead; fall back to their account when the roster
-          // entry is blank (legacy / lead-only rosters).
-          name: name || (index === 0 ? reg.user.fullName : null) || 'Attendee',
-          email: email || (index === 0 ? leadEmail : null),
         };
       });
     }
