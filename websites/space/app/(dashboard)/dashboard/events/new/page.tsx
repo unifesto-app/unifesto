@@ -96,7 +96,7 @@ function newTicketKey(): string {
 }
 
 function defaultTickets(rt: RegistrationType): TicketDraft[] {
-  return rt === "PAID"
+  return rt === "TICKETED"
     ? [{ key: newTicketKey(), name: "General Admission", price: "", capacity: "" }]
     : [{ key: newTicketKey(), name: "I'll attend", price: "0", capacity: "" }];
 }
@@ -253,7 +253,7 @@ function CreateEventInner() {
   }, []);
 
   const step = STEPS[stepIndex];
-  const isPaid = form.registrationType === "PAID";
+  const isPaid = form.registrationType === "TICKETED";
   const showVenue = form.type === "IN_PERSON" || form.type === "HYBRID";
   const showOnline = form.type === "ONLINE" || form.type === "HYBRID";
   const noun = isSubEvent ? "sub-event" : "event";
@@ -752,7 +752,7 @@ function CreateEventInner() {
                 value={form.registrationType}
                 options={[
                   { value: "RSVP", label: "Free RSVP", hint: "No payment" },
-                  { value: "PAID", label: "Paid tickets", hint: "Sell tickets" },
+                  { value: "TICKETED", label: "Paid tickets", hint: "Sell tickets" },
                 ]}
                 onChange={setRegistrationType}
               />
