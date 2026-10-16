@@ -13,7 +13,7 @@ import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { isSpaceBrandingLive } from './branding.util';
+import { BRAND_FONTS, isSpaceBrandingLive } from './branding.util';
 import {
   AdminApplyBrandingDto,
   CreateWhiteLabelRequestDto,
@@ -203,6 +203,7 @@ export class WhiteLabelService {
       space,
       events,
       requests,
+      fonts: BRAND_FONTS,
     };
   }
 
@@ -564,10 +565,13 @@ export class WhiteLabelService {
     try {
       const h = await this.cfApi<CfCustomHostname>('GET', `/${row.providerId}`);
       const state = this.webDomainState(h);
-      return this.prisma.spaceDomain.update({
+      const updated = await this.prisma.spaceDomain.update({
         where: { id },
         data: { ...state, verifiedAt: state.status === 'verified' ? (row.verifiedAt ?? new Date()) : null },
       });
+      // Cached space/event payloads carry branding.customDomain.
+      if (state.status !== row.status) await this.invalidateBrandingCaches({ spaceId: row.spaceId });
+      return updated;
     } catch (e) {
       this.logger.warn(`Cloudflare get ${row.hostname}: ${(e as Error).message}`);
       return this.prisma.spaceDomain.update({ where: { id }, data: { lastCheckedAt: new Date() } });

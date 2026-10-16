@@ -56,6 +56,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isPublic(event)) notFound();
   const tenant = await assertOnTenant(event);
 
+  // A space with a live custom domain is canonical there, so search engines
+  // index one address; www links keep working (no redirect).
+  const home = tenant?.host ?? event.branding?.customDomain ?? null;
+
   // White-labelled: the space's name replaces ours in titles and share cards.
   const brand = event.branding?.name ?? null;
   const hostName = event.space?.name ?? event.organization?.name;
@@ -76,8 +80,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return withSocial({
     title: { absolute: title },
     description,
-    // On a custom domain, canonical + OG URLs point at that domain.
-    ...(tenant ? { metadataBase: new URL(`https://${tenant.host}`) } : {}),
+    // Canonical + OG URLs point at the custom domain when there is one.
+    ...(home ? { metadataBase: new URL(`https://${home}`) } : {}),
     alternates: { canonical },
     ...(faviconUrl ? { icons: { icon: faviconUrl } } : {}),
     // Safari Smart App Banner; app-argument opens this event if installed.

@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  BRAND_FONTS,
   getWhiteLabelOverview,
   updateEventBranding,
   updateSpaceBranding,
@@ -228,7 +227,7 @@ export default function BrandingStudioPage() {
                         className="flex h-10 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground"
                       >
                         <option value="">Unifesto default</option>
-                        {Object.entries(BRAND_FONTS).map(([key, family]) => (
+                        {Object.entries(data.fonts ?? {}).map(([key, family]) => (
                           <option key={key} value={key}>
                             {family}
                           </option>
@@ -342,7 +341,7 @@ export default function BrandingStudioPage() {
               </div>
             </div>
 
-            <BrandPreview space={space} draft={draft} />
+            <BrandPreview space={space} draft={draft} fonts={data.fonts ?? {}} />
           </div>
 
           <EventOverrides events={data.events} spaceColor={data.live ? space.brandColor : null} onChanged={load} />
@@ -405,8 +404,16 @@ function AssetField({
 }
 
 /** A small mock of the public page, driven by the unsaved draft. */
-function BrandPreview({ space, draft }: { space: SpaceWhiteLabelState; draft: Draft }) {
-  const font = draft.brandFont ? BRAND_FONTS[draft.brandFont] : null;
+function BrandPreview({
+  space,
+  draft,
+  fonts,
+}: {
+  space: SpaceWhiteLabelState;
+  draft: Draft;
+  fonts: Record<string, string>;
+}) {
+  const font = draft.brandFont ? fonts[draft.brandFont] ?? null : null;
   const dark = draft.brandMode !== "light";
   const accent = HEX.test(draft.brandColor) ? draft.brandColor : DEFAULT_COLOR;
   const logo = space.brandLogoUrl ?? space.logoUrl;

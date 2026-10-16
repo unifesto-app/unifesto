@@ -19,7 +19,7 @@ import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
 import { PlanConfigService } from '../subscription/plan-config.service';
-import { BRANDING_SPACE_SELECT, resolveEventBranding } from '../white-label/branding.util';
+import { BRANDING_SPACE_SELECT, resolveEventBranding, resolveSpaceBranding } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { RecurrenceService } from './recurrence/recurrence.service';
 import { parseRRule, serializeRRule } from './recurrence/rrule.util';
@@ -1702,7 +1702,7 @@ export class EventsService {
         visibility: true,
         status: true,
         isRecurring: true,
-        space: { select: { name: true } },
+        space: { select: { subscription: true, ...BRANDING_SPACE_SELECT } },
         creator: { select: { fullName: true } },
       },
     });
@@ -1731,6 +1731,12 @@ export class EventsService {
       city: event.city,
       onlineUrl: event.onlineUrl,
       organiserName: event.space?.name ?? event.creator?.fullName ?? null,
+      customDomain: event.space?.subscription
+        ? resolveSpaceBranding(
+            event.space,
+            this.planConfig.getEffectiveLimits(event.space.subscription).hasRemoveBranding,
+          )?.customDomain
+        : null,
     };
     return buildEventIcs(input);
   }

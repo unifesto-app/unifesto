@@ -27,7 +27,13 @@ describe('branding.util', () => {
       mode: 'light',
       hidePoweredBy: true,
       faviconUrl: null,
+      customDomain: null,
     });
+  });
+
+  it('exposes the verified custom web domain', () => {
+    const b = resolveSpaceBranding(space({ domains: [{ hostname: 'events.acme.edu' }] }), true);
+    expect(b?.customDomain).toBe('events.acme.edu');
   });
 
   it('is off without the plan, when switched off, or when suspended', () => {

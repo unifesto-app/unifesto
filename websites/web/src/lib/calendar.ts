@@ -19,6 +19,8 @@ export interface CalendarEvent {
   endIso?: string;
   description?: string | null;
   location?: string | null;
+  /** The space's custom web domain; the event link points there when set. */
+  customDomain?: string | null;
 }
 
 /** Compact UTC stamp "YYYYMMDDTHHMMSSZ" that Google Calendar expects. */
@@ -36,15 +38,15 @@ function resolveEnd(startIso: string, endIso?: string): string {
 }
 
 /** Absolute URL of the public event page, woven into the event description. */
-function eventPageUrl(slug: string): string {
-  const base = process.env.NEXT_PUBLIC_WEB_URL || "https://unifesto.app";
+function eventPageUrl(slug: string, customDomain?: string | null): string {
+  const base = customDomain ? `https://${customDomain}` : process.env.NEXT_PUBLIC_WEB_URL || "https://unifesto.app";
   return `${base}/event/${slug}`;
 }
 
 function buildDetails(event: CalendarEvent): string {
   const parts: string[] = [];
   if (event.description?.trim()) parts.push(event.description.trim());
-  parts.push(`Event details: ${eventPageUrl(event.slug)}`);
+  parts.push(`Event details: ${eventPageUrl(event.slug, event.customDomain)}`);
   return parts.join("\n\n");
 }
 

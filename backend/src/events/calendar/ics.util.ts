@@ -22,11 +22,13 @@ export interface IcsEventInput {
   city?: string | null;
   onlineUrl?: string | null;
   organiserName?: string | null; // space.name ?? creator.fullName
+  /** The space's live custom web domain, if any; links point there instead. */
+  customDomain?: string | null;
 }
 
 /** Absolute URL of the public event page — used in DESCRIPTION and as UID anchor. */
-export function eventPageUrl(slug: string): string {
-  const base = process.env.PUBLIC_WEB_URL ?? 'https://unifesto.app';
+export function eventPageUrl(slug: string, customDomain?: string | null): string {
+  const base = customDomain ? `https://${customDomain}` : (process.env.PUBLIC_WEB_URL ?? 'https://unifesto.app');
   return `${base}/event/${slug}`;
 }
 
@@ -121,7 +123,7 @@ function quoteParam(value: string): string {
 function buildVeventLines(event: IcsEventInput, now: Date): string[] {
   const lines: string[] = [];
   const tz = event.timezone;
-  const pageUrl = eventPageUrl(event.slug);
+  const pageUrl = eventPageUrl(event.slug, event.customDomain);
   const hasVenue = event.type === 'IN_PERSON' || event.type === 'HYBRID';
 
   // UID must be globally unique AND stable across regenerations, so a re-download

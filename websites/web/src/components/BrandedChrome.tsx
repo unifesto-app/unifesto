@@ -13,6 +13,8 @@ export interface Branding {
   mode?: "light" | "dark" | null;
   hidePoweredBy?: boolean;
   faviconUrl?: string | null;
+  /** Verified custom web domain, the space's canonical home (e.g. `events.acme.edu`). */
+  customDomain?: string | null;
 }
 
 /** True when the page should swap Unifesto's Navbar/Footer for the space's own. */
