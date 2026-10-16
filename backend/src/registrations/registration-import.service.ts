@@ -27,7 +27,17 @@ import * as crypto from 'crypto';
 import { generateQRCode, generateTicketCode } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 
-/** Curator-added attendees: bulk CSV import (template, preview, import) and the single manual add. */
+/**
+ * Curator-added attendees: bulk CSV import (template, preview, import) and the
+ * single manual add.
+ *
+ * Authorization is enforced at the controller by @Can(EVENT_MANAGE_ATTENDEES);
+ * these methods trust that gate and only validate the event/ticket exist.
+ * Attendees are keyed by EMAIL: an imported/added row resolves to an existing
+ * account via its email identity, or a claimable placeholder account is minted
+ * (the same shape auth uses for email sign-ups) so the person auto-claims it on
+ * their first real login.
+ */
 @Injectable()
 export class RegistrationImportService {
   // Same log context as before the split, so log searches keep working.
