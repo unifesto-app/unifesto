@@ -5,7 +5,10 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { sniffMime, UPLOAD_EXT } from '../registrations/form-uploads.service';
 import { Action, AuthorizationService } from '../auth/authorization';
 import {
   Prisma,
@@ -65,6 +68,14 @@ const PLATFORM_CATEGORIES: SupportTicketCategory[] = [
   SupportTicketCategory.TECHNICAL,
 ];
 
+/** Attachments (D4): images and PDFs, up to this size, this many per message. */
+export const ATTACHMENT_MAX_MB = 10;
+const ATTACHMENT_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+const ATTACHMENTS_PER_MESSAGE = 5;
+/** How long a "view attachment" link works. */
+const ATTACHMENT_LINK_SECONDS = 5 * 60;
+const attachmentSelect = { id: true, name: true, mime: true, size: true, createdAt: true } satisfies Prisma.SupportAttachmentSelect;
+
 /** The case fields access is decided on. */
 type CaseAccess = { requesterId: string; desk: SupportDesk; eventId: string | null };
 
@@ -75,6 +86,7 @@ export class SupportService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authz: AuthorizationService,
+    private readonly storage: StorageService,
   ) {}
 
   /* ---------------------------------------------------------------------- */
@@ -259,7 +271,7 @@ export class SupportService {
         space: { select: spaceSelect },
         messages: {
           orderBy: { createdAt: 'asc' },
-          include: { author: { select: userSelect } },
+          include: { author: { select: userSelect }, attachments: { select: attachmentSelect } },
         },
       },
     });
@@ -352,6 +364,83 @@ export class SupportService {
     ]);
 
     return message;
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Attachments (D4)                                                        */
+  /* ---------------------------------------------------------------------- */
+
+  /** The message's author attaches a file to it, while the case is open. */
+  async addAttachment(
+    ticketId: string,
+    messageId: string,
+    userId: string,
+    file: Express.Multer.File | undefined,
+  ) {
+    if (!file?.buffer?.length) throw new BadRequestException('Choose a file to upload.');
+    const message = await this.prisma.supportMessage.findUnique({
+      where: { id: messageId },
+      select: {
+        ticketId: true,
+        authorId: true,
+        ticket: { select: { status: true } },
+        _count: { select: { attachments: true } },
+      },
+    });
+    if (!message || message.ticketId !== ticketId) throw new NotFoundException('Message not found');
+    if (message.authorId !== userId) throw new ForbiddenException('You can only attach files to your own message');
+    if (message.ticket.status === SupportTicketStatus.CLOSED) {
+      throw new BadRequestException('This ticket is closed. Open a new ticket to continue.');
+    }
+    if (message._count.attachments >= ATTACHMENTS_PER_MESSAGE) {
+      throw new BadRequestException(`A message can have up to ${ATTACHMENTS_PER_MESSAGE} files.`);
+    }
+    if (file.size > ATTACHMENT_MAX_MB * 1024 * 1024) {
+      throw new BadRequestException(`Files can be up to ${ATTACHMENT_MAX_MB} MB.`);
+    }
+    const mime = sniffMime(file.buffer);
+    if (!mime || !ATTACHMENT_MIMES.includes(mime)) {
+      throw new BadRequestException('Attach an image or a PDF.');
+    }
+
+    const key = `private/support/${ticketId}/${messageId}/${crypto.randomUUID()}.${UPLOAD_EXT[mime]}`;
+    await this.storage.uploadPrivate(file.buffer, key, mime);
+    return this.prisma.supportAttachment.create({
+      data: {
+        messageId,
+        key,
+        name: (file.originalname || `file.${UPLOAD_EXT[mime]}`).slice(0, 200),
+        mime,
+        size: file.size,
+      },
+      select: attachmentSelect,
+    });
+  }
+
+  /** A 5-minute link to one attachment, for anyone who can see the case (not internal notes for the requester). */
+  async attachmentUrl(id: string, userId: string): Promise<{ url: string }> {
+    const att = await this.prisma.supportAttachment.findUnique({
+      where: { id },
+      select: {
+        key: true,
+        name: true,
+        message: {
+          select: {
+            internal: true,
+            ticket: { select: { requesterId: true, desk: true, eventId: true } },
+          },
+        },
+      },
+    });
+    const ticket = att?.message.ticket;
+    if (
+      !att ||
+      !(await this.canSeeCase(userId, ticket!)) ||
+      (att.message.internal && ticket!.requesterId === userId)
+    ) {
+      throw new NotFoundException('Attachment not found');
+    }
+    return { url: await this.storage.signedGetUrl(att.key, ATTACHMENT_LINK_SECONDS, att.name) };
   }
 
   /* ---------------------------------------------------------------------- */

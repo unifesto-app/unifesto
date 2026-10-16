@@ -3069,11 +3069,32 @@ model SupportMessage {
 
   body String @db.Text
 
+  attachments SupportAttachment[]
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([ticketId, createdAt])
   @@index([authorId])
   @@map("support_messages")
+}
+
+/// A file on an Assist message. Stored under private/ in S3, only ever served
+/// by a short-lived signed URL to people who can see the case.
+model SupportAttachment {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  messageId String         @map("message_id") @db.Uuid
+  message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  key  String @db.VarChar(300) // private S3 key
+  name String @db.VarChar(200) // original filename, for the download
+  mime String @db.VarChar(100)
+  size Int
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([messageId])
+  @@map("support_attachments")
 }
 
 // =====================================================

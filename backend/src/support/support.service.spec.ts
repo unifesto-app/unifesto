@@ -16,7 +16,7 @@ type Role = { code: RoleCode; scope: RoleScope; spaceId?: string | null; eventId
 const ADMIN: Role = { code: RoleCode.ADMIN, scope: RoleScope.PLATFORM };
 
 /** Real AuthorizationService over faked Prisma, so the compiled capability defaults are exercised. */
-function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = null as any } = {}) {
+function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = null as any, message = null as any, attachment = null as any } = {}) {
   const assignments = admin ? [ADMIN, ...roles] : roles;
   const prisma: any = {
     userRole: {
@@ -45,11 +45,22 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
       })),
       update: jest.fn(async (args: any) => args),
     },
-    supportMessage: { create: jest.fn(async (args: any) => args.data) },
+    supportMessage: {
+      create: jest.fn(async (args: any) => args.data),
+      findUnique: jest.fn(async () => message),
+    },
+    supportAttachment: {
+      create: jest.fn(async (args: any) => args.data),
+      findUnique: jest.fn(async () => attachment),
+    },
     $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
   };
   const authz = new AuthorizationService(prisma, new CapabilityConfigService(prisma));
-  return { prisma, service: new SupportService(prisma, authz) };
+  const storage: any = {
+    uploadPrivate: jest.fn(async () => undefined),
+    signedGetUrl: jest.fn(async (key: string) => `signed:${key}`),
+  };
+  return { prisma, storage, service: new SupportService(prisma, authz, storage) };
 }
 
 describe('SupportService (Assist case)', () => {
@@ -200,6 +211,66 @@ describe('SupportService (Assist access, routing, escalation)', () => {
         ForbiddenException,
       );
       await expect(setup().service.escalate('t-1', 'user-1')).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('attachments (D4)', () => {
+    const PNG = Buffer.from('\x89PNG\r\n\x1a\nrest', 'latin1');
+    const file = (buffer: Buffer, size = buffer.length) => ({ buffer, size, originalname: 'shot.png' }) as any;
+    const msg = (over: any = {}) => ({
+      ticketId: 't-1',
+      authorId: 'user-1',
+      ticket: { status: SupportTicketStatus.OPEN },
+      _count: { attachments: 0 },
+      ...over,
+    });
+    const att = (over: any = {}, ticket: any = {}) => ({
+      key: 'private/support/t-1/m-1/x.png',
+      name: 'shot.png',
+      message: {
+        internal: false,
+        ticket: { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', ...ticket },
+      },
+      ...over,
+    });
+
+    it('stores a sniffed image under private/ for the message author', async () => {
+      const { prisma, storage, service } = setup({ message: msg() });
+      await service.addAttachment('t-1', 'm-1', 'user-1', file(PNG));
+      const key = storage.uploadPrivate.mock.calls[0][1] as string;
+      expect(key).toMatch(/^private\/support\/t-1\/m-1\/.+\.png$/);
+      expect(prisma.supportAttachment.create.mock.calls[0][0].data).toMatchObject({
+        messageId: 'm-1',
+        key,
+        mime: 'image/png',
+        name: 'shot.png',
+      });
+    });
+
+    it('rejects other authors, wrong types, oversize files and closed cases', async () => {
+      await expect(setup({ message: msg() }).service.addAttachment('t-1', 'm-1', 'other', file(PNG))).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(setup({ message: msg() }).service.addAttachment('t-1', 'm-1', 'user-1', file(Buffer.from('MZ-exe')))).rejects.toBeInstanceOf(BadRequestException);
+      await expect(setup({ message: msg() }).service.addAttachment('t-1', 'm-1', 'user-1', file(PNG, 11 * 1024 * 1024))).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        setup({ message: msg({ ticket: { status: SupportTicketStatus.CLOSED } }) }).service.addAttachment('t-1', 'm-1', 'user-1', file(PNG)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(setup({ message: msg() }).service.addAttachment('t-2', 'm-1', 'user-1', file(PNG))).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('signs a short-lived link for the requester and the space desk', async () => {
+      const { storage, service } = setup({ attachment: att() });
+      expect(await service.attachmentUrl('a-1', 'user-1')).toEqual({ url: 'signed:private/support/t-1/m-1/x.png' });
+      expect(storage.signedGetUrl.mock.calls[0][1]).toBeLessThanOrEqual(300);
+
+      const curator = setup({ attachment: att(), roles: [{ code: RoleCode.CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' }] });
+      await expect(curator.service.attachmentUrl('a-1', 'cur-1')).resolves.toHaveProperty('url');
+    });
+
+    it('hides attachments from outsiders, and internal-note files from the requester', async () => {
+      await expect(setup({ attachment: att() }).service.attachmentUrl('a-1', 'stranger')).rejects.toBeInstanceOf(NotFoundException);
+      const internal = att({ message: { ...att().message, internal: true } });
+      await expect(setup({ attachment: internal }).service.attachmentUrl('a-1', 'user-1')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(setup({ attachment: internal, admin: true }).service.attachmentUrl('a-1', 'admin-1')).resolves.toHaveProperty('url');
     });
   });
 });
