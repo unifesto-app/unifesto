@@ -13,15 +13,16 @@ const PAID = {
 
 type Db = Pick<
   Prisma.TransactionClient,
-  'eventRegistration' | 'refundRequest' | 'stayBooking' | 'payout' | 'sessionRegistration'
+  'eventRegistration' | 'refundRequest' | 'stayBooking' | 'payout' | 'sessionRegistration' | 'groupSeatPurchase'
 >;
 
-/** Count of money rows under the events matching `event` (extra-seat payments hang off registrations). */
+/** Count of money rows under the events matching `event`, extra-seat payments included. */
 export async function eventMoneyRecords(db: Db, event: Prisma.EventWhereInput): Promise<number> {
   const counts = await Promise.all([
     db.eventRegistration.count({ where: { event, ...PAID } }),
     db.refundRequest.count({ where: { event } }),
     db.stayBooking.count({ where: { event, ...PAID } }),
+    db.groupSeatPurchase.count({ where: { registration: { event }, ...PAID } }),
     db.payout.count({ where: { event } }),
   ]);
   return counts.reduce((a, b) => a + b, 0);

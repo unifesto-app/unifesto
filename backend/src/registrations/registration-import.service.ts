@@ -13,7 +13,7 @@ import { CacheService } from '../cache/cache.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PaymentsService } from '../payments/payments.service';
 import { takeSeats, SoldOutError } from './capacity.util';
-import { buildExportFile } from './export.util';
+import { csvFile } from './export.util';
 import {
   buildTemplateSpec,
   parseCsv,
@@ -156,12 +156,7 @@ export class RegistrationImportService {
       ticketTypeId,
     );
     const spec = buildTemplateSpec(this.toImportShape(ticketType));
-    const { buffer } = await buildExportFile(
-      'csv',
-      `${ticketType.name} attendees`,
-      spec.header,
-      [spec.sample],
-    );
+    const buffer = csvFile(spec.header, [spec.sample]);
     const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
     return {
       buffer,

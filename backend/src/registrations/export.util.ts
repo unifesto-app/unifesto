@@ -2,25 +2,18 @@
  * Attendee export helpers — turn a table of rows into a downloadable file in
  * CSV, Excel (SpreadsheetML 2003) or PDF format.
  *
- * These functions are pure: they take a header row + data rows and return a
- * Buffer plus the matching Content-Type and file extension. Authorization and
- * data fetching live in the service; formatting lives here.
+ * Every format is produced as a stream, one page of rows at a time, so a big
+ * export is written to the response as it is read instead of being built whole
+ * in memory (S54). Authorization and data fetching live in the service;
+ * formatting lives here.
  */
+import { Readable } from 'stream';
 import PDFDocument from 'pdfkit';
 import { csvCell, toCsv } from '../common/csv';
 
 export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 
-export interface ExportFile {
-  buffer: Buffer;
-  contentType: string;
-  extension: string;
-}
-
-/**
- * CSV as a stream of chunks, one per page of rows, so a big export is written
- * to the response as it is read instead of being built whole in memory.
- */
+/** CSV as a stream of chunks, one per page of rows. */
 export async function* csvChunks(
   header: string[],
   rowPages: AsyncIterable<string[][]>,
@@ -33,7 +26,8 @@ export async function* csvChunks(
   }
 }
 
-function csvFile(header: string[], rows: string[][]): Buffer {
+/** A whole small CSV (import templates). */
+export function csvFile(header: string[], rows: string[][]): Buffer {
   return Buffer.from(toCsv([header, ...rows]), 'utf8');
 }
 
@@ -48,112 +42,82 @@ function xmlEscape(value: string): string {
 }
 
 /**
- * Build a SpreadsheetML 2003 (.xls) workbook. It's a single plain-XML file that
+ * A SpreadsheetML 2003 (.xls) workbook. It's a single plain-XML file that
  * Excel and Google Sheets open natively — real columns, no ZIP, no dependency.
  */
-function toXlsx(header: string[], rows: string[][], sheetName: string): Buffer {
+export async function* xlsxChunks(
+  header: string[],
+  rowPages: AsyncIterable<string[][]>,
+  sheetName: string,
+): AsyncGenerator<string> {
   const cell = (v: string) =>
     `<Cell><Data ss:Type="String">${xmlEscape(v)}</Data></Cell>`;
   const row = (cells: string[]) => `<Row>${cells.map(cell).join('')}</Row>`;
 
-  const xml =
-    '<?xml version="1.0"?>' +
+  yield '<?xml version="1.0"?>' +
     '<?mso-application progid="Excel.Sheet"?>' +
     '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" ' +
     'xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
     `<Worksheet ss:Name="${xmlEscape(sheetName.slice(0, 31) || 'Attendees')}">` +
     '<Table>' +
-    row(header) +
-    rows.map(row).join('') +
-    '</Table></Worksheet></Workbook>';
-
-  return Buffer.from(xml, 'utf8');
+    row(header);
+  for await (const rows of rowPages) yield rows.map(row).join('');
+  yield '</Table></Worksheet></Workbook>';
 }
 
-/** Render a simple paginated table PDF. Collects the pdfkit stream into a Buffer. */
-function toPdf(
+/** A simple paginated table PDF; pdfkit's document is itself the stream. */
+export function pdfStream(
   header: string[],
-  rows: string[][],
+  rowPages: AsyncIterable<string[][]>,
   title: string,
-): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 32 });
-    const chunks: Buffer[] = [];
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
+): Readable {
+  const doc = new PDFDocument({ size: 'A4', layout: 'landscape', margin: 32 });
+  const left = doc.page.margins.left;
+  const usableWidth =
+    doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const colWidth = usableWidth / header.length;
+  const rowHeight = 20;
 
-    const left = doc.page.margins.left;
-    const usableWidth =
-      doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const colWidth = usableWidth / header.length;
-    const rowHeight = 20;
+  doc.fontSize(16).text(title, { align: 'left' });
+  doc.moveDown(0.5);
 
-    doc.fontSize(16).text(title, { align: 'left' });
-    doc.moveDown(0.5);
-
-    const drawRow = (cells: string[], y: number, bold: boolean) => {
-      doc.fontSize(8).font(bold ? 'Helvetica-Bold' : 'Helvetica');
-      cells.forEach((text, i) => {
-        doc.text(text, left + i * colWidth + 2, y + 5, {
-          width: colWidth - 4,
-          height: rowHeight,
-          ellipsis: true,
-          lineBreak: false,
-        });
+  const drawRow = (cells: string[], y: number, bold: boolean) => {
+    doc.fontSize(8).font(bold ? 'Helvetica-Bold' : 'Helvetica');
+    cells.forEach((text, i) => {
+      doc.text(text, left + i * colWidth + 2, y + 5, {
+        width: colWidth - 4,
+        height: rowHeight,
+        ellipsis: true,
+        lineBreak: false,
       });
-      doc
-        .moveTo(left, y + rowHeight)
-        .lineTo(left + usableWidth, y + rowHeight)
-        .strokeColor('#e5e7eb')
-        .stroke();
-    };
+    });
+    doc
+      .moveTo(left, y + rowHeight)
+      .lineTo(left + usableWidth, y + rowHeight)
+      .strokeColor('#e5e7eb')
+      .stroke();
+  };
 
-    let y = doc.y;
-    drawRow(header, y, true);
-    y += rowHeight;
+  let y = doc.y;
+  drawRow(header, y, true);
+  y += rowHeight;
 
-    for (const dataRow of rows) {
-      if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
-        doc.addPage();
-        y = doc.page.margins.top;
-        drawRow(header, y, true);
+  const drawPages = async () => {
+    for await (const rows of rowPages) {
+      for (const dataRow of rows) {
+        if (y + rowHeight > doc.page.height - doc.page.margins.bottom) {
+          doc.addPage();
+          y = doc.page.margins.top;
+          drawRow(header, y, true);
+          y += rowHeight;
+        }
+        drawRow(dataRow, y, false);
         y += rowHeight;
       }
-      drawRow(dataRow, y, false);
-      y += rowHeight;
     }
-
     doc.end();
-  });
-}
-
-/** Build an export file in the requested format from a header + rows table. */
-export async function buildExportFile(
-  format: ExportFormat,
-  title: string,
-  header: string[],
-  rows: string[][],
-): Promise<ExportFile> {
-  switch (format) {
-    case 'xlsx':
-      return {
-        buffer: toXlsx(header, rows, title),
-        contentType: 'application/vnd.ms-excel',
-        extension: 'xls',
-      };
-    case 'pdf':
-      return {
-        buffer: await toPdf(header, rows, title),
-        contentType: 'application/pdf',
-        extension: 'pdf',
-      };
-    case 'csv':
-    default:
-      return {
-        buffer: csvFile(header, rows),
-        contentType: 'text/csv; charset=utf-8',
-        extension: 'csv',
-      };
-  }
+  };
+  // A read failure surfaces as a stream error; the controller cuts the response.
+  drawPages().catch((err) => doc.destroy(err));
+  return doc;
 }

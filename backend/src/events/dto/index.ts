@@ -171,31 +171,9 @@ export class CreateEventDto {
   @ApiPropertyOptional({
     example: 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv',
     description:
-      "WhatsApp group invite link for this event. The organiser creates the " +
-      'group by hand in WhatsApp and pastes the link; validated + normalised ' +
-      'server-side. Use whatsappCommunityUrl instead for a big/parent event.',
-  })
-  @IsOptional()
-  @IsString()
-  whatsappGroupUrl?: string;
-
-  @ApiPropertyOptional({
-    example: 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv',
-    description:
-      'WhatsApp community invite link for a big/parent event (the umbrella ' +
-      'over its sub-event groups). Only accepted when this event is a parent.',
-  })
-  @IsOptional()
-  @IsString()
-  whatsappCommunityUrl?: string;
-
-  @ApiPropertyOptional({
-    example: 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv',
-    description:
       "Private WhatsApp attendee invite group. Pushed only to registered " +
       'attendees (registration confirmation + curator blast) and never returned ' +
-      'on the public event payload — this is the field to use, not the legacy ' +
-      'whatsappGroupUrl/whatsappCommunityUrl. Validated + normalised server-side.',
+      'on the public event payload. Validated + normalised server-side.',
   })
   @IsOptional()
   @IsString()
@@ -360,24 +338,6 @@ export class UpdateEventDto {
   @IsOptional()
   @IsEnum(EventVisibility)
   visibility?: EventVisibility;
-
-  @ApiPropertyOptional({
-    description:
-      'WhatsApp group invite link. Pass an empty string to clear it. ' +
-      'Validated + normalised server-side.',
-  })
-  @IsOptional()
-  @IsString()
-  whatsappGroupUrl?: string;
-
-  @ApiPropertyOptional({
-    description:
-      'WhatsApp community invite link (big/parent events only). Pass an empty ' +
-      'string to clear it.',
-  })
-  @IsOptional()
-  @IsString()
-  whatsappCommunityUrl?: string;
 
   @ApiPropertyOptional({
     description:

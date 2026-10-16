@@ -15,7 +15,6 @@ import * as T from './templates';
 import {
   AWS_HTTP_TIMEOUTS,
   OUTBOUND_TIMEOUT_MS,
-  withTimeout,
 } from '../common/http/outbound-timeouts';
 
 interface CustomCampaignData {
@@ -112,17 +111,17 @@ export class EmailService {
         ? `${sender.fromName} <${sender.fromAddress || this.transactionalAddress}>`
         : this.fromTransactional;
 
-      const { data, error } = await withTimeout(
-        this.resend.emails.send({
+      // The signal aborts the underlying fetch, not just the wait (S54).
+      const { data, error } = await this.resend.emails.send(
+        {
           from,
           to,
           subject,
           html,
           ...(sender?.replyTo ? { replyTo: sender.replyTo } : {}),
           ...(attachments?.length ? { attachments } : {}),
-        }),
-        OUTBOUND_TIMEOUT_MS,
-        'Resend send',
+        },
+        { signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS) },
       );
 
       if (error) {

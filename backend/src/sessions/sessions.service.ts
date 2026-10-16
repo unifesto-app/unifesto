@@ -12,6 +12,8 @@ import { EmailService } from '../email/email.service';
 import { LivekitService } from './livekit.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import type { WebhookEvent } from 'livekit-server-sdk';
+import { Cron } from '@nestjs/schedule';
+import { SoldOutError, takeSessionSeat } from '../registrations/capacity.util';
 import {
   Prisma,
   PaymentStatus,
@@ -242,6 +244,21 @@ export class SessionsService {
       throw new BadRequestException('Cannot edit a finished session');
     }
 
+    // Re-check the create-time rules against the values after this edit.
+    const platform = dto.platform ?? session.platform;
+    const isLive = platform === SessionPlatform.UNIFESTO_LIVE;
+    if (!isLive && !(dto.meetingUrl ?? session.meetingUrl)) {
+      throw new BadRequestException('meetingUrl is required for external platforms');
+    }
+    if (platform === 'OTHER' && !(dto.platformOther ?? session.platformOther)) {
+      throw new BadRequestException('platformOther is required when platform is OTHER');
+    }
+    if (dto.capacity != null && dto.capacity < session.registeredCount) {
+      throw new BadRequestException(
+        `Capacity can't go below the ${session.registeredCount} already registered`,
+      );
+    }
+
     return this.prisma.session.update({
       where: { id: sessionId },
       data: {
@@ -249,7 +266,8 @@ export class SessionsService {
         description: dto.description,
         coverImageUrl: dto.coverImageUrl,
         platform: dto.platform,
-        meetingUrl: dto.meetingUrl,
+        meetingUrl: isLive ? null : dto.meetingUrl,
+        interactive: dto.interactive,
         platformOther: dto.platformOther,
         startDateTime: dto.startDateTime
           ? new Date(dto.startDateTime)
@@ -398,14 +416,6 @@ export class SessionsService {
       throw new BadRequestException(decision.reason);
     }
 
-    const paidRegistrations = await this.prisma.sessionRegistration.findMany({
-      where: {
-        sessionId,
-        paymentStatus: PaymentStatus.PAID,
-        status: RegistrationStatus.REGISTERED,
-      },
-    });
-
     // Claim the cancel: two overlapping requests must not both refund.
     const claimed = await this.prisma.session.updateMany({
       where: { id: sessionId, status: session.status },
@@ -419,45 +429,84 @@ export class SessionsService {
       throw new BadRequestException('This session just changed. Refresh and try again.');
     }
 
+    // Read after the claim: a verify that committed before it is seen here; one
+    // after it finds the session closed and refunds itself (takeSessionSeat).
+    const paidRegistrations = await this.prisma.sessionRegistration.findMany({
+      where: {
+        sessionId,
+        paymentStatus: PaymentStatus.PAID,
+        status: RegistrationStatus.REGISTERED,
+      },
+    });
+    const now = new Date();
+    await this.prisma.sessionRegistration.updateMany({
+      where: { id: { in: paidRegistrations.map((r) => r.id) }, status: RegistrationStatus.REGISTERED },
+      data: { status: RegistrationStatus.CANCELLED, cancelledAt: now, refundDueAt: now },
+    });
+
     let refunded = 0;
     for (const reg of paidRegistrations) {
-      // Base only: the processing fee is kept, same as every other refund.
-      const amount = Math.max(
-        0,
-        Math.round((Number(reg.razorpayAmount) - Number(reg.processingFee)) * 100) / 100,
+      const amount = await this.refundDue(reg.id);
+      if (amount == null) continue; // failed: the retry job finishes it
+      refunded += 1;
+      const email = await this.getPrimaryEmail(reg.userId);
+      await this.notifyCancellation(email, session.title, amount).catch((err) =>
+        this.logger.error(`Cancellation notice failed for session registration ${reg.id}`, err),
       );
-      try {
-        if (amount > 0 && reg.paymentId) {
-          await this.payments.refund(reg.paymentId, amount);
-        }
-        await this.prisma.sessionRegistration.update({
-          where: { id: reg.id },
-          data: {
-            status: RegistrationStatus.CANCELLED,
-            cancelledAt: new Date(),
-            paymentStatus:
-              amount > 0 ? PaymentStatus.REFUNDED : reg.paymentStatus,
-            refundedAmount: new Prisma.Decimal(amount),
-          },
-        });
-        refunded += 1;
-        const email = await this.getPrimaryEmail(reg.userId);
-        await this.notifyCancellation(email, session.title, amount);
-      } catch (err) {
-        // A failed refund must not abort the loop — the session is cancelled
-        // and remaining attendees still need refunding. Surface for follow-up.
-        this.logger.error(
-          `Refund failed for session registration ${reg.id}: ${
-            (err as Error).message
-          }`,
-        );
-      }
     }
 
     this.logger.log(
       `Cancelled session ${sessionId}; refunded ${refunded}/${paidRegistrations.length} paid attendees`,
     );
     return { cancelled: true, refunded, totalPaid: paidRegistrations.length };
+  }
+
+  /**
+   * Send a due session refund: base only (the processing fee is kept, same as
+   * every other refund; a sold-out row had its fee zeroed so it all goes back).
+   * Claimed by pushing `refundDueAt` an hour out, so replicas, retries and a
+   * concurrent cancel never refund twice. Returns the amount, or null when the
+   * row wasn't due or Razorpay failed (left due for {@link retryDueRefunds}).
+   */
+  async refundDue(registrationId: string): Promise<number | null> {
+    const now = new Date();
+    const claimed = await this.prisma.sessionRegistration.updateMany({
+      where: { id: registrationId, refundDueAt: { lte: now }, paymentStatus: PaymentStatus.PAID },
+      data: { refundDueAt: new Date(now.getTime() + 60 * 60_000) },
+    });
+    if (claimed.count !== 1) return null;
+    const reg = await this.prisma.sessionRegistration.findUniqueOrThrow({ where: { id: registrationId } });
+    const amount = Math.max(
+      0,
+      Math.round((Number(reg.razorpayAmount) - Number(reg.processingFee)) * 100) / 100,
+    );
+    try {
+      if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount);
+    } catch (err) {
+      this.logger.error(
+        `CRITICAL: refund of session registration ${registrationId} failed, retrying later: ${(err as Error).message}`,
+      );
+      return null;
+    }
+    await this.prisma.sessionRegistration.update({
+      where: { id: registrationId },
+      data: {
+        refundDueAt: null,
+        ...(amount > 0 && { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: new Prisma.Decimal(amount) }),
+      },
+    });
+    return amount;
+  }
+
+  /** Retry session refunds that didn't go through the first time. */
+  @Cron('*/15 * * * *')
+  async retryDueRefunds(): Promise<void> {
+    const due = await this.prisma.sessionRegistration.findMany({
+      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+      select: { id: true },
+      take: 100,
+    });
+    for (const r of due) await this.refundDue(r.id);
   }
 
   private async notifyCancellation(
@@ -713,6 +762,13 @@ export class SessionsService {
     if (existing && existing.status === RegistrationStatus.REGISTERED) {
       throw new BadRequestException('Already registered for this session');
     }
+    // A row that ever took a payment is that payment's record (refunded or
+    // due back); reusing it would overwrite the money trail.
+    if (existing?.paymentId) {
+      throw new BadRequestException(
+        'Your earlier registration for this session was refunded. Contact the host to register again.',
+      );
+    }
 
     if (
       session.capacity != null &&
@@ -726,25 +782,20 @@ export class SessionsService {
     // Free session — complete immediately, count the seat, no Razorpay round-trip.
     if (basePrice <= 0) {
       const registration = await this.prisma.$transaction(async (tx) => {
-        const reg = await tx.sessionRegistration.upsert({
-          where: { sessionId_userId: { sessionId, userId } },
-          create: {
-            sessionId,
-            userId,
-            paymentStatus: PaymentStatus.PAID,
-            paidAt: new Date(),
-          },
-          update: {
-            status: RegistrationStatus.REGISTERED,
-            paymentStatus: PaymentStatus.PAID,
-            paidAt: new Date(),
-            cancelledAt: null,
-          },
-        });
-        await tx.session.update({
-          where: { id: sessionId },
-          data: { registeredCount: { increment: 1 } },
-        });
+        const free = { status: RegistrationStatus.REGISTERED, paymentStatus: PaymentStatus.PAID, paidAt: new Date() };
+        let reg;
+        if (existing) {
+          // Conditional on the row we read, so a double tap can't count twice.
+          const revived = await tx.sessionRegistration.updateMany({
+            where: { id: existing.id, status: RegistrationStatus.CANCELLED, paymentId: null },
+            data: { ...free, cancelledAt: null },
+          });
+          if (revived.count !== 1) throw new BadRequestException('Already registered for this session');
+          reg = existing;
+        } else {
+          reg = await tx.sessionRegistration.create({ data: { sessionId, userId, ...free } });
+        }
+        await takeSessionSeat(tx, sessionId);
         return reg;
       });
       return { registrationId: registration.id, needsPayment: false };
@@ -846,6 +897,7 @@ export class SessionsService {
       throw new BadRequestException('This registration can no longer be paid.');
     }
 
+    let soldOut = false;
     await this.prisma.$transaction(async (tx) => {
       // Atomic claim: two overlapping verifies both saw PENDING above; only the
       // one that flips the row counts the seat.
@@ -863,11 +915,32 @@ export class SessionsService {
         },
       });
       if (claimed.count === 0) return;
-      await tx.session.update({
-        where: { id: registration.sessionId },
-        data: { registeredCount: { increment: 1 } },
-      });
+      try {
+        await takeSessionSeat(tx, registration.sessionId);
+      } catch (err) {
+        if (!(err instanceof SoldOutError)) throw err;
+        // Full or cancelled while they paid: nothing was delivered, so the fee
+        // goes back too (zeroed, as events do) and the whole payment is due.
+        soldOut = true;
+        const now = new Date();
+        await tx.sessionRegistration.update({
+          where: { id: registration.id },
+          data: {
+            status: RegistrationStatus.CANCELLED,
+            cancelledAt: now,
+            refundDueAt: now,
+            processingFee: new Prisma.Decimal(0),
+          },
+        });
+      }
     });
+
+    if (soldOut) {
+      await this.refundDue(registration.id);
+      throw new BadRequestException(
+        `This session filled up or closed while you were paying. Your payment of ₹${Number(registration.razorpayAmount)} is being refunded in full.`,
+      );
+    }
 
     return { registrationId: registration.id, paid: true };
   }

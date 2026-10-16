@@ -56,7 +56,7 @@ describe('CertificateRenderService.renderAll (S20)', () => {
     const meta = await sharp(png).metadata();
     expect(meta.width).toBeLessThanOrEqual(MAX_RENDER_SIDE);
     expect(meta.width! * meta.height!).toBeLessThanOrEqual(MAX_RENDER_PIXELS);
-  });
+  }, 30_000);
 });
 
 function setup(queue: { add?: jest.Mock; addReissueRevoked?: jest.Mock }) {

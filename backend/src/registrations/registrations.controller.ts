@@ -306,7 +306,7 @@ export class RegistrationsController {
         ? format
         : 'csv';
     const exportType = type === 'transactions' ? 'transactions' : 'attendees';
-    const { buffer, stream, contentType, filename } =
+    const { stream, contentType, filename } =
       await this.registrationsService.exportRegistrations(
         req.user.id,
         id,
@@ -318,20 +318,15 @@ export class RegistrationsController {
       'Content-Disposition',
       `attachment; filename="${filename}"`,
     );
-    if (stream) {
-      // CSV streams as it is read. A failure mid-stream can't become an error
-      // status any more, so cut the connection rather than send a short file.
-      stream.on('error', (err) => {
-        new Logger('RegistrationsExport').error(
-          `Export ${id} failed mid-stream: ${err.message}`,
-        );
-        res.destroy(err);
-      });
-      stream.pipe(res);
-      return;
-    }
-    res.setHeader('Content-Length', buffer!.length.toString());
-    res.end(buffer);
+    // Every format streams as it is read. A failure mid-stream can't become an
+    // error status any more, so cut the connection rather than send a short file.
+    stream.on('error', (err) => {
+      new Logger('RegistrationsExport').error(
+        `Export ${id} failed mid-stream: ${err.message}`,
+      );
+      res.destroy(err);
+    });
+    stream.pipe(res);
   }
 
   /**

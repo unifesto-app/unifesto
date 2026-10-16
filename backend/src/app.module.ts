@@ -80,8 +80,14 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    // Enable scheduled jobs and cron tasks
-    ScheduleModule.forRoot(),
+    // Enable scheduled jobs and cron tasks. The cert-worker container
+    // (CERT_WORKER=true) runs the same image only to drain the render queue, so
+    // it skips every @Cron/@Interval/@Timeout and leaves them to the API replicas.
+    ScheduleModule.forRoot(
+      process.env.CERT_WORKER === 'true'
+        ? { cronJobs: false, intervals: false, timeouts: false }
+        : {},
+    ),
     // In-process event bus: domain services emit, the notifications module
     // listens. Decouples push fan-out from domain requests (best-effort, async).
     EventEmitterModule.forRoot(),

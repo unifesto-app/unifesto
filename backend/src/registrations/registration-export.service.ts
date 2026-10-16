@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { formatAnswer } from './form-answers.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
-import { buildExportFile, csvChunks, type ExportFormat } from './export.util';
+import { csvChunks, pdfStream, xlsxChunks, type ExportFormat } from './export.util';
 import { Readable } from 'stream';
 import { pages } from '../common/batching';
 import { Action, AuthorizationService } from '../auth/authorization';
@@ -351,10 +351,7 @@ export class RegistrationExportService {
   }
 }
 
-/**
- * CSV streams page by page; xlsx/pdf are whole-file formats, so their rows are
- * collected and built in memory as before.
- */
+/** Every format streams page by page (S54). */
 async function exportOutput(
   format: ExportFormat,
   title: string,
@@ -364,22 +361,25 @@ async function exportOutput(
 ): Promise<{
   contentType: string;
   filename: string;
-  stream?: Readable;
-  buffer?: Buffer;
+  stream: Readable;
 }> {
-  if (format === 'csv') {
+  if (format === 'xlsx') {
     return {
-      stream: Readable.from(csvChunks(header, rowPages)),
-      contentType: 'text/csv; charset=utf-8',
-      filename: `${basename}.csv`,
+      stream: Readable.from(xlsxChunks(header, rowPages, title)),
+      contentType: 'application/vnd.ms-excel',
+      filename: `${basename}.xls`,
     };
   }
-  const rows: string[][] = [];
-  for await (const page of rowPages) rows.push(...page);
-  const file = await buildExportFile(format, title, header, rows);
+  if (format === 'pdf') {
+    return {
+      stream: pdfStream(header, rowPages, title),
+      contentType: 'application/pdf',
+      filename: `${basename}.pdf`,
+    };
+  }
   return {
-    buffer: file.buffer,
-    contentType: file.contentType,
-    filename: `${basename}.${file.extension}`,
+    stream: Readable.from(csvChunks(header, rowPages)),
+    contentType: 'text/csv; charset=utf-8',
+    filename: `${basename}.csv`,
   };
 }

@@ -117,7 +117,12 @@ export interface CreateSessionPayload {
   visibility?: SessionVisibility;
 }
 
-export type UpdateSessionPayload = Partial<CreateSessionPayload>;
+export type UpdateSessionPayload = Partial<
+  Omit<CreateSessionPayload, "capacity">
+> & {
+  /** null clears the cap (unlimited). */
+  capacity?: number | null;
+};
 
 /**
  * A space's sessions. `deleted` picks which side of the soft-delete line —
