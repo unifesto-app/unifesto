@@ -37,7 +37,7 @@ function buildChecklist(event: Event, base: string) {
   const venueOk = !showVenue || has(event.venueName) || has(event.city);
   const onlineOk = !showOnline || has(event.onlineUrl);
 
-  const isPaid = event.registrationType === "PAID";
+  const isPaid = event.registrationType === "TICKETED" || event.registrationType === "MIXED";
   const ticketCount = event.ticketTypes?.length ?? 0;
   const registrationHref = isPaid ? `${base}/tickets` : `${base}/rsvps`;
 

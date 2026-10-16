@@ -15,7 +15,8 @@ export type EventStatus =
   | "COMPLETED"
   | "CANCELLED";
 export type EventVisibility = "PUBLIC" | "PRIVATE" | "SPACE_ONLY";
-export type RegistrationType = "RSVP" | "PAID";
+/** Backend enum. The wizard offers RSVP (free) and TICKETED (paid); MIXED comes from older events. */
+export type RegistrationType = "RSVP" | "TICKETED" | "MIXED";
 
 export type TicketKind = "RSVP" | "INDIVIDUAL" | "GROUP";
 export type GroupPricingMode = "PER_GROUP" | "PER_PERSON";
