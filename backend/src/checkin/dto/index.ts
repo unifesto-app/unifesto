@@ -75,7 +75,7 @@ export class GroupCheckinDto {
 
   @ApiProperty({
     example: [0, 2],
-    description: 'Indexes (into the registration groupMembers) to check in.',
+    description: 'Member indexes (seat index - 1) to check in.',
   })
   @IsArray()
   @ArrayNotEmpty()

@@ -302,14 +302,12 @@ export class RegistrationPaymentsService {
         });
       }
 
-      // Group registration → per-seat rows (fast-registration Part 2). Same
-      // transaction as the availability increment, so seats and `seats` count
-      // commit together.
+      // Seats were created with the PENDING row (S42). This only seeds empty
+      // seats for a group that somehow has none; idempotent otherwise.
       await this.groupSeats.createSeatsForRegistration(tx, {
         registrationId: registration.id,
         leadUserId: registration.userId,
         seatCount: seats,
-        groupMembers: registration.groupMembers as unknown[] | null,
       });
     });
 
@@ -1253,12 +1251,11 @@ export class RegistrationPaymentsService {
         });
       }
 
-      // Same group roster as the client-verify path (idempotent).
+      // Same as the client-verify path: seats already exist (S42), idempotent.
       await this.groupSeats.createSeatsForRegistration(tx, {
         registrationId: registration.id,
         leadUserId: registration.userId,
         seatCount: seatsFor(registration),
-        groupMembers: registration.groupMembers as unknown[] | null,
       });
     });
 

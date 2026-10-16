@@ -1489,6 +1489,9 @@ export class CheckinService {
         status: {
           in: [RegistrationStatus.REGISTERED, RegistrationStatus.ATTENDED],
         },
+        // Unpaid checkouts can't be checked in, and their typed-in members
+        // (seats exist from checkout, S42) must not surface at the door.
+        paymentStatus: COUNTS_AS_ATTENDING.paymentStatus,
         OR: or,
       },
       take: 15,

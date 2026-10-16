@@ -172,7 +172,7 @@ describe('CheckinService offline check-in', () => {
 
     it('flags only the group members that were already in', async () => {
       const { svc, prisma } = build({
-        reg: { ...baseReg, groupSize: 3, groupMembers: null },
+        reg: { ...baseReg, groupSize: 3 },
       });
       const earlier = new Date(Date.now() - 30 * 60_000);
       prisma.groupSeat = {
@@ -217,7 +217,6 @@ describe('CheckinService offline check-in', () => {
             ...baseReg,
             id: 'reg-1',
             qrCode: 'QR-1',
-            groupMembers: null,
             tickets: [],
             checkinRecords: [],
             groupMemberCheckins: [],
@@ -283,7 +282,6 @@ describe('CheckinService offline check-in', () => {
         {
           ...baseReg,
           qrCode: 'QR-1',
-          groupMembers: null,
           tickets: [{ qrCode: 'T-1' }],
           checkinRecords: [{ checkinTypeId: POINT, checkedInAt: at }],
           groupMemberCheckins: [],
@@ -294,7 +292,6 @@ describe('CheckinService offline check-in', () => {
           id: 'reg-2',
           qrCode: 'QR-2',
           status: 'CANCELLED',
-          groupMembers: null,
           tickets: [],
           checkinRecords: [],
           groupMemberCheckins: [],
@@ -305,7 +302,6 @@ describe('CheckinService offline check-in', () => {
           id: 'reg-3',
           qrCode: 'QR-3',
           groupSize: 2,
-          groupMembers: null,
           tickets: [],
           checkinRecords: [],
           groupMemberCheckins: [{ memberIndex: 0, checkinTypeId: POINT, checkedInAt: at }],

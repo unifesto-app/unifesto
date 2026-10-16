@@ -30,9 +30,9 @@ export interface CreateSeatsParams {
   /** Total seats purchased (group size). */
   seatCount: number;
   /**
-   * Legacy/upfront member details, if the client still collects them. When
-   * present, those seats are created CLAIMED; any remaining seats up to
-   * `seatCount` are OPEN for later invite/claim (fast-registration Part 2).
+   * Member details the lead typed at checkout (the request's `groupMembers`).
+   * Those seats are created CLAIMED; any remaining seats up to `seatCount`
+   * are OPEN for later invite/claim (fast-registration Part 2).
    */
   groupMembers?: unknown[] | null;
 }
@@ -156,12 +156,12 @@ export class GroupSeatsService {
   }
 
   /**
-   * Materialise seats for a group registration that has none yet, from the
-   * checkout-time `groupMembers` carrier (S42: never expected after the
-   * 20261020130100 backfill; a safety net, not a roster read). Seat-based flows (the WhatsApp member blast,
-   * roster edits) silently skip a seatless group's members, so callers that
-   * fan out per member seat should run this first. Self-transacting and
-   * idempotent: a no-op when seats already exist or it isn't a group.
+   * Seed empty seats (lead + OPEN) for a group registration that has none yet.
+   * A safety net only: seats are created with the registration row (S42).
+   * Seat-based flows (the WhatsApp member blast, roster edits) silently skip a
+   * seatless group's members, so callers that fan out per member seat run this
+   * first. Self-transacting and idempotent: a no-op when seats already exist
+   * or it isn't a group.
    */
   async ensureSeatsForRegistration(registrationId: string): Promise<void> {
     const existing = await this.prisma.groupSeat.count({
@@ -171,7 +171,7 @@ export class GroupSeatsService {
 
     const reg = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
-      select: { id: true, userId: true, groupSize: true, groupMembers: true },
+      select: { id: true, userId: true, groupSize: true },
     });
     if (!reg || !reg.groupSize || reg.groupSize <= 1) return;
 
@@ -180,7 +180,6 @@ export class GroupSeatsService {
         registrationId: reg.id,
         leadUserId: reg.userId,
         seatCount: reg.groupSize as number,
-        groupMembers: Array.isArray(reg.groupMembers) ? reg.groupMembers : null,
       }),
     );
   }
@@ -838,7 +837,7 @@ export class GroupSeatsService {
         ],
         registration: {
           userId: { not: userId }, // never my own group's seats
-          status: { not: RegistrationStatus.CANCELLED },
+          ...ACTIVE_REGISTRATION, // an unpaid booking's seats aren't real yet
           event: {
             deletedAt: null,
             status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] },
@@ -1409,7 +1408,7 @@ export class GroupSeatsService {
         reminderSentAt: null,
         inviteEmail: { not: null },
         registration: {
-          status: { not: RegistrationStatus.CANCELLED },
+          ...ACTIVE_REGISTRATION,
           event: { deletedAt: null, startDateTime: { gt: now, lte: in48h } },
         },
       },

@@ -889,23 +889,18 @@ export class UsersService {
     // payment ids, status, refundedAmount — are never touched, so financials
     // and tax records still reconcile.
     //
-    // Group rosters: only THIS user's entries go. As a lead, their own seat 1
-    // and roster entry 0 are scrubbed but the members they brought keep their
-    // details (they're still attending). As a member of someone else's group,
-    // their claimed seat and matching roster entry on the lead's registration
-    // are scrubbed and nothing else on that registration changes.
+    // Group rosters: only THIS user's seats go. As a lead, their own seat 1 is
+    // scrubbed but the members they brought keep their details (they're still
+    // attending). As a member of someone else's group, their claimed seat is
+    // scrubbed and nothing else on that registration changes.
     const [regs, seats, bookings, identities] = await Promise.all([
       this.prisma.eventRegistration.findMany({
         where: { userId },
-        select: { id: true, formResponses: true, groupMembers: true },
+        select: { id: true, formResponses: true },
       }),
       this.prisma.groupSeat.findMany({
         where: { claimedByUserId: userId },
-        select: {
-          seatIndex: true,
-          memberDetails: true,
-          registration: { select: { id: true, groupMembers: true } },
-        },
+        select: { memberDetails: true },
       }),
       this.prisma.stayBooking.findMany({
         where: { userId },
@@ -955,24 +950,9 @@ export class UsersService {
       : [];
     const funnelLeadIds = [...emailLeadIds, ...phoneLeadIds];
 
-    // Legacy `groupMembers` JSON: index i is seat i+1. Entries are blanked to
-    // {} rather than removed so everyone else keeps their index.
-    const rosters = new Map<string, { members: unknown[]; drop: Set<number> }>();
-    const markRoster = (id: string, members: Prisma.JsonValue, index: number) => {
-      if (!Array.isArray(members) || index >= members.length) return;
-      const r = rosters.get(id) ?? { members, drop: new Set<number>() };
-      r.drop.add(index);
-      rosters.set(id, r);
-    };
-    for (const r of regs) markRoster(r.id, r.groupMembers, 0);
-    for (const s of seats) {
-      markRoster(s.registration.id, s.registration.groupMembers, s.seatIndex - 1);
-    }
-
     const privateKeys = privateFileKeys([
       ...regs.map((r) => r.formResponses),
       ...seats.map((s) => s.memberDetails),
-      ...[...rosters.values()].flatMap((r) => [...r.drop].map((i) => r.members[i])),
       ...bookings.flatMap((b) => [b.answers, ...b.guests.map((g) => g.idProof)]),
     ]);
 
@@ -1005,16 +985,6 @@ export class UsersService {
         },
         data: { reason: REDACTED_REFUND_REASON },
       }),
-      ...[...rosters].map(([id, r]) =>
-        this.prisma.eventRegistration.update({
-          where: { id },
-          data: {
-            groupMembers: r.members.map((m, i) =>
-              r.drop.has(i) ? {} : m,
-            ) as Prisma.InputJsonValue,
-          },
-        }),
-      ),
       this.prisma.groupSeat.updateMany({
         where: { claimedByUserId: userId },
         data: { memberDetails: Prisma.DbNull, inviteEmail: null },

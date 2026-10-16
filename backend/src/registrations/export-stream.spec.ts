@@ -21,7 +21,6 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
     paidAt: null,
     quantity: 1,
     groupSize: null,
-    groupMembers: null,
     formResponses: {},
     registeredAt: new Date('2026-10-01T00:00:00Z'),
     checkedInAt: null,
@@ -53,7 +52,7 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
       prisma, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any,
       {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { can: async () => true } as any,
     );
-    return { svc, findMany };
+    return { svc, findMany, prisma };
   };
 
   const drain = async (stream: NodeJS.ReadableStream) => {
@@ -87,5 +86,33 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
 
     const pdf = await svc.exportRegistrations('admin', 'e1', 'pdf', 'attendees');
     expect((await drain(pdf.stream)).startsWith('%PDF-')).toBe(true);
+  });
+
+  it('expands a paid group per seat but keeps an unpaid checkout as one lead row (S42)', async () => {
+    const { svc, findMany, prisma } = build(0);
+    const group = (id: string, paymentStatus: string): any => ({ ...reg(1), id, groupSize: 2, paymentStatus });
+    findMany.mockImplementation(async (args: any) =>
+      args.cursor ? [] : [group('paid', 'PAID'), group('unpaid', 'PENDING')],
+    );
+    const seat = (registrationId: string, seatIndex: number) => ({
+      registrationId,
+      seatIndex,
+      status: 'CLAIMED',
+      memberDetails: { name: `${registrationId}-m${seatIndex}` },
+      claimedBy: null,
+    });
+    const seatFind = prisma.groupSeat.findMany as jest.Mock;
+    seatFind.mockImplementation(async ({ where }: any) =>
+      ['paid', 'unpaid']
+        .filter((id) => where.registrationId.in.includes(id))
+        .flatMap((id) => [seat(id, 1), seat(id, 2)]),
+    );
+
+    const res = await svc.exportRegistrations('admin', 'e1', 'csv', 'attendees');
+    const csv = await drain(res.stream);
+    expect(seatFind.mock.calls[0][0].where.registrationId.in).toEqual(['paid']);
+    expect(csv).toContain('paid-m2');
+    expect(csv).not.toContain('unpaid-m2');
+    expect(csv.split('\r\n')).toHaveLength(1 + 2 + 1); // header + 2 seats + 1 lead row
   });
 });

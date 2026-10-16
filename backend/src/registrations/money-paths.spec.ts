@@ -93,7 +93,6 @@ const row = (over: Record<string, unknown> = {}) => ({
   isWaitlisted: false,
   refundDueAt: null,
   qrCode: 'qr',
-  groupMembers: null,
   event: { id: 'event-1', title: 'Fest', slug: 'fest', startDateTime: future, endDateTime: future },
   user: { fullName: 'A', username: 'a', mobileNumber: null },
   ...over,

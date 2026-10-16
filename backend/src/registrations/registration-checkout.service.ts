@@ -396,23 +396,32 @@ export class RegistrationCheckoutService {
 
     const qrCode = generateQRCode();
 
-    const registration = await this.prisma.eventRegistration.create({
-      data: {
-        eventId,
-        userId,
-        ticketTypeId: dto.ticketTypeId,
-        quantity,
-        groupSize,
-        groupMembers:
-          (dto.groupMembers as unknown as Prisma.InputJsonValue) ?? undefined,
-        totalAmount: new Prisma.Decimal(totalAmount),
-        razorpayAmount: new Prisma.Decimal(razorpayAmount),
-        processingFee: new Prisma.Decimal(processingFee),
-        paymentStatus: razorpayAmount > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
-        qrCode,
-        formResponses: dto.formResponses || {},
-        ...utmColumns(dto),
-      },
+    // The PENDING row and its group seats commit together: the lead-typed
+    // members ride on the seats until payment confirms them.
+    const registration = await this.prisma.$transaction(async (tx) => {
+      const reg = await tx.eventRegistration.create({
+        data: {
+          eventId,
+          userId,
+          ticketTypeId: dto.ticketTypeId,
+          quantity,
+          groupSize,
+          totalAmount: new Prisma.Decimal(totalAmount),
+          razorpayAmount: new Prisma.Decimal(razorpayAmount),
+          processingFee: new Prisma.Decimal(processingFee),
+          paymentStatus: razorpayAmount > 0 ? PaymentStatus.PENDING : PaymentStatus.PAID,
+          qrCode,
+          formResponses: dto.formResponses || {},
+          ...utmColumns(dto),
+        },
+      });
+      await this.groupSeats.createSeatsForRegistration(tx, {
+        registrationId: reg.id,
+        leadUserId: userId,
+        seatCount: seatsFor(reg),
+        groupMembers: dto.groupMembers ?? null,
+      });
+      return reg;
     });
 
     if (razorpayAmount > 0) {
@@ -907,8 +916,6 @@ export class RegistrationCheckoutService {
             ticketTypeId: dto.ticketTypeId,
             quantity: dto.quantity,
             groupSize,
-            groupMembers:
-          (dto.groupMembers as unknown as Prisma.InputJsonValue) ?? undefined,
             totalAmount: new Prisma.Decimal(totalAmount),
             razorpayAmount: new Prisma.Decimal(0),
             processingFee: new Prisma.Decimal(processingFee),
@@ -954,6 +961,13 @@ export class RegistrationCheckoutService {
             },
           });
         }
+
+        await this.groupSeats.createSeatsForRegistration(tx, {
+          registrationId: reg.id,
+          leadUserId: userId,
+          seatCount: seatsFor(reg),
+          groupMembers: dto.groupMembers ?? null,
+        });
 
         return reg;
       });
@@ -1077,8 +1091,6 @@ export class RegistrationCheckoutService {
             ticketTypeId: dto.ticketTypeId,
             quantity: dto.quantity,
             groupSize,
-            groupMembers:
-              (dto.groupMembers as unknown as Prisma.InputJsonValue) ?? undefined,
             totalAmount: new Prisma.Decimal(totalAmount),
             razorpayAmount: new Prisma.Decimal(razorpayAmount),
             processingFee: new Prisma.Decimal(processingFee),
@@ -1107,6 +1119,14 @@ export class RegistrationCheckoutService {
             status: CouponRedemptionStatus.RESERVED,
           });
         }
+
+        // Seats are created with the PENDING row (S42); confirmation finds them.
+        await this.groupSeats.createSeatsForRegistration(tx, {
+          registrationId: reg.id,
+          leadUserId: userId,
+          seatCount: seatsFor(reg),
+          groupMembers: dto.groupMembers ?? null,
+        });
 
         return reg;
       });
