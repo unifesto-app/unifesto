@@ -47,7 +47,7 @@ export function SpaceSwitcher() {
           const next = spaces.find((s) => s.id === e.target.value);
           if (next) setCurrentSpace(next);
         }}
-        className="h-9 max-w-[220px] cursor-pointer truncate rounded-md border border-input bg-card pl-3 pr-8 text-sm font-medium text-foreground hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="h-9 max-w-[220px] cursor-pointer appearance-none truncate rounded-md border border-input bg-card pl-3 pr-8 text-sm font-medium text-foreground hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {spaces.map((s) => (
           <option key={s.id} value={s.id}>

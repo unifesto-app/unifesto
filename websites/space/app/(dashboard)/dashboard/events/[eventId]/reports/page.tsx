@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -354,7 +355,7 @@ function ReportRow({
               <Stat label="Checked in" value={String(stats.checkedIn)} />
               <Stat
                 label="Net"
-                value={`₹${stats.net.toLocaleString("en-IN")}`}
+                value={inr(stats.net)}
               />
             </div>
           )}

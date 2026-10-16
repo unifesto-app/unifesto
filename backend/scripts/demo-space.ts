@@ -278,6 +278,12 @@ async function create(ownerEmail: string) {
       });
     }
 
+    // Real check-ins always write a per-point record (the check-in page counts
+    // those), so seed the default "Entry" point and record against it.
+    const entry = await prisma.eventCheckinType.create({
+      data: { eventId: event.id, name: 'Entry', order: 0 },
+    });
+
     let seatsTaken = 0;
     for (let i = 0; i < spec.attendees; i++) {
       // Weight towards the cheaper/regular tickets; every 6th is a group.
@@ -291,6 +297,8 @@ async function create(ownerEmail: string) {
         Math.min(Date.now(), spec.start.getTime()) - (5 + ((i * 13) % 30)) * DAY,
       );
       const checkedIn = spec.checkInShare > 0 && i / spec.attendees < spec.checkInShare;
+      const checkedInAt = checkedIn ? new Date(spec.start.getTime() + (i % 90) * 60_000) : null;
+      const checkedInBy = checkedIn ? team[2 + (i % 2)].id : null;
 
       const reg = await prisma.eventRegistration.create({
         data: {
@@ -307,16 +315,20 @@ async function create(ownerEmail: string) {
           paidAt: registeredAt,
           status: checkedIn ? RegistrationStatus.ATTENDED : RegistrationStatus.REGISTERED,
           qrCode: hex(16),
-          checkedInAt: checkedIn ? new Date(spec.start.getTime() + (i % 90) * 60_000) : null,
-          checkedInBy: checkedIn ? team[2 + (i % 2)].id : null,
+          checkedInAt,
+          checkedInBy,
           registeredAt,
+          checkinRecords:
+            checkedInAt && checkedInBy
+              ? { create: { checkinTypeId: entry.id, checkedInAt, checkedInBy } }
+              : undefined,
           tickets: {
             create: {
               ticketCode: hex(4).toUpperCase(),
               qrCode: hex(16),
               attendeeName: lead.name,
               attendeeEmail: lead.email,
-              checkedInAt: checkedIn ? new Date(spec.start.getTime() + (i % 90) * 60_000) : null,
+              checkedInAt,
             },
           },
         },

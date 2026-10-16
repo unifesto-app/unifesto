@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useEffect, useState } from "react";
 import { Check, LinkSimple } from "@unifesto/unicon/react";
 import {
@@ -127,7 +128,7 @@ export function RegistrationSourcesCard({
                   </p>
                   <p className="text-xs tabular-nums text-muted-foreground">
                     {Math.round((s.registrations / data.total) * 100)}%
-                    {s.revenue > 0 && ` · ₹${s.revenue.toLocaleString("en-IN")}`}
+                    {s.revenue > 0 && ` · ${inr(s.revenue)}`}
                   </p>
                 </div>
               </li>

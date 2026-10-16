@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import {
   CreditCard,
@@ -377,7 +378,7 @@ export default function BillingPage() {
                     ) : (
                       <span>
                         <span className="text-2xl font-semibold text-foreground">
-                          ₹{price.toLocaleString("en-IN")}
+                          {inr(price)}
                         </span>
                         <span className="text-muted-foreground">
                           /{cycle === "MONTHLY" ? "mo" : "yr"}

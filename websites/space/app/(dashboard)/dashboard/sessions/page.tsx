@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -63,7 +64,7 @@ function formatWhen(iso: string, timezone: string) {
 
 function priceLabel(s: Session) {
   const p = Number(s.price);
-  return p > 0 ? `₹${p.toLocaleString("en-IN")}` : "Free";
+  return p > 0 ? inr(p) : "Free";
 }
 
 export default function SpaceSessionsPage() {

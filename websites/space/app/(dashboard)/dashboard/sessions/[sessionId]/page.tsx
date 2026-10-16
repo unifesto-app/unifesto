@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -295,7 +296,7 @@ export default function ManageSessionPage() {
       <div className="flex flex-wrap items-center gap-3">
         <StatusBadge status={session.status} />
         <span className="text-sm text-muted-foreground">
-          {price > 0 ? `₹${price.toLocaleString("en-IN")}` : "Free"}
+          {price > 0 ? inr(price) : "Free"}
         </span>
       </div>
 

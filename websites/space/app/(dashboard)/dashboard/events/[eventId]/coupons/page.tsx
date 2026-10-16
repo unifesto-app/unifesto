@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Percent, Plus, Trash, PencilSimple, Tag } from "@unifesto/unicon/react";
@@ -481,10 +482,10 @@ function CouponRow({
     coupon.discountType === "PERCENT"
       ? `${value}% off${
           coupon.maxDiscountAmount
-            ? ` (max ₹${Number(coupon.maxDiscountAmount).toLocaleString("en-IN")})`
+            ? ` (max ${inr(coupon.maxDiscountAmount)})`
             : ""
         }`
-      : `₹${value.toLocaleString("en-IN")} off`;
+      : `${inr(value)} off`;
 
   const expired =
     coupon.expiresAt != null && new Date(coupon.expiresAt) < new Date();
@@ -519,7 +520,7 @@ function CouponRow({
               : " · unlimited uses"}
             {` · ${coupon.perUserLimit} per person`}
             {coupon.minPurchaseAmount
-              ? ` · min ₹${Number(coupon.minPurchaseAmount).toLocaleString("en-IN")}`
+              ? ` · min ${inr(coupon.minPurchaseAmount)}`
               : ""}
           </p>
         </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -936,7 +937,7 @@ function CreateEventInner() {
                           </span>
                           <span className="flex-none text-sm font-medium text-foreground">
                             {isPaid
-                              ? `₹${(Number(t.price) || 0).toLocaleString("en-IN")}`
+                              ? inr(t.price)
                               : "Free"}
                           </span>
                         </li>

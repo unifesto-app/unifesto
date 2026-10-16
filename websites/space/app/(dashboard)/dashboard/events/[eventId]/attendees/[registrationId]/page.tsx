@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -107,7 +108,7 @@ function formatDateTime(value?: string | null): string {
 }
 
 function money(value: number): string {
-  return `₹${Number(value).toLocaleString("en-IN")}`;
+  return inr(value);
 }
 
 // Group members can arrive in different shapes depending on how/when the
@@ -791,7 +792,8 @@ export default function AttendeeDetailPage() {
                           : "border-border"
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-3">
+                      {/* Phone: actions drop below the name so it isn't squeezed out. */}
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                             {seat.seatIndex}
@@ -819,7 +821,7 @@ export default function AttendeeDetailPage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-shrink-0 items-center gap-2">
+                        <div className="flex flex-shrink-0 flex-wrap items-center gap-2 pl-11 sm:pl-0">
                           {seat.claimedAt && (
                             <span className="hidden text-xs text-muted-foreground sm:inline">
                               {formatDateTime(seat.claimedAt)}

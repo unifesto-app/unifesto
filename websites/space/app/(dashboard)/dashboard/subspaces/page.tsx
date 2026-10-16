@@ -1,5 +1,6 @@
 "use client";
 
+import { inr } from "@/lib/utils/money";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const money = (v: number) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = (v: number) => inr(v);
 
 /**
  * Sub-space analytics — the parent-space rollup view.
