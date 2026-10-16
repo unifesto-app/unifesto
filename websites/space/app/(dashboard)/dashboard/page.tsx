@@ -285,9 +285,15 @@ export default function SpaceDashboardPage() {
                       >
                         <DateChip iso={e.startDateTime} />
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground">
-                            {e.title}
-                          </p>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <p className="truncate font-medium text-foreground">
+                              {e.title}
+                            </p>
+                            {/* Already started (the list holds only events that haven't ended). */}
+                            {new Date(e.startDateTime).getTime() <= Date.now() && (
+                              <StatusBadge status="ongoing" />
+                            )}
+                          </div>
                           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                             {e.type === "ONLINE" ? (
                               <GlobeSimple className="h-3.5 w-3.5 flex-shrink-0" />
