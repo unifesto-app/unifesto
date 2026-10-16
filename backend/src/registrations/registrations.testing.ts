@@ -2,6 +2,7 @@
 // from the same 15 mocked dependencies the specs always passed.
 import { RegistrationsService } from './registrations.service';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { RegistrationAttendeesService } from './registration-attendees.service';
 
 export function buildRegistrationsService(
   prisma: any,
@@ -21,8 +22,9 @@ export function buildRegistrationsService(
   authz: any,
 ): RegistrationsService {
   const confirmations = new RegistrationConfirmationsService(prisma, emailService, whatsappService, events, groupSeats, redis);
+  const attendees = new RegistrationAttendeesService(prisma, whatsappService, groupSeats, authz, confirmations);
   return new RegistrationsService(
     prisma, emailService, whatsappService, cache, planConfig, platformConfig, payments, waitlist, events, groupSeats, redis, coupons, stayBookings, teamChanges, authz,
-    confirmations,
+    confirmations, attendees,
   );
 }
