@@ -3563,16 +3563,27 @@ export class RegistrationsService {
       );
     }
 
-    return this.prisma.registrationTransferRequest.create({
-      data: {
-        registrationId,
-        requestedBy: userId,
-        targetEmail: email.trim(),
-        reason: reason ?? null,
-        status: 'PENDING',
-      },
-      include: this.transferRequestInclude(),
-    });
+    // The partial unique index (one PENDING per registration) settles the race
+    // the findFirst above can't: the second concurrent request gets a 409.
+    try {
+      return await this.prisma.registrationTransferRequest.create({
+        data: {
+          registrationId,
+          requestedBy: userId,
+          targetEmail: email.trim(),
+          reason: reason ?? null,
+          status: 'PENDING',
+        },
+        include: this.transferRequestInclude(),
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException(
+          'A transfer request for this registration is already awaiting review',
+        );
+      }
+      throw err;
+    }
   }
 
   /** Transfer requests raised by this organiser. */
@@ -4596,12 +4607,14 @@ export class RegistrationsService {
     // person in, so this path must not claim it a second time. Conversion is
     // handled by the waiting list, which increments the attendee count only.
     if (registration.waitlistStatus === WaitlistStatus.OFFERED) {
-      await this.waitlist.convert(registration.id, {
+      const { converted } = await this.waitlist.convert(registration.id, {
         paymentId: dto.razorpayPaymentId,
         orderId: dto.razorpayOrderId,
       });
 
-      await this.sendRegistrationConfirmations(registration.id);
+      // Only the caller that won the conversion confirms; the losing side of
+      // the verify/webhook race would otherwise send a duplicate.
+      if (converted) await this.sendRegistrationConfirmations(registration.id);
       await this.cache.invalidateCheckinCache(eventId);
       await this.cache.incrementEventScore(eventId);
 
@@ -5563,8 +5576,8 @@ export class RegistrationsService {
     // already holds its seat, so converting must not claim another. Reached
     // when the attendee pays but the app never returns to confirm.
     if (registration.waitlistStatus === WaitlistStatus.OFFERED) {
-      await this.waitlist.convert(registrationId, { paymentId, orderId });
-      await this.sendRegistrationConfirmations(registrationId);
+      const { converted } = await this.waitlist.convert(registrationId, { paymentId, orderId });
+      if (converted) await this.sendRegistrationConfirmations(registrationId);
       return;
     }
 

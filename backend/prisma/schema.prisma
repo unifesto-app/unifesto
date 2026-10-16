@@ -912,6 +912,8 @@ model FreeAttendeeAddRequest {
 /// admin approves (which performs the transfer) or rejects. Admins can also
 /// transfer directly without a request. `targetEmail` is the account to receive
 /// the ticket; it is resolved to a user only at approval time.
+/// At most one PENDING request per registration (partial unique index
+/// registration_transfer_requests_one_pending in the migration).
 model RegistrationTransferRequest {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
