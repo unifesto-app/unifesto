@@ -67,7 +67,7 @@ function build(opts: { row?: any; seatsLeft?: number; updateManyCount?: number }
   const svc = new RegistrationsService(
     prisma, { sendCancellationConfirmation: jest.fn() } as any, {} as any, cache as any, {} as any, {} as any,
     payments as any, { convert: jest.fn() } as any, { emit: jest.fn() } as any, groupSeats as any, {} as any,
-    coupons as any, {} as any, {} as any,
+    coupons as any, {} as any, {} as any, { can: async () => true } as any,
   );
   return { svc, prisma, payments, coupons };
 }

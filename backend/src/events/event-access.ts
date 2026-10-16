@@ -1,6 +1,7 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventVisibility, Prisma, RoleCode } from '@prisma/client';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization/role-tiers';
+import { Action } from '../auth/authorization/actions';
+import type { AuthorizationService } from '../auth/authorization/authorization.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 /**
@@ -110,14 +111,17 @@ type EventWith<S extends Prisma.EventSelect> = Prisma.EventGetPayload<{
 }>;
 
 /**
- * The one Space-Admin gate for event operations: loads the event (with `select`
+ * The one capability gate for event operations: loads the event (with `select`
  * merged over id + spaceId) or 404s, then 403s with `message` unless the user
- * holds a Space-Admin-tier role on the event's owning space.
+ * may perform `action` on it (curators directly, Space and Platform Admins by
+ * inheritance — see AuthorizationService).
  */
-export async function assertEventSpaceAdmin<S extends Prisma.EventSelect>(
+export async function assertEventCan<S extends Prisma.EventSelect>(
   prisma: PrismaService,
+  authz: AuthorizationService,
   userId: string,
   eventId: string,
+  action: Action,
   message: string,
   select?: S,
 ): Promise<EventWith<S>> {
@@ -126,27 +130,10 @@ export async function assertEventSpaceAdmin<S extends Prisma.EventSelect>(
     select: { ...select, id: true, spaceId: true },
   });
   if (!event) throw new NotFoundException('Event not found');
-  if (!(await isSpaceAdmin(prisma, userId, event.spaceId))) {
+  if (!(await authz.can({ id: userId }, action, { eventId }))) {
     throw new ForbiddenException(message);
   }
   return event as unknown as EventWith<S>;
-}
-
-/** Whether the user holds a space-scoped Space-Admin-tier role on the space. */
-export async function isSpaceAdmin(
-  prisma: PrismaService,
-  userId: string,
-  spaceId: string,
-): Promise<boolean> {
-  const count = await prisma.userRole.count({
-    where: {
-      userId,
-      spaceId,
-      eventId: null,
-      role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-    },
-  });
-  return count > 0;
 }
 
 /** Whether the user holds the platform ADMIN role. */

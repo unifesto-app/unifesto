@@ -13,7 +13,7 @@ describe('SessionsService.verifyPayment replay guards', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { verifyPaymentSignature: jest.fn(() => true) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any);
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any);
     return { svc, prisma };
   };
   const row = (over: Record<string, unknown> = {}) => ({

@@ -21,7 +21,7 @@ import {
   SessionVisibility,
 } from '@prisma/client';
 import slugify from 'slugify';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { canCancel, joinWindow } from './session-policy';
 import {
   NOT_DELETED,
@@ -45,6 +45,7 @@ export class SessionsService {
     private readonly email: EmailService,
     private readonly livekit: LivekitService,
     private readonly planConfig: PlanConfigService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -65,14 +66,7 @@ export class SessionsService {
    * ability to run new ones, it does not strip access from attendees.
    */
   private async assertCanManageSpace(userId: string, spaceId: string) {
-    const role = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (role === 0) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_CREATE_EVENT, { spaceId }))) {
       throw new ForbiddenException('You cannot manage sessions for this space');
     }
 

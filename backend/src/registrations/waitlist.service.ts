@@ -20,7 +20,8 @@ import {
   RegistrationStatus,
   WaitlistStatus,
 } from '@prisma/client';
-import { assertEventSpaceAdmin } from '../events/event-access';
+import { assertEventCan } from '../events/event-access';
+import { Action, AuthorizationService } from '../auth/authorization';
 
 /**
  * Raised when a spot cannot be offered because the seats are gone.
@@ -61,6 +62,7 @@ export class WaitlistService {
     private readonly payments: PaymentsService,
     private readonly events: EventEmitter2,
     private readonly groupSeats: GroupSeatsService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   /**
@@ -90,12 +92,14 @@ export class WaitlistService {
     return r.groupSize && r.groupSize > 0 ? r.groupSize : r.quantity || 1;
   }
 
-  /** Rejects anyone who is not a Space Admin of the event's space. */
+  /** Rejects anyone who may not manage the event's attendees. */
   private assertOrganiser(userId: string, eventId: string) {
-    return assertEventSpaceAdmin(
+    return assertEventCan(
       this.prisma,
+      this.authz,
       userId,
       eventId,
+      Action.EVENT_MANAGE_ATTENDEES,
       'Only the event organisers can manage the waiting list',
       { title: true, startDateTime: true },
     );

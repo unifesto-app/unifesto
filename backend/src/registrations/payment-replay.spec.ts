@@ -70,7 +70,7 @@ describe('RegistrationsService payment replay guards', () => {
       prisma, {} as any, {} as any, { redis: { getClient: () => null } } as any, {} as any, {} as any,
       payments as any, waitlist as any, {} as any, {} as any, {} as any,
       coupons as any, { completeFromWebhook: jest.fn(async () => false) } as any,
-      { completeFromWebhook: jest.fn(async () => false) } as any,
+      { completeFromWebhook: jest.fn(async () => false) } as any, { can: async () => true } as any,
     );
     return { svc, prisma, payments };
   };

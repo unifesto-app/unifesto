@@ -25,7 +25,7 @@ describe('SessionsService.cancelSession', () => {
       userIdentity: { findFirst: jest.fn(async () => null) },
     };
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any);
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any);
     jest.spyOn(svc as any, 'assertCanManageSpace').mockResolvedValue(undefined);
     jest.spyOn(svc as any, 'getPrimaryEmail').mockResolvedValue(null);
     return { svc, prisma, payments };

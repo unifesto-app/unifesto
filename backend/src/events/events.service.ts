@@ -13,7 +13,6 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import {
   Action,
   AuthorizationService,
-  SPACE_ADMIN_ROLE_CODES,
 } from '../auth/authorization';
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
@@ -51,7 +50,6 @@ import {
 import { assertCanViewSpace } from '../spaces/space-access';
 import {
   canAccessSpaceOnlyEvent,
-  isSpaceAdmin,
   listableEventsWhere,
   memberSpaceIds,
 } from './event-access';
@@ -724,7 +722,7 @@ export class EventsService {
   ) {
     const request = await this.loadPendingAttachRequest(requestId);
 
-    if (!(await isSpaceAdmin(this.prisma, userId, request.ownerSpaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: request.ownerSpaceId }))) {
       throw new ForbiddenException(
         'Only a Space Admin of the owning space can accept this',
       );
@@ -791,7 +789,7 @@ export class EventsService {
     reviewNote?: string,
   ) {
     const request = await this.loadPendingAttachRequest(requestId);
-    if (!(await isSpaceAdmin(this.prisma, userId, request.ownerSpaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: request.ownerSpaceId }))) {
       throw new ForbiddenException(
         'Only a Space Admin of the owning space can decline this',
       );
@@ -808,7 +806,7 @@ export class EventsService {
     const request = await this.loadPendingAttachRequest(requestId);
     const allowed =
       request.requestedBy === userId ||
-      (await isSpaceAdmin(this.prisma, userId, request.requestingSpaceId));
+      (await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: request.requestingSpaceId }));
     if (!allowed) {
       throw new ForbiddenException('You cannot cancel this request');
     }
@@ -947,14 +945,8 @@ export class EventsService {
     if (!event) throw new NotFoundException('Event not found');
 
     const isOwner = await this.canManageEvent(userId, event.spaceId);
-    const isThisCoHost = await this.prisma.userRole.count({
-      where: {
-        userId,
-        spaceId,
-        role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
-      },
-    });
-    if (!isOwner && isThisCoHost === 0) {
+    const isThisCoHost = await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId });
+    if (!isOwner && !isThisCoHost) {
       throw new ForbiddenException('You cannot manage this co-host');
     }
 
@@ -1004,7 +996,7 @@ export class EventsService {
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: event.spaceId }))) {
       throw new ForbiddenException(
         'Only a Space Admin of the host space can transfer ownership',
       );
@@ -1071,7 +1063,7 @@ export class EventsService {
   ) {
     const transfer = await this.loadPendingTransfer(eventId);
 
-    if (!(await isSpaceAdmin(this.prisma, userId, transfer.toSpaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: transfer.toSpaceId }))) {
       throw new ForbiddenException(
         'Only a Space Admin of the receiving space can accept this transfer',
       );
@@ -1154,7 +1146,7 @@ export class EventsService {
     reviewNote?: string,
   ) {
     const transfer = await this.loadPendingTransfer(eventId);
-    if (!(await isSpaceAdmin(this.prisma, userId, transfer.toSpaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: transfer.toSpaceId }))) {
       throw new ForbiddenException(
         'Only a Space Admin of the receiving space can decline this transfer',
       );
@@ -1174,7 +1166,7 @@ export class EventsService {
   /** Rescind a pending offer. Space Admins of the host (from) space only. */
   async cancelOwnershipTransfer(userId: string, eventId: string) {
     const transfer = await this.loadPendingTransfer(eventId);
-    if (!(await isSpaceAdmin(this.prisma, userId, transfer.fromSpaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: transfer.fromSpaceId }))) {
       throw new ForbiddenException(
         'Only a Space Admin of the host space can cancel this transfer',
       );
