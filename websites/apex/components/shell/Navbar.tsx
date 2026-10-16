@@ -9,6 +9,7 @@ import backendClient from "@/lib/api/backend-client";
 import { clearAuthToken } from "@/lib/utils/auth";
 import { useSession } from "@/lib/context/SessionContext";
 import { useCommandPalette } from "@/lib/context/CommandPaletteContext";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Navbar({ onMenu }: { onMenu: () => void }) {
   const router = useRouter();
@@ -92,6 +93,7 @@ export function Navbar({ onMenu }: { onMenu: () => void }) {
         >
           <MagnifyingGlass className="h-5 w-5" />
         </button>
+        <ThemeToggle />
         <div className="relative" ref={menuRef}>
           <button
             type="button"

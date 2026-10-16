@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpaceSwitcher } from "./SpaceSwitcher";
 import { CommandPalette } from "./CommandPalette";
+import { ThemeToggle } from "./ThemeToggle";
 
 /**
  * Authenticated shell. Waits for the session, sends accounts with no operator
@@ -69,6 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex items-center gap-3">
           <CommandPaletteTrigger />
+          <ThemeToggle />
           <div className="hidden text-right sm:block">
             <p className="text-sm font-medium leading-tight text-foreground">
               {user?.name}
