@@ -37,6 +37,20 @@ export function sampleWeight(
 }
 
 /**
+ * Requests never written to api_logs: the admin log viewer's own polling,
+ * uptime probes, CORS preflights, and the Docker + Caddy healthchecks
+ * (`GET /` every 10–15s per replica — over half of all rows before this).
+ */
+export function shouldSkipLog(method: string, rawPath: string): boolean {
+  return (
+    rawPath.startsWith('/admin/logs') ||
+    rawPath === '/health' ||
+    method === 'OPTIONS' ||
+    (rawPath === '/' && (method === 'GET' || method === 'HEAD'))
+  );
+}
+
+/**
  * Global Express middleware that records requests to the api_logs table
  * on response finish. Unlike a Nest interceptor, this runs for *all* requests —
  * including auth rejections (401/403) and unmatched routes (404) — and by the
@@ -48,15 +62,7 @@ export function createRequestLogger(logs: LogsService, sampleRate = 1) {
 
     res.on('finish', () => {
       const rawPath = String(req.originalUrl || req.url || '').split('?')[0];
-
-      // Skip the admin log viewer's own polling, external uptime probes + CORS preflights.
-      if (
-        rawPath.startsWith('/admin/logs') ||
-        rawPath === '/health' ||
-        req.method === 'OPTIONS'
-      ) {
-        return;
-      }
+      if (shouldSkipLog(req.method, rawPath)) return;
 
       const weight = sampleWeight(req.method, res.statusCode, sampleRate);
       if (weight === null) return;
