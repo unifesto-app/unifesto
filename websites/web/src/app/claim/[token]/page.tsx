@@ -20,8 +20,7 @@ export default function ClaimPage() {
 
   // Try to open the app automatically on arrival (mobile).
   useEffect(() => {
-    const open = openAppOrStore(deepLink);
-    open();
+    return openAppOrStore(deepLink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -36,7 +35,7 @@ export default function ClaimPage() {
           <p className="mt-3 text-base leading-relaxed text-paper/70">
             Claim your seat in the Unifesto app. If it didn&apos;t open on its own, tap below.
           </p>
-          <button onClick={() => openAppOrStore(deepLink)()} className="btn btn-lg btn-primary mt-8 w-full">
+          <button onClick={() => openAppOrStore(deepLink)} className="btn btn-lg btn-primary mt-8 w-full">
             Open in the Unifesto app
           </button>
           <a href={storeUrlFor()} className="link-draw mt-5 inline-block text-sm text-paper/65">

@@ -52,6 +52,17 @@ export function openAppOrStore(
     return () => {};
   }
 
+  // Android: a bare custom scheme is often ignored by Chrome and in-app
+  // browsers. An intent:// URL is the supported way: Chrome opens the app if
+  // it's installed and goes to the fallback (Play Store) itself if not.
+  if (platform === 'android') {
+    const [proto, rest] = scheme.split('://');
+    window.location.href =
+      `intent://${rest}#Intent;scheme=${proto};package=${APP_PACKAGE};` +
+      `S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end`;
+    return () => {};
+  }
+
   let appOpened = false;
   const markOpened = () => {
     appOpened = true;
