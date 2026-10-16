@@ -141,7 +141,7 @@ describe('RegistrationsService payment replay guards', () => {
     it('does not settle a capture onto a cancelled registration', async () => {
       const { svc, prisma } = build({ row: reg({ status: RegistrationStatus.CANCELLED }) });
       prisma.eventRegistration.findFirst.mockResolvedValue({ id: 'reg-1' });
-      const complete = jest.spyOn(svc as any, 'completeWebhookPayment');
+      const complete = jest.spyOn(svc.settlement as any, 'completeWebhookPayment');
       await svc.handleRazorpayWebhook(body(), 'sig', 'evt_2');
       expect(complete).not.toHaveBeenCalled();
     });

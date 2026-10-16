@@ -124,7 +124,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
   it('re-homes a clean orphan onto the target registration (reaches settlement)', async () => {
     const { svc, payments } = build({ ownerExists: false });
     const settle = jest
-      .spyOn(svc as any, 'applyReconciledPayment')
+      .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     const result = await svc.reconcilePendingPayment(REG_ID, {
@@ -155,7 +155,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
       payment: { notes: { registrationId: REG_ID } },
     });
     const settle = jest
-      .spyOn(svc as any, 'applyReconciledPayment')
+      .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     await svc.reconcilePendingPayment(REG_ID, { paymentId: PAYMENT_ID });
@@ -183,7 +183,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
       where.id === REG_ID ? failedTarget : null,
     );
     const settle = jest
-      .spyOn(svc as any, 'applyReconciledPayment')
+      .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     const result = await svc.reconcilePendingPayment(REG_ID, {

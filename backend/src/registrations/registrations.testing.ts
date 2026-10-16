@@ -7,6 +7,7 @@ import { RegistrationTransfersService } from './registration-transfers.service';
 import { RegistrationExportService } from './registration-export.service';
 import { RegistrationImportService } from './registration-import.service';
 import { RegistrationCancellationService } from './registration-cancellation.service';
+import { RegistrationPaymentsService } from './registration-payments.service';
 
 export function buildRegistrationsService(
   prisma: any,
@@ -31,8 +32,9 @@ export function buildRegistrationsService(
   const exporter = new RegistrationExportService(prisma, planConfig, authz);
   const importer = new RegistrationImportService(prisma, cache, platformConfig, payments, groupSeats, confirmations);
   const cancellation = new RegistrationCancellationService(prisma, emailService, cache, events, groupSeats, coupons, attendees);
+  const settlement = new RegistrationPaymentsService(prisma, emailService, whatsappService, cache, payments, waitlist, groupSeats, coupons, stayBookings, teamChanges, confirmations);
   return new RegistrationsService(
     prisma, emailService, whatsappService, cache, planConfig, platformConfig, payments, waitlist, events, groupSeats, redis, coupons, stayBookings, teamChanges, authz,
-    confirmations, attendees, transfers, exporter, importer, cancellation,
+    confirmations, attendees, transfers, exporter, importer, cancellation, settlement,
   );
 }

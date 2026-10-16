@@ -247,7 +247,7 @@ describe('restore (S10 / S15)', () => {
 describe('payment.failed (S15)', () => {
   it('never downgrades a row that a capture already made PAID', async () => {
     const { svc, prisma } = build({ updateManyCount: 0 });
-    await (svc as any).markRegistrationFailed({
+    await (svc.settlement as any).markRegistrationFailed({
       id: 'reg-1',
       razorpayAmount: 510,
       event: { id: 'event-1', title: 'Fest', slug: 'fest' },
@@ -299,7 +299,7 @@ describe('after a sold-out refund (S10)', () => {
 
   it('the retry job only picks rows whose money is still held', async () => {
     const { svc, prisma } = build();
-    await svc.retryDueRefunds();
+    await svc.settlement.retryDueRefunds();
     expect(prisma.eventRegistration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ paymentStatus: PaymentStatus.PAID }),
@@ -313,7 +313,7 @@ describe('settling a cancelled checkout (S9 / S15)', () => {
     const { svc, prisma } = build({
       row: row({ status: RegistrationStatus.CANCELLED, paymentStatus: PaymentStatus.PENDING, razorpayAmount: 510 }),
     });
-    await expect((svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBe('cancelled');
+    await expect((svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBe('cancelled');
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
     expect(prisma.event.update).not.toHaveBeenCalled();
     expect(prisma.eventTicket.create).not.toHaveBeenCalled();
@@ -342,7 +342,7 @@ describe('verify vs webhook race (S45)', () => {
       .mockResolvedValueOnce({ count: 0 });
 
     await svc.verifyPayment('event-1', 'user-1', verifyDto).catch(() => undefined);
-    await expect((svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBeUndefined();
+    await expect((svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1')).resolves.toBeUndefined();
 
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(1); // one seat take
     expect(prisma.event.update).toHaveBeenCalledTimes(1); // one attendee count
@@ -356,7 +356,7 @@ describe('verify vs webhook race (S45)', () => {
       .mockResolvedValueOnce({ count: 1 })
       .mockResolvedValueOnce({ count: 0 });
 
-    await (svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1').catch(() => undefined);
+    await (svc.settlement as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1').catch(() => undefined);
     const res = await svc.verifyPayment('event-1', 'user-1', verifyDto);
 
     expect(res.message).toMatch(/verified/);
@@ -370,7 +370,7 @@ describe('waitlist convert race (S52)', () => {
 
   it.each([
     ['verify', (svc: any) => svc.verifyPayment('event-1', 'user-1', verifyDto)],
-    ['webhook', (svc: any) => svc.completeWebhookPayment('reg-1', 'pay_1', 'order_1')],
+    ['webhook', (svc: any) => svc.settlement.completeWebhookPayment('reg-1', 'pay_1', 'order_1')],
   ])('the losing %s sends no second confirmation', async (_name, call) => {
     const { svc } = build({ row: offered() });
     (svc as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: false }));
