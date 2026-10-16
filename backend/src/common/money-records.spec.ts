@@ -9,13 +9,14 @@ import { SpacesService } from '../spaces/spaces.service';
  * registrations, refund requests and stay bookings. Refuse while any exist.
  */
 
-function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'session', number>> = {}) {
+function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'session' | 'addon', number>> = {}) {
   return {
     eventRegistration: { count: jest.fn(async () => counts.reg ?? 0) },
     refundRequest: { count: jest.fn(async () => counts.refund ?? 0) },
     stayBooking: { count: jest.fn(async () => counts.stay ?? 0) },
     payout: { count: jest.fn(async () => counts.payout ?? 0) },
     sessionRegistration: { count: jest.fn(async () => counts.session ?? 0) },
+    groupSeatPurchase: { count: jest.fn(async () => counts.addon ?? 0) },
     event: {
       findUnique: jest.fn(async () => ({ id: 'ev-1', slug: 'ev', spaceId: 'sp-1', status: EventStatus.CANCELLED })),
       delete: jest.fn(async () => ({ id: 'ev-1' })),
@@ -47,11 +48,19 @@ describe('delete is refused while money rows exist (S14)', () => {
   });
 
   it('a refund request or a stay booking also blocks it', async () => {
-    for (const counts of [{ refund: 1 }, { stay: 1 }]) {
+    for (const counts of [{ refund: 1 }, { stay: 1 }, { addon: 1 }]) {
       const prisma = db(counts);
       await expect(events(prisma).permanentDeleteEvent('u', 'ev-1')).rejects.toBeInstanceOf(BadRequestException);
       expect(prisma.event.delete).not.toHaveBeenCalled();
     }
+  });
+
+  it('counts extra-seats payments through their registration (S52)', async () => {
+    const prisma = db({ addon: 1 });
+    await expect(events(prisma).permanentDeleteEvent('u', 'ev-1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.groupSeatPurchase.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({ registration: { event: { id: 'ev-1' } }, paymentId: { not: null } }),
+    });
   });
 
   it('a cancelled event with no money rows is deleted', async () => {

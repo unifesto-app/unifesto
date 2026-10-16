@@ -499,11 +499,21 @@ export class PayoutsService {
     };
   }
 
-  /** Sum the cash returned by APPROVED refunds for a set of events. */
+  /**
+   * Registration money refunded without a refund request: the automatic full
+   * refund of a ticket that sold out mid-payment, or a capture refunded in
+   * Razorpay before reconcile. Collected still counts these, so refunded must too.
+   */
+  private readonly AUTO_REFUNDED = {
+    refundedAmount: { gt: 0 },
+    refundRequests: { none: { status: RefundStatus.APPROVED } },
+  } satisfies Prisma.EventRegistrationWhereInput;
+
+  /** Sum the cash returned by APPROVED refunds (and automatic ones) for a set of events. */
   private async aggregateRefunds(eventIds?: string[]) {
     if (eventIds && eventIds.length === 0) return 0;
     const eventFilter = eventIds ? { eventId: { in: eventIds } } : {};
-    const [agg, stays] = await Promise.all([
+    const [agg, stays, auto] = await Promise.all([
       this.prisma.refundRequest.aggregate({
         where: { ...eventFilter, status: RefundStatus.APPROVED },
         _sum: { cashRefunded: true },
@@ -512,8 +522,16 @@ export class PayoutsService {
         where: { ...eventFilter, paymentMode: StayPaymentMode.ONLINE },
         _sum: { refundedAmount: true },
       }),
+      this.prisma.eventRegistration.aggregate({
+        where: { ...eventFilter, ...this.AUTO_REFUNDED },
+        _sum: { refundedAmount: true },
+      }),
     ]);
-    return Number(agg._sum.cashRefunded ?? 0) + Number(stays._sum.refundedAmount ?? 0);
+    return (
+      Number(agg._sum.cashRefunded ?? 0) +
+      Number(stays._sum.refundedAmount ?? 0) +
+      Number(auto._sum.refundedAmount ?? 0)
+    );
   }
 
   /** Assemble the summary from the three aggregates + a platform-fee figure. */
@@ -681,6 +699,7 @@ export class PayoutsService {
       stayRefundByEvent,
       addonEverByEvent,
       addonCurrentByEvent,
+      autoRefundByEvent,
     ] = await Promise.all([
         this.prisma.space.findMany({
           select: { id: true, name: true, slug: true, subscription: true },
@@ -741,6 +760,11 @@ export class PayoutsService {
           where: { ...this.ADDON_ADDED, ...this.HELD_ADDON },
           _sum: this.HELD_SUM,
         }),
+        this.prisma.eventRegistration.groupBy({
+          by: ['eventId'],
+          where: this.AUTO_REFUNDED,
+          _sum: { refundedAmount: true },
+        }),
       ]);
 
     // Index every aggregate by eventId for O(1) lookup during assembly.
@@ -787,7 +811,7 @@ export class PayoutsService {
       if (!r.eventId) continue;
       refundByEventMap.set(r.eventId, Number(r._sum.cashRefunded ?? 0));
     }
-    for (const r of stayRefundByEvent) {
+    for (const r of [...stayRefundByEvent, ...autoRefundByEvent]) {
       const amt = Number(r._sum.refundedAmount ?? 0);
       if (amt) refundByEventMap.set(r.eventId, (refundByEventMap.get(r.eventId) ?? 0) + amt);
     }
