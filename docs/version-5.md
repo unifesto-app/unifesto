@@ -305,10 +305,10 @@ One support system for everything a person needs help with. Every item is an **A
 | # | Item | Status |
 |---|---|---|
 | | **Phase 1 · Foundation** | |
-| D1 | **Assist Case model.** Extend `support_tickets` (kind, desk, subject link, event/registration context, escalation, first response, read state per side, rating, AI fields, BOT status); `support_messages` `isStaffReply` → `side` + `internal` + `aiDrafted`. Migration + backfill | planned |
-| D2 | **Access + routing + escalation.** One `canSeeCase`; new `space:manage-support` capability; routing rules; escalate to Platform (decision D2) | planned |
+| D1 | **Assist Case model.** Extend `support_tickets` (kind, desk, subject link, event/registration context, escalation, first response, read state per side, rating, AI fields, BOT status); `support_messages` `isStaffReply` → `side` + `internal` + `aiDrafted`. Migration + backfill | done (#147), not deployed |
+| D2 | **Access + routing + escalation.** One `canSeeCase`; new `space:manage-support` capability; routing rules; escalate to Platform (decision D2) | done (#147), not deployed |
 | D3 | **Notifications both directions + unread badges.** case created / replied / status / escalated → push + email to the other side; badges in mobile, Space, Apex (old D1 + D4) | planned |
-| D4 | Attachments: private `SupportAttachment` via `StorageService`, signed URLs (old D2) | planned |
+| D4 | Attachments: private `SupportAttachment` via `StorageService`, signed URLs (old D2) | done (#147), not deployed |
 | | **Phase 2 · One system** | |
 | D5 | **Request adapter.** All 10 request types open and update cases (SpaceRequest, SpaceStatus, SpaceOwnership, SubSpace incl. B9, WhiteLabel until H15, FreeAttendeeAdd, RegistrationTransfer → Platform; EventOwnershipTransfer, SubEventAttach → the other space) | planned |
 | D6 | **Refunds + cancellations inside Assist.** Curator stage = Space desk, admin stage = Platform desk; paid cancel = one flow that creates the refund; cancellation reason; S14 `cancelEvent` refunds run through it. After S51/S52 | planned |
@@ -652,3 +652,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-16** · Track D rebuilt as **Unifesto Assist** (D1–D28): one case wrapper over support, refunds, cancellations, the 10 request types, a new event request, ticket issue reports, payouts, privacy and grievance, plus a Claude Haiku 5.5 layer (est. ~$6/mo now, ~$55 at 10×). Old D1–D8 folded in; B7, B9, B11 merged; B10 dropped for 0.9; K7 narrowed to legal pages. Decision D7 added.
 - **2026-10-16** · Assist decisions settled: event request = host without a Space; support inbox default curators only; no auto-escalation.
 - **2026-10-16** · Track R added: IAM / plan / billing / fee analysis turned into a deal-based design (D8: plan, deal and role are separate; D9: Space Admin + Curator move money). R1 is a live escalation (Co-Curator can make themselves Curator). A1 is built inside R8.
+- **2026-10-16** · Assist D1 (case model), D2 (access, routing, escalation) and D4 (private attachments) built in #147. Space desk reads only cases that are or were on it; no crew contact in threads. Needs migrate deploy + rebuild backend.
