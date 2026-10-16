@@ -2781,6 +2781,8 @@ model ApiLog {
   @@index([userId])
   @@index([statusCode, createdAt])
   @@index([userId, createdAt])
+  // Prefix search (logs.service `startsWith`) under a non-C collation.
+  @@index([path(ops: raw("text_pattern_ops"))], map: "api_logs_path_prefix_idx")
   @@map("api_logs")
 }
 

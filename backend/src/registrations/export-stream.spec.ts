@@ -64,9 +64,8 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
   it('streams every transaction across pages, keeping the header once', async () => {
     const { svc, findMany } = build(501);
     const res = await svc.exportRegistrations('admin', 'e1', 'csv', 'transactions');
-    expect(res.buffer).toBeUndefined();
     expect(res.filename).toBe('fest-transactions.csv');
-    const lines = (await drain(res.stream!)).split('\r\n');
+    const lines = (await drain(res.stream)).split('\r\n');
     expect(lines).toHaveLength(502);
     expect(lines[0].replace('﻿', '')).toMatch(/^Name,Email,Ticket Type/);
     expect(lines[501]).toContain('u500@x.com');
@@ -74,14 +73,18 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
     expect(findMany.mock.calls[0][0].take).toBe(500);
   });
 
-  it('streams attendees, and still builds a buffer for xlsx', async () => {
+  it('streams attendees, xlsx and pdf too', async () => {
     const { svc } = build(3);
     const csv = await svc.exportRegistrations('admin', 'e1', 'csv', 'attendees');
-    expect((await drain(csv.stream!)).split('\r\n')).toHaveLength(4);
+    expect((await drain(csv.stream)).split('\r\n')).toHaveLength(4);
 
     const xls = await svc.exportRegistrations('admin', 'e1', 'xlsx', 'attendees');
-    expect(xls.stream).toBeUndefined();
-    expect(xls.buffer!.toString()).toContain('u2@x.com');
+    const xml = await drain(xls.stream);
+    expect(xml).toContain('u2@x.com');
+    expect(xml.endsWith('</Table></Worksheet></Workbook>')).toBe(true);
     expect(xls.filename).toBe('fest-attendees.xls');
+
+    const pdf = await svc.exportRegistrations('admin', 'e1', 'pdf', 'attendees');
+    expect((await drain(pdf.stream)).startsWith('%PDF-')).toBe(true);
   });
 });
