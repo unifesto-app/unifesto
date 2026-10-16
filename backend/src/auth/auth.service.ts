@@ -97,7 +97,6 @@ const isVerified = (v: unknown): boolean => v === true || v === 'true';
 const REFRESH_REUSE_GRACE_MS = 60 * 1000;
 
 /** App Store review login bypass; off unless this env var is exactly "true". */
-export const APP_REVIEW_LOGIN_ENV = 'APP_REVIEW_LOGIN_ENABLED';
 const APP_REVIEW_EMAIL = 'test-user@unifesto.app';
 const APP_REVIEW_OTP = '098765';
 
@@ -288,12 +287,18 @@ export class AuthService {
 
   async verifyEmailOtp(email: string, otp: string, ip?: string): Promise<AuthResponseDto> {
     try {
-      // Apple App Review bypass: static test account, only while the env flag
-      // is on (turn it on for a review, off afterwards).
+      // App Review bypass: static test account, only while a platform admin
+      // has it on in Apex › App version. Read fresh (not the per-replica
+      // config cache) so turning it off takes effect on every replica at once.
       if (
-        this.configService.get<string>(APP_REVIEW_LOGIN_ENV) === 'true' &&
         email === APP_REVIEW_EMAIL &&
-        otp === APP_REVIEW_OTP
+        otp === APP_REVIEW_OTP &&
+        (
+          await this.prisma.platformConfig.findUnique({
+            where: { id: 'global' },
+            select: { appReviewLoginEnabled: true },
+          })
+        )?.appReviewLoginEnabled
       ) {
         return await this.handleProviderLogin(
           Provider.EMAIL,

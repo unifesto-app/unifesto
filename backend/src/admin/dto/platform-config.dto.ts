@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 // The app-wide processing fee is fixed platform-wide (see PROCESSING_FEE_PERCENT)
 // and is intentionally not part of this DTO — it can no longer be set by admins.
@@ -17,4 +17,14 @@ export class UpdatePlatformConfigDto {
   @Min(0)
   @Max(365)
   postEventActionWindowDays?: number;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Allow the fixed App Review test login (store review only; keep off otherwise).',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  appReviewLoginEnabled?: boolean;
 }

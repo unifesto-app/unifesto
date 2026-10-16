@@ -176,12 +176,28 @@ export class PlatformConfigService implements OnModuleInit {
     processingFeePercent: number;
     postEventActionWindowDays: number;
     appVersion: AppVersionConfig;
+    appReviewLoginEnabled: boolean;
   }> {
+    const row = await this.prisma.platformConfig.findUnique({
+      where: { id: CONFIG_ID },
+      select: { appReviewLoginEnabled: true },
+    });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
       postEventActionWindowDays: this.postEventActionWindowDays,
       appVersion: this.appVersion,
+      appReviewLoginEnabled: row?.appReviewLoginEnabled ?? false,
     };
+  }
+
+  /** Admin switch for the App Review test login (see auth.service). */
+  async setAppReviewLoginEnabled(enabled: boolean): Promise<void> {
+    await this.prisma.platformConfig.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, appReviewLoginEnabled: enabled },
+      update: { appReviewLoginEnabled: enabled },
+    });
+    this.logger.warn(`App Review login turned ${enabled ? 'ON' : 'OFF'}`);
   }
 
   /** Admin update of the post-event action window (in whole days). */

@@ -2364,6 +2364,11 @@ model PlatformConfig {
   // (7) is the product rule this feature shipped with.
   postEventActionWindowDays Int @default(7) @map("post_event_action_window_days")
 
+  // Apple/Google App Review login (fixed test account + code, see
+  // auth.service). Off by default; a platform admin turns it on from Apex ›
+  // App version for a store review and off afterwards. Read fresh per login.
+  appReviewLoginEnabled Boolean @default(false) @map("app_review_login_enabled")
+
   // Mobile app version policy, edited by admins. Drives the in-app "update
   // available" prompt: the app compares its installed build against `latest`
   // (optional prompt, off while empty) and `minimum` (forced update below it). Store URLs are

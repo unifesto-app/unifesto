@@ -1,7 +1,7 @@
 /// <reference types="jest" />
 import { ConflictException, HttpException, UnauthorizedException } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
-import { AuthService, APP_REVIEW_LOGIN_ENV } from './auth.service';
+import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 
 /**
@@ -123,6 +123,7 @@ function setup(env: Record<string, string> = {}) {
         'hackathonEvalRequest',
       ].map((m) => [m, { count: jest.fn().mockResolvedValue(0) }]),
     ),
+    platformConfig: { findUnique: jest.fn().mockResolvedValue(null) },
     $transaction: jest.fn((fn: any) => fn(prisma)),
   };
   const config: any = {
@@ -596,8 +597,8 @@ describe('S49: OTP lockout abuse is contained per IP', () => {
   });
 });
 
-describe('S8: App Review login is off by default', () => {
-  it('does not bypass OTP without the env flag', async () => {
+describe('S8/S57: App Review login is off by default', () => {
+  it('does not bypass OTP while the Apex toggle is off', async () => {
     const { service, otp } = setup();
     otp.verifyOtp.mockResolvedValue('invalid');
     await expect(service.verifyEmailOtp('test-user@unifesto.app', '098765')).rejects.toBeInstanceOf(
@@ -606,8 +607,17 @@ describe('S8: App Review login is off by default', () => {
     expect(otp.verifyOtp).toHaveBeenCalled();
   });
 
-  it(`bypasses only when ${APP_REVIEW_LOGIN_ENV}=true`, async () => {
-    const { service, otp, prisma } = setup({ [APP_REVIEW_LOGIN_ENV]: 'true' });
+  it('ignores the old env flag', async () => {
+    const { service, otp } = setup({ APP_REVIEW_LOGIN_ENABLED: 'true' });
+    otp.verifyOtp.mockResolvedValue('invalid');
+    await expect(service.verifyEmailOtp('test-user@unifesto.app', '098765')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('bypasses only when the Apex toggle is on', async () => {
+    const { service, otp, prisma } = setup();
+    prisma.platformConfig.findUnique.mockResolvedValue({ appReviewLoginEnabled: true });
     otp.verifyOtp.mockResolvedValue('invalid');
     prisma.userIdentity.findUnique.mockResolvedValue({ user: user({ id: 'review' }) });
     const res = await service.verifyEmailOtp('test-user@unifesto.app', '098765');
