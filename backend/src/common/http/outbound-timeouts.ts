@@ -18,8 +18,8 @@ export const AWS_HTTP_TIMEOUTS = {
 export const LIVEKIT_CLIENT_OPTIONS = { requestTimeout: 10 };
 
 /**
- * Reject when `promise` hasn't settled within `ms`. For SDKs with no timeout or
- * abort option (Resend): the call itself keeps running, but the caller is freed.
+ * Reject when `promise` hasn't settled within `ms`. For calls with no timeout or
+ * abort option: the call itself keeps running, but the caller is freed.
  */
 export function withTimeout<T>(
   promise: Promise<T>,

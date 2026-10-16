@@ -50,6 +50,14 @@ const SPACE_ALLOWED_TARGETS: ReadonlySet<EmailTargetType> = new Set([
   EmailTargetType.SINGLE_USER,
 ]);
 
+// Only what usersToRecipients reads: the whole recipient list sits in memory
+// for the run (A/B split + checkpoint need it), so keep each row small (S54).
+const RECIPIENT_SELECT = {
+  id: true,
+  fullName: true,
+  identities: { select: { email: true, isPrimary: true } },
+} as const;
+
 @Injectable()
 export class EmailCampaignsService {
   private readonly logger = new Logger(EmailCampaignsService.name);
@@ -473,7 +481,7 @@ export class EmailCampaignsService {
         return this.usersToRecipients(
           await this.prisma.user.findMany({
             where: { id: campaign.targetId ?? undefined },
-            include: { identities: { select: { email: true, isPrimary: true } } },
+            select: RECIPIENT_SELECT,
           }),
         );
 
@@ -482,7 +490,7 @@ export class EmailCampaignsService {
           where: { spaceId: campaign.targetId ?? undefined },
           distinct: ['userId'],
           include: {
-            user: { include: { identities: { select: { email: true, isPrimary: true } } } },
+            user: { select: RECIPIENT_SELECT },
           },
         });
         return this.usersToRecipients(members.map((m) => m.user));
@@ -499,7 +507,7 @@ export class EmailCampaignsService {
         return this.usersToRecipients(
           await this.prisma.user.findMany({
             where: { id: { in: regs.map((r) => r.userId) } },
-            include: { identities: { select: { email: true, isPrimary: true } } },
+            select: RECIPIENT_SELECT,
           }),
         );
       }
@@ -516,7 +524,7 @@ export class EmailCampaignsService {
         return this.usersToRecipients(
           await this.prisma.user.findMany({
             where: { id: { in: waiting.map((r) => r.userId) } },
-            include: { identities: { select: { email: true, isPrimary: true } } },
+            select: RECIPIENT_SELECT,
           }),
         );
       }
@@ -524,7 +532,7 @@ export class EmailCampaignsService {
       case EmailTargetType.ALL_USERS:
         return this.usersToRecipients(
           await this.prisma.user.findMany({
-            include: { identities: { select: { email: true, isPrimary: true } } },
+            select: RECIPIENT_SELECT,
           }),
         );
 
@@ -532,7 +540,7 @@ export class EmailCampaignsService {
         return this.usersToRecipients(
           await this.prisma.user.findMany({
             where: { createdSpaces: { some: {} } },
-            include: { identities: { select: { email: true, isPrimary: true } } },
+            select: RECIPIENT_SELECT,
             distinct: ['id'],
           }),
         );
@@ -543,7 +551,7 @@ export class EmailCampaignsService {
             where: this.buildSegmentWhere(
               campaign.segmentFilters as unknown as SegmentFiltersDto | null,
             ),
-            include: { identities: { select: { email: true, isPrimary: true } } },
+            select: RECIPIENT_SELECT,
           }),
         );
 

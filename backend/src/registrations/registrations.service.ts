@@ -23,8 +23,10 @@ import { takeSeats, SoldOutError } from './capacity.util';
 import { Cron } from '@nestjs/schedule';
 import { CouponsService, type ResolvedDiscount } from '../coupons/coupons.service';
 import {
-  buildExportFile,
   csvChunks,
+  csvFile,
+  pdfStream,
+  xlsxChunks,
   type ExportFormat,
 } from './export.util';
 import { Readable } from 'stream';
@@ -2126,12 +2128,7 @@ export class RegistrationsService {
       ticketTypeId,
     );
     const spec = buildTemplateSpec(this.toImportShape(ticketType));
-    const { buffer } = await buildExportFile(
-      'csv',
-      `${ticketType.name} attendees`,
-      spec.header,
-      [spec.sample],
-    );
+    const buffer = csvFile(spec.header, [spec.sample]);
     const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
     return {
       buffer,
@@ -6080,10 +6077,7 @@ export class RegistrationsService {
   }
 }
 
-/**
- * CSV streams page by page; xlsx/pdf are whole-file formats, so their rows are
- * collected and built in memory as before.
- */
+/** Every format streams page by page (S54). */
 async function exportOutput(
   format: ExportFormat,
   title: string,
@@ -6093,22 +6087,25 @@ async function exportOutput(
 ): Promise<{
   contentType: string;
   filename: string;
-  stream?: Readable;
-  buffer?: Buffer;
+  stream: Readable;
 }> {
-  if (format === 'csv') {
+  if (format === 'xlsx') {
     return {
-      stream: Readable.from(csvChunks(header, rowPages)),
-      contentType: 'text/csv; charset=utf-8',
-      filename: `${basename}.csv`,
+      stream: Readable.from(xlsxChunks(header, rowPages, title)),
+      contentType: 'application/vnd.ms-excel',
+      filename: `${basename}.xls`,
     };
   }
-  const rows: string[][] = [];
-  for await (const page of rowPages) rows.push(...page);
-  const file = await buildExportFile(format, title, header, rows);
+  if (format === 'pdf') {
+    return {
+      stream: pdfStream(header, rowPages, title),
+      contentType: 'application/pdf',
+      filename: `${basename}.pdf`,
+    };
+  }
   return {
-    buffer: file.buffer,
-    contentType: file.contentType,
-    filename: `${basename}.${file.extension}`,
+    stream: Readable.from(csvChunks(header, rowPages)),
+    contentType: 'text/csv; charset=utf-8',
+    filename: `${basename}.csv`,
   };
 }
