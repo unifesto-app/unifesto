@@ -44,7 +44,6 @@ describe('CheckinService offline check-in', () => {
       },
       eventCheckinType: { findFirst: jest.fn().mockResolvedValue({ id: POINT, name: 'Entry' }) },
       eventCheckinAccess: { findFirst: jest.fn().mockResolvedValue(null) },
-      userRole: { count: jest.fn().mockResolvedValue(overrides.organiser === false ? 0 : 1) },
       eventCheckinRecord: {
         findUnique: jest.fn().mockResolvedValue(overrides.existing ?? null),
         create: recordCreate,
@@ -52,8 +51,9 @@ describe('CheckinService offline check-in', () => {
       eventTicket: { updateMany: jest.fn().mockResolvedValue({}) },
       $transaction: async (fn: any) => fn(prisma),
     };
-    const svc = new CheckinService(prisma as any, {} as any, { invalidateCheckinCache: jest.fn() } as any);
-    return { svc, prisma, recordCreate };
+    const authz = { can: jest.fn().mockResolvedValue(overrides.organiser !== false) };
+    const svc = new CheckinService(prisma as any, {} as any, { invalidateCheckinCache: jest.fn() } as any, authz as any);
+    return { svc, prisma, recordCreate, authz };
   };
 
   const item = (over: Partial<{ scannedAt: string; registrationId: string }> = {}) => ({
@@ -113,7 +113,7 @@ describe('CheckinService offline check-in', () => {
   });
 
   it('S34: a batch reads registrations, the point and permissions once, not per item', async () => {
-    const { svc, prisma } = build({ organiser: false });
+    const { svc, prisma, authz } = build({ organiser: false });
     prisma.eventCheckinAccess.findFirst.mockResolvedValue({ id: 'grant' });
     const regs = ['reg-1', 'reg-2', 'reg-3'].map((id) => ({ ...baseReg, id }));
     prisma.eventRegistration.findMany.mockResolvedValue(regs);
@@ -129,7 +129,7 @@ describe('CheckinService offline check-in', () => {
     expect(prisma.eventRegistration.findMany).toHaveBeenCalledTimes(1);
     expect(prisma.eventRegistration.findUnique).not.toHaveBeenCalled();
     expect(prisma.eventCheckinType.findFirst).toHaveBeenCalledTimes(1);
-    expect(prisma.userRole.count).toHaveBeenCalledTimes(1);
+    expect(authz.can).toHaveBeenCalledTimes(1);
     expect(prisma.eventCheckinAccess.findFirst).toHaveBeenCalledTimes(1);
     expect(invalidate).toHaveBeenCalledTimes(1);
   });

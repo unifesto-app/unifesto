@@ -84,6 +84,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
       {} as any, // coupons
       {} as any, // stayBookings
       {} as any, // teamChanges
+      { can: async () => true } as any, // authz
     );
     return { svc, prisma, payments };
   };

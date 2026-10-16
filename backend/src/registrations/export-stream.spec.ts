@@ -50,7 +50,7 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
     const planConfig = { getEffectiveLimits: () => ({ hasBulkExport: true }), resolvePlatformFeePercent: () => 0 };
     const svc = new RegistrationsService(
       prisma, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any,
-      {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+      {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { can: async () => true } as any,
     );
     return { svc, findMany };
   };

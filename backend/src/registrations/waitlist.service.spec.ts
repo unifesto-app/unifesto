@@ -200,7 +200,7 @@ function build(db: ReturnType<typeof makeDb>) {
     sendEventWhatsAppGroupInvite: jest.fn().mockResolvedValue(undefined),
   };
   const groupSeats = new GroupSeatsService(db.prisma, email, whatsapp);
-  const svc = new WaitlistService(db.prisma, email, payments, events, groupSeats);
+  const svc = new WaitlistService(db.prisma, email, payments, events, groupSeats, { can: jest.fn().mockResolvedValue(true) } as any);
   return { svc, email, events };
 }
 

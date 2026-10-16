@@ -17,8 +17,8 @@ import {
   RegistrationStatus,
   TicketStatus,
 } from '@prisma/client';
-import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
-import { assertEventSpaceAdmin, isSpaceAdmin } from '../events/event-access';
+import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { assertEventCan } from '../events/event-access';
 import { NOT_DELETED } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 
@@ -37,27 +37,25 @@ export class CheckinService {
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
     private readonly cache: CacheService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   /**
    * True when the user may act on check-in for an event at all (any point):
-   * an organiser of the event's space, or a member with any check-in grant.
+   * anyone with the check-in capability (crew up to Space and Platform Admins),
+   * or a member with any check-in grant.
    */
   async canManageCheckin(
     userId: string,
     spaceId: string,
     eventId?: string,
   ): Promise<boolean> {
-    if (await isSpaceAdmin(this.prisma, userId, spaceId)) return true;
-
-    if (eventId) {
-      const grant = await this.prisma.eventCheckinAccess.findFirst({
-        where: { eventId, userId },
-      });
-      if (grant) return true;
-    }
-
-    return false;
+    if (!eventId) return false;
+    if (await this.authz.can({ id: userId }, Action.EVENT_CHECK_IN, { eventId })) return true;
+    const grant = await this.prisma.eventCheckinAccess.findFirst({
+      where: { eventId, userId },
+    });
+    return !!grant;
   }
 
   /**
@@ -71,7 +69,7 @@ export class CheckinService {
     eventId: string,
     checkinTypeId: string,
   ): Promise<boolean> {
-    if (await isSpaceAdmin(this.prisma, userId, spaceId)) return true;
+    if (await this.authz.can({ id: userId }, Action.EVENT_CHECK_IN, { eventId })) return true;
     const grant = await this.prisma.eventCheckinAccess.findFirst({
       where: {
         eventId,
@@ -1291,12 +1289,14 @@ export class CheckinService {
   // ability to check attendees in for one event.
   // ---------------------------------------------------------------------------
 
-  /** Loads the event or throws, and asserts the caller is a space organiser. */
+  /** Loads the event or throws, and asserts the caller may assign event crew. */
   private assertEventOrganiser(userId: string, eventId: string) {
-    return assertEventSpaceAdmin(
+    return assertEventCan(
       this.prisma,
+      this.authz,
       userId,
       eventId,
+      Action.EVENT_ASSIGN_CREW,
       'Only space organisers can manage check-in access',
       { title: true },
     );

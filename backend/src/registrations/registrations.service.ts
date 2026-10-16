@@ -52,7 +52,8 @@ import {
   EventVisibility,
   FormFieldType,
 } from '@prisma/client';
-import { assertEventSpaceAdmin, canAccessSpaceOnlyEvent, isSpaceAdmin } from '../events/event-access';
+import { assertEventCan, canAccessSpaceOnlyEvent } from '../events/event-access';
+import { Action, AuthorizationService } from '../auth/authorization';
 import {
   RegisterForEventDto,
   VerifyRegistrationDto,
@@ -112,6 +113,7 @@ export class RegistrationsService {
     private readonly coupons: CouponsService,
     private readonly stayBookings: StayBookingsService,
     private readonly teamChanges: TeamChangesService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   private generateQRCode(): string {
@@ -1910,7 +1912,7 @@ export class RegistrationsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
       throw new ForbiddenException('Unauthorized');
     }
 
@@ -2778,7 +2780,7 @@ export class RegistrationsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
       throw new ForbiddenException('Unauthorized');
     }
 
@@ -2940,7 +2942,7 @@ export class RegistrationsService {
       throw new BadRequestException('Bulk export not available in your plan');
     }
 
-    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
       throw new ForbiddenException('Unauthorized');
     }
 
@@ -3298,7 +3300,7 @@ export class RegistrationsService {
       throw new NotFoundException('Event not found');
     }
 
-    if (!(await isSpaceAdmin(this.prisma, userId, event.spaceId))) {
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
       throw new ForbiddenException('Unauthorized');
     }
 
@@ -3388,9 +3390,9 @@ export class RegistrationsService {
     };
   }
 
-  /** Assert the user is a Space Admin of the event's space. */
+  /** Assert the user may manage the event's attendees. */
   private async assertEventOrganiser(userId: string, eventId: string) {
-    await assertEventSpaceAdmin(this.prisma, userId, eventId, 'Unauthorized');
+    await assertEventCan(this.prisma, this.authz, userId, eventId, Action.EVENT_MANAGE_ATTENDEES, 'Unauthorized');
   }
 
   /**

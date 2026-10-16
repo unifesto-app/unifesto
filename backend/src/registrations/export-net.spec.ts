@@ -45,7 +45,7 @@ describe('transactions export Net', () => {
     };
     const svc = new RegistrationsService(
       prisma, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any, {} as any,
-      {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+      {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { can: async () => true } as any,
     );
     const file = await svc.exportRegistrations('user-1', 'event-1', 'csv', 'transactions');
     let csv = '';
