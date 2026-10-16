@@ -300,13 +300,14 @@ One support system for everything a person needs help with. Every item is an **A
 - **Inboxes:** Apex Assist (all queues in one), Space Assist, mobile "My Help" for requesters. Each kind gets an action panel that calls the existing endpoint (approve refund, accept request…), which then posts a SYSTEM message.
 - **AI (decision D7):** Claude Haiku 5.5 (`claude-haiku-5-5`, $0.10 / $0.50 per MTok input/output, cache reads $0.01, Batch −50%). Triage, self-serve bot with read-only tools + action cards, desk drafts and summaries, request pre-screen, nightly insights. Estimated cost: ~$0.0045 per human-handled case, ~$0.0019 per bot-resolved chat; **≈ $6/mo** at 500 cases + 1.5k bot chats, ≈ $55 at 10×, ≈ $525 at 100×. Every call logged in `AiRun`; kill switch per feature.
 - **Linked, not merged:** WhatsApp inbox (D26), hackathon help desk (D27), orphaned payments, C1/C2 notifications, F6 user detail, K7/I1 legal. **Kept out:** careers, leads, incidents (bot reads them), campaigns.
-- **Decided 2026-10-16:** an event request means hosting an event without a Space (task D7). `space:manage-support` is on by default for Space Admin, Curator and Co-Curator and off for Crew (a space can turn it on). No auto-escalation: only the organiser or the requester escalates, and Unifesto still sees every case.
+- **Decided 2026-10-16:** an event request means hosting an event without a Space (task D7). `event:manage-support` is on by default for Space Admin, Curator and Co-Curator and off for Crew (a space can turn it on). No auto-escalation: only the organiser or the requester escalates, and Unifesto still sees every case.
+- **Decided 2026-10-16 (#147 review):** the support capability is `event:manage-support` (checked per event); a space-level case with no event goes to that space's desk (Space Admins), except an operator's own "contact Unifesto" case, which stays with Platform; the space desk sees the requester's email but not their phone; existing tickets all stay with Platform.
 
 | # | Item | Status |
 |---|---|---|
 | | **Phase 1 · Foundation** | |
 | D1 | **Assist Case model.** Extend `support_tickets` (kind, desk, subject link, event/registration context, escalation, first response, read state per side, rating, AI fields, BOT status); `support_messages` `isStaffReply` → `side` + `internal` + `aiDrafted`. Migration + backfill | done (#147), not deployed |
-| D2 | **Access + routing + escalation.** One `canSeeCase`; new `space:manage-support` capability; routing rules; escalate to Platform (decision D2) | done (#147), not deployed |
+| D2 | **Access + routing + escalation.** One `canSeeCase`; new `event:manage-support` capability; routing rules; escalate to Platform (decision D2) | done (#147), not deployed |
 | D3 | **Notifications both directions + unread badges.** case created / replied / status / escalated → push + email to the other side; badges in mobile, Space, Apex (old D1 + D4) | planned |
 | D4 | Attachments: private `SupportAttachment` via `StorageService`, signed URLs (old D2) | done (#147), not deployed |
 | | **Phase 2 · One system** | |

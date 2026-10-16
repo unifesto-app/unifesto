@@ -85,7 +85,13 @@ const ATTACHMENT_LINK_SECONDS = 5 * 60;
 const attachmentSelect = { id: true, name: true, mime: true, size: true, createdAt: true } satisfies Prisma.SupportAttachmentSelect;
 
 /** The case fields access is decided on. */
-type CaseAccess = { requesterId: string; desk: SupportDesk; eventId: string | null; escalatedAt: Date | null };
+type CaseAccess = {
+  requesterId: string;
+  desk: SupportDesk;
+  eventId: string | null;
+  spaceId: string | null;
+  escalatedAt: Date | null;
+};
 
 @Injectable()
 export class SupportService {
@@ -105,11 +111,18 @@ export class SupportService {
     return this.authz.can({ id: userId }, Action.PLATFORM_MANAGE);
   }
 
-  /** Space-side support access for the case's event (Space Admin by inheritance). */
+  /**
+   * Space-side support access: the event's support team (Space Admin by
+   * inheritance), or for a space-level case with no event, the Space Admins.
+   */
   private isSpaceSupport(userId: string, c: CaseAccess) {
-    return c.eventId
-      ? this.authz.can({ id: userId }, Action.SPACE_MANAGE_SUPPORT, { eventId: c.eventId })
-      : Promise.resolve(false);
+    if (c.eventId) {
+      return this.authz.can({ id: userId }, Action.EVENT_MANAGE_SUPPORT, { eventId: c.eventId });
+    }
+    if (c.spaceId) {
+      return this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: c.spaceId });
+    }
+    return Promise.resolve(false);
   }
 
   /**
@@ -168,14 +181,19 @@ export class SupportService {
       eventSpaceId = event.spaceId;
     }
 
-    // Routing (decision D2): an event question goes to the event's space desk;
-    // account, payment and app issues, other kinds, or no event go to Platform.
+    // Routing (decision D2): an event or space question goes to that space's
+    // desk; account, payment and app issues, other kinds, or no context go to
+    // Platform. A space-only case from someone who runs that space is the space
+    // app / operator "contact Unifesto" flow, so it stays with Platform.
     const kind = dto.kind ?? SupportCaseKind.HELP;
     const category = dto.category ?? SupportTicketCategory.GENERAL;
+    const targetSpaceId = eventSpaceId ?? dto.spaceId ?? null;
     const toSpace =
-      !!eventSpaceId &&
+      !!targetSpaceId &&
       kind === SupportCaseKind.HELP &&
-      !PLATFORM_CATEGORIES.includes(category);
+      !PLATFORM_CATEGORIES.includes(category) &&
+      (!!eventSpaceId ||
+        !(await this.authz.can({ id: requesterId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: targetSpaceId })));
 
     const ticket = await this.prisma.supportTicket.create({
       data: {
@@ -183,7 +201,7 @@ export class SupportService {
         category,
         priority: dto.priority ?? SupportTicketPriority.NORMAL,
         requesterId,
-        spaceId: toSpace ? eventSpaceId : dto.spaceId ?? null,
+        spaceId: toSpace ? targetSpaceId : dto.spaceId ?? null,
         desk: toSpace ? SupportDesk.SPACE : SupportDesk.PLATFORM,
         contactEmail: dto.contactEmail ?? null,
         kind,
@@ -301,6 +319,11 @@ export class SupportService {
     if (ticket.requesterId === userId) {
       ticket.messages = ticket.messages.filter((m) => !m.internal);
     }
+    // The space desk gets the requester's email, not their phone number.
+    else if (!(await this.isPlatform(userId))) {
+      const { mobileNumber: _phone, ...requester } = ticket.requester;
+      return { ...ticket, requester };
+    }
 
     return ticket;
   }
@@ -319,6 +342,7 @@ export class SupportService {
         firstResponseAt: true,
         desk: true,
         eventId: true,
+        spaceId: true,
         escalatedAt: true,
       },
     });
@@ -397,7 +421,7 @@ export class SupportService {
       select: {
         ticketId: true,
         authorId: true,
-        ticket: { select: { status: true, requesterId: true, desk: true, eventId: true, escalatedAt: true } },
+        ticket: { select: { status: true, requesterId: true, desk: true, eventId: true, spaceId: true, escalatedAt: true } },
         _count: { select: { attachments: true } },
       },
     });
@@ -445,7 +469,7 @@ export class SupportService {
         message: {
           select: {
             internal: true,
-            ticket: { select: { requesterId: true, desk: true, eventId: true, escalatedAt: true } },
+            ticket: { select: { requesterId: true, desk: true, eventId: true, spaceId: true, escalatedAt: true } },
           },
         },
       },
@@ -548,7 +572,7 @@ export class SupportService {
   async escalate(id: string, userId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true, requesterId: true, desk: true, eventId: true, escalatedAt: true, status: true },
+      select: { id: true, requesterId: true, desk: true, eventId: true, spaceId: true, escalatedAt: true, status: true },
     });
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');

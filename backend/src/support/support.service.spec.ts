@@ -136,7 +136,13 @@ describe('SupportService (Assist case)', () => {
 
 /** D2: access, routing and escalation. */
 describe('SupportService (Assist access, routing, escalation)', () => {
-  const spaceCase = { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', escalatedAt: null as Date | null };
+  const spaceCase = {
+    requesterId: 'user-1',
+    desk: SupportDesk.SPACE,
+    eventId: 'ev-1' as string | null,
+    spaceId: 'sp-1' as string | null,
+    escalatedAt: null as Date | null,
+  };
   const curator: Role = { code: RoleCode.CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' };
   const coCurator: Role = { code: RoleCode.CO_CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' };
   const crew: Role = { code: RoleCode.CREW, scope: RoleScope.EVENT, eventId: 'ev-1' };
@@ -170,6 +176,24 @@ describe('SupportService (Assist access, routing, escalation)', () => {
       }
     });
 
+    it('a space-level case (no event) is for the Space Admins, not event crew', async () => {
+      const noEvent = { ...spaceCase, eventId: null };
+      expect(await setup({ roles: [spaceAdmin] }).service.canSeeCase('staff', noEvent)).toBe(true);
+      for (const r of [curator, otherSpaceAdmin]) {
+        expect(await setup({ roles: [r] }).service.canSeeCase('staff', noEvent)).toBe(false);
+      }
+    });
+
+    it("the space desk gets the requester's email but not their phone", async () => {
+      const requester = { id: 'user-1', mobileNumber: '+910000000000', identities: [{ email: 'a@b.c' }] };
+      const ticket = { desk: SupportDesk.SPACE, eventId: 'ev-1', spaceId: 'sp-1', requester };
+      const desk: any = await setup({ roles: [curator], ticket }).service.getTicket('t-1', 'staff');
+      expect(desk.requester).not.toHaveProperty('mobileNumber');
+      expect(desk.requester.identities).toEqual([{ email: 'a@b.c' }]);
+      const platform: any = await setup({ admin: true, ticket }).service.getTicket('t-1', 'staff');
+      expect(platform.requester.mobileNumber).toBe('+910000000000');
+    });
+
     it('getTicket forbids a stranger', async () => {
       await expect(setup().service.getTicket('t-1', 'stranger')).rejects.toBeInstanceOf(ForbiddenException);
     });
@@ -193,7 +217,14 @@ describe('SupportService (Assist access, routing, escalation)', () => {
         expect((await create({ eventId: 'ev-1', category })).desk).toBe('PLATFORM');
       }
       expect((await create({ eventId: 'ev-1', kind: 'REPORT' })).desk).toBe('PLATFORM');
-      expect(await create({ spaceId: 'sp-9' })).toMatchObject({ desk: 'PLATFORM', spaceId: 'sp-9' });
+      expect((await create({})).desk).toBe('PLATFORM');
+    });
+
+    it("sends a space question to that space's desk, but an operator's own space case to Platform", async () => {
+      expect(await create({ spaceId: 'sp-1' })).toMatchObject({ desk: 'SPACE', spaceId: 'sp-1', eventId: null });
+      const { service } = setup({ roles: [spaceAdmin] });
+      const own: any = await service.createTicket({ subject: 's', message: 'm', spaceId: 'sp-1' } as any, 'user-1');
+      expect(own).toMatchObject({ desk: 'PLATFORM', spaceId: 'sp-1' });
     });
   });
 
