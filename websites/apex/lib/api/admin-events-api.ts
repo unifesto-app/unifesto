@@ -22,6 +22,8 @@ export interface AdminEventTicketType {
 
 export interface AdminEvent {
   id: string;
+  whiteLabelEnabled: boolean;
+  brandColor: string | null;
   title: string;
   slug: string;
   status: AdminEventStatus;

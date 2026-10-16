@@ -231,6 +231,8 @@ export async function getSubSpaceAnalytics(
  */
 export interface AdminSpace {
   id: string;
+  white_label_enabled: boolean;
+  brand_color: string | null;
   name: string;
   slug: string;
   description: string | null;
