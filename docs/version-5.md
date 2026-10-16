@@ -297,7 +297,7 @@ One support system for everything a person needs help with. Every item is an **A
 - **Inboxes:** Apex Assist (all queues in one), Space Assist, mobile "My Help" for requesters. Each kind gets an action panel that calls the existing endpoint (approve refund, accept request…), which then posts a SYSTEM message.
 - **AI (decision D7):** Claude Haiku 5.5 (`claude-haiku-5-5`, $0.10 / $0.50 per MTok input/output, cache reads $0.01, Batch −50%). Triage, self-serve bot with read-only tools + action cards, desk drafts and summaries, request pre-screen, nightly insights. Estimated cost: ~$0.0045 per human-handled case, ~$0.0019 per bot-resolved chat; **≈ $6/mo** at 500 cases + 1.5k bot chats, ≈ $55 at 10×, ≈ $525 at 100×. Every call logged in `AiRun`; kill switch per feature.
 - **Linked, not merged:** WhatsApp inbox (D26), hackathon help desk (D27), orphaned payments, C1/C2 notifications, F6 user detail, K7/I1 legal. **Kept out:** careers, leads, incidents (bot reads them), campaigns.
-- **Open decisions:** event request meaning (task D7, default: host without a Space), crew default for `space:manage-support`, auto-escalation after N hours (default: none).
+- **Decided 2026-10-16:** an event request means hosting an event without a Space (task D7). `space:manage-support` is on by default for Space Admin, Curator and Co-Curator and off for Crew (a space can turn it on). No auto-escalation: only the organiser or the requester escalates, and Unifesto still sees every case.
 
 | # | Item | Status |
 |---|---|---|
@@ -309,7 +309,7 @@ One support system for everything a person needs help with. Every item is an **A
 | | **Phase 2 · One system** | |
 | D5 | **Request adapter.** All 10 request types open and update cases (SpaceRequest, SpaceStatus, SpaceOwnership, SubSpace incl. B9, WhiteLabel until H15, FreeAttendeeAdd, RegistrationTransfer → Platform; EventOwnershipTransfer, SubEventAttach → the other space) | planned |
 | D6 | **Refunds + cancellations inside Assist.** Curator stage = Space desk, admin stage = Platform desk; paid cancel = one flow that creates the refund; cancellation reason; S14 `cancelEvent` refunds run through it. After S51/S52 | planned |
-| D7 | **New: Event request.** Host an event without a Space: Platform approves, which creates a personal Space, curator role and a draft event (confirm meaning) | planned |
+| D7 | **New: Event request.** Host an event without a Space: Platform approves, which creates a personal Space, curator role and a draft event | planned |
 | D8 | **Apex Assist inbox.** One inbox for every queue with typed action panels, stats header, search + pagination. Replaces Support, Requests, Refunds, report-issues and bank-account pages (B7, B11, part of B6) | planned |
 | D9 | **Space Assist inbox (web)** with internal notes and escalation (old D5) | planned |
 | D10 | **Mobile: My Help + inboxes + Get help.** Requester timeline of every case; Space and Apex inboxes; "Get help" from event and ticket, pre-filled (old D3) | planned |
@@ -626,3 +626,4 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 - **2026-10-15** · P17 profiles updated by hand: Instagram, LinkedIn, App Store promo text, Crunchbase (logo, descriptions, phone). Store long descriptions moved to P8; Wikidata and Google Business Profile split out as P21 and P22.
 - **2026-10-15** · Task rows now lead with the board's short title in bold (175 rows); full text kept after it. Board task view opens read-only (#132); apex + web deployed.
 - **2026-10-16** · Track D rebuilt as **Unifesto Assist** (D1–D28): one case wrapper over support, refunds, cancellations, the 10 request types, a new event request, ticket issue reports, payouts, privacy and grievance, plus a Claude Haiku 5.5 layer (est. ~$6/mo now, ~$55 at 10×). Old D1–D8 folded in; B7, B9, B11 merged; B10 dropped for 0.9; K7 narrowed to legal pages. Decision D7 added.
+- **2026-10-16** · Assist decisions settled: event request = host without a Space; support inbox default curators only; no auto-escalation.
