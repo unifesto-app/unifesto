@@ -101,7 +101,7 @@ async function create(ownerEmail: string) {
       data: {
         mobileNumber: `${MOBILE_PREFIX}${String(i + 1).padStart(6, '0')}`,
         fullName: name,
-        username: `demo_${name.split(' ')[0].toLowerCase()}_${i + 1}`,
+        username: `${name.toLowerCase().replace(' ', '_')}${i + 1}`,
         identities: {
           create: { provider: Provider.EMAIL, providerUserId: email, email, isPrimary: true },
         },
