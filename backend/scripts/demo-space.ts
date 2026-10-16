@@ -193,7 +193,7 @@ async function create(ownerEmail: string) {
         { name: 'Team of 3', price: 450, total: 90, kind: TicketKind.GROUP, groupSize: 3 },
       ],
       attendees: 8,
-      checkInShare: 0.9,
+      checkInShare: 0.75,
       hackathon: true,
     },
     {
@@ -390,6 +390,7 @@ async function seedHackathon(
       title: 'Build Night leaderboard',
       teamCodePrefix: 'BN',
       teamCodeNext: regs.length + 1,
+      psMode: 'TEAM_PICKS',
       venueName: 'Innovation Lab, Block C',
       createdBy: ownerId,
     },
@@ -409,10 +410,23 @@ async function seedHackathon(
     await prisma.hackathonHelpTopic.create({ data: { leaderboardId: board.id, name } });
   }
 
+  // One problem statement per theme; teams pick (and lock) one each.
+  const statements = await Promise.all(
+    [
+      ['PS-01', 'Find a free room on campus', 'Live map of empty classrooms and labs.'],
+      ['PS-02', 'Split the hostel mess bill', 'Track shared expenses and settle with UPI.'],
+      ['PS-03', 'Your own idea', 'Anything that makes student life better.'],
+    ].map(([code, title, description], i) =>
+      prisma.hackathonStatement.create({
+        data: { leaderboardId: board.id, code, title, description, themeId: themes[i].id, order: i },
+      }),
+    ),
+  );
+
   const round1 = await prisma.leaderboardRound.create({
     data: { leaderboardId: board.id, name: 'Idea pitch', order: 0, status: 'CLOSED', startAt: new Date(now - 10 * 3_600_000), endAt: new Date(now - 8 * 3_600_000) },
   });
-  await prisma.leaderboardRound.create({
+  const round2 = await prisma.leaderboardRound.create({
     data: { leaderboardId: board.id, name: 'Mid-build demo', order: 1, status: 'ACTIVE', startAt: new Date(now - 3_600_000) },
   });
   await prisma.leaderboardRound.create({
@@ -461,6 +475,9 @@ async function seedHackathon(
         teamNameSource: 'LEAD',
         roomId: rooms[i % 2].id,
         themeId: themes[i % 3].id,
+        statementId: statements[i % 3].id,
+        statementLockedAt: new Date(now - 11 * 3_600_000),
+        statementSetBy: r.lead.id,
         totalScore: total,
       },
     });
@@ -469,16 +486,34 @@ async function seedHackathon(
         entrantId: entrant.id,
         metricId: metric.id,
         roundId: round1.id,
+        judgeUserId: team[4].id,
         value: scores[m],
       })),
+    });
+    // The judge's submitted marks for round 1.
+    await prisma.leaderboardJudgment.create({
+      data: {
+        entrantId: entrant.id,
+        roundId: round1.id,
+        panelistUserId: team[4].id,
+        kind: 'JUDGE',
+        overallReview: 'Clear problem, working prototype. Tighten the demo.',
+        submittedAt: new Date(now - 8.5 * 3_600_000),
+      },
     });
     entrants.push({ entrant, lead: r.lead, total });
   }
 
-  // Ranks by round-1 total.
+  // Round-1 results: all advance (round 2 is under way, still undecided).
   const ranked = [...entrants].sort((a, b) => b.total - a.total);
   for (const [rank, e] of ranked.entries()) {
     await prisma.leaderboardEntrant.update({ where: { id: e.entrant.id }, data: { rank: rank + 1 } });
+    await prisma.leaderboardEntrantRound.createMany({
+      data: [
+        { entrantId: e.entrant.id, roundId: round1.id, status: 'ADVANCED', roundScore: e.total, rank: rank + 1, decidedBy: ownerId, decidedAt: new Date(now - 8 * 3_600_000) },
+        { entrantId: e.entrant.id, roundId: round2.id },
+      ],
+    });
   }
 
   // Help desk: one open, one acknowledged, one resolved.
@@ -513,6 +548,7 @@ async function seedHackathon(
       audience: 'ALL',
       title: 'Mid-build demos start now',
       body: 'Judges are coming to your table in team-code order. Have your demo ready.',
+      recipients: entrants.length * 3 + 2, // every member + judge + mentor
       createdBy: ownerId,
     },
   });
