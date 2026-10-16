@@ -23,17 +23,10 @@ export interface EffectiveSponsor {
  * Merge a roster {@link Sponsor} with its per-event {@link EventSponsor}
  * overrides into the single shape public pages (web + mobile) render.
  *
- * The merge rule is a real product decision, which is why it lives in one place:
- * a per-event override field that is `null` means "inherit the roster default";
- * a non-null value (including an empty string, if we ever allow one) means
- * "use this instead". Tier and website are not overridable today, so they come
- * straight from the attachment / roster.
- *
- * TODO(you): confirm the inheritance semantics you want here. Options to weigh:
- *   - null  -> inherit (current default)
- *   - ''    -> should an empty override blank the field, or also inherit?
- *   - trimming/whitespace-only overrides -> treat as inherit?
- * Adjust the two `??` lines below to encode the rule you choose.
+ * Merge rule (product decision, S56): a per-event override that is null, empty
+ * or whitespace-only inherits the roster value; anything else replaces it.
+ * Tier and website are not overridable today, so they come straight from the
+ * attachment / roster.
  */
 export function resolveEffectiveSponsor(
   es: EventSponsorWithRelations,
@@ -42,8 +35,8 @@ export function resolveEffectiveSponsor(
     eventSponsorId: es.id,
     sponsorId: es.sponsorId,
     name: es.sponsor.name,
-    logoUrl: es.overrideLogoUrl ?? es.sponsor.logoUrl,
-    description: es.overrideDescription ?? es.sponsor.description,
+    logoUrl: override(es.overrideLogoUrl) ?? es.sponsor.logoUrl,
+    description: override(es.overrideDescription) ?? es.sponsor.description,
     websiteUrl: es.sponsor.websiteUrl,
     leadCaptureEnabled: es.leadCaptureEnabled,
     order: es.order,
@@ -57,3 +50,6 @@ export function resolveEffectiveSponsor(
       : null,
   };
 }
+
+/** A blank override means "inherit": null, '' and whitespace-only all count. */
+const override = (v: string | null): string | null => (v?.trim() ? v : null);

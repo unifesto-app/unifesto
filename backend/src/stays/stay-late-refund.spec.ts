@@ -66,3 +66,28 @@ describe('StayBookingsService late-payment refund', () => {
     expect(payments.refund).not.toHaveBeenCalled();
   });
 });
+
+/** S51: the team cancel claims on the payment state it decided the refund from. */
+describe('StayBookingsService.cancel claim', () => {
+  it('conflicts instead of skipping a refund when a payment lands in between', async () => {
+    const b = {
+      id: 'b-1',
+      userId: 'u-1',
+      paymentMode: 'ONLINE',
+      paymentStatus: PaymentStatus.PENDING,
+      status: StayBookingStatus.AWAITING_PAYMENT,
+      stay: { name: 'Hostel' },
+    };
+    const prisma: any = { stayBooking: { updateMany: jest.fn(async () => ({ count: 0 })) } };
+    const payments = { refund: jest.fn() };
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
+    jest.spyOn(svc as any, 'loadForEvent').mockResolvedValue(b);
+    await expect(svc.cancel('ev-1', 'b-1', 'u-1', { refund: true } as any)).rejects.toThrow(/just changed/);
+    expect(prisma.stayBooking.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'b-1', status: b.status, paymentStatus: b.paymentStatus, refundDueAt: null },
+      }),
+    );
+    expect(payments.refund).not.toHaveBeenCalled();
+  });
+});

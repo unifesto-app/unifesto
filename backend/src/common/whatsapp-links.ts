@@ -103,10 +103,7 @@ export function validateWhatsAppInviteLink(
  * The stored links that can supply an attendee's WhatsApp invite.
  *
  * All of these are PRIVATE, attendee-only fields — never returned on an
- * unauthenticated path. The legacy public `whatsappGroupUrl` /
- * `whatsappCommunityUrl` are deliberately NOT part of this resolution: they
- * leaked on the public event payload, so the invite now flows through a
- * dedicated attendee group instead.
+ * unauthenticated path.
  */
 export interface RegistrationWhatsAppSources {
   /** This registration's ticket-type group link (highest precedence). */
