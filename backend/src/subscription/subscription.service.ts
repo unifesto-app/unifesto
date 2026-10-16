@@ -191,6 +191,7 @@ export class SubscriptionService {
       currency: 'INR',
       plan: dto.plan,
       billingCycle: dto.billingCycle,
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID!,
     };
   }
 
