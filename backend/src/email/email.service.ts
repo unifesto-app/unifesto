@@ -222,6 +222,7 @@ export class EmailService {
           ? {
               name: theme.name,
               logoUrl: theme.logoUrl,
+              logoSquare: theme.logoSquare,
               color: theme.color,
               hidePoweredBy: theme.hidePoweredBy,
               url: web ? `https://${web.hostname}` : `${WEB}/space/${space.slug}`,

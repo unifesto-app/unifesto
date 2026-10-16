@@ -38,6 +38,8 @@ export interface Branding {
   color: string | null;
   /** Header logo: the wide brand wordmark, else the square space logo. */
   logoUrl: string | null;
+  /** True when `logoUrl` is the square space-logo fallback, not a wide wordmark. */
+  logoSquare: boolean;
   /** Google Fonts family name, or null for Unifesto's font. */
   font: string | null;
   /** Forced page theme, or null to respect the visitor's choice. */
@@ -101,6 +103,7 @@ export function resolveSpaceBranding(
     name: space.name,
     color: space.brandColor ?? null,
     logoUrl: space.brandLogoUrl ?? space.logoUrl ?? null,
+    logoSquare: !space.brandLogoUrl && !!space.logoUrl,
     font: BRAND_FONTS[space.brandFont as BrandFont] ?? null,
     mode: BRAND_MODES.includes(space.brandMode as BrandMode) ? (space.brandMode as BrandMode) : null,
     hidePoweredBy: space.hidePoweredBy,
@@ -127,7 +130,7 @@ export function resolveEventBranding(
       : null;
   if (!override) return base;
   return {
-    ...(base ?? { name: null, logoUrl: null, font: null, mode: null, hidePoweredBy: false, faviconUrl: null, customDomain: null }),
+    ...(base ?? { name: null, logoUrl: null, logoSquare: false, font: null, mode: null, hidePoweredBy: false, faviconUrl: null, customDomain: null }),
     color: override,
   };
 }
