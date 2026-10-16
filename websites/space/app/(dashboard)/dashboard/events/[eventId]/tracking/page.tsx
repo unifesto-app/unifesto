@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PartnersPanel } from "@/components/tracking/PartnersPanel";
 import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/components/tracking/TrackingParts";
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from "@/lib/api/tracking";
 import { conversion, getTraffic, type TrafficScope, type TrafficStats } from "@/lib/api/traffic";
@@ -17,8 +18,8 @@ const WEB_URL = "https://www.unifesto.app";
 
 /**
  * Tracking for one event (port of mobile EventTrackingScreen): page traffic,
- * where confirmed attendees came from (drill into a source), short links and
- * tagged channel links.
+ * where confirmed attendees came from (drill into a source), short links,
+ * partner links and tagged channel links.
  */
 export default function EventTrackingPage() {
   const eventId = useParams().eventId as string;
@@ -96,6 +97,7 @@ export default function EventTrackingPage() {
           </ListGroup>
 
           <ShortLinksPanel scope={scope} canEdit={can(currentRole, "event:edit")} destination="this event" />
+          <PartnersPanel eventId={eventId} />
           {slug && <TrackingLinks url={`${WEB_URL}/event/${slug}`} campaign={slug} />}
         </>
       )}

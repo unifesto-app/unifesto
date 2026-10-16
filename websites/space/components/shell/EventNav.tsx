@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  CaretDown,
   SquaresFour,
   Ticket,
   Users,
@@ -22,7 +23,6 @@ import {
   Tag,
   WhatsappLogo,
   ChartLineUp,
-  Handshake,
   Trophy,
   Bed,
 } from "@unifesto/unicon/react";
@@ -45,10 +45,13 @@ interface EventNavItem {
 interface EventNavGroup {
   label?: string;
   items: EventNavItem[];
+  /** Folded away by default; opens itself when one of its pages is active. */
+  advanced?: boolean;
 }
 
 // Grouped by how an organiser works an event: run it, count the money, shape
-// the experience, wire up its structure, then configure it. Each item carries
+// the experience, then configure it. Rarely-used structure tools sit folded
+// under "Advanced" at the bottom. Each item carries
 // the capability (role) and/or plan feature it needs — the nav filters through
 // the same checks the pages and backend enforce.
 const NAV_GROUPS: EventNavGroup[] = [
@@ -75,8 +78,8 @@ const NAV_GROUPS: EventNavGroup[] = [
   {
     label: "Grow",
     items: [
+      // Partners live inside Tracking.
       { href: "/tracking", label: "Tracking", icon: ChartLineUp },
-      { href: "/partners", label: "Partners", icon: Handshake },
     ],
   },
   {
@@ -91,15 +94,21 @@ const NAV_GROUPS: EventNavGroup[] = [
     ],
   },
   {
-    label: "Structure",
+    label: "Configure",
+    items: [
+      { href: "/team", label: "Team", icon: UsersFour, requires: "event:assign-curators" },
+      { href: "/settings", label: "Settings", icon: Gear, requires: "event:edit" },
+    ],
+  },
+  {
+    label: "Advanced",
+    advanced: true,
     items: [
       { href: "/occurrences", label: "Occurrences", icon: ArrowsClockwise, requires: "event:edit" },
       { href: "/sub-events", label: "Sub-events", icon: Stack, requires: "event:edit" },
-      { href: "/team", label: "Team", icon: UsersFour, requires: "event:assign-curators" },
       { href: "/co-hosting", label: "Co-Hosting", icon: ShareNetwork, requires: "event:assign-curators" },
     ],
   },
-  { label: "Configure", items: [{ href: "/settings", label: "Settings", icon: Gear, requires: "event:edit" }] },
 ];
 
 /** Plan-gate check. Unknown flags (still loading) resolve to visible. */
@@ -179,16 +188,8 @@ export function EventNav({
       </Link>
 
       <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-5")}>
-        {navGroups.map((group, groupIdx) => (
-          <div key={group.label ?? `group-${groupIdx}`}>
-            {group.label &&
-              (collapsed ? (
-                groupIdx > 0 && <div className="mx-2 mb-2 border-t border-border" />
-              ) : (
-                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {group.label}
-                </p>
-              ))}
+        {navGroups.map((group, groupIdx) => {
+          const links = (
             <div className="space-y-0.5">
               {group.items.map((item) => {
                 const active = isActive(item);
@@ -217,8 +218,36 @@ export function EventNav({
                 );
               })}
             </div>
-          </div>
-        ))}
+          );
+
+          // Advanced tools fold away in the full rail; the icon-only rail
+          // keeps them inline since it has no labels to fold under.
+          if (group.advanced && !collapsed) {
+            return (
+              <details key={group.label} open={group.items.some(isActive)} className="group">
+                <summary className="mb-1 flex cursor-pointer list-none items-center justify-between rounded px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
+                  {group.label}
+                  <CaretDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+                </summary>
+                {links}
+              </details>
+            );
+          }
+
+          return (
+            <div key={group.label ?? `group-${groupIdx}`}>
+              {group.label &&
+                (collapsed ? (
+                  groupIdx > 0 && <div className="mx-2 mb-2 border-t border-border" />
+                ) : (
+                  <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.label}
+                  </p>
+                ))}
+              {links}
+            </div>
+          );
+        })}
       </nav>
     </div>
   );

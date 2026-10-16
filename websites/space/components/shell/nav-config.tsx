@@ -30,6 +30,8 @@ export interface NavItem {
   requires?: Capability;
   /** Extra terms the command palette matches against (beyond the label). */
   keywords?: string;
+  /** Reachable from the command palette only; the sidebar shows its parent. */
+  paletteOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -82,8 +84,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/billing", label: "Plan & billing", icon: CreditCard, requires: "space:manage-billing", keywords: "subscription plan upgrade" },
       { href: "/iam", label: "IAM", icon: ShieldCheck, requires: "space:manage-members", keywords: "roles permissions access" },
-      { href: "/white-label", label: "Branding", icon: PaintBrush, requires: "space:manage-settings", keywords: "white-label branding colour color accent logo font domain" },
-      { href: "/settings", label: "Settings", icon: Gear, requires: "space:manage-members" },
+      { href: "/settings", label: "Settings", icon: Gear, requires: "space:manage-members", keywords: "profile visibility" },
+      { href: "/settings/branding", label: "Branding", icon: PaintBrush, requires: "space:manage-settings", keywords: "white-label branding colour color accent logo font domain", paletteOnly: true },
     ],
   },
   {

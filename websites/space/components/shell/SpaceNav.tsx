@@ -71,7 +71,7 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
                 </p>
               ))}
             <div className="space-y-0.5">
-              {group.items.map((item) => {
+              {group.items.filter((i) => !i.paletteOnly).map((item) => {
                 const active = isActive(item);
                 const Icon = item.icon;
                 const href = `${BASE_URL}${item.href}`;
