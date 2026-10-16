@@ -47,8 +47,6 @@ import {
   GroupSeatStatus,
   Provider,
   CouponRedemptionStatus,
-  BillingModel,
-  OrgPlan,
   EventVisibility,
   FormFieldType,
 } from '@prisma/client';
@@ -56,7 +54,6 @@ import { assertEventCan, canAccessSpaceOnlyEvent } from '../events/event-access'
 import { Action, AuthorizationService } from '../auth/authorization';
 import {
   RegisterForEventDto,
-  VerifyRegistrationDto,
   CreateOrderDto,
   VerifyPaymentDto,
   OrderResponseDto,
@@ -76,23 +73,18 @@ import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { seatPhone, seatMemberName, type SeatLike } from './group-invite.util';
 import * as crypto from 'crypto';
-
-/**
- * A payment may settle a registration only while its money is unsettled and
- * the row is live: never revive a refunded or cancelled row (a replayed
- * receipt or a late capture of a superseded checkout).
- */
-const SETTLEABLE_PAYMENT: PaymentStatus[] = [PaymentStatus.PENDING, PaymentStatus.FAILED];
-const SETTLEABLE = {
-  paymentStatus: { in: SETTLEABLE_PAYMENT },
-  status: { not: RegistrationStatus.CANCELLED },
-};
-/** Payment states whose registration occupies its seats (free rows are PAID at ₹0). */
-const HOLDS_SEAT_PAYMENT: PaymentStatus[] = [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED];
-/** Reason stamped on a paid row cancelled because its ticket sold out mid-payment. */
-const SOLD_OUT_REASON = 'Sold out while the payment was in progress; refunded in full';
-const isSettleable = (r: { paymentStatus: PaymentStatus; status: RegistrationStatus }) =>
-  SETTLEABLE_PAYMENT.includes(r.paymentStatus) && r.status !== RegistrationStatus.CANCELLED;
+import {
+  SETTLEABLE_PAYMENT,
+  SETTLEABLE,
+  HOLDS_SEAT_PAYMENT,
+  SOLD_OUT_REASON,
+  isSettleable,
+  generateQRCode,
+  generateTicketCode,
+  seatsFor,
+  formatEventDate,
+  formatEventTime,
+} from './registration.util';
 
 @Injectable()
 export class RegistrationsService {
@@ -115,10 +107,6 @@ export class RegistrationsService {
     private readonly teamChanges: TeamChangesService,
     private readonly authz: AuthorizationService,
   ) {}
-
-  private generateQRCode(): string {
-    return crypto.randomBytes(16).toString('hex');
-  }
 
   /**
    * Enforce organiser-configured ticket restrictions. A user who already holds a
@@ -155,13 +143,6 @@ export class RegistrationsService {
         }”.`,
       );
     }
-  }
-
-  private generateTicketCode(): string {
-    return crypto
-      .randomBytes(4)
-      .toString('hex')
-      .toUpperCase();
   }
 
   /**
@@ -227,7 +208,7 @@ export class RegistrationsService {
     reg: { id: string; eventId: string; ticketTypeId: string | null; groupSize?: number | null; quantity: number },
   ): Promise<boolean> {
     try {
-      await takeSeats(tx, reg, this.seatsFor(reg));
+      await takeSeats(tx, reg, seatsFor(reg));
       return true;
     } catch (err) {
       if (!(err instanceof SoldOutError)) throw err;
@@ -295,15 +276,6 @@ export class RegistrationsService {
   }
 
   /**
-   * Seats a registration occupies: the group size for GROUP tickets, else the
-   * quantity. Capacity and the soldCount/registeredCount counters use this so a
-   * group of N takes up N seats — even though the group still shares one ticket.
-   */
-  private seatsFor(r: { groupSize?: number | null; quantity: number }): number {
-    return r.groupSize ?? r.quantity;
-  }
-
-  /**
    * Guard a ticket's optional on-sale window at purchase time.
    *
    * Either bound may be null (open-ended). This runs before the capacity /
@@ -327,35 +299,6 @@ export class RegistrationsService {
     if (ticketType.saleEndsAt && now > ticketType.saleEndsAt) {
       throw new BadRequestException('Sales for this ticket have ended.');
     }
-  }
-
-  /**
-   * Format event date for display
-   * Output: "1 July 2026"
-   */
-  private formatEventDate(dateTime: Date, timezone = 'Asia/Kolkata'): string {
-    return new Intl.DateTimeFormat('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-      timeZone: timezone,
-    }).format(dateTime);
-  }
-
-  /**
-   * Format event time range
-   * Output: "10:00 AM - 01:00 PM IST"
-   */
-  private formatEventTime(startTime: Date, endTime: Date, timezone = 'Asia/Kolkata'): string {
-    const formatTime = (date: Date) =>
-      new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: timezone,
-      }).format(date);
-
-    return `${formatTime(startTime)} - ${formatTime(endTime)} IST`;
   }
 
   /** Space-only events accept registrations from hosting-space members only. */
@@ -573,7 +516,7 @@ export class RegistrationsService {
       return this.completeRSVP(userId, eventId, dto, event);
     }
 
-    const qrCode = this.generateQRCode();
+    const qrCode = generateQRCode();
 
     const registration = await this.prisma.eventRegistration.create({
       data: {
@@ -615,7 +558,7 @@ export class RegistrationsService {
       });
 
       // Take the seats atomically — a group occupies groupSize seats, not 1.
-      const seats = this.seatsFor(registration);
+      const seats = seatsFor(registration);
       await takeSeats(tx, registration, seats);
 
       // Generate tickets
@@ -623,8 +566,8 @@ export class RegistrationsService {
         await tx.eventTicket.create({
           data: {
             registrationId: registration.id,
-            ticketCode: this.generateTicketCode(),
-            qrCode: this.generateQRCode(),
+            ticketCode: generateTicketCode(),
+            qrCode: generateQRCode(),
           },
         });
       }
@@ -713,8 +656,8 @@ export class RegistrationsService {
     // Send WhatsApp notification
     try {
       if (fullRegistration.user?.mobileNumber) {
-        const eventDate = this.formatEventDate(fullRegistration.event.startDateTime);
-        const eventTime = this.formatEventTime(
+        const eventDate = formatEventDate(fullRegistration.event.startDateTime);
+        const eventTime = formatEventTime(
           fullRegistration.event.startDateTime,
           fullRegistration.event.endDateTime,
         );
@@ -794,8 +737,8 @@ export class RegistrationsService {
     });
 
     if (identity?.email) {
-      const eventDate = this.formatEventDate(fullRegistration.event.startDateTime);
-      const eventTime = this.formatEventTime(
+      const eventDate = formatEventDate(fullRegistration.event.startDateTime);
+      const eventTime = formatEventTime(
         fullRegistration.event.startDateTime,
         fullRegistration.event.endDateTime,
       );
@@ -869,8 +812,8 @@ export class RegistrationsService {
     );
     if (members.length === 0) return;
 
-    const eventDate = this.formatEventDate(event.startDateTime);
-    const eventTime = this.formatEventTime(event.startDateTime, event.endDateTime);
+    const eventDate = formatEventDate(event.startDateTime);
+    const eventTime = formatEventTime(event.startDateTime, event.endDateTime);
     const lead = (leadEmail ?? '').trim().toLowerCase();
     const seen = new Set<string>();
 
@@ -941,7 +884,7 @@ export class RegistrationsService {
   }
 
   async completeRSVP(userId: string, eventId: string, dto: RegisterForEventDto, event: any) {
-    const qrCode = this.generateQRCode();
+    const qrCode = generateQRCode();
 
     const registration = await this.prisma.$transaction(async (tx) => {
       const reg = await tx.eventRegistration.create({
@@ -961,14 +904,14 @@ export class RegistrationsService {
       });
 
       // Atomic against capacity: the last seat can't go to two RSVPs.
-      await takeSeats(tx, reg, this.seatsFor(reg));
+      await takeSeats(tx, reg, seatsFor(reg));
 
       for (let i = 0; i < (dto.quantity || 1); i++) {
         await tx.eventTicket.create({
           data: {
             registrationId: reg.id,
-            ticketCode: this.generateTicketCode(),
-            qrCode: this.generateQRCode(),
+            ticketCode: generateTicketCode(),
+            qrCode: generateQRCode(),
           },
         });
       }
@@ -979,7 +922,7 @@ export class RegistrationsService {
       await this.groupSeats.createSeatsForRegistration(tx, {
         registrationId: reg.id,
         leadUserId: userId,
-        seatCount: this.seatsFor(reg),
+        seatCount: seatsFor(reg),
         groupMembers: dto.groupMembers ?? null,
       });
 
@@ -1005,8 +948,8 @@ export class RegistrationsService {
     // Send WhatsApp notification
     try {
       if (fullRegistration?.user?.mobileNumber) {
-        const eventDate = this.formatEventDate(fullRegistration.event.startDateTime);
-        const eventTime = this.formatEventTime(
+        const eventDate = formatEventDate(fullRegistration.event.startDateTime);
+        const eventTime = formatEventTime(
           fullRegistration.event.startDateTime,
           fullRegistration.event.endDateTime,
         );
@@ -1036,8 +979,8 @@ export class RegistrationsService {
     });
 
     if (identity?.email && fullRegistration) {
-      const eventDate = this.formatEventDate(fullRegistration.event.startDateTime);
-      const eventTime = this.formatEventTime(
+      const eventDate = formatEventDate(fullRegistration.event.startDateTime);
+      const eventTime = formatEventTime(
         fullRegistration.event.startDateTime,
         fullRegistration.event.endDateTime,
       );
@@ -1112,7 +1055,7 @@ export class RegistrationsService {
       groupSize: dto.groupSize,
       groupMembers: dto.groupMembers,
       formResponses: dto.formResponses,
-      qrCode: this.generateQRCode(),
+      qrCode: generateQRCode(),
     });
   }
 
@@ -1948,7 +1891,7 @@ export class RegistrationsService {
       // without seats (un-backfilled legacy) fall back to the whole group size.
       const attending = seatTotals.has(r.id)
         ? seatClaimed.get(r.id) ?? 0
-        : this.seatsFor(r);
+        : seatsFor(r);
 
       if (isGroup) {
         groupAttendees += attending;
@@ -2284,7 +2227,7 @@ export class RegistrationsService {
       formResponses: Record<string, unknown>;
     },
   ): Promise<string> {
-    const qrCode = this.generateQRCode();
+    const qrCode = generateQRCode();
     const seats = opts.groupSize && opts.groupSize > 1 ? opts.groupSize : 1;
 
     const registration = await this.prisma.$transaction(async (tx) => {
@@ -2307,8 +2250,8 @@ export class RegistrationsService {
       await tx.eventTicket.create({
         data: {
           registrationId: reg.id,
-          ticketCode: this.generateTicketCode(),
-          qrCode: this.generateQRCode(),
+          ticketCode: generateTicketCode(),
+          qrCode: generateQRCode(),
         },
       });
       await this.groupSeats.createSeatsForRegistration(tx, {
@@ -2709,7 +2652,7 @@ export class RegistrationsService {
         razorpayAmount: new Prisma.Decimal(totalAmount),
         processingFee: new Prisma.Decimal(processingFee),
         paymentStatus: PaymentStatus.PENDING,
-        qrCode: this.generateQRCode(),
+        qrCode: generateQRCode(),
         formResponses: formResponses as Prisma.InputJsonValue,
       },
     });
@@ -4085,7 +4028,7 @@ export class RegistrationsService {
 
     // Free ticket with no processing fee owed — complete immediately, no Razorpay order needed.
     if (razorpayAmount === 0) {
-      const qrCode = this.generateQRCode();
+      const qrCode = generateQRCode();
       const registration = await this.prisma.$transaction(async (tx) => {
         const reg = await tx.eventRegistration.create({
           data: {
@@ -4130,14 +4073,14 @@ export class RegistrationsService {
           });
         }
 
-        await takeSeats(tx, reg, this.seatsFor(reg));
+        await takeSeats(tx, reg, seatsFor(reg));
 
         for (let i = 0; i < dto.quantity; i++) {
           await tx.eventTicket.create({
             data: {
               registrationId: reg.id,
-              ticketCode: this.generateTicketCode(),
-              qrCode: this.generateQRCode(),
+              ticketCode: generateTicketCode(),
+              qrCode: generateQRCode(),
             },
           });
         }
@@ -4164,8 +4107,8 @@ export class RegistrationsService {
       // Send WhatsApp notification (non-blocking)
       try {
         if (fullRegistration?.user?.mobileNumber) {
-          const evDate = this.formatEventDate(fullRegistration.event.startDateTime);
-          const evTime = this.formatEventTime(
+          const evDate = formatEventDate(fullRegistration.event.startDateTime);
+          const evTime = formatEventTime(
             fullRegistration.event.startDateTime,
             fullRegistration.event.endDateTime,
           );
@@ -4194,8 +4137,8 @@ export class RegistrationsService {
       });
 
       if (identity?.email && fullRegistration) {
-        const evDate = this.formatEventDate(fullRegistration.event.startDateTime);
-        const evTime = this.formatEventTime(
+        const evDate = formatEventDate(fullRegistration.event.startDateTime);
+        const evTime = formatEventTime(
           fullRegistration.event.startDateTime,
           fullRegistration.event.endDateTime,
         );
@@ -4249,7 +4192,7 @@ export class RegistrationsService {
     // race into this create() against the (eventId, userId, ticketTypeId)
     // unique key. Translate that residual collision into a clean 409 rather
     // than letting the raw Prisma P2002 escape as a 500.
-    const qrCode = this.generateQRCode();
+    const qrCode = generateQRCode();
     let registration: EventRegistration;
     try {
       // Reg create + coupon reservation commit together: the slot is held
@@ -4606,15 +4549,15 @@ export class RegistrationsService {
       // confirmed once and only for the caller that won the race. No-op when the
       // registration carried no coupon.
       await this.coupons.confirmByRegistration(tx, registration.id);
-      const seats = this.seatsFor(registration);
+      const seats = seatsFor(registration);
 
       // Generate QR codes for each ticket
       for (let i = 0; i < registration.quantity; i++) {
         await tx.eventTicket.create({
           data: {
             registrationId: registration.id,
-            ticketCode: this.generateTicketCode(),
-            qrCode: this.generateQRCode(),
+            ticketCode: generateTicketCode(),
+            qrCode: generateQRCode(),
           },
         });
       }
@@ -4714,8 +4657,8 @@ export class RegistrationsService {
       // Email notifications (non-blocking)
       const userEmail = updatedRegistration?.user?.identities?.[0]?.email;
       if (userEmail) {
-        const eventDate = this.formatEventDate(registration.event.startDateTime);
-        const eventTime = this.formatEventTime(
+        const eventDate = formatEventDate(registration.event.startDateTime);
+        const eventTime = formatEventTime(
           registration.event.startDateTime,
           registration.event.endDateTime,
         );
@@ -5564,8 +5507,8 @@ export class RegistrationsService {
         await tx.eventTicket.create({
           data: {
             registrationId: registration.id,
-            ticketCode: this.generateTicketCode(),
-            qrCode: this.generateQRCode(),
+            ticketCode: generateTicketCode(),
+            qrCode: generateQRCode(),
           },
         });
       }
@@ -5574,7 +5517,7 @@ export class RegistrationsService {
       await this.groupSeats.createSeatsForRegistration(tx, {
         registrationId: registration.id,
         leadUserId: registration.userId,
-        seatCount: this.seatsFor(registration),
+        seatCount: seatsFor(registration),
         groupMembers: registration.groupMembers as unknown[] | null,
       });
     });
@@ -5797,7 +5740,7 @@ export class RegistrationsService {
       //            back while registeredCount (never incremented) stays put.
       //   unpaid   (PENDING / FAILED checkout) never took a seat or counted, so
       //            nothing comes back; only its coupon reservation is freed.
-      const seats = this.seatsFor(registration);
+      const seats = seatsFor(registration);
       const isQueued =
         registration.waitlistStatus === WaitlistStatus.WAITING;
       const isUnconvertedOffer =
@@ -5971,7 +5914,7 @@ export class RegistrationsService {
       );
     }
 
-    const seats = this.seatsFor(registration);
+    const seats = seatsFor(registration);
 
     await this.prisma.$transaction(async (tx) => {
       // Claim the row so two restores can't both re-take its seats.
@@ -6013,8 +5956,8 @@ export class RegistrationsService {
         await tx.eventTicket.create({
           data: {
             registrationId: registration.id,
-            ticketCode: this.generateTicketCode(),
-            qrCode: this.generateQRCode(),
+            ticketCode: generateTicketCode(),
+            qrCode: generateQRCode(),
           },
         });
       }
