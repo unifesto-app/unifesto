@@ -57,3 +57,35 @@ describe('EmailService brandFor', () => {
     expect(await build(true).brandFor()).toEqual({ brand: null });
   });
 });
+
+describe('EmailService confirmation .ics', () => {
+  const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
+  const data = {
+    email: 'a@b.co', eventId: 'e1', eventSlug: 'fest', eventTitle: 'Fest',
+    eventStartDateTime: new Date('2026-11-01T10:00:00Z'), eventEndDateTime: new Date('2026-11-01T12:00:00Z'),
+    eventTimezone: 'Asia/Kolkata',
+  } as any;
+
+  const icsFor = async (brand: unknown) => {
+    const service = new EmailService(config) as any;
+    service.brandFor = async () => ({ brand });
+    let attachments: { content: Buffer }[] | undefined;
+    service.deliver = async (_via: string, _to: string, _email: unknown, opts: any) => {
+      attachments = opts.attachments;
+      return true;
+    };
+    await service.sendRegistrationConfirmation(data);
+    return attachments![0].content.toString('utf8').replace(/\r\n /g, '');
+  };
+
+  it("links to the space's custom web domain when branded", async () => {
+    const brand = { name: 'Acme', logoUrl: null, color: null, hidePoweredBy: false, url: 'https://events.acme.edu', webBase: 'https://events.acme.edu' };
+    expect(await icsFor(brand)).toContain('https://events.acme.edu/event/fest');
+  });
+
+  it('links to Unifesto when unbranded', async () => {
+    const ics = await icsFor(null);
+    expect(ics).toContain('/event/fest');
+    expect(ics).not.toContain('acme');
+  });
+});

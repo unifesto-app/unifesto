@@ -300,15 +300,16 @@ One support system for everything a person needs help with. Every item is an **A
 - **Inboxes:** Apex Assist (all queues in one), Space Assist, mobile "My Help" for requesters. Each kind gets an action panel that calls the existing endpoint (approve refund, accept request…), which then posts a SYSTEM message.
 - **AI (decision D7):** Claude Haiku 5.5 (`claude-haiku-5-5`, $0.10 / $0.50 per MTok input/output, cache reads $0.01, Batch −50%). Triage, self-serve bot with read-only tools + action cards, desk drafts and summaries, request pre-screen, nightly insights. Estimated cost: ~$0.0045 per human-handled case, ~$0.0019 per bot-resolved chat; **≈ $6/mo** at 500 cases + 1.5k bot chats, ≈ $55 at 10×, ≈ $525 at 100×. Every call logged in `AiRun`; kill switch per feature.
 - **Linked, not merged:** WhatsApp inbox (D26), hackathon help desk (D27), orphaned payments, C1/C2 notifications, F6 user detail, K7/I1 legal. **Kept out:** careers, leads, incidents (bot reads them), campaigns.
-- **Decided 2026-10-16:** an event request means hosting an event without a Space (task D7). `space:manage-support` is on by default for Space Admin, Curator and Co-Curator and off for Crew (a space can turn it on). No auto-escalation: only the organiser or the requester escalates, and Unifesto still sees every case.
+- **Decided 2026-10-16:** an event request means hosting an event without a Space (task D7). `event:manage-support` is on by default for Space Admin, Curator and Co-Curator and off for Crew (a space can turn it on). No auto-escalation: only the organiser or the requester escalates, and Unifesto still sees every case.
+- **Decided 2026-10-16 (#147 review):** the support capability is `event:manage-support` (checked per event); a space-level case with no event goes to that space's desk (Space Admins), except an operator's own "contact Unifesto" case, which stays with Platform; the space desk sees the requester's email but not their phone; existing tickets all stay with Platform.
 
 | # | Item | Status |
 |---|---|---|
 | | **Phase 1 · Foundation** | |
-| D1 | **Assist Case model.** Extend `support_tickets` (kind, desk, subject link, event/registration context, escalation, first response, read state per side, rating, AI fields, BOT status); `support_messages` `isStaffReply` → `side` + `internal` + `aiDrafted`. Migration + backfill | planned |
-| D2 | **Access + routing + escalation.** One `canSeeCase`; new `space:manage-support` capability; routing rules; escalate to Platform (decision D2) | planned |
+| D1 | **Assist Case model.** Extend `support_tickets` (kind, desk, subject link, event/registration context, escalation, first response, read state per side, rating, AI fields, BOT status); `support_messages` `isStaffReply` → `side` + `internal` + `aiDrafted`. Migration + backfill | done (#147), not deployed |
+| D2 | **Access + routing + escalation.** One `canSeeCase`; new `event:manage-support` capability; routing rules; escalate to Platform (decision D2) | done (#147), not deployed |
 | D3 | **Notifications both directions + unread badges.** case created / replied / status / escalated → push + email to the other side; badges in mobile, Space, Apex (old D1 + D4) | planned |
-| D4 | Attachments: private `SupportAttachment` via `StorageService`, signed URLs (old D2) | planned |
+| D4 | Attachments: private `SupportAttachment` via `StorageService`, signed URLs (old D2) | done (#147), not deployed |
 | | **Phase 2 · One system** | |
 | D5 | **Request adapter.** All 10 request types open and update cases (SpaceRequest, SpaceStatus, SpaceOwnership, SubSpace incl. B9, WhiteLabel until H15, FreeAttendeeAdd, RegistrationTransfer → Platform; EventOwnershipTransfer, SubEventAttach → the other space) | planned |
 | D6 | **Refunds + cancellations inside Assist.** Curator stage = Space desk, admin stage = Platform desk; paid cancel = one flow that creates the refund; cancellation reason; S14 `cancelEvent` refunds run through it. After S51/S52 | planned |
@@ -400,7 +401,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H9 | Bring-your-own WhatsApp sender per space (today it's one env number) | planned |
 | H10 | **Deploy #106 white-label release.** Deploy #106: read migrations `20261014120000_white_label_theme` + `20261014140000_space_domains`, `migrate deploy`, rebuild backend + web + space + apex, Caddy reload, mobile OTA (manage-card copy) | done: shipped in the 14 Oct full deploy (83d24f0), checked 16 Oct; mobile copy rides the 5.0.0 store build |
 | H11 | **Verify white-label rendering after deploy.** Verify after deploy: branded space + event page (header/footer, font, forced mode), Branding studio uploads + preview, a branded registration email in Gmail + Apple Mail (light/dark), suspend/restore from Apex. None of this was seen rendered | done 16 Oct: checked on Beyond (pages, studio save + uploads, branded emails, Apex suspend/restore), all reverted; email dark mode checked in code only |
-| H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | planned |
+| H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | done (#146), not deployed; not seen on device |
 | H13 | **Use the custom domain in calendar and share links.** Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | done, live 16 Oct (#135) |
 | H14 | **Send certificate emails from the space's address.** Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | planned |
 | H15 | **Retire the legacy white-label request flow.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
@@ -408,11 +409,11 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | done, live 16 Oct (#135) |
 | H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
 | H19 | **Canonical URLs point to the space's custom domain.** Event + space pages of a space with a live custom domain set canonical and og:url to it, also on www (no redirect, old links keep working) | done, live 16 Oct (#135) |
-| H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | planned; needs you |
+| H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | planned; needs you (#146 adds the guard: clear 403 when Resend refuses on the domain limit) |
 | H21 | **Apex white-label form loads the target's live branding.** It showed #3491ff for every space, so Apply could overwrite a real colour | done, live 16 Oct (#140) |
-| H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | planned |
+| H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | done (#146), not deployed |
 | H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | planned; needs a decision |
-| H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | planned |
+| H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | done (#146), not deployed |
 
 ### I · Legal (from W6)
 
@@ -653,3 +654,5 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-16** · Assist decisions settled: event request = host without a Space; support inbox default curators only; no auto-escalation.
 - **2026-10-16** · Track R added: IAM / plan / billing / fee analysis turned into a deal-based design (D8: plan, deal and role are separate; D9: Space Admin + Curator move money). R1 is a live escalation (Co-Curator can make themselves Curator). A1 is built inside R8.
 - **2026-10-16** · S23 finished: the last hand-rolled Space Admin gates (registrations, waitlist, check-in, sessions, event attach/transfer/co-host) now go through `AuthorizationService.can`, so Platform Admins and event curators get in where the matrix says. S14 closed; its `cancelEvent` refund flow lives in D6. X1 closed (board live since #116/#123/#132).
+- **2026-10-16** · Assist D1 (case model), D2 (access, routing, escalation) and D4 (private attachments) built in #147. Space desk reads only cases that are or were on it; no crew contact in threads. Needs migrate deploy + rebuild backend.
+- **2026-10-16** · Track H fixes in #146: H24 (.ics links to custom domain), H22 (larger square logo + name), H12 (mobile brand font), H20 guard (403 on Resend domain limit; upgrade still needed). Backend jest 79/79 (email, white-label), mobile tsc green. Deploy: rebuild backend + web + space; H12 needs mobile build/OTA.

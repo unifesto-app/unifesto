@@ -23,6 +23,7 @@ describe('branding.util', () => {
       name: 'Acme',
       color: '#ff0000',
       logoUrl: 'https://cdn/logo.png', // falls back to the square logo
+      logoSquare: true,
       font: 'DM Sans',
       mode: 'light',
       hidePoweredBy: true,

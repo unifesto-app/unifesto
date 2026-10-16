@@ -27,6 +27,7 @@ import { typography } from '../theme/typography';
 import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
+import { useBrandFont } from '../lib/brandFont';
 
 const LOGO = 76;
 const ICON = 24;
@@ -65,6 +66,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   const { width } = useWindowDimensions();
   const [reportOpen, setReportOpen] = useState(false);
   const { space } = s;
+  const brandFont = useBrandFont(space?.branding?.font);
   const [descExpanded, setDescExpanded] = useState(false);
 
   const bannerW = width - GUTTER * 2;
@@ -194,7 +196,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
             )}
           </View>
 
-          <Text style={[styles.name, { color: c.text }]}>
+          <Text style={[styles.name, { color: c.text }, brandFont && { fontFamily: brandFont }]}>
             {space.name}
             {space.verifiedAt ? (
               <Text accessibilityLabel="Verified">

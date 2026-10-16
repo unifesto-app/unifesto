@@ -36,6 +36,10 @@ export const Action = {
   EVENT_MANAGE_ATTENDEES: 'event:manage-attendees', // manually add / bulk-import attendees, send payment links
   EVENT_MANAGE_LEADERBOARD: 'event:manage-leaderboard', // competitive dashboard: rounds, panels, advancement, awards
   EVENT_DECLARE_HACKATHON_WINNERS: 'event:declare-hackathon-winners', // hackathon awards: declare, publish, notes
+  // Work the space's Assist desk for this event: see, reply to and escalate its
+  // cases. EVENT scope because Curators, Co-Curators and Crew hold event roles and
+  // the per-space IAM console toggles event actions; Space Admins inherit it.
+  EVENT_MANAGE_SUPPORT: 'event:manage-support',
 } as const;
 
 export type Action = (typeof Action)[keyof typeof Action];
@@ -66,6 +70,7 @@ export const ACTION_SCOPE: Record<Action, RoleScope> = {
   [Action.EVENT_MANAGE_ATTENDEES]: RoleScope.EVENT,
   [Action.EVENT_MANAGE_LEADERBOARD]: RoleScope.EVENT,
   [Action.EVENT_DECLARE_HACKATHON_WINNERS]: RoleScope.EVENT,
+  [Action.EVENT_MANAGE_SUPPORT]: RoleScope.EVENT,
 };
 
 /**
