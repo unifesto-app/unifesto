@@ -39,9 +39,13 @@ interface Target {
   id: string;
   label: string;
   sublabel?: string;
+  /** Current state, so the form starts from what's live instead of a default. */
+  whiteLabelEnabled: boolean;
+  brandColor: string | null;
 }
 
 const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+const DEFAULT_COLOR = "#3491ff";
 
 /**
  * Admin surface. Spaces brand themselves (self-serve, plan-gated); this page
@@ -54,7 +58,7 @@ export default function ApplyWhiteLabelPage() {
   const [target, setTarget] = useState<Target | null>(null);
 
   const [enabled, setEnabled] = useState(true);
-  const [color, setColor] = useState("#3491ff");
+  const [color, setColor] = useState(DEFAULT_COLOR);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -71,6 +75,10 @@ export default function ApplyWhiteLabelPage() {
 
   function pick(t: Target) {
     setTarget(t);
+    // Start from the target's live branding so "Apply" never silently
+    // overwrites a colour the space or event already has.
+    setEnabled(t.whiteLabelEnabled);
+    setColor(t.brandColor ?? (t.whiteLabelEnabled ? "" : DEFAULT_COLOR));
     setResult(null);
     setError("");
   }
@@ -227,7 +235,7 @@ export default function ApplyWhiteLabelPage() {
                     <input
                       id="wl-color"
                       type="color"
-                      value={HEX.test(color) ? color : "#3491ff"}
+                      value={HEX.test(color) ? color : DEFAULT_COLOR}
                       onChange={(e) => setColor(e.target.value)}
                       className="h-9 w-12 cursor-pointer rounded border border-border bg-transparent p-1"
                     />
@@ -388,6 +396,8 @@ function TargetSearch({
             id: s.id,
             label: s.name,
             sublabel: `/${s.slug}`,
+            whiteLabelEnabled: s.white_label_enabled,
+            brandColor: s.brand_color,
           }))
         );
       } else {
@@ -398,6 +408,8 @@ function TargetSearch({
             id: e.id,
             label: e.title,
             sublabel: e.space?.name ?? `/${e.slug}`,
+            whiteLabelEnabled: e.whiteLabelEnabled,
+            brandColor: e.brandColor,
           }))
         );
       }

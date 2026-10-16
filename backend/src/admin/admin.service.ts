@@ -744,6 +744,9 @@ export class AdminService {
         member_count: space._count.userRoles,
         roleCounts,
         rejection_reason: space.rejectionReason,
+        // Current white-label state, so admin tools start from what's live.
+        white_label_enabled: space.whiteLabelEnabled,
+        brand_color: space.brandColor,
         creator: space.creator,
         createdAt: space.createdAt,
         updatedAt: space.updatedAt,
