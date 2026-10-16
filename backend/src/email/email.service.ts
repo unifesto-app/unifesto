@@ -222,6 +222,7 @@ export class EmailService {
           ? {
               name: theme.name,
               logoUrl: theme.logoUrl,
+              logoSquare: theme.logoSquare,
               color: theme.color,
               hidePoweredBy: theme.hidePoweredBy,
               url: web ? `https://${web.hostname}` : `${WEB}/space/${space.slug}`,
@@ -248,10 +249,9 @@ export class EmailService {
     to: string | null | undefined,
     data: D,
     build: (d: D) => T.Email,
-    opts?: { attachments?: Attachment[] },
   ): Promise<boolean> {
     const { brand, sender } = await this.brandFor(data.eventId);
-    return this.deliver(via, to, build({ ...data, brand }), { ...opts, sender });
+    return this.deliver(via, to, build({ ...data, brand }), { sender });
   }
 
   /**
@@ -259,7 +259,10 @@ export class EmailService {
    * confirmation payload, or `undefined` when they're absent (so the email
    * simply sends without one). A broken ICS must never block the confirmation.
    */
-  private buildIcsAttachment(data: T.RegistrationConfirmationData): Attachment[] | undefined {
+  private buildIcsAttachment(
+    data: T.RegistrationConfirmationData,
+    brand?: EmailBrand | null,
+  ): Attachment[] | undefined {
     if (!data.eventSlug || !data.eventStartDateTime || !data.eventEndDateTime || !data.eventTimezone) {
       return undefined;
     }
@@ -278,6 +281,8 @@ export class EmailService {
         city: data.city ?? null,
         onlineUrl: data.onlineUrl ?? null,
         organiserName: data.organiserName ?? null,
+        // Same origin as the email's own event links: the space's web domain when branded.
+        customDomain: brand && brand.webBase !== WEB ? new URL(brand.webBase).host : null,
       };
       return [{ filename: 'event.ics', content: Buffer.from(buildEventIcs(input), 'utf8') }];
     } catch (error) {
@@ -303,8 +308,11 @@ export class EmailService {
   // =====================================================
 
   async sendRegistrationConfirmation(data: T.RegistrationConfirmationData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.registrationConfirmationEmail, {
-      attachments: this.buildIcsAttachment(data),
+    // Not deliverBranded: the .ics needs the resolved brand for its links.
+    const { brand, sender } = await this.brandFor(data.eventId);
+    await this.deliver('resend', data.email, T.registrationConfirmationEmail({ ...data, brand }), {
+      attachments: this.buildIcsAttachment(data, brand),
+      sender,
     });
   }
 
