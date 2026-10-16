@@ -184,9 +184,11 @@ export function EventCompleteness({ event }: { event: Event }) {
           <div>
             <CardTitle>Event setup</CardTitle>
             <CardDescription>
-              {complete
-                ? "The essentials are all set — this event is ready to publish."
-                : `${doneCount} of ${total} essentials done. Finish these before publishing.`}
+              {event.status !== "DRAFT"
+                ? `${doneCount} of ${total} essentials done.`
+                : complete
+                  ? "The essentials are all set — this event is ready to publish."
+                  : `${doneCount} of ${total} essentials done. Finish these before publishing.`}
             </CardDescription>
           </div>
           <div className="text-right">

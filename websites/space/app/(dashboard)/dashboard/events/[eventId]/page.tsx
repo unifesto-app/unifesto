@@ -149,6 +149,11 @@ export default function EventOverviewPage() {
     );
   }
 
+  const hasPeople = attendeeStats?.checkedIn != null;
+  const checkedInPeople = hasPeople ? attendeeStats!.checkedIn : stats?.checkedIn ?? 0;
+  const headcount = hasPeople ? attendeeStats!.attendees : stats?.total ?? 0;
+  const peopleUnit = hasPeople ? "attendees" : "bookings";
+
   return (
     <div className="space-y-6">
       {/* Header with Actions */}
@@ -223,22 +228,24 @@ export default function EventOverviewPage() {
               : undefined
           }
         />
+        {/* People, like the card beside it. Falls back to bookings only if
+            the backend doesn't send a people count yet. */}
         <StatCard
           title="Checked In"
-          value={(stats?.checkedIn ?? 0).toString()}
+          value={checkedInPeople.toString()}
           icon={CheckCircle}
           tone="success"
           hint={
-            stats && stats.total > 0
-              ? `${parseFloat(stats.checkInRate).toFixed(0)}% of ${stats.total} bookings`
+            headcount > 0
+              ? `${Math.round((checkedInPeople / headcount) * 100)}% of ${headcount} ${peopleUnit}`
               : undefined
           }
         />
         <StatCard
           title="Pending Check-in"
-          value={(stats?.remaining ?? 0).toString()}
+          value={Math.max(0, headcount - checkedInPeople).toString()}
           icon={Clock}
-          hint="Bookings not yet checked in"
+          hint={`${peopleUnit[0].toUpperCase()}${peopleUnit.slice(1)} not yet checked in`}
         />
       </div>
 

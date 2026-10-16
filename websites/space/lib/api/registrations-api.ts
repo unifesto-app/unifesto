@@ -163,6 +163,8 @@ export interface CheckinStats {
 export interface AttendeeStats {
   /** Total people. Equals individual.attendees + group.attendees. */
   attendees: number;
+  /** People checked in at least once (same unit as `attendees`). */
+  checkedIn: number;
   individual: {
     attendees: number;
     /** Number of bookings — same as attendees for individual tickets. */

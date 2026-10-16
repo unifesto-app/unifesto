@@ -315,9 +315,21 @@ export class RegistrationAttendeesService {
         quantity: true,
         groupSize: true,
         ticketTypeId: true,
+        checkedInAt: true,
         ticketType: { select: { id: true, name: true, kind: true } },
       },
     });
+
+    // People checked in (any point), so the overview can show check-ins in the
+    // same unit as the headcount. Distinct members per group booking.
+    const memberCheckins = await this.prisma.eventGroupMemberCheckin.groupBy({
+      by: ['registrationId', 'memberIndex'],
+      where: { registration: { eventId, ...COUNTS_AS_ATTENDING } },
+    });
+    const membersIn = new Map<string, number>();
+    for (const m of memberCheckins) {
+      membersIn.set(m.registrationId, (membersIn.get(m.registrationId) ?? 0) + 1);
+    }
 
     // Group seat claim state (fast-registration Part 2): a paid group holds its
     // seats for capacity, but only CLAIMED seats are *attendees*. Aggregate
@@ -347,6 +359,7 @@ export class RegistrationAttendeesService {
     let individualBookings = 0;
     let groupAttendees = 0;
     let groupCount = 0;
+    let checkedIn = 0;
 
     // Per-ticket-type rollup, so an organiser with several ticket types can see
     // where the numbers come from rather than just a single total.
@@ -365,6 +378,12 @@ export class RegistrationAttendeesService {
       const attending = seatTotals.has(r.id)
         ? seatClaimed.get(r.id) ?? 0
         : seatsFor(r);
+
+      if (r.checkedInAt) {
+        // A group scanned as a whole has no member rows: count everyone in it.
+        const members = membersIn.get(r.id);
+        checkedIn += isGroup && members ? Math.min(members, attending) : attending;
+      }
 
       if (isGroup) {
         groupAttendees += attending;
@@ -389,6 +408,8 @@ export class RegistrationAttendeesService {
 
     return {
       attendees: individualAttendees + groupAttendees,
+      /** People checked in at least once, same unit as `attendees`. */
+      checkedIn,
       individual: {
         attendees: individualAttendees,
         bookings: individualBookings,

@@ -122,9 +122,10 @@ export class HackathonRoundsService {
     const ctx = await this.context(board.id);
     const [criteria, completed, open] = await Promise.all([
       this.prisma.leaderboardMetric.groupBy({ by: ['roundId'], where: { leaderboardId: board.id }, _count: { _all: true } }),
-      this.prisma.hackathonEvalRequest.groupBy({
+      // Submitted judgments, the same source the results page scores from.
+      this.prisma.leaderboardJudgment.groupBy({
         by: ['roundId', 'entrantId'],
-        where: { leaderboardId: board.id, status: 'COMPLETED' },
+        where: { round: { leaderboardId: board.id }, submittedAt: { not: null } },
         _count: { _all: true },
       }),
       this.prisma.hackathonEvalRequest.groupBy({
@@ -159,7 +160,7 @@ export class HackathonRoundsService {
     const round = ctx.rounds.find((r) => r.id === roundId);
     if (!round) throw new NotFoundException('Round not found');
 
-    const [metrics, requests, judges, panels] = await Promise.all([
+    const [metrics, requests, judged, judges, panels] = await Promise.all([
       this.prisma.leaderboardMetric.findMany({
         where: { leaderboardId: board.id, OR: [{ roundId }, { roundId: null }] },
         orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
@@ -168,6 +169,11 @@ export class HackathonRoundsService {
       this.prisma.hackathonEvalRequest.findMany({
         where: { roundId },
         select: { entrantId: true, status: true },
+      }),
+      this.prisma.leaderboardJudgment.groupBy({
+        by: ['entrantId'],
+        where: { roundId, submittedAt: { not: null } },
+        _count: { _all: true },
       }),
       this.prisma.leaderboardPanelist.findMany({
         where: {
@@ -183,7 +189,9 @@ export class HackathonRoundsService {
     const need = evaluationsRequired(round);
     const teams = this.teamsInRound(ctx, roundId).map((t) => {
       const mine = requests.filter((r) => r.entrantId === t.id);
-      const done = mine.filter((r) => r.status === 'COMPLETED').length;
+      // Count submitted judgments (what results scores), not COMPLETED queue
+      // slots, so the two pages can't disagree.
+      const done = judged.find((j) => j.entrantId === t.id)?._count._all ?? 0;
       const open = mine.find((r) => (OPEN_EVAL_STATUSES as readonly string[]).includes(r.status));
       return {
         id: t.id,
