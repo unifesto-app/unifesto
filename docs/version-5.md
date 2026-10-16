@@ -29,11 +29,12 @@ Covers mobile, backend, and all four websites (web, space, apex, plus the retire
 | # | Decision |
 |---|---|
 | D1 | OTA reload: reload silently if the app was away 30 min or more, otherwise apply on next cold start (`mobile/src/lib/otaUpdate.ts`). |
-| D2 | Support routing: **organiser first**. Event questions go to the space inbox, which can escalate. Unifesto handles account, payment and app issues and sees everything. |
+| D2 | Support routing: **organiser first**. Event questions go to the space inbox, which can escalate. Unifesto handles account, payment and app issues and sees everything. Every support item (questions, refunds, cancellations, requests, reports, privacy, grievance) is one Assist case. See [Track D](#d--unifesto-assist-support-system). |
 | D3 | Mobile scope: **on-site and time-critical work lives on mobile, desk work lives on web.** Mobile authoring screens get an "Open on web" handoff instead of new features. See [Track G](#g--mobile-scope-design-and-performance). |
 | D4 | Company books in Zoho Books. Apex pushes monthly platform revenue through its API. |
 | D5 | Load testing never touches production. Use a staging copy only. |
 | D6 | **No store release before Wed 2 Dec 2026.** 5.0.0 is the next store build and goes live on both stores that day. Whatever is done and device-QA'd by the freeze ships in it; the rest waits for 5.x. |
+| D7 | **AI in Assist suggests, never decides.** Claude Haiku 5.5 (`claude-haiku-5-5`) answers, triages, drafts and summarises; it never moves money, approves a request or sends a reply on its own. Any refusal or API error falls back to a human queue. |
 
 ### 5.0.0 · release Wed 2 Dec 2026
 
@@ -73,7 +74,7 @@ There are no dates, only a sensible sequence. Each step makes the next one cheap
 5. **C**: notifications (inbox first).
 6. **B5+**: exports, search, paging.
 7. **G**: mobile scope handoffs, then cosmos migration of what stays.
-8. **D, E, F**: support, sponsors/partners, feedback.
+8. **D, E, F**: Unifesto Assist (support), sponsors/partners, feedback.
 9. New product: **L** live engagement, **K** discovery, then the rest.
 
 ---
@@ -242,6 +243,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | 0.6 | **Backend: remove legacy non-hackathon leaderboard routes.** Backend: legacy non-hackathon routes in `leaderboard/leaderboard.controller.ts` (rounds, metrics, panelists, awards). **Careful:** the hackathon services live in the same folder; delete only the controller routes with no callers | done (#107) |
 | 0.7 | **Backend: remove referral and wallet leftovers.** Backend: referral and wallet leftovers (dormant tables decided separately) | done (#107) |
 | 0.8 | **Close the open TODO(you) decisions.** Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | done (#108) |
+| 0.9 | **Drop the dead discussions feature.** `Discussion` / `DiscussionReply` have no module or UI; only `_count.discussions` in `spaces.service.ts` and the client types in space/apex/mobile `spaces-api`. Remove them, then a migration dropping `discussions` and `discussion_replies`. Replaces B10 | planned |
 
 ### A · Money and trust
 
@@ -265,12 +267,12 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | B3 | Session edit after create in Space (`updateSession` exists) | next |
 | B4 | **Team-change window toggle in event settings.** Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | planned |
 | B5 | **CSV exports for Space and Apex lists.** CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | planned |
-| B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: content reports, request queues, support, orphaned payments | planned |
-| B7 | **Apex: one tabbed request inbox.** Apex: one tabbed request inbox replacing 7 queues (mobile `queue/[kind]` pattern) | planned |
+| B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: orphaned payments (content reports, request queues and support moved to D8) | planned |
+| B7 | **Apex: one tabbed request inbox.** Apex: one tabbed request inbox replacing 7 queues | dropped: merged into D8 |
 | B8 | **Apex web: add admin tools that are mobile-only today.** Apex web: OTA, default images, stats recipients, system health, seat-count reconcile (mobile-only or backend-only today) | planned |
-| B9 | Subspace link requests from Space (`createSubSpaceRequest` unused) | planned |
-| B10 | Discussion moderation (pin, lock, delete) in Space + Apex | planned |
-| B11 | Support stats header (`GET /support/tickets/stats`) | planned |
+| B9 | Subspace link requests from Space (`createSubSpaceRequest` unused) | dropped: merged into D5 |
+| B10 | Discussion moderation (pin, lock, delete) in Space + Apex | dropped: discussions are dead code, removed in 0.9 |
+| B11 | Support stats header (`GET /support/tickets/stats`) | dropped: merged into D8 |
 
 ### C · Notifications
 
@@ -284,18 +286,55 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | C6 | Apex per-user message history + failure dashboard | planned |
 | C7 | **Native: rich push images and action buttons.** Native (store build): iOS Notification Service Extension for images, push action buttons | planned |
 
-### D · Support complete (from 4.2.0)
+### D · Unifesto Assist (support system)
+
+One support system for everything a person needs help with. Every item is an **Assist case**: a thread, a desk and a status that points at its typed record. Refunds, requests and reports keep their own tables and money/approval logic; the case wraps them. Replaces old D1–D8 (Support complete, from 4.2.0) and the Apex request queues.
+
+**How it works**
+
+- **Case** = `support_tickets` extended: `kind` (HELP · REFUND · CANCELLATION · REQUEST · REPORT · PRIVACY · GRIEVANCE), `desk` (SPACE · PLATFORM), `subjectType` + `subjectId` (RefundRequest, SpaceRequest, EventRequest…), event/registration context, read state per side, SLA fields. Messages get a `side`: REQUESTER · DESK · ASSISTANT · SYSTEM, plus internal notes.
+- **Routing (decision D2):** event questions, refunds' curator stage, cancellations and space-to-space requests go to the **Space desk**; account, payment, app, platform requests, reports, privacy and grievance go to the **Platform desk**. Platform sees everything. Escalation moves a case to Platform and the space keeps read access.
+- **Inboxes:** Apex Assist (all queues in one), Space Assist, mobile "My Help" for requesters. Each kind gets an action panel that calls the existing endpoint (approve refund, accept request…), which then posts a SYSTEM message.
+- **AI (decision D7):** Claude Haiku 5.5 (`claude-haiku-5-5`, $0.10 / $0.50 per MTok input/output, cache reads $0.01, Batch −50%). Triage, self-serve bot with read-only tools + action cards, desk drafts and summaries, request pre-screen, nightly insights. Estimated cost: ~$0.0045 per human-handled case, ~$0.0019 per bot-resolved chat; **≈ $6/mo** at 500 cases + 1.5k bot chats, ≈ $55 at 10×, ≈ $525 at 100×. Every call logged in `AiRun`; kill switch per feature.
+- **Linked, not merged:** WhatsApp inbox (D26), hackathon help desk (D27), orphaned payments, C1/C2 notifications, F6 user detail, K7/I1 legal. **Kept out:** careers, leads, incidents (bot reads them), campaigns.
+- **Open decisions:** event request meaning (task D7, default: host without a Space), crew default for `space:manage-support`, auto-escalation after N hours (default: none).
 
 | # | Item | Status |
 |---|---|---|
-| D1 | Push + email on new ticket, reply, status change (both directions) | planned |
-| D2 | Attachments via `StorageService` | planned |
-| D3 | **Event context on support tickets and Get help.** Optional event/registration context on tickets; "Get help" from ticket detail, pre-filled | planned |
-| D4 | Unread state (per-side `lastReadAt`) + badges | planned |
-| D5 | **Organiser support inbox with escalation.** Organiser inbox in Space web + mobile, escalate to Unifesto (decision D2) | planned |
-| D6 | Canned replies, first-response/resolution time, SLA by priority | planned |
-| D7 | Auto-close resolved after 7 days, satisfaction rating | planned |
-| D8 | `unifesto.app/help` contact form creates a ticket | planned |
+| | **Phase 1 · Foundation** | |
+| D1 | **Assist Case model.** Extend `support_tickets` (kind, desk, subject link, event/registration context, escalation, first response, read state per side, rating, AI fields, BOT status); `support_messages` `isStaffReply` → `side` + `internal` + `aiDrafted`. Migration + backfill | planned |
+| D2 | **Access + routing + escalation.** One `canSeeCase`; new `space:manage-support` capability; routing rules; escalate to Platform (decision D2) | planned |
+| D3 | **Notifications both directions + unread badges.** case created / replied / status / escalated → push + email to the other side; badges in mobile, Space, Apex (old D1 + D4) | planned |
+| D4 | Attachments: private `SupportAttachment` via `StorageService`, signed URLs (old D2) | planned |
+| | **Phase 2 · One system** | |
+| D5 | **Request adapter.** All 10 request types open and update cases (SpaceRequest, SpaceStatus, SpaceOwnership, SubSpace incl. B9, WhiteLabel until H15, FreeAttendeeAdd, RegistrationTransfer → Platform; EventOwnershipTransfer, SubEventAttach → the other space) | planned |
+| D6 | **Refunds + cancellations inside Assist.** Curator stage = Space desk, admin stage = Platform desk; paid cancel = one flow that creates the refund; cancellation reason; S14 `cancelEvent` refunds run through it. After S51/S52 | planned |
+| D7 | **New: Event request.** Host an event without a Space: Platform approves, which creates a personal Space, curator role and a draft event (confirm meaning) | planned |
+| D8 | **Apex Assist inbox.** One inbox for every queue with typed action panels, stats header, search + pagination. Replaces Support, Requests, Refunds, report-issues and bank-account pages (B7, B11, part of B6) | planned |
+| D9 | **Space Assist inbox (web)** with internal notes and escalation (old D5) | planned |
+| D10 | **Mobile: My Help + inboxes + Get help.** Requester timeline of every case; Space and Apex inboxes; "Get help" from event and ticket, pre-filled (old D3) | planned |
+| D11 | `unifesto.app/help` opens a case; guests find-or-create by email (old D8) | planned |
+| | **Phase 3 · AI layer (Claude Haiku 5.5)** | |
+| D12 | **AI foundation.** `@anthropic-ai/sdk` `AiService`, `AiRun` cost log, kill switches, per-user caps, prompt caching, prompts under 100K, refusal → human, eval set, Console spend limit. Shared with Track M | planned |
+| D13 | AI triage on every new case: category, priority, routing hint, language, sentiment, spam | planned |
+| D14 | **Assist bot.** Self-serve answers from help articles, event FAQs and read-only account tools; proposes action cards the user confirms; hands off to a human with the chat as the thread | planned |
+| D15 | Desk copilot: draft reply, thread summary, policy facts computed by code | planned |
+| D16 | AI pre-screen of space and event requests for reviewers | planned |
+| D17 | Help articles in Apex as the bot's knowledge base (from K7) | planned |
+| D18 | Nightly insights over closed cases (Batch API): themes and missing articles | planned |
+| | **Phase 4 · Operations** | |
+| D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | planned |
+| D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | planned |
+| | **Phase 5 · More case kinds** | |
+| D21 | **Ticket issue reports become HELP cases.** `ContentReport` REGISTRATION ("Report an issue" on a ticket) goes to the event's Space desk; moderation keeps event/space reports | planned |
+| D22 | Payout requests + bank account verification as Platform cases (with S23) | planned |
+| D23 | Stay + session cancellations and refunds through D6 (with S51) | planned |
+| D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | planned |
+| D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | planned |
+| D26 | WhatsApp inbox → "Convert to case", later a full channel | planned |
+| D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | planned |
+| D28 | Space verification request (optional) | planned |
+
 
 ### E · Sponsors, partners, hackathon (from 4.3.0)
 
@@ -402,7 +441,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | planned |
 | K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
 | K6 | **Referrer capture by domain and backlink import.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
-| K7 | Help articles + legal pages managed in Apex | planned |
+| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | planned |
 
 ### L · Live engagement (new)
 
@@ -581,3 +620,4 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 - **2026-10-15** · P17 (#131): one `SOCIAL` list feeds the footer + Organization `sameAs` (adds IG + LinkedIn); mobile X link was a 404 (`HeyUnifesto`). Paste-ready profile copy on the board. YouTube missing from `sameAs`: `@unifesto` is someone else's channel. P18 kit on the board; first step is the Product Hunt maker account (~30 days of activity before 2 Dec).
 - **2026-10-15** · P17 profiles updated by hand: Instagram, LinkedIn, App Store promo text, Crunchbase (logo, descriptions, phone). Store long descriptions moved to P8; Wikidata and Google Business Profile split out as P21 and P22.
 - **2026-10-15** · Task rows now lead with the board's short title in bold (175 rows); full text kept after it. Board task view opens read-only (#132); apex + web deployed.
+- **2026-10-16** · Track D rebuilt as **Unifesto Assist** (D1–D28): one case wrapper over support, refunds, cancellations, the 10 request types, a new event request, ticket issue reports, payouts, privacy and grievance, plus a Claude Haiku 5.5 layer (est. ~$6/mo now, ~$55 at 10×). Old D1–D8 folded in; B7, B9, B11 merged; B10 dropped for 0.9; K7 narrowed to legal pages. Decision D7 added.
