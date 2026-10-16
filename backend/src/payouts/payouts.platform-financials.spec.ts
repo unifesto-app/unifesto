@@ -66,3 +66,32 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
     expect(prisma.eventRegistration.groupBy).toHaveBeenCalledTimes(1);
   });
 });
+
+/** S52: automatic (sold-out) refunds have no refund request but are still money that went back. */
+describe('PayoutsService refunded total', () => {
+  const d = (n: number) => new Prisma.Decimal(n);
+  it('adds registration refunds that no approved request covers', async () => {
+    const agg = (val: Record<string, unknown>) => jest.fn().mockResolvedValue({ _sum: val });
+    const prisma: any = {
+      eventRegistration: {
+        aggregate: jest.fn(async (args: any) =>
+          args.where.refundRequests ? { _sum: { refundedAmount: d(300) } } : { _sum: {} },
+        ),
+        groupBy: jest.fn().mockResolvedValue([]),
+      },
+      stayBooking: { aggregate: agg({ refundedAmount: d(20) }), groupBy: jest.fn().mockResolvedValue([]) },
+      groupSeatPurchase: { aggregate: agg({}), groupBy: jest.fn().mockResolvedValue([]) },
+      payout: { aggregate: agg({}) },
+      refundRequest: { aggregate: agg({ cashRefunded: d(50) }) },
+      space: { findMany: jest.fn().mockResolvedValue([]) },
+      event: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const svc = new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any));
+    const res = await svc.getPlatformFinancials();
+    expect(res.refunded).toBe(370);
+    expect(prisma.eventRegistration.aggregate).toHaveBeenCalledWith({
+      where: { refundedAmount: { gt: 0 }, refundRequests: { none: { status: 'APPROVED' } } },
+      _sum: { refundedAmount: true },
+    });
+  });
+});

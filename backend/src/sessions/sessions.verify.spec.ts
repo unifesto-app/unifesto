@@ -9,7 +9,7 @@ describe('SessionsService.verifyPayment replay guards', () => {
         findUnique: jest.fn(async () => row),
         updateMany: jest.fn(async () => ({ count: 1 })),
       },
-      session: { update: jest.fn(async () => ({})) },
+      $executeRaw: jest.fn(async () => 1),
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { verifyPaymentSignature: jest.fn(() => true) };
@@ -50,6 +50,6 @@ describe('SessionsService.verifyPayment replay guards', () => {
   it('settles the matching order once', async () => {
     const { svc, prisma } = build(row());
     await expect(verify(svc, 'order_current')).resolves.toEqual({ registrationId: 'sr-1', paid: true });
-    expect(prisma.session.update).toHaveBeenCalledTimes(1);
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1); // the atomic seat take
   });
 });

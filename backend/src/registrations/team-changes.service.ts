@@ -15,6 +15,7 @@ import {
   Prisma,
   RegistrationStatus,
 } from '@prisma/client';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
@@ -488,6 +489,7 @@ export class TeamChangesService {
       } catch (err) {
         if (!(err instanceof BadRequestException)) throw err;
         await tx.$executeRaw`ROLLBACK TO SAVEPOINT add_seats`;
+        await tx.groupSeatPurchase.update({ where: { id: purchaseId }, data: { refundDueAt: new Date() } });
         return 'refund' as const;
       }
       await tx.groupSeatPurchase.update({ where: { id: purchaseId }, data: { seatsAddedAt: new Date() } });
@@ -502,19 +504,51 @@ export class TeamChangesService {
     if (outcome === 'added') {
       this.push(p.userId, p.registrationId, 'Seats added', `${p.seats} new seat${p.seats > 1 ? 's are' : ' is'} ready for ${title}. Invite your team.`);
     } else if (outcome === 'refund') {
-      const total = Number(p.totalAmount);
-      try {
-        await this.payments.refund(paymentId, total);
-        await this.prisma.groupSeatPurchase.update({
-          where: { id: p.id },
-          data: { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: total },
-        });
-        this.push(p.userId, p.registrationId, 'Seats payment refunded', `The seats couldn't be added for ${title}, so ₹${total} is on its way back.`);
-      } catch (err) {
-        this.logger.error(`CRITICAL: add-seats ${p.id} payment ${paymentId} couldn't be added or refunded: ${err}`);
-      }
+      await this.refundDue(p.id);
     }
     return { purchaseId, outcome, seats: p.seats };
+  }
+
+  /**
+   * Send an add-seats payment whose seats couldn't be added back in full.
+   * Claimed by pushing `refundDueAt` an hour out, so replicas and retries never
+   * refund twice; a failure stays due for {@link retryDueRefunds}.
+   */
+  async refundDue(purchaseId: string): Promise<boolean> {
+    const now = new Date();
+    const claimed = await this.prisma.groupSeatPurchase.updateMany({
+      where: { id: purchaseId, refundDueAt: { lte: now }, paymentStatus: PaymentStatus.PAID },
+      data: { refundDueAt: new Date(now.getTime() + 60 * 60_000) },
+    });
+    if (claimed.count !== 1) return false;
+    const p = await this.prisma.groupSeatPurchase.findUniqueOrThrow({
+      where: { id: purchaseId },
+      include: { registration: { select: { event: { select: { title: true } } } } },
+    });
+    const total = Number(p.totalAmount);
+    try {
+      await this.payments.refund(p.paymentId!, total);
+    } catch (err) {
+      this.logger.error(`CRITICAL: add-seats ${p.id} payment ${p.paymentId} couldn't be refunded, retrying later: ${err}`);
+      return false;
+    }
+    await this.prisma.groupSeatPurchase.update({
+      where: { id: p.id },
+      data: { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: total, refundDueAt: null },
+    });
+    this.push(p.userId, p.registrationId, 'Seats payment refunded', `The seats couldn't be added for ${p.registration.event.title}, so ₹${total} is on its way back.`);
+    return true;
+  }
+
+  /** Retry add-seats refunds that didn't go through the first time. */
+  @Cron('*/15 * * * *')
+  async retryDueRefunds(): Promise<void> {
+    const due = await this.prisma.groupSeatPurchase.findMany({
+      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+      select: { id: true },
+      take: 100,
+    });
+    for (const d of due) await this.refundDue(d.id);
   }
 
   // ── Hand over the lead ──────────────────────────────────────────────────────

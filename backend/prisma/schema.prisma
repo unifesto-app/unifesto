@@ -2225,6 +2225,9 @@ model GroupSeatPurchase {
   razorpayRefundId String?       @map("razorpay_refund_id") @db.VarChar(100)
   paidAt           DateTime?     @map("paid_at") @db.Timestamptz(6)
   seatsAddedAt     DateTime?     @map("seats_added_at") @db.Timestamptz(6)
+  /// Set when the seats couldn't be added and the payment goes back in full.
+  /// Claimed before Razorpay is called; a retry job clears it.
+  refundDueAt      DateTime?     @map("refund_due_at") @db.Timestamptz(6)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -3113,6 +3116,9 @@ model SessionRegistration {
   paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
   orderId        String?       @map("order_id") @db.VarChar(255)
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
+  /// Set when this payment must go back (session cancelled, or it filled up
+  /// while being paid). Claimed before Razorpay is called; a retry job clears it.
+  refundDueAt    DateTime?     @map("refund_due_at") @db.Timestamptz(6)
 
   status RegistrationStatus @default(REGISTERED)
 

@@ -1047,8 +1047,10 @@ export class StayBookingsService {
       );
     }
 
+    // Claim on the payment state too: `paidOnline` (and so the refund) was
+    // decided from this read, so a payment landing in between must conflict.
     const claimed = await this.prisma.stayBooking.updateMany({
-      where: { id: b.id, status: b.status },
+      where: { id: b.id, status: b.status, paymentStatus: b.paymentStatus, refundDueAt: null },
       data: {
         status: StayBookingStatus.CANCELLED,
         cancelledAt: new Date(),
