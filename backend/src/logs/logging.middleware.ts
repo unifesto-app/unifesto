@@ -77,6 +77,8 @@ export function createRequestLogger(logs: LogsService, sampleRate = 1) {
         // X-Forwarded-For / CF headers are client-spoofable.
         ipAddress: req.ip ?? null,
         userAgent: (req.headers?.['user-agent'] as string) ?? null,
+        // Set by GlobalExceptionFilter on any thrown error.
+        errorMessage: (res.locals?.errorMessage as string | undefined) ?? null,
         weight,
       });
     });

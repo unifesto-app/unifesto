@@ -51,6 +51,12 @@ const NEVER: RegExp[] = [
 /** The signed-in user's own things: short, mostly to stop tab-switch refetches. */
 const PERSONAL = /(^\/users\/me|^\/me\/|\/my(-|\/|$)|\/mine$|^\/favorites|^\/registrations\/)/;
 
+/**
+ * My profile and my space roles: only my own writes change them (and those
+ * already invalidate), so they can live longer. The two busiest GETs in api_logs.
+ */
+const IDENTITY = /^\/users\/me(\/spaces)?$/;
+
 /** Reference data that changes a few times a year. */
 const STATIC = /^\/(categories|config\/|subscription\/plans)/;
 
@@ -61,6 +67,7 @@ const BROWSE = /^\/(events|spaces|sessions|white-label)(\/|$)/;
 export function freshForMs(path: string): number {
   const route = path.split('?')[0];
   if (NEVER.some((re) => re.test(route))) return 0;
+  if (IDENTITY.test(route)) return 2 * MINUTE;
   // Checked before BROWSE: /events/:id/my-registrations is personal, not browse.
   if (PERSONAL.test(route)) return 20 * SECOND;
   if (STATIC.test(route)) return 10 * MINUTE;

@@ -145,13 +145,19 @@ export function useManageGroup(registrationId: string) {
 
   const load = useCallback(async () => {
     setError('');
-    // Both sub-systems are optional; tolerate either failing.
-    const [seatRes, rosterRes] = await Promise.allSettled([
-      getRegistrationSeats(registrationId),
-      getMyGroupMembers(registrationId),
+    const [mine, teamRes] = await Promise.all([
+      getMyDetails(registrationId).catch(() => null),
+      getTeamState(registrationId),
     ]);
-    if (seatRes.status === 'fulfilled') setSeats(seatRes.value.seats);
-    if (rosterRes.status === 'fulfilled' && rosterRes.value) {
+    setTeam(teamRes.ok ? teamRes.data : null);
+    const isMember = mine?.ok && mine.data.role === 'member';
+    // Seats + roster are lead-only (a teammate would just get 403s). Both
+    // sub-systems are optional; tolerate either failing.
+    const [seatRes, rosterRes] = isMember
+      ? [null, null]
+      : await Promise.allSettled([getRegistrationSeats(registrationId), getMyGroupMembers(registrationId)]);
+    if (seatRes?.status === 'fulfilled') setSeats(seatRes.value.seats);
+    if (rosterRes?.status === 'fulfilled' && rosterRes.value) {
       const r = rosterRes.value;
       setRoster(r);
       try {
@@ -164,12 +170,6 @@ export function useManageGroup(registrationId: string) {
     }
     // A lead edits the team's per-group answers here; a teammate (no access to
     // seats/roster) edits their own per-member answers.
-    const [mine, teamRes] = await Promise.all([
-      getMyDetails(registrationId).catch(() => null),
-      getTeamState(registrationId),
-    ]);
-    setTeam(teamRes.ok ? teamRes.data : null);
-    const isMember = mine?.ok && mine.data.role === 'member';
     if (mine?.ok && mine.data.role !== 'solo') {
       const d = mine.data;
       setDetails(d);
@@ -177,7 +177,7 @@ export function useManageGroup(registrationId: string) {
       const { fields } = await getEventCustomFields(d.eventId).catch(() => ({ fields: [] as CustomField[] }));
       setTeamFields(getFieldsForTicket(fields, d.ticketTypeId ?? '').filter((f) => !!f.per_group === !isMember));
     }
-    if (seatRes.status === 'rejected' && rosterRes.status === 'rejected' && !isMember) {
+    if (seatRes?.status === 'rejected' && rosterRes?.status === 'rejected') {
       setError((seatRes.reason as Error)?.message || 'Could not load your group.');
     }
     setLoading(false);

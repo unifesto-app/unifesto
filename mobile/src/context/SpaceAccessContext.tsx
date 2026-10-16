@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
-import { getMyOperatorSpaces } from '../lib/api/spaceAccess';
+import { getMyAccess, getMyOperatorSpaces } from '../lib/api/spaceAccess';
 import { getMyCheckinEvents } from '../lib/api/checkin';
 import { getMyJudgingEvents } from '../lib/api/leaderboard';
 import { getMySponsorships } from '../lib/api/sponsorPortal';
@@ -24,8 +24,8 @@ const SpaceAccessContext = createContext<SpaceAccessContextType | undefined>(und
 
 /**
  * Decides whether the signed-in user gets the Space tab and feeds its content.
- * Composes four existing endpoints (operator spaces, check-in events, judging
- * events, sponsor portal) so the tab ships without a backend change.
+ * Loads operator spaces, check-in events, judging events and sponsorships from
+ * GET /users/me/access (falling back to the four separate endpoints).
  */
 export function SpaceAccessProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
@@ -42,15 +42,23 @@ export function SpaceAccessProvider({ children }: { children: React.ReactNode })
       setLoaded(true);
       return;
     }
-    const [spaces, checkin, judgingEvents, sponsorships] = await Promise.all([
-      getMyOperatorSpaces(),
-      getMyCheckinEvents().catch(() => ({ events: [] })),
-      getMyJudgingEvents(),
-      getMySponsorships(),
-    ]);
+    // One combined call; the four separate ones only for a backend without it.
+    const next: SpaceAccessData =
+      (await getMyAccess()) ??
+      (await Promise.all([
+        getMyOperatorSpaces(),
+        getMyCheckinEvents().catch(() => ({ events: [] })),
+        getMyJudgingEvents(),
+        getMySponsorships(),
+      ]).then(([spaces, checkin, judgingEvents, sponsorships]) => ({
+        spaces,
+        checkinEvents: checkin.events ?? [],
+        judgingEvents,
+        sponsorships,
+      })));
     if (gen !== generation.current) return;
     lastLoadAt.current = Date.now();
-    setData({ spaces, checkinEvents: checkin.events ?? [], judgingEvents, sponsorships });
+    setData(next);
     setLoaded(true);
   }, [isAuthenticated]);
 

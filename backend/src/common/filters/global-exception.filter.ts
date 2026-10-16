@@ -57,6 +57,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    // Picked up by the request logger, so api_logs keeps why it failed (the
+    // container logs rotate away with each deploy). Server-side only.
+    response.locals.errorMessage =
+      error?.message ?? (typeof message === 'string' ? message : JSON.stringify(message));
+
     response.status(status).json({
       statusCode: status,
       timestamp: new Date().toISOString(),
