@@ -393,7 +393,7 @@ describe('waitlist convert race (S52)', () => {
 describe('transfer request race (S52)', () => {
   it('a second concurrent request hits the one-pending index and is a 409', async () => {
     const { svc, prisma } = build({ row: row() });
-    jest.spyOn(svc as any, 'assertEventOrganiser').mockResolvedValue(undefined);
+    jest.spyOn(svc.transfers as any, 'assertEventOrganiser').mockResolvedValue(undefined);
     prisma.registrationTransferRequest.findFirst = jest.fn(async () => null); // both see none
     prisma.registrationTransferRequest.create = jest.fn(async () => {
       throw new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '6' });

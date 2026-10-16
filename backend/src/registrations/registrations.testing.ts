@@ -3,6 +3,7 @@
 import { RegistrationsService } from './registrations.service';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { RegistrationAttendeesService } from './registration-attendees.service';
+import { RegistrationTransfersService } from './registration-transfers.service';
 
 export function buildRegistrationsService(
   prisma: any,
@@ -23,8 +24,9 @@ export function buildRegistrationsService(
 ): RegistrationsService {
   const confirmations = new RegistrationConfirmationsService(prisma, emailService, whatsappService, events, groupSeats, redis);
   const attendees = new RegistrationAttendeesService(prisma, whatsappService, groupSeats, authz, confirmations);
+  const transfers = new RegistrationTransfersService(prisma, authz);
   return new RegistrationsService(
     prisma, emailService, whatsappService, cache, planConfig, platformConfig, payments, waitlist, events, groupSeats, redis, coupons, stayBookings, teamChanges, authz,
-    confirmations, attendees,
+    confirmations, attendees, transfers,
   );
 }
