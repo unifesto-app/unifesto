@@ -18,6 +18,7 @@ import {
   getEventRegistrations,
   exportRegistrations,
   sendWhatsappGroupInvite,
+  bulkCheckin,
   EXPORT_EXTENSION,
 } from "@/lib/api/registrations-api";
 import { getSpaceUsage } from "@/lib/api/subscriptions-api";
@@ -83,6 +84,8 @@ export default function EventRegistrationsPage() {
   const [total, setTotal] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [sendingInvite, setSendingInvite] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [checkingIn, setCheckingIn] = useState(false);
   // Whether this space's plan includes bulk export. `undefined` until the
   // space's plan resolves; the ExportMenu keeps the button live meanwhile.
   const [canExport, setCanExport] = useState<boolean | undefined>(undefined);
@@ -136,7 +139,56 @@ export default function EventRegistrationsPage() {
 
   useEffect(() => {
     setPage(1);
+    setSelected(new Set());
   }, [search, statusFilter, paymentFilter, ticketFilter]);
+
+  const canCheckIn = (reg: Registration) =>
+    !reg.checkedInAt && reg.status !== "CANCELLED";
+  const checkable = registrations.filter(canCheckIn);
+  const allOnPageSelected =
+    checkable.length > 0 && checkable.every((r) => selected.has(r.id));
+
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const togglePage = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const r of checkable) {
+        if (allOnPageSelected) next.delete(r.id);
+        else next.add(r.id);
+      }
+      return next;
+    });
+
+  const handleBulkCheckin = async () => {
+    const n = selected.size;
+    if (!window.confirm(`Check in ${n} ${n === 1 ? "attendee" : "attendees"}?`)) return;
+    setCheckingIn(true);
+    const { data, error } = await bulkCheckin(eventId, [...selected]);
+    setCheckingIn(false);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    if (data) {
+      const parts = [`Checked in ${data.success.length}`];
+      if (data.alreadyCheckedIn.length > 0)
+        parts.push(`${data.alreadyCheckedIn.length} already in`);
+      if (data.failed.length > 0)
+        parts.push(
+          `${data.failed.length} failed (${[...new Set(data.failed.map((f) => f.reason))].join(", ")})`
+        );
+      alert(parts.join(" · ") + ".");
+    }
+    setSelected(new Set());
+    await loadRegistrations();
+  };
 
   const handleExport = async (format: ExportFormat) => {
     setExporting(true);
@@ -325,6 +377,26 @@ export default function EventRegistrationsPage() {
 
       {error && <ErrorNotice message={error} />}
 
+      {!loading && checkable.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={allOnPageSelected}
+              onChange={togglePage}
+            />
+            Select all on this page
+          </label>
+          {selected.size > 0 && (
+            <Button size="sm" onClick={handleBulkCheckin} disabled={checkingIn}>
+              <CheckCircle className="h-4 w-4" />
+              {checkingIn ? "Checking in..." : `Check in ${selected.size}`}
+            </Button>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -371,6 +443,18 @@ export default function EventRegistrationsPage() {
                     className="flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
+                      {checkable.length > 0 && (
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${reg.user.fullName || reg.user.username || "attendee"}`}
+                          className="h-4 w-4 flex-shrink-0 accent-primary disabled:invisible"
+                          disabled={!canCheckIn(reg)}
+                          checked={selected.has(reg.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          onChange={() => toggle(reg.id)}
+                        />
+                      )}
                       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
                         {reg.user.avatarUrl ? (
                           <img
