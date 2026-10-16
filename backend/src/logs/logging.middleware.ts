@@ -51,6 +51,16 @@ export function shouldSkipLog(method: string, rawPath: string): boolean {
 }
 
 /**
+ * The error to store (set by GlobalExceptionFilter). Nest's unmatched-route
+ * message echoes the raw URL — query string and tokens included — so it is
+ * replaced; the redacted `path` already says which route it was.
+ */
+export function loggedError(method: string, message: unknown): string | null {
+  if (typeof message !== 'string' || !message) return null;
+  return message.startsWith(`Cannot ${method} `) ? 'Route not found' : message;
+}
+
+/**
  * Global Express middleware that records requests to the api_logs table
  * on response finish. Unlike a Nest interceptor, this runs for *all* requests —
  * including auth rejections (401/403) and unmatched routes (404) — and by the
@@ -77,8 +87,7 @@ export function createRequestLogger(logs: LogsService, sampleRate = 1) {
         // X-Forwarded-For / CF headers are client-spoofable.
         ipAddress: req.ip ?? null,
         userAgent: (req.headers?.['user-agent'] as string) ?? null,
-        // Set by GlobalExceptionFilter on any thrown error.
-        errorMessage: (res.locals?.errorMessage as string | undefined) ?? null,
+        errorMessage: loggedError(req.method, res.locals?.errorMessage),
         weight,
       });
     });
