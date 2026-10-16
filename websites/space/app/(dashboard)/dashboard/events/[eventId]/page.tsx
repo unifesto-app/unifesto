@@ -11,6 +11,7 @@ import {
   PencilSimple,
   Trash,
   CheckCircle,
+  Megaphone,
 } from "@unifesto/unicon/react";
 import { getEventById, publishEvent, deleteEvent } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
@@ -31,6 +32,7 @@ import {
 import { StatCard } from "@/components/shared/StatCard";
 import { RegistrationSourcesCard } from "@/components/shared/RegistrationSourcesCard";
 import { EventCompleteness } from "@/components/shared/EventCompleteness";
+import { AnnounceDialog } from "./AnnounceDialog";
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", {
@@ -74,6 +76,7 @@ export default function EventOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [announceOpen, setAnnounceOpen] = useState(false);
   const [attendeeStats, setAttendeeStats] = useState<AttendeeStats | null>(null);
 
   const loadEvent = useCallback(async () => {
@@ -165,6 +168,16 @@ export default function EventOverviewPage() {
                 Publish
               </Button>
             )}
+            {(event.status === "PUBLISHED" || event.status === "ONGOING") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAnnounceOpen(true)}
+              >
+                <Megaphone className="h-4 w-4" />
+                Announce
+              </Button>
+            )}
             <Button
               size="sm"
               onClick={() => router.push(`/dashboard/events/${eventId}/edit`)}
@@ -174,6 +187,12 @@ export default function EventOverviewPage() {
             </Button>
           </div>
         }
+      />
+
+      <AnnounceDialog
+        eventId={eventId}
+        open={announceOpen}
+        onOpenChange={setAnnounceOpen}
       />
 
       {/* Setup completeness — event info, registration and richer content.
