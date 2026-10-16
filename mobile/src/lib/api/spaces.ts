@@ -87,7 +87,6 @@ export interface Space {
   };
   _count?: {
     userRoles: number;
-    discussions: number;
     events?: number;
   };
   userRoles?: SpaceMember[];

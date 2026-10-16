@@ -8,7 +8,6 @@ import {
   Users,
   CalendarBlank,
   Ticket,
-  ChatsCircle,
   Coins,
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
@@ -33,7 +32,7 @@ const money = (v: number) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
  *
  * Shows a SUPER space's organisers the aggregated activity of every space
  * beneath it (direct sub-spaces, sub-sub-spaces, and deeper): total members,
- * events, registrations and discussions, plus a per-sub-space breakdown.
+ * events and registrations, plus a per-sub-space breakdown.
  * Backed by `GET /spaces/:id/analytics`.
  */
 export default function SubSpacesPage() {
@@ -344,9 +343,6 @@ function TreeNode({
               />
             )}
             <MetricChip icon={Ticket} value={node.registrations} title="Registrations" />
-            {node.discussions > 0 && (
-              <MetricChip icon={ChatsCircle} value={node.discussions} title="Discussions" />
-            )}
           </div>
         </div>
       </div>
