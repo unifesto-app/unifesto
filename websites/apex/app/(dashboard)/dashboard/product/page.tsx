@@ -191,15 +191,20 @@ export default function ProductPage() {
                 active={!trackFilter}
                 onClick={() => setTrackFilter(null)}
               />
-              {tracks.map((t) => (
-                <TrackChip
-                  key={t.key}
-                  label={`${t.key} · ${t.name}`}
-                  p={progress(t.tasks)}
-                  active={trackFilter === t.key}
-                  onClick={() => setTrackFilter(trackFilter === t.key ? null : t.key)}
-                />
-              ))}
+              {tracks.map((t) => {
+                const p = progress(t.tasks);
+                // Finished tracks (n/n) drop off; the selected one stays so it can be cleared.
+                if (p.total > 0 && p.done === p.total && trackFilter !== t.key) return null;
+                return (
+                  <TrackChip
+                    key={t.key}
+                    label={`${t.key} · ${t.name}`}
+                    p={p}
+                    active={trackFilter === t.key}
+                    onClick={() => setTrackFilter(trackFilter === t.key ? null : t.key)}
+                  />
+                );
+              })}
             </div>
           )}
 
