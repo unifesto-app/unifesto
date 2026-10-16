@@ -171,8 +171,6 @@ export class WaitlistService {
           ticketTypeId,
           quantity: input.quantity || 1,
           groupSize: input.groupSize ?? null,
-          groupMembers:
-            (input.groupMembers as Prisma.InputJsonValue) ?? undefined,
           totalAmount: new Prisma.Decimal(0),
           paymentStatus: PaymentStatus.PENDING,
           isWaitlisted: true,
@@ -186,6 +184,14 @@ export class WaitlistService {
       await tx.event.update({
         where: { id: eventId },
         data: { waitlistCount: { increment: 1 } },
+      });
+
+      // The typed-in members wait on the seats until the spot converts (S42).
+      await this.groupSeats.createSeatsForRegistration(tx, {
+        registrationId: reg.id,
+        leadUserId: userId,
+        seatCount: this.seatsFor(reg),
+        groupMembers: Array.isArray(input.groupMembers) ? input.groupMembers : null,
       });
 
       return reg;
@@ -724,15 +730,12 @@ export class WaitlistService {
         });
       }
 
-      // Seed the group roster from GroupSeat — the source of truth for group
-      // check-in. No-op for solo bookings (seatCount <= 1 returns early) and
-      // idempotent (skips if seats already exist), so it is safe on every path.
+      // Seats were created at join time (S42). No-op for solo bookings and
+      // idempotent; only seeds empty seats for a group that somehow has none.
       await this.groupSeats.createSeatsForRegistration(tx, {
         registrationId,
         leadUserId: reg.userId,
         seatCount: this.seatsFor(reg),
-        groupMembers:
-          (reg as { groupMembers?: unknown[] | null }).groupMembers ?? null,
       });
 
       return { registration: updated, converted: true };

@@ -54,7 +54,6 @@ function applyData(target: any, data: Record<string, any>) {
 type RegSeed = {
   quantity?: number;
   groupSize?: number | null;
-  groupMembers?: unknown[] | null;
   waitlistStatus?: WaitlistStatus;
   paymentStatus?: PaymentStatus;
   status?: string;
@@ -101,7 +100,6 @@ function makeDb(opts: {
     ticketTypeId: TT_ID,
     quantity: opts.reg.quantity ?? 1,
     groupSize: opts.reg.groupSize ?? null,
-    groupMembers: opts.reg.groupMembers ?? null,
     isWaitlisted: true,
     waitlistStatus: opts.reg.waitlistStatus ?? WaitlistStatus.WAITING,
     paymentStatus: opts.reg.paymentStatus ?? PaymentStatus.PENDING,
@@ -145,6 +143,12 @@ function makeDb(opts: {
         return out;
       },
       findUniqueOrThrow: async () => ({ ...reg }),
+      findFirst: async () => null,
+      count: async () => 0,
+      create: async ({ data }: any) => {
+        Object.assign(reg, data);
+        return { ...reg };
+      },
       update: async ({ data }: any) => {
         applyData(reg, data);
         return { ...reg };
@@ -201,7 +205,17 @@ function build(db: ReturnType<typeof makeDb>) {
   };
   const groupSeats = new GroupSeatsService(db.prisma, email, whatsapp);
   const svc = new WaitlistService(db.prisma, email, payments, events, groupSeats, { can: jest.fn().mockResolvedValue(true) } as any);
-  return { svc, email, events };
+  return { svc, email, events, groupSeats };
+}
+
+/** Seats as join() leaves them (S42): created with the waitlist row. */
+async function seedJoinSeats(db: ReturnType<typeof makeDb>, members: unknown[]) {
+  await build(db).groupSeats.createSeatsForRegistration(db.prisma, {
+    registrationId: 'reg-1',
+    leadUserId: ATTENDEE,
+    seatCount: db.reg.groupSize,
+    groupMembers: members,
+  });
 }
 
 describe('WaitlistService — offer converts to a complete registration', () => {
@@ -246,12 +260,9 @@ describe('WaitlistService — offer converts to a complete registration', () => 
         totalQuantity: 10,
         soldCount: 6, // 4 seats freed up
       },
-      reg: {
-        quantity: 1,
-        groupSize: 4,
-        groupMembers: [{ name: 'Lead' }, { name: 'Bimal' }],
-      },
+      reg: { quantity: 1, groupSize: 4 },
     });
+    await seedJoinSeats(db, [{ name: 'Lead' }, { name: 'Bimal' }]);
     const { svc } = build(db);
 
     const res = await svc.offer(ORGANISER, EVENT_ID, 'reg-1');
@@ -286,7 +297,6 @@ describe('WaitlistService — offer converts to a complete registration', () => 
       reg: {
         quantity: 1,
         groupSize: 3,
-        groupMembers: [{ name: 'Lead' }],
         waitlistStatus: WaitlistStatus.OFFERED,
       },
     });
@@ -352,5 +362,32 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     expect([first.converted, second.converted]).toEqual([true, false]);
     expect(db.event.registeredCount).toBe(1);
     expect(db.tickets).toHaveLength(1);
+  });
+
+  it('join() creates the group seats with the waitlist row; convert() reuses them', async () => {
+    const db = makeDb({
+      ticketType: { price: 500, kind: 'GROUP', totalQuantity: 10, soldCount: 10 },
+      reg: { quantity: 1 },
+    });
+    const { svc } = build(db);
+
+    await svc.join(ATTENDEE, EVENT_ID, TT_ID, {
+      quantity: 1,
+      groupSize: 3,
+      groupMembers: [{ name: 'Lead' }, { name: 'Bimal', email: 'b@x.in' }],
+      qrCode: 'qr',
+    });
+    expect('groupMembers' in db.reg).toBe(false); // no JSON column write
+    expect(db.groupSeats.map((s) => s.status)).toEqual([
+      GroupSeatStatus.CLAIMED,
+      GroupSeatStatus.CLAIMED,
+      GroupSeatStatus.OPEN,
+    ]);
+    expect(db.groupSeats[1].memberDetails).toEqual({ name: 'Bimal', email: 'b@x.in' });
+
+    db.reg.waitlistStatus = WaitlistStatus.OFFERED;
+    await svc.convert('reg-1', { paymentId: 'pay_x', orderId: 'order_x' });
+    expect(db.groupSeats).toHaveLength(3); // no duplicate seats
+    expect(db.groupSeats[1].memberDetails).toEqual({ name: 'Bimal', email: 'b@x.in' });
   });
 });

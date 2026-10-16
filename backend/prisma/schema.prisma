@@ -1797,7 +1797,7 @@ model EventFormField {
   // Group tickets only: whether this question is asked ONCE for the whole team
   // (true) or of EVERY member (false, the default). Ignored for individual/RSVP
   // tickets, which have a single attendee. A per-group answer is stored on the
-  // registration (formResponses); a per-member answer on each groupMembers entry.
+  // registration (formResponses); a per-member answer on each member's seat.
   perGroup Boolean @default(false) @map("per_group")
 
   // Shown under the label (instructions, examples). A SECTION's note.
@@ -1836,9 +1836,8 @@ model EventRegistration {
 
   quantity Int @default(1)
 
-  // Group registrations: number of people and their captured details.
+  // Group registrations: number of people. The roster lives in GroupSeat rows.
   groupSize    Int?  @map("group_size")
-  groupMembers Json? @map("group_members")
 
   // Payment
   totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
@@ -2075,8 +2074,8 @@ model EventCheckinRecord {
 }
 
 /// One check-in of a single GROUP member at a check-in point. A group shares
-/// one registration + QR, so members are identified by their index into the
-/// registration's `groupMembers` array. Uniqueness ensures a member is only
+/// one registration + QR, so members are identified by their index
+/// (seat index - 1). Uniqueness ensures a member is only
 /// checked in once per point. The registration-level EventCheckinRecord still
 /// tracks the group as a whole (ATTENDED once ≥1 member is in).
 model EventGroupMemberCheckin {
@@ -4044,8 +4043,8 @@ model Certificate {
   registrationId String?            @map("registration_id") @db.Uuid
   registration   EventRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
 
-  // For a GROUP registration (one row, many people in `groupMembers`), this is
-  // the member's index into that array — so every teammate gets their own
+  // For a GROUP registration (one row, many people in GroupSeat rows), this is
+  // the member's index (seat index - 1) — so every teammate gets their own
   // certificate off the one shared registration. Null / 0 for an individual.
   memberIndex Int? @map("member_index")
 

@@ -184,7 +184,7 @@ export class CheckinService {
 
   /**
    * A group registration: booked for more than one seat. The roster lives in
-   * `GroupSeat` rows (S42: the legacy `groupMembers` JSON is no longer read).
+   * `GroupSeat` rows (S42: the old `group_members` JSON column is gone).
    */
   private isGroupRegistration(registration: any): boolean {
     return (registration?.groupSize ?? 0) > 1;
@@ -1489,6 +1489,9 @@ export class CheckinService {
         status: {
           in: [RegistrationStatus.REGISTERED, RegistrationStatus.ATTENDED],
         },
+        // Unpaid checkouts can't be checked in, and their typed-in members
+        // (seats exist from checkout, S42) must not surface at the door.
+        paymentStatus: COUNTS_AS_ATTENDING.paymentStatus,
         OR: or,
       },
       take: 15,

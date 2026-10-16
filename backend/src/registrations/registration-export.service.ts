@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { PaymentStatus } from '@prisma/client';
 import { formatAnswer } from './form-answers.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
@@ -246,8 +247,15 @@ export class RegistrationExportService {
         // Group seats are the group's roster (S42). Fetch all seats
         // for the group registrations in one query, with the claimer's account for
         // fallback identity.
+        // An unpaid checkout (PENDING / FAILED) already has seats (S42) but
+        // stays one lead row: its typed-in members aren't attendees yet.
         const groupRegIds = (registrations as any[])
-          .filter((r) => (r.groupSize ?? 0) > 1)
+          .filter(
+            (r) =>
+              (r.groupSize ?? 0) > 1 &&
+              r.paymentStatus !== PaymentStatus.PENDING &&
+              r.paymentStatus !== PaymentStatus.FAILED,
+          )
           .map((r) => r.id);
         const allSeats = groupRegIds.length
           ? await prisma.groupSeat.findMany({

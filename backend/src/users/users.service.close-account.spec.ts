@@ -12,7 +12,6 @@ const USER = 'user-1';
 const file = (key: string) => ({ key, name: 'x.pdf', size: 1, mime: 'application/pdf' });
 const MY_FORM = 'private/form-uploads/ev1/f1/user-1/a.pdf';
 const MY_MEMBER_FILE = 'private/form-uploads/ev2/f2/lead-2/m.pdf';
-const OTHER_MEMBER_FILE = 'private/form-uploads/ev1/f3/user-1/friend.pdf';
 const MY_ID = 'private/form-uploads/ev1/stay-id-s1/user-1/id.jpg';
 
 function makePrisma() {
@@ -32,13 +31,9 @@ function makePrisma() {
     eventRegistration: {
       findMany: jest.fn(async () => [
         {
-          // The user's own group booking: they're the lead (entry 0).
+          // The user's own group booking: they're the lead (seat 1).
           id: 'reg-own',
           formResponses: { q1: 'my phone 999', q2: file(MY_FORM) },
-          groupMembers: [
-            { name: 'Me' },
-            { name: 'Friend', customFields: { f3: file(OTHER_MEMBER_FILE) } },
-          ],
         },
       ]),
       updateMany: op('eventRegistration.updateMany'),
@@ -47,23 +42,9 @@ function makePrisma() {
     groupSeat: {
       findMany: jest.fn(async () => [
         // Seat 1 of their own group.
-        {
-          seatIndex: 1,
-          memberDetails: { name: 'Me' },
-          registration: {
-            id: 'reg-own',
-            groupMembers: [{ name: 'Me' }, { name: 'Friend' }],
-          },
-        },
+        { memberDetails: { name: 'Me' } },
         // Seat 3 in someone else's group.
-        {
-          seatIndex: 3,
-          memberDetails: { name: 'Me', customFields: { f2: file(MY_MEMBER_FILE) } },
-          registration: {
-            id: 'reg-lead2',
-            groupMembers: [{ name: 'Lead' }, { name: 'B' }, { name: 'Me' }],
-          },
-        },
+        { memberDetails: { name: 'Me', customFields: { f2: file(MY_MEMBER_FILE) } } },
       ]),
       updateMany: op('groupSeat.updateMany'),
     },
@@ -178,14 +159,8 @@ describe('UsersService.closeAccount PII scrub', () => {
     ]);
   });
 
-  it('blanks only the user’s own roster entries, keeping indices', () => {
-    const rosters = Object.fromEntries(
-      writes('eventRegistration.update').map((a) => [a.where.id, a.data.groupMembers]),
-    );
-    expect(rosters).toEqual({
-      'reg-own': [{}, { name: 'Friend', customFields: { f3: file(OTHER_MEMBER_FILE) } }],
-      'reg-lead2': [{ name: 'Lead' }, { name: 'B' }, {}],
-    });
+  it('never rewrites another registration: rosters live on seats (S42)', () => {
+    expect(writes('eventRegistration.update')).toEqual([]);
   });
 
   it('scrubs claimed seats, the user’s stay bookings and their guests', () => {

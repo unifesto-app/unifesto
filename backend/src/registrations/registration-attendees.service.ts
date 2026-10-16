@@ -325,7 +325,7 @@ export class RegistrationAttendeesService {
     // pay-first seat is not counted as a person here.
     const seatAgg = await this.prisma.groupSeat.groupBy({
       by: ['registrationId', 'status'],
-      where: { registration: { eventId } },
+      where: { registration: { eventId, ...COUNTS_AS_ATTENDING } },
       _count: { _all: true },
     });
     const seatTotals = new Map<string, number>();

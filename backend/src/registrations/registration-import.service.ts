@@ -745,22 +745,31 @@ export class RegistrationImportService {
     const processingFee = this.payments.computeProcessingFee(basePrice);
     const totalAmount = basePrice + processingFee;
 
-    const registration = await this.prisma.eventRegistration.create({
-      data: {
-        eventId,
-        userId,
-        ticketTypeId: dto.ticketTypeId,
-        quantity: 1,
-        groupSize,
-        groupMembers:
-          (groupMembers as unknown as Prisma.InputJsonValue) ?? undefined,
-        totalAmount: new Prisma.Decimal(totalAmount),
-        razorpayAmount: new Prisma.Decimal(totalAmount),
-        processingFee: new Prisma.Decimal(processingFee),
-        paymentStatus: PaymentStatus.PENDING,
-        qrCode: generateQRCode(),
-        formResponses: formResponses as Prisma.InputJsonValue,
-      },
+    // PENDING row + its group seats together; the payment-link webhook then
+    // confirms the existing seats (S42).
+    const registration = await this.prisma.$transaction(async (tx) => {
+      const reg = await tx.eventRegistration.create({
+        data: {
+          eventId,
+          userId,
+          ticketTypeId: dto.ticketTypeId,
+          quantity: 1,
+          groupSize,
+          totalAmount: new Prisma.Decimal(totalAmount),
+          razorpayAmount: new Prisma.Decimal(totalAmount),
+          processingFee: new Prisma.Decimal(processingFee),
+          paymentStatus: PaymentStatus.PENDING,
+          qrCode: generateQRCode(),
+          formResponses: formResponses as Prisma.InputJsonValue,
+        },
+      });
+      await this.groupSeats.createSeatsForRegistration(tx, {
+        registrationId: reg.id,
+        leadUserId: userId,
+        seatCount: groupSize && groupSize > 1 ? groupSize : 1,
+        groupMembers,
+      });
+      return reg;
     });
 
     const link = await this.payments.createPaymentLink({
