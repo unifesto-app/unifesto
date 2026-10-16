@@ -12,6 +12,8 @@ import {
   SupportTicketStatus,
   SupportTicketCategory,
   SupportTicketPriority,
+  SupportCaseKind,
+  SupportMessageSide,
 } from '@prisma/client';
 import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
 
@@ -76,6 +78,27 @@ export class SupportService {
       }
     }
 
+    // Event context: a registration must be the requester's own and implies its event.
+    let eventId = dto.eventId ?? null;
+    if (dto.registrationId) {
+      const reg = await this.prisma.eventRegistration.findUnique({
+        where: { id: dto.registrationId },
+        select: { userId: true, eventId: true },
+      });
+      if (!reg || reg.userId !== requesterId) {
+        throw new NotFoundException('Registration not found');
+      }
+      eventId = reg.eventId;
+    } else if (eventId) {
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true },
+      });
+      if (!event) {
+        throw new NotFoundException('Event not found');
+      }
+    }
+
     const ticket = await this.prisma.supportTicket.create({
       data: {
         subject: dto.subject,
@@ -84,11 +107,16 @@ export class SupportService {
         requesterId,
         spaceId: dto.spaceId ?? null,
         contactEmail: dto.contactEmail ?? null,
+        kind: dto.kind ?? SupportCaseKind.HELP,
+        eventId,
+        registrationId: dto.registrationId ?? null,
+        requesterLastReadAt: new Date(),
         ...(dto.clientInfo ? { clientInfo: cleanClientInfo(dto.clientInfo) } : {}),
         messages: {
           create: {
             authorId: requesterId,
             isStaffReply: false,
+            side: SupportMessageSide.REQUESTER,
             body: dto.message,
           },
         },
@@ -168,6 +196,7 @@ export class SupportService {
   /* ---------------------------------------------------------------------- */
 
   async getTicket(id: string, userId: string) {
+    const admin = await isPlatformAdmin(this.prisma, userId);
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
       include: {
@@ -175,6 +204,8 @@ export class SupportService {
         assignedTo: { select: userSelect },
         space: { select: spaceSelect },
         messages: {
+          // Internal desk notes never reach the requester.
+          ...(admin ? {} : { where: { internal: false } }),
           orderBy: { createdAt: 'asc' },
           include: { author: { select: userSelect } },
         },
@@ -185,7 +216,6 @@ export class SupportService {
       throw new NotFoundException('Support ticket not found');
     }
 
-    const admin = await isPlatformAdmin(this.prisma, userId);
     if (!admin && ticket.requesterId !== userId) {
       throw new ForbiddenException('You cannot view this ticket');
     }
@@ -200,7 +230,7 @@ export class SupportService {
   async addMessage(id: string, dto: CreateMessageDto, userId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true, requesterId: true, status: true },
+      select: { id: true, requesterId: true, status: true, firstResponseAt: true },
     });
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');
@@ -218,10 +248,14 @@ export class SupportService {
     }
 
     // A staff reply moves the ball to the requester; a requester reply
-    // (re)opens the ticket for staff attention.
+    // (re)opens the ticket for staff attention. A bot chat stays with the bot
+    // until it hands off.
     const nextStatus = admin
       ? SupportTicketStatus.PENDING
-      : SupportTicketStatus.OPEN;
+      : ticket.status === SupportTicketStatus.BOT
+        ? SupportTicketStatus.BOT
+        : SupportTicketStatus.OPEN;
+    const now = new Date();
 
     const [message] = await this.prisma.$transaction([
       this.prisma.supportMessage.create({
@@ -229,6 +263,7 @@ export class SupportService {
           ticketId: id,
           authorId: userId,
           isStaffReply: admin,
+          side: admin ? SupportMessageSide.DESK : SupportMessageSide.REQUESTER,
           body: dto.body,
         },
         include: { author: { select: userSelect } },
@@ -237,7 +272,11 @@ export class SupportService {
         where: { id },
         data: {
           status: nextStatus,
-          lastMessageAt: new Date(),
+          lastMessageAt: now,
+          // Writing a reply means the writer's side has read the thread.
+          ...(admin
+            ? { deskLastReadAt: now, ...(ticket.firstResponseAt ? {} : { firstResponseAt: now }) }
+            : { requesterLastReadAt: now }),
           ...(nextStatus === SupportTicketStatus.OPEN
             ? { resolvedAt: null }
             : {}),
