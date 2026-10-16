@@ -89,6 +89,7 @@ export default function TicketTransfersPage() {
     r: TransferRequest,
     status: "APPROVED" | "REJECTED"
   ) => {
+    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Decline"} this request? This can't be undone.`)) return;
     setActing(r.id);
     setError("");
     const { error } = await reviewTransferRequest(r.id, status, {

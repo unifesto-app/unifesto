@@ -73,6 +73,8 @@ export default function OrphanedPaymentsPage() {
         patchRow(row.paymentId, { err: "Enter a registration id to attach this payment to." });
         return;
       }
+      const warning = allowAmountMismatch ? " The amount does not match this registration." : "";
+      if (!window.confirm(`Attach payment ${row.paymentId} to registration ${target}?${warning} This can't be undone.`)) return;
       patchRow(row.paymentId, { busy: true, ok: undefined, err: undefined });
       const { data, error } = await reconcileTransaction(
         target,

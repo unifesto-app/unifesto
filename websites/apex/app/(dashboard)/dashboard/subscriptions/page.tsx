@@ -321,6 +321,7 @@ function EditArrangement({
   const [error, setError] = useState("");
 
   const save = async () => {
+    if (!window.confirm("Override this space's billing arrangement? It takes effect at once.")) return;
     setSaving(true);
     setError("");
     const input: AdminUpdateSubscriptionInput = {

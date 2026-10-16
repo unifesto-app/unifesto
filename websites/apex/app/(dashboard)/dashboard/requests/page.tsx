@@ -109,6 +109,7 @@ export default function SpaceRequestsPage() {
   }, [refreshCounts]);
 
   const handleApprove = async (id: string) => {
+    if (!window.confirm("Approve this request? This can't be undone.")) return;
     setActing(id);
     const { error } = await approveSpaceRequest(id);
     if (!error) {
@@ -120,6 +121,7 @@ export default function SpaceRequestsPage() {
   };
 
   const handleReject = async (id: string) => {
+    if (!window.confirm("Decline this request? This can't be undone.")) return;
     setActing(id);
     const { error } = await rejectSpaceRequest(id);
     if (!error) {
