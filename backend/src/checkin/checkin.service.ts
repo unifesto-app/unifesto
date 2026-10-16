@@ -184,7 +184,7 @@ export class CheckinService {
 
   /**
    * A group registration: booked for more than one seat. The roster lives in
-   * `GroupSeat` rows (S42: the legacy `groupMembers` JSON is no longer read).
+   * `GroupSeat` rows (S42: the old `group_members` JSON column is gone).
    */
   private isGroupRegistration(registration: any): boolean {
     return (registration?.groupSize ?? 0) > 1;
