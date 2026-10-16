@@ -1,5 +1,19 @@
 import type { Request } from 'express';
-import { loggedPath, sampleWeight } from './logging.middleware';
+import { loggedPath, sampleWeight, shouldSkipLog } from './logging.middleware';
+
+describe('shouldSkipLog', () => {
+  it('skips healthchecks, preflights and the log viewer', () => {
+    expect(shouldSkipLog('GET', '/')).toBe(true);
+    expect(shouldSkipLog('HEAD', '/')).toBe(true);
+    expect(shouldSkipLog('GET', '/health')).toBe(true);
+    expect(shouldSkipLog('OPTIONS', '/events')).toBe(true);
+    expect(shouldSkipLog('GET', '/admin/logs/stats')).toBe(true);
+  });
+  it('keeps real traffic', () => {
+    expect(shouldSkipLog('GET', '/events')).toBe(false);
+    expect(shouldSkipLog('POST', '/')).toBe(false);
+  });
+});
 
 // S27: no bearer tokens in stored paths; sampled 2xx GETs carry a weight.
 describe('loggedPath', () => {
