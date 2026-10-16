@@ -41,6 +41,12 @@ function fakeRedisClient() {
       store.set(k, String(n));
       return n;
     },
+    async decr(k: string) {
+      await tick();
+      const n = Number(store.get(k) ?? 0) - 1;
+      store.set(k, String(n));
+      return n;
+    },
     async expire(k: string, ttl: number) {
       await tick();
       ttls.set(k, ttl);
@@ -499,11 +505,94 @@ describe('S7: OTP brute force', () => {
     await expect(otp.assertCanSend('+911')).rejects.toBeInstanceOf(HttpException);
     // Past the cooldown, the daily cap still applies.
     for (let i = 1; i < OtpService.DAILY_SEND_CAP; i++) {
-      redis.client.store.delete('otp-limit:cooldown:+911');
+      redis.client.store.delete('otp-limit:cooldown:+911:unknown');
       await otp.assertCanSend('+911');
     }
-    redis.client.store.delete('otp-limit:cooldown:+911');
+    redis.client.store.delete('otp-limit:cooldown:+911:unknown');
     await expect(otp.assertCanSend('+911')).rejects.toMatchObject({ status: 429 });
+  });
+});
+
+describe('S49: OTP lockout abuse is contained per IP', () => {
+  const make = () => {
+    const redis = fakeRedisService();
+    return { otp: new OtpService(redis as any), redis };
+  };
+  const ATTACKER = '6.6.6.6';
+  const VICTIM = '1.2.3.4';
+
+  it("an attacker's wrong guesses lock only the attacker's IP", async () => {
+    const { otp } = make();
+    await otp.storeOtp('v@x.com', '111111');
+    for (let i = 0; i < 20; i++) await otp.verifyOtp('v@x.com', '000000', ATTACKER);
+    expect(await otp.verifyOtp('v@x.com', '111111', ATTACKER)).toBe('blocked');
+    // The victim's code survived and still works from their own IP.
+    expect(await otp.verifyOtp('v@x.com', '111111', VICTIM)).toBe('ok');
+  });
+
+  it('many IPs together still hit the identifier-wide cap', async () => {
+    const { otp } = make();
+    await otp.storeOtp('v@x.com', '111111');
+    let invalid = 0;
+    for (let ip = 0; ip < 10; ip++) {
+      for (let i = 0; i < OtpService.MAX_ATTEMPTS; i++) {
+        if ((await otp.verifyOtp('v@x.com', '000000', `10.0.0.${ip}`)) === 'invalid') invalid++;
+      }
+    }
+    expect(invalid).toBe(OtpService.MAX_ATTEMPTS_TOTAL);
+    expect(await otp.verifyOtp('v@x.com', '111111', VICTIM)).toBe('blocked');
+  });
+
+  it('one IP spraying many identifiers hits its own cap', async () => {
+    const { otp } = make();
+    let invalid = 0;
+    for (let i = 0; i < OtpService.IP_MAX_ATTEMPTS + 10; i++) {
+      if ((await otp.verifyOtp(`u${i}@x.com`, '000000', ATTACKER)) === 'invalid') invalid++;
+    }
+    expect(invalid).toBe(OtpService.IP_MAX_ATTEMPTS);
+  });
+
+  it('correct codes do not use up the IP bucket (shared campus NAT)', async () => {
+    const { otp } = make();
+    for (let i = 0; i < OtpService.IP_MAX_ATTEMPTS + 5; i++) {
+      await otp.storeOtp(`u${i}@x.com`, '111111');
+      expect(await otp.verifyOtp(`u${i}@x.com`, '111111', VICTIM)).toBe('ok');
+    }
+  });
+
+  it("an attacker spamming sends can't use up the victim's daily cap", async () => {
+    const { otp, redis } = make();
+    const send = async (ip: string) => {
+      redis.client.store.delete(`otp-limit:cooldown:+911:${ip}`);
+      return otp.assertCanSend('+911', ip);
+    };
+    for (let i = 0; i < OtpService.DAILY_SEND_CAP; i++) await send(ATTACKER);
+    await expect(send(ATTACKER)).rejects.toMatchObject({ status: 429 });
+    await expect(send(VICTIM)).resolves.toBeUndefined();
+  });
+
+  it('the identifier-wide send cap still bounds many IPs', async () => {
+    const { otp } = make();
+    for (let i = 0; i < OtpService.DAILY_SEND_CAP_TOTAL; i++) {
+      await otp.assertCanSend('+911', `10.0.0.${i}`);
+    }
+    await expect(otp.assertCanSend('+911', '10.0.1.1')).rejects.toMatchObject({ status: 429 });
+  });
+
+  it('one IP spraying many identifiers hits the per-IP send cap', async () => {
+    const { otp } = make();
+    for (let i = 0; i < OtpService.IP_HOURLY_SEND_CAP; i++) {
+      await otp.assertCanSend(`+91${i}`, ATTACKER);
+    }
+    await expect(otp.assertCanSend('+91x', ATTACKER)).rejects.toMatchObject({ status: 429 });
+  });
+
+  it('auth service passes the caller IP through', async () => {
+    const { service, otp } = setup();
+    await service.loginWithEmail({ email: 'a@x.com' } as any, VICTIM);
+    expect(otp.assertCanSend).toHaveBeenCalledWith('a@x.com', VICTIM);
+    await service.verifyEmailOtp('a@x.com', '123456', VICTIM).catch(() => undefined);
+    expect(otp.verifyOtp).toHaveBeenCalledWith('a@x.com', '123456', VICTIM);
   });
 });
 

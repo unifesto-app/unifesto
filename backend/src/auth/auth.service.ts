@@ -265,8 +265,8 @@ export class AuthService {
   // =====================================================
   // EMAIL LOGIN
   // =====================================================
-  async loginWithEmail(dto: EmailLoginDto): Promise<{ message: string }> {
-    await this.otpService.assertCanSend(dto.email);
+  async loginWithEmail(dto: EmailLoginDto, ip?: string): Promise<{ message: string }> {
+    await this.otpService.assertCanSend(dto.email, ip);
     try {
       // Generate OTP
       const otp = this.otpService.generateOtp();
@@ -286,7 +286,7 @@ export class AuthService {
     }
   }
 
-  async verifyEmailOtp(email: string, otp: string): Promise<AuthResponseDto> {
+  async verifyEmailOtp(email: string, otp: string, ip?: string): Promise<AuthResponseDto> {
     try {
       // Apple App Review bypass: static test account, only while the env flag
       // is on (turn it on for a review, off afterwards).
@@ -303,7 +303,7 @@ export class AuthService {
         );
       }
 
-      this.assertOtpOk(await this.otpService.verifyOtp(email, otp));
+      this.assertOtpOk(await this.otpService.verifyOtp(email, otp, ip));
 
       this.logger.log(`Handling provider login for email: ${email}`);
 
@@ -325,10 +325,10 @@ export class AuthService {
   // =====================================================
   // MOBILE VERIFICATION
   // =====================================================
-  async sendMobileOtp(dto: SendMobileOtpDto): Promise<{ message: string }> {
+  async sendMobileOtp(dto: SendMobileOtpDto, ip?: string): Promise<{ message: string }> {
     try {
       this.verifyTempToken(dto.tempToken);
-      await this.otpService.assertCanSend(dto.mobileNumber);
+      await this.otpService.assertCanSend(dto.mobileNumber, ip);
 
       // Generate OTP
       const otp = this.otpService.generateOtp();
@@ -349,13 +349,13 @@ export class AuthService {
     }
   }
 
-  async verifyMobile(dto: VerifyMobileDto): Promise<AuthResponseDto> {
+  async verifyMobile(dto: VerifyMobileDto, ip?: string): Promise<AuthResponseDto> {
     try {
       // Verify temp token
       const decoded = this.verifyTempToken(dto.tempToken);
 
       this.assertOtpOk(
-        await this.otpService.verifyOtp(dto.mobileNumber, dto.otp),
+        await this.otpService.verifyOtp(dto.mobileNumber, dto.otp, ip),
       );
 
       // verifyTempToken guarantees provider + providerUserId are non-empty, and
