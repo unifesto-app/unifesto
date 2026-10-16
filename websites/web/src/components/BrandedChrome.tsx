@@ -9,6 +9,8 @@ export interface Branding {
   name?: string | null;
   color: string | null;
   logoUrl?: string | null;
+  /** `logoUrl` is the square space logo (no wide wordmark set). */
+  logoSquare?: boolean;
   font?: string | null;
   mode?: "light" | "dark" | null;
   hidePoweredBy?: boolean;
@@ -75,7 +77,15 @@ export function BrandHeader({ branding, href }: { branding: Branding & { name: s
         <Link href={href} className="flex min-w-0 items-center gap-3">
           {branding.logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- organiser asset of unknown ratio
-            <img src={branding.logoUrl} alt="" className="h-8 w-auto max-w-[160px] object-contain md:h-9" />
+            <img
+              src={branding.logoUrl}
+              alt=""
+              className={
+                branding.logoSquare
+                  ? "h-10 w-10 shrink-0 rounded-lg object-cover md:h-11 md:w-11"
+                  : "h-8 w-auto max-w-[160px] object-contain md:h-9"
+              }
+            />
           )}
           <span className="truncate text-base font-semibold text-paper">{branding.name}</span>
         </Link>

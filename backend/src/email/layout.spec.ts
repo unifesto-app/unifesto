@@ -32,6 +32,15 @@ describe('email layout branding', () => {
     expect(html).not.toContain('support@unifesto.app');
   });
 
+  it('square logo fallback renders larger with the name beside it', () => {
+    const sq = layout('<p>x</p>', '', { ...brand, logoUrl: 'https://cdn/sq.png', logoSquare: true });
+    expect(sq).toContain('width="48" height="48"');
+    expect(sq).toContain('Acme &lt;Fest&gt;</span>');
+    const wide = layout('<p>x</p>', '', { ...brand, logoUrl: 'https://cdn/wide.png' });
+    expect(wide).toContain('height="32"');
+    expect(wide).not.toContain('Acme &lt;Fest&gt;</span>');
+  });
+
   it('hidePoweredBy drops the Unifesto credit', () => {
     const html = layout('<p>x</p>', '', { ...brand, hidePoweredBy: true });
     expect(html).toContain('Sent by Acme &lt;Fest&gt; &middot;');

@@ -401,7 +401,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H9 | Bring-your-own WhatsApp sender per space (today it's one env number) | planned |
 | H10 | **Deploy #106 white-label release.** Deploy #106: read migrations `20261014120000_white_label_theme` + `20261014140000_space_domains`, `migrate deploy`, rebuild backend + web + space + apex, Caddy reload, mobile OTA (manage-card copy) | done: shipped in the 14 Oct full deploy (83d24f0), checked 16 Oct; mobile copy rides the 5.0.0 store build |
 | H11 | **Verify white-label rendering after deploy.** Verify after deploy: branded space + event page (header/footer, font, forced mode), Branding studio uploads + preview, a branded registration email in Gmail + Apple Mail (light/dark), suspend/restore from Apex. None of this was seen rendered | done 16 Oct: checked on Beyond (pages, studio save + uploads, branded emails, Apex suspend/restore), all reverted; email dark mode checked in code only |
-| H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | planned |
+| H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | done (#146), not deployed; not seen on device |
 | H13 | **Use the custom domain in calendar and share links.** Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | done, live 16 Oct (#135) |
 | H14 | **Send certificate emails from the space's address.** Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | planned |
 | H15 | **Retire the legacy white-label request flow.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
@@ -409,11 +409,11 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | done, live 16 Oct (#135) |
 | H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
 | H19 | **Canonical URLs point to the space's custom domain.** Event + space pages of a space with a live custom domain set canonical and og:url to it, also on www (no redirect, old links keep working) | done, live 16 Oct (#135) |
-| H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | planned; needs you |
+| H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | planned; needs you (#146 adds the guard: clear 403 when Resend refuses on the domain limit) |
 | H21 | **Apex white-label form loads the target's live branding.** It showed #3491ff for every space, so Apply could overwrite a real colour | done, live 16 Oct (#140) |
-| H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | planned |
+| H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | done (#146), not deployed |
 | H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | planned; needs a decision |
-| H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | planned |
+| H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | done (#146), not deployed |
 
 ### I · Legal (from W6)
 
@@ -654,3 +654,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-16** · Assist decisions settled: event request = host without a Space; support inbox default curators only; no auto-escalation.
 - **2026-10-16** · Track R added: IAM / plan / billing / fee analysis turned into a deal-based design (D8: plan, deal and role are separate; D9: Space Admin + Curator move money). R1 is a live escalation (Co-Curator can make themselves Curator). A1 is built inside R8.
 - **2026-10-16** · Assist D1 (case model), D2 (access, routing, escalation) and D4 (private attachments) built in #147. Space desk reads only cases that are or were on it; no crew contact in threads. Needs migrate deploy + rebuild backend.
+- **2026-10-16** · Track H fixes in #146: H24 (.ics links to custom domain), H22 (larger square logo + name), H12 (mobile brand font), H20 guard (403 on Resend domain limit; upgrade still needed). Backend jest 79/79 (email, white-label), mobile tsc green. Deploy: rebuild backend + web + space; H12 needs mobile build/OTA.

@@ -106,6 +106,8 @@ export const inr = (n: number) =>
 export interface EmailBrand {
   name: string;
   logoUrl: string | null;
+  /** `logoUrl` is the square space logo: show it larger with the name beside it. */
+  logoSquare?: boolean;
   color: string | null;
   hidePoweredBy: boolean;
   /** Public space page, for the header link. */
@@ -146,7 +148,12 @@ export function layout(body: string, preheader = '', brand?: EmailBrand | null):
     : '';
   const header = brand
     ? `<a href="${esc(brand.url)}" style="text-decoration:none;">${
-        brand.logoUrl
+        brand.logoUrl && brand.logoSquare
+          ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td style="padding-right:12px;"><img src="${esc(brand.logoUrl)}" width="48" height="48" alt="" style="display:block;width:48px;height:48px;border:0;border-radius:10px;"></td>
+              <td><span ${themed([fg('text')], `font-family:${FONT};font-size:18px;font-weight:600;`)}>${esc(brand.name)}</span></td>
+            </tr></table>`
+          : brand.logoUrl
           ? `<img src="${esc(brand.logoUrl)}" height="32" alt="${esc(brand.name)}" style="display:block;height:32px;width:auto;max-width:200px;border:0;">`
           : `<span ${themed([fg('text')], `font-family:${FONT};font-size:18px;font-weight:600;`)}>${esc(brand.name)}</span>`
       }</a>`

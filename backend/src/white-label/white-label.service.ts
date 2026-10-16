@@ -51,6 +51,21 @@ export function normaliseHostname(raw: string): string {
   return host;
 }
 
+/**
+ * Resend refuses a new domain once the account's plan limit is hit (Free = 1,
+ * used by notify.unifesto.app; H20). Say so plainly instead of passing the
+ * provider's wording through. Other errors (bad name etc.) keep their message.
+ */
+export function emailDomainCreateError(error: { name?: string; message?: string } | null) {
+  const msg = error?.message ?? '';
+  if (/quota/.test(error?.name ?? '') || /limit|plan|upgrade|maximum|quota/i.test(msg)) {
+    return new ForbiddenException(
+      "Custom sending domains aren't available on Unifesto yet. Your emails still go out from Unifesto's address with your sender name. Contact support if you need this.",
+    );
+  }
+  return new BadRequestException(msg || 'Could not add that domain');
+}
+
 @Injectable()
 export class WhiteLabelService {
   private readonly logger = new Logger(WhiteLabelService.name);
@@ -417,7 +432,8 @@ export class WhiteLabelService {
     }
     const { data, error } = await this.emailDomainProvider().create({ name: hostname });
     if (error || !data) {
-      throw new BadRequestException(error?.message ?? 'Could not add that domain');
+      if (error) this.logger.warn(`Resend create ${hostname}: ${error.name} ${error.statusCode} ${error.message}`);
+      throw emailDomainCreateError(error);
     }
     return this.prisma.spaceDomain.create({
       data: {

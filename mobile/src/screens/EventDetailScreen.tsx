@@ -56,6 +56,7 @@ import { CosmosWash, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/co
 import { AppAlert } from '../components/ui/AppAlert';
 import type { SubEvent } from '../lib/api/events';
 import { coverOr, logoOr, useDefaultImages } from '../lib/defaultImages';
+import { useBrandFont } from '../lib/brandFont';
 
 const ICON = 24;
 
@@ -112,6 +113,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const subEventsY = useRef<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const { event } = d;
+  const brandFont = useBrandFont(event?.branding?.font);
   const [descExpanded, setDescExpanded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   // Unifesto Stay: shown to signed-in viewers when the event offers stays.
@@ -267,7 +269,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
             </Pressable>
           ) : null}
 
-          <Text style={[styles.title, { color: c.text }, !event.parentEvent && { marginTop: spacing[6] }]}>
+          <Text style={[styles.title, { color: c.text }, !event.parentEvent && { marginTop: spacing[6] }, brandFont && { fontFamily: brandFont }]}>
             {event.title}
           </Text>
 
