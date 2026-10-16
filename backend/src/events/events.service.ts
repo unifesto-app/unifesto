@@ -1314,78 +1314,18 @@ export class EventsService {
   }
 
   /**
-   * Validate + normalise the organiser-supplied WhatsApp links from a create or
-   * update DTO, and enforce the community-vs-group gating.
-   *
-   * Returns Prisma-friendly values: `undefined` for a field the DTO did not
-   * touch (leave the column as-is), `null` when the organiser cleared it (empty
-   * string), or the canonical `https://chat.whatsapp.com/<code>` string.
-   *
-   * Gating rule: a *community* link is the umbrella over a big/parent event's
-   * sub-event groups, so it may not sit on an event that is itself a sub-event
-   * (a sub-event joins its parent's community, it does not own one). A *group*
-   * link is allowed on any event.
+   * Validate + normalise the private attendee WhatsApp group link from a create
+   * or update DTO: `undefined` = untouched, `null` = cleared (empty string), else
+   * the canonical `https://chat.whatsapp.com/<code>`. Allowed on any event (a
+   * sub-event can carry its own, or fall back to its parent's).
    */
-  private resolveWhatsAppLinks(
-    dto: {
-      whatsappGroupUrl?: string;
-      whatsappCommunityUrl?: string;
-      whatsappAttendeeGroupUrl?: string;
-    },
-    ctx: { isSubEvent: boolean },
-  ): {
-    whatsappGroupUrl?: string | null;
-    whatsappCommunityUrl?: string | null;
-    whatsappAttendeeGroupUrl?: string | null;
-  } {
-    const result: {
-      whatsappGroupUrl?: string | null;
-      whatsappCommunityUrl?: string | null;
-      whatsappAttendeeGroupUrl?: string | null;
-    } = {};
-
-    if (dto.whatsappGroupUrl !== undefined) {
-      const check = validateWhatsAppInviteLink(dto.whatsappGroupUrl, 'group');
-      if (!check.ok) {
-        throw new BadRequestException(check.error);
-      }
-      result.whatsappGroupUrl = check.normalized ?? null;
+  private resolveAttendeeGroupUrl(raw: string | undefined): string | null | undefined {
+    if (raw === undefined) return undefined;
+    const check = validateWhatsAppInviteLink(raw, 'group');
+    if (!check.ok) {
+      throw new BadRequestException(check.error);
     }
-
-    // The private attendee invite group — always a group, allowed on any event
-    // (a sub-event can carry its own, or fall back to its parent's).
-    if (dto.whatsappAttendeeGroupUrl !== undefined) {
-      const check = validateWhatsAppInviteLink(
-        dto.whatsappAttendeeGroupUrl,
-        'group',
-      );
-      if (!check.ok) {
-        throw new BadRequestException(check.error);
-      }
-      result.whatsappAttendeeGroupUrl = check.normalized ?? null;
-    }
-
-    if (dto.whatsappCommunityUrl !== undefined) {
-      const check = validateWhatsAppInviteLink(
-        dto.whatsappCommunityUrl,
-        'community',
-      );
-      if (!check.ok) {
-        throw new BadRequestException(check.error);
-      }
-      // Only reject a *non-empty* community link on a sub-event; clearing one
-      // (null) is always fine.
-      if (check.normalized && ctx.isSubEvent) {
-        throw new BadRequestException(
-          'A WhatsApp community link belongs on a big (parent) event. A ' +
-            "sub-event joins its parent's community rather than owning one — " +
-            'use the group link for a sub-event.',
-        );
-      }
-      result.whatsappCommunityUrl = check.normalized ?? null;
-    }
-
-    return result;
+    return check.normalized ?? null;
   }
 
   /**
@@ -1468,11 +1408,9 @@ export class EventsService {
       }
     }
 
-    // Validate + gate the WhatsApp links. A freshly-created event is a
-    // sub-event exactly when it is attached to a parent on creation.
-    const whatsappLinks = this.resolveWhatsAppLinks(dto, {
-      isSubEvent: !!dto.parentEventId,
-    });
+    const whatsappAttendeeGroupUrl = this.resolveAttendeeGroupUrl(
+      dto.whatsappAttendeeGroupUrl,
+    );
 
     const slug = this.generateSlug(dto.title);
 
@@ -1503,9 +1441,7 @@ export class EventsService {
         visibility: dto.visibility,
         spaceId: dto.spaceId,
         parentEventId: dto.parentEventId ?? null,
-        whatsappGroupUrl: whatsappLinks.whatsappGroupUrl ?? null,
-        whatsappCommunityUrl: whatsappLinks.whatsappCommunityUrl ?? null,
-        whatsappAttendeeGroupUrl: whatsappLinks.whatsappAttendeeGroupUrl ?? null,
+        whatsappAttendeeGroupUrl: whatsappAttendeeGroupUrl ?? null,
         // Series parent: a non-registerable template holding the RRULE. Its
         // concrete occurrences are materialized just below.
         isRecurring: canonicalRRule !== null,
@@ -2005,12 +1941,9 @@ export class EventsService {
     // SECURITY: this endpoint is public (no auth guard) and also serves the
     // operator apps by UUID, so the WhatsApp invite link must never ride on it.
     // The private attendee group is surfaced only through JWT-guarded
-    // per-registration endpoints; the legacy group/community fields are retired
-    // and stripped too (older mobile builds read them off this payload). The
-    // operator WhatsApp page loads/edits these via GET/PATCH /events/:id/whatsapp.
+    // per-registration endpoints. The operator WhatsApp page loads/edits these
+    // via GET/PATCH /events/:id/whatsapp.
     delete (event as any).whatsappAttendeeGroupUrl;
-    delete (event as any).whatsappGroupUrl;
-    delete (event as any).whatsappCommunityUrl;
     for (const tt of (event as any).ticketTypes ?? []) {
       delete tt.whatsappGroupUrl;
     }
@@ -2164,11 +2097,9 @@ export class EventsService {
       }
     }
 
-    // Validate + gate any WhatsApp link changes against this event's place in
-    // the hierarchy (a sub-event may not own a community link).
-    const whatsappLinks = this.resolveWhatsAppLinks(dto, {
-      isSubEvent: !!event.parentEventId,
-    });
+    const whatsappAttendeeGroupUrl = this.resolveAttendeeGroupUrl(
+      dto.whatsappAttendeeGroupUrl,
+    );
 
     // Recurrence edit (series parent only). Validate a changed RRULE up front so
     // an invalid rule is a clean 400 before anything is written.
@@ -2222,9 +2153,7 @@ export class EventsService {
         tags: dto.tags,
         ...resolveCategories(dto, event),
         visibility: dto.visibility,
-        whatsappGroupUrl: whatsappLinks.whatsappGroupUrl,
-        whatsappCommunityUrl: whatsappLinks.whatsappCommunityUrl,
-        whatsappAttendeeGroupUrl: whatsappLinks.whatsappAttendeeGroupUrl,
+        whatsappAttendeeGroupUrl,
       },
     });
 

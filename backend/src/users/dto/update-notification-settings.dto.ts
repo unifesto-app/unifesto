@@ -17,6 +17,8 @@ export class UpdateNotificationSettingsDto {
   @IsBoolean()
   newEvents?: boolean;
 
+  // Retired (referrals removed); still whitelisted so old clients sending it
+  // are not 400d by forbidNonWhitelisted. Ignored.
   @IsOptional()
   @IsBoolean()
   referralUpdates?: boolean;

@@ -1066,7 +1066,6 @@ export class UsersService {
           instagramUrl: null,
           githubUrl: null,
           websiteUrl: null,
-          referralCode: null,
           appVersion: null,
           appPlatform: null,
           appVersionLastReportedAt: null,
@@ -1161,10 +1160,12 @@ export class UsersService {
     userId: string,
     dto: UpdateNotificationSettingsDto,
   ) {
+    // referralUpdates is accepted (old clients) but has no column any more.
+    const { referralUpdates: _ignored, ...data } = dto;
     const settings = await this.prisma.notificationSettings.upsert({
       where: { userId },
-      update: { ...dto },
-      create: { userId, ...dto },
+      update: data,
+      create: { userId, ...data },
     });
 
     return this.toNotificationSettingsDto(settings);
@@ -1175,7 +1176,6 @@ export class UsersService {
     emailEnabled: boolean;
     eventReminders: boolean;
     newEvents: boolean;
-    referralUpdates: boolean;
     promotions: boolean;
     productUpdates: boolean;
     registrationUpdates: boolean;
@@ -1187,7 +1187,6 @@ export class UsersService {
       emailEnabled: settings.emailEnabled,
       eventReminders: settings.eventReminders,
       newEvents: settings.newEvents,
-      referralUpdates: settings.referralUpdates,
       promotions: settings.promotions,
       productUpdates: settings.productUpdates,
       registrationUpdates: settings.registrationUpdates,
