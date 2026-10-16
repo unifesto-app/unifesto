@@ -164,7 +164,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
 
   it('leaves an already-settled registration untouched', async () => {
     const { svc, payments } = build({ ownerExists: false });
-    (svc as any).prisma.eventRegistration.findUnique = jest.fn(() => ({
+    (svc.settlement as any).prisma.eventRegistration.findUnique = jest.fn(() => ({
       ...targetRegistration,
       paymentStatus: PaymentStatus.PAID,
     }));
@@ -179,7 +179,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
     // registration since deleted) is still owed to them. Attaching must settle.
     const { svc, payments } = build({ ownerExists: false });
     const failedTarget = { ...targetRegistration, paymentStatus: PaymentStatus.FAILED };
-    (svc as any).prisma.eventRegistration.findUnique = jest.fn(({ where }: any) =>
+    (svc.settlement as any).prisma.eventRegistration.findUnique = jest.fn(({ where }: any) =>
       where.id === REG_ID ? failedTarget : null,
     );
     const settle = jest

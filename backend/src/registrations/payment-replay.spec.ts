@@ -97,7 +97,7 @@ describe('RegistrationsService payment replay guards', () => {
         orderNotes: { registrationId: 'other-reg' },
       });
       await expect(verify(svc, 'order_cheap')).rejects.toThrow(/different order/);
-      expect((svc as any).waitlist.convert).not.toHaveBeenCalled();
+      expect((svc.settlement as any).waitlist.convert).not.toHaveBeenCalled();
       expect(prisma.eventRegistration.updateMany).not.toHaveBeenCalled();
     });
 

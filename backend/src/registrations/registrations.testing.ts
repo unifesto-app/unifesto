@@ -28,17 +28,74 @@ export function buildRegistrationsService(
   teamChanges: any,
   authz: any,
 ): RegistrationsService {
-  const confirmations = new RegistrationConfirmationsService(prisma, emailService, whatsappService, events, groupSeats, redis);
-  const attendees = new RegistrationAttendeesService(prisma, whatsappService, groupSeats, authz, confirmations);
+  const confirmations = new RegistrationConfirmationsService(
+    prisma,
+    emailService,
+    whatsappService,
+    events,
+    groupSeats,
+    redis,
+  );
+  const attendees = new RegistrationAttendeesService(
+    prisma,
+    whatsappService,
+    groupSeats,
+    authz,
+    confirmations,
+  );
   const transfers = new RegistrationTransfersService(prisma, authz);
   const exporter = new RegistrationExportService(prisma, planConfig, authz);
-  const importer = new RegistrationImportService(prisma, cache, platformConfig, payments, groupSeats, confirmations);
-  const cancellation = new RegistrationCancellationService(prisma, emailService, cache, events, groupSeats, coupons, attendees);
-  const settlement = new RegistrationPaymentsService(prisma, emailService, whatsappService, cache, payments, waitlist, groupSeats, coupons, stayBookings, teamChanges, confirmations);
-  const checkout = new RegistrationCheckoutService(prisma, emailService, whatsappService, cache, payments, waitlist, groupSeats, coupons, confirmations);
+  const importer = new RegistrationImportService(
+    prisma,
+    cache,
+    platformConfig,
+    payments,
+    groupSeats,
+    confirmations,
+  );
+  const cancellation = new RegistrationCancellationService(
+    prisma,
+    emailService,
+    cache,
+    events,
+    groupSeats,
+    coupons,
+    attendees,
+  );
+  const settlement = new RegistrationPaymentsService(
+    prisma,
+    emailService,
+    whatsappService,
+    cache,
+    payments,
+    waitlist,
+    groupSeats,
+    coupons,
+    stayBookings,
+    teamChanges,
+    confirmations,
+  );
+  const checkout = new RegistrationCheckoutService(
+    prisma,
+    emailService,
+    whatsappService,
+    cache,
+    payments,
+    waitlist,
+    groupSeats,
+    coupons,
+    confirmations,
+  );
   const mine = new MyRegistrationsService(prisma, groupSeats, confirmations);
   return new RegistrationsService(
-    prisma, emailService, whatsappService, cache, planConfig, platformConfig, payments, waitlist, events, groupSeats, redis, coupons, stayBookings, teamChanges, authz,
-    confirmations, attendees, transfers, exporter, importer, cancellation, settlement, checkout, mine,
+    confirmations,
+    attendees,
+    transfers,
+    exporter,
+    importer,
+    cancellation,
+    settlement,
+    checkout,
+    mine,
   );
 }

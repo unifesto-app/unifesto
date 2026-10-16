@@ -373,8 +373,8 @@ describe('waitlist convert race (S52)', () => {
     ['webhook', (svc: any) => svc.settlement.completeWebhookPayment('reg-1', 'pay_1', 'order_1')],
   ])('the losing %s sends no second confirmation', async (_name, call) => {
     const { svc } = build({ row: offered() });
-    (svc as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: false }));
-    (svc as any).cache.incrementEventScore = jest.fn(async () => undefined);
+    (svc.settlement as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: false }));
+    (svc.settlement as any).cache.incrementEventScore = jest.fn(async () => undefined);
     const confirm = jest.spyOn(svc.confirmations, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
     await call(svc);
     expect(confirm).not.toHaveBeenCalled();
@@ -382,8 +382,8 @@ describe('waitlist convert race (S52)', () => {
 
   it('the winner confirms once', async () => {
     const { svc } = build({ row: offered() });
-    (svc as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: true }));
-    (svc as any).cache.incrementEventScore = jest.fn(async () => undefined);
+    (svc.settlement as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: true }));
+    (svc.settlement as any).cache.incrementEventScore = jest.fn(async () => undefined);
     const confirm = jest.spyOn(svc.confirmations, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
     await svc.verifyPayment('event-1', 'user-1', verifyDto);
     expect(confirm).toHaveBeenCalledTimes(1);
