@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { PaymentStatus, Prisma, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 import { CouponsService } from '../coupons/coupons.service';
 import { SoldOutError, takeSeats } from './capacity.util';
 
@@ -65,7 +66,7 @@ function build(opts: { row?: any; seatsLeft?: number; updateManyCount?: number }
     createSeatsForRegistration: jest.fn(async () => undefined),
     notifyGroupCancelled: jest.fn(async () => undefined),
   };
-  const svc = new RegistrationsService(
+  const svc = buildRegistrationsService(
     prisma, { sendCancellationConfirmation: jest.fn() } as any, {} as any, cache as any, {} as any, {} as any,
     payments as any, { convert: jest.fn() } as any, { emit: jest.fn() } as any, groupSeats as any, {} as any,
     coupons as any, {} as any, {} as any, { can: async () => true } as any,
@@ -374,7 +375,7 @@ describe('waitlist convert race (S52)', () => {
     const { svc } = build({ row: offered() });
     (svc as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: false }));
     (svc as any).cache.incrementEventScore = jest.fn(async () => undefined);
-    const confirm = jest.spyOn(svc as any, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
+    const confirm = jest.spyOn(svc.confirmations, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
     await call(svc);
     expect(confirm).not.toHaveBeenCalled();
   });
@@ -383,7 +384,7 @@ describe('waitlist convert race (S52)', () => {
     const { svc } = build({ row: offered() });
     (svc as any).waitlist.convert = jest.fn(async () => ({ registration: offered(), converted: true }));
     (svc as any).cache.incrementEventScore = jest.fn(async () => undefined);
-    const confirm = jest.spyOn(svc as any, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
+    const confirm = jest.spyOn(svc.confirmations, 'sendRegistrationConfirmations').mockResolvedValue(undefined);
     await svc.verifyPayment('event-1', 'user-1', verifyDto);
     expect(confirm).toHaveBeenCalledTimes(1);
   });

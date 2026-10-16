@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { PaymentStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 /**
  * Unit tests for the orphaned-payment guards in
@@ -69,7 +70,7 @@ describe('RegistrationsService — reconcile orphan guards', () => {
         ...opts.payment,
       })),
     };
-    const svc = new RegistrationsService(
+    const svc = buildRegistrationsService(
       prisma as any, // prisma
       {} as any, // email
       {} as any, // whatsapp

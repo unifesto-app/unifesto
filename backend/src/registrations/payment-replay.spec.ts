@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 jest.mock('./form-answers.policy', () => ({
   enforceFormAnswers: jest.fn(async () => undefined),
@@ -66,7 +67,7 @@ describe('RegistrationsService payment replay guards', () => {
     };
     const coupons = { releaseByRegistration: jest.fn(async () => undefined) };
     const waitlist = { convert: jest.fn() };
-    const svc = new RegistrationsService(
+    const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, { redis: { getClient: () => null } } as any, {} as any, {} as any,
       payments as any, waitlist as any, {} as any, {} as any, {} as any,
       coupons as any, { completeFromWebhook: jest.fn(async () => false) } as any,

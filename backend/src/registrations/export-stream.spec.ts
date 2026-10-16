@@ -1,4 +1,5 @@
 import { RegistrationsService } from './registrations.service';
+import { buildRegistrationsService } from './registrations.testing';
 
 /**
  * S33: the attendee/transactions CSV export reads registrations a page at a
@@ -48,7 +49,7 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
       groupSeat: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const planConfig = { getEffectiveLimits: () => ({ hasBulkExport: true }), resolvePlatformFeePercent: () => 0 };
-    const svc = new RegistrationsService(
+    const svc = buildRegistrationsService(
       prisma, {} as any, {} as any, {} as any, planConfig as any, {} as any, {} as any,
       {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, { can: async () => true } as any,
     );
