@@ -107,6 +107,7 @@ export default function StatusRequestsPage() {
     id: string,
     status: "APPROVED" | "REJECTED"
   ) => {
+    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Decline"} this request? This can't be undone.`)) return;
     setActing(id);
     const { error } = await reviewStatusRequest(id, status);
     if (!error) {

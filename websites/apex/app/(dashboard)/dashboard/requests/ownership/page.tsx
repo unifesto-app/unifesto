@@ -113,6 +113,7 @@ export default function OwnershipRequestsPage() {
     id: string,
     status: "APPROVED" | "REJECTED"
   ) => {
+    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Decline"} this request? This can't be undone.`)) return;
     setActing(id);
     const { error } = await reviewOwnershipRequest(id, { status });
     if (!error) {

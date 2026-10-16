@@ -233,7 +233,7 @@ export default function AdminEventDetailPage() {
             {hasActions && (
               <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
                 {canPublish && (
-                  <Button size="sm" disabled={acting} onClick={() => void runAction(() => publishEventAdmin(event.id))}>
+                  <Button size="sm" disabled={acting} onClick={() => window.confirm(`Publish "${event.title}"? It goes live to everyone.`) && void runAction(() => publishEventAdmin(event.id))}>
                     Publish
                   </Button>
                 )}
@@ -243,7 +243,7 @@ export default function AdminEventDetailPage() {
                   </Button>
                 )}
                 {canHide && (
-                  <Button variant="outline" size="sm" disabled={acting} onClick={() => void runAction(() => hideEventAdmin(event.id))}>
+                  <Button variant="outline" size="sm" disabled={acting} onClick={() => window.confirm(`Hide "${event.title}"? It disappears from public listings.`) && void runAction(() => hideEventAdmin(event.id))}>
                     Hide
                   </Button>
                 )}

@@ -94,7 +94,7 @@ export default function IamPage() {
     if (granted) {
       // Revoking access — confirm first.
       setConfirm({ code: role.code, action });
-    } else {
+    } else if (window.confirm(`Grant "${action}" to ${role.code}? It applies everywhere at once.`)) {
       applyToggle(role.code, action, true);
     }
   };

@@ -83,6 +83,7 @@ export default function WhiteLabelRequestsPage() {
     status: "APPROVED" | "REJECTED",
     reviewNote?: string
   ) => {
+    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Decline"} this request? This can't be undone.`)) return;
     setActing(id);
     const { error } = await reviewWhiteLabelRequest(
       id,
