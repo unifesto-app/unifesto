@@ -4,6 +4,8 @@
  * redirect so the behaviour is consistent everywhere.
  */
 
+import { useSyncExternalStore } from 'react';
+
 export const APP_PACKAGE = 'com.unifesto.app';
 export const IOS_APP_ID = '6767165496';
 export const APP_STORE_URL = `https://apps.apple.com/in/app/unifesto-discover-events/id${IOS_APP_ID}`;
@@ -32,6 +34,33 @@ export function storeUrlFor(platform: MobilePlatform = detectMobilePlatform()): 
   return '/download';
 }
 
+/** `unifesto://event/x` → Android intent URL that falls back to the Play Store. */
+export function androidIntentUrl(scheme: string): string {
+  const [proto, rest] = scheme.split('://');
+  return (
+    `intent://${rest}#Intent;scheme=${proto};package=${APP_PACKAGE};` +
+    `S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end`
+  );
+}
+
+const noopSubscribe = () => () => {};
+
+/**
+ * `href` for an "Open in app" link. The click handler (openAppOrStore) is the
+ * main path, but taps before hydration, long-press "open" and in-app browsers
+ * that follow the href directly use this, so on Android it must be the intent
+ * URL too. The server render can't know the platform: it starts as the scheme
+ * and switches on hydration.
+ */
+export function useAppHref(scheme: string): string {
+  const android = useSyncExternalStore(
+    noopSubscribe,
+    () => detectMobilePlatform() === 'android',
+    () => false,
+  );
+  return android ? androidIntentUrl(scheme) : scheme;
+}
+
 /**
  * Try to open the app via its custom scheme. If the app is installed the page
  * backgrounds (visibility → hidden) and we do nothing further. If it isn't
@@ -56,10 +85,7 @@ export function openAppOrStore(
   // browsers. An intent:// URL is the supported way: Chrome opens the app if
   // it's installed and goes to the fallback (Play Store) itself if not.
   if (platform === 'android') {
-    const [proto, rest] = scheme.split('://');
-    window.location.href =
-      `intent://${rest}#Intent;scheme=${proto};package=${APP_PACKAGE};` +
-      `S.browser_fallback_url=${encodeURIComponent(PLAY_STORE_URL)};end`;
+    window.location.href = androidIntentUrl(scheme);
     return () => {};
   }
 
