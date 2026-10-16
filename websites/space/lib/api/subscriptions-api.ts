@@ -115,6 +115,8 @@ export interface UpgradeOrder {
   currency: string;
   plan: OrgPlan;
   billingCycle: BillingCycle;
+  /** Public key for the checkout modal (served by the backend, not env). */
+  razorpayKeyId: string;
 }
 
 export interface VerifyUpgradeInput {

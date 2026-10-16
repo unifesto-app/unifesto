@@ -17,6 +17,7 @@ import {
   getAllPlans,
   cancelSpaceSubscription,
   createSpaceUpgradeOrder,
+  verifySpaceUpgrade,
   billingSummary,
   priceFor,
   planRank,
@@ -113,57 +114,51 @@ export default function BillingPage() {
     setBusyPlan(null);
   }
 
-  // -----------------------------------------------------------------------
-  // TODO(contribution): implement the paid upgrade handler.
-  //
-  // The read-only surface below is done. This handler owns the ONE decision
-  // this feature still needs — how a Space Admin actually pays. The backend
-  // is already wired for it:
-  //
-  //   1. createSpaceUpgradeOrder(spaceId, { plan, billingCycle })
-  //        → { orderId, amount, currency }   (a Razorpay order)
-  //   2. open Razorpay checkout for that order and let the admin pay
-  //   3. verifySpaceUpgrade(spaceId, { orderId, paymentId, signature })
-  //        → the activated Subscription, then call load()
-  //
-  // Step 2 is the open question and why this is stubbed rather than guessed:
-  // there is NO existing Razorpay checkout pattern anywhere in web/mobile/apex
-  // to copy, and no public key is configured yet. The choices that shape it:
-  //   • Razorpay modal (load checkout.razorpay.com/v1/checkout.js) — needs a
-  //     NEXT_PUBLIC_RAZORPAY_KEY_ID and a CSP allowance in proxy.ts for that
-  //     host + frame; smoothest UX, keeps the admin in-app.
-  //   • Hosted redirect — no script/CSP work, but bounces out and back.
-  //   • Downgrades: the backend upgrade route rejects same-or-lower paid moves;
-  //     decide whether "downgrade" here just schedules a drop at renewal
-  //     (cancel semantics) or is disabled with a note.
-  //
-  // Wire steps 1 & 3 through the api client already imported above; add step 2
-  // once the checkout approach is chosen.
   async function handleChangePlan(plan: OrgPlan, targetCycle: BillingCycle) {
     setActionError("");
     setNotice("");
     setBusyPlan(plan);
-    try {
-      const { data, error } = await createSpaceUpgradeOrder(spaceId, {
-        plan,
-        billingCycle: targetCycle,
-      });
-      if (error) {
-        setActionError(error.message);
-        return;
-      }
-      if (data) {
-        // Order created; checkout + verifySpaceUpgrade() land with the payment
-        // integration (see TODO above).
-        setNotice(
-          `Ready to charge ₹${data.amount.toLocaleString("en-IN")} for ${
-            PLAN_LABEL[plan]
-          } (${targetCycle.toLowerCase()}). Payment checkout is not wired up yet.`
-        );
-      }
-    } finally {
+    const { data: order, error } = await createSpaceUpgradeOrder(spaceId, {
+      plan,
+      billingCycle: targetCycle,
+    });
+    if (error || !order) {
+      setActionError(error?.message ?? "Could not start checkout");
       setBusyPlan(null);
+      return;
     }
+    if (!(await loadRazorpay())) {
+      setActionError("Could not load the payment window. Check your connection.");
+      setBusyPlan(null);
+      return;
+    }
+    new window.Razorpay({
+      key: order.razorpayKeyId,
+      order_id: order.orderId,
+      amount: order.amount * 100,
+      currency: order.currency,
+      name: "Unifesto",
+      description: `${PLAN_LABEL[plan]} plan (${targetCycle.toLowerCase()})`,
+      notes: { spaceId },
+      handler: async (res: RazorpaySuccess) => {
+        const { error } = await verifySpaceUpgrade(spaceId, {
+          orderId: res.razorpay_order_id,
+          paymentId: res.razorpay_payment_id,
+          signature: res.razorpay_signature,
+        });
+        if (error) {
+          // Paid but not activated: the payment id lets support attach it.
+          setActionError(
+            `Payment received but the plan didn't activate (${error.message}). Reference ${res.razorpay_payment_id}.`
+          );
+        } else {
+          setNotice(`You're on ${PLAN_LABEL[plan]} now.`);
+          await load();
+        }
+        setBusyPlan(null);
+      },
+      modal: { ondismiss: () => setBusyPlan(null) },
+    }).open();
   }
 
   if (!allowed) {
@@ -422,18 +417,18 @@ export default function BillingPage() {
                         Contact sales
                       </a>
                     </Button>
+                  ) : direction === "down" ? (
+                    <p className="text-center text-xs text-muted-foreground">
+                      To move down, cancel your plan. It ends at the close of
+                      this period.
+                    </p>
                   ) : (
                     <Button
-                      variant={direction === "up" ? "default" : "outline"}
                       className="w-full"
-                      disabled={busyPlan !== null || price === null}
+                      disabled={busyPlan !== null || !price}
                       onClick={() => handleChangePlan(plan.plan, cycle)}
                     >
-                      {busyPlan === plan.plan
-                        ? "Working…"
-                        : direction === "up"
-                          ? "Upgrade"
-                          : "Downgrade"}
+                      {busyPlan === plan.plan ? "Working…" : "Upgrade"}
                     </Button>
                   )}
                 </CardContent>
@@ -444,6 +439,31 @@ export default function BillingPage() {
       )}
     </div>
   );
+}
+
+type RazorpaySuccess = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+declare global {
+  interface Window {
+    // ponytail: untyped checkout.js options; add a types package if we use more of it.
+    Razorpay: new (options: Record<string, unknown>) => { open(): void };
+  }
+}
+
+/** Inject Razorpay's checkout.js once; resolves false if it can't load. */
+function loadRazorpay(): Promise<boolean> {
+  if (window.Razorpay) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 }
 
 function MiniFact({ label, value }: { label: string; value: string }) {
