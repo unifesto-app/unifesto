@@ -40,6 +40,7 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
         firstResponseAt: null,
         desk: SupportDesk.PLATFORM,
         eventId: null,
+        escalatedAt: null,
         messages: [],
         ...ticket,
       })),
@@ -115,6 +116,16 @@ describe('SupportService (Assist case)', () => {
     expect(bot.prisma.supportTicket.update.mock.calls[0][0].data.status).toBe(SupportTicketStatus.BOT);
   });
 
+  it('never returns author or assignee contact details in the thread', async () => {
+    const { prisma, service } = setup();
+    await service.getTicket('t-1', 'user-1');
+    const inc = prisma.supportTicket.findUnique.mock.calls[0][0].include;
+    for (const sel of [inc.assignedTo.select, inc.messages.include.author.select]) {
+      expect(sel).not.toHaveProperty('mobileNumber');
+      expect(sel).not.toHaveProperty('identities');
+    }
+  });
+
   it('hides internal notes from the requester', async () => {
     const messages = [{ id: 'a', internal: false }, { id: 'b', internal: true }];
     const { service } = setup({ ticket: { messages } });
@@ -125,7 +136,7 @@ describe('SupportService (Assist case)', () => {
 
 /** D2: access, routing and escalation. */
 describe('SupportService (Assist access, routing, escalation)', () => {
-  const spaceCase = { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1' };
+  const spaceCase = { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', escalatedAt: null as Date | null };
   const curator: Role = { code: RoleCode.CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' };
   const coCurator: Role = { code: RoleCode.CO_CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' };
   const crew: Role = { code: RoleCode.CREW, scope: RoleScope.EVENT, eventId: 'ev-1' };
@@ -148,8 +159,15 @@ describe('SupportService (Assist access, routing, escalation)', () => {
     it('denies another space and strangers; space keeps read after escalation', async () => {
       expect(await setup({ roles: [otherSpaceAdmin] }).service.canSeeCase('staff', spaceCase)).toBe(false);
       expect(await setup().service.canSeeCase('stranger', spaceCase)).toBe(false);
-      const escalated = { ...spaceCase, desk: SupportDesk.PLATFORM };
+      const escalated = { ...spaceCase, desk: SupportDesk.PLATFORM, escalatedAt: new Date() };
       expect(await setup({ roles: [curator] }).service.canSeeCase('staff', escalated)).toBe(true);
+    });
+
+    it('keeps a case routed straight to Platform away from the space, even with an eventId', async () => {
+      const platformCase = { ...spaceCase, desk: SupportDesk.PLATFORM };
+      for (const r of [spaceAdmin, curator]) {
+        expect(await setup({ roles: [r] }).service.canSeeCase('staff', platformCase)).toBe(false);
+      }
     });
 
     it('getTicket forbids a stranger', async () => {
@@ -220,7 +238,7 @@ describe('SupportService (Assist access, routing, escalation)', () => {
     const msg = (over: any = {}) => ({
       ticketId: 't-1',
       authorId: 'user-1',
-      ticket: { status: SupportTicketStatus.OPEN },
+      ticket: { status: SupportTicketStatus.OPEN, requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', escalatedAt: null },
       _count: { attachments: 0 },
       ...over,
     });
@@ -229,7 +247,7 @@ describe('SupportService (Assist access, routing, escalation)', () => {
       name: 'shot.png',
       message: {
         internal: false,
-        ticket: { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', ...ticket },
+        ticket: { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', escalatedAt: null, ...ticket },
       },
       ...over,
     });
@@ -252,9 +270,17 @@ describe('SupportService (Assist access, routing, escalation)', () => {
       await expect(setup({ message: msg() }).service.addAttachment('t-1', 'm-1', 'user-1', file(Buffer.from('MZ-exe')))).rejects.toBeInstanceOf(BadRequestException);
       await expect(setup({ message: msg() }).service.addAttachment('t-1', 'm-1', 'user-1', file(PNG, 11 * 1024 * 1024))).rejects.toBeInstanceOf(BadRequestException);
       await expect(
-        setup({ message: msg({ ticket: { status: SupportTicketStatus.CLOSED } }) }).service.addAttachment('t-1', 'm-1', 'user-1', file(PNG)),
+        setup({ message: msg({ ticket: { ...msg().ticket, status: SupportTicketStatus.CLOSED } }) }).service.addAttachment('t-1', 'm-1', 'user-1', file(PNG)),
       ).rejects.toBeInstanceOf(BadRequestException);
       await expect(setup({ message: msg() }).service.addAttachment('t-2', 'm-1', 'user-1', file(PNG))).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('lets space crew attach only while the case is on their desk', async () => {
+      const mine = msg({ authorId: 'cur-1' });
+      await expect(setup({ message: mine, roles: [curator] }).service.addAttachment('t-1', 'm-1', 'cur-1', file(PNG))).resolves.toBeDefined();
+      const escalated = msg({ authorId: 'cur-1', ticket: { ...mine.ticket, desk: SupportDesk.PLATFORM, escalatedAt: new Date() } });
+      await expect(setup({ message: escalated, roles: [curator] }).service.addAttachment('t-1', 'm-1', 'cur-1', file(PNG))).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(setup({ message: mine }).service.addAttachment('t-1', 'm-1', 'cur-1', file(PNG))).rejects.toBeInstanceOf(ForbiddenException);
     });
 
     it('signs a short-lived link for the requester and the space desk', async () => {
@@ -268,6 +294,10 @@ describe('SupportService (Assist access, routing, escalation)', () => {
 
     it('hides attachments from outsiders, and internal-note files from the requester', async () => {
       await expect(setup({ attachment: att() }).service.attachmentUrl('a-1', 'stranger')).rejects.toBeInstanceOf(NotFoundException);
+      const curatorRole = [{ code: RoleCode.CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' }];
+      await expect(
+        setup({ attachment: att({}, { desk: SupportDesk.PLATFORM }), roles: curatorRole }).service.attachmentUrl('a-1', 'cur-1'),
+      ).rejects.toBeInstanceOf(NotFoundException);
       const internal = att({ message: { ...att().message, internal: true } });
       await expect(setup({ attachment: internal }).service.attachmentUrl('a-1', 'user-1')).rejects.toBeInstanceOf(NotFoundException);
       await expect(setup({ attachment: internal, admin: true }).service.attachmentUrl('a-1', 'admin-1')).resolves.toHaveProperty('url');

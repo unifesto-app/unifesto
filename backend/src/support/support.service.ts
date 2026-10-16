@@ -31,6 +31,14 @@ const userSelect = {
   identities: { select: { email: true }, take: 1 },
 } satisfies Prisma.UserSelect;
 
+/** Message authors and assignees: no contact details (desk crew reply too). */
+const publicUserSelect = {
+  id: true,
+  fullName: true,
+  username: true,
+  avatarUrl: true,
+} satisfies Prisma.UserSelect;
+
 const spaceSelect = {
   id: true,
   name: true,
@@ -77,7 +85,7 @@ const ATTACHMENT_LINK_SECONDS = 5 * 60;
 const attachmentSelect = { id: true, name: true, mime: true, size: true, createdAt: true } satisfies Prisma.SupportAttachmentSelect;
 
 /** The case fields access is decided on. */
-type CaseAccess = { requesterId: string; desk: SupportDesk; eventId: string | null };
+type CaseAccess = { requesterId: string; desk: SupportDesk; eventId: string | null; escalatedAt: Date | null };
 
 @Injectable()
 export class SupportService {
@@ -104,10 +112,15 @@ export class SupportService {
       : Promise.resolve(false);
   }
 
-  /** Requester, Platform, or the event's space support team (which keeps read after escalation). */
+  /**
+   * Requester, Platform, or the event's space support team, but only on a case
+   * that is or was on the space desk (it keeps read after escalation). A case
+   * routed straight to Platform stays Platform-only even with an eventId.
+   */
   async canSeeCase(userId: string, c: CaseAccess): Promise<boolean> {
     if (c.requesterId === userId) return true;
-    return (await this.isPlatform(userId)) || this.isSpaceSupport(userId, c);
+    if (await this.isPlatform(userId)) return true;
+    return (c.desk === SupportDesk.SPACE || c.escalatedAt !== null) && this.isSpaceSupport(userId, c);
   }
 
   /** Works the desk the case is on now. Platform sees and works everything. */
@@ -267,11 +280,11 @@ export class SupportService {
       where: { id },
       include: {
         requester: { select: userSelect },
-        assignedTo: { select: userSelect },
+        assignedTo: { select: publicUserSelect },
         space: { select: spaceSelect },
         messages: {
           orderBy: { createdAt: 'asc' },
-          include: { author: { select: userSelect }, attachments: { select: attachmentSelect } },
+          include: { author: { select: publicUserSelect }, attachments: { select: attachmentSelect } },
         },
       },
     });
@@ -306,6 +319,7 @@ export class SupportService {
         firstResponseAt: true,
         desk: true,
         eventId: true,
+        escalatedAt: true,
       },
     });
     if (!ticket) {
@@ -345,7 +359,7 @@ export class SupportService {
           side: admin ? SupportMessageSide.DESK : SupportMessageSide.REQUESTER,
           body: dto.body,
         },
-        include: { author: { select: userSelect } },
+        include: { author: { select: publicUserSelect } },
       }),
       this.prisma.supportTicket.update({
         where: { id },
@@ -383,12 +397,16 @@ export class SupportService {
       select: {
         ticketId: true,
         authorId: true,
-        ticket: { select: { status: true } },
+        ticket: { select: { status: true, requesterId: true, desk: true, eventId: true, escalatedAt: true } },
         _count: { select: { attachments: true } },
       },
     });
     if (!message || message.ticketId !== ticketId) throw new NotFoundException('Message not found');
     if (message.authorId !== userId) throw new ForbiddenException('You can only attach files to your own message');
+    // Same write rule as addMessage: the requester, or whoever works the desk now.
+    if (message.ticket.requesterId !== userId && !(await this.isDeskMember(userId, message.ticket))) {
+      throw new ForbiddenException('You cannot add files to this ticket');
+    }
     if (message.ticket.status === SupportTicketStatus.CLOSED) {
       throw new BadRequestException('This ticket is closed. Open a new ticket to continue.');
     }
@@ -427,7 +445,7 @@ export class SupportService {
         message: {
           select: {
             internal: true,
-            ticket: { select: { requesterId: true, desk: true, eventId: true } },
+            ticket: { select: { requesterId: true, desk: true, eventId: true, escalatedAt: true } },
           },
         },
       },
@@ -530,7 +548,7 @@ export class SupportService {
   async escalate(id: string, userId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true, requesterId: true, desk: true, eventId: true, status: true },
+      select: { id: true, requesterId: true, desk: true, eventId: true, escalatedAt: true, status: true },
     });
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');
