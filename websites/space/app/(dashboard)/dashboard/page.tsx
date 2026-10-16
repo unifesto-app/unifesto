@@ -35,7 +35,8 @@ import { cn } from "@/lib/utils/cn";
  * Prioritisation — the one spot where product judgment lives.
  *
  * These two pure functions decide what an operator sees first when they land.
- * The defaults: "upcoming" = future published events, soonest first; "needs
+ * The defaults: "upcoming" = live or future events that haven't ended, soonest
+ * start first (so anything happening now leads); "needs
  * attention" = drafts, most-recently-touched first (a draft is unfinished work
  * that only the operator can move forward). If your team thinks in different
  * terms — events nearly sold out, events ending soon, low-registration events —
@@ -45,7 +46,11 @@ import { cn } from "@/lib/utils/cn";
 function selectUpcoming(events: Event[], limit = 5): Event[] {
   const now = Date.now();
   return events
-    .filter((e) => e.status === "PUBLISHED" && new Date(e.startDateTime).getTime() >= now)
+    .filter(
+      (e) =>
+        (e.status === "PUBLISHED" || e.status === "ONGOING") &&
+        new Date(e.endDateTime).getTime() >= now
+    )
     .sort(
       (a, b) =>
         new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime()
@@ -132,7 +137,9 @@ export default function SpaceDashboardPage() {
   const busy = sessionLoading || loading || !currentSpace;
 
   const stats = useMemo(() => {
-    const published = events.filter((e) => e.status === "PUBLISHED").length;
+    const published = events.filter(
+      (e) => e.status === "PUBLISHED" || e.status === "ONGOING"
+    ).length;
     const drafts = events.filter((e) => e.status === "DRAFT").length;
     const attendees = events.reduce((sum, e) => sum + attendeeTotal(e), 0);
     return { published, drafts, attendees, total: events.length };
@@ -248,7 +255,7 @@ export default function SpaceDashboardPage() {
           <section className="lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">
-                Upcoming events
+                Live and upcoming
               </h2>
               <Link
                 href="/dashboard/events"
@@ -265,7 +272,7 @@ export default function SpaceDashboardPage() {
                   <EmptyState
                     icon={CalendarBlank}
                     title="Nothing on the calendar yet"
-                    description="Published events with a future start date show up here."
+                    description="Published events that haven't ended yet show up here."
                   />
                 </CardContent>
               ) : (
