@@ -192,7 +192,6 @@ export class SpacesService {
           _count: {
             select: {
               userRoles: true,
-              discussions: true,
               events: { where: NOT_DELETED },
             },
           },
@@ -291,7 +290,6 @@ export class SpacesService {
         },
         _count: {
           select: {
-            discussions: true,
             userRoles: true,
             events: { where: NOT_DELETED },
             childSpaces: true,
@@ -385,7 +383,6 @@ export class SpacesService {
         _count: {
           select: {
             userRoles: true,
-            discussions: true,
             events: { where: NOT_DELETED },
           },
         },
@@ -2249,7 +2246,6 @@ export class SpacesService {
           events: 0,
           upcomingEvents: 0,
           registrations: 0,
-          discussions: 0,
         },
         eventsByStatus: {},
         subSpaces: [],
@@ -2265,7 +2261,6 @@ export class SpacesService {
       eventGroups,
       upcomingEventGroups,
       registrationGroups,
-      discussionGroups,
       eventStatusGroups,
     ] = await Promise.all([
       this.prisma.userRole.groupBy({
@@ -2292,11 +2287,6 @@ export class SpacesService {
         where: { spaceId: { in: descendantIds } },
         _sum: { registeredCount: true },
       }),
-      this.prisma.discussion.groupBy({
-        by: ['spaceId'],
-        where: { spaceId: { in: descendantIds } },
-        _count: { _all: true },
-      }),
       this.prisma.event.groupBy({
         by: ['status'],
         where: { spaceId: { in: descendantIds } },
@@ -2316,9 +2306,6 @@ export class SpacesService {
     );
     const upcomingBySpace = new Map(
       upcomingEventGroups.map((g) => [g.spaceId, g._count._all]),
-    );
-    const discussionBySpace = new Map(
-      discussionGroups.map((g) => [g.spaceId, g._count._all]),
     );
 
     // Net revenue per space = PAID ticket revenue minus the app processing fee.
@@ -2362,7 +2349,6 @@ export class SpacesService {
         events: eventBySpace.get(d.id) ?? 0,
         upcomingEvents: upcomingBySpace.get(d.id) ?? 0,
         registrations: registrationsBySpace.get(d.id) ?? 0,
-        discussions: discussionBySpace.get(d.id) ?? 0,
         revenue: Math.round((revenueBySpace.get(d.id) ?? 0) * 100) / 100,
       }))
       .sort((a, b) => a.depth - b.depth || a.name.localeCompare(b.name));
@@ -2382,7 +2368,6 @@ export class SpacesService {
       events: subSpaces.reduce((sum, s) => sum + s.events, 0),
       upcomingEvents: subSpaces.reduce((sum, s) => sum + s.upcomingEvents, 0),
       registrations: registrationGroups._sum.registeredCount ?? 0,
-      discussions: subSpaces.reduce((sum, s) => sum + s.discussions, 0),
       revenue:
         Math.round(subSpaces.reduce((sum, s) => sum + s.revenue, 0) * 100) / 100,
     };

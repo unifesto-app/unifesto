@@ -246,7 +246,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | 0.6 | **Backend: remove legacy non-hackathon leaderboard routes.** Backend: legacy non-hackathon routes in `leaderboard/leaderboard.controller.ts` (rounds, metrics, panelists, awards). **Careful:** the hackathon services live in the same folder; delete only the controller routes with no callers | done (#107) |
 | 0.7 | **Backend: remove referral and wallet leftovers.** Backend: referral and wallet leftovers (dormant tables decided separately) | done (#107) |
 | 0.8 | **Close the open TODO(you) decisions.** Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | done (#108) |
-| 0.9 | **Drop the dead discussions feature.** `Discussion` / `DiscussionReply` have no module or UI; only `_count.discussions` in `spaces.service.ts` and the client types in space/apex/mobile `spaces-api`. Remove them, then a migration dropping `discussions` and `discussion_replies`. Replaces B10 | planned |
+| 0.9 | **Drop the dead discussions feature.** `Discussion` / `DiscussionReply` have no module or UI; only `_count.discussions` in `spaces.service.ts` and the client types in space/apex/mobile `spaces-api`. Remove them, then a migration dropping `discussions` and `discussion_replies`. Replaces B10 | in review (#149) |
 
 ### A · Money and trust
 

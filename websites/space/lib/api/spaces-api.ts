@@ -119,7 +119,6 @@ export interface SubSpaceAnalyticsRow {
   events: number;
   upcomingEvents: number;
   registrations: number;
-  discussions: number;
   /** Net ticket revenue (PAID minus app fee, refunds excluded). */
   revenue: number;
 }
@@ -137,7 +136,6 @@ export interface SubSpaceAnalytics {
     events: number;
     upcomingEvents: number;
     registrations: number;
-    discussions: number;
     /** Net ticket revenue across the whole subtree. */
     revenue: number;
   };

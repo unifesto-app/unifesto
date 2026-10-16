@@ -188,7 +188,6 @@ export interface SubSpaceAnalyticsRow {
   events: number;
   upcomingEvents: number;
   registrations: number;
-  discussions: number;
 }
 
 /**
@@ -204,7 +203,6 @@ export interface SubSpaceAnalytics {
     events: number;
     upcomingEvents: number;
     registrations: number;
-    discussions: number;
   };
   eventsByStatus: Record<string, number>;
   subSpaces: SubSpaceAnalyticsRow[];
