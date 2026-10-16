@@ -26,7 +26,7 @@ import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/compo
 import { registerEventInterest } from "@/lib/api/leads";
 import { getEventBySlug, type Event, type SubEventSummary } from "@/lib/api/events";
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from "@/lib/calendar";
-import { openAppOrStore } from "@/lib/appLinks";
+import { openAppOrStore, useAppHref } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
 import { getEventAdditionalInfo, type AgendaItem, type Speaker, type Prize, type Faq, type Contact } from "@/lib/api/additional-info";
 
@@ -101,6 +101,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
   const [agendaOpen, setAgendaOpen] = useState(false);
   // Captured once so render stays pure; decides whether the event is over.
   const [now] = useState(() => Date.now());
+  const appHref = useAppHref(`unifesto://event/${event?.slug ?? ""}`);
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -591,7 +592,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
               View events
             </a>
           ) : (
-            <a href={appDeepLink} onClick={openApp} className="btn btn-lg btn-primary shrink-0">
+            <a href={appHref} onClick={openApp} className="btn btn-lg btn-primary shrink-0">
               <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden />
               Register
             </a>

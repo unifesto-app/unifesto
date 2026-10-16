@@ -12,7 +12,7 @@ import EventCard from "@/components/EventCard";
 import EventCardSkeleton from "@/components/EventCardSkeleton";
 import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/components/DetailParts";
 import { submitSpaceInquiry } from "@/lib/api/leads";
-import { openAppOrStore } from "@/lib/appLinks";
+import { openAppOrStore, useAppHref } from "@/lib/appLinks";
 import { getSpaceBySlug, getSpaceById, getSpaceEvents, getSubSpaces, type Space } from "@/lib/api/spaces";
 import type { Event } from "@/lib/api/events";
 
@@ -68,6 +68,7 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
   const [detailsLoading, setDetailsLoading] = useState(true);
   // Captured once so render stays pure; splits upcoming from past.
   const [now] = useState(() => Date.now());
+  const spaceHref = useAppHref(`unifesto://space/${space?.slug || space?.id || ""}`);
 
   useEffect(() => {
     const loadSpace = async () => {
@@ -331,7 +332,7 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
 
       <ActionBar label={memberCount === 1 ? "Member" : "Members"} value={memberCount.toLocaleString("en-IN")}>
         <a
-          href={spaceDeepLink}
+          href={spaceHref}
           onClick={(e) => {
             e.preventDefault();
             openAppOrStore(spaceDeepLink);

@@ -4,10 +4,11 @@ import { useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { DeviceMobile } from '@unifesto/unicon/react';
-import { openAppOrStore, detectMobilePlatform } from '@/lib/appLinks';
+import { openAppOrStore, detectMobilePlatform, useAppHref } from '@/lib/appLinks';
 
 function SignupRedirect() {
   const appScheme = `unifesto://signup`;
+  const appHref = useAppHref(appScheme);
 
   useEffect(() => {
     // On mobile, try to open the app; if it isn't installed, openAppOrStore
@@ -39,7 +40,7 @@ function SignupRedirect() {
             This signup link is meant to be opened in the Unifesto app.
           </p>
           <a
-            href={appScheme}
+            href={appHref}
             onClick={(e) => {
               e.preventDefault();
               openAppOrStore(appScheme);
