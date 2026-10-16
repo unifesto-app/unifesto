@@ -35,6 +35,8 @@ Covers mobile, backend, and all four websites (web, space, apex, plus the retire
 | D5 | Load testing never touches production. Use a staging copy only. |
 | D6 | **No store release before Wed 2 Dec 2026.** 5.0.0 is the next store build and goes live on both stores that day. Whatever is done and device-QA'd by the freeze ships in it; the rest waits for 5.x. |
 | D7 | **AI in Assist suggests, never decides.** Claude Haiku 5.5 (`claude-haiku-5-5`) answers, triages, drafts and summarises; it never moves money, approves a request or sends a reply on its own. Any refusal or API error falls back to a human queue. |
+| D8 | **Plan, deal and role are three separate things.** Plan = what a space can do (features, limits). Deal = what it pays (plan price, buyer fee, organiser fee), per space or per event, versioned. Role = who can do it. Every paid row snapshots the terms it was sold under, so changing a deal never rewrites past money. See [Track R](#r--deals-billing-and-access). |
+| D9 | **Space Admin and Curator both move event money** (payouts, refund approvals). Money lands in the space's bank account, so Space Admins get it officially; Co-Curator and Crew never do. |
 
 ### 5.0.0 · release Wed 2 Dec 2026
 
@@ -67,6 +69,7 @@ There are no dates, only a sensible sequence. Each step makes the next one cheap
 
 0. **S1–S8** first: live payment and account-takeover holes. Deploy straight away; the backend isn't held to 2 Dec.
 1. **S9–S16** (money races) and **S17–S22** (outage risks), then **O7–O16**, so the 5.0.0 runtime is protected from day one. **O1–O6** follow the [5.0.0 schedule](#500--release-wed-2-dec-2026). No mobile change reaches users before 2 Dec.
+1. **R1** with the next backend deploy (Co-Curator escalation to money). Then **R4–R6** before any custom client deal is signed, then **R7–R9**. R8 includes A1's checkout.
 1. **A1–A3**: billing checkout + confirm dialogs. These are the only items that block money or trust.
 2. **Track 0**: the cleanup. It removes about 10k lines with no behaviour change, so everything after it touches less code.
 3. **B1–B4**: the backend features that already exist and only need a button.
@@ -249,7 +252,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| A1 | **Space plan upgrade checkout via Razorpay.** : wire Razorpay checkout + `verifySpaceUpgrade` (`websites/space/.../billing/page.tsx:117-161` stops at "not wired up yet") | next |
+| A1 | **Space plan upgrade checkout via Razorpay.** : wire Razorpay checkout + `verifySpaceUpgrade` (`websites/space/.../billing/page.tsx:117-161` stops at "not wired up yet"). Built as part of R8 | next |
 | A2 | **Apex: confirm dialogs on irreversible actions.** Apex confirm dialogs on irreversible actions: orphaned-payment `attach()`, request approve/reject, IAM grant toggle, subscription override, WhatsApp send-to-all, event publish/hide | next |
 | A3 | **Settle open money TODOs in Space and Apex.** Settle money TODOs: Space transactions net formula (`transactions/page.tsx:136`), Apex financials default sort (`financials/page.tsx:79`) | planned |
 | A4 | **End-to-end money-path review.** Money-path review end to end: payments, refunds, payouts, reconciliation; webhook idempotency (from W1) | planned |
@@ -579,6 +582,27 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 | P21 | Wikidata item for Unifesto, once P18 brings independent coverage to cite (items without sources get deleted); then add it to `SOCIAL`/`sameAs` | planned |
 | P22 | Google Business Profile: verifiable address (Malla Reddy University R&D Center) or a service-area business; category Software company | planned |
 
+### R · Deals, billing and access (2026-10-16)
+
+From the IAM / plan / billing / fee analysis on 2026-10-16. Clients get different deals (custom fee %, organiser absorbs the fee, free or comp plans, one-off event deals), so commercial terms move out of code and plan rows into a versioned **Deal** (D8). The plan rate card is the default deal. Fees are stored as basis points (250 = 2.5%) and money as paise integers.
+
+Terms resolve in this order: **active event deal → active space deal → rate card of the space's plan**. One `quote()` turns base price + terms into `{ buyerFee, organiserFee, total }`, and every paid row stores the result.
+
+| # | Item | Status |
+|---|---|---|
+| R1 | **Close Co-Curator escalation to money.** `publishEvent`/`cancelEvent` check `EVENT_EDIT` only (Co-Curator can publish/cancel). `addTeamMember`/`removeTeamMember` check `EVENT_EDIT` and accept CURATOR, so a Co-Curator can make themselves Curator (gets `EVENT_MANAGE_MONEY`) or remove the Curator. Require `EVENT_PUBLISH`/`EVENT_CANCEL`/`EVENT_ASSIGN_CREW` | next |
+| R2 | **One role-assignment rule and no hand-rolled checks.** `canAssign(actor, role)`: only grant roles below your own; CURATOR only by Space Admin or ADMIN; never your own role. Replace ~10 hand-rolled role checks (`event-access.ts`, sessions, check-in, help desk, `spaces.service.ts` `SPACE_ADMIN_TIER`, transfers) with `assertCan` so platform ADMIN inherits. Drop CURATOR's space-scope grants (`space:manage-email/sponsors` 403 today). Revoking a role's last grant leaves it empty (no compiled fallback). Policy comment matches D9 | planned |
+| R3 | **One access endpoint and a shared IAM cache.** `GET /spaces/:id/access` returns effective capabilities + plan features for any member. Space app drops the hard-coded `rbac.ts` map and the `/usage` features call (non-billing members see every gated nav item today). Capability + plan caches carry a Redis version stamp so edits reach every replica | planned |
+| R4 | **Deal model and term resolution.** `Deal` (spaceId, optional eventId, plan, planPricePaise: null = rate card / 0 = comp, billingCycle, buyerFeeBps, organiserFeeBps, validFrom, validUntil, note, createdBy). Rate card = `buyerFeeBps`/`organiserFeeBps` on `PlanConfig` (replaces dead `processingFeePercent`). `TermsService.resolve(spaceId, eventId, at)`. Backfill: every space gets terms equal to today's behaviour (5% buyer, its revenue share as organiser fee), so nothing changes until a deal is edited. `REVENUE_SHARE` billing model becomes `organiserFeeBps` | planned |
+| R5 | **One quote for every checkout path.** `quote(basePaise, terms)` in integer paise, used by main checkout, legacy register, manual-add link, waitlist, group seat add-on, sessions, stays. `POST /quote` for web and mobile (mobile stops computing `base × 1.05`). Each paid row stores `dealId`, `buyerFeePaise`, `organiserFeeBps`. Old 4.0.5 app still shows a 5% estimate (Razorpay charges the right amount): Apex warns when a deal's buyer fee is not 5% until 2 Dec. `quote()` takes an optional coupon so every buyer-paid path can accept one; turn it on for waitlist claims and sessions (main checkout only today) | planned |
+| R6 | **Settle from snapshots, sessions included.** One `settle(rows)` feeds payouts, financials, Space Transactions page and CSV export, using each row's stored terms (deal changes never rewrite the past). `Payout` gets `sessionId` (exactly one of event/session) so Huddle revenue can be paid out. Forced reconcile books what was actually captured: short lowers `totalAmount`; over goes to the organiser's base, not to our fee (today the platform keeps it). Event and space dashboard revenue (`events.service.ts:3221`, `spaces.service.ts:2340`: PAID only, refunds ignored) reads `settle()` too. Drop the per-payout `platformFeePercent` override (`payouts/dto`): the deal is the only rate | planned |
+| R7 | **Apex Deals page.** Per space: current terms, deal history, new version (space or one event), live quote preview, required end date on comp plans. Every change goes to the audit trail (F5) | planned |
+| R8 | **Subscription lifecycle.** Status from dates, not `isActive`: ACTIVE → GRACE (7 days) → EXPIRED (STARTER entitlements, data kept). Period end = max(now, current end) + cycle (fixes calendar-boundary expiry). Cancel at period end. Razorpay `order.paid` webhook activates (receipt ≤ 40 chars). Price from the deal. Apex records offline payments (bank transfer). MRR from payments, not typed amounts. Plan changes: upgrade now, pay the difference for the rest of the period; downgrade at period end (no refund). Expiry, renewal and every plan change run in one transaction with a `SubscriptionHistory` row (expiry writes none today). Includes A1 checkout UI | planned |
+| R9 | **One entitlement check, all limits enforced.** `assertFeature`/`assertLimit` read `TermsService` plan + subscription status. Missing subscription row is created as STARTER (no fail-open/closed/500 mix). Enforce attendees per event, co-curators, spaces, waitlist, WhatsApp blast, recurring events | planned |
+| R10 | **Remove dead pricing config.** Drop `platform_config.processing_fee_percent`, `PlanConfig.processingFeePercent`, `razorpaySubId`, the Apex/mobile fee edit screens and stale Apex subscription API fns. `/pricing` reads the rate card from `/subscription/plans` so marketing can't drift from code | planned |
+| R11 | **Tax-ready snapshot and real margin.** `gstPaise` + place of supply on the snapshot, GSTIN on the space; 0 until the CA check. Store `gatewayFeePaise` + `gatewayTaxPaise` from reconcile (Razorpay's ~2% + GST comes out of our fee) so A5/A7 report true take rate. Invoices and GSTR export stay in A6 | planned |
+| R12 | **IAM hardening leftovers.** `RolesGuard` passes on a role held anywhere: check scope or retire it for `@Can`. `UserRole` unique allows duplicates (NULL space/event ids): make it `NULLS NOT DISTINCT` after a dedupe. Space-member DTOs accept `ADMIN`: restrict to space roles. Money routes in `payouts.controller.ts`/`refunds.controller.ts` get `@Can` on top of the service checks. Delete the stale "compiled shims" comment in `capability-config.service.ts` | planned |
+
 ### Parked and dropped
 
 | Item | Status | Why |
@@ -627,3 +651,4 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 - **2026-10-15** · Task rows now lead with the board's short title in bold (175 rows); full text kept after it. Board task view opens read-only (#132); apex + web deployed.
 - **2026-10-16** · Track D rebuilt as **Unifesto Assist** (D1–D28): one case wrapper over support, refunds, cancellations, the 10 request types, a new event request, ticket issue reports, payouts, privacy and grievance, plus a Claude Haiku 5.5 layer (est. ~$6/mo now, ~$55 at 10×). Old D1–D8 folded in; B7, B9, B11 merged; B10 dropped for 0.9; K7 narrowed to legal pages. Decision D7 added.
 - **2026-10-16** · Assist decisions settled: event request = host without a Space; support inbox default curators only; no auto-escalation.
+- **2026-10-16** · Track R added: IAM / plan / billing / fee analysis turned into a deal-based design (D8: plan, deal and role are separate; D9: Space Admin + Curator move money). R1 is a live escalation (Co-Curator can make themselves Curator). A1 is built inside R8.
