@@ -242,6 +242,21 @@ export class SessionsService {
       throw new BadRequestException('Cannot edit a finished session');
     }
 
+    // Re-check the create-time rules against the values after this edit.
+    const platform = dto.platform ?? session.platform;
+    const isLive = platform === SessionPlatform.UNIFESTO_LIVE;
+    if (!isLive && !(dto.meetingUrl ?? session.meetingUrl)) {
+      throw new BadRequestException('meetingUrl is required for external platforms');
+    }
+    if (platform === 'OTHER' && !(dto.platformOther ?? session.platformOther)) {
+      throw new BadRequestException('platformOther is required when platform is OTHER');
+    }
+    if (dto.capacity != null && dto.capacity < session.registeredCount) {
+      throw new BadRequestException(
+        `Capacity can't go below the ${session.registeredCount} already registered`,
+      );
+    }
+
     return this.prisma.session.update({
       where: { id: sessionId },
       data: {
@@ -249,7 +264,8 @@ export class SessionsService {
         description: dto.description,
         coverImageUrl: dto.coverImageUrl,
         platform: dto.platform,
-        meetingUrl: dto.meetingUrl,
+        meetingUrl: isLive ? null : dto.meetingUrl,
+        interactive: dto.interactive,
         platformOther: dto.platformOther,
         startDateTime: dto.startDateTime
           ? new Date(dto.startDateTime)
