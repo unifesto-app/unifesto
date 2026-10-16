@@ -229,7 +229,8 @@ export default function TicketDetailPage() {
   }
 
   const isGroup = ticket.kind === "GROUP";
-  const status = SALE_STATUS_META[ticketSaleStatus(ticket, event)];
+  const saleStatus = ticketSaleStatus(ticket, event);
+  const status = SALE_STATUS_META[saleStatus];
   const offSale = isOffSale(ticket);
   const { stats } = ticket;
 
@@ -318,7 +319,11 @@ export default function TicketDetailPage() {
           <CardDescription>
             {offSale
               ? "Hidden from the event page and can't be bought. Existing holders keep their tickets."
-              : "Listed on the event page and open for registration within its sales window."}
+              : saleStatus === "ended"
+                ? "Listed on the event page. Sales have ended, so it can't be bought."
+                : saleStatus === "sold-out"
+                  ? "Listed on the event page. Sold out, so it can't be bought."
+                  : "Listed on the event page and open for registration within its sales window."}
           </CardDescription>
         </CardHeader>
         <CardContent>

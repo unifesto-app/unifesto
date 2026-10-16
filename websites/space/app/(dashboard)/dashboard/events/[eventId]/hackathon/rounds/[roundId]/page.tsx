@@ -310,10 +310,10 @@ export default function HackathonRoundPage() {
           )}
           <p className="text-muted-foreground">
             {round.kind === "MENTORING"
-              ? `${round.judges} mentor${round.judges === 1 ? "" : "s"} mentor this round.`
+              ? `Mentored by ${round.judges} mentor${round.judges === 1 ? "" : "s"}.`
               : round.judgingMode === "PANEL"
                 ? `${round.panels} panel${round.panels === 1 ? "" : "s"} can take this round.`
-                : `${round.judges} judge${round.judges === 1 ? "" : "s"} judge this round.`}
+                : `Judged by ${round.judges} judge${round.judges === 1 ? "" : "s"}.`}
             {round.openRequests ? ` ${round.openRequests} in queues now.` : ""}
           </p>
         </div>

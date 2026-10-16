@@ -251,7 +251,6 @@ function MoneyFlow({
 
   const net = Math.max(0, fin.netEntitlement);
   const netPct = collected > 0 ? Math.round((net / collected) * 100) : 0;
-  const deductions = fin.processingFees + fin.platformFee + fin.refunded;
 
   return (
     <div className="flex flex-col items-stretch gap-3 lg:h-56 lg:flex-row lg:gap-0">
@@ -262,9 +261,14 @@ function MoneyFlow({
           {money(collected)}
         </p>
         <div className="mt-auto space-y-1.5 pt-4">
-          <NodeRow label="Ticket revenue" value={money(fin.ticketRevenue)} />
-          {deductions > 0 && (
-            <NodeRow label="Fees & refunds" value={`− ${money(deductions)}`} muted />
+          {/* Collected = ticket sales + the buyer-paid processing fee; then
+              the platform fee and refunds come out on the way to net. */}
+          <NodeRow label="Ticket sales" value={money(fin.ticketRevenue)} />
+          {fin.processingFees > 0 && (
+            <NodeRow label="Processing fees (paid by buyers)" value={money(fin.processingFees)} muted />
+          )}
+          {fin.platformFee + fin.refunded > 0 && (
+            <NodeRow label="Platform fee & refunds" value={`− ${money(fin.platformFee + fin.refunded)}`} muted />
           )}
         </div>
       </FlowNode>

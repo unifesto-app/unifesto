@@ -821,7 +821,7 @@ export default function AttendeeDetailPage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-shrink-0 flex-wrap items-center gap-2 pl-11 sm:pl-0">
+                        <div className="flex flex-shrink-0 flex-wrap items-center gap-x-1 gap-y-2 sm:gap-2">
                           {seat.claimedAt && (
                             <span className="hidden text-xs text-muted-foreground sm:inline">
                               {formatDateTime(seat.claimedAt)}

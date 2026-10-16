@@ -68,7 +68,8 @@ export function ListRow({
     <>
       {icon && <span className="flex-shrink-0 text-foreground">{icon}</span>}
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate text-sm", destructive ? "text-destructive" : "text-foreground")}>
+        {/* Wrap on phones (long team names), one line from sm up. */}
+        <span className={cn("block break-words text-sm sm:truncate", destructive ? "text-destructive" : "text-foreground")}>
           {label}
         </span>
         {sublabel && <span className="mt-0.5 block truncate text-xs text-muted-foreground">{sublabel}</span>}

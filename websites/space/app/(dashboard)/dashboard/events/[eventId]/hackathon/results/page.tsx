@@ -112,9 +112,18 @@ export default function HackathonResultsPage() {
       <WarningCircle className="h-5 w-5 text-warning" weight="fill" />
     ) : t.stage === "CANCELLED" || t.stage === "ELIMINATED" ? (
       <XCircle className="h-5 w-5 text-muted-foreground" weight="fill" />
+    ) : t.total == null ? (
+      <CircleDashed className="h-5 w-5 text-muted-foreground" />
     ) : (
       <CheckCircle className="h-5 w-5 text-success" weight="fill" />
     );
+  // PER_ROUND ranks by the final round only; until it's judged nobody has a
+  // total, so say where the earlier marks are instead of an all-blank list.
+  const finalRoundName = data.rounds.find((r) => r.id === data.finalRoundId)?.name;
+  const finalUnscored =
+    data.scoringMode !== "CUMULATIVE" &&
+    data.teams.length > 0 &&
+    data.teams.every((t) => t.total == null);
 
   return (
     <HackPage
@@ -140,9 +149,11 @@ export default function HackathonResultsPage() {
                 : `Ranking · ${data.rounds.find((r) => r.id === data.finalRoundId)?.name ?? "final round"}`
             }
             description={
-              data.teams.some((t) => t.psChangedAfterEvalAt)
-                ? "Teams with a warning sign had their problem statement changed after they were evaluated. Their marks are kept."
-                : undefined
+              finalUnscored
+                ? `Nobody has marks in ${finalRoundName ?? "the final round"} yet. Open a round above to see its ranking.`
+                : data.teams.some((t) => t.psChangedAfterEvalAt)
+                  ? "Teams with a warning sign had their problem statement changed after they were evaluated. Their marks are kept."
+                  : undefined
             }
           >
             {data.teams.length === 0 && <ListRow label="No teams yet" />}
