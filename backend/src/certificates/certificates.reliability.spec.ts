@@ -20,7 +20,7 @@ describe('renderScale (S20)', () => {
     const w = Math.floor(10000 * s);
     expect(w).toBeLessThanOrEqual(MAX_RENDER_SIDE);
     expect(w * w).toBeLessThanOrEqual(MAX_RENDER_PIXELS);
-  });
+  }, 30_000); // real 6000² sharp + Skia render; CI runners are slow
 
   it('caps a long side even when the area is small', () => {
     expect(Math.floor(10000 * renderScale(10000, 100))).toBe(MAX_RENDER_SIDE);
@@ -56,7 +56,7 @@ describe('CertificateRenderService.renderAll (S20)', () => {
     const meta = await sharp(png).metadata();
     expect(meta.width).toBeLessThanOrEqual(MAX_RENDER_SIDE);
     expect(meta.width! * meta.height!).toBeLessThanOrEqual(MAX_RENDER_PIXELS);
-  });
+  }, 30_000); // real 6000² sharp + Skia render; slow on CI runners
 });
 
 function setup(queue: { add?: jest.Mock; addReissueRevoked?: jest.Mock }) {

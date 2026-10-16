@@ -7,6 +7,7 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Ip,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
@@ -63,14 +64,15 @@ export class AuthController {
 
   @Post('email')
   // Per-IP coarse limit. Kept generous because a whole campus can share one NAT
-  // public IP during an event; real abuse protection is the per-account OTP
-  // attempt counter + 15-min lockout in OtpService/auth.service.
+  // public IP during an event; real abuse protection is the per-identifier and
+  // per-IP OTP counters in OtpService.
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async loginWithEmail(
     @Body() dto: EmailLoginDto,
+    @Ip() ip: string,
   ): Promise<{ message: string }> {
-    return this.authService.loginWithEmail(dto);
+    return this.authService.loginWithEmail(dto, ip);
   }
 
   /**
@@ -82,8 +84,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async verifyEmailOtp(
     @Body() body: VerifyEmailOtpDto,
+    @Ip() ip: string,
   ): Promise<AuthResponseDto> {
-    return this.authService.verifyEmailOtp(body.email, body.otp);
+    return this.authService.verifyEmailOtp(body.email, body.otp, ip);
   }
 
   /**
@@ -95,8 +98,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async sendMobileOtp(
     @Body() dto: SendMobileOtpDto,
+    @Ip() ip: string,
   ): Promise<{ message: string }> {
-    return this.authService.sendMobileOtp(dto);
+    return this.authService.sendMobileOtp(dto, ip);
   }
 
   /**
@@ -106,8 +110,11 @@ export class AuthController {
   @Post('verify-mobile')
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  async verifyMobile(@Body() dto: VerifyMobileDto): Promise<AuthResponseDto> {
-    return this.authService.verifyMobile(dto);
+  async verifyMobile(
+    @Body() dto: VerifyMobileDto,
+    @Ip() ip: string,
+  ): Promise<AuthResponseDto> {
+    return this.authService.verifyMobile(dto, ip);
   }
 
   /**

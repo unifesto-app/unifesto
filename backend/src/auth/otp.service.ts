@@ -16,15 +16,31 @@ export type OtpVerifyResult = 'ok' | 'invalid' | 'blocked';
  *   guesses" no longer buys more guesses;
  * - sends are limited per identifier: a cooldown between sends and a daily cap
  *   (also caps WhatsApp OTP spend).
+ *
+ * Lockout abuse (S49): guesses and sends are also counted per (identifier, IP)
+ * and per IP, and the per-IP buckets are checked first. One attacker IP hits
+ * its own limits and is locked out alone; the victim (on another IP) keeps
+ * working until several IPs gang up on the same identifier, where the
+ * identifier-wide caps still bound brute force and spend.
  */
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   static readonly OTP_EXPIRY_SECONDS = 10 * 60;
+  /** Wrong guesses per identifier from one IP, per window. */
   static readonly MAX_ATTEMPTS = 5;
+  /** Wrong guesses per identifier from all IPs, per window. */
+  static readonly MAX_ATTEMPTS_TOTAL = 15;
+  /** Wrong guesses from one IP across all identifiers (campus NATs share one). */
+  static readonly IP_MAX_ATTEMPTS = 50;
   static readonly ATTEMPT_WINDOW_SECONDS = 15 * 60;
   static readonly SEND_COOLDOWN_SECONDS = 30;
+  /** Sends per identifier from one IP, per day. */
   static readonly DAILY_SEND_CAP = 10;
+  /** Sends per identifier from all IPs, per day (WhatsApp spend backstop). */
+  static readonly DAILY_SEND_CAP_TOTAL = 20;
+  /** Sends from one IP across all identifiers, per hour. */
+  static readonly IP_HOURLY_SEND_CAP = 100;
 
   constructor(private readonly redisService: RedisService) {}
 
@@ -36,28 +52,29 @@ export class OtpService {
    * Reserve a send slot for this identifier: throws 429 inside the cooldown or
    * past the daily cap. No Redis → allowed (the code can't be stored anyway).
    */
-  async assertCanSend(identifier: string): Promise<void> {
+  async assertCanSend(identifier: string, ip = 'unknown'): Promise<void> {
     const client = this.redisService.getClient();
     if (!client) return;
     const cooled = await client.set(
-      `otp-limit:cooldown:${identifier}`,
+      `otp-limit:cooldown:${identifier}:${ip}`,
       '1',
       'EX',
       OtpService.SEND_COOLDOWN_SECONDS,
       'NX',
     );
     if (cooled !== 'OK') {
-      throw new HttpException(
-        'Please wait a few seconds before requesting another code.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+      throw tooMany('Please wait a few seconds before requesting another code.');
     }
-    const sent = await incrWithTtl(client, `otp-limit:daily:${identifier}`, 24 * 60 * 60);
-    if (sent > OtpService.DAILY_SEND_CAP) {
-      throw new HttpException(
-        'Too many codes requested today. Please try again tomorrow.',
-        HttpStatus.TOO_MANY_REQUESTS,
-      );
+    // Per-IP buckets first, so a rejected attacker never spends the victim's.
+    if ((await incrWithTtl(client, `otp-limit:ip-sends:${ip}`, 60 * 60)) > OtpService.IP_HOURLY_SEND_CAP) {
+      throw tooMany('Too many codes requested from this network. Please try again later.');
+    }
+    const day = 24 * 60 * 60;
+    if (
+      (await incrWithTtl(client, `otp-limit:daily:${identifier}:${ip}`, day)) > OtpService.DAILY_SEND_CAP ||
+      (await incrWithTtl(client, `otp-limit:daily:${identifier}`, day)) > OtpService.DAILY_SEND_CAP_TOTAL
+    ) {
+      throw tooMany('Too many codes requested today. Please try again tomorrow.');
     }
   }
 
@@ -69,15 +86,26 @@ export class OtpService {
     );
   }
 
-  async verifyOtp(identifier: string, otp: string): Promise<OtpVerifyResult> {
+  async verifyOtp(identifier: string, otp: string, ip = 'unknown'): Promise<OtpVerifyResult> {
     const client = this.redisService.getClient();
     if (!client) return 'invalid';
     const key = `otp:${identifier}`;
+    const ipKey = `otp-limit:ip-attempts:${ip}`;
+    const pairKey = `otp-limit:attempts:${identifier}:${ip}`;
     const attemptsKey = `otp-limit:attempts:${identifier}`;
+    const window = OtpService.ATTEMPT_WINDOW_SECONDS;
 
-    // Count the guess first, atomically. Only then look at the code.
-    const attempts = await incrWithTtl(client, attemptsKey, OtpService.ATTEMPT_WINDOW_SECONDS);
-    if (attempts > OtpService.MAX_ATTEMPTS) {
+    // Count the guess first, atomically. Only then look at the code. The
+    // per-IP buckets lock only the caller's IP and leave the code in place.
+    if (
+      (await incrWithTtl(client, ipKey, window)) > OtpService.IP_MAX_ATTEMPTS ||
+      (await incrWithTtl(client, pairKey, window)) > OtpService.MAX_ATTEMPTS
+    ) {
+      this.logger.warn(`OTP locked for ${identifier} from ${ip}`);
+      return 'blocked';
+    }
+    const attempts = await incrWithTtl(client, attemptsKey, window);
+    if (attempts > OtpService.MAX_ATTEMPTS_TOTAL) {
       await client.del(key);
       this.logger.warn(`OTP locked for ${identifier} (${attempts} attempts)`);
       return 'blocked';
@@ -96,6 +124,8 @@ export class OtpService {
     // Single use: only the caller whose DEL removes the key wins.
     if ((await client.del(key)) !== 1) return 'invalid';
     await client.del(attemptsKey);
+    await client.del(pairKey);
+    await client.decr(ipKey); // the IP bucket counts wrong guesses only
     return 'ok';
   }
 }
@@ -113,6 +143,10 @@ async function incrWithTtl(
   const n = await client.incr(key);
   if (n === 1 || (await client.ttl(key)) === -1) await client.expire(key, ttlSeconds);
   return n;
+}
+
+function tooMany(message: string): HttpException {
+  return new HttpException(message, HttpStatus.TOO_MANY_REQUESTS);
 }
 
 function safeEqual(a: string, b: string): boolean {
