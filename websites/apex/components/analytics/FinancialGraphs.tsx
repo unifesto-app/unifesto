@@ -36,7 +36,7 @@ import { RangeSwitcher } from "./RangeSwitcher";
  * Resolve a design token (e.g. "--primary" → "221 83% 53%") into a usable
  * `hsl(...)` string. Recharts writes colours as SVG attributes, which do NOT
  * resolve CSS `var()`, so we read the computed values from :root once on mount.
- * Re-read when the OS flips light/dark, since the cosmos theme follows it.
+ * Re-read when <html data-theme> flips light/dark (System, Light or Dark).
  */
 function useTokenColors() {
   const [colors, setColors] = useState({
@@ -49,7 +49,6 @@ function useTokenColors() {
   });
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: light)");
     const sync = () => {
       const root = getComputedStyle(document.documentElement);
       const read = (token: string, fallback: string) => {
@@ -66,8 +65,9 @@ function useTokenColors() {
       });
     };
     sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    const obs = new MutationObserver(sync);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
   }, []);
 
   return colors;

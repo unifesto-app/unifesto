@@ -23,6 +23,10 @@ const martian = Martian_Mono({
   display: "swap",
 });
 
+/* Stored choice (system | light | dark) → data-pref on <html>, resolved one →
+   data-theme, before first paint; System tracks OS changes live. Same as web. */
+const themeScript = `try{var r=document.documentElement,m=matchMedia("(prefers-color-scheme: light)");window.__applyTheme=function(){var p=localStorage.getItem("theme")||"system";r.dataset.pref=p;r.dataset.theme=p==="system"?(m.matches?"light":"dark"):p};__applyTheme();m.addEventListener("change",__applyTheme)}catch(e){}`;
+
 export const metadata: Metadata = {
   title: "Apex • Unifesto",
   description:
@@ -36,6 +40,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className="h-full">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={`${michroma.variable} ${hanken.variable} ${martian.variable} font-sans antialiased min-h-full flex flex-col`}
       >
