@@ -82,9 +82,10 @@ describe('free-add seat quota (A27)', () => {
     const build = (quotaRows: number) => {
       const tx: any = { $executeRaw: jest.fn(async () => quotaRows) };
       const prisma: any = { $transaction: jest.fn(async (fn: any) => fn(tx)) };
-      const payments: any = { computeProcessingFee: (b: number) => Math.round(b * 5) / 100 };
+      const fee = (b: number) => Math.round(b * 5) / 100;
+      const payments: any = { computeProcessingFee: fee, priceSale: (b: number) => ({ base: b, fee: fee(b), total: b + fee(b) }) };
       const svc = new TeamChangesService(prisma, {} as any, payments, {} as any, {} as any);
-      const reg = { id: 'reg', eventId: 'ev', ticketTypeId: 'tt', ticketType: { price: 500, groupPricingMode: 'PER_PERSON' } };
+      const reg = { id: 'reg', eventId: 'ev', ticketTypeId: 'tt', ticketType: { price: 500, groupPricingMode: 'PER_PERSON' }, event: { absorbProcessingFee: false } };
       jest.spyOn(svc as any, 'load').mockResolvedValue(reg);
       jest.spyOn(svc as any, 'assertCanGrow').mockReturnValue(undefined);
       const grow = jest.spyOn(svc as any, 'growInTx').mockResolvedValue(5);

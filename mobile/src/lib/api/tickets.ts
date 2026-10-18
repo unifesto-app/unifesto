@@ -49,6 +49,16 @@ export function buyerFee(base: number, terms: ProcessingFeeTerms, tickets = 1): 
   return terms.capPerTicket ? Math.min(fee, terms.capPerTicket * Math.max(1, Math.trunc(tickets))) : fee;
 }
 
+/**
+ * The fee when the organiser absorbs it (A33), as PaymentsService.priceSale
+ * does: carved out of the listed price at the same rate and per-ticket cap.
+ * The buyer pays the listed price itself.
+ */
+export function buyerFeeIncluded(listed: number, terms: ProcessingFeeTerms, tickets = 1): number {
+  const fee = Math.round((listed - listed / (1 + terms.percent / 100)) * 100 + 1e-9) / 100;
+  return terms.capPerTicket ? Math.min(fee, terms.capPerTicket * Math.max(1, Math.trunc(tickets))) : fee;
+}
+
 const CURRENCY_SYMBOLS: Record<string, string> = {
   INR: '₹',
   USD: '$',

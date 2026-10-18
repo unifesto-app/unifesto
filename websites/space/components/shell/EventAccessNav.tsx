@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { CalendarBlank } from "@unifesto/unicon/react";
 import type { EventAccessEntry } from "@/lib/types/rbac";
 import { cn } from "@/lib/utils/cn";
+import { AssistInboxLink } from "./AssistInboxLink";
 
 interface EventAccessNavProps {
   events: EventAccessEntry[];
@@ -22,9 +23,10 @@ export function EventAccessNav({ events, onNavigate, collapsed = false }: EventA
 
   return (
     <div className={cn("flex min-h-full flex-col", collapsed ? "p-2" : "p-4")}>
+      <AssistInboxLink collapsed={collapsed} onNavigate={onNavigate} />
       {!collapsed && (
         <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Your events
+          My events
         </p>
       )}
       <nav className="flex-1 space-y-0.5">
