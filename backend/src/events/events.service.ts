@@ -51,6 +51,7 @@ import {
   SlugKind,
 } from '@prisma/client';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
+import { assertEventSchedule } from './event-dates';
 import { assertCanViewSpace } from '../spaces/space-access';
 import {
   canAccessSpaceOnlyEvent,
@@ -1412,6 +1413,12 @@ export class EventsService {
       }
     }
 
+    assertEventSchedule(
+      new Date(dto.startDateTime),
+      new Date(dto.endDateTime),
+      dto.timezone || 'Asia/Kolkata',
+    );
+
     const whatsappAttendeeGroupUrl = this.resolveAttendeeGroupUrl(
       dto.whatsappAttendeeGroupUrl,
     );
@@ -2112,6 +2119,17 @@ export class EventsService {
 
     if (event.status === EventStatus.CANCELLED) {
       throw new BadRequestException('Cannot update cancelled event');
+    }
+
+    // The schedule as it will be after this edit (B17). The far-future check
+    // only applies when the start itself moves.
+    if (dto.startDateTime || dto.endDateTime || dto.timezone) {
+      assertEventSchedule(
+        dto.startDateTime ? new Date(dto.startDateTime) : event.startDateTime,
+        dto.endDateTime ? new Date(dto.endDateTime) : event.endDateTime,
+        dto.timezone || event.timezone,
+        { checkLead: !!dto.startDateTime },
+      );
     }
 
     // Slug edits: normalise, then enforce global uniqueness (a unique index
