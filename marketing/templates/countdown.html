@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Countdown story template (1080x1920)</title>
+<link rel="stylesheet" href="kit/cosmos.css">
+<style>
+  /* stories keep the top 250px and bottom 300px clear for the app's own chrome */
+  .count { --planet-top: -62; --planet-right: -58; }
+  .count > *:not(.sky) { position: absolute; z-index: 1; left: 96px; right: 96px; }
+  .n { top: 470px; font-size: 400px; line-height: 1; letter-spacing: -.02em; }
+  .n.today { font-size: 104px; line-height: 1.2; white-space: nowrap; top: 780px; }
+  .what { top: 960px; font-size: 60px; }
+  .when { top: 1180px; font-size: 38px; color: var(--muted); }
+  .line { top: 1250px; font-size: 34px; color: var(--muted); font-weight: 300; }
+  .wm-b { top: 1440px; }
+</style>
+</head>
+<body>
+<script src="kit/kit.js"></script>
+<script>
+// days: a number, a list of numbers (one story each, e.g. [45, 30, 14, 7, 1, 0]) or leave it out to count
+// from today (India time) to `date`. 0 renders the launch-day story. line: optional extra sentence.
+const DEFAULTS = {
+  template: "countdown",
+  date: "2026-12-02",
+  days: [30, 1, 0],
+  line: "",
+};
+
+Kit.run(DEFAULTS, (d) => {
+  const launch = new Date(`${d.date || "2026-12-02"}T00:00:00+05:30`);
+  const todayIST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) + "T00:00:00+05:30");
+  const days = d.days ?? Math.max(0, Math.round((launch - todayIST) / 864e5));
+  const when = launch.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }).replace(/,/g, "");
+  return [].concat(days).map((n) => Kit.page(1080, 1920, "count",
+    Kit.sky({ horizon: "71%", scrim: "30% 45%" }) +
+    (n > 0
+      ? `<div class="display n">${n}</div><div class="display what">${n === 1 ? "day" : "days"} to <span class="dim">Unifesto 5</span></div>`
+      : `<div class="display n today">Unifesto 5<br><span class="dim">is here</span></div>`) +
+    `<div class="when">${n > 0 ? when : "Out now. unifesto.app"}</div>` +
+    (d.line ? `<div class="line">${Kit.rich(d.line)}</div>` : "") +
+    `<div class="wm-b">${Kit.wordmark(48)}</div>`)).join("");
+});
+</script>
+</body>
+</html>

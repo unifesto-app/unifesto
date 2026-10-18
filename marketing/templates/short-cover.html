@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Short / Reel cover template (1080x1920)</title>
+<link rel="stylesheet" href="kit/cosmos.css">
+<style>
+  /* Instagram crops the grid tile to the middle 1080x1440 (y 240 to 1680), so the copy lives inside that */
+  .cover { --planet-top: -70; --planet-right: -62; padding: 330px 96px 0; }
+  .cover > *:not(.sky) { position: relative; z-index: 1; }
+  .label { font-size: 30px; }
+  h1 { font-size: var(--size, 84px); margin-top: 40px; }
+  .lede { font-size: 36px; margin-top: 36px; color: var(--muted); }
+  .stage { position: absolute !important; left: 0; right: 0; display: flex; justify-content: center; }
+  .wm-top { position: absolute !important; left: 96px; top: 140px; }
+</style>
+</head>
+<body>
+<script src="kit/kit.js"></script>
+<script>
+// label: small line above; title: 3 to 8 words (*word* dims, \n breaks; size overrides 84px); lede: optional.
+// shot: phone shots stand on the horizon and run off the bottom; shotTop moves them (default 820, 900 for a desktop shot).
+const DEFAULTS = {
+  template: "short-cover",
+  label: "Space setup",
+  title: "Your whole club team in *one Space*",
+  lede: "",
+  shot: "examples/w1/shots/03-iam-roles-matrix.jpg",
+};
+
+Kit.run(DEFAULTS, (d) => {
+  const phone = typeof d.shot === "object" ? d.shot.frame !== "browser" : /mobile/.test(d.shot || "");
+  const top = d.shotTop || (phone ? 820 : 900);
+  return Kit.page(1080, 1920, "cover",
+    Kit.sky({ horizon: "56%", scrim: "30% 28%" }) +
+    `<div class="wm-top">${Kit.wordmark(40)}</div>` +
+    `<p class="label">${Kit.esc(d.label)}</p>` +
+    `<h1 class="display" style="${d.size ? `--size:${d.size}px` : ""}">${Kit.rich(d.title)}</h1>` +
+    (d.lede ? `<p class="lede">${Kit.rich(d.lede)}</p>` : "") +
+    (d.shot ? `<div class="stage" style="top:${top}px">${Kit.shot(d.shot, phone ? 620 : 800)}</div>` : ""));
+});
+</script>
+</body>
+</html>

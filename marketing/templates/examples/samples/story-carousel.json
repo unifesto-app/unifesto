@@ -1,0 +1,9 @@
+{
+  "template": "carousel",
+  "slides": [
+    { "kind": "cover", "label": "Organiser stories", "title": "How Aurora Tech Club runs *Build Night*", "lede": "24 hours, 8 teams, one Space.", "shot": "../w1/shots/01-dashboard-mobile.jpg" },
+    { "kind": "story", "quote": "Crew scan at the door. Curators handle the rest.", "name": "Aarav Rao", "role": "Curator, Aurora Fest 2026" },
+    { "kind": "story", "quote": "Handing over to next year's team took *one click.*", "name": "Diya Gupta", "role": "Co-Curator" },
+    { "kind": "cta", "title": "Your club *next.*", "lede": "Set up a Space in 10 minutes.", "pills": ["unifesto.app/organisers"] }
+  ]
+}
