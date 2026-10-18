@@ -8,7 +8,17 @@
 
 import backendClient, { apiCall, ApiError } from "./backend-client";
 
-export type SupportTicketStatus = "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+export type SupportTicketStatus = "BOT" | "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+export type SupportCaseKind =
+  | "HELP"
+  | "REFUND"
+  | "CANCELLATION"
+  | "REQUEST"
+  | "REPORT"
+  | "PRIVACY"
+  | "GRIEVANCE";
+export type SupportDesk = "SPACE" | "PLATFORM";
+export type SupportMessageSide = "REQUESTER" | "DESK" | "ASSISTANT" | "SYSTEM";
 export type SupportTicketPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 export type SupportTicketCategory =
   | "GENERAL"
@@ -40,6 +50,9 @@ export interface SupportMessage {
   ticketId: string;
   authorId: string;
   isStaffReply: boolean;
+  side?: SupportMessageSide;
+  /** Desk-only note, never shown to the requester. */
+  internal?: boolean;
   body: string;
   createdAt: string;
   author?: SupportUser;
@@ -52,6 +65,12 @@ export interface SupportTicket {
   category: SupportTicketCategory;
   priority: SupportTicketPriority;
   status: SupportTicketStatus;
+  kind: SupportCaseKind;
+  desk: SupportDesk;
+  requestType?: string | null;
+  subjectType?: string | null;
+  subjectId?: string | null;
+  escalatedAt?: string | null;
   requesterId: string;
   requester: SupportUser;
   contactEmail: string | null;
@@ -68,6 +87,14 @@ export interface SupportTicket {
   _count?: { messages: number };
   /** List endpoint: a message your side hasn't opened yet. */
   unread?: boolean;
+  /** Detail endpoint, Platform only: the typed records this case wraps. */
+  subjects?: CaseSubject[];
+}
+
+/** A typed record behind a case: `type` is its model name (RefundRequest, SpaceRequest…). */
+export interface CaseSubject {
+  type: string;
+  data: Record<string, any>;
 }
 
 export interface SupportTicketsResponse {
@@ -90,18 +117,29 @@ export interface SupportStats {
   unread: number;
   /** Cases you raised with a reply you haven't opened. */
   myUnread: number;
+  /** Open with nobody assigned. */
+  unassigned: number;
+  /** Open + awaiting-reply cases per kind. */
+  byKind: Partial<Record<SupportCaseKind, number>>;
 }
 
 export interface ListTicketsParams {
   status?: SupportTicketStatus;
   category?: SupportTicketCategory;
   priority?: SupportTicketPriority;
+  kind?: SupportCaseKind;
+  desk?: SupportDesk;
+  /** A user id, or `none` for unassigned. */
   assignedToId?: string;
   spaceId?: string;
+  unread?: boolean;
   search?: string;
   page?: number;
   limit?: number;
 }
+
+/** Window event: a case was read, so the sidebar badge recounts. */
+export const ASSIST_READ_EVENT = "assist:read";
 
 type Result<T> = { data: T | null; error: ApiError | null };
 
@@ -163,10 +201,26 @@ export async function updateTicket(
 /* -------------------------------------------------------------------------- */
 
 export const STATUS_LABEL: Record<SupportTicketStatus, string> = {
+  BOT: "With the bot",
   OPEN: "Open",
   PENDING: "Awaiting reply",
   RESOLVED: "Resolved",
   CLOSED: "Closed",
+};
+
+export const KIND_LABEL: Record<SupportCaseKind, string> = {
+  HELP: "Help",
+  REFUND: "Refunds",
+  CANCELLATION: "Cancellations",
+  REQUEST: "Requests",
+  REPORT: "Reports",
+  PRIVACY: "Privacy",
+  GRIEVANCE: "Grievances",
+};
+
+export const DESK_LABEL: Record<SupportDesk, string> = {
+  PLATFORM: "Unifesto",
+  SPACE: "Space desk",
 };
 
 export const CATEGORY_LABEL: Record<SupportTicketCategory, string> = {

@@ -1,10 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 import { adminNav, isNavActive } from "./nav-config";
+import { getSupportStats, ASSIST_READ_EVENT } from "@/lib/api/support-api";
+
+/** Unread cases on the Unifesto desk (D3): recounted on navigation, on read, and each minute. */
+function useAssistUnread(pathname: string) {
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    const load = () => getSupportStats().then(({ data }) => data && setUnread(data.unread));
+    load();
+    const timer = setInterval(load, 60_000);
+    window.addEventListener(ASSIST_READ_EVENT, load);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(ASSIST_READ_EVENT, load);
+    };
+  }, [pathname]);
+  return unread;
+}
 
 /**
  * Platform nav. A fixed rail from `lg` up; below that the same list slides in
@@ -12,6 +29,7 @@ import { adminNav, isNavActive } from "./nav-config";
  */
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
+  const unread = useAssistUnread(pathname);
 
   // Navigating closes the drawer; Escape does too.
   useEffect(onClose, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,6 +77,14 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                     >
                       <Icon className="h-[18px] w-[18px] flex-shrink-0" weight={active ? "fill" : "regular"} />
                       {item.label}
+                      {item.unreadBadge && unread > 0 && (
+                        <span
+                          className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[11px] font-semibold leading-none tabular-nums text-primary-foreground"
+                          aria-label={`${unread} unread`}
+                        >
+                          {unread > 99 ? "99+" : unread}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
