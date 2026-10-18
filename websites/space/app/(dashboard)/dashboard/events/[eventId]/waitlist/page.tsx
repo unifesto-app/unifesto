@@ -13,6 +13,7 @@ import {
   type WaitlistSummaryRow,
   type WaitlistStatus,
 } from "@/lib/api/waitlist-api";
+import { EventExportMenu } from "@/components/shared/EventExportMenu";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -173,6 +174,7 @@ export default function EventWaitlistPage() {
       <PageHeader
         title="Waiting list"
         subtitle="People queued for a sold-out ticket. Letting someone in holds their seat until they pay — with no time limit. Revoke an offer to free the seat if they never do."
+        actions={<EventExportMenu eventId={eventId} type="waitlist" />}
       />
 
       {error && <ErrorNotice message={error} />}

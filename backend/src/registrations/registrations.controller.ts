@@ -291,7 +291,8 @@ export class RegistrationsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Export registrations as CSV, Excel or PDF (Growth plan+)',
+    summary:
+      'Export attendees, transactions, waiting list, check-ins or coupon redemptions as CSV, Excel or PDF (Growth plan+)',
   })
   @ApiResponse({ status: 200 })
   async exportRegistrations(
@@ -305,7 +306,9 @@ export class RegistrationsController {
       format === 'xlsx' || format === 'pdf' || format === 'csv'
         ? format
         : 'csv';
-    const exportType = type === 'transactions' ? 'transactions' : 'attendees';
+    const exportType = (
+      ['transactions', 'waitlist', 'checkins', 'coupons'] as const
+    ).find((t) => t === type) ?? 'attendees';
     const { stream, contentType, filename } =
       await this.registrationsService.exportRegistrations(
         req.user.id,
