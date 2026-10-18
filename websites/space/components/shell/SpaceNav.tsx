@@ -1,33 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/lib/context/SessionContext";
 import { BASE_URL, resolveNavGroups, type NavItem } from "./nav-config";
 import { cn } from "@/lib/utils/cn";
 import { can } from "@/lib/types/rbac";
-import { getSpaceDeskUnread, ASSIST_READ_EVENT } from "@/lib/api/support-api";
-
-/** Unread cases on this space's Assist desk: recounted on navigation, on read, and each minute. */
-function useDeskUnread(spaceId: string | undefined, enabled: boolean, pathname: string) {
-  const [unread, setUnread] = useState(0);
-  useEffect(() => {
-    if (!spaceId || !enabled) {
-      setUnread(0);
-      return;
-    }
-    const load = () => getSpaceDeskUnread(spaceId).then(({ data }) => setUnread(data?.unread ?? 0));
-    load();
-    const timer = setInterval(load, 60_000);
-    window.addEventListener(ASSIST_READ_EVENT, load);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener(ASSIST_READ_EVENT, load);
-    };
-  }, [spaceId, enabled, pathname]);
-  return unread;
-}
+import { useDeskUnread } from "./AssistInboxLink";
 
 interface SpaceNavProps {
   /**

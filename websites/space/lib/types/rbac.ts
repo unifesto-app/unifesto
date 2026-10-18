@@ -119,6 +119,19 @@ export function isEventScopedSpace(space?: SpaceMembership | null): boolean {
 }
 
 /**
+ * Event-only operator whose event role answers Assist cases. They may open
+ * the space's Assist inbox, which the backend scopes to those events.
+ */
+export function hasEventDeskAccess(space?: SpaceMembership | null): boolean {
+  return (
+    isEventScopedSpace(space) &&
+    (space?.eventAccess ?? []).some((e) =>
+      can(appRoleFromCode(e.roleCode), "event:manage-support")
+    )
+  );
+}
+
+/**
  * The user's surface role in a specific space (the governing role there).
  */
 export function roleInSpace(

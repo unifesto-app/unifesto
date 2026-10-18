@@ -30,6 +30,7 @@ import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
 import { cn } from "@/lib/utils/cn";
+import { AssistInboxLink } from "./AssistInboxLink";
 
 interface EventNavItem {
   href: string;
@@ -186,6 +187,8 @@ export function EventNav({
         <ArrowLeft className="h-[18px] w-[18px] flex-shrink-0" />
         {!collapsed && "All events"}
       </Link>
+      {/* Event-only operators have no space rail; renders nothing for everyone else. */}
+      <AssistInboxLink collapsed={collapsed} onNavigate={onNavigate} />
 
       <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-5")}>
         {navGroups.map((group, groupIdx) => {
