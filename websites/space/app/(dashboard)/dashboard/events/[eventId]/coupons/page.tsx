@@ -14,6 +14,8 @@ import {
   type CouponDiscountType,
 } from "@/lib/api/coupons-api";
 import { getEventById, type Event } from "@/lib/api/events-api";
+import { EventExportMenu } from "@/components/shared/EventExportMenu";
+import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -109,6 +111,7 @@ export default function EventCouponsPage() {
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     const [couponsRes, eventRes] = await Promise.all([
@@ -124,6 +127,12 @@ export default function EventCouponsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const shown = useMemo(
+    () => coupons.filter((c) => matches(search, c.code, c.description)),
+    [coupons, search]
+  );
+  const { page, setPage, totalPages, pageItems } = usePaged(shown);
 
   const paidTicketTypes = useMemo(
     () => (event?.ticketTypes ?? []).filter((t) => Number(t.price) > 0),
@@ -198,10 +207,13 @@ export default function EventCouponsPage() {
         subtitle="Percentage or flat-amount codes buyers apply at checkout"
         actions={
           !draft ? (
-            <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
-              <Plus className="h-4 w-4" weight="bold" />
-              Add code
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <EventExportMenu eventId={eventId} type="coupons" />
+              <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
+                <Plus className="h-4 w-4" weight="bold" />
+                Add code
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -238,7 +250,18 @@ export default function EventCouponsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {coupons.map((c) => (
+          <SearchBox
+            value={search}
+            onChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search codes"
+          />
+          {shown.length === 0 && (
+            <p className="text-sm text-muted-foreground">No codes match “{search}”.</p>
+          )}
+          {pageItems.map((c) => (
             <CouponRow
               key={c.id}
               coupon={c}
@@ -251,6 +274,7 @@ export default function EventCouponsPage() {
               onDelete={() => remove(c)}
             />
           ))}
+          <Pager page={page} totalPages={totalPages} onPage={setPage} />
         </div>
       )}
     </div>

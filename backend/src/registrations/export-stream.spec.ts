@@ -115,4 +115,30 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
     expect(csv).not.toContain('unpaid-m2');
     expect(csv.split('\r\n')).toHaveLength(1 + 2 + 1); // header + 2 seats + 1 lead row
   });
+
+  it('check-in log lists group members instead of the group summary record (B5)', async () => {
+    const { svc, prisma } = build(0);
+    const user = { fullName: 'Lead', username: 'lead', mobileNumber: null, identities: [{ email: 'lead@x.com' }] };
+    const registration = { user, ticketType: { name: 'Team' } };
+    const at = new Date('2026-10-02T09:00:00Z');
+    const base = { checkinType: { name: 'Entry' }, checkedInAt: at, recordedAt: at, checkedInByUser: { fullName: 'Crew', username: null } };
+    const records = [
+      { id: 'c1', registrationId: 'grp', checkinTypeId: 'entry', registration, ...base },
+      { id: 'c2', registrationId: 'solo', checkinTypeId: 'entry', registration: { ...registration, user: { ...user, fullName: 'Solo' } }, ...base },
+    ];
+    const members = [
+      { id: 'm1', registrationId: 'grp', checkinTypeId: 'entry', memberIndex: 1, registration, ...base,
+        groupSeat: { seatIndex: 2, memberDetails: { name: 'Member Two' }, claimedBy: null } },
+    ];
+    const page = (rows: any[]) => jest.fn(async (args: any) => (args.cursor || !args.take ? (args.take ? [] : rows) : rows));
+    prisma.eventCheckinRecord = { findMany: page(records) };
+    prisma.eventGroupMemberCheckin = { findMany: page(members) };
+
+    const res = await svc.exportRegistrations('admin', 'e1', 'csv', 'checkins');
+    expect(res.filename).toBe('fest-checkins.csv');
+    const lines = (await drain(res.stream)).split('\r\n');
+    expect(lines).toHaveLength(3); // header + Solo + Member Two; the group's summary record is dropped
+    expect(lines[1]).toMatch(/^Solo,lead@x.com,Team,,,Entry,/);
+    expect(lines[2]).toMatch(/^Member Two,,Team,Lead,2,Entry,/);
+  });
 });

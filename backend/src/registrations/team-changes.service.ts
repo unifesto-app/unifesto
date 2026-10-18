@@ -23,6 +23,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { GroupSeatsService } from './group-seats.service';
 import { takeSeats } from './capacity.util';
 import { esc, h1, p, strong } from '../email/layout';
+import { takeFreeAddSeats } from '../free-attendee-add/free-add-quota';
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
@@ -376,18 +377,23 @@ export class TeamChangesService {
   }
 
   /**
-   * Add seats with nothing to pay: a curator (any ticket, money handled outside
-   * the app) or a lead whose ticket doesn't charge per person. A lead on a
-   * PER_PERSON paid ticket must use {@link createAddSeatsOrder}.
+   * Add seats with nothing to pay: a lead or curator on a ticket that doesn't
+   * charge per person. Paid PER_PERSON seats: a lead pays through
+   * {@link createAddSeatsOrder}; a curator can comp them only against an
+   * approved free-seat quota (A27), drawn in the same transaction.
    */
   async addSeats(registrationId: string, seats: number, actor: TeamActor) {
     const reg = await this.load(registrationId, actor);
     this.assertCanGrow(reg, seats);
-    if (actor.by === 'lead') {
-      const quote = addSeatsQuote(reg.ticketType!, seats, (b, n) => this.payments.computeProcessingFee(b, n));
-      if (quote.total > 0) throw new BadRequestException('New seats on this ticket are paid. Pay for them to add them.');
+    const quote = addSeatsQuote(reg.ticketType!, seats, (b, n) => this.payments.computeProcessingFee(b, n));
+    const paid = quote.total > 0;
+    if (paid && actor.by === 'lead') {
+      throw new BadRequestException('New seats on this ticket are paid. Pay for them to add them.');
     }
-    const groupSize = await this.prisma.$transaction((tx) => this.growInTx(tx, reg, seats));
+    const groupSize = await this.prisma.$transaction(async (tx) => {
+      if (paid) await takeFreeAddSeats(tx, reg.eventId, reg.ticketTypeId!, seats);
+      return this.growInTx(tx, reg, seats);
+    });
     this.logger.log(`Registration ${registrationId} grew by ${seats} (${actor.by})`);
     return { groupSize };
   }

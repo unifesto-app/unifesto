@@ -20,6 +20,7 @@ import {
   type EmailCampaign,
   type EmailCampaignStatus,
 } from "@/lib/api/email-campaigns-api";
+import { SearchBox } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -97,6 +98,7 @@ export default function SpaceEmailPage() {
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,14 +106,18 @@ export default function SpaceEmailPage() {
     if (!spaceId) return;
     setLoading(true);
     setError(null);
-    const { data, error } = await listCampaigns(spaceId, { page, limit: PAGE_SIZE });
+    const { data, error } = await listCampaigns(spaceId, {
+      page,
+      limit: PAGE_SIZE,
+      search: search.trim() || undefined,
+    });
     if (error) setError(error.message);
     else if (data) {
       setCampaigns(data.data);
       setTotal(data.meta.total);
     }
     setLoading(false);
-  }, [spaceId, page]);
+  }, [spaceId, page, search]);
 
   useEffect(() => {
     void load();
@@ -186,6 +192,15 @@ export default function SpaceEmailPage() {
 
       {error && <ErrorNotice message={error} />}
 
+      <SearchBox
+        value={search}
+        onChange={(v) => {
+          setSearch(v);
+          setPage(1);
+        }}
+        placeholder="Search by subject"
+      />
+
       {loading ? (
         <Card>
           <CardContent className="space-y-3 p-4">
@@ -194,6 +209,8 @@ export default function SpaceEmailPage() {
             ))}
           </CardContent>
         </Card>
+      ) : campaigns.length === 0 && search.trim() ? (
+        <p className="text-sm text-muted-foreground">No campaigns match “{search}”.</p>
       ) : campaigns.length === 0 ? (
         <Card>
           <CardContent className="py-12">

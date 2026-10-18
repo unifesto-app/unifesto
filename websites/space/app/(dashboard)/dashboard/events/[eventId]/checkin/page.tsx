@@ -33,6 +33,9 @@ import type {
   AttendeeSearchResult,
   Registration,
 } from "@/lib/api/registrations-api";
+import { EventExportMenu } from "@/components/shared/EventExportMenu";
+import { useSession } from "@/lib/context/SessionContext";
+import { can } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -49,6 +52,7 @@ function initials(name?: string | null, username?: string | null): string {
 export default function EventCheckinPage() {
   const params = useParams();
   const eventId = params.eventId as string;
+  const { currentRole } = useSession();
 
   const [types, setTypes] = useState<CheckinType[]>([]);
   const [activeTypeId, setActiveTypeId] = useState<string>("");
@@ -86,6 +90,11 @@ export default function EventCheckinPage() {
       <PageHeader
         title="Check-in Management"
         subtitle="Manage check-in points, grant your team access, and check attendees in"
+        actions={
+          can(currentRole, "event:manage-attendees") ? (
+            <EventExportMenu eventId={eventId} type="checkins" />
+          ) : undefined
+        }
       />
 
       {/* Point selector */}

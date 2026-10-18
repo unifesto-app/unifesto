@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   CaretRight,
   Buildings,
+  Download,
 } from "@unifesto/unicon/react";
 import {
   getAdminTransactions,
@@ -17,6 +18,7 @@ import {
   type TransactionPaymentStatus,
 } from "@/lib/api/admin-transactions-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { downloadCsv } from "@/lib/utils/csv";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -73,6 +75,7 @@ export default function TransactionsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
 
   // Debounce the search box so we don't hit the API on every keystroke.
   useEffect(() => {
@@ -106,11 +109,59 @@ export default function TransactionsPage() {
     setPage(1);
   }, [status, debouncedSearch]);
 
+  /** Every row matching the current filters, not just this page. */
+  const exportCsv = async () => {
+    setExporting(true);
+    setError("");
+    const rows: LedgerTransaction[] = [];
+    for (let p = 1; ; p++) {
+      const { data, error } = await getAdminTransactions({
+        page: p,
+        limit: 500,
+        status: status === "all" ? undefined : status,
+        search: debouncedSearch.trim() || undefined,
+      });
+      if (error || !data) {
+        setError(error?.message ?? "Export failed");
+        setExporting(false);
+        return;
+      }
+      rows.push(...data.transactions);
+      if (p >= data.pagination.totalPages) break;
+    }
+    downloadCsv(
+      `transactions-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Registered At", "Payer", "Email", "Event", "Space", "Ticket Type", "Amount (INR)", "Processing Fee (INR)", "Refunded (INR)", "Payment Status", "Payment ID", "Order ID", "Paid At"],
+      rows.map((t) => [
+        t.registeredAt,
+        t.user.fullName || t.user.username || "",
+        t.user.email,
+        t.event.title,
+        t.event.space.name,
+        t.ticketType?.name ?? "",
+        Number(t.totalAmount).toFixed(2),
+        Number(t.processingFee).toFixed(2),
+        Number(t.refundedAmount).toFixed(2),
+        t.paymentStatus,
+        t.paymentId,
+        t.orderId,
+        t.paidAt,
+      ])
+    );
+    setExporting(false);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Transactions"
         subtitle="Every payment moving through Unifesto"
+        actions={
+          <Button variant="outline" onClick={exportCsv} disabled={exporting || loading}>
+            <Download className="h-4 w-4" />
+            {exporting ? "Exporting…" : "Export CSV"}
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

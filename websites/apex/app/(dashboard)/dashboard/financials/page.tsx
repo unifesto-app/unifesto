@@ -14,6 +14,7 @@ import {
   Buildings,
   CaretRight,
   CaretUp,
+  Download,
   CaretDown,
   CalendarBlank,
 } from "@unifesto/unicon/react";
@@ -25,6 +26,8 @@ import {
   type SpaceFinancials,
   type EventFinancials,
 } from "@/lib/api/payouts-api";
+import { downloadCsv } from "@/lib/utils/csv";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -136,11 +139,27 @@ export default function PlatformFinancialsPage() {
     return [...spaces].sort((a, b) => (a[sortKey] - b[sortKey]) * dir);
   }, [spaces, sortKey, sortDir]);
 
+  /** One row per event, with the same figures as the table (INR). */
+  const exportCsv = () =>
+    downloadCsv(
+      `financials-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Space", "Event", "Event Date", ...COLUMNS.map((c) => `${c.label} (INR)`)],
+      sortedSpaces.flatMap((s) =>
+        s.events.map((e) => [s.name, e.title, e.startDateTime, ...COLUMNS.map((c) => e[c.key].toFixed(2))])
+      )
+    );
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Financials"
         subtitle="Platform-wide money movement across every space — collected, refunded, settled, and still owed to organisers."
+        actions={
+          <Button variant="outline" disabled={!spaces?.length} onClick={exportCsv}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        }
       />
 
       {error && <ErrorNotice message={error} />}

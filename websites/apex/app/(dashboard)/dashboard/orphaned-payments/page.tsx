@@ -8,6 +8,7 @@ import {
   type OrphanedPaymentRow,
 } from "@/lib/api/reconciliation-api";
 import { reconcileTransaction } from "@/lib/api/admin-transactions-api";
+import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,11 @@ export default function OrphanedPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rowState, setRowState] = useState<Record<string, RowState>>({});
+  const [search, setSearch] = useState("");
+  const shown = (data?.rows ?? []).filter((r) =>
+    matches(search, r.paymentId, r.orderId, r.email, r.contact, r.notesRegistrationId)
+  );
+  const { page, setPage, totalPages, pageItems } = usePaged(shown);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -152,7 +158,18 @@ export default function OrphanedPaymentsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {data?.rows.map((row) => (
+          <SearchBox
+            value={search}
+            onChange={(v) => {
+              setSearch(v);
+              setPage(1);
+            }}
+            placeholder="Search payment id, order id, email or phone"
+          />
+          {shown.length === 0 && (
+            <p className="text-sm text-muted-foreground">No payments match “{search}”.</p>
+          )}
+          {pageItems.map((row) => (
             <OrphanRow
               key={row.paymentId}
               row={row}
@@ -164,6 +181,7 @@ export default function OrphanedPaymentsPage() {
               onAttachAnyway={() => void attach(row, true)}
             />
           ))}
+          <Pager page={page} totalPages={totalPages} onPage={setPage} />
         </div>
       )}
     </div>
