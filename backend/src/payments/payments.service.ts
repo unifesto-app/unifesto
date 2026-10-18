@@ -208,6 +208,23 @@ export class PaymentsService {
   }
 
   /**
+   * Best-effort cancel of a Payment Link so the attendee can't pay a row that
+   * was superseded or cancelled. Never throws: a link that's already paid,
+   * expired or cancelled is fine, and a capture that slips through still lands
+   * on the (cancelled) row for restore or refund.
+   */
+  async cancelPaymentLink(linkId: string): Promise<void> {
+    try {
+      await (this.razorpay as any).paymentLink.cancel(linkId);
+      this.logger.log(`Cancelled Razorpay payment link ${linkId}`);
+    } catch (err: any) {
+      this.logger.warn(
+        `cancelPaymentLink(${linkId}) failed: ${err?.error?.description ?? err?.message ?? String(err)}`,
+      );
+    }
+  }
+
+  /**
    * Refund a captured payment once per `key` (see {@link refundOnce}). `amount`
    * is in rupees. Throws if no refund went out — callers decide how to treat
    * that (log, queue for retry, surface to an admin); retrying is always safe.

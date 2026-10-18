@@ -40,6 +40,7 @@ import {
   seatsFor,
   formatEventDate,
   formatEventTime,
+  SETTLEABLE_PAYMENT,
 } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 
@@ -161,6 +162,58 @@ export class RegistrationCheckoutService {
    * than dropping the buyer onto a waiting list — a scheduled drop that hasn't
    * opened, or a sale that has closed, is simply not for sale right now.
    */
+  /**
+   * Clear an attempt that never settled money (PENDING / FAILED) so a fresh one
+   * can insert past the partial unique index (A19).
+   *  - Waiting list rows are refused, never cleared: OFFERED holds a seat and
+   *    WAITING a queue place, and deleting either corrupts the counters.
+   *  - A row that reached Razorpay (an order, or a curator's payment link) is
+   *    cancelled, not deleted, so a late payment still finds it; its link is
+   *    cancelled too so the attendee can't pay twice.
+   *  - Anything else never had money attached and is deleted.
+   * The coupon slot is released first either way (the delete cascade would drop
+   * the redemption without decrementing usedCount).
+   */
+  private async clearAbandonedAttempt(
+    stale: {
+      id: string;
+      orderId: string | null;
+      paymentLinkId: string | null;
+      status: RegistrationStatus;
+      waitlistStatus: WaitlistStatus | null;
+    },
+    reason: string,
+  ): Promise<void> {
+    if (stale.waitlistStatus === WaitlistStatus.OFFERED) {
+      throw new BadRequestException(
+        'A seat is being held for you from the waiting list. Pay for it from your waiting list offer.',
+      );
+    }
+    if (stale.waitlistStatus === WaitlistStatus.WAITING) {
+      throw new BadRequestException(
+        "You're on the waiting list for this ticket. Leave the waiting list to book it directly.",
+      );
+    }
+    if (stale.status === RegistrationStatus.CANCELLED) return; // already superseded
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.coupons.releaseByRegistration(tx, stale.id);
+      if (stale.orderId || stale.paymentLinkId) {
+        await tx.eventRegistration.update({
+          where: { id: stale.id },
+          data: {
+            status: RegistrationStatus.CANCELLED,
+            cancelledAt: new Date(),
+            cancellationReason: reason,
+          },
+        });
+      } else {
+        await tx.eventRegistration.delete({ where: { id: stale.id } });
+      }
+    });
+    if (stale.paymentLinkId) await this.payments.cancelPaymentLink(stale.paymentLinkId);
+  }
+
   private assertTicketOnSale(ticketType: {
     saleStartsAt?: Date | null;
     saleEndsAt?: Date | null;
@@ -258,39 +311,17 @@ export class RegistrationCheckoutService {
       throw new BadRequestException('You already have a ticket of this type for this event');
     }
 
-    // Clear an existing PENDING (unpaid) registration for the same ticket type
-    // instead of leaving a duplicate behind. A cancelled row is skipped so a
-    // superseded checkout (below) is never re-matched.
-    const pendingRegistration = event.registrations.find(
+    // Clear abandoned (unpaid) attempts for the same ticket type instead of
+    // leaving a duplicate behind. A cancelled row is skipped so a superseded
+    // checkout is never re-matched.
+    const abandoned = event.registrations.filter(
       (r) =>
-        r.paymentStatus === PaymentStatus.PENDING &&
+        SETTLEABLE_PAYMENT.includes(r.paymentStatus) &&
         r.status !== RegistrationStatus.CANCELLED &&
         (r.ticketTypeId || null) === requestedTicketTypeId,
     );
-    if (pendingRegistration) {
-      if (pendingRegistration.orderId) {
-        // This pending row already reached checkout: a Razorpay order exists,
-        // its id is embedded in that order's `notes`, and the attendee may yet
-        // complete that earlier checkout. Hard-deleting it would orphan any such
-        // payment — the webhook looks up a registration that no longer exists
-        // and drops the money silently. Keep the row (and its id) so the payment
-        // stays recoverable via the webhook or reconcile; just cancel it so it
-        // no longer counts as an active duplicate.
-        await this.prisma.eventRegistration.update({
-          where: { id: pendingRegistration.id },
-          data: {
-            status: RegistrationStatus.CANCELLED,
-            cancelledAt: new Date(),
-            cancellationReason: 'Superseded by a new registration attempt',
-          },
-        });
-      } else {
-        // Never reached checkout — no order, so no payment can exist against it.
-        // Safe to hard-delete.
-        await this.prisma.eventRegistration.delete({
-          where: { id: pendingRegistration.id },
-        });
-      }
+    for (const stale of abandoned) {
+      await this.clearAbandonedAttempt(stale, 'Superseded by a new registration attempt');
     }
 
     if (event.status !== 'PUBLISHED') {
@@ -779,36 +810,11 @@ export class RegistrationCheckoutService {
     // untouched as financial history; the partial index lets the new row
     // coexist with them, which is what makes re-registration after a refund
     // work without deleting the refund's ledger.
-    const abandonedRegs = sameTypeRegs.filter(
-      (r) =>
-        r.paymentStatus === PaymentStatus.PENDING ||
-        r.paymentStatus === PaymentStatus.FAILED,
+    const abandonedRegs = sameTypeRegs.filter((r) =>
+      SETTLEABLE_PAYMENT.includes(r.paymentStatus),
     );
     for (const stale of abandonedRegs) {
-      // Release any coupon slot this abandoned attempt was holding BEFORE the
-      // delete. The FK cascade would remove the redemption row but never
-      // decrement the coupon's usedCount, so deleting first would leak the slot.
-      // Both steps run in one transaction so the slot and the row go together.
-      await this.prisma.$transaction(async (tx) => {
-        await this.coupons.releaseByRegistration(tx, stale.id);
-        if (stale.orderId) {
-          if (stale.status === RegistrationStatus.CANCELLED) return; // already superseded
-          // Reached checkout: a Razorpay order names this row, and the attendee
-          // may still pay it in another tab. Deleting would orphan that money,
-          // so cancel instead (same as registerForEvent); the partial unique
-          // index exempts CANCELLED rows, so the new attempt can still insert.
-          await tx.eventRegistration.update({
-            where: { id: stale.id },
-            data: {
-              status: RegistrationStatus.CANCELLED,
-              cancelledAt: new Date(),
-              cancellationReason: 'Superseded by a new checkout attempt',
-            },
-          });
-        } else {
-          await tx.eventRegistration.delete({ where: { id: stale.id } });
-        }
-      });
+      await this.clearAbandonedAttempt(stale, 'Superseded by a new checkout attempt');
     }
 
     // Get and validate ticket type

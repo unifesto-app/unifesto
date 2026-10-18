@@ -62,6 +62,7 @@ export function buildRegistrationsService(
     groupSeats,
     coupons,
     attendees,
+    payments,
   );
   const settlement = new RegistrationPaymentsService(
     prisma,
