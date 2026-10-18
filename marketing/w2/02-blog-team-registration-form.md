@@ -91,7 +91,7 @@ On Unifesto, group tickets work like this, as of 28 Oct 2026:
 - The lead buys and invites in the free Unifesto app; members claim their seat in the app and get their own pass.
 - Organisers check a whole team in from its roster at the gate.
 
-Free RSVP events have no platform fee on any plan. Paid tickets carry a platform fee on top of Razorpay's gateway charges; see the [pricing page](https://www.unifesto.app/pricing) for the current rates.
+Free RSVP events have no fee. On paid tickets, the attendee pays a 5% processing fee at checkout, and the organiser keeps 100% of the ticket price, as of 28 Oct 2026.
 
 Unifesto has gaps too. Members need the Unifesto app and an account to claim a seat. Payments are in Indian rupees only.
 

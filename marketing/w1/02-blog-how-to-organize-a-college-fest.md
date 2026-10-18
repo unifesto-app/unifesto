@@ -85,7 +85,7 @@ Decide how people will register and pay before you design a single poster.
 - Give team events a group ticket, so the team lead pays once and invites the rest.
 - Test the whole flow yourself on a phone: register, pay, get the pass.
 
-On Unifesto, each event gets a public page on unifesto.app, and attendees register and pay through Razorpay in the free Unifesto app on iOS and Android. Ticket types, group tickets and custom questions are set up by the organiser in the Space. Free RSVP events have no platform fee on any plan, as of 21 Oct 2026.
+On Unifesto, each event gets a public page on unifesto.app, and attendees register and pay through Razorpay in the free Unifesto app on iOS and Android. Ticket types, group tickets and custom questions are set up by the organiser in the Space. Free RSVP events have no fee, as of 21 Oct 2026.
 
 ## Week 4: open registrations
 
@@ -144,7 +144,7 @@ You can run this checklist with spreadsheets and forms. Unifesto puts the parts 
 | Check-in (week 1) | QR passes, multi-point scanning from a phone |
 | After the fest | Certificates with public verification (Pro), financials, PDF reports, payouts |
 
-Pricing as of 21 Oct 2026: the Starter plan is ₹0 a month with a 2.5% platform fee on paid tickets at launch pricing. Pro is ₹1,499 a month with a 1.5% fee. Razorpay's gateway charges are separate, and prices exclude 18% GST. Full details are on the [pricing page](https://www.unifesto.app/pricing).
+Fees as of 21 Oct 2026: free RSVP events have no fee. On paid tickets, the attendee pays a 5% processing fee at checkout, on top of the ticket price. The organiser keeps 100% of the ticket price. The Starter plan costs ₹0 a month.
 
 Unifesto does not run your sponsor deck, your vendors or your stage. Those stay in your team's hands.
 
@@ -172,4 +172,4 @@ Plan for 6 to 8 check-in volunteers per 1,000 attendees, spread across the entry
 
 ### Is Unifesto free for college fests?
 
-Free RSVP events have no platform fee on any Unifesto plan, as of 21 Oct 2026. Paid tickets carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise at launch pricing, plus Razorpay's gateway charges.
+Yes for free events: free RSVP events have no fee, as of 21 Oct 2026. On paid tickets, the attendee pays a 5% processing fee at checkout and the organiser keeps 100% of the ticket price. The Starter plan costs ₹0 a month.

@@ -36,21 +36,24 @@ This comparison is as of 30 Oct 2026. Prices come from each company's public pri
 | Roles per event for curators and crew | Unifesto |
 | Group tickets where each member claims their own seat | Unifesto |
 | Hackathons with teams, rounds and judging | Unifesto (Sprint, Pro plan) |
+| Lower fee on paid tickets | Townscript (4% listed vs 5%) |
 | Free RSVP events with no fee | Both |
 
 ## Pricing (as of 30 Oct 2026)
 
-| | Townscript | Unifesto Starter | Unifesto Pro |
-|---|---|---|---|
-| Monthly price | No plan price listed | ₹0 | ₹1,499 (₹1,199 billed yearly) |
-| Platform fee on paid tickets | 2% + ₹0 per ticket | 2.5% | 1.5% |
-| Payment gateway fee | 2% per ticket (domestic) | Razorpay's charges, separate | Razorpay's charges, separate |
-| Taxes | Fees exclude taxes | Prices exclude 18% GST | Prices exclude 18% GST |
-| Free events | Not charged | No platform fee | No platform fee |
+| | Townscript | Unifesto (Starter) |
+|---|---|---|
+| Monthly price | No plan price listed | ₹0 |
+| Fee on paid tickets | 2% Townscript fee + ₹0 per ticket | 5% processing fee |
+| Payment gateway fee | 2% per ticket (domestic) | Included in the 5% |
+| Who pays the fee | The page says the platform fee "is charged to the users" | The attendee, at checkout |
+| What the organiser keeps | Check your Townscript payout statement | 100% of the ticket price |
+| Taxes | Fees exclude taxes | Check at checkout |
+| Free events | Not charged | No fee |
 
-Sources: [Townscript pricing](https://www.townscript.com/i/pricing), [Unifesto pricing](https://www.unifesto.app/pricing). Unifesto prices are launch prices for Spaces that join before 31 March 2027.
+Sources: [Townscript pricing](https://www.townscript.com/i/pricing), [Unifesto pricing](https://www.unifesto.app/pricing).
 
-On a single paid event, Townscript's listed platform fee is lower than Unifesto Starter's. Unifesto Pro's fee is lower than Townscript's, and Pro adds a monthly price.
+On a paid ticket, Townscript's listed fees add up to 4% before taxes. Unifesto's processing fee is 5%, paid by the attendee, and the organiser keeps the full ticket price.
 
 ## Feature comparison (as of 30 Oct 2026)
 
@@ -77,7 +80,7 @@ On a single paid event, Townscript's listed platform fee is lower than Unifesto 
 ## Where Townscript is better
 
 - **More currencies.** Townscript sells tickets in many currencies. Unifesto takes Indian rupees only.
-- **A lower listed fee on Starter.** Townscript lists a 2% platform fee against 2.5% on Unifesto Starter.
+- **A lower listed fee.** Townscript lists 2% plus a 2% gateway fee on paid tickets. Unifesto's processing fee is 5%.
 - **No app for attendees.** Townscript attendees buy on the web. Unifesto attendees register in the Unifesto app.
 - **Sell from your own site.** Townscript offers ticket sales from your website and Facebook page. Unifesto has no embeddable widget.
 - **Start without approval.** Townscript lets you sign up, link a bank account and start selling. A Unifesto Space is reviewed by our team before its first event goes live.
@@ -119,7 +122,7 @@ As of 30 Oct 2026, Townscript's pricing page lists a 2% Townscript fee plus ₹0
 
 ### How much does Unifesto charge compared to Townscript?
 
-As of 30 Oct 2026, Unifesto Starter is ₹0 a month with a 2.5% platform fee on paid tickets, and Pro is ₹1,499 a month with a 1.5% fee, at launch pricing. Razorpay's gateway charges are separate, and prices exclude 18% GST.
+As of 30 Oct 2026, the Unifesto Starter plan is ₹0 a month. On paid tickets, the attendee pays a 5% processing fee at checkout and the organiser keeps 100% of the ticket price. Free RSVP events have no fee.
 
 ### Does Unifesto support international currencies like Townscript?
 

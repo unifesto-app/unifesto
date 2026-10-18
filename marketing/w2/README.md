@@ -4,7 +4,7 @@ Track P item P5. All **drafts**. Nothing posted, uploaded, scheduled or sent.
 
 ## Before anything goes out
 
-1. **Fee mismatch (same blocker as W1).** `/pricing` says Starter 2.5%; the live demo Finance screen shows a 5% buyer processing fee. Affects `03`, `assets/vs-townscript-carousel.json` (slide 6), the Fri LinkedIn post and the IG caption. Settle it before Fri 30 Oct.
+1. **Fees match prod (checked 18 Oct).** `GET api.unifesto.app/config/processing-fee` returns 5. New Spaces get `billingModel SUBSCRIPTION` + `STARTER`, which means a 0% organiser fee (`resolvePlatformFeePercent`). So on paid tickets the attendee pays 5% at checkout and the organiser keeps 100%; free RSVP events have no fee. The copy says exactly that. `/pricing` still says 2.5% / 1.5% / 1%, which is wrong: don't link readers to it for fees until it's fixed (separate session). Re-check before publishing if Track R deals have shipped. Open: whether GST is charged on top of the 5% (the copy doesn't say either way).
 2. **Townscript facts.** Fees checked on townscript.com/i/pricing on 18 Oct (India, INR: 2% + ₹0 per ticket, 2% gateway, excl. taxes). Four feature cells in `03` say `Verify`: fill them from Townscript's own pages or a test event, or write "Not listed". Re-check the fee on publish day.
 3. **No attendee rows on camera.** The attendee list and group seats show demo emails and `demo_pay_` IDs. The script uses ticket detail screens instead.
 4. **App screens.** Registration happens in the app. Don't film 5.0 app screens (teaser-only until 2 Dec).
@@ -24,9 +24,9 @@ Track P item P5. All **drafts**. Nothing posted, uploaded, scheduled or sent.
 | Thu 29 | 9 AM | LinkedIn (company) | How-to carousel PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | ready |
 | Thu 29 | 10 AM | Email (Apex campaigns) | Curator email #1 | `07-curator-email.md` | draft; needs both video links + your OK |
 | Thu 29 | all day | Outreach DMs (10) | Send Tuesday's video | below | to do |
-| Fri 30 | 10 AM | Blog (Apex) | Townscript alternatives: Unifesto vs Townscript (2026) | `03-blog-unifesto-vs-townscript.md` | draft, blockers 1 + 2 |
-| Fri 30 | 9 AM | LinkedIn (founder) | Townscript, honestly + PDF | `05-linkedin.md`, `assets/vs-townscript-carousel.pdf` | draft, blocker 1 |
-| Fri 30 | 8 PM | Instagram | Unifesto vs Townscript carousel | `assets/vs-townscript-carousel/`, `06-instagram.md` | draft, blocker 1 |
+| Fri 30 | 10 AM | Blog (Apex) | Townscript alternatives: Unifesto vs Townscript (2026) | `03-blog-unifesto-vs-townscript.md` | draft, blocker 2 |
+| Fri 30 | 9 AM | LinkedIn (founder) | Townscript, honestly + PDF | `05-linkedin.md`, `assets/vs-townscript-carousel.pdf` | draft, ready |
+| Fri 30 | 8 PM | Instagram | Unifesto vs Townscript carousel | `assets/vs-townscript-carousel/`, `06-instagram.md` | draft, ready |
 | Fri 30 | 7 PM | YT Shorts + IG Reels | Short 3: Team of 4, 4 different spellings | `04-shorts.md`, `assets/short3-cover.png` | needs 20 s screen recording |
 | Sat 31–Sun 1 | | IG stories | Stories only; batch W3 edits | `06-instagram.md` | ready |
 
@@ -34,7 +34,7 @@ Track P item P5. All **drafts**. Nothing posted, uploaded, scheduled or sent.
 
 - **Record** Mon 26 (script in `01`) plus the fake-sheet clip for Short 3.
 - **Edit** the long video, 3 Shorts, the 75 s LinkedIn cut.
-- **Fill** the Townscript `Verify` cells; **settle** the fee blocker.
+- **Fill** the Townscript `Verify` cells.
 - **Approve** the curator email in chat before it goes out.
 
 ## Outreach DM (Thu, 10 pages)

@@ -41,7 +41,7 @@ This comparison is as of 21 Oct 2026. It covers what organisers of college fests
 |---|---|---|
 | Price to start | Free with a Google account | Free (Starter plan, ₹0 a month) |
 | Fee on free events | None | None |
-| Fee on paid tickets | No payments built in | 2.5% platform fee on Starter at launch pricing, plus Razorpay gateway charges |
+| Fee on paid tickets | No payments built in | The attendee pays a 5% processing fee at checkout; the organiser keeps 100% of the ticket price |
 | Collect payment | Not built in; needs a payment link, UPI screenshots or an add-on | Razorpay checkout, money paid out to your bank account |
 | Ticket types and prices | Not built in | Multiple ticket types per event, early bird, sales windows |
 | Team registration | One response per person; team details typed in by hand | Group tickets: the lead pays once, members claim their own seat |
@@ -62,7 +62,7 @@ Sources for Google Forms: [Google Forms help](https://support.google.com/docs/to
 
 Google Forms is the better pick in these cases, and we use it ourselves for surveys.
 
-- **It costs nothing, ever.** Google Forms has no fee on anything, because it does not handle money.
+- **It costs nothing, ever.** Google Forms has no fee on anything, because it does not handle money. On Unifesto, attendees pay a 5% processing fee on paid tickets.
 - **Nobody needs an app.** Anyone with a browser can fill a Google Form. Unifesto registration happens in the Unifesto app, so attendees install it first.
 - **It is ready in two minutes.** You do not need approval to start. A Unifesto Space is requested and approved before your first event.
 - **Everyone already knows it.** Your team and your attendees have used it before.
@@ -104,13 +104,14 @@ Imported attendees appear in the same attendee list as everyone who registers in
 
 ## Pricing (as of 21 Oct 2026)
 
-| Plan | Monthly price | Platform fee on paid tickets | Free RSVP events |
-|---|---|---|---|
-| Starter | ₹0 | 2.5% | No fee |
-| Pro | ₹1,499 (₹1,199 billed yearly) | 1.5% | No fee |
-| Enterprise | Custom | 1% | No fee |
+| | Google Forms | Unifesto |
+|---|---|---|
+| Monthly price | Free | ₹0 on the Starter plan |
+| Free RSVP events | Free | No fee |
+| Paid tickets | No payments built in | The attendee pays a 5% processing fee at checkout |
+| What the organiser keeps | Whatever reaches your UPI | 100% of the ticket price, paid out to your bank |
 
-These are launch prices for Spaces that join before 31 March 2027. Razorpay's gateway charges are separate. All prices exclude 18% GST.
+Pro and Enterprise add features such as waiting lists, certificates and Unifesto Sprint. See the [pricing page](https://www.unifesto.app/pricing) for plan prices.
 
 ## FAQ
 
@@ -128,7 +129,7 @@ Not by default. A Google Form asks people to sign in to a Google account when it
 
 ### Is Unifesto free like Google Forms?
 
-Unifesto's Starter plan costs ₹0 a month, and free RSVP events carry no platform fee, as of 21 Oct 2026. Paid tickets carry a 2.5% platform fee on Starter at launch pricing, plus Razorpay's gateway charges.
+Unifesto's Starter plan costs ₹0 a month, and free RSVP events have no fee, as of 21 Oct 2026. On paid tickets, the attendee pays a 5% processing fee at checkout and the organiser keeps 100% of the ticket price.
 
 ### Do attendees need the Unifesto app to register?
 

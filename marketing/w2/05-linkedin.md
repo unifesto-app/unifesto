@@ -64,7 +64,7 @@ Full 8-minute guide on our YouTube (link in comments).
 4. Give your club a discount code with a usage limit
 5. Share one tracked link per channel
 
-Free RSVP events carry no platform fee. Save this for fest season.
+Free RSVP events have no fee. Save this for fest season.
 
 #eventmanagement #collegefest #ticketing #hackathon
 ```
@@ -85,7 +85,7 @@ Townscript vs Unifesto.
 Townscript sells in many currencies. We're rupees only.
 Townscript has a widget for your own website. We don't.
 Townscript attendees buy on the web. Ours register in our app.
-Townscript lists a 2% platform fee. Our Starter plan is 2.5%.
+Townscript lists 2% + 2% gateway. Our buyers pay a 5% processing fee (organisers keep 100%).
 
 Where we're different: we built Unifesto for clubs and fests that run many events with one team. A Space that outlives the committee, roles per event, group tickets with a seat per member, hackathons in the same place.
 

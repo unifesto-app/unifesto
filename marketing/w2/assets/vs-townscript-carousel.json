@@ -29,12 +29,12 @@
     {
       "kind": "step",
       "title": "Where Townscript wins",
-      "text": "Many currencies. A widget for your own website. No app for attendees. A 2% listed platform fee. *We'll say it first.*"
+      "text": "Many currencies. A widget for your own website. No app for attendees. A lower listed fee: 2% + 2% gateway. *We'll say it first.*"
     },
     {
       "kind": "step",
       "title": "The fees",
-      "text": "Townscript: 2% + 2% gateway (domestic).\n\nUnifesto Starter: 2.5% + Razorpay. Pro: 1.5% + Razorpay, ₹1,499/month.\n\n*Launch pricing, all excl. taxes, as of 30 Oct 2026.*"
+      "text": "Townscript: 2% + 2% gateway (domestic), excl. taxes.\n\nUnifesto: buyers pay a 5% processing fee. You keep 100% of the ticket price.\n\n*Free events: no fee on either. As of 30 Oct 2026.*"
     },
     {
       "kind": "cta",
