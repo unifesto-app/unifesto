@@ -1,5 +1,5 @@
 import { apiBase, withInternal } from "@/lib/api/internal";
-import { BUYER_PROCESSING_FEE, PLANS, type Plan } from "@/lib/site";
+import { BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLANS, type Plan } from "@/lib/site";
 
 /**
  * The live rate card (A9, D10): each plan's platform fee and the buyer's
@@ -13,10 +13,13 @@ const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "https://api.unifesto
 export interface RateCard {
   plans: Plan[];
   buyerFee: number;
+  /** Most the buyer fee can be per ticket, in rupees; null = no cap. */
+  buyerFeeCap: number | null;
 }
 
 interface PlanFeesResponse {
   buyerProcessingFeePercent: number;
+  buyerProcessingFeeCapPerTicket?: number | null;
   plans: { plan: string; platformFeePercent: number }[];
 }
 
@@ -29,8 +32,9 @@ export async function getRateCard(): Promise<RateCard> {
     return {
       plans: PLANS.map((p) => (fee.has(p.id) ? { ...p, fee: fee.get(p.id)! } : p)),
       buyerFee: Number(data.buyerProcessingFeePercent),
+      buyerFeeCap: Number(data.buyerProcessingFeeCapPerTicket) || null,
     };
   } catch {
-    return { plans: PLANS, buyerFee: BUYER_PROCESSING_FEE };
+    return { plans: PLANS, buyerFee: BUYER_PROCESSING_FEE, buyerFeeCap: BUYER_PROCESSING_FEE_CAP };
   }
 }

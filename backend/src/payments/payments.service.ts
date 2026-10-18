@@ -142,15 +142,20 @@ export class PaymentsService {
   }
 
   /**
-   * The app-wide processing fee (admin-set percent) for a given base price.
+   * The app-wide buyer processing fee for a base price covering `tickets`
+   * tickets: the percent of the base, capped per ticket (A34: min(5%, ₹99)).
    * Applied to every paid transaction regardless of the organiser's plan, so
-   * both events and sessions charge it identically.
+   * events, sessions, stays and extra seats charge it identically. A ticket is
+   * one priced unit: each of a quantity, each seat of a per-person group, a
+   * flat-priced group as one, a session seat, a stay guest.
    */
-  computeProcessingFee(basePrice: number): number {
+  computeProcessingFee(basePrice: number, tickets = 1): number {
     const percent = this.platformConfig.getProcessingFeePercent();
     // Rounded to the paise: an unrounded fee (₹12.345) drifts from what
     // Razorpay charges (createOrder rounds to paise) and trips reconcile.
-    return Math.round(basePrice * percent + 1e-9) / 100;
+    const fee = Math.round(basePrice * percent + 1e-9) / 100;
+    const cap = this.platformConfig.getProcessingFeeCapPerTicket() * Math.max(1, Math.trunc(tickets));
+    return Math.min(fee, cap);
   }
 
   /**

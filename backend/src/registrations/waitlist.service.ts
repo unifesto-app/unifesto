@@ -12,6 +12,7 @@ import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
 import { GroupSeatsService } from './group-seats.service';
 import { SoldOutError, takeTicketSeats } from './capacity.util';
+import { ticketsIn } from './registration.util';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { WaitlistOfferEvent } from '../notifications/notifications.events';
 import {
@@ -523,7 +524,10 @@ export class WaitlistService {
             ? unitPrice
             : unitPrice * reg.quantity;
 
-      const processingFee = this.payments.computeProcessingFee(baseAmount);
+      const processingFee = this.payments.computeProcessingFee(
+        baseAmount,
+        ticketsIn(ticketType, { quantity: reg.quantity, groupSize: seats }),
+      );
       const totalAmount = baseAmount + processingFee;
 
       const now = new Date();

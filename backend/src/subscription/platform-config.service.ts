@@ -14,6 +14,12 @@ const CONFIG_ID = 'global';
 export const PROCESSING_FEE_PERCENT = 5;
 
 /**
+ * The buyer fee never exceeds this per ticket (A34, D11): min(5%, ₹99). Kicks
+ * in above a ₹1,980 ticket. Served with the percent so clients show the same.
+ */
+export const PROCESSING_FEE_CAP_PER_TICKET = 99;
+
+/**
  * Normalise a WhatsApp number to E.164 ("+919848945690"). A bare 10-digit
  * number is taken as Indian; anything else must already carry its country
  * code. Returns null when the input can't be a phone number.
@@ -145,6 +151,11 @@ export class PlatformConfigService implements OnModuleInit {
     return PROCESSING_FEE_PERCENT;
   }
 
+  /** Most the buyer fee can be per ticket, in rupees (A34). */
+  getProcessingFeeCapPerTicket(): number {
+    return PROCESSING_FEE_CAP_PER_TICKET;
+  }
+
   /** Version policy for the mobile update prompt (public + admin read). */
   getAppVersion(): AppVersionConfig {
     return this.appVersion;
@@ -174,6 +185,7 @@ export class PlatformConfigService implements OnModuleInit {
   /** Full config payload for the admin surface. */
   async getConfig(): Promise<{
     processingFeePercent: number;
+    processingFeeCapPerTicket: number;
     postEventActionWindowDays: number;
     appVersion: AppVersionConfig;
     appReviewLoginEnabled: boolean;
@@ -184,6 +196,7 @@ export class PlatformConfigService implements OnModuleInit {
     });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
+      processingFeeCapPerTicket: PROCESSING_FEE_CAP_PER_TICKET,
       postEventActionWindowDays: this.postEventActionWindowDays,
       appVersion: this.appVersion,
       appReviewLoginEnabled: row?.appReviewLoginEnabled ?? false,
