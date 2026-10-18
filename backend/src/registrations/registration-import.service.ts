@@ -789,8 +789,13 @@ export class RegistrationImportService {
       ticketType.kind === 'GROUP' && ticketType.groupPricingMode === 'PER_PERSON'
         ? price * (groupSize ?? 1)
         : price;
-    const processingFee = this.payments.computeProcessingFee(basePrice, ticketsIn(ticketType, { quantity: 1, groupSize }));
-    const totalAmount = basePrice + processingFee;
+    const sale = this.payments.priceSale(
+      basePrice,
+      ticketsIn(ticketType, { quantity: 1, groupSize }),
+      event.absorbProcessingFee,
+    );
+    const processingFee = sale.fee;
+    const totalAmount = sale.total;
 
     // PENDING row + its group seats together; the payment-link webhook then
     // confirms the existing seats (S42).

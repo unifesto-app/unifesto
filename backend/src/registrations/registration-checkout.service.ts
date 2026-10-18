@@ -463,11 +463,15 @@ export class RegistrationCheckoutService {
       baseAmount = Math.max(0, baseAmount - couponDiscount);
     }
 
-    const processingFee = this.payments.computeProcessingFee(
+    // The organiser may absorb the buyer fee (A33): then the buyer pays the
+    // listed price and the fee comes out of it.
+    const sale = this.payments.priceSale(
       baseAmount,
       ticketsIn(ticketType, { quantity: dto.quantity, groupSize }),
+      event.absorbProcessingFee,
     );
-    const totalAmount = baseAmount + processingFee;
+    const processingFee = sale.fee;
+    const totalAmount = sale.total;
 
     // The full total is paid via Razorpay (the processing fee is never waived).
     const razorpayAmount = totalAmount;

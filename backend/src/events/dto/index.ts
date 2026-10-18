@@ -310,6 +310,13 @@ export class UpdateEventDto {
   @IsBoolean()
   waitlistEnabled?: boolean;
 
+  @ApiPropertyOptional({
+    description: 'Include the 5% buyer fee in ticket prices (the organiser absorbs it). Money permission required.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  absorbProcessingFee?: boolean;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

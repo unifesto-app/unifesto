@@ -16,6 +16,7 @@ import {
   isWaitlistOnly,
   getProcessingFeeTerms,
   buyerFee,
+  buyerFeeIncluded,
   NO_FEE,
   type Ticket,
   type CustomField,
@@ -413,10 +414,19 @@ export function useEventRegistration() {
   const discountedBase = Math.max(0, basePrice - discount);
   // Per-person tickets count each ticket for the cap; a per-group price is one.
   const feeTickets = selectedTicket?.price_type === 'per_person' ? quantity : 1;
-  const fee = basePrice === 0 ? 0 : buyerFee(discountedBase, feeTerms, feeTickets);
-  const total = basePrice === 0 ? 0 : Math.round((discountedBase + fee) * 100) / 100;
+  // The organiser may absorb the fee (A33): then the buyer pays the listed
+  // price and the fee is shown as included, never added.
+  const feeIncluded = !!event?.absorbProcessingFee;
+  const fee =
+    basePrice === 0
+      ? 0
+      : feeIncluded
+        ? buyerFeeIncluded(discountedBase, feeTerms, feeTickets)
+        : buyerFee(discountedBase, feeTerms, feeTickets);
+  const total = basePrice === 0 ? 0 : feeIncluded ? discountedBase : Math.round((discountedBase + fee) * 100) / 100;
   const feePercent = feeTerms.percent;
-  const feeCapped = fee > 0 && fee < Math.round(discountedBase * feeTerms.percent + 1e-9) / 100;
+  const feeCapped =
+    !feeIncluded && fee > 0 && fee < Math.round(discountedBase * feeTerms.percent + 1e-9) / 100;
 
   const applyCoupon = async () => {
     if (!selectedTicket || !event || !couponInput.trim()) return;
@@ -706,6 +716,7 @@ export function useEventRegistration() {
     fee,
     feePercent,
     feeCapped,
+    feeIncluded,
     total,
     couponInput,
     setCouponInput,

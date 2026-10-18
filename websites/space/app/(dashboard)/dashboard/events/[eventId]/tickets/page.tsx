@@ -18,6 +18,7 @@ import {
 } from "@unifesto/unicon/react";
 import {
   getEventById,
+  updateEvent,
   getManageTicketTypes,
   createTicketType,
   updateTicketType,
@@ -240,6 +241,10 @@ export default function EventTicketsPage() {
         </div>
       )}
 
+      {tickets.some((t) => t.price > 0) && event && (
+        <FeeCard event={event} onSaved={(absorb) => setEvent({ ...event, absorbProcessingFee: absorb })} />
+      )}
+
       {draft && (
         <TicketForm
           title="New ticket"
@@ -289,6 +294,50 @@ export default function EventTicketsPage() {
 
 function formatInr(n: number) {
   return inr(n);
+}
+
+/**
+ * Who pays the 5% buyer fee on this event's paid tickets (A33). Off: it is
+ * added on top at checkout. On: buyers pay the listed price and the fee comes
+ * out of the organiser's share. Changing it affects new sales only. Needs the
+ * event's or space's money rights; the server refuses anyone else.
+ */
+function FeeCard({ event, onSaved }: { event: Event; onSaved: (absorb: boolean) => void }) {
+  const absorb = !!event.absorbProcessingFee;
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const toggle = async () => {
+    const next = !absorb;
+    const msg = next
+      ? "Include the fee in your ticket prices? Buyers will pay exactly the listed price and the 5% fee comes out of your share. New sales only."
+      : "Add the fee on top again? Buyers will pay the listed price plus 5% at checkout. New sales only.";
+    if (!window.confirm(msg)) return;
+    setSaving(true);
+    setError("");
+    const { error } = await updateEvent(event.id, { absorbProcessingFee: next });
+    setSaving(false);
+    if (error) setError(error.message);
+    else onSaved(next);
+  };
+  return (
+    <Card>
+      <CardContent className="space-y-2 py-4">
+        <label className="flex items-start gap-3 text-sm">
+          <input type="checkbox" className="mt-0.5" checked={absorb} disabled={saving} onChange={toggle} />
+          <span>
+            <span className="font-medium text-foreground">Include the processing fee in my ticket prices</span>
+            <span className="block text-muted-foreground">
+              {absorb
+                ? "On a ₹500 ticket the buyer pays ₹500 and you get ₹476.19. The 5% fee (max ₹99 a ticket) comes out of your share."
+                : "On a ₹500 ticket the buyer pays ₹525 (5% fee on top, max ₹99 a ticket) and you get ₹500."}{" "}
+              Changes apply to new sales only.
+            </span>
+          </span>
+        </label>
+        {error && <ErrorNotice message={error} />}
+      </CardContent>
+    </Card>
+  );
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

@@ -198,7 +198,7 @@ function build(db: ReturnType<typeof makeDb>) {
     sendWaitlistPromoted: jest.fn().mockResolvedValue(undefined),
     sendWaitlistRevoked: jest.fn().mockResolvedValue(undefined),
   };
-  const payments: any = { computeProcessingFee: () => 0 };
+  const payments: any = { computeProcessingFee: () => 0, priceSale: (b: number) => ({ base: b, fee: 0, total: b }) };
   const events: any = { emit: jest.fn() };
   const whatsapp: any = {
     sendEventWhatsAppGroupInvite: jest.fn().mockResolvedValue(undefined),

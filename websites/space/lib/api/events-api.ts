@@ -125,6 +125,8 @@ export interface Event {
   waitlistEnabled: boolean;
   waitlistCount: number;
   isFree: boolean;
+  /** The organiser absorbs the buyer fee: buyers pay the listed price (A33). */
+  absorbProcessingFee?: boolean;
   /**
    * Whether an organiser may add attendees for free (comp a paid ticket) on this
    * event. Off by default; a Platform Admin flips it on by approving a free-add
@@ -263,6 +265,8 @@ export interface CreateEventPayload {
   onlinePlatform?: string;
   capacity?: number;
   waitlistEnabled?: boolean;
+  /** Include the buyer fee in ticket prices. Needs money rights (A33). */
+  absorbProcessingFee?: boolean;
   isFree?: boolean;
   tags?: string[];
   category?: string;
