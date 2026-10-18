@@ -4,6 +4,21 @@ import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 
 /**
+ * True when a captured Razorpay payment is exactly `expectedRupees` in INR.
+ * Webhooks must check this before settling: the row a payment resolves to is
+ * only trusted when the money matches what that row charges.
+ */
+export function capturedAmountMatches(
+  payment: { amount?: unknown; currency?: unknown },
+  expectedRupees: unknown,
+): boolean {
+  return (
+    payment.currency === 'INR' &&
+    Number(payment.amount) === Math.round(Number(expectedRupees) * 100)
+  );
+}
+
+/**
  * Options for opening a Razorpay order. `amount` is in rupees (the service
  * converts to paise); `notes` is attached to the order for later reconciliation
  * (webhooks, dashboards) and should carry whatever identifiers the caller needs
