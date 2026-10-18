@@ -2,6 +2,7 @@ import { MetadataRoute } from 'next'
 import { getEvents } from '@/lib/api/events'
 import { getSpaces } from '@/lib/api/spaces'
 import { getPosts } from '@/lib/api/blog'
+import { getHelpArticles } from '@/lib/api/help'
 import { SITE } from '@/lib/site'
 
 const baseUrl = SITE.url
@@ -77,6 +78,17 @@ async function getBlogRoutes(): Promise<MetadataRoute.Sitemap> {
   }))
 }
 
+/** Every published help article. getHelpArticles() already returns [] on failure. */
+async function getHelpRoutes(): Promise<MetadataRoute.Sitemap> {
+  const articles = await getHelpArticles()
+  return articles.map((a) => ({
+    url: `${baseUrl}/help/${a.slug}`,
+    lastModified: new Date(a.updatedAt),
+    changeFrequency: 'monthly' as const,
+    priority: 0.5,
+  }))
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const currentDate = new Date()
 
@@ -105,6 +117,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/careers', 'weekly', 0.6),
     page('/press', 'monthly', 0.5),
     page('/support', 'monthly', 0.6),
+    page('/help', 'weekly', 0.6),
     page('/docs', 'monthly', 0.5),
     page('/privacy', 'yearly', 0.3),
     page('/terms', 'yearly', 0.3),
@@ -120,11 +133,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/delete-account', 'yearly', 0.2),
   ]
 
-  const [eventRoutes, spaceRoutes, blogRoutes] = await Promise.all([
+  const [eventRoutes, spaceRoutes, blogRoutes, helpRoutes] = await Promise.all([
     getEventRoutes(),
     getSpaceRoutes(),
     getBlogRoutes(),
+    getHelpRoutes(),
   ])
 
-  return [...staticRoutes, ...eventRoutes, ...spaceRoutes, ...blogRoutes]
+  return [...staticRoutes, ...eventRoutes, ...spaceRoutes, ...blogRoutes, ...helpRoutes]
 }
