@@ -11,6 +11,7 @@ import {
   ParseUUIDPipe,
   DefaultValuePipe,
   ParseIntPipe,
+  ParseEnumPipe,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -28,6 +29,8 @@ import {
   SupportTicketStatus,
   SupportTicketCategory,
   SupportTicketPriority,
+  SupportCaseKind,
+  SupportDesk,
 } from '@prisma/client';
 
 @ApiTags('Support')
@@ -48,8 +51,8 @@ export class SupportController {
   }
 
   /**
-   * List tickets. Role-scoped: admins see every ticket (with filters);
-   * everyone else sees only the tickets they raised.
+   * List tickets. Role-scoped: admins see every ticket (with filters, the
+   * Apex Assist inbox); everyone else sees only the tickets they raised.
    */
   @Get('tickets')
   @ApiOperation({ summary: 'List support tickets (role-scoped)' })
@@ -58,8 +61,11 @@ export class SupportController {
     @Query('status') status?: SupportTicketStatus,
     @Query('category') category?: SupportTicketCategory,
     @Query('priority') priority?: SupportTicketPriority,
+    @Query('kind', new ParseEnumPipe(SupportCaseKind, { optional: true })) kind?: SupportCaseKind,
+    @Query('desk', new ParseEnumPipe(SupportDesk, { optional: true })) desk?: SupportDesk,
     @Query('assignedToId') assignedToId?: string,
     @Query('spaceId') spaceId?: string,
+    @Query('unread') unread?: string,
     @Query('search') search?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
@@ -68,8 +74,11 @@ export class SupportController {
       status,
       category,
       priority,
+      kind,
+      desk,
       assignedToId,
       spaceId,
+      unread: unread === 'true',
       search,
       page,
       limit,

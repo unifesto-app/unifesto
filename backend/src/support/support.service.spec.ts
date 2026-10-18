@@ -45,7 +45,12 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
         ...ticket,
       })),
       update: jest.fn(async (args: any) => args),
+      findMany: jest.fn(async () => []),
+      count: jest.fn(async () => 0),
+      fields: { deskLastReadAt: 'deskLastReadAt', requesterLastReadAt: 'requesterLastReadAt' },
     },
+    refundRequest: { findMany: jest.fn(async () => []) },
+    spaceRequest: { findUnique: jest.fn(async () => ({ id: 'sr-1', status: 'PENDING' })) },
     supportMessage: {
       create: jest.fn(async (args: any) => args.data),
       findUnique: jest.fn(async () => message),
@@ -417,5 +422,52 @@ describe('SupportService (D3 notifications + unread)', () => {
     );
     expect(await service.spaceDeskMemberIds(spaceCase)).toEqual(['curator', 'admin']);
     expect(await service.spaceDeskMemberIds({ ...spaceCase, desk: SupportDesk.PLATFORM })).toEqual([]);
+  });
+});
+
+describe('SupportService (D8 Apex Assist inbox)', () => {
+  const whereOf = (prisma: any) => prisma.supportTicket.findMany.mock.calls[0][0].where;
+
+  it('filters by kind, desk, unassigned and Platform-desk unread for staff', async () => {
+    const { prisma, service } = setup({ admin: true });
+    await service.listTickets('admin-1', { kind: 'REFUND', desk: SupportDesk.PLATFORM, assignedToId: 'none', unread: true } as any);
+    const where = whereOf(prisma);
+    expect(where).toMatchObject({ kind: 'REFUND', desk: 'PLATFORM', assignedToId: null });
+    expect(where.AND[0]).toMatchObject({ desk: 'PLATFORM', OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: 'deskLastReadAt' } }] });
+  });
+
+  it('staff search covers subject, #number and the requester; requesters only search subjects of their own', async () => {
+    const staff = setup({ admin: true });
+    await staff.service.listTickets('admin-1', { search: '#1042' });
+    const or = whereOf(staff.prisma).AND[0].OR;
+    expect(or).toContainEqual({ ticketNumber: 1042 });
+    expect(or).toContainEqual({ requester: { identities: { some: { email: { contains: '#1042', mode: 'insensitive' } } } } });
+
+    const requester = setup();
+    await requester.service.listTickets('user-1', { search: 'refund', desk: SupportDesk.SPACE, assignedToId: 'x' } as any);
+    const where = whereOf(requester.prisma);
+    expect(where.requesterId).toBe('user-1');
+    expect(where.desk).toBeUndefined();
+    expect(where.assignedToId).toBeUndefined();
+    expect(where.AND[0].OR).toEqual([{ subject: { contains: 'refund', mode: 'insensitive' } }]);
+  });
+
+  it('Platform gets the typed record and refunds raised from the case; the requester does not', async () => {
+    const ticket = { subjectType: 'SpaceRequest', subjectId: 'sr-1', requester: { id: 'user-1' } };
+    const staff = setup({ admin: true, ticket });
+    staff.prisma.refundRequest.findMany.mockResolvedValue([{ id: 'rr-1', status: 'PENDING_ADMIN' }]);
+    const got: any = await staff.service.getTicket('t-1', 'admin-1');
+    expect(got.subjects).toEqual([
+      { type: 'SpaceRequest', data: { id: 'sr-1', status: 'PENDING' } },
+      { type: 'RefundRequest', data: { id: 'rr-1', status: 'PENDING_ADMIN' } },
+    ]);
+
+    const own: any = await setup({ ticket }).service.getTicket('t-1', 'user-1');
+    expect(own.subjects).toBeUndefined();
+  });
+
+  it('ignores a subject type it does not know', async () => {
+    const { service } = setup();
+    expect(await service.caseSubjects({ id: 't-1', subjectType: 'User', subjectId: 'u-1' })).toEqual([]);
   });
 });
