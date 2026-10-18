@@ -1579,6 +1579,9 @@ model EventTicketType {
   // this ticket; when null the attendee falls back to the event group, then the
   // (event/parent) community. Validated + canonicalised via common/whatsapp-links.ts.
   whatsappGroupUrl String? @map("whatsapp_group_url") @db.Text
+  /// On a recurring occurrence: the series-parent ticket type this one copies
+  /// (B17), so parent edits update it in place. Null everywhere else.
+  sourceTicketTypeId String? @map("source_ticket_type_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
@@ -1593,6 +1596,7 @@ model EventTicketType {
   blocks    TicketTypeBlock[] @relation("TicketBlocker")
   blockedBy TicketTypeBlock[] @relation("TicketBlocked")
 
+  @@index([sourceTicketTypeId])
   @@index([eventId])
   @@map("event_ticket_types")
 }

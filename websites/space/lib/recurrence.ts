@@ -136,3 +136,15 @@ export function describeRecurrence(s: RecurrenceState): string {
   else base += " · ongoing";
   return base;
 }
+
+/**
+ * Why a series can't be saved as set, or "" (B17). Without this an "until"
+ * end with no date made buildRRule return null and the event was created as a
+ * one-off without a word.
+ */
+export function recurrenceError(s: RecurrenceState, startLocal: string, skip = false): string {
+  if (skip || !s.enabled || s.end !== "until") return "";
+  if (!s.until) return "Pick the date it stops repeating, or choose another end.";
+  if (startLocal && s.until < startLocal.slice(0, 10)) return "It has to repeat until a date after it starts.";
+  return "";
+}

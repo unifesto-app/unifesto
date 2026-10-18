@@ -1,9 +1,10 @@
-# Status checks for every PR and push to main, in ONE job: "CI passed", the
+# Status checks for every PR, in ONE job: "CI passed", the
 # single required check. GitHub bills each job rounded up to a whole minute, so
 # separate changes/app/gate jobs cost ~4 billed minutes per run for ~2 of work
 # (Oct 2026: 340 billed min per 80 runs vs ~196 as one job). Each app's checks
 # only run when its folder (or this file) changed; a docs-only change runs just
-# the filter. Every app step runs even if an earlier one failed, so one run
+# the filter. A push to main skips the checks its PR already ran (~40% of Oct
+# 2026 minutes) and only reports OTA status. Every app step runs even if an earlier one failed, so one run
 # reports every broken app.
 name: CI
 
@@ -64,6 +65,8 @@ jobs:
         working-directory: mobile
         run: |
           npm ci
+          # main already passed these on its PR's merge ref; push only needs the install for the OTA report.
+          [ "$GITHUB_EVENT_NAME" = pull_request ] || exit 0
           echo "::group::Type-check"; npx tsc --noEmit; echo "::endgroup::"
           # Bundle from a clean checkout: catches source files that exist
           # locally but were never committed (e.g. gitignored
@@ -118,35 +121,35 @@ jobs:
 
       # ── websites (Node 22) ──────────────────────────────────────────────
       - uses: actions/setup-node@v4
-        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: websites/web/package-lock.json
       - name: Web
-        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/web
         run: npm ci && npx next typegen && npx tsc --noEmit -p .
 
       - uses: actions/setup-node@v4
-        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: websites/space/package-lock.json
       - name: Space
-        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/space
         run: npm ci && npx next typegen && npx tsc --noEmit -p .
 
       - uses: actions/setup-node@v4
-        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: websites/apex/package-lock.json
       - name: Apex
-        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/apex
         run: npm ci && npx next typegen && npx tsc --noEmit -p .
 
@@ -178,13 +181,13 @@ jobs:
           done
           exit $failed
       - uses: actions/setup-node@v4
-        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - name: Backend
-        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' }}
+        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         working-directory: backend
         # Dummy values only: some services build Razorpay/S3 clients in their
         # constructors from process.env. Locally these come from backend/.env.

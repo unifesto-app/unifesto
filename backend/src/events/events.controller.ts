@@ -1,3 +1,4 @@
+import { SeriesSetupSyncInterceptor } from './recurrence/series-setup-sync.interceptor';
 import {
   Controller,
   Get,
@@ -59,6 +60,7 @@ import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @ApiTags('Events')
 @Controller('events')
+@UseInterceptors(SeriesSetupSyncInterceptor)
 export class EventsController {
   constructor(
     private readonly eventsService: EventsService,
