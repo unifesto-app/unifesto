@@ -51,7 +51,6 @@ export interface TicketState {
   symbol: string;
 }
 
-const REGISTRATION_TIME_LIMIT = 15 * 60; // seconds
 const CURRENCY_SYMBOLS: Record<string, string> = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
 export const symbolFor = (currency?: string) => (currency ? CURRENCY_SYMBOLS[currency] || currency : '₹');
 
@@ -127,15 +126,6 @@ export function useEventRegistration() {
       }
     })();
   }, [eventId]);
-
-  // ── Hold timer (deadline-based, so it stays right across backgrounding) ──
-  const deadline = useRef(Date.now() + REGISTRATION_TIME_LIMIT * 1000);
-  const [secondsLeft, setSecondsLeft] = useState(REGISTRATION_TIME_LIMIT);
-  useEffect(() => {
-    const tick = () => setSecondsLeft(Math.max(0, Math.round((deadline.current - Date.now()) / 1000)));
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
 
   // ── Flow ──
   const [step, setStep] = useState<StepType>('ticket');
@@ -577,8 +567,11 @@ export function useEventRegistration() {
         return;
       }
 
-      if (!order.razorpayOrderId || finalAmount === 0) {
-        goToSuccess(finalAmount, openSeats);
+      // The server decides whether money is due (A31): no order means it
+      // registered them for free; an order is always paid, whatever this
+      // screen computed.
+      if (!order.razorpayOrderId) {
+        goToSuccess(0, openSeats);
         return;
       }
 
@@ -652,9 +645,6 @@ export function useEventRegistration() {
     }
   };
 
-  // The hold never runs out on someone mid-payment.
-  const expired = secondsLeft === 0 && !submitting && !verifying;
-
   return {
     // data
     event,
@@ -678,8 +668,6 @@ export function useEventRegistration() {
       save: saveGate,
     },
     // timer
-    secondsLeft,
-    expired,
     // flow
     step,
     steps,

@@ -103,6 +103,23 @@ describe('TrafficService', () => {
     });
   });
 
+  it('sends an event link to the current slug after a rename (B16)', async () => {
+    const { prisma, service } = build();
+    prisma.shortLink.findUnique.mockResolvedValue({
+      id: 'l1',
+      url: 'https://www.unifesto.app/event/old-name?utm_source=poster&utm_medium=short_link&utm_campaign=Ab3xYz9',
+      target: 'EVENT',
+      source: 'poster',
+      revokedAt: null,
+      event: { slug: 'new-name' },
+      space: { slug: 'club' },
+    });
+    const to = new URL(await service.resolve('Ab3xYz9', browser));
+    expect(to.pathname).toBe('/event/new-name');
+    expect(to.searchParams.get('utm_source')).toBe('poster');
+    expect(to.searchParams.get('utm_campaign')).toBe('Ab3xYz9');
+  });
+
   it('renders a QR of the short URL for active links only', async () => {
     const { prisma, service } = build();
     prisma.shortLink.findUnique.mockResolvedValueOnce({ revokedAt: null });

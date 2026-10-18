@@ -875,8 +875,10 @@ model WhiteLabelRequest {
 /// An organiser's request to be allowed to add attendees FOR FREE on one event
 /// (i.e. comp a paid ticket instead of sending a payment link). Blocked by
 /// default so the platform fee is never silently waived; a Platform Admin
-/// approves (which flips the event's `allowFreeAttendeeAdd` on) or rejects.
-/// Mirrors WhiteLabelRequest.
+/// approves or rejects. An approval is a seat quota (A27): `approvedSeats` paid
+/// seats, on one ticket type or any (`ticketTypeId` null), drawn down by every
+/// comp (single add, CSV import, curator add-seats) and revocable. Legacy
+/// approvals from before A27 have `approvedSeats` null = unlimited until revoked.
 model FreeAttendeeAddRequest {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
@@ -889,7 +891,17 @@ model FreeAttendeeAddRequest {
   requestedBy String @map("requested_by") @db.Uuid
   requester   User   @relation("FreeAttendeeAddRequester", fields: [requestedBy], references: [id])
 
+  /// Scope: one paid ticket type, or null = any ticket type on the event.
+  ticketTypeId String?          @map("ticket_type_id") @db.Uuid
+  ticketType   EventTicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+  /// Seats the organiser asked for; the admin approves `approvedSeats`.
+  requestedSeats Int? @map("requested_seats")
+  approvedSeats  Int? @map("approved_seats")
+  /// Seats already comped against this approval (atomic, never above approved).
+  usedSeats      Int  @default(0) @map("used_seats")
+
   reason     String    @db.Text
+  /// PENDING, APPROVED, REJECTED, or REVOKED (an approval withdrawn).
   status     String    @default("PENDING") @db.VarChar(20)
   reviewNote String?   @map("review_note") @db.Text
   reviewedBy String?   @map("reviewed_by") @db.Uuid
@@ -901,6 +913,7 @@ model FreeAttendeeAddRequest {
   @@index([eventId])
   @@index([requestedBy])
   @@index([status])
+  @@index([eventId, status])
   @@map("free_attendee_add_requests")
 }
 
@@ -1520,6 +1533,7 @@ model EventTicketType {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   eventId String @map("event_id") @db.Uuid
+  freeAddRequests FreeAttendeeAddRequest[]
   event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   name          String  @db.VarChar(255)
@@ -4887,6 +4901,28 @@ model EventPartnerLink {
 // =====================================================
 
 /// What a page view or short link points at. URL is short links only.
+enum SlugKind {
+  EVENT
+  SPACE
+
+  @@map("slug_kind")
+}
+
+/// A slug an event or space used to have. Lookups by slug fall back here so
+/// shared links and printed QR codes survive a rename; a live slug always wins
+/// (a new owner of the slug is never redirected away). No FK: the target is an
+/// event or a space; a deleted target just 404s as before.
+model SlugHistory {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind      SlugKind
+  slug      String   @db.VarChar(200)
+  targetId  String   @map("target_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([kind, slug])
+  @@map("slug_history")
+}
+
 enum TrafficTarget {
   EVENT
   SPACE

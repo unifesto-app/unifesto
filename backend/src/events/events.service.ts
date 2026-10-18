@@ -48,7 +48,9 @@ import {
   PaymentStatus,
   RegistrationStatus,
   Prisma,
+  SlugKind,
 } from '@prisma/client';
+import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace } from '../spaces/space-access';
 import {
   canAccessSpaceOnlyEvent,
@@ -1769,13 +1771,39 @@ export class EventsService {
     );
   }
 
+  /**
+   * The cached event payload lives up to 10 minutes; seat counts must not
+   * (A31). One small query overlays the live sold / registered / waitlist
+   * counts so "seats left" and sold-out are always current.
+   */
+  private async withLiveCounts(event: any) {
+    const live = await this.prisma.event.findUnique({
+      where: { id: event.id },
+      select: {
+        registeredCount: true,
+        waitlistCount: true,
+        ticketTypes: { select: { id: true, soldCount: true, totalQuantity: true } },
+      },
+    });
+    if (!live) return event;
+    const byId = new Map(live.ticketTypes.map((t) => [t.id, t]));
+    return {
+      ...event,
+      registeredCount: live.registeredCount,
+      waitlistCount: live.waitlistCount,
+      ticketTypes: (event.ticketTypes ?? []).map((tt: any) =>
+        byId.has(tt.id) ? { ...tt, ...byId.get(tt.id) } : tt,
+      ),
+    };
+  }
+
   private async loadEventBySlug(slug: string) {
     // Check cache first
     const cachedEvent = await this.cache.getCachedEvent(slug);
     if (cachedEvent) {
       // Increment view count in background
       await this.cache.incrementEventViews(cachedEvent.id);
-      return cachedEvent;
+      return this.withLiveCounts(cachedEvent);
     }
 
     // Try to find by slug first, then fall back to ID
@@ -1855,6 +1883,9 @@ export class EventsService {
     // If not found by slug, try by ID (for backwards compatibility).
     // Only attempt this if the value actually looks like a UUID — otherwise the
     // raw DB driver throws an unhandled "invalid input syntax for type uuid" error.
+    // A renamed event: its old slug resolves to the event (B16); the client
+    // sees the new slug in the payload and can redirect to it.
+    if (!event) slug = (await idForOldSlug(this.prisma, SlugKind.EVENT, slug)) ?? slug;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
     if (!event && isUuid) {
       event = await this.prisma.event.findUnique({
@@ -2165,6 +2196,11 @@ export class EventsService {
     // changed, so refresh the parent too.
     if (event.parentEventId) {
       await this.invalidateParentCache(event.parentEventId);
+    }
+
+    // Keep the old slug resolving, so shared links and QR codes survive (B16).
+    if (nextSlug && nextSlug !== event.slug) {
+      await rememberOldSlug(this.prisma, SlugKind.EVENT, event.slug, eventId);
     }
 
     // Recurring series parent edit: reconcile the occurrences (D3/D4). A schedule

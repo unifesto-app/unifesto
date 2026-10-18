@@ -209,17 +209,7 @@ export class RegistrationsService {
   }
 
   // RegistrationCheckoutService
-  registerForEvent(
-    ...args: Parameters<RegistrationCheckoutService['registerForEvent']>
-  ) {
-    return this.checkout.registerForEvent(...args);
-  }
 
-  completeRSVP(
-    ...args: Parameters<RegistrationCheckoutService['completeRSVP']>
-  ) {
-    return this.checkout.completeRSVP(...args);
-  }
 
   addToWaitlist(
     ...args: Parameters<RegistrationCheckoutService['addToWaitlist']>
@@ -227,11 +217,6 @@ export class RegistrationsService {
     return this.checkout.addToWaitlist(...args);
   }
 
-  createRazorpayOrder(
-    ...args: Parameters<RegistrationCheckoutService['createRazorpayOrder']>
-  ) {
-    return this.checkout.createRazorpayOrder(...args);
-  }
 
   createPaymentOrder(
     ...args: Parameters<RegistrationCheckoutService['createPaymentOrder']>

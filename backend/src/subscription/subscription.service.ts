@@ -415,13 +415,17 @@ export class SubscriptionService {
     }
     if (dto.plan !== undefined) data.plan = dto.plan;
 
-    if (dto.plan && dto.plan !== subscription.plan) {
+    // A plan change is always logged; any other change is logged when the admin
+    // left a note, so the note isn't dropped (from = to plan for those).
+    const planChanged = !!dto.plan && dto.plan !== subscription.plan;
+    const note = dto.reason?.trim();
+    if (planChanged || note) {
       await this.prisma.subscriptionHistory.create({
         data: {
           subscriptionId: subscription.id,
           fromPlan: subscription.plan,
-          toPlan: dto.plan,
-          reason: dto.reason || 'Admin updated',
+          toPlan: dto.plan ?? subscription.plan,
+          reason: note || 'Admin updated',
         },
       });
     }

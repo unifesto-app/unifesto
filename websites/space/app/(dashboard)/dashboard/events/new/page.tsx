@@ -333,6 +333,9 @@ function CreateEventInner() {
           const started = t.name.trim() || t.price.trim() || t.capacity.trim();
           if (started && !t.name.trim())
             return "Give each row a name, or remove it.";
+          // A blank price on a paid event is a mistake, not a free ticket (A31).
+          if (isPaid && t.name.trim() && !t.price.trim())
+            return `Enter a price for ${t.name.trim()} (type 0 to make it free).`;
           if (isPaid && t.name.trim() && t.price.trim()) {
             const p = Number(t.price);
             if (Number.isNaN(p) || p < 0)

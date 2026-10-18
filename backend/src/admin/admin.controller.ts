@@ -16,6 +16,7 @@ import {
   FileTypeValidator,
   Logger,
   Request,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
@@ -303,12 +304,14 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('search') search?: string,
     @Query('deleted') deleted?: string,
+    @Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string,
   ) {
     return this.adminService.getAllEvents({
       page: page ? parseInt(page, 10) : 1,
       limit: limit ? parseInt(limit, 10) : 20,
       status,
       search,
+      spaceId,
       // Anything but the two explicit opt-ins means the normal list, so a
       // malformed value can never accidentally surface hidden rows.
       deleted:

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   MagnifyingGlass,
   CalendarBlank,
@@ -54,6 +55,16 @@ const STATUS_OPTIONS: { value: AdminEventStatus | "all"; label: string }[] = [
 ];
 
 export default function AdminEventsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminEvents />
+    </Suspense>
+  );
+}
+
+function AdminEvents() {
+  // Set by a space's "View events" link.
+  const spaceId = useSearchParams().get("spaceId") ?? undefined;
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [summaryTotal, setSummaryTotal] = useState(0);
   const [status, setStatus] = useState<AdminEventStatus | "all">("all");
@@ -77,6 +88,7 @@ export default function AdminEventsPage() {
       limit: PAGE_SIZE,
       status: status === "all" ? undefined : status,
       search: debounced.trim() || undefined,
+      spaceId,
     });
     if (error) setError(error.message);
     else if (data) {
@@ -85,7 +97,7 @@ export default function AdminEventsPage() {
       setSummaryTotal(data.pagination.total);
     }
     setLoading(false);
-  }, [page, status, debounced]);
+  }, [page, status, debounced, spaceId]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setPage(1); }, [status, debounced]);
@@ -99,7 +111,14 @@ export default function AdminEventsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Events"
-        subtitle={`${summaryTotal.toLocaleString("en-IN")} events across the platform`}
+        subtitle={`${summaryTotal.toLocaleString("en-IN")} events ${spaceId ? `hosted by ${events[0]?.space?.name ?? "this space"}` : "across the platform"}`}
+        actions={
+          spaceId ? (
+            <Button variant="outline" asChild>
+              <Link href="/dashboard/events">Show all spaces</Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

@@ -136,14 +136,15 @@ export async function getUser(
 }
 
 /** Editable profile fields for the admin update endpoint. */
+/** null clears an optional field; name and username can't be cleared. */
 export interface UpdateUserPayload {
   fullName?: string;
   username?: string;
-  bio?: string;
-  linkedinUrl?: string;
-  instagramUrl?: string;
-  githubUrl?: string;
-  websiteUrl?: string;
+  bio?: string | null;
+  linkedinUrl?: string | null;
+  instagramUrl?: string | null;
+  githubUrl?: string | null;
+  websiteUrl?: string | null;
 }
 
 /** Update a user's profile by ID. */

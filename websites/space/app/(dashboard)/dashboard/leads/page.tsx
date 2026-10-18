@@ -22,6 +22,7 @@ import {
   type LeadStatus,
   type LeadSource,
 } from "@/lib/api/leads-api";
+import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -82,6 +83,7 @@ export default function LeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>(ALL);
   const [sourceFilter, setSourceFilter] = useState<string>(ALL);
+  const [search, setSearch] = useState("");
 
   const [addOpen, setAddOpen] = useState(false);
 
@@ -107,6 +109,12 @@ export default function LeadsPage() {
     return c;
   }, [leads]);
 
+  const shown = useMemo(
+    () => leads.filter((l) => matches(search, l.name, l.email, l.phone, l.event?.title, l.message)),
+    [leads, search]
+  );
+  const { page, setPage, totalPages, pageItems } = usePaged(shown, 25);
+
   const changeStatus = async (lead: Lead, status: LeadStatus) => {
     const { data, error } = await updateLead(spaceId, lead.id, { status });
     if (error) setError(error.message ?? "Could not update lead.");
@@ -121,9 +129,9 @@ export default function LeadsPage() {
   };
 
   const exportCsv = () => {
-    if (leads.length === 0) return;
+    if (shown.length === 0) return;
     const header = ["Name", "Email", "Phone", "Source", "Status", "Event", "Message", "Created"];
-    const rows = leads.map((l) => [
+    const rows = shown.map((l) => [
       l.name ?? "",
       l.email ?? "",
       l.phone ?? "",
@@ -158,7 +166,7 @@ export default function LeadsPage() {
         subtitle="People who registered interest or reached out — from event 'Notify me', space inquiries, or added by hand."
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={exportCsv} disabled={leads.length === 0}>
+            <Button variant="outline" size="sm" onClick={exportCsv} disabled={shown.length === 0}>
               <Download className="h-4 w-4" /> Export CSV
             </Button>
             <Button size="sm" onClick={() => setAddOpen(true)}>
@@ -181,6 +189,14 @@ export default function LeadsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <SearchBox
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          placeholder="Search name, email, phone or event"
+        />
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder="All statuses" />
@@ -213,6 +229,8 @@ export default function LeadsPage() {
 
       {loading ? (
         <Skeleton className="h-64 rounded-xl" />
+      ) : shown.length === 0 && search ? (
+        <p className="text-sm text-muted-foreground">No leads match “{search}”.</p>
       ) : leads.length === 0 ? (
         <EmptyState
           icon={Funnel}
@@ -233,7 +251,7 @@ export default function LeadsPage() {
               </tr>
             </thead>
             <tbody>
-              {leads.map((l) => (
+              {pageItems.map((l) => (
                 <tr key={l.id} className="border-t border-border align-top">
                   <td className="px-3 py-2">
                     <p className="font-medium text-foreground">{l.name ?? "—"}</p>
@@ -279,6 +297,7 @@ export default function LeadsPage() {
           </table>
         </div>
       )}
+      <Pager page={page} totalPages={totalPages} onPage={setPage} />
 
       <AddLeadDialog
         open={addOpen}

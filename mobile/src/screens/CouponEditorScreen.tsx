@@ -123,18 +123,19 @@ export default function CouponEditorScreen() {
     if (!value || value <= 0) return setError('The discount has to be more than 0.');
     if (draft.discountType === 'PERCENT' && value > 100) return setError("A percentage can't go over 100.");
     if (draft.startsAt && draft.expiresAt && draft.expiresAt <= draft.startsAt) return setError('The end has to be after the start.');
-    const optNum = (s: string) => (s.trim() ? Number(s) : undefined);
+    // Blanks go as null so an edit clears them (undefined would keep the old value).
+    const optNum = (s: string) => (s.trim() ? Number(s) : null);
     const body: CouponInput = {
       code: draft.code.trim().toUpperCase(),
-      description: draft.description.trim() || undefined,
+      description: draft.description.trim() || null,
       discountType: draft.discountType,
       discountValue: value,
-      maxDiscountAmount: draft.discountType === 'PERCENT' ? optNum(draft.maxDiscountAmount) : undefined,
+      maxDiscountAmount: draft.discountType === 'PERCENT' ? optNum(draft.maxDiscountAmount) : null,
       minPurchaseAmount: optNum(draft.minPurchaseAmount),
       usageLimit: optNum(draft.usageLimit),
       perUserLimit: Number(draft.perUserLimit) || 1,
-      startsAt: draft.startsAt?.toISOString(),
-      expiresAt: draft.expiresAt?.toISOString(),
+      startsAt: draft.startsAt?.toISOString() ?? null,
+      expiresAt: draft.expiresAt?.toISOString() ?? null,
       appliesToTicketTypeIds: draft.ticketIds,
       isActive: draft.isActive,
     };

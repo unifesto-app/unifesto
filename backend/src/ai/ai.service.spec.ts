@@ -83,6 +83,39 @@ describe('AiService', () => {
     });
   });
 
+  it('passes output_config through and parses a structured reply', async () => {
+    const { svc, prisma, create, logged } = setup();
+    const outputConfig = {
+      effort: 'low' as const,
+      format: { type: 'json_schema' as const, schema: { type: 'object' } },
+    };
+    create.mockResolvedValue({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: '{"category":"PAYMENTS"}' }],
+      usage,
+    });
+    await expect(svc.run('triage', { ...input, outputConfig })).resolves.toEqual({
+      ok: true,
+      text: '{"category":"PAYMENTS"}',
+      json: { category: 'PAYMENTS' },
+    });
+    expect((create.mock.calls[0] as [{ output_config: unknown }])[0].output_config).toEqual(outputConfig);
+
+    // Unparseable structured output is an error, not a half answer.
+    create.mockResolvedValue({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: '{"category":' }],
+      usage,
+    });
+    await expect(svc.run('triage', { ...input, outputConfig })).resolves.toEqual({
+      ok: false,
+      reason: 'error',
+    });
+    expect(logged().outcome).toBe(AiRunOutcome.OK);
+    const second = prisma.aiRun.create.mock.calls[1] as [{ data: { outcome: AiRunOutcome } }];
+    expect(second[0].data.outcome).toBe(AiRunOutcome.ERROR);
+  });
+
   it('is disabled until the feature is switched on, without calling Claude', async () => {
     const { svc, create } = setup({ enabled: false });
     await expect(svc.run('triage', input)).resolves.toEqual({

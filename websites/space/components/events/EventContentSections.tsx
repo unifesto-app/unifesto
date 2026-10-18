@@ -157,10 +157,10 @@ export function EventContentSections({
         onUpdate={async (id, v) => {
           const { data, error } = await updateAgenda(eventId, id, {
             title: v.title.trim(),
-            speakerName: v.speakerName?.trim() || undefined,
+            speakerName: v.speakerName?.trim() || null,
             startTime: toIso(v.startTime),
             endTime: toIso(v.endTime),
-            description: v.description?.trim() || undefined,
+            description: v.description?.trim() || null,
           });
           return { item: data, error: error?.message ?? null };
         }}
@@ -212,11 +212,11 @@ export function EventContentSections({
         onUpdate={async (id, v) => {
           const { data, error } = await updateSpeaker(eventId, id, {
             name: v.name.trim(),
-            designation: v.designation?.trim() || undefined,
-            company: v.company?.trim() || undefined,
-            linkedinUrl: v.linkedinUrl?.trim() || undefined,
-            avatarUrl: v.avatarUrl?.trim() || undefined,
-            bio: v.bio?.trim() || undefined,
+            designation: v.designation?.trim() || null,
+            company: v.company?.trim() || null,
+            linkedinUrl: v.linkedinUrl?.trim() || null,
+            avatarUrl: v.avatarUrl?.trim() || null,
+            bio: v.bio?.trim() || null,
           });
           return { item: data, error: error?.message ?? null };
         }}
@@ -265,9 +265,9 @@ export function EventContentSections({
         onUpdate={async (id, v) => {
           const { data, error } = await updatePrize(eventId, id, {
             title: v.title.trim(),
-            rank: v.rank?.trim() || undefined,
-            value: v.value?.trim() || undefined,
-            description: v.description?.trim() || undefined,
+            rank: v.rank?.trim() || null,
+            value: v.value?.trim() || null,
+            description: v.description?.trim() || null,
           });
           return { item: data, error: error?.message ?? null };
         }}
@@ -316,9 +316,9 @@ export function EventContentSections({
         onUpdate={async (id, v) => {
           const { data, error } = await updateContact(eventId, id, {
             name: v.name.trim(),
-            role: v.role?.trim() || undefined,
-            email: v.email?.trim() || undefined,
-            phone: v.phone?.trim() || undefined,
+            role: v.role?.trim() || null,
+            email: v.email?.trim() || null,
+            phone: v.phone?.trim() || null,
           });
           return { item: data, error: error?.message ?? null };
         }}

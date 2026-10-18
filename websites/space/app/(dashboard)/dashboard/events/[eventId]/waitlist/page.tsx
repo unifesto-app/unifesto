@@ -13,6 +13,8 @@ import {
   type WaitlistSummaryRow,
   type WaitlistStatus,
 } from "@/lib/api/waitlist-api";
+import { EventExportMenu } from "@/components/shared/EventExportMenu";
+import { Pager } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -62,6 +64,8 @@ export default function EventWaitlistPage() {
   const [ticketTypeId, setTicketTypeId] = useState<string>("all");
   const [status, setStatus] = useState<string>("active");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback(async () => {
     const [sum, list] = await Promise.all([
@@ -70,15 +74,19 @@ export default function EventWaitlistPage() {
         ticketTypeId: ticketTypeId === "all" ? undefined : ticketTypeId,
         status: status === "active" ? undefined : (status as WaitlistStatus),
         search: search.trim() || undefined,
-        limit: 100,
+        page,
+        limit: 50,
       }),
     ]);
     if (sum.error) setError(sum.error.message);
     else setSummary(sum.data ?? []);
     if (list.error) setError(list.error.message);
-    else setEntries(list.data?.data ?? []);
+    else {
+      setEntries(list.data?.data ?? []);
+      setTotalPages(list.data?.meta.totalPages || 1);
+    }
     setLoading(false);
-  }, [eventId, ticketTypeId, status, search]);
+  }, [eventId, ticketTypeId, status, search, page]);
 
   useEffect(() => {
     void load();
@@ -173,6 +181,7 @@ export default function EventWaitlistPage() {
       <PageHeader
         title="Waiting list"
         subtitle="People queued for a sold-out ticket. Letting someone in holds their seat until they pay — with no time limit. Revoke an offer to free the seat if they never do."
+        actions={<EventExportMenu eventId={eventId} type="waitlist" />}
       />
 
       {error && <ErrorNotice message={error} />}
@@ -208,12 +217,21 @@ export default function EventWaitlistPage() {
               <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 placeholder="Search name, email or phone"
                 className="pl-9"
               />
             </div>
-            <Select value={ticketTypeId} onValueChange={setTicketTypeId}>
+            <Select
+              value={ticketTypeId}
+              onValueChange={(v) => {
+                setTicketTypeId(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-[200px]">
                 <SelectValue />
               </SelectTrigger>
@@ -226,7 +244,13 @@ export default function EventWaitlistPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={(v) => {
+                setStatus(v);
+                setPage(1);
+              }}
+            >
               <SelectTrigger className="w-[170px]">
                 <SelectValue />
               </SelectTrigger>
@@ -264,6 +288,7 @@ export default function EventWaitlistPage() {
               </CardContent>
             </Card>
           )}
+          <Pager page={page} totalPages={totalPages} onPage={setPage} />
         </>
       )}
     </div>

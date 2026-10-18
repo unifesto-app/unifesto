@@ -81,68 +81,6 @@ export class CacheService {
   }
 
   // =====================================================
-  // 2. TICKET RESERVATION LOCK
-  // =====================================================
-
-  async reserveTickets(
-    eventId: string,
-    ticketTypeId: string,
-    userId: string,
-    quantity: number,
-  ): Promise<boolean> {
-    try {
-      const lockKey = `ticket:lock:${eventId}:${ticketTypeId}:${userId}`;
-      
-      // Check if user already has a lock
-      const existing = await this.redis.get(lockKey);
-      if (existing) {
-        this.logger.debug(`Ticket lock already exists: ${lockKey}`);
-        return true;
-      }
-
-      // Set lock
-      await this.redis.set(lockKey, quantity.toString(), 300);
-      this.logger.debug(`Ticket lock set: ${lockKey} for ${quantity} tickets`);
-      return true;
-    } catch (error) {
-      this.logger.error(
-        `Ticket reservation error for event:${eventId}, ticket:${ticketTypeId}`,
-        error,
-      );
-      return false;
-    }
-  }
-
-  async getTicketLock(
-    eventId: string,
-    ticketTypeId: string,
-    userId: string,
-  ): Promise<number | null> {
-    try {
-      const lockKey = `ticket:lock:${eventId}:${ticketTypeId}:${userId}`;
-      const quantity = await this.redis.get(lockKey);
-      return quantity ? parseInt(quantity) : null;
-    } catch (error) {
-      this.logger.error(`Get ticket lock error`, error);
-      return null;
-    }
-  }
-
-  async releaseTicketLock(
-    eventId: string,
-    ticketTypeId: string,
-    userId: string,
-  ): Promise<void> {
-    try {
-      const lockKey = `ticket:lock:${eventId}:${ticketTypeId}:${userId}`;
-      await this.redis.del(lockKey);
-      this.logger.debug(`Ticket lock released: ${lockKey}`);
-    } catch (error) {
-      this.logger.error(`Release ticket lock error`, error);
-    }
-  }
-
-  // =====================================================
   // 3. CHECK-IN CACHE
   // =====================================================
 

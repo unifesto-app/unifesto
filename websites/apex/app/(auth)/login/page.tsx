@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import backendClient from "@/lib/api/backend-client";
 import { getCurrentUser } from "@/lib/api/current-user-api";
-import { resolveAppRole } from "@/lib/types/rbac";
+import { resolveAppRole, spaceUrl } from "@/lib/types/rbac";
 import { setAuthToken } from "@/lib/utils/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,8 +72,15 @@ function LoginForm() {
       // Resolve the account's Apex surface before routing. Members / attendees
       // authenticate fine but have no admin or organiser access — send them to
       // the access-restricted screen instead of a protected route.
-      const { data: profile } = await getCurrentUser();
-      if (resolveAppRole(profile) === "none") {
+      const { data: profile, error: meError } = await getCurrentUser();
+      const role = resolveAppRole(profile);
+      if (role === "space_admin") {
+        // Space operators work in the Space app; the cookie is shared.
+        window.location.href = spaceUrl();
+        return;
+      }
+      // A failed profile load isn't a denial: the dashboard shell retries it.
+      if (!meError && role === "none") {
         router.replace("/no-access");
         return;
       }

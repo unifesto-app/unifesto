@@ -11,7 +11,9 @@ import {
 } from "@/lib/api/registrations-api";
 import {
   createFreeAddRequest,
-  getMyFreeAddRequests,
+  getEventFreeAddRequests,
+  freeSeatsLeft,
+  type FreeAddRequest,
   type FreeAddRequestStatus,
 } from "@/lib/api/free-add-api";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -142,14 +144,15 @@ function SingleAddForm({
   const [formValues, setFormValues] = useState<Record<string, unknown>>({});
   // Team-wide (per-group) answers, asked once — group tickets only.
   const [teamValues, setTeamValues] = useState<Record<string, unknown>>({});
-  // Collecting payment is the default and cannot be turned off unless a Platform
-  // Admin has approved free adds for this event.
-  const allowFree = !!event.allowFreeAttendeeAdd;
+  // Collecting payment is the default and can only be turned off against free
+  // seats a Platform Admin approved for this ticket (A27).
+  const [freeRequests, setFreeRequests] = useState<FreeAddRequest[]>([]);
   const [collectPayment, setCollectPayment] = useState(true);
   // Free-add exception request state.
   const [reqOpen, setReqOpen] = useState(false);
   const [reqReason, setReqReason] = useState("");
-  const [reqStatus, setReqStatus] = useState<FreeAddRequestStatus | null>(null);
+  const [reqSeats, setReqSeats] = useState("10");
+  const [reqThisTicket, setReqThisTicket] = useState(true);
   const [reqBusy, setReqBusy] = useState(false);
   // Two-phase: fill the form, then review before committing.
   const [step, setStep] = useState<"form" | "review">("form");
@@ -191,37 +194,38 @@ function SingleAddForm({
   // group of N shows N-1 member rows and every one of them is required.
   const extraSlots = isGroup ? Math.max(0, groupSize - 1) : 0;
 
-  // Payment is forced on for a paid ticket unless free adds are approved.
+  // Free seats this add would use: each seat of a per-person group, else one.
+  const seatsNeeded = isGroup && ticket.groupPricingMode === "PER_PERSON" ? groupSize : 1;
+  const freeLeft = freeSeatsLeft(freeRequests, ticketTypeId);
+  const allowFree = freeLeft === null || freeLeft >= seatsNeeded;
+  const reqStatus: FreeAddRequestStatus | null = freeRequests.some((r) => r.status === "PENDING")
+    ? "PENDING"
+    : null;
+  // Payment is forced on for a paid ticket unless there are free seats for it.
   const effectiveCollectPayment = isPaid && (allowFree ? collectPayment : true);
 
-  // Surface any pending free-add request so we don't offer to raise a duplicate.
+  // Free seats approved for this event, and any request still waiting.
+  const loadFreeRequests = useCallback(() => {
+    getEventFreeAddRequests(event.id).then(({ data }) => setFreeRequests(data ?? []));
+  }, [event.id]);
   useEffect(() => {
-    if (!isPaid || allowFree) {
-      setReqStatus(null);
-      return;
-    }
-    let active = true;
-    getMyFreeAddRequests(event.id).then(({ data }) => {
-      if (!active) return;
-      setReqStatus(
-        (data ?? []).some((r) => r.status === "PENDING") ? "PENDING" : null
-      );
-    });
-    return () => {
-      active = false;
-    };
-  }, [event.id, isPaid, allowFree]);
+    if (isPaid) loadFreeRequests();
+  }, [isPaid, loadFreeRequests]);
 
   const submitRequest = async () => {
-    if (!reqReason.trim()) return;
+    const seats = Math.trunc(Number(reqSeats));
+    if (!reqReason.trim() || !(seats >= 1)) return;
     setReqBusy(true);
-    const { error } = await createFreeAddRequest(event.id, reqReason.trim());
+    const { error } = await createFreeAddRequest(event.id, reqReason.trim(), {
+      seats,
+      ticketTypeId: reqThisTicket ? ticketTypeId : undefined,
+    });
     setReqBusy(false);
     if (error) {
       setError(error.message);
       return;
     }
-    setReqStatus("PENDING");
+    loadFreeRequests();
     setReqOpen(false);
     setReqReason("");
   };
@@ -626,8 +630,10 @@ function SingleAddForm({
                 Razorpay emails/texts them a payment link for ₹{ticket.price}; the
                 seat is held as pending until they pay.
                 {allowFree
-                  ? " Uncheck to comp them (add for free)."
-                  : " Required — free adds aren’t enabled for this event."}
+                  ? ` Uncheck to add them for free (${freeLeft === null ? "free adds allowed" : `${freeLeft} free seat${freeLeft === 1 ? "" : "s"} left on this ticket`}).`
+                  : freeLeft
+                    ? ` Required: this needs ${seatsNeeded} free seats and ${freeLeft} are left.`
+                    : " Required: no free seats are approved for this ticket."}
               </span>
             </span>
           </label>
@@ -640,6 +646,24 @@ function SingleAddForm({
                 </p>
               ) : reqOpen ? (
                 <div className="space-y-2">
+                  <Label>How many seats do you need to add for free?</Label>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Input
+                      type="number"
+                      min={1}
+                      className="h-9 w-28"
+                      value={reqSeats}
+                      onChange={(e) => setReqSeats(e.target.value)}
+                    />
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={reqThisTicket}
+                        onChange={(e) => setReqThisTicket(e.target.checked)}
+                      />
+                      Only for {ticket.name}
+                    </label>
+                  </div>
                   <Label>Why do you need to add attendees for free?</Label>
                   <Textarea
                     rows={3}
@@ -659,7 +683,7 @@ function SingleAddForm({
                     <Button
                       size="sm"
                       onClick={submitRequest}
-                      disabled={reqBusy || !reqReason.trim()}
+                      disabled={reqBusy || !reqReason.trim() || !(Number(reqSeats) >= 1)}
                     >
                       {reqBusy ? "Sending..." : "Send request"}
                     </Button>
@@ -668,8 +692,9 @@ function SingleAddForm({
               ) : (
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-muted-foreground">
-                    Need to add someone for free? Ask a platform admin to allow it
-                    for this event.
+                    {freeLeft === 0 && freeRequests.some((r) => r.status === "APPROVED")
+                      ? "The free seats approved for this ticket are used up. Ask a platform admin for more."
+                      : "Need to add someone for free? Ask a platform admin for free seats on this event."}
                   </p>
                   <Button variant="outline" size="sm" onClick={() => setReqOpen(true)}>
                     Request permission

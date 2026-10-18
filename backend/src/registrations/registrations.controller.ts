@@ -58,19 +58,6 @@ export class RegistrationsController {
     private readonly waitlistService: WaitlistService,
   ) {}
 
-  @Post('events/:id/register')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Register for an event (RSVP or buy tickets)' })
-  @ApiResponse({ status: 201 })
-  async registerForEvent(
-    @Request() req,
-    @Param('id') id: string,
-    @Body() dto: RegisterForEventDto,
-  ) {
-    return this.registrationsService.registerForEvent(req.user.id, id, dto);
-  }
-
   @Post('events/:id/register/create-order')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
@@ -291,7 +278,8 @@ export class RegistrationsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
-    summary: 'Export registrations as CSV, Excel or PDF (Growth plan+)',
+    summary:
+      'Export attendees, transactions, waiting list, check-ins or coupon redemptions as CSV, Excel or PDF (Growth plan+)',
   })
   @ApiResponse({ status: 200 })
   async exportRegistrations(
@@ -305,7 +293,9 @@ export class RegistrationsController {
       format === 'xlsx' || format === 'pdf' || format === 'csv'
         ? format
         : 'csv';
-    const exportType = type === 'transactions' ? 'transactions' : 'attendees';
+    const exportType = (
+      ['transactions', 'waitlist', 'checkins', 'coupons'] as const
+    ).find((t) => t === type) ?? 'attendees';
     const { stream, contentType, filename } =
       await this.registrationsService.exportRegistrations(
         req.user.id,
