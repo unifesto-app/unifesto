@@ -5,6 +5,7 @@ import {
   Lifebuoy,
   MagnifyingGlass,
   ChatCircleDots,
+  EnvelopeSimple,
   CheckCircle,
   Clock,
   CaretLeft,
@@ -126,6 +127,8 @@ export default function SupportPage() {
   }, [loadStats]);
 
   const openTicket = useCallback(async (id: string) => {
+    // Opening a case reads it for your side.
+    setTickets((ts) => ts.map((t) => (t.id === id ? { ...t, unread: false } : t)));
     setDetailLoading(true);
     setError("");
     const { data, error } = await getTicket(id);
@@ -174,6 +177,13 @@ export default function SupportPage() {
         value: stats?.open ?? 0,
         hint: "Needs a reply",
         icon: ChatCircleDots,
+        tone: "neutral" as const,
+      },
+      {
+        title: "Unread",
+        value: stats?.unread ?? 0,
+        hint: "New messages on the Platform desk",
+        icon: EnvelopeSimple,
         tone: "neutral" as const,
       },
       {
@@ -353,7 +363,7 @@ export default function SupportPage() {
         subtitle="Tickets raised by organisers and attendees across the platform"
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((s) => (
           <StatCard key={s.title} {...s} loading={!stats} />
         ))}
@@ -432,6 +442,9 @@ export default function SupportPage() {
                         <span className="text-xs font-medium text-muted-foreground">
                           #{t.ticketNumber}
                         </span>
+                        {t.unread && (
+                          <span className="size-2 shrink-0 rounded-full bg-primary" aria-label="New reply" />
+                        )}
                         <p className="truncate font-medium text-foreground">
                           {t.subject}
                         </p>

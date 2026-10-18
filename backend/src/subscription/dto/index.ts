@@ -13,7 +13,7 @@ import {
 import { BillingCycle, BillingModel, OrgPlan } from '@prisma/client';
 
 export class UpgradeSubscriptionDto {
-  @ApiProperty({ enum: OrgPlan, example: OrgPlan.GROWTH })
+  @ApiProperty({ enum: OrgPlan, example: OrgPlan.PRO })
   @IsEnum(OrgPlan)
   plan: OrgPlan;
 
@@ -133,12 +133,12 @@ export class UpdatePlanConfigDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasLeaderboard?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasCertificates?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasSponsors?: boolean;
-  @ApiPropertyOptional({ example: 5, description: 'Processing fee (%)' })
+  @ApiPropertyOptional({ example: 2.5, description: 'Organiser platform fee per paid ticket (%), new sales only' })
   @IsOptional()
   @IsNumber()
   @Min(0)
   @Max(100)
-  processingFeePercent?: number;
+  platformFeePercent?: number;
 
   @ApiPropertyOptional({ description: 'Monthly price (₹); null = custom' })
   @IsOptional()

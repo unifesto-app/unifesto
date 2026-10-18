@@ -8,7 +8,7 @@ import {
   SupportTicketStatus,
 } from '@prisma/client';
 import { AuthorizationService, CapabilityConfigService } from '../auth/authorization';
-import { SupportService } from './support.service';
+import { SupportService, isUnread } from './support.service';
 
 /** D1: Assist case fields are set on create and reply; legacy isStaffReply still written. */
 
@@ -61,7 +61,8 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
     uploadPrivate: jest.fn(async () => undefined),
     signedGetUrl: jest.fn(async (key: string) => `signed:${key}`),
   };
-  return { prisma, storage, service: new SupportService(prisma, authz, storage) };
+  const events: any = { emit: jest.fn() };
+  return { prisma, storage, events, service: new SupportService(prisma, authz, storage, events) };
 }
 
 describe('SupportService (Assist case)', () => {
@@ -333,5 +334,88 @@ describe('SupportService (Assist access, routing, escalation)', () => {
       await expect(setup({ attachment: internal }).service.attachmentUrl('a-1', 'user-1')).rejects.toBeInstanceOf(NotFoundException);
       await expect(setup({ attachment: internal, admin: true }).service.attachmentUrl('a-1', 'admin-1')).resolves.toHaveProperty('url');
     });
+  });
+});
+
+describe('SupportService (D3 notifications + unread)', () => {
+  const spaceCase = { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', spaceId: 'sp-1', escalatedAt: null };
+  const emitted = (events: any) => events.emit.mock.calls.map((c: any[]) => c[1]);
+
+  it('tells the desk about a new case and the other side about each reply', async () => {
+    const created = setup();
+    await created.service.createTicket({ subject: 's', message: 'm' } as any, 'user-1');
+    expect(emitted(created.events)).toEqual([expect.objectContaining({ kind: 'CREATED', to: 'DESK', actorId: 'user-1' })]);
+
+    const byDesk = setup({ admin: true });
+    await byDesk.service.addMessage('t-1', { body: 'hi' }, 'admin-1');
+    expect(emitted(byDesk.events)).toEqual([{ ticketId: 't-1', kind: 'REPLIED', to: 'REQUESTER', actorId: 'admin-1', message: 'hi' }]);
+
+    const byRequester = setup();
+    await byRequester.service.addMessage('t-1', { body: 'yo' }, 'user-1');
+    expect(emitted(byRequester.events)[0]).toMatchObject({ to: 'DESK' });
+
+    const bot = setup({ ticket: { status: SupportTicketStatus.BOT } });
+    await bot.service.addMessage('t-1', { body: 'q' }, 'user-1');
+    expect(bot.events.emit).not.toHaveBeenCalled();
+  });
+
+  it('a new case starts read for the requester (same instant as its first message)', async () => {
+    const { service } = setup();
+    const data: any = await service.createTicket({ subject: 's', message: 'm' } as any, 'user-1');
+    expect(data.lastMessageAt).toBe(data.requesterLastReadAt);
+  });
+
+  it('tells the requester when the desk resolves or closes, and the desk when the requester reopens', async () => {
+    const resolve = setup({ admin: true });
+    await resolve.service.updateTicket('t-1', { status: SupportTicketStatus.RESOLVED } as any, 'admin-1');
+    expect(emitted(resolve.events)).toEqual([expect.objectContaining({ kind: 'STATUS', to: 'REQUESTER' })]);
+
+    const triage = setup({ admin: true });
+    await triage.service.updateTicket('t-1', { priority: 'HIGH' } as any, 'admin-1');
+    expect(triage.events.emit).not.toHaveBeenCalled();
+
+    const reopen = setup();
+    await reopen.service.setStatusAsOwner('t-1', 'user-1', SupportTicketStatus.OPEN);
+    expect(emitted(reopen.events)).toEqual([expect.objectContaining({ kind: 'STATUS', to: 'DESK' })]);
+  });
+
+  it('opening a thread marks it read for the viewer side only', async () => {
+    const requester = setup();
+    await requester.service.getTicket('t-1', 'user-1');
+    expect(Object.keys(requester.prisma.supportTicket.update.mock.calls[0][0].data)).toEqual(['requesterLastReadAt']);
+
+    const staff = setup({ admin: true });
+    await staff.service.getTicket('t-1', 'admin-1');
+    expect(Object.keys(staff.prisma.supportTicket.update.mock.calls[0][0].data)).toEqual(['deskLastReadAt']);
+
+    // A space that only keeps read after escalation doesn't read for the desk.
+    const spaceAdmin = { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'sp-1' };
+    const after = setup({ roles: [spaceAdmin], ticket: { ...spaceCase, desk: SupportDesk.PLATFORM, escalatedAt: new Date(), requester: { id: 'user-1' } } });
+    await after.service.getTicket('t-1', 'staff');
+    expect(after.prisma.supportTicket.update).not.toHaveBeenCalled();
+  });
+
+  it('isUnread: nothing read yet, or a message since the last read', () => {
+    const t0 = new Date('2026-10-18T10:00:00Z');
+    const t1 = new Date('2026-10-18T11:00:00Z');
+    expect(isUnread(null, t0)).toBe(true);
+    expect(isUnread(t0, t1)).toBe(true);
+    expect(isUnread(t1, t1)).toBe(false);
+  });
+
+  it('space desk members are role holders who pass the support check (no Crew, no other space)', async () => {
+    const holders: Record<string, any[]> = {
+      curator: [{ code: RoleCode.CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' }],
+      crew: [{ code: RoleCode.CREW, scope: RoleScope.EVENT, eventId: 'ev-1' }],
+      admin: [{ code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'sp-1' }],
+    };
+    const { prisma, service } = setup();
+    prisma.userRole.findMany = jest.fn(async (args: any) =>
+      args.distinct
+        ? Object.keys(holders).map((userId) => ({ userId }))
+        : (holders[args.where.userId] ?? []).map((r) => ({ role: { code: r.code, scope: r.scope }, spaceId: r.spaceId ?? null, eventId: r.eventId ?? null })),
+    );
+    expect(await service.spaceDeskMemberIds(spaceCase)).toEqual(['curator', 'admin']);
+    expect(await service.spaceDeskMemberIds({ ...spaceCase, desk: SupportDesk.PLATFORM })).toEqual([]);
   });
 });

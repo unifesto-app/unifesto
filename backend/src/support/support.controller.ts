@@ -163,7 +163,8 @@ export class SupportController {
   updateTicket(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateTicketDto,
+    @Req() req: any,
   ) {
-    return this.supportService.updateTicket(id, dto);
+    return this.supportService.updateTicket(id, dto, req.user.id);
   }
 }

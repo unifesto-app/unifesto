@@ -1,8 +1,8 @@
 import {
   APP_FEATURES,
-  BUYER_PROCESSING_FEE,
+  buyerFeeText,
   FAQ_HOME,
-  FAQ_PRICING,
+  pricingFaq,
   FAQ_STAY, FAQ_HUDDLE, HUDDLE_STEPS,
   STAY_STEPS,
   HACKATHON_STAGES,
@@ -14,6 +14,7 @@ import {
   inr,
 } from "@/lib/site";
 import { getPosts } from "@/lib/api/blog";
+import { getRateCard } from "@/lib/api/rate-card";
 
 /* /llms.txt: a plain-language brief of Unifesto for AI assistants and
    answer engines (llmstxt.org format). Built from the same content source
@@ -25,7 +26,7 @@ const plan = (p: (typeof PLANS)[number]) =>
   `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}; ${p.fee}% per paid ticket (standard ${p.standardFee}%). Includes: ${p.includes.join("; ")}.`;
 
 export async function GET() {
-  const posts = await getPosts();
+  const [posts, rates] = await Promise.all([getPosts(), getRateCard()]);
   const blog = posts.length
     ? `\n## Blog\n\n${posts.map((p) => `- [${p.title}](${SITE.url}/blog/${p.slug}): ${p.excerpt}`).join("\n")}\n`
     : "";
@@ -43,7 +44,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
-- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${BUYER_PROCESSING_FEE}% processing fee on paid tickets
+- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
 - [Request a Space](${SITE.url}/request-space): how organisers get started
@@ -77,9 +78,9 @@ ${APP_FEATURES.map((f) => `- ${f.title}: ${f.body}`).join("\n")}
 
 ## Pricing (launch pricing for Spaces joining before ${LAUNCH_OFFER_ENDS})
 
-${PLANS.map(plan).join("\n")}
+${rates.plans.map(plan).join("\n")}
 
-${FAQ_PRICING.map((f) => `- ${f.q} ${f.a}`).join("\n")}
+${pricingFaq(rates.plans, rates.buyerFee, rates.buyerFeeCap).map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## Common questions
 

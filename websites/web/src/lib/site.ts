@@ -277,8 +277,9 @@ export const APP_FEATURES = [
 
 /* Launch pricing, shown as a discount off the standard price. Indian
    ticketing platforms typically charge 4% to 6% per paid ticket; Unifesto
-   undercuts that on every plan. Keep in sync with PlanConfig in the backend
-   (processingFeePercent, monthlyPrice, annualPrice) before publishing. */
+   undercuts that on every plan. The fees here are only a fallback: /pricing
+   shows the live platform fee per plan from the backend rate card
+   (GET /config/plan-fees, lib/api/rate-card.ts). Prices and copy stay here. */
 export const LAUNCH_OFFER_ENDS = "31 March 2027";
 
 export type Plan = {
@@ -289,7 +290,7 @@ export type Plan = {
   price: number | null;
   standardPrice: number | null;
   annualMonthly: number | null;
-  /** Platform fee per paid ticket, percent. */
+  /** Platform fee per paid ticket, percent. Fallback; live value from the rate card. */
   fee: number;
   standardFee: number;
   includes: string[];
@@ -301,6 +302,12 @@ export type Plan = {
    above. Must match PROCESSING_FEE_PERCENT in
    backend/src/subscription/platform-config.service.ts. */
 export const BUYER_PROCESSING_FEE = 5;
+/** Most the buyer fee can be per ticket, in rupees (A34). Fallback; live value from the rate card. */
+export const BUYER_PROCESSING_FEE_CAP = 99;
+
+/** "5% processing fee, capped at ₹99 per ticket". */
+export const buyerFeeText = (percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
+  `${percent}% processing fee${cap ? `, capped at ₹${cap} per ticket` : ""}`;
 
 export const PLANS: Plan[] = [
   {
@@ -366,6 +373,8 @@ export const PLANS: Plan[] = [
 ];
 
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+/** Rupees to the paise, dropping a trailing .00 (₹12.50, ₹0). */
+const rupees = (n: number) => `₹${n.toFixed(2).replace(/\.00$/, "")}`;
 
 /* ── FAQs (rendered visibly and as FAQPage structured data) ─────────── */
 
@@ -376,7 +385,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: "Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges the organiser a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further. Buyers pay a 5% processing fee at checkout.",
+    a: `Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges the organiser a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further. At checkout, buyers pay a ${buyerFeeText()}.`,
   },
   {
     q: "How does check-in work?",
@@ -449,7 +458,12 @@ export const FAQ_HACKATHONS: Faq[] = [
   },
 ];
 
-export const FAQ_PRICING: Faq[] = [
+/** Pricing FAQs, worded from the live rate card (see lib/api/rate-card.ts). */
+export const pricingFaq = (
+  plans: Plan[] = PLANS,
+  buyerFee: number = BUYER_PROCESSING_FEE,
+  buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
+): Faq[] => [
   {
     q: "What does launch pricing mean?",
     a: `Spaces that join before ${LAUNCH_OFFER_ENDS} lock in the discounted monthly price and platform fee shown on this page.`,
@@ -460,7 +474,7 @@ export const FAQ_PRICING: Faq[] = [
   },
   {
     q: "Who pays the processing fee?",
-    a: `The buyer. Every paid ticket carries a ${BUYER_PROCESSING_FEE}% processing fee, added at checkout on every plan and not refundable. Your platform fee is separate: ${PLANS.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ₹525 and you pay ₹12.50.`,
+    a: `The buyer. Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}, added at checkout on every plan and not refundable. Your platform fee is separate: ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ${inr(500 * (1 + buyerFee / 100))} and you pay ${rupees(500 * (plans[0]?.fee ?? 0) / 100)}.`,
   },
   {
     q: "Are payment gateway charges included?",

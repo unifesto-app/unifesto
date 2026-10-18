@@ -8,23 +8,25 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { BUYER_PROCESSING_FEE, FAQ_PRICING, LAUNCH_OFFER_ENDS, PLANS, SITE, inr } from "@/lib/site";
+import { LAUNCH_OFFER_ENDS, PLANS, SITE, buyerFeeText, inr, pricingFaq } from "@/lib/site";
+import { getRateCard } from "@/lib/api/rate-card";
 
-export const metadata: Metadata = withSocial({
-  title: "Pricing: free RSVP events, from 1% per paid ticket",
-  description: `Free RSVP events on every plan. Paid tickets from 2.5% on Starter, 1.5% on Pro and 1% on Enterprise at launch pricing, below the 4% to 6% typical in India. Buyers pay a 5% processing fee at checkout. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
-  alternates: { canonical: "/pricing" },
-}, { title: "Unifesto pricing", description: "Free RSVP events. Paid tickets from 1%. Launch pricing, locked in." });
+/* Fees come from the live rate card, refreshed every 5 minutes. */
+export const revalidate = 300;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const { plans, buyerFee, buyerFeeCap } = await getRateCard();
+  const lowest = Math.min(...plans.map((p) => p.fee));
+  return withSocial({
+    title: `Pricing: free RSVP events, from ${lowest}% per paid ticket`,
+    description: `Free RSVP events on every plan. Paid tickets from ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")} at launch pricing, below the 4% to 6% typical in India. At checkout, buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
+    alternates: { canonical: "/pricing" },
+  }, { title: "Unifesto pricing", description: `Free RSVP events. Paid tickets from ${lowest}%. Launch pricing, locked in.` });
+}
 
 /* What one ₹500 ticket costs the organiser in platform fees. The market
    band is the 4% to 6% typical of Indian ticketing platforms. */
 const TICKET = 500;
-const COMPARE = [
-  { label: "Typical platform, 6%", fee: 0.06 },
-  { label: "Typical platform, 4%", fee: 0.04 },
-  ...PLANS.map((p) => ({ label: `Unifesto ${p.name}, ${p.fee}%`, fee: p.fee / 100, ours: true })),
-];
-const MAX = Math.max(...COMPARE.map((c) => c.fee));
 
 const productLd = {
   "@context": "https://schema.org",
@@ -32,6 +34,7 @@ const productLd = {
   name: "Unifesto event platform",
   brand: { "@type": "Brand", name: SITE.name },
   description: SITE.description,
+  // Prices only (no fees), so the static plan list is enough here.
   offers: PLANS.filter((p) => p.price !== null).map((p) => ({
     "@type": "Offer",
     name: `${p.name} plan`,
@@ -42,7 +45,14 @@ const productLd = {
   })),
 };
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const { plans, buyerFee, buyerFeeCap } = await getRateCard();
+  const COMPARE = [
+    { label: "Typical platform, 6%", fee: 0.06 },
+    { label: "Typical platform, 4%", fee: 0.04 },
+    ...plans.map((p) => ({ label: `Unifesto ${p.name}, ${p.fee}%`, fee: p.fee / 100, ours: true })),
+  ];
+  const MAX = Math.max(...COMPARE.map((c) => c.fee));
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <JsonLd data={[productLd, breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
@@ -57,7 +67,7 @@ export default function PricingPage() {
 
       <Section pad="tight" id="plans">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-3" data-stagger="rise">
-          {PLANS.map((plan) => {
+          {plans.map((plan) => {
             const featured = plan.id === "pro";
             const off = plan.standardPrice && plan.price !== null ? Math.round((1 - plan.price / plan.standardPrice) * 100) : 0;
             return (
@@ -107,7 +117,7 @@ export default function PricingPage() {
           })}
         </div>
         <p className="mt-8 text-center text-sm text-paper/55">
-          Prices exclude 18% GST. Buyers pay a {BUYER_PROCESSING_FEE}% processing fee at checkout on paid tickets, on every plan. Razorpay payment gateway charges are separate. Free RSVP events carry no fees on any plan.
+          Prices exclude 18% GST. At checkout, buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan. Razorpay payment gateway charges are separate. Free RSVP events carry no fees on any plan.
         </p>
       </Section>
 
@@ -140,7 +150,7 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <FaqList faqs={FAQ_PRICING} />
+      <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap)} />
 
       <Section width="text" innerClassName="text-center">
         <h2 data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper [text-wrap:balance]">

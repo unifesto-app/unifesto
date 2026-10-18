@@ -54,6 +54,8 @@ export interface SupportTicket {
   requester?: SupportAuthor;
   /** Set when raised on behalf of a space (operator support). */
   space?: { id: string; name: string; slug: string } | null;
+  /** List endpoint: a message you haven't opened yet. */
+  unread?: boolean;
 }
 
 export interface CreateTicketInput {
@@ -114,6 +116,18 @@ export async function listMyTickets(spaceId?: string): Promise<SupportTicket[]> 
   } catch (error) {
     if (__DEV__) console.error('[support] listMyTickets failed:', error);
     return [];
+  }
+}
+
+/** How many of your own requests have a reply you haven't opened. */
+export async function getMyUnreadCount(): Promise<number> {
+  try {
+    const res = await makeAuthenticatedRequest('/support/tickets/stats');
+    if (!res?.ok) return 0;
+    const data = await res.json();
+    return typeof data.myUnread === 'number' ? data.myUnread : 0;
+  } catch {
+    return 0;
   }
 }
 
