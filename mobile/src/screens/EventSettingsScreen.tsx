@@ -111,7 +111,7 @@ export default function EventSettingsScreen() {
     ]);
 
   const confirmCancel = () =>
-    AppAlert.alert('Cancel this event?', 'Everyone registered is told. Refunds are handled separately.', [
+    AppAlert.alert('Cancel this event?', 'Everyone registered is told and sub-events are cancelled too. Paid attendees get their ticket price back from Unifesto (the fee is kept), and payouts stop until then.', [
       { text: 'Keep event', style: 'cancel' },
       {
         text: 'Cancel event',

@@ -67,7 +67,7 @@ function setup() {
     $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
   };
   const payouts = { eventOverdrawn: jest.fn(async () => 0) };
-  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, payouts as any);
+  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, payouts as any, {} as any);
   const s = service as any;
   const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
   s.razorpay = { payments: { refund, fetchMultipleRefund: jest.fn(async () => ({ items: [] })) } };

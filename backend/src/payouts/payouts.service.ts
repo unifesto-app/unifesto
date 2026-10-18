@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
 import { EmailService } from '../email/email.service';
 import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccountStatusDto } from './dto';
-import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
+import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
@@ -263,7 +263,7 @@ export class PayoutsService {
   private async computeBalance(eventId: string, feePercentOverride?: number, db: Db = this.prisma) {
     const event = await db.event.findUnique({
       where: { id: eventId },
-      select: { space: { select: { subscription: true } } },
+      select: { status: true, space: { select: { subscription: true } } },
     });
 
     const [registrations, stays, addons] = await Promise.all([
@@ -311,8 +311,12 @@ export class PayoutsService {
     const heldGross = Math.max(0, gross - refundHold);
     const netAfterHold = heldGross - platformShare(heldGross, platformFeePercent);
 
-    const available = Math.max(0, netAfterHold - committed);
+    // A cancelled event owes its paid attendees first (A24): nothing is
+    // withdrawable while any money is still held for them.
+    const cancelledWithPaid = event?.status === EventStatus.CANCELLED && gross > 0;
+    const available = cancelledWithPaid ? 0 : Math.max(0, netAfterHold - committed);
     return {
+      cancelledWithPaid,
       grossRevenue: round2(gross),
       refundHold: round2(refundHold),
       platformFeePercent,
@@ -985,6 +989,11 @@ export class PayoutsService {
         dto.platformFeePercent,
         tx,
       );
+      if (balance.cancelledWithPaid) {
+        throw new BadRequestException(
+          'This event was cancelled: refund its paid attendees before any payout',
+        );
+      }
       if (balance.available <= 0) {
         throw new BadRequestException(
           'No balance available to pay out for this event',

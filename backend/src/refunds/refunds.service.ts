@@ -26,6 +26,8 @@ import {
   TicketStatus,
   EventStatus,
   Prisma,
+  StayBookingStatus,
+  StayPaymentMode,
 } from '@prisma/client';
 import { Action, AuthorizationService } from '../auth/authorization';
 import { isPlatformAdmin } from '../events/event-access';
@@ -33,6 +35,8 @@ import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 import { PayoutsService } from '../payouts/payouts.service';
 import { OPEN_REFUND_STATUSES } from './open-statuses';
+import { openCancelledEventRefunds } from './cancelled-event-refunds';
+import { StayBookingsService } from '../stays/stay-bookings.service';
 import { RefundAlreadyIssuedError, isRazorpayRejection, refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
 
@@ -85,6 +89,7 @@ export class RefundsService {
     private readonly events: EventEmitter2,
     private readonly authz: AuthorizationService,
     private readonly payouts: PayoutsService,
+    private readonly stayBookings: StayBookingsService,
   ) {
     // Refunds use standard Razorpay Checkout (payments.refund) — the same
     // integration that collects ticket payments. This is unrelated to RazorpayX.
@@ -817,6 +822,69 @@ export class RefundsService {
    * the audit trail, then settles it immediately through the shared path. Base
    * only, cash-first; the processing fee is never refunded.
    */
+  /**
+   * A24: send everything a cancelled event owes. Opens any missing ticket
+   * requests, settles each one (base only, extra seats included, keyed so a
+   * retry never pays twice), then cancels and refunds stays paid online. One
+   * failure doesn't stop the rest; run it again to retry what failed.
+   */
+  async refundCancelledEvent(adminId: string, eventId: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, status: true, cancellationReason: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (event.status !== EventStatus.CANCELLED) {
+      throw new BadRequestException('Only a cancelled event can be refunded in bulk');
+    }
+    await openCancelledEventRefunds(this.prisma, eventId, adminId, event.cancellationReason);
+
+    const requests = await this.prisma.refundRequest.findMany({
+      where: { eventId, status: { in: [RefundStatus.PENDING_ADMIN, RefundStatus.REFUND_FAILED] } },
+      include: { registration: { include: { event: { select: { title: true } } } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    let refunded = 0;
+    const failed: { id: string; kind: 'ticket' | 'stay'; error: string }[] = [];
+    for (const r of requests) {
+      try {
+        await this.settleApprovedRefund(
+          r,
+          adminId,
+          r.requestedAmount != null ? Number(r.requestedAmount) : undefined,
+          'Event cancelled: refunded in bulk',
+        );
+        refunded++;
+      } catch (err: any) {
+        failed.push({ id: r.id, kind: 'ticket', error: err?.message ?? String(err) });
+      }
+    }
+
+    const stays = await this.prisma.stayBooking.findMany({
+      where: {
+        eventId,
+        paymentMode: StayPaymentMode.ONLINE,
+        paymentStatus: PaymentStatus.PAID,
+        refundDueAt: null,
+        status: { in: [StayBookingStatus.PENDING, StayBookingStatus.AWAITING_PAYMENT, StayBookingStatus.CONFIRMED] },
+      },
+      select: { id: true },
+    });
+    let staysRefunded = 0;
+    for (const b of stays) {
+      try {
+        await this.stayBookings.cancel(eventId, b.id, adminId, { reason: 'Event cancelled', refund: true });
+        staysRefunded++;
+      } catch (err: any) {
+        failed.push({ id: b.id, kind: 'stay', error: err?.message ?? String(err) });
+      }
+    }
+    this.logger.log(
+      `Cancelled event ${eventId}: ${refunded} ticket and ${staysRefunded} stay refunds sent, ${failed.length} failed`,
+    );
+    return { refunded, staysRefunded, failed };
+  }
+
   async adminRefund(adminId: string, dto: AdminRefundDto) {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: dto.registrationId },

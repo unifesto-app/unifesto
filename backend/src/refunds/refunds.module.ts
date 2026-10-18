@@ -5,9 +5,10 @@ import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { PayoutsModule } from '../payouts/payouts.module';
+import { StaysModule } from '../stays/stays.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, EmailModule, PayoutsModule],
+  imports: [AuthModule, PrismaModule, EmailModule, PayoutsModule, StaysModule],
   controllers: [RefundsController],
   providers: [RefundsService],
   exports: [RefundsService],

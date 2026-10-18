@@ -125,6 +125,22 @@ export async function adminRefund(payload: {
 }
 
 /**
+ * Send every refund a cancelled event owes: ticket prices (extra seats
+ * included) and stays paid online. Safe to run again: it retries what failed.
+ * `POST /refunds/admin/event/:eventId/refund-all`.
+ */
+export async function refundCancelledEvent(eventId: string): Promise<{
+  data: {
+    refunded: number;
+    staysRefunded: number;
+    failed: { id: string; kind: "ticket" | "stay"; error: string }[];
+  } | null;
+  error: ApiError | null;
+}> {
+  return apiCall(backendClient.post(`/refunds/admin/event/${eventId}/refund-all`));
+}
+
+/**
  * The base that can still be refunded (the processing fee is retained). Uses
  * the server's cap, which also counts a group's extra-seats payments.
  */

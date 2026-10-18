@@ -27,6 +27,7 @@ import {
   type AdminEventDetail,
   type AdminEventStatus,
 } from "@/lib/api/admin-events-api";
+import { refundCancelledEvent } from "@/lib/api/refunds-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -105,6 +106,7 @@ export default function AdminEventDetailPage() {
   const [actionError, setActionError] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [refundNotice, setRefundNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -144,6 +146,29 @@ export default function AdminEventDetailPage() {
     }
   }, [cancelReason, id, runAction]);
 
+  // A cancelled event owes its paid attendees: send them all at once.
+  const onRefundAll = useCallback(async () => {
+    if (!window.confirm("Refund every paid attendee? Ticket prices and online stays go back now. The processing fee is kept.")) return;
+    setActing(true);
+    setActionError("");
+    setRefundNotice("");
+    const { data, error } = await refundCancelledEvent(id);
+    setActing(false);
+    if (error) {
+      setActionError(error.message);
+      return;
+    }
+    if (data) {
+      const sent = `${data.refunded} ticket and ${data.staysRefunded} stay refunds sent.`;
+      setRefundNotice(
+        data.failed.length
+          ? `${sent} ${data.failed.length} failed: ${data.failed.map((f) => f.error).join("; ")}. Run it again to retry.`
+          : sent
+      );
+    }
+    await load();
+  }, [id, load]);
+
   const net = event ? event.sales.grossSales - event.sales.refunded : 0;
   const isOnline = event ? ["ONLINE", "HYBRID"].includes(event.type) : false;
   const isInPerson = event ? ["IN_PERSON", "HYBRID"].includes(event.type) : false;
@@ -159,7 +184,8 @@ export default function AdminEventDetailPage() {
     !event.deletedAt &&
     ["COMPLETED", "CANCELLED"].includes(event.status);
   const canRestore = !!event?.deletedAt;
-  const hasActions = canPublish || canCancel || canHide || canRestore;
+  const canRefundAll = event?.status === "CANCELLED";
+  const hasActions = canPublish || canCancel || canHide || canRestore || canRefundAll;
 
   return (
     <div className="space-y-6">
@@ -242,6 +268,11 @@ export default function AdminEventDetailPage() {
                     Cancel event
                   </Button>
                 )}
+                {canRefundAll && (
+                  <Button size="sm" disabled={acting} onClick={() => void onRefundAll()}>
+                    Refund all paid
+                  </Button>
+                )}
                 {canHide && (
                   <Button variant="outline" size="sm" disabled={acting} onClick={() => window.confirm(`Hide "${event.title}"? It disappears from public listings.`) && void runAction(() => hideEventAdmin(event.id))}>
                     Hide
@@ -257,6 +288,7 @@ export default function AdminEventDetailPage() {
           </div>
 
           {actionError && !cancelOpen && <ErrorNotice message={actionError} />}
+          {refundNotice && <p className="text-sm text-muted-foreground">{refundNotice}</p>}
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -513,8 +545,10 @@ export default function AdminEventDetailPage() {
               <DialogHeader>
                 <DialogTitle>Cancel this event?</DialogTitle>
                 <DialogDescription>
-                  This sets the event to Cancelled and emails all registered attendees.
-                  Refunds are handled separately. This cannot be undone.
+                  This sets the event and its sub-events to Cancelled and emails all
+                  registered attendees. Every paid ticket gets a refund request for its
+                  ticket price (the processing fee is kept), and payouts stop until they
+                  are sent. Use Refund all paid to send them. This cannot be undone.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-1.5">
