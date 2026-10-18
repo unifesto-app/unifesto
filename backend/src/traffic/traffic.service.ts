@@ -473,7 +473,18 @@ export class TrafficService {
    */
   async resolve(code: string, visitor: Visitor): Promise<string> {
     const link = CODE_RE.test(code)
-      ? await this.prisma.shortLink.findUnique({ where: { code }, select: { id: true, url: true, revokedAt: true } })
+      ? await this.prisma.shortLink.findUnique({
+          where: { code },
+          select: {
+            id: true,
+            url: true,
+            target: true,
+            source: true,
+            revokedAt: true,
+            event: { select: { slug: true } },
+            space: { select: { slug: true } },
+          },
+        })
       : null;
     if (!link || link.revokedAt) return WEB_URL();
     if (!isBot(visitor.ua)) {
@@ -481,7 +492,15 @@ export class TrafficService {
         this.logger.warn(`Short link click not recorded (${code}): ${err?.message ?? err}`),
       );
     }
-    return link.url;
+    // Event and space links follow the target by id, so a slug change after the
+    // poster was printed still lands on the right page (B16).
+    const page =
+      link.target === TrafficTarget.EVENT && link.event
+        ? `${WEB_URL()}/event/${link.event.slug}`
+        : link.target === TrafficTarget.SPACE && link.space
+          ? `${WEB_URL()}/space/${link.space.slug}`
+          : null;
+    return page ? withShortLinkTags(page, link.source, code) : link.url;
   }
 
   /** QR code of an active link's short URL, for posters and slides. Null when unknown or revoked. */

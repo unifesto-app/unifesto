@@ -48,8 +48,11 @@ export type SpaceRoleCode =
   | "MEMBER"
   | "ADMIN";
 
-/** Space roles that grant operator access to the SPACE_ADMIN surface. */
-export const SPACE_OPERATOR_ROLE_CODES: SpaceRoleCode[] = ["SPACE_ADMIN"];
+/**
+ * Space roles with an operator surface in the Space app. Apex sends them there
+ * instead of to /no-access.
+ */
+export const SPACE_OPERATOR_ROLE_CODES: SpaceRoleCode[] = ["SPACE_ADMIN", "CURATOR", "CO_CURATOR", "CREW"];
 
 /** True when a space role grants space-operator access. */
 export function isSpaceOperatorRole(code?: string | null): boolean {

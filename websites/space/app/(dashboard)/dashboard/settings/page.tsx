@@ -309,9 +309,18 @@ export default function SpaceSettingsPage() {
                   required
                   placeholder="my-amazing-space"
                 />
-                <p className="text-xs text-muted-foreground">
-                  URL-friendly identifier for your space
-                </p>
+                {space && formData.slug !== space.slug ? (
+                  <p className="text-xs text-warning">
+                    Your page moves to /space/{formData.slug || "…"}. Short
+                    links and their QR codes follow it. Other links to
+                    /space/{space.slug} forward here until another space
+                    takes that name.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Your page address: /space/{formData.slug}
+                  </p>
+                )}
               </div>
             </div>
 

@@ -157,6 +157,8 @@ export async function getAllEventsAdmin(params?: {
   limit?: number;
   status?: AdminEventStatus;
   search?: string;
+  /** Only events hosted by this space. */
+  spaceId?: string;
 }): Promise<{ data: AdminEventListResponse | null; error: ApiError | null }> {
   return apiCall<AdminEventListResponse>(
     backendClient.get("/admin/events", { params })

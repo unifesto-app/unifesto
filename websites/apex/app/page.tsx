@@ -27,8 +27,10 @@ export default function LandingPage() {
         router.replace("/login");
         return;
       }
-      const { data } = await getCurrentUser();
+      const { data, error } = await getCurrentUser();
       if (cancelled) return;
+      // A failed load isn't "no access": the dashboard shell offers a retry.
+      if (error) return router.replace("/dashboard");
       const role = resolveAppRole(data);
       if (role === "platform_admin") {
         router.replace("/dashboard");

@@ -27,17 +27,18 @@ export interface Coupon {
   isActive: boolean;
 }
 
+/** Optional fields take null to clear them on an edit. */
 export interface CouponInput {
   code: string;
-  description?: string;
+  description?: string | null;
   discountType: DiscountType;
   discountValue: number;
-  maxDiscountAmount?: number;
-  minPurchaseAmount?: number;
-  usageLimit?: number;
+  maxDiscountAmount?: number | null;
+  minPurchaseAmount?: number | null;
+  usageLimit?: number | null;
   perUserLimit?: number;
-  startsAt?: string;
-  expiresAt?: string;
+  startsAt?: string | null;
+  expiresAt?: string | null;
   appliesToTicketTypeIds?: string[];
   isActive?: boolean;
 }

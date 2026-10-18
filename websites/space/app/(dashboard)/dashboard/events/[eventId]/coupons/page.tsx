@@ -143,22 +143,23 @@ export default function EventCouponsPage() {
     if (startsAt && expiresAt && new Date(expiresAt) <= new Date(startsAt))
       return setError("The end date must be after the start date.");
 
+    // Blanks go as null so an edit clears them (undefined would keep the old value).
     const input: CouponInput = {
       code: draft.code.trim().toUpperCase(),
-      description: draft.description.trim() || undefined,
+      description: draft.description.trim() || null,
       discountType: draft.discountType,
       discountValue: value,
       maxDiscountAmount:
         draft.discountType === "PERCENT" && draft.maxDiscountAmount.trim()
           ? Number(draft.maxDiscountAmount)
-          : undefined,
+          : null,
       minPurchaseAmount: draft.minPurchaseAmount.trim()
         ? Number(draft.minPurchaseAmount)
-        : undefined,
-      usageLimit: draft.usageLimit.trim() ? Number(draft.usageLimit) : undefined,
+        : null,
+      usageLimit: draft.usageLimit.trim() ? Number(draft.usageLimit) : null,
       perUserLimit: Number(draft.perUserLimit) || 1,
-      startsAt,
-      expiresAt,
+      startsAt: startsAt ?? null,
+      expiresAt: expiresAt ?? null,
       appliesToTicketTypeIds: draft.appliesToTicketTypeIds,
       isActive: draft.isActive,
     };
