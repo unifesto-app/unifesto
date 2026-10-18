@@ -47,6 +47,8 @@ export interface NavItem {
   exact?: boolean;
   /** Extra terms the ⌘K palette matches beyond the label. */
   keywords?: string;
+  /** Show the Assist unread count beside it. */
+  unreadBadge?: boolean;
 }
 
 export interface NavGroup {
@@ -117,7 +119,7 @@ export const adminNav: NavGroup[] = [
   {
     label: "Trust & support",
     items: [
-      { href: "/dashboard/support", label: "Support", icon: Lifebuoy, keywords: "tickets help" },
+      { href: "/dashboard/assist", label: "Assist", icon: Lifebuoy, unreadBadge: true, keywords: "support tickets help cases inbox" },
       { href: "/dashboard/content-reports", label: "Content reports", icon: Flag, keywords: "moderation abuse" },
       { href: "/dashboard/iam", label: "Access control", icon: ShieldCheck, keywords: "iam roles capabilities permissions" },
     ],

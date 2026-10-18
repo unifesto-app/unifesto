@@ -17,6 +17,7 @@ function formatTime(iso: string) {
 }
 
 function authorName(m: SupportMessage) {
+  if (m.side === "ASSISTANT") return "Assist bot";
   return (
     m.author?.fullName ||
     m.author?.username ||
@@ -32,7 +33,8 @@ interface TicketThreadProps {
    * right for organisers/attendees.
    */
   viewerIsStaff: boolean;
-  onReply: (body: string) => Promise<void>;
+  /** Resolve `false` when the send failed, so the draft is kept. */
+  onReply: (body: string) => Promise<boolean | void>;
   /** Disable the composer (e.g. a closed ticket). */
   disabled?: boolean;
   disabledHint?: string;
@@ -54,8 +56,7 @@ export function TicketThread({
     if (!text || sending) return;
     setSending(true);
     try {
-      await onReply(text);
-      setBody("");
+      if ((await onReply(text)) !== false) setBody("");
     } finally {
       setSending(false);
     }
@@ -65,7 +66,16 @@ export function TicketThread({
     <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-3">
         {messages.map((m) => {
-          const mine = m.isStaffReply === viewerIsStaff;
+          // Actions (refund approved, request accepted…) read as a timeline line.
+          if (m.side === "SYSTEM") {
+            return (
+              <li key={m.id} className="text-center text-xs text-muted-foreground">
+                {m.body} · {formatTime(m.createdAt)}
+              </li>
+            );
+          }
+          const staffSide = m.side ? m.side !== "REQUESTER" : m.isStaffReply;
+          const mine = staffSide === viewerIsStaff;
           return (
             <li
               key={m.id}
@@ -74,16 +84,18 @@ export function TicketThread({
               <div
                 className={cn(
                   "max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm whitespace-pre-wrap break-words",
-                  mine
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+                  m.internal
+                    ? "border border-dashed border-warning/40 bg-warning-soft text-foreground"
+                    : mine
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                 )}
               >
                 {m.body}
               </div>
               <span className="px-1 text-xs text-muted-foreground">
                 {authorName(m)}
-                {m.isStaffReply ? " · Support" : ""} · {formatTime(m.createdAt)}
+                {m.internal ? " · Internal note" : staffSide ? " · Support" : ""} · {formatTime(m.createdAt)}
               </span>
             </li>
           );
@@ -130,6 +142,7 @@ export function statusBadgeVariant(
     case "OPEN":
       return "warning";
     case "PENDING":
+    case "BOT":
       return "neutral";
     case "CLOSED":
       return "destructive";
