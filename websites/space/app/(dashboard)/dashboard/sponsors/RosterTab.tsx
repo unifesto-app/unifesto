@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, PencilSimple, Trash, Buildings, ArrowsClockwise, UsersThree } from "@unifesto/unicon/react";
 import {
   listSponsors,
@@ -10,6 +10,7 @@ import {
   type Sponsor,
   type CreateSponsorPayload,
 } from "@/lib/api/sponsors-api";
+import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [usersFor, setUsersFor] = useState<Sponsor | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -108,6 +110,12 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
     else load();
   };
 
+  const shown = useMemo(
+    () => sponsors.filter((s) => matches(search, s.name, s.contactName, s.contactEmail, s.websiteUrl)),
+    [sponsors, search]
+  );
+  const { page, setPage, totalPages, pageItems } = usePaged(shown, 24);
+
   if (loading) {
     return (
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -148,8 +156,18 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
           }
         />
       ) : (
+        <>
+        <SearchBox
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          placeholder="Search sponsors"
+        />
+        {shown.length === 0 && <p className="text-sm text-muted-foreground">No sponsors match “{search}”.</p>}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {sponsors.map((s) => (
+          {pageItems.map((s) => (
             <Card key={s.id}>
               <CardContent className="flex h-full flex-col gap-3 p-4">
                 <div className="flex items-start gap-3">
@@ -211,6 +229,8 @@ export function RosterTab({ spaceId }: { spaceId: string }) {
             </Card>
           ))}
         </div>
+        <Pager page={page} totalPages={totalPages} onPage={setPage} />
+        </>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

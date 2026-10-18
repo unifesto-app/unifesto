@@ -13,8 +13,6 @@ import {
   Trash,
   Plus,
   X,
-  CaretLeft,
-  CaretRight,
   Download,
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
@@ -34,6 +32,7 @@ import {
 } from "@/lib/api/spaces-api";
 import { isOrganiserRole } from "@/lib/types/rbac";
 import { downloadCsv } from "@/lib/utils/csv";
+import { Pager } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -484,32 +483,8 @@ export default function SpaceMembersPage() {
             </ul>
           )}
 
-          {!loading && !error && totalPages > 1 && (
-            <div className="flex items-center justify-between pt-2">
-              <p className="text-xs text-muted-foreground">
-                Page {page} of {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <CaretLeft className="h-4 w-4" />
-                  Prev
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                >
-                  Next
-                  <CaretRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+          {!loading && !error && (
+            <Pager page={page} totalPages={totalPages} onPage={setPage} />
           )}
         </CardContent>
       </Card>
