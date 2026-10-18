@@ -362,7 +362,7 @@ One support system for everything a person needs help with. Every item is an **A
 | D11 | `unifesto.app/help` opens a case; guests find-or-create by email (old D8) | planned |
 | | **Phase 3 · AI layer (Claude Haiku 5.5)** | |
 | D12 | **AI foundation.** `@anthropic-ai/sdk` `AiService`, `AiRun` cost log, kill switches, per-user caps, prompt caching, prompts under 100K, refusal → human, eval set, Console spend limit. Shared with Track M | in review (#205): eval set ships with each feature (D13 first); Console spend limit + `ANTHROPIC_API_KEY` at deploy |
-| D13 | AI triage on every new case: category, priority, routing hint, language, sentiment, spam | in review (#208): eval 21 cases: every field 20/21+ after one prompt tune (126 checks, 1 miss, a label since fixed), $0.002 a run; on with `triage` in `ai_enabled_features` |
+| D13 | AI triage on every new case: category, priority, routing hint, language, sentiment, spam | merged (#208), prompt tune in review (#211), not deployed: eval 21 cases: every field 20/21+ after one prompt tune (126 checks, 1 miss, a label since fixed), $0.002 a run; on with `triage` in `ai_enabled_features` |
 | D14 | **Assist bot.** Self-serve answers from help articles, event FAQs and read-only account tools; proposes action cards the user confirms; hands off to a human with the chat as the thread | planned |
 | D15 | Desk copilot: draft reply, thread summary, policy facts computed by code | planned |
 | D16 | AI pre-screen of space and event requests for reviewers | parked (2026-10-18): space and event request volume is small and reviewed by hand quickly; |
