@@ -39,6 +39,7 @@ import {
   buildRRule,
   defaultRecurrence,
   describeRecurrence,
+  recurrenceError,
   type RecurrenceState,
 } from "@/lib/recurrence";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -318,7 +319,7 @@ function CreateEventInner() {
         if (!form.endDateTime) return "Pick an end date and time.";
         if (new Date(form.endDateTime) <= new Date(form.startDateTime))
           return "The end time must be after the start time.";
-        return "";
+        return recurrenceError(form.recurrence, form.startDateTime, isSubEvent);
       case "location":
         if (showOnline && form.onlineUrl.trim()) {
           try {

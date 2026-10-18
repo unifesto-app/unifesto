@@ -41,6 +41,7 @@ import type { PickedPlace } from "@/lib/googlePlaces";
 import {
   buildRRule,
   parseRRuleToState,
+  recurrenceError,
   type RecurrenceState,
 } from "@/lib/recurrence";
 import { Input } from "@/components/ui/input";
@@ -301,8 +302,8 @@ export default function EditEventPage() {
       return "Add a venue name for in-person events.";
     if (showOnline && !form.onlineUrl.trim())
       return "Add a joining link for online events.";
-    return "";
-  }, [form, showVenue, showOnline]);
+    return recurrenceError(form.recurrence, form.startDateTime, !event?.isRecurring);
+  }, [form, showVenue, showOnline, event?.isRecurring]);
 
   const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);

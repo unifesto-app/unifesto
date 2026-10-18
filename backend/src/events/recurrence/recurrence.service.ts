@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import slugify from 'slugify';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
@@ -78,7 +79,7 @@ export class RecurrenceService {
    * pointer (a series occurrence is not a sub-event), and live counters.
    */
   private occurrenceDataFromParent(
-    parent: Prisma.EventGetPayload<{ include: { ticketTypes: true } }>,
+    parent: Prisma.EventGetPayload<object>,
     start: Date,
     end: Date,
   ): Prisma.EventCreateInput {
@@ -136,7 +137,6 @@ export class RecurrenceService {
   ): Promise<number> {
     const parent = await this.prisma.event.findUnique({
       where: { id: parentId },
-      include: { ticketTypes: true },
     });
     // Only materialize a PUBLISHED series. A draft parent is still being authored
     // (its ticket template isn't final), so occurrences are generated at publish
@@ -177,44 +177,18 @@ export class RecurrenceService {
 
     const toCreate = starts.filter((s) => !seen.has(s.getTime()));
 
-    let created = 0;
+    const createdIds: string[] = [];
     for (const start of toCreate) {
       const end = new Date(start.getTime() + durationMs);
       try {
-        await this.prisma.$transaction(async (tx) => {
-          const occ = await tx.event.create({
-            data: this.occurrenceDataFromParent(parent, start, end),
-          });
-          if (parent.ticketTypes.length) {
-            await tx.eventTicketType.createMany({
-              data: parent.ticketTypes.map((t) => ({
-                eventId: occ.id,
-                name: t.name,
-                description: t.description,
-                price: t.price,
-                currency: t.currency,
-                totalQuantity: t.totalQuantity,
-                // Fresh occurrence: nothing sold yet.
-                soldCount: 0,
-                kind: t.kind,
-                groupPricingMode: t.groupPricingMode,
-                minGroupSize: t.minGroupSize,
-                maxGroupSize: t.maxGroupSize,
-                saleStartsAt: t.saleStartsAt,
-                saleEndsAt: t.saleEndsAt,
-                perUserLimit: t.perUserLimit,
-                waitlistEnabled: t.waitlistEnabled,
-                waitlistOfferTtlHours: t.waitlistOfferTtlHours,
-                isVisible: t.isVisible,
-                isActive: t.isActive,
-                order: t.order,
-              })),
-            });
-          }
+        const occ = await this.prisma.event.create({
+          data: this.occurrenceDataFromParent(parent, start, end),
+          select: { id: true },
         });
+        createdIds.push(occ.id);
       } catch (err) {
         // Another runner created this slot between our read and the insert;
-        // the unique index rolled our copy back. Not an error.
+        // the unique index rejected our copy. Not an error.
         if (
           err instanceof Prisma.PrismaClientKnownRequestError &&
           err.code === 'P2002'
@@ -223,8 +197,10 @@ export class RecurrenceService {
         }
         throw err;
       }
-      created += 1;
     }
+    const created = createdIds.length;
+    // Tickets, questions, content and team (B17).
+    if (created) await this.syncSetup(parentId, { now, onlyIds: createdIds });
 
     await this.prisma.event.update({
       where: { id: parentId },
@@ -237,6 +213,213 @@ export class RecurrenceService {
       );
     }
     return created;
+  }
+
+  /**
+   * Mirror the parent's setup into its future occurrences (B17): ticket types
+   * (updated in place through `sourceTicketTypeId`, so ids stay stable), ticket
+   * blocks, questions, agenda, speakers, prizes, contacts, FAQs and the event
+   * team. Only touches occurrences that haven't started, aren't detached and
+   * have no registrations at all, so nothing anyone booked or answered changes.
+   * Dates on the parent (agenda slots, ticket sale windows) shift by each
+   * occurrence's offset from the parent's start.
+   *
+   * A fixed number of queries per table whatever the number of occurrences.
+   * `onlyIds` limits it to freshly created occurrences.
+   */
+  async syncSetup(parentId: string, opts: { now?: Date; onlyIds?: string[] } = {}): Promise<number> {
+    const now = opts.now ?? new Date();
+    const parent = await this.prisma.event.findUnique({
+      where: { id: parentId },
+      include: {
+        ticketTypes: { include: { blocks: true } },
+        formFields: true,
+        agenda: true,
+        speakers: true,
+        prizes: true,
+        contacts: true,
+        faqs: true,
+        userRoles: true,
+      },
+    });
+    if (!parent?.isRecurring) return 0;
+
+    const occs = await this.prisma.event.findMany({
+      where: {
+        seriesParentId: parentId,
+        seriesDetached: false,
+        startDateTime: { gt: now },
+        registrations: { none: {} },
+        ...(opts.onlyIds ? { id: { in: opts.onlyIds } } : {}),
+      },
+      select: { id: true, startDateTime: true },
+    });
+    if (!occs.length) return 0;
+    const occIds = occs.map((o) => o.id);
+    const shift = (d: Date | null, occStart: Date) =>
+      d ? new Date(d.getTime() + occStart.getTime() - parent.startDateTime.getTime()) : null;
+    const ticketFields = (t: (typeof parent.ticketTypes)[number], occStart: Date) => ({
+      name: t.name,
+      description: t.description,
+      price: t.price,
+      currency: t.currency,
+      totalQuantity: t.totalQuantity,
+      kind: t.kind,
+      groupPricingMode: t.groupPricingMode,
+      minGroupSize: t.minGroupSize,
+      maxGroupSize: t.maxGroupSize,
+      saleStartsAt: shift(t.saleStartsAt, occStart),
+      saleEndsAt: shift(t.saleEndsAt, occStart),
+      perUserLimit: t.perUserLimit,
+      waitlistEnabled: t.waitlistEnabled,
+      waitlistOfferTtlHours: t.waitlistOfferTtlHours,
+      isVisible: t.isVisible,
+      isActive: t.isActive,
+      order: t.order,
+      whatsappGroupUrl: t.whatsappGroupUrl,
+    });
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        // Ticket types: drop the ones the parent no longer has, update the
+        // rest in place, add the new ones.
+        const parentTicketIds = parent.ticketTypes.map((t) => t.id);
+        await tx.eventTicketType.deleteMany({
+          where: {
+            eventId: { in: occIds },
+            OR: [{ sourceTicketTypeId: null }, { sourceTicketTypeId: { notIn: parentTicketIds } }],
+          },
+        });
+        const existing = await tx.eventTicketType.findMany({
+          where: { eventId: { in: occIds } },
+          select: { id: true, eventId: true, sourceTicketTypeId: true },
+        });
+        const occTicket = new Map(existing.map((t) => [`${t.eventId}:${t.sourceTicketTypeId}`, t.id]));
+        const fresh: Prisma.EventTicketTypeCreateManyInput[] = [];
+        // Without a sale window every occurrence gets the same values: one
+        // updateMany per ticket instead of one update per occurrence.
+        const sameEverywhere = new Set(parent.ticketTypes.filter((t) => !t.saleStartsAt && !t.saleEndsAt).map((t) => t.id));
+        for (const t of parent.ticketTypes.filter((t) => sameEverywhere.has(t.id))) {
+          await tx.eventTicketType.updateMany({
+            where: { eventId: { in: occIds }, sourceTicketTypeId: t.id },
+            data: ticketFields(t, parent.startDateTime),
+          });
+        }
+        for (const occ of occs) {
+          for (const t of parent.ticketTypes) {
+            const id = occTicket.get(`${occ.id}:${t.id}`);
+            if (id) {
+              if (!sameEverywhere.has(t.id)) {
+                await tx.eventTicketType.update({ where: { id }, data: ticketFields(t, occ.startDateTime) });
+              }
+            } else {
+              const newId = randomUUID();
+              occTicket.set(`${occ.id}:${t.id}`, newId);
+              fresh.push({ id: newId, eventId: occ.id, sourceTicketTypeId: t.id, soldCount: 0, ...ticketFields(t, occ.startDateTime) });
+            }
+          }
+        }
+        if (fresh.length) await tx.eventTicketType.createMany({ data: fresh });
+        const ticketFor = (occId: string, parentTicketId: string | null) =>
+          parentTicketId ? (occTicket.get(`${occId}:${parentTicketId}`) ?? null) : null;
+
+        // Ticket blocks, rebuilt between each occurrence's own tickets.
+        await tx.ticketTypeBlock.deleteMany({ where: { blocker: { eventId: { in: occIds } } } });
+        const blocks = occs.flatMap((occ) =>
+          parent.ticketTypes.flatMap((t) =>
+            t.blocks.map((b) => ({ blockerId: ticketFor(occ.id, t.id)!, blockedId: ticketFor(occ.id, b.blockedId)! })),
+          ),
+        );
+        if (blocks.length) await tx.ticketTypeBlock.createMany({ data: blocks.filter((b) => b.blockerId && b.blockedId), skipDuplicates: true });
+
+        // Questions, with ticket-scoped ones and show-if rules pointed at the
+        // occurrence's own tickets and questions.
+        await tx.eventFormField.deleteMany({ where: { eventId: { in: occIds } } });
+        const fields = occs.flatMap((occ) => {
+          const fieldId = new Map(parent.formFields.map((f) => [f.id, randomUUID()]));
+          return parent.formFields.map((f) => {
+            const showIf = f.showIf as { fieldId?: string; anyOf?: string[] } | null;
+            return {
+              id: fieldId.get(f.id)!,
+              eventId: occ.id,
+              ticketTypeId: ticketFor(occ.id, f.ticketTypeId),
+              label: f.label,
+              type: f.type,
+              options: f.options,
+              isRequired: f.isRequired,
+              order: f.order,
+              perGroup: f.perGroup,
+              helpText: f.helpText,
+              config: f.config ?? Prisma.JsonNull,
+              showIf: showIf?.fieldId
+                ? { ...showIf, fieldId: fieldId.get(showIf.fieldId) ?? showIf.fieldId }
+                : Prisma.JsonNull,
+            };
+          });
+        });
+        if (fields.length) await tx.eventFormField.createMany({ data: fields });
+
+        // Content: replaced wholesale (nothing else points at these rows).
+        const each = <T>(rows: T[], map: (row: T, occ: (typeof occs)[number]) => object) =>
+          occs.flatMap((occ) => rows.map((r) => ({ ...map(r, occ), eventId: occ.id })));
+        await tx.eventAgenda.deleteMany({ where: { eventId: { in: occIds } } });
+        await tx.eventAgenda.createMany({
+          data: each(parent.agenda, (a, occ) => ({
+            title: a.title,
+            description: a.description,
+            startTime: shift(a.startTime, occ.startDateTime)!,
+            endTime: shift(a.endTime, occ.startDateTime)!,
+            speakerName: a.speakerName,
+            order: a.order,
+          })) as Prisma.EventAgendaCreateManyInput[],
+        });
+        await tx.eventSpeaker.deleteMany({ where: { eventId: { in: occIds } } });
+        await tx.eventSpeaker.createMany({
+          data: each(parent.speakers, ({ id: _id, eventId: _e, createdAt: _c, ...rest }) => rest) as Prisma.EventSpeakerCreateManyInput[],
+        });
+        await tx.eventPrize.deleteMany({ where: { eventId: { in: occIds } } });
+        await tx.eventPrize.createMany({
+          data: each(parent.prizes, ({ id: _id, eventId: _e, createdAt: _c, ...rest }) => rest) as Prisma.EventPrizeCreateManyInput[],
+        });
+        await tx.eventContact.deleteMany({ where: { eventId: { in: occIds } } });
+        await tx.eventContact.createMany({
+          data: each(parent.contacts, ({ id: _id, eventId: _e, createdAt: _c, ...rest }) => rest) as Prisma.EventContactCreateManyInput[],
+        });
+        await tx.eventFaq.deleteMany({ where: { eventId: { in: occIds } } });
+        await tx.eventFaq.createMany({
+          data: each(parent.faqs, ({ id: _id, eventId: _e, createdAt: _c, ...rest }) => rest) as Prisma.EventFaqCreateManyInput[],
+        });
+
+        // Event team: the occurrence's team is the series team, so removing
+        // someone from the series also removes them from what's coming.
+        await tx.userRole.deleteMany({ where: { eventId: { in: occIds } } });
+        await tx.userRole.createMany({
+          data: each(parent.userRoles, (r) => ({
+            userId: r.userId,
+            roleId: r.roleId,
+            spaceId: r.spaceId,
+            assignedBy: r.assignedBy,
+          })) as Prisma.UserRoleCreateManyInput[],
+          skipDuplicates: true,
+        });
+      },
+      { timeout: 30_000 },
+    );
+    return occs.length;
+  }
+
+  /**
+   * After a setup edit (tickets, questions, content, team) on an event: a
+   * series parent pushes it to its future occurrences; an occurrence edited on
+   * its own leaves the series, the same as editing its details does.
+   */
+  async afterSetupChange(eventId: string): Promise<void> {
+    const e = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { isRecurring: true, seriesParentId: true, seriesDetached: true },
+    });
+    if (e?.isRecurring) await this.syncSetup(eventId);
+    else if (e?.seriesParentId && !e.seriesDetached) await this.detachOccurrence(eventId);
   }
 
   /**
@@ -271,6 +454,18 @@ export class RecurrenceService {
         this.logger.error(
           `Series reconcile failed for ${p.id}: ${err instanceof Error ? err.message : err}`,
         );
+      }
+    }
+    // Re-mirror setup into every live series, in case an edit's sync failed.
+    const live = await this.prisma.event.findMany({
+      where: { isRecurring: true, deletedAt: null, status: 'PUBLISHED' },
+      select: { id: true },
+    });
+    for (const p of live) {
+      try {
+        await this.syncSetup(p.id, { now });
+      } catch (err) {
+        this.logger.error(`Series setup sync failed for ${p.id}: ${err instanceof Error ? err.message : err}`);
       }
     }
   }
