@@ -297,7 +297,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | B1 | **Announce-to-attendees button on Space event page.** button on Space event page (backend `POST /events/:eventId/announcements` exists, no UI) | done (#153), live |
 | B2 | **Bulk check-in in Space.** Bulk check-in in Space (`POST /checkin/event/:id/bulk` + client `registrations-api.ts:850` exist) | done (#154), live |
 | B3 | Session edit after create in Space (`updateSession` exists) | done (#155), live |
-| B4 | **Team-change window toggle in event settings.** Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | planned |
+| B4 | **Team-change window toggle in event settings.** Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | done (#201), not deployed |
 | B5 | **CSV exports for Space and Apex lists.** CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | planned |
 | B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: orphaned payments (content reports, request queues and support moved to D8) | planned |
 | B7 | **Apex: one tabbed request inbox.** Apex: one tabbed request inbox replacing 7 queues | dropped: merged into D8 |
@@ -742,3 +742,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-18** · A9 open questions settled (D10): rates in `plan_configs.platformFeePercent`, read by the resolver, the A21 trigger and `/pricing`; GROWTH retired at Starter's rate; an admin edits rates when the launch offer ends. T10 narrowed to match.
 - **2026-10-18** · A9 built (#199): plan rates in `plan_configs.platform_fee_percent` at 0% until an admin sets them, GROWTH retired, public rate card `GET /config/plan-fees` feeds `/pricing` and `/llms.txt`. Open: launch rates are promised as locked before 31 Mar 2027, which needs per-space terms (Track T) before the rates rise.
 - **2026-10-18** · A12 decided (D11): buyer fee stays 5% with a ₹99 cap (A34), per-event absorb toggle (A33), copy says what students pay and organisers keep (A11). Unifesto isn't GST-registered yet; GST treatment waits for registration and the CA (A6). A9 merged (#199), not deployed.
+- **2026-10-18** · Track B started in worktree `.claude/worktrees/track-b`, one PR per item. B4 (#201): Space event settings gets an Attendees card (team changes + lock time, attendee detail edits + close time), same switches as mobile. No migration; rebuild space.
