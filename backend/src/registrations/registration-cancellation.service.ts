@@ -22,6 +22,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { RegistrationUpdateEvent } from '../notifications/notifications.events';
 import { HOLDS_SEAT_PAYMENT, generateQRCode, generateTicketCode, seatsFor } from './registration.util';
+import { PaymentsService } from '../payments/payments.service';
 import { RegistrationAttendeesService } from './registration-attendees.service';
 
 /** Cancelling a registration (attendee or curator) and restoring a cancelled one. */
@@ -38,6 +39,7 @@ export class RegistrationCancellationService {
     private readonly groupSeats: GroupSeatsService,
     private readonly coupons: CouponsService,
     private readonly attendees: RegistrationAttendeesService,
+    private readonly payments: PaymentsService,
   ) {}
 
   /**
@@ -274,6 +276,11 @@ export class RegistrationCancellationService {
     await this.cache.invalidateCheckinCache(eventId);
 
     this.logger.log(`Cancelled registration ${registration.id}`);
+
+    // An unpaid curator add still has a live Payment Link; close it (A19).
+    if (registration.paymentLinkId) {
+      await this.payments.cancelPaymentLink(registration.paymentLinkId);
+    }
 
 
     return {

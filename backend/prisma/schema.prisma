@@ -1856,6 +1856,9 @@ model EventRegistration {
   paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
   paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
   orderId        String?       @map("order_id") @db.VarChar(255)
+  /// Razorpay Payment Link (plink_…) for a curator "collect payment" add. Its
+  /// presence means money can still arrive, so cleanup cancels, never deletes.
+  paymentLinkId  String?       @map("payment_link_id") @db.VarChar(255)
   paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
 
   // Registration status.

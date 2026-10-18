@@ -783,6 +783,11 @@ export class RegistrationImportService {
       referenceId: registration.id,
       notes: { registrationId: registration.id, eventId },
     });
+    // Stored so checkout cleanup knows money can still arrive on this row (A19).
+    await this.prisma.eventRegistration.update({
+      where: { id: registration.id },
+      data: { paymentLinkId: link.id },
+    });
 
     return {
       registrationId: registration.id,
