@@ -1,5 +1,5 @@
 import { BillingModel, PaymentStatus } from '@prisma/client';
-import { PayoutsService } from './payouts.service';
+import { PayoutsService, feeAtFrozenRates } from './payouts.service';
 
 /**
  * S15 / S16: a partly refunded ticket still counts (net of the refund), a row
@@ -29,6 +29,26 @@ describe('PayoutsService event balance', () => {
     const svc = new PayoutsService(prisma, {} as any, {} as any, planConfig as any);
     return { svc, prisma, planConfig };
   };
+
+  it('charges each sale the rate frozen on it, not today\'s (A21)', async () => {
+    const { svc, prisma } = build();
+    // Sold at 0% (before a plan change); today's rule says 5%.
+    prisma.eventRegistration.findMany.mockResolvedValue(regs.map((r) => ({ ...r, platformFeePercent: 0 })));
+    const summary = await svc.getEventPayoutSummary('event-1');
+    expect(summary.estimatedPlatformFee).toBe(0);
+    expect(summary.eventNet).toBe(160);
+    expect(summary.defaultPlatformFeePercent).toBe(5);
+  });
+
+  it('feeAtFrozenRates rounds per rate and lets an admin override win', () => {
+    const sales = [
+      { net: 100, percent: 2 },
+      { net: 50, percent: 2 },
+      { net: 33.33, percent: null }, // no frozen rate: fallback
+    ];
+    expect(feeAtFrozenRates(sales, 10)).toBe(6.33); // 150 x 2% + 33.33 x 10%
+    expect(feeAtFrozenRates(sales, 10, 0)).toBe(0);
+  });
 
   it('a cancelled event with paid rows has nothing to withdraw (A24)', async () => {
     const { svc, prisma } = build();

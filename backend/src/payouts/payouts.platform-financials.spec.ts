@@ -56,14 +56,24 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
     expect(res.platformFee).toBe(255);
   });
 
-  it('looks up events once for all spaces and skips 0% spaces', async () => {
+  it('looks up events once and groups held money by its frozen rate (A21)', async () => {
     const { svc, prisma } = build();
     await svc.getPlatformFinancials();
     expect(prisma.event.findMany).toHaveBeenCalledTimes(1);
-    expect(prisma.event.findMany.mock.calls[0][0].where).toEqual({
-      spaceId: { in: ['s1', 's2'] },
-    });
     expect(prisma.eventRegistration.groupBy).toHaveBeenCalledTimes(1);
+    expect(prisma.eventRegistration.groupBy.mock.calls[0][0].by).toEqual(['eventId', 'platformFeePercent']);
+  });
+
+  it('charges a sale the rate frozen on it, not the space rate today (A21)', async () => {
+    const { svc, prisma } = build();
+    // e1 was sold at 2% while s1 now charges 10%; e2 has no frozen rate (today's 10%).
+    prisma.eventRegistration.groupBy.mockResolvedValue([
+      { eventId: 'e1', platformFeePercent: d(2), ...sum(1100, 100) }, // 1000 x 2% = 20
+      { eventId: 'e2', platformFeePercent: null, ...sum(520, 20) }, // 500 x 10% = 50
+    ]);
+    prisma.stayBooking.groupBy.mockResolvedValue([]);
+    const res = await svc.getPlatformFinancials();
+    expect(res.platformFee).toBe(70);
   });
 });
 
