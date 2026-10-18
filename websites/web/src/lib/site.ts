@@ -33,10 +33,13 @@ export const SOCIAL = {
 } as const;
 
 /* Proof. Keep this honest and dated: these numbers ship in copy and in
-   structured data. spacesLive was read from the public API on 2026-10-05;
-   the attendee and event totals are the founders' figures. */
+   structured data. spacesLive = active Spaces the public API lists
+   (GET /spaces?status=ACTIVE, signed out, so private Spaces such as the demo
+   one are not counted; sub-spaces are), read on 2026-10-18. Most are
+   institution Spaces the team set up; only 2 are verified. The attendee and
+   event totals are the founders' figures. */
 export const PROOF = {
-  spacesLive: 23,
+  spacesLive: 70,
   attendees: "10,000+",
   events: "25+",
   firstCampus: "Malla Reddy University, Hyderabad",
