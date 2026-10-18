@@ -14,6 +14,7 @@ import {
   type CouponDiscountType,
 } from "@/lib/api/coupons-api";
 import { getEventById, type Event } from "@/lib/api/events-api";
+import { EventExportMenu } from "@/components/shared/EventExportMenu";
 import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -205,10 +206,13 @@ export default function EventCouponsPage() {
         subtitle="Percentage or flat-amount codes buyers apply at checkout"
         actions={
           !draft ? (
-            <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
-              <Plus className="h-4 w-4" weight="bold" />
-              Add code
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <EventExportMenu eventId={eventId} type="coupons" />
+              <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
+                <Plus className="h-4 w-4" weight="bold" />
+                Add code
+              </Button>
+            </div>
           ) : undefined
         }
       />

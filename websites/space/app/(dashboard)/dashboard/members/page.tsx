@@ -13,6 +13,7 @@ import {
   Trash,
   Plus,
   X,
+  Download,
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import {
@@ -30,6 +31,7 @@ import {
   type SpaceOwnershipRequest,
 } from "@/lib/api/spaces-api";
 import { isOrganiserRole } from "@/lib/types/rbac";
+import { downloadCsv } from "@/lib/utils/csv";
 import { Pager } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
@@ -164,14 +166,19 @@ export default function SpaceMembersPage() {
   const loadMembers = useCallback(async () => {
     setLoading(true);
     setError("");
-    // High limit + no server-side search: pull the whole roster and filter in
-    // the client. The API helper clamps to what the backend allows.
-    const { data, error } = await getSpaceMembers(spaceId, {
-      page: 1,
-      limit: 500,
-    });
-    if (error) setError(error.message);
-    else if (data) setAllMembers(data.members ?? []);
+    // No server-side search: pull the whole roster, a page at a time (the
+    // backend caps a page at 100), and filter in the client.
+    const all: SpaceMember[] = [];
+    for (let page = 1; ; page++) {
+      const { data, error } = await getSpaceMembers(spaceId, { page, limit: 100 });
+      if (error) {
+        setError(error.message);
+        break;
+      }
+      all.push(...(data?.members ?? []));
+      if (!data || page >= data.pagination.totalPages) break;
+    }
+    setAllMembers(all);
     setLoading(false);
   }, [spaceId]);
 
@@ -238,24 +245,40 @@ export default function SpaceMembersPage() {
         title="Members"
         subtitle="Manage who belongs to this space and what they can do."
         actions={
-          canManageMembers ? (
+          <div className="flex flex-wrap gap-2">
             <Button
-              variant={showAdd ? "outline" : "default"}
-              onClick={() => setShowAdd((v) => !v)}
+              variant="outline"
+              disabled={filtered.length === 0}
+              onClick={() =>
+                downloadCsv(
+                  `members-${new Date().toISOString().slice(0, 10)}.csv`,
+                  ["Name", "Username", "Email", "Role", "Joined"],
+                  filtered.map((m) => [m.user.fullName, m.user.username, m.user.email, m.role.name, m.createdAt])
+                )
+              }
             >
-              {showAdd ? (
-                <>
-                  <X className="h-4 w-4" weight="bold" />
-                  Close
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4" weight="bold" />
-                  Add member
-                </>
-              )}
+              <Download className="h-4 w-4" />
+              Export CSV
             </Button>
-          ) : undefined
+            {canManageMembers && (
+              <Button
+                variant={showAdd ? "outline" : "default"}
+                onClick={() => setShowAdd((v) => !v)}
+              >
+                {showAdd ? (
+                  <>
+                    <X className="h-4 w-4" weight="bold" />
+                    Close
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" weight="bold" />
+                    Add member
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         }
       />
 

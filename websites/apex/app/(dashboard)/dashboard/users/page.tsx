@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { MagnifyingGlass, Users as UsersIcon } from "@unifesto/unicon/react";
+import { Download, MagnifyingGlass, Users as UsersIcon } from "@unifesto/unicon/react";
 import { getUsers, type User } from "@/lib/api/admin-users-api";
 import { formatLastSeen, lastSeenTitle } from "@/lib/utils/last-seen";
+import { downloadCsv } from "@/lib/utils/csv";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ export default function AdminUsersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  const [exporting, setExporting] = useState(false);
 
   // Debounce search input to avoid a request per keystroke.
   useEffect(() => {
@@ -123,9 +125,45 @@ export default function AdminUsersPage() {
     void load();
   }, [load]);
 
+  /** Every account matching the search, not just this page. */
+  const exportCsv = async () => {
+    setExporting(true);
+    setError("");
+    const rows: User[] = [];
+    for (let p = 1; ; p++) {
+      const { data, error } = await getUsers({ page: p, limit: 500, search: debounced || undefined });
+      if (error || !data) {
+        setError(error?.message ?? "Export failed");
+        setExporting(false);
+        return;
+      }
+      rows.push(...data.users);
+      if (p >= data.pagination.totalPages) break;
+    }
+    downloadCsv(
+      `users-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Name", "Username", "Email", "Email Verified", "Mobile", "Mobile Verified", "Roles", "App Version", "Platform", "Last Seen", "Joined"],
+      rows.map((u) => [
+        u.fullName,
+        u.username,
+        u.email,
+        u.emailVerified ? "Yes" : "No",
+        u.mobileNumber,
+        u.mobileVerified ? "Yes" : "No",
+        u.roles.join("; "),
+        u.appVersion,
+        u.appPlatform,
+        u.lastSeenAt,
+        u.createdAt,
+      ])
+    );
+    setExporting(false);
+  };
+
   return (
     <div className="space-y-6">
-      <header>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           Users
         </h1>
@@ -134,6 +172,11 @@ export default function AdminUsersPage() {
             ? "Loading accounts…"
             : `${total.toLocaleString("en-IN")} account${total === 1 ? "" : "s"}`}
         </p>
+        </div>
+        <Button variant="outline" onClick={exportCsv} disabled={exporting || loading || total === 0}>
+          <Download className="h-4 w-4" />
+          {exporting ? "Exporting…" : "Export CSV"}
+        </Button>
       </header>
 
       <div className="relative max-w-sm">
