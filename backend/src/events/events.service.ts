@@ -2114,6 +2114,19 @@ export class EventsService {
       throw new BadRequestException('Cannot update cancelled event');
     }
 
+    // Absorbing the buyer fee cuts the organiser's take, so it is a money
+    // decision (A33): event money (Curator) or space money (Space Admin) only.
+    if (
+      dto.absorbProcessingFee !== undefined &&
+      dto.absorbProcessingFee !== event.absorbProcessingFee &&
+      !(
+        (await this.authz.can({ id: userId }, Action.EVENT_MANAGE_MONEY, { eventId })) ||
+        (await this.authz.can({ id: userId }, Action.SPACE_MANAGE_MONEY, { spaceId: event.spaceId }))
+      )
+    ) {
+      throw new ForbiddenException('Only the Curator or a Space Admin can change who pays the processing fee');
+    }
+
     // Slug edits: normalise, then enforce global uniqueness (a unique index
     // also guards this, but we surface a friendly error first).
     let nextSlug: string | undefined;
@@ -2182,6 +2195,7 @@ export class EventsService {
         onlinePlatform: dto.onlinePlatform,
         capacity: dto.capacity,
         waitlistEnabled: dto.waitlistEnabled,
+        absorbProcessingFee: dto.absorbProcessingFee,
         isFree: dto.isFree,
         tags: dto.tags,
         ...resolveCategories(dto, event),

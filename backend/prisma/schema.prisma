@@ -1333,6 +1333,10 @@ model Event {
   capacity        Int?
   registeredCount Int     @default(0) @map("registered_count")
   waitlistEnabled Boolean @default(false) @map("waitlist_enabled")
+  /// A33 (D11): the organiser absorbs the 5% buyer fee. Buyers pay the listed
+  /// ticket price; the fee (capped at ₹99 a ticket) comes out of it, so the
+  /// organiser's base is price − fee. Off = the fee is added on top.
+  absorbProcessingFee Boolean @default(false) @map("absorb_processing_fee")
   waitlistCount   Int     @default(0) @map("waitlist_count")
   isFree          Boolean @default(true) @map("is_free")
 

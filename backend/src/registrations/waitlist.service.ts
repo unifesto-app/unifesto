@@ -102,7 +102,7 @@ export class WaitlistService {
       eventId,
       Action.EVENT_MANAGE_ATTENDEES,
       'Only the event organisers can manage the waiting list',
-      { title: true, startDateTime: true },
+      { title: true, startDateTime: true, absorbProcessingFee: true },
     );
   }
 
@@ -524,11 +524,13 @@ export class WaitlistService {
             ? unitPrice
             : unitPrice * reg.quantity;
 
-      const processingFee = this.payments.computeProcessingFee(
+      const sale = this.payments.priceSale(
         baseAmount,
         ticketsIn(ticketType, { quantity: reg.quantity, groupSize: seats }),
+        Boolean((event as any)?.absorbProcessingFee),
       );
-      const totalAmount = baseAmount + processingFee;
+      const processingFee = sale.fee;
+      const totalAmount = sale.total;
 
       const now = new Date();
 
