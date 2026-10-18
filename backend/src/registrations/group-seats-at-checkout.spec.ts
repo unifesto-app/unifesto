@@ -97,6 +97,7 @@ function build() {
 
   const payments = {
     computeProcessingFee: () => 0,
+    priceSale: (b: number) => ({ base: b, fee: 0, total: b }),
     createOrder: jest.fn(async () => ({ orderId: 'order_1', amount: 30000, currency: 'INR' })),
     verifyPaymentSignature: jest.fn(() => true),
   };

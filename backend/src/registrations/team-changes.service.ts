@@ -37,15 +37,15 @@ export type TeamActor = { by: 'lead'; userId: string } | { by: 'curator'; eventI
 export function addSeatsQuote(
   ticketType: { price: Prisma.Decimal | number; groupPricingMode: GroupPricingMode | null },
   seats: number,
-  processingFee: (base: number, tickets: number) => number,
+  priceSale: (listed: number, tickets: number) => { base: number; fee: number; total: number },
 ): { base: number; fee: number; total: number } {
   const price = Number(ticketType.price);
   if (ticketType.groupPricingMode !== GroupPricingMode.PER_PERSON || price <= 0) {
     return { base: 0, fee: 0, total: 0 };
   }
-  const base = money(price * seats);
-  const fee = money(processingFee(base, seats));
-  return { base, fee, total: money(base + fee) };
+  // Fee on top, or absorbed by the organiser (A33): PaymentsService.priceSale.
+  const sale = priceSale(money(price * seats), seats);
+  return { base: money(sale.base), fee: money(sale.fee), total: money(sale.total) };
 }
 
 const REG_SELECT = {
@@ -76,6 +76,7 @@ const REG_SELECT = {
       slug: true,
       status: true,
       endDateTime: true,
+      absorbProcessingFee: true,
       allowTeamChanges: true,
       teamChangesUntil: true,
     },
@@ -219,7 +220,7 @@ export class TeamChangesService {
     const size = reg.groupSize ?? 0;
     const room = tt?.totalQuantity == null ? null : Math.max(0, tt.totalQuantity - tt.soldCount);
     const maxAdd = Math.max(0, Math.min(tt?.maxGroupSize != null ? tt.maxGroupSize - size : Infinity, room ?? Infinity));
-    const perSeat = tt ? addSeatsQuote(tt, 1, (b, n) => this.payments.computeProcessingFee(b, n)) : null;
+    const perSeat = tt ? addSeatsQuote(tt, 1, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee)) : null;
     return {
       isLead,
       leadTransfer,
@@ -385,7 +386,7 @@ export class TeamChangesService {
   async addSeats(registrationId: string, seats: number, actor: TeamActor) {
     const reg = await this.load(registrationId, actor);
     this.assertCanGrow(reg, seats);
-    const quote = addSeatsQuote(reg.ticketType!, seats, (b, n) => this.payments.computeProcessingFee(b, n));
+    const quote = addSeatsQuote(reg.ticketType!, seats, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee));
     const paid = quote.total > 0;
     if (paid && actor.by === 'lead') {
       throw new BadRequestException('New seats on this ticket are paid. Pay for them to add them.');
@@ -406,7 +407,7 @@ export class TeamChangesService {
     if (tt.totalQuantity != null && tt.soldCount + seats > tt.totalQuantity) {
       throw new BadRequestException('Not enough seats left on this ticket.');
     }
-    const quote = addSeatsQuote(tt, seats, (b, n) => this.payments.computeProcessingFee(b, n));
+    const quote = addSeatsQuote(tt, seats, (b, n) => this.payments.priceSale(b, n, reg.event.absorbProcessingFee));
     if (quote.total <= 0) throw new BadRequestException('These seats are free. Add them directly.');
 
     const purchase = await this.prisma.groupSeatPurchase.create({

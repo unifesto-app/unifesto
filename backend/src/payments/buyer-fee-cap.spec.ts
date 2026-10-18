@@ -40,7 +40,7 @@ describe('buyer fee cap (A34)', () => {
   });
 
   it('extra seats on a per-person group are capped per seat', () => {
-    const quote = addSeatsQuote({ price: 2500, groupPricingMode: GroupPricingMode.PER_PERSON }, 2, fee);
+    const quote = addSeatsQuote({ price: 2500, groupPricingMode: GroupPricingMode.PER_PERSON }, 2, (b, n) => payments.priceSale(b, n));
     expect(quote).toEqual({ base: 5000, fee: 198, total: 5198 });
   });
 });

@@ -40,6 +40,8 @@ export interface Event {
   capacity: number | null;
   registeredCount: number;
   waitlistEnabled: boolean;
+  /** The organiser absorbs the buyer fee: buyers pay the listed price (A33). */
+  absorbProcessingFee?: boolean;
   isFree: boolean;
   tags: string[];
   category: string | null;

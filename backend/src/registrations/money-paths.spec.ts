@@ -217,6 +217,7 @@ describe('free RSVP (S10)', () => {
   it('cannot take the last seat twice', async () => {
     const { svc, prisma, payments } = build({ seatsLeft: 0 });
     (payments as any).computeProcessingFee = () => 0;
+    (payments as any).priceSale = (b: number) => ({ base: b, fee: 0, total: b });
     prisma.event.findUnique = jest.fn(async () => ({
       id: 'event-1',
       status: 'PUBLISHED',
@@ -443,6 +444,7 @@ describe('coupon cap at checkout (S45)', () => {
     };
     prisma.couponRedemption = { count: jest.fn(async () => 0), create: jest.fn(async () => ({})) };
     (ctx.payments as any).computeProcessingFee = () => 10;
+    (ctx.payments as any).priceSale = (b: number) => ({ base: b, fee: 10, total: b + 10 });
     (ctx.payments as any).createOrder = jest.fn(async () => ({ orderId: 'order_x' }));
     const real = new CouponsService(prisma);
     (ctx.svc.checkout as any).coupons = real;

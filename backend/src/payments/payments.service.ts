@@ -149,6 +149,26 @@ export class PaymentsService {
    * one priced unit: each of a quantity, each seat of a per-person group, a
    * flat-priced group as one, a session seat, a stay guest.
    */
+  /**
+   * What a sale costs (A33). `listed` is the ticket price × tickets (after any
+   * coupon). Fee on top (default): base = listed, total = listed + fee.
+   * Absorbed by the organiser: the buyer pays exactly `listed` and the fee is
+   * carved out of it, at the same rate (5% of the base) and per-ticket cap, so
+   * base = listed − fee. Refunds and payouts read total − fee either way.
+   */
+  priceSale(listed: number, tickets = 1, absorb = false): { base: number; fee: number; total: number } {
+    const paise = (n: number) => Math.round(n * 100 + 1e-9) / 100;
+    if (!absorb) {
+      const fee = this.computeProcessingFee(listed, tickets);
+      return { base: listed, fee, total: paise(listed + fee) };
+    }
+    const percent = this.platformConfig.getProcessingFeePercent();
+    const included = paise(listed - listed / (1 + percent / 100));
+    const cap = this.platformConfig.getProcessingFeeCapPerTicket() * Math.max(1, Math.trunc(tickets));
+    const fee = Math.min(included, cap);
+    return { base: paise(listed - fee), fee, total: listed };
+  }
+
   computeProcessingFee(basePrice: number, tickets = 1): number {
     const percent = this.platformConfig.getProcessingFeePercent();
     // Rounded to the paise: an unrounded fee (₹12.345) drifts from what
