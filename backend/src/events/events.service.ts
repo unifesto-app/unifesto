@@ -1769,13 +1769,39 @@ export class EventsService {
     );
   }
 
+  /**
+   * The cached event payload lives up to 10 minutes; seat counts must not
+   * (A31). One small query overlays the live sold / registered / waitlist
+   * counts so "seats left" and sold-out are always current.
+   */
+  private async withLiveCounts(event: any) {
+    const live = await this.prisma.event.findUnique({
+      where: { id: event.id },
+      select: {
+        registeredCount: true,
+        waitlistCount: true,
+        ticketTypes: { select: { id: true, soldCount: true, totalQuantity: true } },
+      },
+    });
+    if (!live) return event;
+    const byId = new Map(live.ticketTypes.map((t) => [t.id, t]));
+    return {
+      ...event,
+      registeredCount: live.registeredCount,
+      waitlistCount: live.waitlistCount,
+      ticketTypes: (event.ticketTypes ?? []).map((tt: any) =>
+        byId.has(tt.id) ? { ...tt, ...byId.get(tt.id) } : tt,
+      ),
+    };
+  }
+
   private async loadEventBySlug(slug: string) {
     // Check cache first
     const cachedEvent = await this.cache.getCachedEvent(slug);
     if (cachedEvent) {
       // Increment view count in background
       await this.cache.incrementEventViews(cachedEvent.id);
-      return cachedEvent;
+      return this.withLiveCounts(cachedEvent);
     }
 
     // Try to find by slug first, then fall back to ID
