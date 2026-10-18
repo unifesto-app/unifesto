@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Carousel template (1080x1350)</title>
+<link rel="stylesheet" href="kit/cosmos.css">
+<style>
+  @page { size: 1080px 1350px; margin: 0; }
+  .slide { --planet-top: -76; --planet-right: -64; padding: 84px 88px 120px; display: flex; flex-direction: column; }
+  .slide > *:not(.sky) { position: relative; z-index: 1; }
+  .top { display: flex; justify-content: space-between; align-items: center; height: 40px; }
+  .count { font-size: 22px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .08em; }
+  .foot { position: absolute !important; left: 88px; right: 88px; bottom: 60px; display: flex; justify-content: space-between; font-size: 24px; color: var(--muted); }
+  .foot b { font-weight: 500; color: var(--ink); }
+
+  .copy { margin-top: 84px; }
+  .label { font-size: 26px; }
+  .num { font-family: "Michroma"; font-size: 30px; color: rgb(var(--glow) / .5); }
+  .num::after { content: ""; display: inline-block; vertical-align: middle; width: 72px; height: 2px; margin-left: 22px; background: rgb(var(--glow) / .35); }
+  h1.display { font-size: 70px; margin-top: 36px; }
+  h2.display { font-size: 54px; margin-top: 34px; }
+  .lede { font-size: 32px; margin-top: 34px; max-width: 880px; color: var(--muted); }
+
+  /* the screenshot sits on the horizon: a phone rises off the bottom edge, a browser sits centred between the copy and the footer */
+  .stage { position: absolute !important; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; }
+  .stage.browser-stage { position: relative !important; margin: auto -88px; } /* centred between copy and footer */
+
+  /* story */
+  .photo { margin-top: 64px; width: 904px; border-radius: 28px; overflow: hidden; box-shadow: 0 0 0 1px rgb(var(--glow) / .12), 0 40px 110px rgb(0 0 0 / .85); }
+  .photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .quote { font-size: 46px; margin-top: 56px; }
+  .quote.big { font-size: 62px; margin-top: 120px; }
+  .who { margin-top: 40px; font-size: 28px; }
+  .who b { font-weight: 600; color: var(--ink); }
+
+  /* cta */
+  .cta .row { display: flex; gap: 18px; margin-top: 64px; flex-wrap: wrap; }
+  .cta .pill { padding: 22px 36px; font-size: 30px; }
+  .big-wm { position: absolute !important; left: 88px; bottom: 310px; } /* stands on the horizon */
+</style>
+</head>
+<body>
+<script src="kit/kit.js"></script>
+<script>
+// Edit this block (or pass a piece JSON to render.py) to make a new carousel. Slide kinds:
+//   cover  { label, title, lede, shot, shotTop }   step  { title, text, shot, shotTop }   (steps are numbered 01, 02 ...)
+//   story  { photo, photoHeight, quote, name, role }   cta  { title, lede, pills: ["unifesto.app/organisers"] }
+// How-to carousel = cover + steps + cta. Story carousel = cover + story slides + cta.
+// shot: "file.jpg" or { src, frame: "phone"|"browser", crop: [x,y,w,h], url }. A phone starts shotTop px down
+// (default 700 on a cover, 600 on a step) and runs off the bottom edge; a browser sits centred between the copy and the footer.
+// In copy, *word* dims a run and \n breaks a line.
+const DEFAULTS = {
+  template: "carousel",
+  slides: [
+    { kind: "cover", label: "For club leads", title: "Run your club from *one place.*", lede: "Your Space and your team, set up in 10 minutes.", shot: "examples/w1/shots/01-dashboard-mobile.jpg" },
+    { kind: "step", title: "Name your Space", text: "One home for every event, member and rupee.", shot: "examples/w1/shots/07-space-settings.jpg" },
+    { kind: "story", quote: "We stopped running the fest out of five WhatsApp groups.", name: "Your club lead", role: "Your college" },
+    { kind: "cta", title: "Set up your Space *tonight.*", lede: "Free for RSVP events.", pills: ["unifesto.app/organisers"] },
+  ],
+};
+
+Kit.run(DEFAULTS, (d) => {
+  const total = d.slides.length, pad = (n) => String(n).padStart(2, "0");
+  let step = 0;
+  return d.slides.map((s, i) => {
+    const last = i === total - 1;
+    const top = `<div class="top">${Kit.wordmark(34)}<span class="count">${pad(i + 1)} / ${pad(total)}</span></div>`;
+    const foot = `<div class="foot"><span>${Kit.esc(d.handle || "unifesto.app")}</span><b>${last ? "" : "Swipe &rarr;"}</b></div>`;
+    const stage = (shot) => {
+      if (!shot) return "";
+      const phone = (shot.frame || (/mobile/.test(shot.src || shot) ? "phone" : "browser")) === "phone";
+      return phone
+        ? `<div class="stage" style="top:${s.shotTop || (s.kind === "cover" ? 700 : 600)}px">${Kit.shot(shot, 560)}</div>`
+        : `<div class="stage browser-stage">${Kit.shot(shot, 800)}</div>`;
+    };
+    let body = "", sky = { horizon: "74%", scrim: "30% 22%" };
+    if (s.kind === "cover") {
+      body = `<div class="copy"><p class="label">${Kit.esc(s.label)}</p><h1 class="display">${Kit.rich(s.title)}</h1><p class="lede">${Kit.rich(s.lede)}</p></div>${stage(s.shot)}`;
+    } else if (s.kind === "step") {
+      step++;
+      body = `<div class="copy"><div class="num">${pad(step)}</div><h2 class="display">${Kit.rich(s.title)}</h2><p class="lede">${Kit.rich(s.text)}</p></div>${stage(s.shot)}`;
+    } else if (s.kind === "story") {
+      sky = { horizon: "92%", scrim: "40% 60%" };
+      body = s.photo
+        ? `<div class="photo" style="height:${s.photoHeight || 600}px"><img src="${Kit.esc(s.photo)}" alt=""></div><p class="display quote">&ldquo;${Kit.rich(s.quote)}&rdquo;</p>`
+        : `<p class="display quote big">&ldquo;${Kit.rich(s.quote)}&rdquo;</p>`;
+      body += `<p class="who muted"><b>${Kit.esc(s.name)}</b>${s.role ? ", " + Kit.esc(s.role) : ""}</p>`;
+    } else if (s.kind === "cta") {
+      sky = { horizon: "80%", scrim: "30% 40%" };
+      body = `<div class="copy cta"><h2 class="display" style="font-size:66px">${Kit.rich(s.title)}</h2><p class="lede">${Kit.rich(s.lede)}</p>
+        <div class="row">${(s.pills || []).map((p, j) => `<span class="pill ${j ? "ghost" : "solid"}">${Kit.esc(p)}</span>`).join("")}</div></div>
+        <div class="big-wm">${Kit.wordmark(96)}</div>`;
+    }
+    return Kit.page(1080, 1350, "slide", Kit.sky(sky) + top + body + foot);
+  }).join("");
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LinkedIn video frame template (1920x1080)</title>
+<link rel="stylesheet" href="kit/cosmos.css">
+<style>
+  .lf { --planet-top: -64; --planet-right: -58; background: transparent; }
+  /* everything but the clip slot: the slot is cut out of this layer, so the PNG has a transparent hole */
+  .lf .cut { position: absolute; inset: 0; background: var(--night);
+    mask: linear-gradient(#000 0 0), linear-gradient(#000 0 0) var(--x) var(--y) / var(--w) var(--h) no-repeat; mask-composite: exclude; }
+  .lf .poster { position: absolute; object-fit: cover; }
+  .lf .edge { position: absolute; box-shadow: 0 0 0 1px rgb(var(--glow) / .22), 0 40px 120px rgb(0 0 0 / .8); pointer-events: none; }
+  .lf .cut > *:not(.sky) { position: absolute; z-index: 1; }
+  h1 { font-size: 52px; }
+  .sub { font-size: 30px; color: var(--muted); margin-top: 18px; }
+  /* 16:9: title band on top, wide clip below */
+  .wide .copy { left: 272px; top: 60px; width: 1200px; }
+  .wide h1 { font-size: 44px; }
+  .wide .sub { font-size: 28px; margin-top: 14px; }
+  .wide .wm { position: absolute; right: 272px; top: 66px; }
+  /* 9:16: tall clip on the right, title on the left */
+  .tall .copy { left: 160px; top: 0; bottom: 0; width: 900px; display: flex; flex-direction: column; justify-content: center; }
+  .tall h1 { font-size: 72px; }
+  .tall .wm { position: absolute; left: 160px; bottom: 90px; }
+</style>
+</head>
+<body>
+<script src="kit/kit.js"></script>
+<script>
+// clip: "16:9" or "9:16". title / sub: the band copy (*word* dims). Page 01 is the overlay with a transparent
+// slot: put it on the track above your clip. poster: optional image; adds page 02, a preview with the
+// poster in the slot (for checking the layout or as the post's first frame).
+const DEFAULTS = {
+  template: "linkedin-frame",
+  clip: "16:9",
+  title: "Your Space and team in *10 minutes*",
+  sub: "How to run a college club on Unifesto",
+  poster: "examples/w1/shots/01-dashboard.jpg",
+};
+
+Kit.run(DEFAULTS, (d) => {
+  const tall = d.clip === "9:16";
+  const [x, y, w, h] = tall ? [1220, 60, 540, 960] : [272, 236, 1376, 774];
+  const slot = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+  const frame = (poster) => Kit.page(1920, 1080, `lf ${tall ? "tall" : "wide"}`,
+    (poster ? `<img class="poster" src="${Kit.esc(poster)}" style="${slot}" alt="">` : "") +
+    `<div class="cut" style="--x:${x}px;--y:${y}px;--w:${w}px;--h:${h}px">` +
+      Kit.sky({ horizon: tall && "78%", scrim: "25% 40%", ground: false }) +
+      `<div class="copy"><h1 class="display">${Kit.rich(d.title)}</h1>${d.sub ? `<p class="sub">${Kit.rich(d.sub)}</p>` : ""}</div>` +
+      Kit.wordmark(tall ? 56 : 40) +
+    `</div><div class="edge" style="${slot}"></div>`);
+  return frame("") + (d.poster ? frame(d.poster) : "");
+});
+</script>
+</body>
+</html>

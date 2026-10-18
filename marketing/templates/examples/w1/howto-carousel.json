@@ -1,0 +1,11 @@
+{
+  "template": "carousel",
+  "slides": [
+    { "kind": "cover", "label": "For club leads", "title": "Run your college club from *one place.*", "lede": "Your Space and your team, set up in 10 minutes.", "shot": "shots/01-dashboard-mobile.jpg" },
+    { "kind": "step", "title": "Create your Space", "text": "Name, link, a line about your club. Every event and member lives here.", "shot": "shots/07-space-settings.jpg" },
+    { "kind": "step", "title": "Add your members", "text": "Bring in the core team. Everyone joins with their own account.", "shot": "shots/02-members-roster-mobile.jpg" },
+    { "kind": "step", "title": "Decide who can do what", "text": "Curator, Co-Curator, Crew. Tick what each role can touch.", "shot": "shots/03-iam-roles-matrix.jpg" },
+    { "kind": "step", "title": "Give each event a team", "text": "Pick people from your Space and set their role for that event.", "shot": "shots/06-event-team-roster.jpg" },
+    { "kind": "cta", "title": "Set up your Space *tonight.*", "lede": "Free for RSVP events. Next year's team takes over the same Space.", "pills": ["unifesto.app/organisers", "Save for later"] }
+  ]
+}

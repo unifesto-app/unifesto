@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>YouTube thumbnail template (1280x720)</title>
+<link rel="stylesheet" href="kit/cosmos.css">
+<style>
+  .thumb { --planet-top: -70; --planet-right: -60; }
+  .thumb > *:not(.sky) { position: absolute; z-index: 1; }
+  /* the hook is the whole thumbnail: it has to read at 160px wide, so it stays huge and short */
+  .hook { left: 72px; top: 0; bottom: 110px; width: 700px; display: flex; align-items: center; font-size: var(--size, 96px); line-height: 1.08; }
+  .hook-wm { left: 76px; bottom: 64px; }
+  .stage { right: 70px; top: 96px; }
+  .stage.browser { right: -160px; top: 150px; }
+</style>
+</head>
+<body>
+<script src="kit/kit.js"></script>
+<script>
+// hook: 3 to 5 words; *word* dims a run, \n forces a break. size: hook font size in px (default 96; go
+// smaller only if a word will not fit 700px). shot: a phone shot reads best this small; a desktop shot
+// (frame "browser") runs off the right edge instead.
+const DEFAULTS = {
+  template: "thumbnail",
+  hook: "Your club in *10 minutes*",
+  shot: "examples/w1/shots/01-dashboard-mobile.jpg",
+};
+
+Kit.run(DEFAULTS, (d) => {
+  const phone = typeof d.shot === "object" ? d.shot.frame !== "browser" : /mobile/.test(d.shot);
+  return Kit.page(1280, 720, "thumb",
+    Kit.sky({ horizon: "80%", scrim: "28% 50%" }) +
+    `<h1 class="display hook" style="${d.size ? `--size:${d.size}px` : ""}"><span>${Kit.rich(d.hook)}</span></h1>` +
+    `<div class="stage ${phone ? "" : "browser"}">${Kit.shot(d.shot, phone ? 400 : 800)}</div>` +
+    `<div class="hook-wm">${Kit.wordmark(40)}</div>`);
+});
+</script>
+</body>
+</html>
