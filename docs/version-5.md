@@ -281,7 +281,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | next |
+| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | in progress (#PR), not deployed |
 | C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | planned |
 | C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | planned |
 | C4 | **Notification preferences grid and quiet hours.** Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
@@ -662,3 +662,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-16** · Track S finished in 4 lanes: #156 (S48, S49, S53), #157 (S50, S51, S52 money parts), #158 (S42 dormant schema, S54, S56), #159 (S45, S46, S52/S42 registration parts). Decisions: blank sponsor overrides inherit; only EMAIL/GOOGLE/APPLE identity emails stay trusted. Left: drop `group_members` once checkout creates seats directly. None deployed.
 - **2026-10-16** · Track S deployed (main 9840e37): prod schema up to date at 152 migrations, all backend replicas + cert-worker + space healthy. 
 - **2026-10-16** · S42 finished in #162: group seats created at checkout, `group_members` dropped; deployed two-step, prod 153 migrations up to date. Track S complete.
+- **2026-10-18** · C1 in-app inbox: every user push now keeps a `user_notifications` copy by default (was hackathon/competition only; staff alerts and opted-out promotions excluded), mobile bell with unread badge on Home opens `/notifications` (reuses the hackathon feed screen). No migration. Deploy: rebuild backend; mobile is JS-only, rides 5.0.0.

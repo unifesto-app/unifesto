@@ -21,9 +21,10 @@ const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 /**
- * Everything the organisers sent this team about the hackathon, newest first.
- * Each push is also kept here, so an update isn't lost if push was off or the
- * notification was swiped away. Opening the screen marks them read.
+ * The in-app notification feed, newest first. With an `eventId` it's one
+ * hackathon's updates; without, it's the whole inbox (the bell on Home). Each
+ * push is also kept here, so it isn't lost if push was off or the notification
+ * was swiped away. Opening the screen marks them read.
  */
 export default function HackathonUpdatesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -36,10 +37,9 @@ export default function HackathonUpdatesScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  useAnalyticsScreenTracking('HackathonUpdates');
+  useAnalyticsScreenTracking(eventId ? 'HackathonUpdates' : 'Notifications');
 
   const load = useCallback(async () => {
-    if (!eventId) return;
     const res = await getNotifications({ eventId });
     if (!res.ok) {
       setError(res.message);
@@ -61,7 +61,7 @@ export default function HackathonUpdatesScreen() {
   useEffect(
     () =>
       onNotificationArrived((n) => {
-        if (!n.eventId || n.eventId === eventId) void load();
+        if (!eventId || !n.eventId || n.eventId === eventId) void load();
       }),
     [eventId, load],
   );
@@ -84,7 +84,7 @@ export default function HackathonUpdatesScreen() {
     );
   }
 
-  const hub = `/hackathon/${eventId}`;
+  const hub = eventId ? `/hackathon/${eventId}` : null;
 
   return (
     <ScrollView
@@ -107,9 +107,11 @@ export default function HackathonUpdatesScreen() {
     >
       {items.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>No updates yet</Text>
+          <Text style={[styles.emptyTitle, { color: tokens.text }]}>{eventId ? 'No updates yet' : 'No notifications yet'}</Text>
           <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
-            Room changes, results and messages from the organisers will appear here and as notifications.
+            {eventId
+              ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
+              : 'Registrations, reminders and updates from organisers will appear here.'}
           </Text>
         </View>
       ) : null}

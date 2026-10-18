@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket, UserCircle } from '@unifesto/unicon/react-native';
+import { Bell, CalendarDots, Globe, MagnifyingGlass, MapPin, NavigationArrow, SlidersHorizontal, Ticket, UserCircle } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../CustomHeader';
 import type { LocationStatus } from '../../hooks/useHomeData';
 import { PRESETS, type Preset } from '../../hooks/useEventsBrowse';
@@ -34,6 +34,9 @@ interface HomeHeaderProps {
   locationStatus: LocationStatus;
   onEnableLocation: () => void;
   onPressAvatar: () => void;
+  /** Unread in-app notifications; the bell shows only when signed in. */
+  unread?: number;
+  onPressBell?: () => void;
   onPressSearch: () => void;
   /** Quick filter picked from the menu beside search; opens Events pre-filtered. */
   onPressPreset: (preset: Preset) => void;
@@ -52,6 +55,8 @@ export default function HomeHeader({
   locationStatus,
   onEnableLocation,
   onPressAvatar,
+  unread = 0,
+  onPressBell,
   onPressSearch,
   onPressPreset,
 }: HomeHeaderProps) {
@@ -88,6 +93,23 @@ export default function HomeHeader({
             >
               <NavigationArrow size={13} color={c.muted} weight="fill" />
               <Text style={[styles.chipText, { color: c.muted }]}>Set location</Text>
+            </PressableScale>
+          ) : null}
+
+          {firstName !== null && onPressBell ? (
+            <PressableScale
+              onPress={onPressBell}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+              style={styles.bell}
+            >
+              <Bell size={24} color={c.text} weight={unread ? 'fill' : 'regular'} />
+              {unread ? (
+                <View style={[styles.badge, { backgroundColor: c.primary }]}>
+                  <Text style={[styles.badgeText, { color: c.primaryFg }]}>{unread > 9 ? '9+' : unread}</Text>
+                </View>
+              ) : null}
             </PressableScale>
           ) : null}
 
@@ -166,6 +188,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { fontSize: 15, ...cosmosFont.strong },
+  bell: { width: AVATAR, height: AVATAR, alignItems: 'center', justifyContent: 'center' },
+  badge: {
+    position: 'absolute',
+    top: 2,
+    right: 0,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, lineHeight: 12, ...cosmosFont.strong },
   // Michroma has one weight and runs wide: 28px fits "What's on in Hyderabad?" in two lines.
   headline: { marginTop: spacing[8], fontSize: 28, lineHeight: 36, ...cosmosFont.display },
   searchRow: { marginTop: spacing[6], flexDirection: 'row', gap: spacing[2] },
