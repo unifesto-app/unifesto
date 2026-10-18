@@ -26,6 +26,7 @@ import { FormUploadsController } from './form-uploads.controller';
 import { AttendeeDetailsService } from './attendee-details.service';
 import { AttendeeDetailsController } from './attendee-details.controller';
 import { StaysModule } from '../stays/stays.module';
+import { SessionsModule } from '../sessions/sessions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TeamChangesService } from './team-changes.service';
 
@@ -41,6 +42,7 @@ import { TeamChangesService } from './team-changes.service';
     StorageModule,
     // The Razorpay webhook also settles Unifesto Stay payments.
     StaysModule,
+    SessionsModule,
     NotificationsModule,
   ],
   controllers: [RegistrationsController, GroupSeatsController, FormUploadsController, AttendeeDetailsController],
