@@ -35,7 +35,7 @@ Covers mobile, backend, and all four websites (web, space, apex, plus the retire
 | D5 | Load testing never touches production. Use a staging copy only. |
 | D6 | **No store release before Wed 2 Dec 2026.** 5.0.0 is the next store build and goes live on both stores that day. Whatever is done and device-QA'd by the freeze ships in it; the rest waits for 5.x. |
 | D7 | **AI in Assist suggests, never decides.** Claude Haiku 5.5 (`claude-haiku-5-5`) answers, triages, drafts and summarises; it never moves money, approves a request or sends a reply on its own. Any refusal or API error falls back to a human queue. |
-| D8 | **Plan, deal and role are three separate things.** Plan = what a space can do (features, limits). Deal = what it pays (plan price, buyer fee, organiser fee), per space or per event, versioned. Role = who can do it. Every paid row snapshots the terms it was sold under, so changing a deal never rewrites past money. See [Track R](#r--deals-billing-and-access). |
+| D8 | **Plan, deal and role are three separate things.** Plan = what a space can do (features, limits). Deal = what it pays (plan price, buyer fee, organiser fee), per space or per event, versioned. Role = who can do it. Every paid row snapshots the terms it was sold under, so changing a deal never rewrites past money. See [Track T](#t--deals-billing-and-access). |
 | D9 | **Space Admin and Curator both move event money** (payouts, refund approvals). Money lands in the space's bank account, so Space Admins get it officially; Co-Curator and Crew never do. |
 
 ### 5.0.0 · release Wed 2 Dec 2026
@@ -58,7 +58,7 @@ Worked back from the date, with room for one store rejection. Only the release d
 
 | Track | Item | Status |
 |---|---|---|
-| S | **Fixes merged (#110), not deployed: P0 exploits stay live until the backend deploys.** Before `./deploy.sh`: run the duplicate-check SQL from #110 on prod; confirm `JWT_SECRET`, `DIRECT_URL`, `INTERNAL_API_KEY` (backend + web) set (App Review login is now an Apex toggle, S57, off after migrate); `migrate deploy` before the new backend starts (index migrations off-peak); then backend, web, space, apex. Then S48 | next |
+| J, T, A, K, D, O | **Platform audit 2026-10-18 turned into the NEXT batch.** J13 deploy gate first, then T1, J8–J12, A19, A24, A25 and T8's hotfix with the next backend deploy; K8–K10 on web; D29 daily until the support (217 open) and WhatsApp (121 unread) backlog is clear; O17 before the 20 Nov freeze. Track S shipped on 2026-10-16 | next |
 | O | Guards merged (#109), secrets + `native` label done. OTA stays blocked until 5.0.0 on **2 Dec** (D6); `update:production` now refuses until the 5.0.0 runtime is recorded. Left: deploy #109 migrations + Apex with the S deploy, compare CI fingerprint once with `eas fingerprint:compare`, then O2–O5 on the [schedule](#500--release-wed-2-dec-2026) | next |
 | H | White-label P1–P3 merged (#106), not deployed. **Needs you:** Cloudflare SSL for SaaS + env (H8), then deploy (H10) and verify (H11) | next |
 | P | Marketing to 5.0.0: "What is Unifesto?" is live (P0). Next: accounts, templates, baseline, content bank (P1–P4), W1 video Tue 20 Oct | next |
@@ -67,9 +67,10 @@ Worked back from the date, with room for one store rejection. Only the release d
 
 There are no dates, only a sensible sequence. Each step makes the next one cheaper.
 
-0. **S1–S8** first: live payment and account-takeover holes. Deploy straight away; the backend isn't held to 2 Dec.
+0. **J13** first: deploy only CI-green `main` with a rollback image. Then the 2026-10-18 audit batch with the next backend deploy: **T1**, **J8–J12**, **A19**, **A24**, **A25** and **T8**'s hotfix. Track S shipped in the 2026-10-16 deploy.
 1. **S9–S16** (money races) and **S17–S22** (outage risks), then **O7–O16**, so the 5.0.0 runtime is protected from day one. **O1–O6** follow the [5.0.0 schedule](#500--release-wed-2-dec-2026). No mobile change reaches users before 2 Dec.
-1. **R1** with the next backend deploy (Co-Curator escalation to money). Then **R4–R6** before any custom client deal is signed, then **R7–R9**. R8 includes A1's checkout.
+1. **T1** with the next backend deploy (Co-Curator escalation to money). Then **T4–T6** before any custom client deal is signed, then **T7–T9**. T8 includes A1's checkout.
+1. Growth blockers on web: **K8** (past and live events in public lists), **K9** (event page fixes, remove the fake /docs page), **K10** (register and pay on the web). **D29** daily until the support and WhatsApp backlog is clear. **O17** and every mobile item meant for 5.0.0 merged by the Fri 20 Nov freeze.
 1. **A1–A3**: billing checkout + confirm dialogs. These are the only items that block money or trust.
 2. **Track 0**: the cleanup. It removes about 10k lines with no behaviour change, so everything after it touches less code.
 3. **B1–B4**: the backend features that already exist and only need a button.
@@ -229,6 +230,7 @@ It's a major because it removes the App Clip.
 | O14 | **Test promote, revert and republish on preview channel.** Test promote / revert / republish on the `preview` channel once, with an internal preview build. The Apex mutations are still untested. Use the preview channel to QA risky OTAs before production | planned |
 | O15 | **Publish OTAs regularly after mobile PRs merge.** Publish habit: OTA whenever a batch of mobile PRs has merged and been checked on a device. Don't let JS sit on `main` unshipped | planned |
 | O16 | **Rewrite mobile OTA docs for the new flow.** Rewrite `mobile/docs/OTA.md` for the new flow (drop the `--skip-bundler` section, add the native-window rule, record-from-EAS and the one-rollout rule) | done (#109), not deployed |
+| O17 | **Clear store review risks and land native fixes before the freeze.** Everything native must merge before the Fri 20 Nov freeze (R1); | next |
 
 **Done when:** a phone on the latest store build receives every OTA published from `main`; CI has flagged at least one native PR; and Apex shows update adoption.
 
@@ -246,31 +248,44 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | 0.6 | **Backend: remove legacy non-hackathon leaderboard routes.** Backend: legacy non-hackathon routes in `leaderboard/leaderboard.controller.ts` (rounds, metrics, panelists, awards). **Careful:** the hackathon services live in the same folder; delete only the controller routes with no callers | done (#107) |
 | 0.7 | **Backend: remove referral and wallet leftovers.** Backend: referral and wallet leftovers (dormant tables decided separately) | done (#107) |
 | 0.8 | **Close the open TODO(you) decisions.** Close the open `TODO(you)` decisions: Space detail join CTA (`SpaceDetailScreen.tsx:416`), Space tab `summaryLine` (`SpaceScreen.tsx:249`), Apex edit-user empty fields (`AdminEditUserScreen.tsx:50`), request ordering (`apexRequests.ts:160`), `pushDeviceReport.shouldReport()`, stale TODO in `appVersionReport.ts` and space `useDrawerBehavior.tsx` | done (#108) |
-| 0.9 | **Drop the dead discussions feature.** `Discussion` / `DiscussionReply` have no module or UI; only `_count.discussions` in `spaces.service.ts` and the client types in space/apex/mobile `spaces-api`. Remove them, then a migration dropping `discussions` and `discussion_replies`. Replaces B10 | in review (#149) |
+| 0.9 | **Drop the dead discussions feature.** `Discussion` / `DiscussionReply` have no module or UI; only `_count.discussions` in `spaces.service.ts` and the client types in space/apex/mobile `spaces-api`. Remove them, then a migration dropping `discussions` and `discussion_replies`. Replaces B10 | done |
 
 ### A · Money and trust
 
 | # | Item | Status |
 |---|---|---|
-| A1 | **Space plan upgrade checkout via Razorpay.** : wire Razorpay checkout + `verifySpaceUpgrade` (`websites/space/.../billing/page.tsx:117-161` stops at "not wired up yet"). Built as part of R8 | done |
+| A1 | **Space plan upgrade checkout via Razorpay.** : wire Razorpay checkout + `verifySpaceUpgrade` (`websites/space/.../billing/page.tsx:117-161` stops at "not wired up yet"). Built as part of T8 | done |
 | A2 | **Apex: confirm dialogs on irreversible actions.** Apex confirm dialogs on irreversible actions: orphaned-payment `attach()`, request approve/reject, IAM grant toggle, subscription override, WhatsApp send-to-all, event publish/hide | done |
 | A3 | **Settle open money TODOs in Space and Apex.** Settle money TODOs: Space transactions net formula (`transactions/page.tsx:136`), Apex financials default sort (`financials/page.tsx:79`) | done |
 | A4 | **End-to-end money-path review.** Money-path review end to end: payments, refunds, payouts, reconciliation; webhook idempotency (from W1) | done: review 2026-10-18, findings A13–A23 |
 | A5 | **Platform ledger with monthly close report.** Platform ledger: every fee, refund, payout and gateway charge as ledger entries; monthly close report (from W9) | planned |
 | A6 | **GST invoices for platform fees and monthly export.** GST tax invoices for platform fees, GSTR-ready monthly export; TDS/TCS check with CA (from W9) | planned |
 | A7 | **Revenue analytics in Apex.** Revenue analytics in Apex: GMV, net revenue, take rate per space/month, cohorts (from W9) | planned |
-| A8 | Zoho Books monthly revenue sync + runway/burn summary (D4) | planned |
+| A8 | Zoho Books monthly revenue sync + runway/burn summary (D4) | parked (2026-10-18): needs the A5 ledger and T11 margins first; |
+| A9 | **Charge the plan platform fee to organisers (2.5 / 1.5 / 1%).** | next |
+| A10 | **Notify existing organisers before the platform fee starts.** | planned |
+| A11 | **Site states both fees everywhere (extend PR #180).** | planned |
+| A12 | **Pricing decisions from the India price-sensitivity analysis.** | next |
 | A13 | **P0 live: webhook settles any registration from buyer-set notes, no amount check.** `resolveRegistrationIdForOrder` reads `paymentData.notes.registrationId` (set by the browser in Checkout) before the server-fetched order notes (`registration-payments.service.ts:511`); nothing compares captured `amount`/`currency` to the row. Pay ₹1 on any unmatched order (e.g. a session) with notes → a ₹5000 ticket goes PAID. Same in stays (`stay-bookings.service.ts:651`) and seat add-ons (`team-changes.service.ts:457`). Fix: only `fetchOrderNotes(orderId)`; require `amount === razorpayAmount*100` and INR before any claim | next |
 | A14 | **Refund idempotency after a lost Razorpay response.** Any error from `payments.refund` (incl. timeout after Razorpay accepted) is treated as "nothing moved" and the claim released (`refunds.service.ts:546-558`, `:471-480`) → re-approve refunds twice. Auto-refund crons (registrations, sessions, seats, stays) retry forever on the same case. Stuck PROCESSING has no exit and blocks new requests. ₹0 refunds get marked APPROVED (`:566-580`). Fix: `X-Refund-Idempotency` keyed by request id; on non-4xx keep PROCESSING and check Razorpay refunds by `notes.refundRequestId`; admin "resolve stuck refund"; throw on `refundedNow === 0` | next |
 | A15 | **Handle `refund.processed` / `refund.failed` webhooks.** None handled: a refund that fails later stays REFUNDED/APPROVED with seats released, attendee never paid | next |
-| A16 | **Paid sessions: lockout and webhook confirm.** Pending paid row defaults to `status=REGISTERED`, so after closing the payment sheet every retry says "Already registered" (`sessions.service.ts:762`). Webhook only logs session captures (`registration-payments.service.ts:603`): app killed before verify = captured, no seat, no refund. Fix: reuse/reissue order for PENDING/FAILED rows; webhook runs the same claim as `verifyPayment` | next |
+| A16 | **Paid sessions: lockout and webhook confirm.** Pending paid row defaults to `status=REGISTERED`, so after closing the payment sheet every retry says "Already registered" (`sessions.service.ts:762`). Webhook only logs session captures (`registration-payments.service.ts:603`): app killed before verify = captured, no seat, no refund. Fix: reuse/reissue order for PENDING/FAILED rows; webhook runs the same claim as `verifyPayment` | done (#185), not deployed |
 | A17 | **Session revenue in payouts and financials.** `Payout.eventId` is required and payouts/financials/timeseries never read `sessionRegistration`: session money can't be paid out or seen. Fix: session payout source (nullable eventId + sessionId) folded into the aggregates, or block paid sessions until then | planned |
-| A18 | **Plan upgrade: server-side activation.** Only client verify activates (`subscription.service.ts:198`); a captured `sub_` payment via webhook is logged as unrecorded. Fix: webhook branch on `notes.spaceId`+`plan` calling the idempotent activation (unique `subscription_history.payment_id`); add plan payments as a reconciliation source (now false MISSING_IN_PLATFORM). Overlaps R8 | planned |
-| A19 | **Payment-link registrations get hard-deleted.** Manual add with "collect payment" leaves `orderId` null and never stores the link; in-app checkout then deletes the row (`registration-checkout.service.ts:806`, `:288`) and a later link payment is orphaned or double-charged. Fix: store link id, cancel not delete, cancel the Razorpay link when the row is cancelled/superseded | planned |
+| A18 | **Plan upgrade: server-side activation.** Only client verify activates (`subscription.service.ts:198`); a captured `sub_` payment via webhook is logged as unrecorded. Fix: webhook branch on `notes.spaceId`+`plan` calling the idempotent activation (unique `subscription_history.payment_id`); add plan payments as a reconciliation source (now false MISSING_IN_PLATFORM). Overlaps T8 | dropped (2026-10-18): merged into T8 (doc R8 already includes order.paid webhook activation; |
+| A19 | **Stop checkout cleanup from deleting link, paid and waitlist rows.** Manual add with "collect payment" leaves `orderId` null and never stores the link; in-app checkout then deletes the row (`registration-checkout.service.ts:806`, `:288`) and a later link payment is orphaned or double-charged. Fix: store link id, cancel not delete, cancel the Razorpay link when the row is cancelled/superseded | next |
 | A20 | **Overdrawn event doesn't block payouts on the space's other events.** `computeBalance` / `createPayout` ceiling are per event (`payouts.service.ts:262`, `:966`); a refund after payout leaves event A overdrawn while event B pays out in full. Space Financials already nets it, payouts don't. Fix: subtract other events' overdrawn total under the lock. Also check bank account belongs to the event in admin `createPayout` (`:947`) | planned |
 | A21 | **Freeze the platform fee per sale.** Every balance and financials path applies today's `resolvePlatformFeePercent` to all past revenue: a plan or default-rate change rewrites history and unlocks withdrawable money. Store the fee % (or paise) on each paid row at capture. Prerequisite for A9's go-live cutoff | next |
 | A22 | **Duplicate captures on an already-paid row are kept silently.** Two tabs paying the same waitlist offer or stay booking: second capture logged "already paid" (`registration-payments.service.ts:620`, `stay-bookings.service.ts:684`), no refund. Fix: different `paymentId` on a PAID row → error log + full auto-refund | planned |
 | A23 | **Reconciliation and reporting accuracy.** `truncated` ignored past 2,500 payments and not returned for refunds/settlements; `safe()` turns a failed fetch into `[]` (balance overstated, `approximate` false); date windows are UTC not IST (`reconciliation.service.ts:54`); platform refunds matched only by `razorpayRefundId` (auto refunds show as Razorpay-only); financial timeseries counts event registrations only (`admin.service.ts:496`); platform fee rounded per space vs per event/row (paise drift) | planned |
+| A24 | **Refund cancelled events and hold their payouts.** Stopgap ahead of D6 (Assist wraps it later). | next |
+| A25 | **Close the gaps left in A13, A14 and A15.** Follow-ups to the DONE fixes in #183 and #184. | next |
+| A26 | **Add confirm dialogs to the remaining irreversible actions.** A2 (DONE) missed these; each still fires on one tap. | planned |
+| A27 | **Close free-seat loopholes on paid tickets.** Paid seats can be given away with no fee. | planned |
+| A28 | **Fix group seat edits, transfers and member data.** Money (high, confirmed). | planned |
+| A29 | **Stop series edits and deletes from cascading money rows.** S14 (DONE) guarded event delete, but other paths still lose paid data. | planned |
+| A30 | **Re-home payouts and roles on event ownership transfer.** acceptOwnershipTransfer moves only spaceId (backend/src/events/events.service.ts:1114-1131); | planned |
+| A31 | **Make checkout trust the server total and stock.** - Mobile skips payment and shows 'You're going' from its own computed total even when the server created a paid order (mobile/src/hooks/useEventRegistration.ts:572-574). | planned |
+| A32 | **Add UTR, payer record and notices to manual payouts.** Manual payouts (RazorpayX was removed) lack basics. | planned |
 
 ### B · Operator productivity
 
@@ -287,18 +302,30 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | B9 | Subspace link requests from Space (`createSubSpaceRequest` unused) | dropped: merged into D5 |
 | B10 | Discussion moderation (pin, lock, delete) in Space + Apex | dropped: discussions are dead code, removed in 0.9 |
 | B11 | Support stats header (`GET /support/tickets/stats`) | dropped: merged into D8 |
+| B12 | **Polish Space web from the visual audit.** From the 18 Oct visual audit of Space and Apex. | planned |
+| B13 | **Add a simple editor for email campaigns.** Email compose is a raw 'Body (HTML)' textarea with merge tags (websites/space/app/(dashboard)/dashboard/email/new/page.tsx). | planned |
+| B14 | **Label people vs bookings and revenue totals the same everywhere.** From the visual audit. | planned |
+| B15 | **Add mobile-only desk actions to Space web.** D3 says desk work lives on web, but these curator desk tasks exist only on mobile. | planned |
+| B16 | **Fix operator form saves and navigation traps.** Blank fields: edit forms can't clear optional fields because blanks are sent as undefined. | planned |
+| B17 | **Validate event dates and copy setup into recurring occurrences.** - No date or timezone validation on event create and update (backend/src/events/events.service.ts:1424). | planned |
+| B18 | **Make Huddle sessions findable, listed and joinable.** Huddle sessions dead-end. Quick ones first (high, confirmed). | planned |
+| B19 | **Fix certificate and report correctness at scale.** Certificates. | planned |
 
 ### C · Notifications
 
 | # | Item | Status |
 |---|---|---|
-| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | done (#177), not deployed |
+| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | done |
 | C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | planned |
 | C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | planned |
 | C4 | **Notification preferences grid and quiet hours.** Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
 | C5 | **Provider delivery webhooks and email suppression.** Provider webhooks: SES bounces/complaints → suppress, WhatsApp status, OneSignal delivery | planned |
 | C6 | Apex per-user message history + failure dashboard | planned |
-| C7 | **Native: rich push images and action buttons.** Native (store build): iOS Notification Service Extension for images, push action buttons | planned |
+| C7 | **Native: rich push images and action buttons.** Native (store build): iOS Notification Service Extension for images, push action buttons | parked (2026-10-18): native (Notification Service Extension) with no room before the 20 Nov freeze, and the next store window after 5.0.0 isn't planned. |
+| C8 | **Add unsubscribe and consent to marketing sends.** Must land before the P track's curator emails and the P9 launch sends on 2 Dec. | planned |
+| C9 | **Send event mail and confirmations to the right people.** Quick one first (high, live): paid-registration WhatsApp confirmations format times with toLocaleTimeString('en-US') and no timeZone, then append 'IST' (backend/src/registrations/registration-payments.service.ts:364-386, :1366-139 | planned |
+| C10 | **Add filters and mark-all-read to the notification inbox.** Follow-up to C1 (merged #177), found on a real iPhone. | planned |
+| C11 | **Check all-user push broadcasts reach people.** Apex Notifications shows both 'All users' app-update broadcasts (27 Sept) as '0 sent'. | planned |
 
 ### D · Unifesto Assist (support system)
 
@@ -334,9 +361,9 @@ One support system for everything a person needs help with. Every item is an **A
 | D13 | AI triage on every new case: category, priority, routing hint, language, sentiment, spam | planned |
 | D14 | **Assist bot.** Self-serve answers from help articles, event FAQs and read-only account tools; proposes action cards the user confirms; hands off to a human with the chat as the thread | planned |
 | D15 | Desk copilot: draft reply, thread summary, policy facts computed by code | planned |
-| D16 | AI pre-screen of space and event requests for reviewers | planned |
+| D16 | AI pre-screen of space and event requests for reviewers | parked (2026-10-18): space and event request volume is small and reviewed by hand quickly; |
 | D17 | Help articles in Apex as the bot's knowledge base (from K7) | planned |
-| D18 | Nightly insights over closed cases (Batch API): themes and missing articles | planned |
+| D18 | Nightly insights over closed cases (Batch API): themes and missing articles | parked (2026-10-18): nightly insights need case volume that only exists after D8, D9 and launch. |
 | | **Phase 4 · Operations** | |
 | D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | planned |
 | D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | planned |
@@ -348,7 +375,8 @@ One support system for everything a person needs help with. Every item is an **A
 | D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | planned |
 | D26 | WhatsApp inbox → "Convert to case", later a full channel | planned |
 | D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | planned |
-| D28 | Space verification request (optional) | planned |
+| D28 | Space verification request (optional) | parked (2026-10-18): marked optional; verification is admin-set (Space.verifiedAt, live since #91) without a request flow. |
+| D29 | **Clear the support and WhatsApp backlog.** Ops task, not code. Apex Support has 217 Open tickets ('Needs a reply'), 0 awaiting, 0 resolved, and the oldest refund requests are 12+ days old with 1 message. | next |
 
 
 ### E · Sponsors, partners, hackathon (from 4.3.0)
@@ -356,12 +384,14 @@ One support system for everything a person needs help with. Every item is an **A
 | # | Item | Status |
 |---|---|---|
 | E1 | **Shared collaborator invite flow.** Shared collaborator invite: email → find-or-create → invite → claim on first login | planned |
-| E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | planned |
+| E2 | **Space web partner portal.** Space web `/partner` portal modelled on `/sponsor`; landing routes sponsor/partner-only users to their portal | parked (2026-10-18): partners were folded into Tracking (X7); |
 | E3 | Sponsor portal: lead notes + status, per-event booth stats | planned |
-| E4 | Partner: multiple links, share kit (tracked link + QR) | planned |
-| E5 | **Hackathon project submissions.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
-| E6 | Hackathon certificates from awards | planned |
-| E7 | **Offline queue for BoothScan and StayScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
+| E4 | Partner: multiple links, share kit (tracked link + QR) | parked (2026-10-18): no demand evidence for a partner share kit; |
+| E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
+| E6 | Hackathon certificates from awards | done |
+| E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
+| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | planned |
+| E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | planned |
 
 ### F · Feedback and user IAM (from 4.4.0)
 
@@ -373,20 +403,27 @@ One support system for everything a person needs help with. Every item is an **A
 | F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | planned |
 | F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
 | F6 | Apex user detail: their registrations and payments | planned |
-| F7 | In-app "What's new" sheet after an OTA applies | planned |
+| F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | planned |
+| F8 | **Make co-hosting a request the other space accepts.** addCoHost (backend/src/events/events.service.ts:910-935) attaches any space as co-host immediately, with no consent. | planned |
 
 ### G · Mobile scope, design and performance
 
 | # | Item | Status |
 |---|---|---|
 | G1 | **Open-on-web handoffs for desk work on mobile.** "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | planned |
-| G2 | **Polish the on-site tools kept on mobile.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | planned |
+| G2 | **Make on-site mobile tools survive offline and slow networks.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | planned |
 | G3 | **Cosmos migration of the remaining mobile screens.** Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | planned |
 | G4 | **Move long mobile lists to FlatList.** Long lists → `FlatList`: Waitlist, ManualCheckin results, HackathonTeams, Queues, Results, Leads, Coupons, `sessions.tsx`, `group/[registrationId]` | planned |
 | G5 | **Space web: PageHeader and EmptyState rollout.** Space web page pattern: Stays pages on `PageHeader`/`EmptyState`; `EmptyState` on attendees, checkin, transactions, tracking, IAM, settings | planned |
-| G6 | **Remaining on-site web-to-mobile parity.** Remaining web → mobile parity, on-site parts only: certificates issue, reports view, sessions list | planned |
-| G7 | Unicon: redraw glyphs in our own style, tab bar + Home first | planned |
+| G6 | **Remaining on-site web-to-mobile parity.** Remaining web → mobile parity, on-site parts only: certificates issue, reports view, sessions list | dropped (2026-10-18): merged into G8 (both cover on-site web-to-mobile parity, x-parity-16); |
+| G7 | Unicon: redraw glyphs in our own style, tab bar + Home first | parked (2026-10-18): redrawing Unicon glyphs in a house style is design polish with no user value before 5.0.0; |
 | G8 | **Organiser event-day mode on mobile.** Organiser "event day" mode on mobile: one cockpit with live check-in count, today's revenue, announce, help-desk queue | planned |
+| G9 | **Unify the mobile API client: refresh, errors and deep links.** - A silent refresh that fails with 5xx or 429 signs the user out (mobile/src/lib/api/helpers.ts:129, :190); | planned |
+| G10 | **Fix check-in for group members, undo and offline sync.** Groups: bulk check-in (a B2 regression) and Space web scan check in whole groups at registration level (backend/src/checkin/checkin.service.ts:1036, :1180, team-changes.service.ts:263), and a member's pass shows 'You are checked i | planned |
+| G11 | **Add ended-event states to tickets, hubs and Space.** Visual audit. | planned |
+| G12 | **Fix mobile attendee and organiser screens.** Quick ones first. | planned |
+| G13 | **Polish mobile from the 18 Oct device audit.** Low and medium items from the real-iPhone pass. | planned |
+| G14 | **Fix accessibility: labels, Dynamic Type and contrast.** Mobile: 179 FieldRow inputs and AuthField have no accessible label (mobile/src/components/manage/FormFields.tsx:48); | planned |
 
 ### H · White-label, the big version
 
@@ -409,13 +446,13 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H6 | **P2 custom sending domains per space.** P2 `SpaceDomain` (migration `20261014140000_space_domains`) + Resend Domains add/verify/remove + studio card; mail sends from `<local>@<verified domain>` | done, not deployed (#106) |
 | H7 | **P3 custom web domains per space.** P3 custom web domains: Cloudflare custom hostnames add/verify/remove, public `GET /white-label/domains/resolve`, Caddy catch-all, web middleware tenant routing (+ `scripts/middleware.check.mts`), per-host canonical/OG, emails link to the custom domain | done, not deployed (#106) |
 | H8 | **Needs you: Cloudflare for SaaS and Resend setup.** enable SSL for SaaS on the zone, create fallback origin `domains.unifesto.app`, API token → `CLOUDFLARE_ZONE_ID` + `CLOUDFLARE_API_TOKEN`; check the Resend plan's domain limit | done 2026-10-15 (events.wegobeyond.in live end to end) |
-| H9 | Bring-your-own WhatsApp sender per space (today it's one env number) | planned |
+| H9 | Bring-your-own WhatsApp sender per space (today it's one env number) | parked (2026-10-18): per-space Meta WhatsApp sender onboarding is heavy and the WhatsApp cost trim keeps WA minimal; |
 | H10 | **Deploy #106 white-label release.** Deploy #106: read migrations `20261014120000_white_label_theme` + `20261014140000_space_domains`, `migrate deploy`, rebuild backend + web + space + apex, Caddy reload, mobile OTA (manage-card copy) | done: shipped in the 14 Oct full deploy (83d24f0), checked 16 Oct; mobile copy rides the 5.0.0 store build |
 | H11 | **Verify white-label rendering after deploy.** Verify after deploy: branded space + event page (header/footer, font, forced mode), Branding studio uploads + preview, a branded registration email in Gmail + Apple Mail (light/dark), suspend/restore from Apex. None of this was seen rendered | done 16 Oct: checked on Beyond (pages, studio save + uploads, branded emails, Apex suspend/restore), all reverted; email dark mode checked in code only |
 | H12 | **Mobile: use the space font on space and event screens.** Mobile: `branding.font` on space + event screens (logo shipped with H4) | done (#146), not deployed; not seen on device |
 | H13 | **Use the custom domain in calendar and share links.** Web "Add to calendar" (`lib/calendar.ts`) and share links use the space's custom domain when it has one | done, live 16 Oct (#135) |
 | H14 | **Send certificate emails from the space's address.** Certificate emails go via SES, so they can't use a space's custom sending address (name + reply-to only). Verify the domain in SES too, or move certificate mail to Resend | planned |
-| H15 | **Retire the legacy white-label request flow.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
+| H15 | **Retire legacy white-label requests in mobile, Apex and backend.** Retire the legacy request flow once no shipped mobile build calls it: `POST /white-label/requests`, Apex White-label History, mobile request copy, then drop `white_label_requests` | planned |
 | H16 | **Space app: gate Branding on manage-settings capability.** Space app `Capability` type has no `space:manage-settings`, so the Branding nav item gates on `manage-billing` (backend enforces manage-settings). Add the capability to the space RBAC types | done, live 16 Oct (#135) |
 | H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | done, live 16 Oct (#135) |
 | H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
@@ -425,6 +462,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | done (#146), not deployed |
 | H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | planned; needs a decision |
 | H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | done (#146), not deployed |
+| H25 | **Fix white-label custom-domain forms, sender names and takeover.** Quick one first (high, live since #106): the CORS allowlist accepts only *.unifesto.app and localhost (backend/src/common/cors.ts:13-18, main.ts:73-89). | planned |
 
 ### I · Legal (from W6)
 
@@ -434,8 +472,9 @@ Drafts need a human lawyer's sign-off before publishing.
 |---|---|---|
 | I1 | **Legal documents: terms, privacy, refund and other policies.** Terms (attendees), Organiser/Space Agreement, Privacy Policy (DPDP 2023), Refund & Cancellation, Acceptable Use, Sponsor & Partner terms, Cookie Policy, Grievance page (IT Rules 2021) | planned |
 | I2 | **Versioned legal docs with per-user acceptance.** Versioned legal documents with acceptance per user; re-acceptance on next launch on every client | planned |
-| I3 | DPDP erasure on account close (#41): needs backend rebuild | in progress |
+| I3 | DPDP erasure on account close (#41): needs backend rebuild | done; follow-up I5 |
 | I4 | **Privacy Policy retention line for erased answers.** Privacy Policy retention line for erased question answers, once I1 + I3 land | planned |
+| I5 | **Finish DPDP erasure and set retention limits.** Quick fix first: account deletion never completes for anyone whose bank account received a payout (FK RESTRICT on bank accounts), and the failure is never reported (backend/src/users/users.service.ts:1020). | planned |
 
 ### J · Scale and reliability (from W1/W2)
 
@@ -443,25 +482,41 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 
 | # | Item | Status |
 |---|---|---|
-| J1 | **Endpoint guard audit, input validation and rate limits.** → S4–S8, S23–S31 (audit done). Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
-| J2 | **Silent catches, replica-safe crons, graceful shutdown.** → S21, S22, S34 (audit done). Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
-| J3 | → S1, S34 (audit done). Missing indexes, N+1s, unbounded `findMany` | planned |
-| J4 | **Structured logs, request ids, alerting, deeper health.** → S35 (audit done). Structured logs + request ids + error alerting; deeper `/health` | planned |
-| J5 | **Queue heavy work off the request path.** → S20, S33 (audit done). Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
-| J6 | **k6 load tests for real peaks on staging.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
+| J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
+| J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
+| J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | planned |
+| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | planned |
+| J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
+| J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
+| J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | next |
+| J9 | **Keep private event and session fields out of public APIs.** - Anonymous GET /events, GET /events/space/:id and favourites return every Event column through include with no select (backend/src/events/events.service.ts:1554-1593, getSpaceEvents ~:2675), exposing whatsappAttendeeGroupUrl, onl | next |
+| J10 | **Close cross-tenant writes on ticket types and space hierarchy.** 1. IDOR: deleteTicketType never checks that tt.eventId equals the authorised event (backend/src/events/events.service.ts:3056-3086; | next |
+| J11 | **Fix stored XSS in email preview and SSRF in certificate render.** 1. XSS: the Space email preview iframe uses srcDoc with no sandbox (websites/space/app/(dashboard)/dashboard/email/new/page.tsx:449-453), so template HTML runs in the Space origin. | next |
+| J12 | **Make Redis and config caches replica-safe.** 1. The shared RedisService retryStrategy returns null after 3 tries (backend/src/redis/redis.service.ts:41-55), so the ioredis client ends for good, and a failed boot ping sets client=null (:106-108). | next |
+| J13 | **Deploy only CI-green main with a rollback image.** deploy.sh:87-110 rsyncs the local working tree with no check on git status, branch, origin/main or CI, and parallel sessions share this tree. | next |
+| J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | planned |
+| J15 | **Move personal files and recordings to private storage.** - Event report PDFs (full roster with emails and revenue) are uploaded to the public bucket at non-expiring URLs and survive 'delete' (backend/src/reports/reports.service.ts:236), contradicting the Privacy Policy. | planned |
+| J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | planned |
+| J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | planned |
+| J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
+| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | planned |
 
 ### K · Growth and discovery
 
 | # | Item | Status |
 |---|---|---|
 | K1 | **Discovery marketplace on web and mobile.** Discovery marketplace on web + mobile: browse by city/college/category, "trending near you" | planned |
-| K2 | **SEO: sitemap, JSON-LD, RSS and canonicals.** SEO: sitemap (events, spaces, blog, careers), JSON-LD (Event, Article, JobPosting), RSS, canonicals (from W7) | planned |
-| K3 | **Blog: authors, tags, scheduling and related posts.** Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
-| K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | planned |
+| K2 | **Fix SEO gaps: crawlable cards, event JSON-LD, full sitemap.** SEO: sitemap (events, spaces, blog, careers), JSON-LD (Event, Article, JobPosting), RSS, canonicals (from W7) | planned |
+| K3 | **Harden the blog and careers editors: draft guard, scheduling, slugs.** Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
+| K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | done |
 | K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
-| K6 | **Referrer capture by domain and backlink import.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
-| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | planned |
+| K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
+| K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
+| K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | next |
+| K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | next |
+| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | next |
+| K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | planned |
 
 ### L · Live engagement (new)
 
@@ -479,17 +534,17 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 | # | Item | Status |
 |---|---|---|
 | M1 | **AI: draft event content from a few lines or a link.** Draft event description, agenda and FAQs from a few lines or an imported link | planned |
-| M2 | Email/WhatsApp copy suggestions in campaigns | planned |
+| M2 | Email/WhatsApp copy suggestions in campaigns | parked (2026-10-18): low value; revisit after D12 (AI foundation) and C8 (unsubscribe and consent) land. |
 | M3 | Post-event report summary (attendance, revenue, feedback themes) | planned |
-| M4 | **Who to nudge: past attendees likely to register.** "Who to nudge": past attendees likely to register, for a curator-approved campaign | planned |
+| M4 | **Who to nudge: past attendees likely to register.** "Who to nudge": past attendees likely to register, for a curator-approved campaign | parked (2026-10-18): nudging past attendees needs consent and unsubscribe (C8, I2) first, or it is a DPDP and spam risk. |
 
 ### N · On-site (new)
 
 | # | Item | Status |
 |---|---|---|
 | N1 | Badge/pass printing (PDF sheets + label printers) from the roster | planned |
-| N2 | Kiosk self check-in (tablet mode: scan or search your name) | planned |
-| N3 | **Attendee networking: who's going and connect requests.** Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | planned |
+| N2 | Kiosk self check-in (tablet mode: scan or search your name) | parked (2026-10-18): college fests check in with volunteer scanners; |
+| N3 | **Attendee networking: who's going and connect requests.** Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | parked (2026-10-18): attendee networking is privacy-heavy (needs I2 consent) and has no demand evidence before launch. |
 
 ### P · Marketing to 5.0.0 (14 Oct → 2 Dec)
 
@@ -593,8 +648,9 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 | P10 | **Post-launch review and 5.x plan.** Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
 | P21 | Wikidata item for Unifesto, once P18 brings independent coverage to cite (items without sources get deleted); then add it to `SOCIAL`/`sameAs` | planned |
 | P22 | Google Business Profile: verifiable address (Malla Reddy University R&D Center) or a service-area business; category Software company | planned |
+| P23 | **Keep the demo Space out of metrics and mask payout details.** 1. The demo Space's Event Settings payout dropdown shows a real SBI account holder's name and a team member's full UPI ID. | planned |
 
-### R · Deals, billing and access (2026-10-16)
+### T · Deals, billing and access (2026-10-16)
 
 From the IAM / plan / billing / fee analysis on 2026-10-16. Clients get different deals (custom fee %, organiser absorbs the fee, free or comp plans, one-off event deals), so commercial terms move out of code and plan rows into a versioned **Deal** (D8). The plan rate card is the default deal. Fees are stored as basis points (250 = 2.5%) and money as paise integers.
 
@@ -602,18 +658,18 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 
 | # | Item | Status |
 |---|---|---|
-| R1 | **Close Co-Curator escalation to money.** `publishEvent`/`cancelEvent` check `EVENT_EDIT` only (Co-Curator can publish/cancel). `addTeamMember`/`removeTeamMember` check `EVENT_EDIT` and accept CURATOR, so a Co-Curator can make themselves Curator (gets `EVENT_MANAGE_MONEY`) or remove the Curator. Require `EVENT_PUBLISH`/`EVENT_CANCEL`/`EVENT_ASSIGN_CREW` | next |
-| R2 | **One role-assignment rule and no hand-rolled checks.** `canAssign(actor, role)`: only grant roles below your own; CURATOR only by Space Admin or ADMIN; never your own role. Replace ~10 hand-rolled role checks (`event-access.ts`, sessions, check-in, help desk, `spaces.service.ts` `SPACE_ADMIN_TIER`, transfers) with `assertCan` so platform ADMIN inherits. Drop CURATOR's space-scope grants (`space:manage-email/sponsors` 403 today). Revoking a role's last grant leaves it empty (no compiled fallback). Policy comment matches D9 | planned |
-| R3 | **One access endpoint and a shared IAM cache.** `GET /spaces/:id/access` returns effective capabilities + plan features for any member. Space app drops the hard-coded `rbac.ts` map and the `/usage` features call (non-billing members see every gated nav item today). Capability + plan caches carry a Redis version stamp so edits reach every replica | planned |
-| R4 | **Deal model and term resolution.** `Deal` (spaceId, optional eventId, plan, planPricePaise: null = rate card / 0 = comp, billingCycle, buyerFeeBps, organiserFeeBps, validFrom, validUntil, note, createdBy). Rate card = `buyerFeeBps`/`organiserFeeBps` on `PlanConfig` (replaces dead `processingFeePercent`). `TermsService.resolve(spaceId, eventId, at)`. Backfill: every space gets terms equal to today's behaviour (5% buyer, its revenue share as organiser fee), so nothing changes until a deal is edited. `REVENUE_SHARE` billing model becomes `organiserFeeBps` | planned |
-| R5 | **One quote for every checkout path.** `quote(basePaise, terms)` in integer paise, used by main checkout, legacy register, manual-add link, waitlist, group seat add-on, sessions, stays. `POST /quote` for web and mobile (mobile stops computing `base × 1.05`). Each paid row stores `dealId`, `buyerFeePaise`, `organiserFeeBps`. Old 4.0.5 app still shows a 5% estimate (Razorpay charges the right amount): Apex warns when a deal's buyer fee is not 5% until 2 Dec. `quote()` takes an optional coupon so every buyer-paid path can accept one; turn it on for waitlist claims and sessions (main checkout only today) | planned |
-| R6 | **Settle from snapshots, sessions included.** One `settle(rows)` feeds payouts, financials, Space Transactions page and CSV export, using each row's stored terms (deal changes never rewrite the past). `Payout` gets `sessionId` (exactly one of event/session) so Huddle revenue can be paid out. Forced reconcile books what was actually captured: short lowers `totalAmount`; over goes to the organiser's base, not to our fee (today the platform keeps it). Event and space dashboard revenue (`events.service.ts:3221`, `spaces.service.ts:2340`: PAID only, refunds ignored) reads `settle()` too. Drop the per-payout `platformFeePercent` override (`payouts/dto`): the deal is the only rate | planned |
-| R7 | **Apex Deals page.** Per space: current terms, deal history, new version (space or one event), live quote preview, required end date on comp plans. Every change goes to the audit trail (F5) | planned |
-| R8 | **Subscription lifecycle.** Status from dates, not `isActive`: ACTIVE → GRACE (7 days) → EXPIRED (STARTER entitlements, data kept). Period end = max(now, current end) + cycle (fixes calendar-boundary expiry). Cancel at period end. Razorpay `order.paid` webhook activates (receipt ≤ 40 chars). Price from the deal. Apex records offline payments (bank transfer). MRR from payments, not typed amounts. Plan changes: upgrade now, pay the difference for the rest of the period; downgrade at period end (no refund). Expiry, renewal and every plan change run in one transaction with a `SubscriptionHistory` row (expiry writes none today). Includes A1 checkout UI | planned |
-| R9 | **One entitlement check, all limits enforced.** `assertFeature`/`assertLimit` read `TermsService` plan + subscription status. Missing subscription row is created as STARTER (no fail-open/closed/500 mix). Enforce attendees per event, co-curators, spaces, waitlist, WhatsApp blast, recurring events | planned |
-| R10 | **Remove dead pricing config.** Drop `platform_config.processing_fee_percent`, `PlanConfig.processingFeePercent`, `razorpaySubId`, the Apex/mobile fee edit screens and stale Apex subscription API fns. `/pricing` reads the rate card from `/subscription/plans` so marketing can't drift from code | planned |
-| R11 | **Tax-ready snapshot and real margin.** `gstPaise` + place of supply on the snapshot, GSTIN on the space; 0 until the CA check. Store `gatewayFeePaise` + `gatewayTaxPaise` from reconcile (Razorpay's ~2% + GST comes out of our fee) so A5/A7 report true take rate. Invoices and GSTR export stay in A6 | planned |
-| R12 | **IAM hardening leftovers.** `RolesGuard` passes on a role held anywhere: check scope or retire it for `@Can`. `UserRole` unique allows duplicates (NULL space/event ids): make it `NULLS NOT DISTINCT` after a dedupe. Space-member DTOs accept `ADMIN`: restrict to space roles. Money routes in `payouts.controller.ts`/`refunds.controller.ts` get `@Can` on top of the service checks. Delete the stale "compiled shims" comment in `capability-config.service.ts` | planned |
+| T1 | **Close Co-Curator escalation to money.** `publishEvent`/`cancelEvent` check `EVENT_EDIT` only (Co-Curator can publish/cancel). `addTeamMember`/`removeTeamMember` check `EVENT_EDIT` and accept CURATOR, so a Co-Curator can make themselves Curator (gets `EVENT_MANAGE_MONEY`) or remove the Curator. Require `EVENT_PUBLISH`/`EVENT_CANCEL`/`EVENT_ASSIGN_CREW` | next |
+| T2 | **Enforce one role-assignment rule and drop hand-rolled checks.** `canAssign(actor, role)`: only grant roles below your own; CURATOR only by Space Admin or ADMIN; never your own role. Replace ~10 hand-rolled role checks (`event-access.ts`, sessions, check-in, help desk, `spaces.service.ts` `SPACE_ADMIN_TIER`, transfers) with `assertCan` so platform ADMIN inherits. Drop CURATOR's space-scope grants (`space:manage-email/sponsors` 403 today). Revoking a role's last grant leaves it empty (no compiled fallback). Policy comment matches D9 | planned |
+| T3 | **Serve one access endpoint and share the IAM cache.** `GET /spaces/:id/access` returns effective capabilities + plan features for any member. Space app drops the hard-coded `rbac.ts` map and the `/usage` features call (non-billing members see every gated nav item today). Capability + plan caches carry a Redis version stamp so edits reach every replica | planned |
+| T4 | **Add the Deal model and term resolution.** `Deal` (spaceId, optional eventId, plan, planPricePaise: null = rate card / 0 = comp, billingCycle, buyerFeeBps, organiserFeeBps, validFrom, validUntil, note, createdBy). Rate card = `buyerFeeBps`/`organiserFeeBps` on `PlanConfig` (replaces dead `processingFeePercent`). `TermsService.resolve(spaceId, eventId, at)`. Backfill: every space gets terms equal to today's behaviour (5% buyer, its revenue share as organiser fee), so nothing changes until a deal is edited. `REVENUE_SHARE` billing model becomes `organiserFeeBps` | planned |
+| T5 | **Quote every checkout path from one function.** `quote(basePaise, terms)` in integer paise, used by main checkout, legacy register, manual-add link, waitlist, group seat add-on, sessions, stays. `POST /quote` for web and mobile (mobile stops computing `base × 1.05`). Each paid row stores `dealId`, `buyerFeePaise`, `organiserFeeBps`. Old 4.0.5 app still shows a 5% estimate (Razorpay charges the right amount): Apex warns when a deal's buyer fee is not 5% until 2 Dec. `quote()` takes an optional coupon so every buyer-paid path can accept one; turn it on for waitlist claims and sessions (main checkout only today) | planned |
+| T6 | **Settle money from per-row snapshots, sessions included.** One `settle(rows)` feeds payouts, financials, Space Transactions page and CSV export, using each row's stored terms (deal changes never rewrite the past). `Payout` gets `sessionId` (exactly one of event/session) so Huddle revenue can be paid out. Forced reconcile books what was actually captured: short lowers `totalAmount`; over goes to the organiser's base, not to our fee (today the platform keeps it). Event and space dashboard revenue (`events.service.ts:3221`, `spaces.service.ts:2340`: PAID only, refunds ignored) reads `settle()` too. Drop the per-payout `platformFeePercent` override (`payouts/dto`): the deal is the only rate | planned |
+| T7 | **Build the Apex Deals page.** Per space: current terms, deal history, new version (space or one event), live quote preview, required end date on comp plans. Every change goes to the audit trail (F5) | planned |
+| T8 | **Fix the subscription lifecycle.** Status from dates, not `isActive`: ACTIVE → GRACE (7 days) → EXPIRED (STARTER entitlements, data kept). Period end = max(now, current end) + cycle (fixes calendar-boundary expiry). Cancel at period end. Razorpay `order.paid` webhook activates (receipt ≤ 40 chars). Price from the deal. Apex records offline payments (bank transfer). MRR from payments, not typed amounts. Plan changes: upgrade now, pay the difference for the rest of the period; downgrade at period end (no refund). Expiry, renewal and every plan change run in one transaction with a `SubscriptionHistory` row (expiry writes none today). Includes A1 checkout UI | next |
+| T9 | **Enforce every plan limit with one entitlement check.** `assertFeature`/`assertLimit` read `TermsService` plan + subscription status. Missing subscription row is created as STARTER (no fail-open/closed/500 mix). Enforce attendees per event, co-curators, spaces, waitlist, WhatsApp blast, recurring events | planned |
+| T10 | **Remove dead pricing config.** Drop `platform_config.processing_fee_percent`, `PlanConfig.processingFeePercent`, `razorpaySubId`, the Apex/mobile fee edit screens and stale Apex subscription API fns. `/pricing` reads the rate card from `/subscription/plans` so marketing can't drift from code | planned |
+| T11 | **Store tax and gateway fees on each sale.** `gstPaise` + place of supply on the snapshot, GSTIN on the space; 0 until the CA check. Store `gatewayFeePaise` + `gatewayTaxPaise` from reconcile (Razorpay's ~2% + GST comes out of our fee) so A5/A7 report true take rate. Invoices and GSTR export stay in A6 | planned |
+| T12 | **Finish the IAM hardening leftovers.** `RolesGuard` passes on a role held anywhere: check scope or retire it for `@Can`. `UserRole` unique allows duplicates (NULL space/event ids): make it `NULLS NOT DISTINCT` after a dedupe. Space-member DTOs accept `ADMIN`: restrict to space roles. Money routes in `payouts.controller.ts`/`refunds.controller.ts` get `@Can` on top of the service checks. Delete the stale "compiled shims" comment in `capability-config.service.ts` | planned |
 
 ### Parked and dropped
 
@@ -625,7 +681,7 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 | App Clip | dropped | Removed 2026-10-08. |
 | Wallet, referral, event chat, hack app | dropped | Removed in v4. Only cleanup remains (Track 0). |
 | Multi-currency / international payments | parked | Only when expanding beyond India. |
-| Merge low-value Space pages: white-label → Settings, partners → Tracking, occurrences/sub-events/co-hosting behind "Advanced" | planned | From the audit; do it alongside H and G. |
+| Merge low-value Space pages: white-label → Settings, partners → Tracking, occurrences/sub-events/co-hosting behind "Advanced" | done (X7) | From the audit; do it alongside H and G. |
 
 ---
 
@@ -675,3 +731,5 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-16** · S42 finished in #162: group seats created at checkout, `group_members` dropped; deployed two-step, prod 153 migrations up to date. Track S complete.
 - **2026-10-18** · C1 in-app inbox: every user push now keeps a `user_notifications` copy by default (was hackathon/competition only; staff alerts and opted-out promotions excluded), mobile bell with unread badge on Home opens `/notifications` (reuses the hackathon feed screen). No migration. Deploy: rebuild backend; mobile is JS-only, rides 5.0.0.
 - **2026-10-18** · A4 money-path review done (payments, refunds, payouts, reconciliation, webhooks). S9–S16 fixes hold. New: A13 (P0 live, webhook trusts buyer-set notes + no amount check), A14–A16 + A21 next, A17–A20, A22–A23 planned.
+
+- **2026-10-18** · Platform audit (backend, mobile, Space, Apex, web: 30 code slices, 978 findings with 1 critical and 66 high verified, 492 medium; visual audit of web, Space, Apex and the iOS app; market analysis over 15 domains) turned into board work. Track R (Deals, billing and access) renamed **T** because board key R is the 5.0.0 release track: R1–R12 are now T1–T12. 63 new tasks, 99 updates. A16, C1, E6, K4 done; A18 and G6 dropped; A8, C7, D16, D18, D28, E2, E4, G7, H9, K7, M2, M4, N2, N3 parked. NEXT batch: J13, T1, T8, A19, A24, A25, J8–J12, K8–K10, D29, O17.
