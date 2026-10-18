@@ -302,6 +302,12 @@ export type Plan = {
    above. Must match PROCESSING_FEE_PERCENT in
    backend/src/subscription/platform-config.service.ts. */
 export const BUYER_PROCESSING_FEE = 5;
+/** Most the buyer fee can be per ticket, in rupees (A34). Fallback; live value from the rate card. */
+export const BUYER_PROCESSING_FEE_CAP = 99;
+
+/** "5% processing fee, capped at ₹99 per ticket". */
+export const buyerFeeText = (percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
+  `${percent}% processing fee${cap ? `, capped at ₹${cap} per ticket` : ""}`;
 
 export const PLANS: Plan[] = [
   {
@@ -379,7 +385,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: "Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges the organiser a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further. Buyers pay a 5% processing fee at checkout.",
+    a: `Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges the organiser a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further. At checkout, buyers pay a ${buyerFeeText()}.`,
   },
   {
     q: "How does check-in work?",
@@ -453,7 +459,11 @@ export const FAQ_HACKATHONS: Faq[] = [
 ];
 
 /** Pricing FAQs, worded from the live rate card (see lib/api/rate-card.ts). */
-export const pricingFaq = (plans: Plan[] = PLANS, buyerFee: number = BUYER_PROCESSING_FEE): Faq[] => [
+export const pricingFaq = (
+  plans: Plan[] = PLANS,
+  buyerFee: number = BUYER_PROCESSING_FEE,
+  buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
+): Faq[] => [
   {
     q: "What does launch pricing mean?",
     a: `Spaces that join before ${LAUNCH_OFFER_ENDS} lock in the discounted monthly price and platform fee shown on this page.`,
@@ -464,7 +474,7 @@ export const pricingFaq = (plans: Plan[] = PLANS, buyerFee: number = BUYER_PROCE
   },
   {
     q: "Who pays the processing fee?",
-    a: `The buyer. Every paid ticket carries a ${buyerFee}% processing fee, added at checkout on every plan and not refundable. Your platform fee is separate: ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ${inr(500 * (1 + buyerFee / 100))} and you pay ${rupees(500 * (plans[0]?.fee ?? 0) / 100)}.`,
+    a: `The buyer. Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}, added at checkout on every plan and not refundable. Your platform fee is separate: ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ${inr(500 * (1 + buyerFee / 100))} and you pay ${rupees(500 * (plans[0]?.fee ?? 0) / 100)}.`,
   },
   {
     q: "Are payment gateway charges included?",

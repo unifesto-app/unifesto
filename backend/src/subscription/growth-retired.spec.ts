@@ -32,9 +32,10 @@ describe('GROWTH retired (A9)', () => {
   });
 
   it('the public rate card shows sellable plans with their platform fee and the buyer fee', () => {
-    const ctrl = new PublicConfigController({ getProcessingFeePercent: () => 5 } as any, planConfig);
+    const ctrl = new PublicConfigController({ getProcessingFeePercent: () => 5, getProcessingFeeCapPerTicket: () => 99 } as any, planConfig);
     const card = ctrl.getPlanFees();
     expect(card.buyerProcessingFeePercent).toBe(5);
+    expect(card.buyerProcessingFeeCapPerTicket).toBe(99);
     expect(card.plans.map((p) => p.plan)).toEqual([OrgPlan.STARTER, OrgPlan.PRO, OrgPlan.ENTERPRISE]);
     expect(card.plans.every((p) => p.platformFeePercent === 0)).toBe(true); // ships at 0
   });

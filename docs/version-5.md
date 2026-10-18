@@ -288,7 +288,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | A31 | **Make checkout trust the server total and stock.** - Mobile skips payment and shows 'You're going' from its own computed total even when the server created a paid order (mobile/src/hooks/useEventRegistration.ts:572-574). | planned |
 | A32 | **Add UTR, payer record and notices to manual payouts.** Manual payouts (RazorpayX was removed) lack basics. | planned |
 | A33 | **Organisers can absorb the buyer fee, per event.** "Include the fee in my ticket price": the buyer pays the listed price and the fee comes out of the organiser's share (₹500 → base ₹476.19). Refunds stay base-only. After A31; mobile parts before the 20 Nov freeze (D11) | planned |
-| A34 | **Cap the buyer fee at ₹99 per ticket.** min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; applies above a ₹1,980 ticket (D11) | planned |
+| A34 | **Cap the buyer fee at ₹99 per ticket.** min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; applies above a ₹1,980 ticket (D11) | in review (#202) |
 
 ### B · Operator productivity
 
@@ -743,3 +743,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-18** · A9 built (#199): plan rates in `plan_configs.platform_fee_percent` at 0% until an admin sets them, GROWTH retired, public rate card `GET /config/plan-fees` feeds `/pricing` and `/llms.txt`. Open: launch rates are promised as locked before 31 Mar 2027, which needs per-space terms (Track T) before the rates rise.
 - **2026-10-18** · A12 decided (D11): buyer fee stays 5% with a ₹99 cap (A34), per-event absorb toggle (A33), copy says what students pay and organisers keep (A11). Unifesto isn't GST-registered yet; GST treatment waits for registration and the CA (A6). A9 merged (#199), not deployed.
 - **2026-10-18** · Track B started in worktree `.claude/worktrees/track-b`, one PR per item. B4 (#201): Space event settings gets an Attendees card (team changes + lock time, attendee detail edits + close time), same switches as mobile. No migration; rebuild space.
+- **2026-10-18** · A34 built (#202): buyer fee min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; stays count each guest, a flat-priced group counts as one ticket.
