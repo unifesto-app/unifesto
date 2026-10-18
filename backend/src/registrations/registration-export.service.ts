@@ -141,7 +141,11 @@ export class RegistrationExportService {
         const feeCharged = captured ? fee : 0;
         // A row whose automatic full refund is still due isn't the organiser's.
         const kept = reg.refundDueAt ? 0 : Math.max(0, collected - feeCharged - refunded);
-        const platformCut = platformShare(kept, sharePercent);
+        // The rate frozen on the sale (A21); today's only for a row without one.
+        const platformCut = platformShare(
+          kept,
+          reg.platformFeePercent != null ? Number(reg.platformFeePercent) : sharePercent,
+        );
         const net = kept - platformCut;
         return [
           reg.user.fullName || '',

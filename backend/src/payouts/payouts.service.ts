@@ -20,6 +20,27 @@ function round2(n: number): number {
 /** The root client or an interactive transaction's: balance reads run in either. */
 type Db = Prisma.TransactionClient;
 
+/**
+ * Platform fee on held money with each sale at the rate frozen on it when it
+ * was paid (A21); `fallback` (today's rate) only for a sale without one, and
+ * an admin `override` replaces every rate. Rounded to the paise per rate, so
+ * a single-rate event matches platformShare(gross, rate) exactly.
+ */
+export function feeAtFrozenRates(
+  sales: { net: number; percent: Prisma.Decimal | number | null }[],
+  fallback: number,
+  override?: number,
+): number {
+  const netByRate = new Map<number, number>();
+  for (const s of sales) {
+    const rate = override ?? (s.percent != null ? Number(s.percent) : fallback);
+    netByRate.set(rate, (netByRate.get(rate) ?? 0) + s.net);
+  }
+  let fee = 0;
+  for (const [rate, net] of netByRate) fee += platformShare(net, rate);
+  return round2(fee);
+}
+
 @Injectable()
 export class PayoutsService {
   private readonly logger = new Logger(PayoutsService.name);
@@ -211,7 +232,12 @@ export class PayoutsService {
   private readonly HELD = { paymentStatus: this.HELD_PAYMENT, refundDueAt: null };
   private readonly HELD_ADDON = { paymentStatus: this.HELD_PAYMENT };
   private readonly HELD_SUM = { totalAmount: true, processingFee: true, refundedAmount: true } as const;
-  private readonly HELD_SELECT = { totalAmount: true, processingFee: true, refundedAmount: true } as const;
+  private readonly HELD_SELECT = {
+    totalAmount: true,
+    processingFee: true,
+    refundedAmount: true,
+    platformFeePercent: true,
+  } as const;
 
   /**
    * Unifesto Stay bookings paid online (through Razorpay) are event money like
@@ -275,11 +301,18 @@ export class PayoutsService {
       this.paidSeatAddons(eventId, db),
     ]);
 
-    const gross = this.ticketRevenue([...registrations, ...stays, ...addons]);
+    const held = [...registrations, ...stays, ...addons];
+    const gross = this.ticketRevenue(held);
+    // Today's rate: shown as the default, and charged only on a sale that has
+    // no frozen rate (none after the A21 backfill). An admin override wins.
     const platformFeePercent =
       feePercentOverride ??
       this.resolvePlatformFeePercent(event?.space?.subscription);
-    const platformFee = platformShare(gross, platformFeePercent);
+    const platformFee = feeAtFrozenRates(
+      held.map((r) => ({ net: this.ticketRevenue([r]), percent: r.platformFeePercent })),
+      platformFeePercent,
+      feePercentOverride,
+    );
     const eventNet = gross - platformFee;
 
     const committedRows = await db.payout.findMany({
@@ -308,8 +341,10 @@ export class PayoutsService {
           : Math.max(0, this.ticketRevenue([r.registration]))),
       0,
     );
-    const heldGross = Math.max(0, gross - refundHold);
-    const netAfterHold = heldGross - platformShare(heldGross, platformFeePercent);
+    // A refund takes its share of the fee back with it, so it holds only the
+    // organiser's kept share of the refunded amount.
+    const keptShare = gross > 0 ? eventNet / gross : 1;
+    const netAfterHold = Math.max(0, eventNet - Math.min(refundHold, gross) * keptShare);
 
     // A cancelled event owes its paid attendees first (A24): nothing is
     // withdrawable while any money is still held for them.
@@ -474,30 +509,40 @@ export class PayoutsService {
    * (HELD rules) net of the app fee and refunds, across tickets, online stays
    * and add-on seats. Three groupBys for any number of events.
    */
-  private async currentGrossByEvent(eventIds: string[]): Promise<Map<string, number>> {
+  private async heldFeeByEvent(
+    eventIds: string[] | undefined,
+    fallbackPercent: (eventId: string) => number,
+  ): Promise<Map<string, number>> {
     const out = new Map<string, number>();
-    if (eventIds.length === 0) return out;
-    const eventId = { in: eventIds };
+    if (eventIds && eventIds.length === 0) return out;
+    const eventId = eventIds ? { eventId: { in: eventIds } } : {};
     const sum = this.HELD_SUM;
+    const by: ['eventId', 'platformFeePercent'] = ['eventId', 'platformFeePercent'];
     const [regs, stays, addons] = await Promise.all([
-      this.prisma.eventRegistration.groupBy({ by: ['eventId'], where: { eventId, ...this.HELD }, _sum: sum }),
+      this.prisma.eventRegistration.groupBy({ by, where: { ...eventId, ...this.HELD }, _sum: sum }),
       this.prisma.stayBooking.groupBy({
-        by: ['eventId'],
-        where: { eventId, paymentMode: StayPaymentMode.ONLINE, ...this.HELD },
+        by,
+        where: { ...eventId, paymentMode: StayPaymentMode.ONLINE, ...this.HELD },
         _sum: sum,
       }),
       this.prisma.groupSeatPurchase.groupBy({
-        by: ['eventId'],
-        where: { eventId, ...this.HELD_ADDON, ...this.ADDON_ADDED },
+        by,
+        where: { ...eventId, ...this.HELD_ADDON, ...this.ADDON_ADDED },
         _sum: sum,
       }),
     ]);
+    const groups = new Map<string, { net: number; percent: Prisma.Decimal | null }[]>();
     for (const r of [...regs, ...stays, ...addons]) {
       const net =
         Number(r._sum.totalAmount ?? 0) -
         Number(r._sum.processingFee ?? 0) -
         Number(r._sum.refundedAmount ?? 0);
-      out.set(r.eventId, (out.get(r.eventId) ?? 0) + net);
+      const list = groups.get(r.eventId) ?? [];
+      list.push({ net, percent: r.platformFeePercent });
+      groups.set(r.eventId, list);
+    }
+    for (const [id, list] of groups) {
+      out.set(id, feeAtFrozenRates(list, fallbackPercent(id)));
     }
     return out;
   }
@@ -650,7 +695,8 @@ export class PayoutsService {
       this.aggregatePayouts(eventIds),
       this.aggregateRefunds(eventIds),
     ]);
-    const platformFee = platformShare(reg.currentGross, feePercent);
+    const feeByEvent = await this.heldFeeByEvent(eventIds, () => feePercent);
+    const platformFee = round2([...feeByEvent.values()].reduce((a, b) => a + b, 0));
     return this.buildFinancials(reg, payouts, refunded, platformFee);
   }
 
@@ -661,38 +707,20 @@ export class PayoutsService {
    * though the fee percent differs per space.
    */
   async getPlatformFinancials() {
-    const [reg, payouts, refunded, revShareSpaces] = await Promise.all([
+    const [reg, payouts, refunded, spaces, events] = await Promise.all([
       this.aggregateRegistrations(undefined),
       this.aggregatePayouts(undefined),
       this.aggregateRefunds(undefined),
-      this.prisma.space.findMany({
-        where: { subscription: { billingModel: BillingModel.REVENUE_SHARE } },
-        select: { id: true, subscription: true },
-      }),
+      this.prisma.space.findMany({ select: { id: true, subscription: true } }),
+      this.prisma.event.findMany({ select: { id: true, spaceId: true } }),
     ]);
 
-    // Fee per space = its currentGross x its percent. Fixed number of queries
-    // however many revenue-share spaces exist (was two per space).
-    const feeBySpace = new Map<string, number>();
-    for (const s of revShareSpaces) {
-      const feePercent = this.resolvePlatformFeePercent(s.subscription);
-      if (feePercent > 0) feeBySpace.set(s.id, feePercent);
-    }
-    let platformFee = 0;
-    if (feeBySpace.size > 0) {
-      const events = await this.prisma.event.findMany({
-        where: { spaceId: { in: [...feeBySpace.keys()] } },
-        select: { id: true, spaceId: true },
-      });
-      const grossByEvent = await this.currentGrossByEvent(events.map((e) => e.id));
-      const grossBySpace = new Map<string, number>();
-      for (const e of events) {
-        grossBySpace.set(e.spaceId, (grossBySpace.get(e.spaceId) ?? 0) + (grossByEvent.get(e.id) ?? 0));
-      }
-      for (const [spaceId, gross] of grossBySpace) {
-        platformFee += platformShare(gross, feeBySpace.get(spaceId)!);
-      }
-    }
+    // Each sale is charged at the rate frozen on it (A21); today's space rate
+    // only for a sale without one. Fixed number of queries for any size.
+    const pctBySpace = new Map(spaces.map((s) => [s.id, this.resolvePlatformFeePercent(s.subscription)]));
+    const spaceOf = new Map(events.map((e) => [e.id, e.spaceId]));
+    const feeByEvent = await this.heldFeeByEvent(undefined, (id) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0);
+    const platformFee = round2([...feeByEvent.values()].reduce((x, y) => x + y, 0));
 
     return {
       ...this.buildFinancials(reg, payouts, refunded, platformFee),
@@ -793,6 +821,11 @@ export class PayoutsService {
         }),
       ]);
 
+    // The platform fee per event, each sale at its frozen rate (A21).
+    const pctBySpace = new Map(spaces.map((s) => [s.id, this.resolvePlatformFeePercent(s.subscription)]));
+    const spaceOf = new Map(events.map((e) => [e.id, e.spaceId]));
+    const feeByEvent = await this.heldFeeByEvent(undefined, (id) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0);
+
     // Index every aggregate by eventId for O(1) lookup during assembly.
     const addTo = (
       map: Map<string, { total: number; fee: number }>,
@@ -867,6 +900,7 @@ export class PayoutsService {
       let spaceSettled = 0;
       let spacePending = 0;
       let spaceRefunded = 0;
+      let spaceFee = 0;
 
       const eventRows = spaceEvents.map((e) => {
         const ev = ever.get(e.id) ?? { total: 0, fee: 0 };
@@ -881,9 +915,10 @@ export class PayoutsService {
           pending: pendingByEvent.get(e.id) ?? 0,
         };
         const refunded = refundByEventMap.get(e.id) ?? 0;
-        const platformFee = platformShare(reg.currentGross, feePercent);
+        const platformFee = feeByEvent.get(e.id) ?? 0;
 
         // Fold this event's raw figures into the space accumulator.
+        spaceFee += platformFee;
         spaceAcc.collectedOverall += reg.collectedOverall;
         spaceAcc.processingFees += reg.processingFees;
         spaceAcc.currentGross += reg.currentGross;
@@ -900,7 +935,7 @@ export class PayoutsService {
         };
       });
 
-      const spaceFee = platformShare(spaceAcc.currentGross, feePercent);
+      spaceFee = round2(spaceFee);
 
       // Fold this space's raw figures into the platform accumulator.
       platformAcc.collectedOverall += spaceAcc.collectedOverall;

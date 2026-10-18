@@ -207,6 +207,11 @@ export class PlanConfigService implements OnModuleInit {
    * for payouts, exports and plan limits. Only REVENUE_SHARE pays one: the
    * space's own rate, else the model's default (a null rate is NOT 0%). FREE
    * and SUBSCRIPTION pay 0.
+   *
+   * MIRRORED in SQL by `platform_fee_percent_for_event` (migration
+   * 20261022120000_freeze_platform_fee), which freezes this rate on each sale
+   * when it's paid (A21). Change both together: ship a migration that does
+   * CREATE OR REPLACE FUNCTION with the new rule.
    */
   resolvePlatformFeePercent(
     sub?: {

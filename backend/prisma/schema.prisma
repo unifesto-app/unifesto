@@ -1852,6 +1852,9 @@ model EventRegistration {
   razorpayAmount Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
   processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
   refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  /// Platform fee % frozen on the sale when it was paid (A21), set by the
+  /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
+  platformFeePercent Decimal? @map("platform_fee_percent") @db.Decimal(5, 2)
   /// Set while a captured payment that couldn't be honoured (sold out / closed
   /// while it was being paid) still has to go back in full. A retry job clears
   /// it on success; payouts never count such a row.
@@ -2226,6 +2229,9 @@ model GroupSeatPurchase {
   processingFee    Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
   totalAmount      Decimal       @map("total_amount") @db.Decimal(10, 2)
   refundedAmount   Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  /// Platform fee % frozen on the sale when it was paid (A21), set by the
+  /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
+  platformFeePercent Decimal? @map("platform_fee_percent") @db.Decimal(5, 2)
   paymentStatus    PaymentStatus @default(PENDING) @map("payment_status")
   orderId          String?       @unique @map("order_id") @db.VarChar(255)
   paymentId        String?       @unique @map("payment_id") @db.VarChar(255)
@@ -5204,6 +5210,9 @@ model StayBooking {
   orderId        String?         @map("order_id") @db.VarChar(255)
   paidAt         DateTime?       @map("paid_at") @db.Timestamptz(6)
   refundedAmount Decimal         @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  /// Platform fee % frozen on the sale when it was paid (A21), set by the
+  /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
+  platformFeePercent Decimal? @map("platform_fee_percent") @db.Decimal(5, 2)
   /// Set while a captured payment that couldn't be honoured (sold out / closed
   /// while it was being paid) still has to go back in full. A retry job clears
   /// it on success; payouts never count such a row.
