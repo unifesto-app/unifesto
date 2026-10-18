@@ -1,10 +1,33 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "@/lib/context/SessionContext";
 import { BASE_URL, resolveNavGroups, type NavItem } from "./nav-config";
 import { cn } from "@/lib/utils/cn";
+import { can } from "@/lib/types/rbac";
+import { getSpaceDeskUnread, ASSIST_READ_EVENT } from "@/lib/api/support-api";
+
+/** Unread cases on this space's Assist desk: recounted on navigation, on read, and each minute. */
+function useDeskUnread(spaceId: string | undefined, enabled: boolean, pathname: string) {
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!spaceId || !enabled) {
+      setUnread(0);
+      return;
+    }
+    const load = () => getSpaceDeskUnread(spaceId).then(({ data }) => setUnread(data?.unread ?? 0));
+    load();
+    const timer = setInterval(load, 60_000);
+    window.addEventListener(ASSIST_READ_EVENT, load);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(ASSIST_READ_EVENT, load);
+    };
+  }, [spaceId, enabled, pathname]);
+  return unread;
+}
 
 interface SpaceNavProps {
   /**
@@ -30,6 +53,7 @@ interface SpaceNavProps {
 export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   const pathname = usePathname();
   const { currentSpace, currentRole } = useSession();
+  const unread = useDeskUnread(currentSpace?.id, can(currentRole, "event:manage-support"), pathname);
 
   if (!currentSpace) return null;
 
@@ -98,6 +122,17 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
                       weight={active ? "fill" : "regular"}
                     />
                     {!collapsed && item.label}
+                    {item.unreadBadge && unread > 0 && (
+                      <span
+                        className={cn(
+                          "rounded-full bg-primary font-semibold leading-none tabular-nums text-primary-foreground",
+                          collapsed ? "sr-only" : "ml-auto px-1.5 py-0.5 text-[11px]"
+                        )}
+                        aria-label={`${unread} unread`}
+                      >
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

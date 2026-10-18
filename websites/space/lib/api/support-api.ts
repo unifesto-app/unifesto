@@ -40,6 +40,8 @@ export interface SupportMessage {
   ticketId: string;
   authorId: string;
   isStaffReply: boolean;
+  /** Desk-only note; the requester never sees it. */
+  internal?: boolean;
   body: string;
   createdAt: string;
   author?: SupportUser;
@@ -57,6 +59,10 @@ export interface SupportTicket {
   contactEmail: string | null;
   spaceId: string | null;
   space: SupportSpaceRef | null;
+  /** Who works the case now: the space desk, or Unifesto (PLATFORM). */
+  desk?: "SPACE" | "PLATFORM";
+  escalatedAt?: string | null;
+  eventId?: string | null;
   assignedToId: string | null;
   assignedTo: SupportUser | null;
   resolvedAt: string | null;
@@ -154,6 +160,62 @@ export async function replyToTicket(
 ): Promise<Result<SupportMessage>> {
   return apiCall<SupportMessage>(
     backendClient.post(`/support/tickets/${id}/messages`, { body })
+  );
+}
+
+/** `POST /support/tickets/:id/messages` with `internal` — a desk-only note. */
+export async function addInternalNote(
+  id: string,
+  body: string
+): Promise<Result<SupportMessage>> {
+  return apiCall<SupportMessage>(
+    backendClient.post(`/support/tickets/${id}/messages`, { body, internal: true })
+  );
+}
+
+/** `POST /support/tickets/:id/escalate` — hand a space-desk case to Unifesto. */
+export async function escalateTicket(id: string): Promise<Result<SupportTicket>> {
+  return apiCall<SupportTicket>(backendClient.post(`/support/tickets/${id}/escalate`));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Space desk (D9): cases attendees raise about this space and its events     */
+/* -------------------------------------------------------------------------- */
+
+/** Fired after the desk opens a case, so the sidebar badge recounts. */
+export const ASSIST_READ_EVENT = "assist:read";
+
+export interface SpaceDeskParams {
+  status?: SupportTicketStatus;
+  unread?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+/** `GET /support/spaces/:spaceId/desk` — the cases this space's desk shows you. */
+export async function listSpaceDesk(
+  spaceId: string,
+  params: SpaceDeskParams = {}
+): Promise<Result<SupportTicketsResponse>> {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "" && value !== false) {
+      query.set(key, String(value));
+    }
+  });
+  const qs = query.toString();
+  return apiCall<SupportTicketsResponse>(
+    backendClient.get(`/support/spaces/${spaceId}/desk${qs ? `?${qs}` : ""}`)
+  );
+}
+
+/** `GET /support/spaces/:spaceId/desk/unread` — unread cases on the desk. */
+export async function getSpaceDeskUnread(
+  spaceId: string
+): Promise<Result<{ unread: number }>> {
+  return apiCall<{ unread: number }>(
+    backendClient.get(`/support/spaces/${spaceId}/desk/unread`)
   );
 }
 
