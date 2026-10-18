@@ -52,7 +52,8 @@ export type PlanCaps = Record<LimitKey, number | null> & Record<FeatureKey, bool
 
 export interface PlanInfo extends PlanCaps {
   plan: OrgPlan;
-  processingFeePercent: number;
+  /** Organiser platform fee % per paid ticket on this plan; new sales only (A9). */
+  platformFeePercent: number;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }
