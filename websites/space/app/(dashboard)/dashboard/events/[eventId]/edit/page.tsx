@@ -392,20 +392,20 @@ export default function EditEventPage() {
       // no-op on the backend, but skipping it keeps the payload honest and
       // avoids a needless uniqueness check.
       ...(event && form.slug !== event.slug ? { slug: form.slug.trim() } : {}),
-      description: form.description.trim() || undefined,
+      description: form.description.trim() || null,
       type: form.type,
       registrationType: form.registrationType,
       visibility: form.visibility,
       startDateTime: toIso(form.startDateTime),
       endDateTime: toIso(form.endDateTime),
-      tags: tags.length ? tags : undefined,
-      category: form.category || undefined,
+      tags,
+      category: form.category || null,
       ...(showVenue
         ? {
-            venueName: form.venueName.trim() || undefined,
-            venueAddress: form.venueAddress.trim() || undefined,
-            city: form.city.trim() || undefined,
-            state: form.state.trim() || undefined,
+            venueName: form.venueName.trim() || null,
+            venueAddress: form.venueAddress.trim() || null,
+            city: form.city.trim() || null,
+            state: form.state.trim() || null,
             // Always sent on edit: a number pins, null clears a removed pin.
             latitude: form.latitude,
             longitude: form.longitude,
@@ -413,8 +413,8 @@ export default function EditEventPage() {
         : {}),
       ...(showOnline
         ? {
-            onlineUrl: form.onlineUrl.trim() || undefined,
-            onlinePlatform: form.onlinePlatform.trim() || undefined,
+            onlineUrl: form.onlineUrl.trim() || null,
+            onlinePlatform: form.onlinePlatform.trim() || null,
           }
         : {}),
       // A recurring series parent may change its RRULE; the backend regenerates

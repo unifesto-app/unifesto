@@ -133,16 +133,20 @@ export default function UserDetailPage() {
   const saveEdit = useCallback(async () => {
     setSaving(true);
     setSaveError("");
-    // Send only changed fields; convert emptied strings to undefined for
-    // optional URL fields so validation doesn't reject empty values.
-    const payload: UpdateUserPayload = {};
-    (Object.keys(form) as (keyof UpdateUserPayload)[]).forEach((key) => {
+    // Send only changed fields. A cleared optional field goes as null so it
+    // actually clears; name and username can't be blank.
+    const payload: Record<string, string | null> = {};
+    for (const key of Object.keys(form) as (keyof UpdateUserPayload)[]) {
       const value = form[key]?.trim() ?? "";
       const current = (user?.[key] as string | null | undefined) ?? "";
-      if (value !== current) {
-        payload[key] = value === "" ? undefined : value;
+      if (value === current) continue;
+      if (!value && (key === "fullName" || key === "username")) {
+        setSaveError(key === "fullName" ? "Name can't be blank." : "Username can't be blank.");
+        setSaving(false);
+        return;
       }
-    });
+      payload[key] = value || null;
+    }
 
     if (Object.keys(payload).length === 0) {
       setEditing(false);
@@ -150,7 +154,7 @@ export default function UserDetailPage() {
       return;
     }
 
-    const { data, error } = await updateUser(id, payload);
+    const { data, error } = await updateUser(id, payload as UpdateUserPayload);
     setSaving(false);
     if (error) {
       setSaveError(error.message);

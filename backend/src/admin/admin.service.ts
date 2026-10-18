@@ -856,12 +856,15 @@ export class AdminService {
     status?: string;
     search?: string;
     deleted?: DeletedFilter;
+    /** Only events hosted by this space. */
+    spaceId?: string;
   }) {
-    const { page, limit, status, search, deleted } = params;
+    const { page, limit, status, search, deleted, spaceId } = params;
     const skip = (page - 1) * limit;
 
     const where: any = { ...deletedWhere(deleted ?? 'active') };
     if (status) where.status = status;
+    if (spaceId) where.spaceId = spaceId;
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },

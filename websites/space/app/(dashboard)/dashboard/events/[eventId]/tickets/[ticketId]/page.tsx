@@ -163,7 +163,8 @@ export default function TicketDetailPage() {
       return;
     }
     const price = Number(draft.price) || 0;
-    const capacity = draft.capacity.trim() ? Number(draft.capacity) : undefined;
+    // Blank = unlimited, sent as null so it clears the old capacity.
+    const capacity = draft.capacity.trim() ? Number(draft.capacity) : null;
     const saleStartsAt = localToIso(draft.saleStartsAt);
     const saleEndsAt = localToIso(draft.saleEndsAt);
     if (saleStartsAt && saleEndsAt && saleEndsAt <= saleStartsAt) {
@@ -172,7 +173,7 @@ export default function TicketDetailPage() {
     }
     const payload = {
       name: draft.name.trim(),
-      description: draft.description.trim() || undefined,
+      description: draft.description.trim() || null,
       kind: draft.kind,
       price,
       totalQuantity: capacity,

@@ -41,10 +41,11 @@ export default function NoAccessPage() {
         router.replace("/login");
         return;
       }
-      const { data } = await getCurrentUser();
+      const { data, error } = await getCurrentUser();
       if (cancelled) return;
 
-      if (resolveAppRole(data) !== "none") {
+      // A failed load isn't a denial: the dashboard shell offers a retry.
+      if (error || resolveAppRole(data) !== "none") {
         router.replace("/dashboard");
         return;
       }

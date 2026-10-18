@@ -1,6 +1,7 @@
 "use client";
 
 import React, {
+  useRef,
   createContext,
   useContext,
   useState,
@@ -66,6 +67,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
   const [features, setFeatures] = useState<SpaceFeatures | null>(null);
   const [loading, setLoading] = useState(true);
+  const userRef = useRef<CurrentUser | null>(null);
 
   const setCurrentSpace = useCallback((space: SpaceMembership) => {
     setCurrentSpaceState(space);
@@ -76,11 +78,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // `loading` only covers the first load. A later refresh (e.g. after saving
+  // settings) updates in place: flipping `loading` would swap the whole
+  // dashboard for the shell skeleton and unmount the page that asked.
   const load = useCallback(async () => {
-    setLoading(true);
     try {
-      const { data } = await getCurrentUser();
+      const { data, error } = await getCurrentUser();
+      // A failed refresh keeps the session we have rather than signing out.
+      if (error && userRef.current) return;
       setUser(data);
+      userRef.current = data;
 
       const ops = operatorSpaces(data);
       setSpaces(ops);

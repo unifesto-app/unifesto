@@ -321,6 +321,11 @@ function EditArrangement({
   const [error, setError] = useState("");
 
   const save = async () => {
+    // A blank rate is not 0%: 0% means this space pays no platform fee at all.
+    if (model === "REVENUE_SHARE" && pct.trim() === "") {
+      setError("Enter the revenue share percent (0 is allowed, but type it).");
+      return;
+    }
     if (!window.confirm("Override this space's billing arrangement? It takes effect at once.")) return;
     setSaving(true);
     setError("");
@@ -330,7 +335,7 @@ function EditArrangement({
       reason: reason.trim() || undefined,
     };
     if (model === "REVENUE_SHARE") {
-      input.revenueSharePercent = Number(pct) || 0;
+      input.revenueSharePercent = Number(pct);
     }
     if (model === "SUBSCRIPTION") {
       input.plan = plan;
