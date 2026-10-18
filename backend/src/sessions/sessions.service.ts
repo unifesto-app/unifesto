@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { sessionMoneyRecords } from '../common/money-records';
-import { PaymentsService } from '../payments/payments.service';
+import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { LivekitService } from './livekit.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
@@ -759,7 +759,13 @@ export class SessionsService {
     const existing = await this.prisma.sessionRegistration.findUnique({
       where: { sessionId_userId: { sessionId, userId } },
     });
-    if (existing && existing.status === RegistrationStatus.REGISTERED) {
+    // An unpaid paid-session row (sheet closed, payment failed) is not a
+    // registration yet: fall through and issue a fresh order for it (A16).
+    if (
+      existing &&
+      existing.status === RegistrationStatus.REGISTERED &&
+      existing.paymentStatus === PaymentStatus.PAID
+    ) {
       throw new BadRequestException('Already registered for this session');
     }
     // A row that ever took a payment is that payment's record (refunded or
@@ -897,10 +903,25 @@ export class SessionsService {
       throw new BadRequestException('This registration can no longer be paid.');
     }
 
+    await this.settlePayment(registration, dto.razorpayPaymentId, dto.razorpayOrderId, true);
+    return { registrationId: registration.id, paid: true };
+  }
+
+  /**
+   * Record a captured session payment exactly once: client verify and the
+   * Razorpay webhook race here. Counts the seat, or cancels and refunds in full
+   * when the session filled or closed meanwhile (throws to the client only).
+   */
+  private async settlePayment(
+    registration: { id: string; sessionId: string; razorpayAmount: Prisma.Decimal },
+    paymentId: string,
+    orderId: string,
+    fromClient: boolean,
+  ) {
     let soldOut = false;
     await this.prisma.$transaction(async (tx) => {
-      // Atomic claim: two overlapping verifies both saw PENDING above; only the
-      // one that flips the row counts the seat.
+      // Atomic claim: verifies and the webhook may overlap; only the one that
+      // flips the row counts the seat.
       const claimed = await tx.sessionRegistration.updateMany({
         where: {
           id: registration.id,
@@ -909,8 +930,8 @@ export class SessionsService {
         },
         data: {
           paymentStatus: PaymentStatus.PAID,
-          paymentId: dto.razorpayPaymentId,
-          orderId: dto.razorpayOrderId,
+          paymentId,
+          orderId,
           paidAt: new Date(),
         },
       });
@@ -937,12 +958,56 @@ export class SessionsService {
 
     if (soldOut) {
       await this.refundDue(registration.id);
+      if (!fromClient) return;
       throw new BadRequestException(
         `This session filled up or closed while you were paying. Your payment of ₹${Number(registration.razorpayAmount)} is being refunded in full.`,
       );
     }
+  }
 
-    return { registrationId: registration.id, paid: true };
+  /**
+   * Razorpay webhook for a captured payment no event registration claimed (A16):
+   * settles it when the order is a session's, so a payer whose app died before
+   * verify still gets the seat. Resolves by orderId, else by the order's notes
+   * fetched from Razorpay (a retry may have replaced the row's orderId), and
+   * only when the captured amount matches. Returns true when the order was ours.
+   */
+  async completeFromWebhook(
+    orderId: string,
+    paymentId: string,
+    payment: { amount?: unknown; currency?: unknown },
+  ): Promise<boolean> {
+    let reg = await this.prisma.sessionRegistration.findFirst({ where: { orderId } });
+    if (!reg) {
+      const notes = await this.payments.fetchOrderNotes(orderId).catch(() => null);
+      if (notes?.sessionId && notes.registrationId) {
+        reg = await this.prisma.sessionRegistration.findFirst({
+          where: { id: notes.registrationId, sessionId: notes.sessionId },
+        });
+      }
+    }
+    if (!reg) return false;
+    if (reg.paymentStatus === PaymentStatus.PAID) {
+      if (reg.paymentId !== paymentId) {
+        this.logger.error(
+          `Session registration ${reg.id} already paid by ${reg.paymentId}; second capture ${paymentId} (order ${orderId}) not settled.`,
+        );
+      }
+      return true;
+    }
+    if (
+      reg.status === RegistrationStatus.CANCELLED ||
+      (reg.paymentStatus !== PaymentStatus.PENDING && reg.paymentStatus !== PaymentStatus.FAILED) ||
+      !capturedAmountMatches(payment, reg.razorpayAmount)
+    ) {
+      this.logger.error(
+        `payment.captured ${paymentId} (order ${orderId}, ${payment.amount} ${payment.currency}) for session registration ` +
+          `${reg.id} (${reg.status}/${reg.paymentStatus}, ₹${reg.razorpayAmount}) not settled. Resolve via orphaned payments.`,
+      );
+      return true;
+    }
+    await this.settlePayment(reg, paymentId, orderId, false);
+    return true;
   }
 
   /** The caller's own session registrations, upcoming first. No links. */

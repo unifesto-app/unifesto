@@ -4,6 +4,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
@@ -47,6 +48,7 @@ export class RegistrationPaymentsService {
     private readonly stayBookings: StayBookingsService,
     private readonly teamChanges: TeamChangesService,
     private readonly confirmations: RegistrationConfirmationsService,
+    private readonly sessions: SessionsService,
   ) {}
 
   /**
@@ -596,23 +598,13 @@ export class RegistrationPaymentsService {
         if (await this.teamChanges.completeFromWebhook(orderId, paymentId, paymentData)) {
           return { received: true };
         }
-        // Money was captured at Razorpay but we can't tie it to a registration.
-        // Distinguish a session capture (a different, client-verify-only flow —
-        // this account-wide webhook still receives them) from a true orphan, so
-        // the log points at the right place instead of a bare "not found".
-        const session = await this.prisma.sessionRegistration.findFirst({
-          where: { orderId },
-          select: { id: true },
-        });
-        if (session) {
-          this.logger.warn(
-            `payment.captured for SESSION order ${orderId} (payment ${paymentId}) — sessions verify client-side, not via this webhook. Session ${session.id} left as-is.`,
-          );
-        } else {
-          this.logger.error(
-            `payment.captured: no registration for order ${orderId} (payment ${paymentId}) — captured money is unrecorded. Reconcile via the dashboard.`,
-          );
+        // A paid Space session (A16).
+        if (await this.sessions.completeFromWebhook(orderId, paymentId, paymentData)) {
+          return { received: true };
         }
+        this.logger.error(
+          `payment.captured: no registration for order ${orderId} (payment ${paymentId}) — captured money is unrecorded. Reconcile via the dashboard.`,
+        );
         return { received: true };
       }
 

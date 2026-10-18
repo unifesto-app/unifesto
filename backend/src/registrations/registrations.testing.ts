@@ -27,6 +27,7 @@ export function buildRegistrationsService(
   stayBookings: any,
   teamChanges: any,
   authz: any,
+  sessions: any = { completeFromWebhook: async () => false },
 ): RegistrationsService {
   const confirmations = new RegistrationConfirmationsService(
     prisma,
@@ -74,6 +75,7 @@ export function buildRegistrationsService(
     stayBookings,
     teamChanges,
     confirmations,
+    sessions,
   );
   const checkout = new RegistrationCheckoutService(
     prisma,
