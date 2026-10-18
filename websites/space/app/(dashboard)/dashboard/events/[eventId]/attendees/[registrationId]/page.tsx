@@ -22,6 +22,7 @@ import {
   requestTransfer,
   getMyTransferRequests,
   restoreRegistration,
+  cancelRegistrationAsOrganiser,
   releaseGroupSeat,
   reopenGroupSeat,
   removeGroupSeat,
@@ -35,6 +36,8 @@ import type {
   PaymentStatus,
 } from "@/lib/api/registrations-api";
 import { getEventById } from "@/lib/api/events-api";
+import { requestRefundOnBehalf } from "@/lib/api/refunds-api";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { AnswerValue } from "@/components/events/answer-value";
 import { formatAnswer } from "@/lib/form-questions";
@@ -294,6 +297,13 @@ export default function AttendeeDetailPage() {
   const [restoring, setRestoring] = useState(false);
   const [restoreError, setRestoreError] = useState("");
 
+  // Cancel (free/unpaid) or raise a refund (paid) on the attendee's behalf.
+  const [endAction, setEndAction] = useState<"cancel" | "refund" | null>(null);
+  const [endReason, setEndReason] = useState("");
+  const [ending, setEnding] = useState(false);
+  const [endError, setEndError] = useState("");
+  const [endNotice, setEndNotice] = useState("");
+
   // Per-seat release/reopen: track which seat is mid-request + any error.
   const [seatMutating, setSeatMutating] = useState<number | null>(null);
   const [seatError, setSeatError] = useState("");
@@ -336,6 +346,33 @@ export default function AttendeeDetailPage() {
     if (data) setRegistration(data);
     setRestoring(false);
     setRestoreOpen(false);
+  };
+
+  const handleEnd = async () => {
+    if (!endAction) return;
+    if (endAction === "refund" && !endReason.trim()) {
+      setEndError("Say why, so Unifesto can approve it.");
+      return;
+    }
+    setEnding(true);
+    setEndError("");
+    const { error } =
+      endAction === "cancel"
+        ? await cancelRegistrationAsOrganiser(eventId, registrationId, endReason.trim() || undefined)
+        : await requestRefundOnBehalf(registrationId, endReason.trim());
+    setEnding(false);
+    if (error) {
+      setEndError(error.message);
+      return;
+    }
+    setEndNotice(
+      endAction === "cancel"
+        ? "Cancelled. The attendee has been emailed."
+        : "Refund raised. Unifesto reviews it and sends the ticket price back; track it under Refunds."
+    );
+    setEndAction(null);
+    setEndReason("");
+    await load();
   };
 
   // Retire an unfilled seat (OPEN/INVITED → RELEASED) or bring one back
@@ -435,6 +472,19 @@ export default function AttendeeDetailPage() {
                 <Badge variant={paymentBadgeVariant(registration.paymentStatus)}>
                   {registration.paymentStatus}
                 </Badge>
+                {registration.status !== "CANCELLED" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEndError("");
+                      setEndNotice("");
+                      setEndAction(isPaidBooking(registration.paymentStatus) ? "refund" : "cancel");
+                    }}
+                  >
+                    {isPaidBooking(registration.paymentStatus) ? "Raise refund" : "Cancel registration"}
+                  </Button>
+                )}
                 {registration.status === "CANCELLED" && (
                   <Button
                     variant="outline"
@@ -949,6 +999,40 @@ export default function AttendeeDetailPage() {
             registrationId={registrationId}
           />
 
+          {endNotice && <p className="text-sm text-success">{endNotice}</p>}
+
+          <Dialog open={endAction !== null} onOpenChange={(o) => !o && setEndAction(null)}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{endAction === "refund" ? "Raise a refund?" : "Cancel this registration?"}</DialogTitle>
+                <DialogDescription>
+                  {endAction === "refund"
+                    ? "Goes straight to Unifesto for approval. The ticket price comes back to the attendee; the processing fee is kept. The registration is cancelled when the refund goes out."
+                    : "Their seat frees up and their ticket stops working. They get an email with your reason."}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor="end-reason">{endAction === "refund" ? "Reason" : "Reason (optional)"}</Label>
+                <Textarea
+                  id="end-reason"
+                  rows={3}
+                  value={endReason}
+                  onChange={(e) => setEndReason(e.target.value)}
+                  maxLength={1000}
+                />
+              </div>
+              {endError && <ErrorNotice message={endError} />}
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setEndAction(null)} disabled={ending}>
+                  Keep it
+                </Button>
+                <Button variant="destructive" onClick={handleEnd} disabled={ending}>
+                  {ending ? "Working…" : endAction === "refund" ? "Raise refund" : "Cancel registration"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <Dialog open={restoreOpen} onOpenChange={setRestoreOpen}>
             <DialogContent>
               <DialogHeader>
@@ -1112,4 +1196,9 @@ function TransferRequestCard({
       </CardContent>
     </Card>
   );
+}
+
+/** Money was taken and not fully returned: ending it means a refund, not a cancel. */
+function isPaidBooking(p: PaymentStatus): boolean {
+  return p === "PAID" || p === "PARTIALLY_REFUNDED";
 }

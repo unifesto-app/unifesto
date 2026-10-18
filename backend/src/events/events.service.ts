@@ -1752,10 +1752,11 @@ export class EventsService {
   async getEventBySlug(slug: string, viewerId?: string) {
     const event = await this.loadEventBySlug(slug);
     if (
-      event.status === EventStatus.DRAFT &&
+      (event.status === EventStatus.DRAFT || event.deletedAt) &&
       !(await this.canViewUnpublishedEvent(event, viewerId))
     ) {
-      // Same 404 as a missing event so draft slugs can't be probed.
+      // Same 404 as a missing event so draft (and hidden) slugs can't be
+      // probed: "hidden" is private housekeeping, invisible from outside.
       throw new NotFoundException('Event not found');
     }
     // Space-only events: members of a hosting space (or existing ticket
@@ -1965,15 +1966,8 @@ export class EventsService {
       });
     }
 
-    // A hidden event is gone as far as every reader is concerned. Checked after
-    // the fetch rather than in the `where` because both lookups above are
-    // `findUnique`, which only accepts unique fields. Same 404 as a genuinely
-    // missing event: "hidden" is private housekeeping and must not be
-    // detectable from outside.
-    if (event?.deletedAt) {
-      event = null;
-    }
-
+    // A hidden event is kept here and 404'd in getEventBySlug for everyone but
+    // its operators, who need it to restore or delete it (B15).
     if (!event) {
       throw new NotFoundException('Event not found');
     }

@@ -42,7 +42,8 @@ const PAGE_SIZE = 20;
 // Scope sentinel: review refunds across every space the operator administers.
 const ALL_SPACES = "__all__";
 
-export function RefundsPanel() {
+/** `eventId` scopes it to one event (the event's Refunds section). */
+export function RefundsPanel({ eventId }: { eventId?: string } = {}) {
   const { spaces, currentSpace } = useSession();
   const currentSpaceId = currentSpace?.id ?? "";
 
@@ -56,7 +57,7 @@ export function RefundsPanel() {
   const [requests, setRequests] = useState<RefundRequest[]>([]);
   const [status, setStatus] = useState<RefundStatus | "all">("PENDING_CURATOR");
   // "" until the current space resolves; then a spaceId, or ALL_SPACES.
-  const [scope, setScope] = useState<string>("");
+  const [scope, setScope] = useState<string>(eventId ? ALL_SPACES : "");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -78,6 +79,7 @@ export function RefundsPanel() {
       status: status === "all" ? undefined : status,
       // ALL_SPACES → omit spaceId; backend then returns every administered space.
       spaceId: scope === ALL_SPACES ? undefined : scope,
+      eventId,
     });
     if (error) setError(error.message);
     else if (data) {
@@ -85,7 +87,7 @@ export function RefundsPanel() {
       setTotalPages(data.pagination.totalPages || 1);
     }
     setLoading(false);
-  }, [page, status, scope]);
+  }, [page, status, scope, eventId]);
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { setPage(1); }, [status, scope]);
@@ -109,7 +111,7 @@ export function RefundsPanel() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        {reviewableSpaces.length > 1 && (
+        {!eventId && reviewableSpaces.length > 1 && (
           <Select value={scope || currentSpaceId} onValueChange={setScope}>
             <SelectTrigger className="w-56" aria-label="Filter by space">
               <SelectValue />
