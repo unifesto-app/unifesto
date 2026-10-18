@@ -48,7 +48,9 @@ import {
   PaymentStatus,
   RegistrationStatus,
   Prisma,
+  SlugKind,
 } from '@prisma/client';
+import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace } from '../spaces/space-access';
 import {
   canAccessSpaceOnlyEvent,
@@ -1881,6 +1883,9 @@ export class EventsService {
     // If not found by slug, try by ID (for backwards compatibility).
     // Only attempt this if the value actually looks like a UUID — otherwise the
     // raw DB driver throws an unhandled "invalid input syntax for type uuid" error.
+    // A renamed event: its old slug resolves to the event (B16); the client
+    // sees the new slug in the payload and can redirect to it.
+    if (!event) slug = (await idForOldSlug(this.prisma, SlugKind.EVENT, slug)) ?? slug;
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
     if (!event && isUuid) {
       event = await this.prisma.event.findUnique({
@@ -2191,6 +2196,11 @@ export class EventsService {
     // changed, so refresh the parent too.
     if (event.parentEventId) {
       await this.invalidateParentCache(event.parentEventId);
+    }
+
+    // Keep the old slug resolving, so shared links and QR codes survive (B16).
+    if (nextSlug && nextSlug !== event.slug) {
+      await rememberOldSlug(this.prisma, SlugKind.EVENT, event.slug, eventId);
     }
 
     // Recurring series parent edit: reconcile the occurrences (D3/D4). A schedule

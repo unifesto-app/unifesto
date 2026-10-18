@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/context/SessionContext";
 import { appRoleFromCode, type SpaceAppRole } from "@/lib/types/rbac";
 
@@ -18,6 +19,8 @@ const ROLE_LABEL: Record<SpaceAppRole, string> = {
  */
 export function SpaceSwitcher() {
   const { spaces, currentSpace, setCurrentSpace } = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
 
   if (spaces.length === 0 || !currentSpace) return null;
 
@@ -45,7 +48,12 @@ export function SpaceSwitcher() {
         value={currentSpace.id}
         onChange={(e) => {
           const next = spaces.find((s) => s.id === e.target.value);
-          if (next) setCurrentSpace(next);
+          if (!next) return;
+          setCurrentSpace(next);
+          // An entity page (an event, a session…) belongs to the old space:
+          // go up to its section, e.g. /dashboard/events/<id>/x → /dashboard/events.
+          const section = pathname.split("/").slice(0, 3).join("/");
+          if (section !== pathname) router.push(section);
         }}
         className="h-9 max-w-[220px] cursor-pointer appearance-none truncate rounded-md border border-input bg-card pl-3 pr-8 text-sm font-medium text-foreground hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >

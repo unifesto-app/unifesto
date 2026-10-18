@@ -28,6 +28,11 @@ export interface AiRunInput {
   userId?: string;
   /** What the call is about, e.g. "case:<id>". */
   subject?: string;
+  /**
+   * Passed through as `output_config` (effort, structured output). With a
+   * `format`, the reply is parsed and returned as `json`; unparseable is an error.
+   */
+  outputConfig?: Anthropic.OutputConfig;
 }
 
 /**
@@ -35,7 +40,7 @@ export interface AiRunInput {
  * the user hit their cap, the model refused, or the call failed.
  */
 export type AiResult =
-  | { ok: true; text: string }
+  | { ok: true; text: string; json?: unknown }
   | { ok: false; reason: 'disabled' | 'capped' | 'refused' | 'error' };
 
 /** Claude Haiku 5.5 USD per million tokens, for prompts up to 100K tokens. */
@@ -135,6 +140,7 @@ export class AiService {
           },
         ],
         messages: input.messages,
+        ...(input.outputConfig ? { output_config: input.outputConfig } : {}),
       });
     } catch (err) {
       this.logger.warn(`AI ${feature} call failed: ${(err as Error).message}`);
@@ -147,7 +153,7 @@ export class AiService {
         .trim() ?? '';
     // Only a finished, non-empty answer counts. A reply cut off at max_tokens
     // is an error: half a suggestion is worse than none.
-    const outcome: AiRunOutcome =
+    let outcome: AiRunOutcome =
       response?.stop_reason === 'refusal'
         ? AiRunOutcome.REFUSED
         : (response?.stop_reason === 'end_turn' ||
@@ -155,6 +161,14 @@ export class AiService {
             text
           ? AiRunOutcome.OK
           : AiRunOutcome.ERROR;
+    let json: unknown;
+    if (outcome === AiRunOutcome.OK && input.outputConfig?.format) {
+      try {
+        json = JSON.parse(text);
+      } catch {
+        outcome = AiRunOutcome.ERROR;
+      }
+    }
 
     await this.log(
       feature,
@@ -164,7 +178,8 @@ export class AiService {
       response?.usage,
     );
 
-    if (outcome === AiRunOutcome.OK) return { ok: true, text };
+    if (outcome === AiRunOutcome.OK)
+      return input.outputConfig?.format ? { ok: true, text, json } : { ok: true, text };
     return {
       ok: false,
       reason: outcome === AiRunOutcome.REFUSED ? 'refused' : 'error',

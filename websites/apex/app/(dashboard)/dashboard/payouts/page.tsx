@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Money, Bank, Clock, CheckCircle } from "@unifesto/unicon/react";
+import { Money, Bank, Clock, CheckCircle, Download } from "@unifesto/unicon/react";
 import {
   getAllPayoutsUnpaginated,
   markPayoutPaid,
@@ -13,6 +13,7 @@ import {
   type EventPayoutSummary,
 } from "@/lib/api/payouts-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { downloadCsv } from "@/lib/utils/csv";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -135,6 +136,32 @@ export default function PayoutsPage() {
     });
   }, [payouts, statusFilter, search]);
 
+  /** The filtered list, all pages. Account numbers go out as the last 4 only. */
+  const exportCsv = () =>
+    downloadCsv(
+      `payouts-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Created", "Event", "Organiser", "Gross (INR)", "Platform Fee %", "Platform Fee (INR)", "Net (INR)", "Status", "Account", "UTR", "Paid At", "Failure Reason", "Notes"],
+      filtered.map((p) => [
+        p.createdAt,
+        p.event?.title,
+        orgName(p),
+        Number(p.grossRevenue).toFixed(2),
+        p.platformFeePercent,
+        Number(p.platformFee).toFixed(2),
+        Number(p.netAmount).toFixed(2),
+        p.status,
+        p.bankAccount?.upiId
+          ? `UPI ${p.bankAccount.upiId}`
+          : p.bankAccount
+            ? `${p.bankAccount.bankName ?? "Bank"} ****${(p.bankAccount.accountNumber ?? "").slice(-4)}`
+            : "",
+        p.utr,
+        p.completedAt,
+        p.failureReason,
+        p.notes,
+      ])
+    );
+
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -144,7 +171,13 @@ export default function PayoutsPage() {
         title="Payouts"
         subtitle="Money released to organisations for their events"
         actions={
-          <Button onClick={() => setCreateOpen(true)}>Create payout</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" disabled={filtered.length === 0} onClick={exportCsv}>
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>Create payout</Button>
+          </div>
         }
       />
 

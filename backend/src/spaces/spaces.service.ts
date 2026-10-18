@@ -36,7 +36,9 @@ import {
   RoleCode,
   SpaceStatus,
   SpaceVisibility,
+  SlugKind,
 } from '@prisma/client';
+import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
 import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
@@ -366,8 +368,12 @@ export class SpacesService {
    * Get space by slug
    */
   async getSpaceBySlug(slug: string, viewerId?: string) {
+    // A renamed space: its old slug resolves to the space (B16); the client sees
+    // the new slug in the payload and can redirect to it.
+    const live = await this.prisma.space.findUnique({ where: { slug }, select: { id: true } });
+    const id = live?.id ?? (await idForOldSlug(this.prisma, SlugKind.SPACE, slug));
     const space = await this.prisma.space.findUnique({
-      where: { slug },
+      where: id ? { id } : { slug },
       include: {
         // Space's own plan (per-space billing), for the white-label gate.
         // Stripped from the response below.
@@ -475,6 +481,11 @@ export class SpacesService {
     // Verification vouches for the name it was granted under; a rename needs a
     // fresh admin check.
     const renamed = dto.name !== undefined && dto.name.trim() !== space.name;
+
+    // Keep the old slug resolving, so shared links and QR codes survive (B16).
+    if (dto.slug && dto.slug !== space.slug) {
+      await rememberOldSlug(this.prisma, SlugKind.SPACE, space.slug, id);
+    }
 
     const updatedSpace = await this.prisma.space.update({
       where: { id },

@@ -135,6 +135,9 @@ export interface RegistrationListParams {
 
 export type ExportFormat = "csv" | "xlsx" | "pdf";
 
+/** What `GET /events/:id/registrations/export` can produce. */
+export type EventExportType = "attendees" | "transactions" | "waitlist" | "checkins" | "coupons";
+
 export interface RegistrationListResponse {
   registrations: Registration[];
   pagination: {
@@ -313,7 +316,7 @@ export const EXPORT_EXTENSION: Record<ExportFormat, string> = {
 export async function exportRegistrations(
   eventId: string,
   format: ExportFormat = "csv",
-  type: "attendees" | "transactions" = "attendees"
+  type: EventExportType = "attendees"
 ): Promise<{ data: Blob | null; error: ApiError | null }> {
   try {
     const response = await backendClient.get(

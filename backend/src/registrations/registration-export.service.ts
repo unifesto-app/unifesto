@@ -21,7 +21,7 @@ export class RegistrationExportService {
     userId: string,
     eventId: string,
     format: ExportFormat = 'csv',
-    type: 'attendees' | 'transactions' = 'attendees',
+    type: ExportType = 'attendees',
   ) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -178,6 +178,10 @@ export class RegistrationExportService {
       );
     }
 
+    if (type === 'waitlist') return this.waitlistExport(event, format);
+    if (type === 'checkins') return this.checkinExport(event, format);
+    if (type === 'coupons') return this.couponExport(event, format);
+
     // Attendees export: full attendee data plus the custom form responses.
     // Responses are keyed by form-field id, so we resolve the id → label map to
     // give each custom field its own labelled column.
@@ -190,44 +194,11 @@ export class RegistrationExportService {
 
     // Yes/No as words, picks joined, a file by its name (files themselves
     // are opened from the attendee page with a short-lived link).
-    const formatResponse = (value: unknown): string => formatAnswer(value);
+    const formatResponse = formatAnswer;
 
-    // Group members can be stored either as `{ name, email, mobile, gender,
-    // customFields }` or as a flat form-response map keyed by form-field id.
-    // Normalise both so a member's real name/email/mobile is never blank.
-    const labelById: Record<string, string> = Object.fromEntries(
-      formFields.map((f) => [f.id, f.label.toLowerCase()]),
-    );
-    const MEMBER_ALIASES: Record<'name' | 'email' | 'mobile', string[]> = {
-      name: ['name', 'full name', 'fullname', 'attendee name'],
-      email: ['email', 'e-mail', 'email address'],
-      mobile: ['mobile', 'phone', 'mobile number', 'phone number', 'contact'],
-    };
-    const flattenMember = (m: any): Record<string, unknown> => {
-      const flat: Record<string, unknown> = {};
-      if (m && typeof m === 'object') {
-        for (const [k, v] of Object.entries(m)) {
-          if (k === 'customFields' && v && typeof v === 'object') {
-            Object.assign(flat, v as Record<string, unknown>);
-          } else {
-            flat[k] = v;
-          }
-        }
-      }
-      return flat;
-    };
-    const pickMemberField = (
-      flat: Record<string, unknown>,
-      aliases: string[],
-    ): string => {
-      for (const [k, v] of Object.entries(flat)) {
-        const value = formatResponse(v).trim();
-        if (!value) continue;
-        if (aliases.includes(k.toLowerCase()) || aliases.includes(labelById[k]))
-          return value;
-      }
-      return '';
-    };
+    const labelById = labelMap(formFields);
+    const pickMemberField = (flat: Record<string, unknown>, aliases: string[]) =>
+      pickField(flat, aliases, labelById);
 
     const header = [
       'Name',
@@ -361,6 +332,205 @@ export class RegistrationExportService {
       `${event.slug}-attendees`,
     );
   }
+
+  /** Everyone who joined the waiting list, in queue order, with where they are now. */
+  private waitlistExport(event: ExportEvent, format: ExportFormat) {
+    const prisma = this.prisma;
+    const header = ['Name', 'Email', 'Mobile', 'Ticket Type', 'Waitlist Status', 'Joined At', 'Offered At', 'Offer Expires At', 'Registration Status'];
+    async function* rows() {
+      const regPages = pages((page) =>
+        prisma.eventRegistration.findMany({
+          ...page,
+          where: { eventId: event.id, waitlistStatus: { not: null } },
+          orderBy: [{ waitlistedAt: 'asc' }, { id: 'asc' }],
+          include: { user: userSelect, ticketType: { select: { name: true } } },
+        }),
+      );
+      for await (const regs of regPages) {
+        yield regs.map((r) => [
+          r.user.fullName || '',
+          r.user.identities?.[0]?.email || '',
+          r.user.mobileNumber || '',
+          r.ticketType?.name || 'RSVP',
+          r.waitlistStatus ?? '',
+          iso(r.waitlistedAt),
+          iso(r.waitlistOfferedAt),
+          iso(r.waitlistOfferExpiresAt),
+          r.status,
+        ]);
+      }
+    }
+    return exportOutput(format, `${event.title} — Waiting list`, header, rows(), `${event.slug}-waitlist`);
+  }
+
+  /**
+   * Every check-in at every point. A group checked in member by member lists
+   * the members; its registration-level record at that point is then just the
+   * summary and is left out (same rule as the live "recent" feed).
+   */
+  private async checkinExport(event: ExportEvent, format: ExportFormat) {
+    const prisma = this.prisma;
+    const header = ['Name', 'Email', 'Ticket Type', 'Group Lead', 'Seat', 'Check-in Point', 'Checked In At', 'Recorded At', 'Checked In By'];
+    const where = { registration: { eventId: event.id } };
+    // ponytail: holds one key per member check-in in memory; fine into the tens of thousands.
+    const memberKeys = new Set(
+      (
+        await prisma.eventGroupMemberCheckin.findMany({ where, select: { registrationId: true, checkinTypeId: true } })
+      ).map((m) => `${m.registrationId}:${m.checkinTypeId}`),
+    );
+    const labelById = labelMap(
+      await prisma.eventFormField.findMany({ where: { eventId: event.id }, select: { id: true, label: true } }),
+    );
+    const by = (u: { fullName: string | null; username: string | null } | null) => u?.fullName || u?.username || '';
+    const reg = { select: { user: userSelect, ticketType: { select: { name: true } } } };
+    const order = [{ checkedInAt: 'asc' as const }, { id: 'asc' as const }];
+    async function* rows() {
+      const recordPages = pages((page) =>
+        prisma.eventCheckinRecord.findMany({
+          ...page,
+          where,
+          orderBy: order,
+          include: { registration: reg, checkinType: { select: { name: true } }, checkedInByUser: { select: { fullName: true, username: true } } },
+        }),
+      );
+      for await (const recs of recordPages) {
+        yield recs
+          .filter((r) => !memberKeys.has(`${r.registrationId}:${r.checkinTypeId}`))
+          .map((r) => [
+            by(r.registration.user),
+            r.registration.user.identities?.[0]?.email || '',
+            r.registration.ticketType?.name || 'RSVP',
+            '',
+            '',
+            r.checkinType.name,
+            r.checkedInAt.toISOString(),
+            r.recordedAt.toISOString(),
+            by(r.checkedInByUser),
+          ]);
+      }
+      const memberPages = pages((page) =>
+        prisma.eventGroupMemberCheckin.findMany({
+          ...page,
+          where,
+          orderBy: order,
+          include: {
+            registration: reg,
+            checkinType: { select: { name: true } },
+            checkedInByUser: { select: { fullName: true, username: true } },
+            groupSeat: {
+              select: {
+                seatIndex: true,
+                memberDetails: true,
+                claimedBy: { select: { fullName: true, username: true, identities: { select: { email: true }, take: 1 } } },
+              },
+            },
+          },
+        }),
+      );
+      for await (const members of memberPages) {
+        yield members.map((m) => {
+          const seat = m.groupSeat;
+          const flat = flattenMember(seat?.memberDetails);
+          const lead = by(m.registration.user);
+          const isLead = (seat?.seatIndex ?? m.memberIndex + 1) === 1;
+          return [
+            pickField(flat, MEMBER_ALIASES.name, labelById) || by(seat?.claimedBy ?? null) || (isLead ? lead : ''),
+            pickField(flat, MEMBER_ALIASES.email, labelById) ||
+              seat?.claimedBy?.identities?.[0]?.email ||
+              (isLead ? m.registration.user.identities?.[0]?.email || '' : ''),
+            m.registration.ticketType?.name || 'RSVP',
+            lead,
+            String(seat?.seatIndex ?? m.memberIndex + 1),
+            m.checkinType.name,
+            m.checkedInAt.toISOString(),
+            m.recordedAt.toISOString(),
+            by(m.checkedInByUser),
+          ];
+        });
+      }
+    }
+    return exportOutput(format, `${event.title} — Check-ins`, header, rows(), `${event.slug}-checkins`);
+  }
+
+  /** Every coupon use: held mid-checkout (Reserved) or settled (Confirmed). */
+  private couponExport(event: ExportEvent, format: ExportFormat) {
+    const prisma = this.prisma;
+    const header = ['Coupon Code', 'Name', 'Email', 'Ticket Type', 'Discount (INR)', 'Redemption Status', 'Registration Status', 'Payment Status', 'Redeemed At'];
+    async function* rows() {
+      const redemptionPages = pages((page) =>
+        prisma.couponRedemption.findMany({
+          ...page,
+          where: { coupon: { eventId: event.id } },
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          include: {
+            coupon: { select: { code: true } },
+            user: userSelect,
+            registration: { select: { status: true, paymentStatus: true, ticketType: { select: { name: true } } } },
+          },
+        }),
+      );
+      for await (const reds of redemptionPages) {
+        yield reds.map((r) => [
+          r.coupon.code,
+          r.user.fullName || '',
+          r.user.identities?.[0]?.email || '',
+          r.registration.ticketType?.name || 'RSVP',
+          Number(r.discountAmount).toFixed(2),
+          r.status,
+          r.registration.status,
+          r.registration.paymentStatus,
+          r.createdAt.toISOString(),
+        ]);
+      }
+    }
+    return exportOutput(format, `${event.title} — Coupon redemptions`, header, rows(), `${event.slug}-coupons`);
+  }
+}
+
+export type ExportType = 'attendees' | 'transactions' | 'waitlist' | 'checkins' | 'coupons';
+type ExportEvent = { id: string; title: string; slug: string };
+
+const userSelect = {
+  select: { fullName: true, username: true, mobileNumber: true, identities: { select: { email: true }, take: 1 } },
+};
+
+const iso = (d: Date | null) => (d ? d.toISOString() : '');
+
+/** Form-field id → lowercased label, to read member answers keyed by field id. */
+function labelMap(fields: { id: string; label: string }[]): Record<string, string> {
+  return Object.fromEntries(fields.map((f) => [f.id, f.label.toLowerCase()]));
+}
+
+// Group members can be stored either as `{ name, email, mobile, gender,
+// customFields }` or as a flat form-response map keyed by form-field id.
+// Normalise both so a member's real name/email/mobile is never blank.
+const MEMBER_ALIASES: Record<'name' | 'email' | 'mobile', string[]> = {
+  name: ['name', 'full name', 'fullname', 'attendee name'],
+  email: ['email', 'e-mail', 'email address'],
+  mobile: ['mobile', 'phone', 'mobile number', 'phone number', 'contact'],
+};
+
+function flattenMember(m: unknown): Record<string, unknown> {
+  const flat: Record<string, unknown> = {};
+  if (m && typeof m === 'object') {
+    for (const [k, v] of Object.entries(m)) {
+      if (k === 'customFields' && v && typeof v === 'object') {
+        Object.assign(flat, v as Record<string, unknown>);
+      } else {
+        flat[k] = v;
+      }
+    }
+  }
+  return flat;
+}
+
+function pickField(flat: Record<string, unknown>, aliases: string[], labelById: Record<string, string>): string {
+  for (const [k, v] of Object.entries(flat)) {
+    const value = formatAnswer(v).trim();
+    if (!value) continue;
+    if (aliases.includes(k.toLowerCase()) || aliases.includes(labelById[k])) return value;
+  }
+  return '';
 }
 
 /** Every format streams page by page (S54). */
