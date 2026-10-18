@@ -27,6 +27,7 @@ import {
   VideoCamera,
   Briefcase,
   Article,
+  BookOpen,
   ShieldCheck,
   BellRinging,
   EnvelopeSimple,
@@ -116,6 +117,7 @@ export const adminNav: NavGroup[] = [
     items: [
       { href: "/dashboard/support", label: "Support", icon: Lifebuoy, keywords: "tickets help" },
       { href: "/dashboard/content-reports", label: "Content reports", icon: Flag, keywords: "moderation abuse" },
+      { href: "/dashboard/help", label: "Help articles", icon: BookOpen, keywords: "knowledge base faq assist" },
       { href: "/dashboard/iam", label: "Access control", icon: ShieldCheck, keywords: "iam roles capabilities permissions" },
     ],
   },

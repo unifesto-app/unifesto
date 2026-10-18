@@ -43,6 +43,7 @@ import { CareersModule } from './careers/careers.module';
 import { PmModule } from './pm/pm.module';
 import { ContentReportsModule } from './content-reports/content-reports.module';
 import { BlogModule } from './blog/blog.module';
+import { HelpModule } from './help/help.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { EmailCampaignsModule } from './email-campaigns/email-campaigns.module';
 import { SponsorsModule } from './sponsors/sponsors.module';
@@ -186,6 +187,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     PmModule,
     ContentReportsModule,
     BlogModule,
+    HelpModule,
     NotificationsModule,
     EmailCampaignsModule,
     SponsorsModule,
