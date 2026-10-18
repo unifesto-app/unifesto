@@ -212,10 +212,24 @@ describe('paid ticket sold out mid-payment (S10)', () => {
 });
 
 describe('free RSVP (S10)', () => {
+  // The free branch of createPaymentOrder: the only registration path since
+  // the legacy POST /events/:id/register was removed (A31).
   it('cannot take the last seat twice', async () => {
-    const { svc, prisma } = build({ seatsLeft: 0 });
+    const { svc, prisma, payments } = build({ seatsLeft: 0 });
+    (payments as any).computeProcessingFee = () => 0;
+    prisma.event.findUnique = jest.fn(async () => ({
+      id: 'event-1',
+      status: 'PUBLISHED',
+      isRecurring: false,
+      registrations: [],
+      ticketTypes: [
+        { id: 'tt-1', kind: 'INDIVIDUAL', price: 0, isActive: true, isVisible: true, totalQuantity: null, soldCount: 0, perUserLimit: 5 },
+      ],
+    }));
+    (svc.checkout as any).assertMayRegister = jest.fn();
+    (svc.checkout as any).assertTicketNotBlocked = jest.fn();
     await expect(
-      svc.completeRSVP('user-1', 'event-1', { ticketTypeId: 'tt-1', quantity: 1 } as any, {}),
+      svc.createPaymentOrder('event-1', 'user-1', { ticketTypeId: 'tt-1', quantity: 1 } as any),
     ).rejects.toBeInstanceOf(SoldOutError);
     expect(prisma.eventTicket.create).not.toHaveBeenCalled();
   });

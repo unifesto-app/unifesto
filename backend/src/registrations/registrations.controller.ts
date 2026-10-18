@@ -58,19 +58,6 @@ export class RegistrationsController {
     private readonly waitlistService: WaitlistService,
   ) {}
 
-  @Post('events/:id/register')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Register for an event (RSVP or buy tickets)' })
-  @ApiResponse({ status: 201 })
-  async registerForEvent(
-    @Request() req,
-    @Param('id') id: string,
-    @Body() dto: RegisterForEventDto,
-  ) {
-    return this.registrationsService.registerForEvent(req.user.id, id, dto);
-  }
-
   @Post('events/:id/register/create-order')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)

@@ -18,25 +18,6 @@ export interface CreateRegistrationData {
   couponCode?: string;
 }
 
-export const registerRSVP = async (eventId: string, data: {
-  ticketTypeId?: string;
-  quantity: number;
-  groupSize?: number;
-  groupMembers?: Array<Record<string, any>>;
-  formResponses?: Record<string, any>;
-}) => {
-  const response = await makeAuthenticatedRequest(`/events/${eventId}/register`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Registration failed');
-  }
-  return response.json();
-};
-
 export const createPaymentOrder = async (eventId: string, data: {
   ticketTypeId: string;
   quantity: number;
@@ -128,7 +109,7 @@ export type WaitlistStatus =
   | 'DECLINED';
 
 /**
- * Returned by `registerRSVP` / `createPaymentOrder` when the ticket had sold
+ * Returned by `createPaymentOrder` when the ticket had sold
  * out and the user was queued instead. There is no order to pay yet, so
  * callers must check `isWaitlisted` before opening the Razorpay sheet.
  */

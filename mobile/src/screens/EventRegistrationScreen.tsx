@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CalendarX, Ticket as TicketIcon, Timer } from '@unifesto/unicon/react-native';
+import { CalendarX, Ticket as TicketIcon } from '@unifesto/unicon/react-native';
 import { useEventRegistration } from '../hooks/useEventRegistration';
 import { isWaitlistOnly } from '../lib/api/tickets';
 import Skeleton from '../components/Skeleton';
@@ -35,7 +35,7 @@ export default function EventRegistrationScreen() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (r.verifying) return true;
-      if (r.loading || !r.event || r.gate.needed || r.expired || !r.hasTickets) return false;
+      if (r.loading || !r.event || r.gate.needed || !r.hasTickets) return false;
       if (r.step !== 'ticket') r.back();
       else r.confirmLeave();
       return true;
@@ -109,22 +109,6 @@ export default function EventRegistrationScreen() {
     );
   }
 
-  if (r.expired) {
-    return (
-      <View style={styles.flex}>
-        <CosmosBackdrop horizon={false} />
-        <FlowHeader title={r.event.title} step={null} secondsLeft={null} onBack={null} onClose={close} />
-        <StateView
-          icon={<Timer size={56} color={c.danger} weight="duotone" />}
-          title="Time's up"
-          body="We held your spot for 15 minutes. Open registration again to pick up where you left off."
-          action="Back to event"
-          onAction={close}
-        />
-      </View>
-    );
-  }
-
   const waitlist = !!r.selectedTicket && isWaitlistOnly(r.selectedTicket);
   const totalLabel = r.total === 0 ? 'Free' : money(r.symbol, r.total);
   const cta =
@@ -144,7 +128,7 @@ export default function EventRegistrationScreen() {
         title={r.event.title}
         step={r.step}
         steps={r.steps}
-        secondsLeft={r.secondsLeft}
+        secondsLeft={null}
         onBack={r.step !== 'ticket' ? r.back : null}
         onClose={r.confirmLeave}
       />
