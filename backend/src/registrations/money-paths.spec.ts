@@ -177,7 +177,7 @@ describe('paid ticket sold out mid-payment (S10)', () => {
     expect(coupons.confirmByRegistration).not.toHaveBeenCalled();
     expect(prisma.event.update).not.toHaveBeenCalled();
     expect(prisma.eventTicket.create).not.toHaveBeenCalled();
-    expect(payments.refund).toHaveBeenCalledWith('pay_1', 510);
+    expect(payments.refund).toHaveBeenCalledWith('pay_1', 510, expect.any(String), expect.any(Object));
     expect(prisma.eventRegistration.update).toHaveBeenLastCalledWith({
       where: { id: 'reg-1' },
       data: expect.objectContaining({ paymentStatus: PaymentStatus.REFUNDED, refundDueAt: null }),

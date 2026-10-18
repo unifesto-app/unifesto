@@ -76,7 +76,7 @@ describe('SessionsService session capacity', () => {
         processingFee: new Prisma.Decimal(0),
       }),
     });
-    expect(payments.refund).toHaveBeenCalledWith('pay_1', 102);
+    expect(payments.refund).toHaveBeenCalledWith('pay_1', 102, expect.any(String), expect.any(Object));
   });
 
   it('a free register that loses the last seat fails (transaction rolls back)', async () => {

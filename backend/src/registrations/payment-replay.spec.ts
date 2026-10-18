@@ -207,6 +207,48 @@ describe('RegistrationsService payment replay guards', () => {
     });
   });
 
+  describe('refund.failed webhook (A15)', () => {
+    const failed = (notes: Record<string, string>) =>
+      JSON.stringify({
+        event: 'refund.failed',
+        payload: { refund: { entity: { id: 'rfnd_1', amount: 6000, payment_id: 'pay_1', notes } } },
+      });
+
+    it('reverses the refunded amount and notes the request, once per refund', async () => {
+      const { svc, prisma } = build({});
+      prisma.eventRegistration.update.mockResolvedValue({ id: 'reg-1', refundedAmount: 0 });
+      prisma.refundRequest = {
+        findUnique: jest.fn(async () => ({ adminNote: null })),
+        update: jest.fn(async () => ({})),
+      };
+      const notes = { registrationId: 'reg-1', refundRequestId: 'rr-1' };
+      await svc.handleRazorpayWebhook(failed(notes), 'sig', 'evt_rf1');
+      expect(prisma.eventRegistration.update).toHaveBeenCalledWith({
+        where: { id: 'reg-1' },
+        data: { refundedAmount: { decrement: 60 } },
+      });
+      expect(prisma.eventRegistration.update).toHaveBeenCalledWith({
+        where: { id: 'reg-1' },
+        data: { paymentStatus: PaymentStatus.PAID },
+      });
+      expect(prisma.refundRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { adminNote: expect.stringContaining('rfnd_1') } }),
+      );
+
+      // A second delivery of the same refund changes nothing.
+      prisma.webhookEvent.createMany.mockResolvedValueOnce({ count: 0 });
+      prisma.eventRegistration.update.mockClear();
+      await svc.handleRazorpayWebhook(failed(notes), 'sig', 'evt_rf2');
+      expect(prisma.eventRegistration.update).not.toHaveBeenCalled();
+    });
+
+    it('only logs a failed auto refund', async () => {
+      const { svc, prisma } = build({});
+      await svc.handleRazorpayWebhook(failed({ refundKey: 'auto:reg:reg-1' }), 'sig', 'evt_rf3');
+      expect(prisma.eventRegistration.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('createPaymentOrder retry cleanup (S13)', () => {
     const run = async (stale: any) => {
       const { svc, prisma } = build({ eventRegs: [stale] });

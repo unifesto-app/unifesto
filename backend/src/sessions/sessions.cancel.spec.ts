@@ -38,7 +38,7 @@ describe('SessionsService.cancelSession', () => {
   it('refunds the ticket price, not the processing fee', async () => {
     const { svc, prisma, payments } = build();
     await expect(svc.cancelSession('host', 's-1')).resolves.toMatchObject({ refunded: 1, totalPaid: 1 });
-    expect(payments.refund).toHaveBeenCalledWith('pay_1', 100);
+    expect(payments.refund).toHaveBeenCalledWith('pay_1', 100, expect.any(String), expect.any(Object));
     expect(prisma.sessionRegistration.updateMany).toHaveBeenCalledWith({
       where: { id: { in: ['sr-1'] }, status: RegistrationStatus.REGISTERED },
       data: expect.objectContaining({ status: RegistrationStatus.CANCELLED, refundDueAt: expect.any(Date) }),
