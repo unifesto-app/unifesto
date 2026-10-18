@@ -60,26 +60,25 @@ Worked back from the date, with room for one store rejection. Only the release d
 |---|---|---|
 | J, T, A, K, D, O | **Platform audit 2026-10-18 turned into the NEXT batch.** J13 deploy gate first, then T1, J8–J12, A19, A24, A25 and T8's hotfix with the next backend deploy; K8–K10 on web; D29 daily until the support (217 open) and WhatsApp (121 unread) backlog is clear; O17 before the 20 Nov freeze. Track S shipped on 2026-10-16 | next |
 | O | Guards merged (#109), secrets + `native` label done. OTA stays blocked until 5.0.0 on **2 Dec** (D6); `update:production` now refuses until the 5.0.0 runtime is recorded. Left: deploy #109 migrations + Apex with the S deploy, compare CI fingerprint once with `eas fingerprint:compare`, then O2–O5 on the [schedule](#500--release-wed-2-dec-2026) | next |
-| H | White-label P1–P3 merged (#106), not deployed. **Needs you:** Cloudflare SSL for SaaS + env (H8), then deploy (H10) and verify (H11) | next |
+| H | White-label P1–P3 live since the 14 Oct deploy, verified 16 Oct (H8, H10, H11 done). #146 (H12, H22, H24) waits for the next deploy. Left: H25 fixes, H14, H15, H20 (Resend plan), H23 decision | next |
 | P | Marketing to 5.0.0: "What is Unifesto?" is live (P0). Next: accounts, templates, baseline, content bank (P1–P4), W1 video Tue 20 Oct | next |
 
 ## Suggested order
 
 There are no dates, only a sensible sequence. Each step makes the next one cheaper.
 
-0. **J13** first: deploy only CI-green `main` with a rollback image. Then the 2026-10-18 audit batch with the next backend deploy: **T1**, **J8–J12**, **A19**, **A24**, **A25** and **T8**'s hotfix. Track S shipped in the 2026-10-16 deploy.
-1. **S9–S16** (money races) and **S17–S22** (outage risks), then **O7–O16**, so the 5.0.0 runtime is protected from day one. **O1–O6** follow the [5.0.0 schedule](#500--release-wed-2-dec-2026). No mobile change reaches users before 2 Dec.
-1. **T1** with the next backend deploy (Co-Curator escalation to money). Then **T4–T6** before any custom client deal is signed, then **T7–T9**. T8 includes A1's checkout.
-1. Growth blockers on web: **K8** (past and live events in public lists), **K9** (event page fixes, remove the fake /docs page), **K10** (register and pay on the web). **D29** daily until the support and WhatsApp backlog is clear. **O17** and every mobile item meant for 5.0.0 merged by the Fri 20 Nov freeze.
-1. **A1–A3**: billing checkout + confirm dialogs. These are the only items that block money or trust.
-2. **Track 0**: the cleanup. It removes about 10k lines with no behaviour change, so everything after it touches less code.
-3. **B1–B4**: the backend features that already exist and only need a button.
-4. **H**: finish white-label P1, then P2 and P3.
-5. **C**: notifications (inbox first).
-6. **B5+**: exports, search, paging.
-7. **G**: mobile scope handoffs, then cosmos migration of what stays.
-8. **D, E, F**: Unifesto Assist (support), sponsors/partners, feedback.
-9. New product: **L** live engagement, **K** discovery, then the rest.
+1. **J13** first: deploy only CI-green `main` with a rollback image. Then the 2026-10-18 audit batch with the next backend deploy: **T1**, **J8–J12**, **A19**, **A24**, **A25** and **T8**'s hotfix. Track S shipped in the 2026-10-16 deploy.
+2. **O1–O6** on the [5.0.0 schedule](#500--release-wed-2-dec-2026) (O7–O16 guards are merged). No mobile change reaches users before 2 Dec.
+3. **T4–T6** before any custom client deal is signed, then **T7–T9**. T8 includes A1's checkout.
+4. Growth blockers on web: **K8** (past and live events in public lists), **K9** (event page fixes, remove the fake /docs page), **K10** (register and pay on the web). **D29** daily until the support and WhatsApp backlog is clear. **O17** and every mobile item meant for 5.0.0 merged by the Fri 20 Nov freeze.
+5. **A21** (freeze the fee per sale) before **A9** (organiser platform fee), then **A26–A32**: the rest of money and trust.
+6. **B4**: the last backend feature that only needs a button.
+7. **H**: H25 fixes, then H14, H15, H20.
+8. **C**: notifications (C8 consent before any marketing send).
+9. **B5+**: exports, search, paging.
+10. **G**: mobile scope handoffs, then cosmos migration of what stays.
+11. **D, E, F**: Unifesto Assist (support), sponsors/partners, feedback.
+12. New product: **L** live engagement, **K** discovery, then the rest.
 
 ---
 
@@ -266,9 +265,9 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | A10 | **Notify existing organisers before the platform fee starts.** | planned |
 | A11 | **Site states both fees everywhere (extend PR #180).** | planned |
 | A12 | **Pricing decisions from the India price-sensitivity analysis.** | next |
-| A13 | **P0 live: webhook settles any registration from buyer-set notes, no amount check.** `resolveRegistrationIdForOrder` reads `paymentData.notes.registrationId` (set by the browser in Checkout) before the server-fetched order notes (`registration-payments.service.ts:511`); nothing compares captured `amount`/`currency` to the row. Pay ₹1 on any unmatched order (e.g. a session) with notes → a ₹5000 ticket goes PAID. Same in stays (`stay-bookings.service.ts:651`) and seat add-ons (`team-changes.service.ts:457`). Fix: only `fetchOrderNotes(orderId)`; require `amount === razorpayAmount*100` and INR before any claim | next |
-| A14 | **Refund idempotency after a lost Razorpay response.** Any error from `payments.refund` (incl. timeout after Razorpay accepted) is treated as "nothing moved" and the claim released (`refunds.service.ts:546-558`, `:471-480`) → re-approve refunds twice. Auto-refund crons (registrations, sessions, seats, stays) retry forever on the same case. Stuck PROCESSING has no exit and blocks new requests. ₹0 refunds get marked APPROVED (`:566-580`). Fix: `X-Refund-Idempotency` keyed by request id; on non-4xx keep PROCESSING and check Razorpay refunds by `notes.refundRequestId`; admin "resolve stuck refund"; throw on `refundedNow === 0` | next |
-| A15 | **Handle `refund.processed` / `refund.failed` webhooks.** None handled: a refund that fails later stays REFUNDED/APPROVED with seats released, attendee never paid | next |
+| A13 | **P0 live: webhook settles any registration from buyer-set notes, no amount check.** `resolveRegistrationIdForOrder` reads `paymentData.notes.registrationId` (set by the browser in Checkout) before the server-fetched order notes (`registration-payments.service.ts:511`); nothing compares captured `amount`/`currency` to the row. Pay ₹1 on any unmatched order (e.g. a session) with notes → a ₹5000 ticket goes PAID. Same in stays (`stay-bookings.service.ts:651`) and seat add-ons (`team-changes.service.ts:457`). Fix: only `fetchOrderNotes(orderId)`; require `amount === razorpayAmount*100` and INR before any claim | done (#183), not deployed |
+| A14 | **Refund idempotency after a lost Razorpay response.** Any error from `payments.refund` (incl. timeout after Razorpay accepted) is treated as "nothing moved" and the claim released (`refunds.service.ts:546-558`, `:471-480`) → re-approve refunds twice. Auto-refund crons (registrations, sessions, seats, stays) retry forever on the same case. Stuck PROCESSING has no exit and blocks new requests. ₹0 refunds get marked APPROVED (`:566-580`). Fix: `X-Refund-Idempotency` keyed by request id; on non-4xx keep PROCESSING and check Razorpay refunds by `notes.refundRequestId`; admin "resolve stuck refund"; throw on `refundedNow === 0` | done (#184), not deployed |
+| A15 | **Handle `refund.processed` / `refund.failed` webhooks.** None handled: a refund that fails later stays REFUNDED/APPROVED with seats released, attendee never paid | done (#184), not deployed |
 | A16 | **Paid sessions: lockout and webhook confirm.** Pending paid row defaults to `status=REGISTERED`, so after closing the payment sheet every retry says "Already registered" (`sessions.service.ts:762`). Webhook only logs session captures (`registration-payments.service.ts:603`): app killed before verify = captured, no seat, no refund. Fix: reuse/reissue order for PENDING/FAILED rows; webhook runs the same claim as `verifyPayment` | done (#185), not deployed |
 | A17 | **Session revenue in payouts and financials.** `Payout.eventId` is required and payouts/financials/timeseries never read `sessionRegistration`: session money can't be paid out or seen. Fix: session payout source (nullable eventId + sessionId) folded into the aggregates, or block paid sessions until then | planned |
 | A18 | **Plan upgrade: server-side activation.** Only client verify activates (`subscription.service.ts:198`); a captured `sub_` payment via webhook is logged as unrecorded. Fix: webhook branch on `notes.spaceId`+`plan` calling the idempotent activation (unique `subscription_history.payment_id`); add plan payments as a reconciliation source (now false MISSING_IN_PLATFORM). Overlaps T8 | dropped (2026-10-18): merged into T8 (doc R8 already includes order.paid webhook activation; |
@@ -291,9 +290,9 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| B1 | **Announce-to-attendees button on Space event page.** button on Space event page (backend `POST /events/:eventId/announcements` exists, no UI) | next |
-| B2 | **Bulk check-in in Space.** Bulk check-in in Space (`POST /checkin/event/:id/bulk` + client `registrations-api.ts:850` exist) | next |
-| B3 | Session edit after create in Space (`updateSession` exists) | next |
+| B1 | **Announce-to-attendees button on Space event page.** button on Space event page (backend `POST /events/:eventId/announcements` exists, no UI) | done (#153), live |
+| B2 | **Bulk check-in in Space.** Bulk check-in in Space (`POST /checkin/event/:id/bulk` + client `registrations-api.ts:850` exist) | done (#154), live |
+| B3 | Session edit after create in Space (`updateSession` exists) | done (#155), live |
 | B4 | **Team-change window toggle in event settings.** Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | planned |
 | B5 | **CSV exports for Space and Apex lists.** CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | planned |
 | B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: orphaned payments (content reports, request queues and support moved to D8) | planned |
@@ -733,3 +732,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-18** · A4 money-path review done (payments, refunds, payouts, reconciliation, webhooks). S9–S16 fixes hold. New: A13 (P0 live, webhook trusts buyer-set notes + no amount check), A14–A16 + A21 next, A17–A20, A22–A23 planned.
 
 - **2026-10-18** · Platform audit (backend, mobile, Space, Apex, web: 30 code slices, 978 findings with 1 critical and 66 high verified, 492 medium; visual audit of web, Space, Apex and the iOS app; market analysis over 15 domains) turned into board work. Track R (Deals, billing and access) renamed **T** because board key R is the 5.0.0 release track: R1–R12 are now T1–T12. 63 new tasks, 99 updates. A16, C1, E6, K4 done; A18 and G6 dropped; A8, C7, D16, D18, D28, E2, E4, G7, H9, K7, M2, M4, N2, N3 parked. NEXT batch: J13, T1, T8, A19, A24, A25, J8–J12, K8–K10, D29, O17.
+- **2026-10-18** · Stale rows fixed after the audit: Now › H (H8/H10/H11 were done), Suggested order drops finished S, O7–O16, A1–A3, Track 0, B1–B3 and H P1–P3 and is renumbered; A13 (#183), A14 + A15 (#184) done, not deployed; B1–B3 marked live (#153–#155).
