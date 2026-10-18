@@ -113,7 +113,6 @@ export function DoorVisual() {
 export function MoneyVisual() {
   const lines: [string, string][] = [
     ["Collected", "₹1,42,650"],
-    ["Platform fee", "−₹2,140"],
     ["Refunds", "−₹2,097"],
   ];
   return (
@@ -127,7 +126,7 @@ export function MoneyVisual() {
         ))}
         <div className="flex items-center justify-between pt-1">
           <span className="text-[11px] text-paper">Net payout</span>
-          <span className="font-display tabular text-base text-paper">₹1,38,413</span>
+          <span className="font-display tabular text-base text-paper">₹1,40,553</span>
         </div>
       </div>
       <div className="mt-3 flex items-center gap-1.5 rounded-md bg-primary/[0.08] px-2.5 py-1.5">

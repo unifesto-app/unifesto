@@ -102,14 +102,14 @@ const faqs = [
     category: "Pricing & Billing",
     question: "Is Unifesto free for students?",
     answer:
-      "Yes, discovery, registration, and your passes are free for attendees. You only pay if an individual event charges a ticket fee.",
+      "Yes, discovery, registration, and your passes are free for attendees. You only pay if an event sells paid tickets, plus a 5% processing fee shown at checkout.",
   },
   {
     id: "pr-2",
     category: "Pricing & Billing",
     question: "How does billing work for organisers?",
     answer:
-      "Organisers can host free events at no cost. Paid tooling and payment collection are billed transparently per event. Reach out and we'll walk your team through it.",
+      "Free RSVP events cost nothing. On paid tickets, buyers pay a 5% processing fee at checkout and you keep 100% of the ticket price. Pro and Enterprise plans add features for a monthly price. See the pricing page for details.",
   },
   {
     id: "vf-1",

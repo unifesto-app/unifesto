@@ -8,23 +8,23 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { FAQ_PRICING, LAUNCH_OFFER_ENDS, PLANS, SITE, inr } from "@/lib/site";
+import { FAQ_PRICING, LAUNCH_OFFER_ENDS, PLANS, PROCESSING_FEE_PERCENT, SITE, inr } from "@/lib/site";
 
 export const metadata: Metadata = withSocial({
-  title: "Pricing: free RSVP events, from 1% per paid ticket",
-  description: `Free RSVP events on every plan. Paid tickets from 2.5% on Starter, 1.5% on Pro and 1% on Enterprise at launch pricing, below the 4% to 6% typical in India. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
+  title: "Pricing: free RSVP events, you keep 100% of paid tickets",
+  description: `Free RSVP events on every plan. On paid tickets buyers pay a ${PROCESSING_FEE_PERCENT}% processing fee at checkout and organisers keep 100% of the ticket price. Plans differ by features and monthly price. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
   alternates: { canonical: "/pricing" },
-}, { title: "Unifesto pricing", description: "Free RSVP events. Paid tickets from 1%. Launch pricing, locked in." });
+}, { title: "Unifesto pricing", description: "Free RSVP events. Keep 100% of every paid ticket. Launch pricing, locked in." });
 
-/* What one ₹500 ticket costs the organiser in platform fees. The market
-   band is the 4% to 6% typical of Indian ticketing platforms. */
+/* Where one ₹500 paid ticket goes. Same on every plan. */
 const TICKET = 500;
-const COMPARE = [
-  { label: "Typical platform, 6%", fee: 0.06 },
-  { label: "Typical platform, 4%", fee: 0.04 },
-  ...PLANS.map((p) => ({ label: `Unifesto ${p.name}, ${p.fee}%`, fee: p.fee / 100, ours: true })),
+const FEE = (TICKET * PROCESSING_FEE_PERCENT) / 100;
+const BREAKDOWN = [
+  { label: "Ticket price", value: TICKET },
+  { label: `Processing fee, ${PROCESSING_FEE_PERCENT}%, paid by the buyer`, value: FEE },
+  { label: "Buyer pays", value: TICKET + FEE },
+  { label: "You keep", value: TICKET, ours: true },
 ];
-const MAX = Math.max(...COMPARE.map((c) => c.fee));
 
 const productLd = {
   "@context": "https://schema.org",
@@ -49,7 +49,7 @@ export default function PricingPage() {
       <Navbar />
 
       <PageHero
-        lines={["Free events stay free.", "Paid ones cost less."]}
+        lines={["Free events stay free.", "Paid ones pay you in full."]}
         accentFrom={1}
         lede={`Launch pricing: Spaces that join before ${LAUNCH_OFFER_ENDS} keep these prices. Every plan includes the Unifesto app for attendees and Crew.`}
         size="md"
@@ -84,9 +84,8 @@ export default function PricingPage() {
                 </p>
 
                 <p className="mt-5 flex items-baseline gap-2 rounded-md bg-paper/[0.06] px-3 py-2.5 text-sm text-paper">
-                  <span className="tabular font-display">{plan.fee}%</span>
-                  <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
-                  <span className="text-paper/70">per paid ticket</span>
+                  <span className="tabular font-display">100%</span>
+                  <span className="text-paper/70">of every paid ticket is yours</span>
                 </p>
 
                 <Link href={plan.cta.href} className={`btn mt-6 w-full ${featured ? "btn-ink" : "btn-secondary"}`}>
@@ -107,7 +106,7 @@ export default function PricingPage() {
           })}
         </div>
         <p className="mt-8 text-center text-sm text-paper/55">
-          Prices exclude 18% GST. Razorpay payment gateway charges are separate. Free RSVP events carry no platform fee on any plan.
+          Plan prices exclude 18% GST. On paid tickets, buyers pay a {PROCESSING_FEE_PERCENT}% processing fee at checkout that covers Razorpay&rsquo;s charges. Free RSVP events have no fee on any plan.
         </p>
       </Section>
 
@@ -118,21 +117,16 @@ export default function PricingPage() {
               What a {inr(TICKET)} ticket costs you.
             </h2>
             <p data-reveal="blur" className="mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-ink/70">
-              Platform fees on one {inr(TICKET)} ticket. Indian ticketing platforms typically charge 4% to 6%. On Unifesto the same ticket costs you a fraction of that, and free events cost nothing.
+              Nothing. The buyer pays a {PROCESSING_FEE_PERCENT}% processing fee at checkout, payment gateway charges included, and the full ticket price reaches your Space. Same on every plan, and free events cost nobody anything.
             </p>
           </div>
           <table className="w-full text-sm">
-            <caption className="sr-only">Platform fee on a {inr(TICKET)} ticket</caption>
+            <caption className="sr-only">Where a {inr(TICKET)} ticket goes</caption>
             <tbody>
-              {COMPARE.map((c) => (
-                <tr key={c.label}>
-                  <th scope="row" className={`w-44 py-2.5 pr-4 text-left font-normal ${"ours" in c ? "text-ink" : "text-ink/55"}`}>{c.label}</th>
-                  <td className="py-2.5">
-                    <div className="h-2 rounded-full bg-white/[0.05]">
-                      <div data-reveal="fill" className={`h-full origin-left rounded-full ${"ours" in c ? "bg-primary" : "bg-paper/25"}`} style={{ transform: `scaleX(${c.fee / MAX})` }} />
-                    </div>
-                  </td>
-                  <td className={`tabular w-20 py-2.5 pl-4 text-right ${"ours" in c ? "text-ink" : "text-ink/55"}`}>₹{(TICKET * c.fee).toFixed(2).replace(/\.00$/, "")}</td>
+              {BREAKDOWN.map((c) => (
+                <tr key={c.label} className="shadow-[inset_0_-1px_0_rgb(var(--glow)/0.06)]">
+                  <th scope="row" className={`py-2.5 pr-4 text-left font-normal ${"ours" in c ? "text-ink" : "text-ink/55"}`}>{c.label}</th>
+                  <td className={`tabular py-2.5 pl-4 text-right ${"ours" in c ? "font-display text-base text-ink" : "text-ink/70"}`}>{inr(c.value)}</td>
                 </tr>
               ))}
             </tbody>

@@ -6,6 +6,7 @@ import {
   STAY_STEPS,
   HACKATHON_STAGES,
   LAUNCH_OFFER_ENDS,
+  PROCESSING_FEE_PERCENT,
   PILLARS,
   PLANS,
   PROOF,
@@ -21,7 +22,7 @@ import { getPosts } from "@/lib/api/blog";
 export const revalidate = 3600;
 
 const plan = (p: (typeof PLANS)[number]) =>
-  `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}; ${p.fee}% per paid ticket (standard ${p.standardFee}%). Includes: ${p.includes.join("; ")}.`;
+  `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}. Includes: ${p.includes.join("; ")}.`;
 
 export async function GET() {
   const posts = await getPosts();
@@ -42,7 +43,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
-- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing
+- [Pricing](${SITE.url}/pricing): plans, the 5% buyer processing fee and launch pricing
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
 - [Request a Space](${SITE.url}/request-space): how organisers get started
@@ -75,6 +76,8 @@ Free on the App Store (${SITE.appStore}) and Google Play (${SITE.playStore}).
 ${APP_FEATURES.map((f) => `- ${f.title}: ${f.body}`).join("\n")}
 
 ## Pricing (launch pricing for Spaces joining before ${LAUNCH_OFFER_ENDS})
+
+On paid tickets the buyer pays a ${PROCESSING_FEE_PERCENT}% processing fee at checkout and the organiser keeps 100% of the ticket price, on every plan. Free RSVP events have no fee.
 
 ${PLANS.map(plan).join("\n")}
 

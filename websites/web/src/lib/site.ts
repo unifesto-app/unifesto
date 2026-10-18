@@ -244,7 +244,7 @@ export const FAQ_HUDDLE: Faq[] = [
   },
   {
     q: "Which plan includes it?",
-    a: "Unifesto Huddle is part of the Pro plan. Free sessions carry no fee; paid sessions use the same platform fee as tickets.",
+    a: "Unifesto Huddle is part of the Pro plan. Free sessions carry no fee; on paid sessions buyers pay the same 5% processing fee as tickets.",
   },
 ];
 
@@ -275,11 +275,17 @@ export const APP_FEATURES = [
 
 /* ── Pricing ────────────────────────────────────────────────────────── */
 
-/* Launch pricing, shown as a discount off the standard price. Indian
-   ticketing platforms typically charge 4% to 6% per paid ticket; Unifesto
-   undercuts that on every plan. Keep in sync with PlanConfig in the backend
-   (processingFeePercent, monthlyPrice, annualPrice) before publishing. */
+/* Launch pricing, shown as a discount off the standard monthly price.
+   Plans differ by features and monthly price, never by ticket fee. Keep in
+   sync with PlanConfig (monthlyPrice, annualPrice) before publishing. */
 export const LAUNCH_OFFER_ENDS = "31 March 2027";
+
+/* Processing fee the BUYER pays on top of every paid ticket, percent. The
+   organiser keeps 100% of the ticket price; Razorpay's cost comes out of
+   this fee. Mirrors PROCESSING_FEE_PERCENT in the backend
+   (GET /config/processing-fee). Track R10 in docs/version-5.md will have
+   /pricing read the rate card from the API instead of this constant. */
+export const PROCESSING_FEE_PERCENT = 5;
 
 export type Plan = {
   id: "starter" | "pro" | "enterprise";
@@ -289,9 +295,6 @@ export type Plan = {
   price: number | null;
   standardPrice: number | null;
   annualMonthly: number | null;
-  /** Platform fee per paid ticket, percent. */
-  fee: number;
-  standardFee: number;
   includes: string[];
   cta: { label: string; href: string };
 };
@@ -304,10 +307,8 @@ export const PLANS: Plan[] = [
     price: 0,
     standardPrice: 0,
     annualMonthly: 0,
-    fee: 2.5,
-    standardFee: 4,
     includes: [
-      "Unlimited free RSVP events, no platform fee",
+      "Unlimited free RSVP events, no fee",
       "Paid and group tickets with Razorpay",
       "Multi-point QR check-in from the app",
       "Coupons, custom questions, sub-events",
@@ -324,8 +325,6 @@ export const PLANS: Plan[] = [
     price: 1499,
     standardPrice: 2999,
     annualMonthly: 1199,
-    fee: 1.5,
-    standardFee: 3,
     includes: [
       "Everything in Starter",
       "Waitlists and recurring event series",
@@ -345,8 +344,6 @@ export const PLANS: Plan[] = [
     price: null,
     standardPrice: null,
     annualMonthly: null,
-    fee: 1,
-    standardFee: 2,
     includes: [
       "Everything in Pro",
       "White-label: colour, favicon, email sender",
@@ -370,7 +367,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: "Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further.",
+    a: "Yes. Free RSVP events cost nothing on any plan, and the Starter plan is free. On paid tickets you keep 100% of the ticket price; buyers pay a 5% processing fee at checkout. Pro and Enterprise add features for a monthly price, not a different fee.",
   },
   {
     q: "How does check-in work?",
@@ -412,7 +409,7 @@ export const FAQ_ORGANISERS: Faq[] = [
 export const FAQ_APP: Faq[] = [
   {
     q: "Is the Unifesto app free?",
-    a: "Yes. The Unifesto app is free on the App Store and Google Play. You only pay for paid event tickets, through Razorpay.",
+    a: "Yes. The Unifesto app is free on the App Store and Google Play. You only pay for paid event tickets, through Razorpay, plus a 5% processing fee shown at checkout.",
   },
   {
     q: "Do I need the app to attend an event?",
@@ -446,15 +443,19 @@ export const FAQ_HACKATHONS: Faq[] = [
 export const FAQ_PRICING: Faq[] = [
   {
     q: "What does launch pricing mean?",
-    a: `Spaces that join before ${LAUNCH_OFFER_ENDS} lock in the discounted monthly price and platform fee shown on this page.`,
+    a: `Spaces that join before ${LAUNCH_OFFER_ENDS} lock in the discounted monthly price shown on this page.`,
   },
   {
     q: "Are free events really free?",
-    a: "Yes. Free RSVP events carry no platform fee on any plan.",
+    a: "Yes. Free RSVP events carry no fee for you or your attendees, on any plan.",
+  },
+  {
+    q: "What does a paid ticket cost the organiser?",
+    a: "Nothing. Buyers pay a 5% processing fee at checkout on top of the ticket price, and you keep 100% of the ticket price. The fee is the same on every plan.",
   },
   {
     q: "Are payment gateway charges included?",
-    a: "No. Razorpay's payment gateway charges are separate from the Unifesto platform fee. All prices exclude 18% GST.",
+    a: "Yes. Razorpay's charges come out of the 5% processing fee, so there is nothing extra to pay. Plan prices exclude 18% GST.",
   },
   {
     q: "Can I switch plans later?",

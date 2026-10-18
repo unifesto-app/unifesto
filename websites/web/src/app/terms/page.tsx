@@ -106,7 +106,7 @@ const sections: LegalSection[] = [
     body: (
       <ul>
         <li>Payments are processed by Razorpay in Indian rupees. Prices are set by organisers and shown before you pay.</li>
-        <li>Unifesto charges organisers a platform fee on paid tickets, as listed on our <a href="/pricing">pricing page</a>. A processing fee may be shown to attendees at checkout; it is not refundable. Fees exclude GST, which is charged as applicable.</li>
+        <li>Attendees pay a processing fee on paid tickets, shown at checkout and listed on our <a href="/pricing">pricing page</a>; it is not refundable. Unifesto does not deduct a fee from the ticket price paid to organisers. Plan subscription prices exclude GST, which is charged as applicable.</li>
         <li>Organisers receive payouts to a verified bank account on their Space, after deducting fees and refunds. We may hold or adjust a payout to cover refunds, chargebacks, or suspected fraud.</li>
         <li>Refunds follow our <a href="/refund">Refund and Cancellation Policy</a>.</li>
       </ul>
