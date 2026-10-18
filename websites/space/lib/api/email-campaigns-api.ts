@@ -100,7 +100,7 @@ export async function createCampaign(
 
 export async function listCampaigns(
   spaceId: string,
-  params?: { page?: number; limit?: number }
+  params?: { page?: number; limit?: number; search?: string }
 ): Promise<{ data: CampaignListResponse | null; error: ApiError | null }> {
   return apiCall<CampaignListResponse>(
     backendClient.get(`${base(spaceId)}/campaigns`, { params })
