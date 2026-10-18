@@ -27,6 +27,6 @@ import { CertificateIssuanceQueue } from './certificates.queue';
     CertificateRenderService,
     CertificateIssuanceQueue,
   ],
-  exports: [CertificatesService],
+  exports: [CertificatesService, CertificateIssuanceQueue],
 })
 export class CertificatesModule {}

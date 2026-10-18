@@ -4058,6 +4058,9 @@ model CertificateTemplate {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  /// Retired (B19): hidden and no longer issuable, kept because certificates
+  /// were issued from it and their verify links must keep working.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   certificates Certificate[]
 
@@ -4124,6 +4127,9 @@ model Certificate {
 
   revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
   revokedReason String?   @map("revoked_reason") @db.Text
+  /// Revoked one at a time, for a reason (B19): batch re-runs and "Reissue
+  /// all" leave it revoked. A bulk "Revoke all" (redesign) leaves this false.
+  revokedForCause Boolean @default(false) @map("revoked_for_cause")
 
   // When the recipient was last emailed a link to this certificate. Null means
   // never delivered (no email on file, or a send that failed) — so this doubles

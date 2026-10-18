@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { StorageModule } from '../storage/storage.module';
+import { CertificatesModule } from '../certificates/certificates.module';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { ReportDataService } from './report-data.service';
@@ -14,7 +15,8 @@ import { ReportRenderService } from './report-render.service';
  * S3 uploads and AuthModule for the JwtAuthGuard on every (organiser-only) route.
  */
 @Module({
-  imports: [AuthModule, StorageModule],
+  // CertificatesModule for its worker queue: report PDFs render in cert-worker.
+  imports: [AuthModule, StorageModule, CertificatesModule],
   controllers: [ReportsController],
   providers: [ReportsService, ReportDataService, ReportRenderService],
   exports: [ReportsService],

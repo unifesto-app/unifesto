@@ -208,9 +208,9 @@ export default function EventCertificatesPage() {
     const issued = tpl._count?.certificates ?? 0;
     const warning =
       issued > 0
-        ? `Delete "${tpl.name}"? This also permanently deletes ${issued} issued certificate${
+        ? `Remove "${tpl.name}"? You can't issue from it any more. The ${issued} certificate${
             issued === 1 ? "" : "s"
-          } and breaks their verify links. This cannot be undone.`
+          } already issued from it stay valid and their verify links keep working.`
         : `Delete "${tpl.name}"? This cannot be undone.`;
     if (!window.confirm(warning)) return;
 
@@ -218,11 +218,6 @@ export default function EventCertificatesPage() {
     if (err || !data) return setError(err?.message ?? "Failed to delete template");
     setTemplates((t) => t.filter((x) => x.id !== tpl.id));
     if (issueTemplateId === tpl.id) setIssueTemplateId("");
-    // Issued certificates from this template are gone too — refresh the list.
-    if (issued > 0) {
-      const certs = await getEventCertificates(eventId);
-      setCertificates(certs.data ?? []);
-    }
   };
 
   const handleRevoke = async (id: string) => {

@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ForbiddenException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -20,10 +22,39 @@ import { StorageService } from '../storage/storage.service';
 import { ReportDataService, ReportWindow } from './report-data.service';
 import { ReportRenderService } from './report-render.service';
 import { CreateReportDto } from './dto';
+import { CertificateIssuanceQueue } from '../certificates/certificates.queue';
 
 /** Every section, in canonical order — the content of a DEFAULT report. */
 /** A PENDING report older than this was cut off mid-render. */
 export const REPORT_STALE_MS = 15 * 60 * 1000;
+
+const REPORT_EVENT_SELECT = {
+  id: true,
+  spaceId: true,
+  title: true,
+  slug: true,
+  status: true,
+  type: true,
+  startDateTime: true,
+  endDateTime: true,
+  venueName: true,
+  city: true,
+  capacity: true,
+  space: { select: { name: true } },
+} satisfies Prisma.EventSelect;
+
+/**
+ * A report bound from the API. A bare date ("2026-10-15", what the date picker
+ * sends) is a whole day in IST: `from` its first instant, `to` its last. Before
+ * B19 a bare `to` parsed as UTC midnight and dropped the day it named.
+ */
+export function reportBound(value: string | undefined, end: boolean): Date | null {
+  if (!value) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T${end ? '23:59:59.999' : '00:00:00.000'}+05:30`);
+  }
+  return new Date(value);
+}
 
 export const ALL_SECTIONS: ReportSection[] = [
   ReportSection.OVERVIEW,
@@ -44,6 +75,8 @@ export class ReportsService {
     private readonly render: ReportRenderService,
     private readonly storage: StorageService,
     private readonly authz: AuthorizationService,
+    @Inject(forwardRef(() => CertificateIssuanceQueue))
+    private readonly queue: CertificateIssuanceQueue,
   ) {}
 
   // =====================================================
@@ -53,20 +86,7 @@ export class ReportsService {
   private async assertCanManage(eventId: string, userId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: {
-        id: true,
-        spaceId: true,
-        title: true,
-        slug: true,
-        status: true,
-        type: true,
-        startDateTime: true,
-        endDateTime: true,
-        venueName: true,
-        city: true,
-        capacity: true,
-        space: { select: { name: true } },
-      },
+      select: REPORT_EVENT_SELECT,
     });
     if (!event) throw new NotFoundException('Event not found');
 
@@ -175,8 +195,8 @@ export class ReportsService {
     const sections = this.resolveSections(dto.type, dto.sections);
 
     const window: ReportWindow = {
-      from: dto.dateFrom ? new Date(dto.dateFrom) : null,
-      to: dto.dateTo ? new Date(dto.dateTo) : null,
+      from: reportBound(dto.dateFrom, false),
+      to: reportBound(dto.dateTo, true),
     };
     if (window.from && window.to && window.from > window.to) {
       throw new BadRequestException('dateFrom must be on or before dateTo');
@@ -186,6 +206,18 @@ export class ReportsService {
       0,
       200,
     );
+
+    // One render per event at a time (B19): asking again while one is still
+    // generating returns that one instead of rendering a second PDF.
+    const inFlight = await this.prisma.eventReport.findFirst({
+      where: {
+        eventId,
+        status: ReportStatus.PENDING,
+        createdAt: { gte: new Date(Date.now() - REPORT_STALE_MS) },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (inFlight) return inFlight;
 
     const report = await this.prisma.eventReport.create({
       data: {
@@ -200,8 +232,28 @@ export class ReportsService {
       },
     });
 
-    void this.generate(report.id, event, eventId, sections, window, title);
+    // Rendered in cert-worker (B19), not on this API replica; inline only
+    // when no queue is configured (local dev).
+    if (!(await this.queue.addReport(report.id))) {
+      void this.generate(report.id, event, eventId, sections, window, title);
+    }
     return report;
+  }
+
+  /** Worker entry point: render a queued report from its stored request. */
+  async generateById(reportId: string): Promise<void> {
+    const report = await this.prisma.eventReport.findUnique({ where: { id: reportId } });
+    if (!report || report.status !== ReportStatus.PENDING) return;
+    const event = await this.prisma.event.findUnique({ where: { id: report.eventId }, select: REPORT_EVENT_SELECT });
+    if (!event) return;
+    await this.generate(
+      report.id,
+      event,
+      report.eventId,
+      report.sections as ReportSection[],
+      { from: report.dateFrom, to: report.dateTo },
+      report.title,
+    );
   }
 
   private async generate(

@@ -1,3 +1,4 @@
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   BadRequestException,
   ForbiddenException,
@@ -39,8 +40,8 @@ interface Recipient {
   registrationId: string;
   /** Group-member slot; null for an individual. Part of the dedup key. */
   memberIndex: number | null;
-  /** The account this certificate is filed under (the lead's, for a group). */
-  userId: string;
+  /** The account this certificate is filed under: the member's own; null for a member with no account. */
+  userId: string | null;
   name: string;
   email: string | null;
 }
@@ -220,7 +221,7 @@ export class CertificatesService {
   async listTemplates(userId: string, eventId: string) {
     await this.assertCanManage(eventId, userId);
     return this.prisma.certificateTemplate.findMany({
-      where: { eventId },
+      where: { eventId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { certificates: true } } },
     });
@@ -274,12 +275,15 @@ export class CertificatesService {
     if (!template) throw new NotFoundException('Template not found');
     await this.assertCanManage(template.eventId, userId);
 
-    const certificatesDeleted = template._count.certificates;
-    await this.prisma.$transaction([
-      this.prisma.certificate.deleteMany({ where: { templateId } }),
-      this.prisma.certificateTemplate.delete({ where: { id: templateId } }),
-    ]);
-    return { deleted: true, certificatesDeleted };
+    // B19: issued certificates are records people hold and verify. A template
+    // that has any is retired (hidden, no longer issuable) instead, so every
+    // verify link keeps working; an unused one is deleted outright.
+    if (template._count.certificates > 0) {
+      await this.prisma.certificateTemplate.update({ where: { id: templateId }, data: { deletedAt: new Date() } });
+      return { deleted: true, certificatesDeleted: 0, retired: true };
+    }
+    await this.prisma.certificateTemplate.delete({ where: { id: templateId } });
+    return { deleted: true, certificatesDeleted: 0, retired: false };
   }
 
   /**
@@ -294,6 +298,7 @@ export class CertificatesService {
       where: {
         eventId: { not: eventId },
         event: { spaceId: event.spaceId },
+        deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -390,9 +395,11 @@ export class CertificatesService {
       groupSeats: {
         orderBy: { seatIndex: 'asc' as const },
         select: {
+          id: true,
           seatIndex: true,
           status: true,
           memberDetails: true,
+          claimedByUserId: true,
           claimedBy: {
             select: {
               fullName: true,
@@ -407,6 +414,8 @@ export class CertificatesService {
           identities: { select: { email: true, isPrimary: true } },
         },
       },
+      // Who in a group was actually scanned (CHECKED_IN audience).
+      groupMemberCheckins: { select: { memberIndex: true, groupSeatId: true } },
     } satisfies Prisma.EventRegistrationSelect;
 
     let where: Prisma.EventRegistrationWhereInput;
@@ -437,7 +446,25 @@ export class CertificatesService {
     });
     const labelById = new Map(fields.map((f) => [f.id, f.label]));
 
-    return regs.flatMap((reg) => this.expandRegistration(reg, labelById));
+    return regs.flatMap((reg) => {
+      const people = this.expandRegistration(reg, labelById);
+      if (dto.audience !== CertificateAudience.CHECKED_IN || reg.groupMemberCheckins.length === 0) {
+        // Not CHECKED_IN, or a group checked in as a whole (no per-member
+        // scans): everyone on the booking counts.
+        return people;
+      }
+      // B19: a group scanned member by member certifies only who was scanned,
+      // not every claimed seat once one member arrived.
+      const scannedSeatIds = new Set(reg.groupMemberCheckins.map((c) => c.groupSeatId).filter(Boolean));
+      const scannedIndexes = new Set(reg.groupMemberCheckins.map((c) => c.memberIndex));
+      const seatIdByIndex = new Map(reg.groupSeats.map((s) => [s.seatIndex - 1, s.id]));
+      return people.filter(
+        (p) =>
+          p.memberIndex === null ||
+          scannedIndexes.has(p.memberIndex) ||
+          scannedSeatIds.has(seatIdByIndex.get(p.memberIndex) ?? ''),
+      );
+    });
   }
 
   /**
@@ -456,6 +483,7 @@ export class CertificatesService {
         seatIndex: number;
         status: GroupSeatStatus;
         memberDetails: Prisma.JsonValue;
+        claimedByUserId?: string | null;
         claimedBy: {
           fullName: string | null;
           identities: { email: string | null; isPrimary: boolean }[];
@@ -492,7 +520,10 @@ export class CertificatesService {
         return {
           registrationId: reg.id,
           memberIndex: index,
-          userId: reg.userId, // filed under the lead's account
+          // Filed under the member's own account (B19), so it shows in their
+          // app; a typed-in member with no account has none, and the lead's
+          // seat stays with the booker.
+          userId: seat.claimedByUserId ?? (isLead ? reg.userId : null),
           name:
             fromDetails.name ||
             seat.claimedBy?.fullName ||
@@ -583,9 +614,9 @@ export class CertificatesService {
 
     const template = await this.prisma.certificateTemplate.findUnique({
       where: { id: dto.templateId },
-      select: { id: true, eventId: true },
+      select: { id: true, eventId: true, deletedAt: true },
     });
-    if (!template || template.eventId !== eventId) {
+    if (!template || template.eventId !== eventId || template.deletedAt) {
       throw new NotFoundException('Template not found for this event');
     }
 
@@ -730,8 +761,14 @@ export class CertificatesService {
         memberIndex: true,
         certificateNumber: true,
         verificationCode: true,
+        revokedForCause: true,
       },
     });
+    // Someone revoked for cause gets nothing from a re-run, not even a fresh
+    // certificate (B19). Reissuing that one certificate is the explicit way back.
+    const revokedForCause = new Set(
+      revokedRows.filter((c) => c.revokedForCause).map((c) => dedupKey(c.registrationId, c.memberIndex)),
+    );
     const reusableRevoked = new Map<
       string,
       { id: string; certificateNumber: string; verificationCode: string }
@@ -750,6 +787,7 @@ export class CertificatesService {
     const fields = template.fields as unknown as CertificateFieldDef[];
     const issueDate = this.formatDate(new Date());
 
+    const serials = new Map<string, number>();
     let issued = 0;
     let reactivated = 0;
     let skipped = 0;
@@ -757,7 +795,7 @@ export class CertificatesService {
 
     for (const recipient of recipients) {
       const key = dedupKey(recipient.registrationId, recipient.memberIndex);
-      if (alreadyIssued.has(key)) {
+      if (alreadyIssued.has(key) || revokedForCause.has(key)) {
         skipped++;
         continue;
       }
@@ -800,6 +838,7 @@ export class CertificatesService {
               status: CertificateStatus.ISSUED,
               revokedAt: null,
               revokedReason: null,
+              revokedForCause: false,
               issuedBy: userId,
               issuedAt: new Date(),
             },
@@ -825,6 +864,7 @@ export class CertificatesService {
             userId,
             awardId,
             hackathon(recipient.registrationId),
+            serials,
           );
           issued++;
         }
@@ -874,6 +914,33 @@ export class CertificatesService {
   /**
    * Organiser: status of one issuance batch, for polling after {@link issue}.
    */
+  /**
+   * Close batches a crashed worker left hanging (B19), so the issue screen
+   * stops showing "processing" forever. BullMQ already retries a stalled job
+   * once; anything still PROCESSING after 2 hours, or QUEUED after 6, is dead.
+   * Marked FAILED with a way forward: issuing again skips everyone already done.
+   * An idempotent updateMany, so every replica can run it.
+   */
+  @Cron(CronExpression.EVERY_30_MINUTES)
+  async sweepStaleBatches(now: Date = new Date()): Promise<number> {
+    const hours = (h: number) => new Date(now.getTime() - h * 3_600_000);
+    const { count } = await this.prisma.certificateBatch.updateMany({
+      where: {
+        OR: [
+          { status: CertificateBatchStatus.PROCESSING, startedAt: { lt: hours(2) } },
+          { status: CertificateBatchStatus.QUEUED, createdAt: { lt: hours(6) } },
+        ],
+      },
+      data: {
+        status: CertificateBatchStatus.FAILED,
+        finishedAt: now,
+        error: 'Stopped before finishing. Issue again to complete it: certificates already issued are skipped.',
+      },
+    });
+    if (count) this.logger.warn(`Closed ${count} stale certificate batch(es)`);
+    return count;
+  }
+
   async getBatch(userId: string, batchId: string) {
     const batch = await this.prisma.certificateBatch.findUnique({
       where: { id: batchId },
@@ -1067,10 +1134,14 @@ export class CertificatesService {
     userId: string,
     awardId: string | null = null,
     extra: Record<string, string> = {},
+    /** Per-batch next-serial cache, keyed by prefix. */
+    serials?: Map<string, number>,
   ): Promise<{ certificateNumber: string; verificationCode: string; pdfUrl: string }> {
     const verificationCode = randomBytes(16).toString('hex');
     const prefix = this.certificatePrefix(event.slug);
-    let seq = (await this.maxSerialForPrefix(prefix)) + 1;
+    // B19: one MAX query per prefix per batch, then count up locally; a
+    // conflict (another batch took the number) re-reads the max.
+    let seq = (serials?.get(prefix) ?? (await this.maxSerialForPrefix(prefix))) + 1;
     const MAX_ATTEMPTS = 12;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++, seq++) {
@@ -1104,10 +1175,13 @@ export class CertificatesService {
             issuedBy: userId,
           },
         });
+        serials?.set(prefix, seq);
         return { certificateNumber, verificationCode, pdfUrl };
       } catch (error) {
         if (this.isCertNumberConflict(error) && attempt < MAX_ATTEMPTS - 1) {
-          continue; // serial taken — bump to the next and retry
+          // Serial taken: jump past whatever exists now (the loop adds 1).
+          seq = Math.max(seq, await this.maxSerialForPrefix(prefix));
+          continue;
         }
         throw error;
       }
@@ -1147,16 +1221,14 @@ export class CertificatesService {
    * one event is exactly the bug that made re-issue loop on a taken number.
    */
   private async maxSerialForPrefix(prefix: string): Promise<number> {
-    const rows = await this.prisma.certificate.findMany({
-      where: { certificateNumber: { startsWith: `${prefix}-` } },
-      select: { certificateNumber: true },
-    });
-    let max = 0;
-    for (const { certificateNumber } of rows) {
-      const match = certificateNumber.match(/-(\d+)$/);
-      if (match) max = Math.max(max, parseInt(match[1], 10));
-    }
-    return max;
+    // One aggregate in the database instead of loading every certificate with
+    // this prefix into memory (B19: that made a batch O(n²)). The prefix is
+    // only [A-Z0-9-], so it is safe inside LIKE.
+    const [row] = await this.prisma.$queryRaw<{ max: number | null }[]>`
+      SELECT MAX((substring(certificate_number from '-([0-9]+)$'))::int) AS max
+      FROM certificates
+      WHERE certificate_number LIKE ${`${prefix}-%`}`;
+    return row?.max ?? 0;
   }
 
   private formatDate(date: Date): string {
@@ -1212,6 +1284,8 @@ export class CertificatesService {
         status: CertificateStatus.REVOKED,
         revokedAt: new Date(),
         revokedReason: reason ?? null,
+        // One certificate pulled on purpose: re-runs and "Reissue all" leave it.
+        revokedForCause: true,
       },
     });
   }
@@ -1240,6 +1314,8 @@ export class CertificatesService {
         status: CertificateStatus.REVOKED,
         revokedAt: new Date(),
         revokedReason: reason ?? null,
+        // A bulk revoke is a redesign, not a judgement: re-issuing restores them.
+        revokedForCause: false,
       },
     });
     return { revoked: count };
@@ -1431,7 +1507,7 @@ export class CertificatesService {
   async reissueAllRevoked(userId: string, eventId: string) {
     await this.assertCanManage(eventId, userId);
     const total = await this.prisma.certificate.count({
-      where: { eventId, status: CertificateStatus.REVOKED },
+      where: { eventId, status: CertificateStatus.REVOKED, revokedForCause: false },
     });
     if (total && (await this.issuanceQueue.addReissueRevoked(eventId, userId))) {
       return { total, reissued: 0, emailed: 0, failed: 0, queued: true };
@@ -1444,7 +1520,8 @@ export class CertificatesService {
     const event = await this.assertCanManage(eventId, userId);
 
     const revoked = await this.prisma.certificate.findMany({
-      where: { eventId, status: CertificateStatus.REVOKED },
+      // Not the ones revoked for cause (B19): reissue those one by one.
+      where: { eventId, status: CertificateStatus.REVOKED, revokedForCause: false },
       orderBy: { revokedAt: 'desc' },
       select: CertificatesService.REISSUE_SELECT,
     });
@@ -1514,6 +1591,7 @@ export class CertificatesService {
         status: CertificateStatus.ISSUED,
         revokedAt: null,
         revokedReason: null,
+        revokedForCause: false,
         issuedBy: userId,
         issuedAt: new Date(),
         // Fresh delivery cycle: null until this reissue's email actually sends,
