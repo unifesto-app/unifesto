@@ -11,7 +11,7 @@ import { SpaceNav } from "@/components/shell/SpaceNav";
 import { EventNav } from "@/components/shell/EventNav";
 import { EventAccessNav } from "@/components/shell/EventAccessNav";
 import { EventAccessChooser } from "@/components/shell/EventAccessChooser";
-import { appRoleFromCode, isEventScopedSpace } from "@/lib/types/rbac";
+import { appRoleFromCode, hasEventDeskAccess, isEventScopedSpace } from "@/lib/types/rbac";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils/cn";
 
@@ -52,8 +52,13 @@ export default function SpaceDashboardLayout({
   const eventRole = currentEvent
     ? appRoleFromCode(currentEvent.roleCode)
     : undefined;
-  // A space-level page is off-limits to an event-only user.
-  const blockedForEventOnly = eventOnly && !viewingOwnEvent;
+  // The Assist inbox is the one space-level page they may open: the backend
+  // lists only their events' cases.
+  const onDeskInbox =
+    (pathname === "/dashboard/assist" || pathname.startsWith("/dashboard/assist/")) &&
+    hasEventDeskAccess(currentSpace);
+  // Any other space-level page is off-limits to an event-only user.
+  const blockedForEventOnly = eventOnly && !viewingOwnEvent && !onDeskInbox;
 
   // Auto-close the drawer whenever the route changes — tapping a destination
   // (or the browser back button) should always drop us back to the page.
