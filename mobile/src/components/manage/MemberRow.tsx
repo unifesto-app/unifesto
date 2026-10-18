@@ -9,11 +9,6 @@ import { Monogram } from '../home/SpaceCards';
 
 const AVATAR = 40;
 
-export const SPACE_ROLE_LABEL: Record<string, string> = {
-  SPACE_ADMIN: 'Space admin',
-  MEMBER: 'Member',
-};
-
 interface Props {
   user: MemberUser;
   /** Right-hand text, e.g. the member's role. */

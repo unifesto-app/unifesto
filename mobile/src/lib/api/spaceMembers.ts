@@ -7,6 +7,11 @@ import { call } from './manageEvent';
  */
 export type SpaceMemberRole = 'SPACE_ADMIN' | 'MEMBER';
 
+export const SPACE_ROLE_LABEL: Record<string, string> = {
+  SPACE_ADMIN: 'Space admin',
+  MEMBER: 'Member',
+};
+
 export interface MemberUser {
   id: string;
   fullName: string | null;
