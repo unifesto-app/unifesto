@@ -10,6 +10,7 @@ import {
   FileText,
   ShieldCheck,
   Receipt,
+  BookOpen,
 } from "@unifesto/unicon/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -170,6 +171,15 @@ export default function SupportPage() {
             label="WhatsApp"
             value={SITE.whatsappDisplay}
             href={whatsappHref}
+          />
+        </SupportGroup>
+
+        <SupportGroup title="Help articles">
+          <SupportRow
+            icon={<BookOpen className="h-7 w-7 text-paper/60" />}
+            label="Browse help articles"
+            value="Step-by-step answers for attendees and organisers"
+            href="/help"
           />
         </SupportGroup>
 
