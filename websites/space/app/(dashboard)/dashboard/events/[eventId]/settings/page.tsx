@@ -219,12 +219,14 @@ export default function EventSettingsPage() {
               <p className="text-sm text-muted-foreground">
                 {event.status === "DRAFT" && "Event is in draft mode"}
                 {event.status === "PUBLISHED" && "Event is live and accepting registrations"}
+                {event.status === "ONGOING" && "Event is happening now"}
+                {event.status === "COMPLETED" && "Event has finished"}
                 {event.status === "CANCELLED" && "Event has been cancelled"}
               </p>
             </div>
             <Badge
               variant={
-                event.status === "PUBLISHED"
+                event.status === "PUBLISHED" || event.status === "ONGOING"
                   ? "success"
                   : event.status === "CANCELLED"
                   ? "destructive"
@@ -310,8 +312,8 @@ export default function EventSettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6 px-4 py-4">
-          {/* Cancel Event */}
-          {isPublished && (
+          {/* Cancel Event — also while it's running (a called-off day two). */}
+          {(isPublished || isOngoing) && (
             <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">

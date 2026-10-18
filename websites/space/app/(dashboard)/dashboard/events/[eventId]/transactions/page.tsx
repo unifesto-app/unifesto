@@ -263,7 +263,7 @@ export default function EventTransactionsPage() {
         subtitle="View payment transactions and refunds"
         actions={
           <div className="flex flex-wrap gap-2">
-            {event && can(currentRole, "space:manage-money") && (
+            {event && can(currentRole, "event:manage-money") && (
               <Button variant="outline" onClick={() => setPayoutOpen(true)}>
                 Request payout
               </Button>

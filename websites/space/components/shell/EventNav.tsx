@@ -25,6 +25,7 @@ import {
   ChartLineUp,
   Trophy,
   Bed,
+  ArrowCounterClockwise,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
@@ -73,6 +74,7 @@ const NAV_GROUPS: EventNavGroup[] = [
     label: "Finance",
     items: [
       { href: "/transactions", label: "Transactions", icon: Receipt, requires: "event:publish" },
+      { href: "/refunds", label: "Refunds", icon: ArrowCounterClockwise, requires: "event:manage-money" },
       { href: "/reports", label: "Reports", icon: ChartBar, requires: "event:publish", feature: "hasAnalytics" },
     ],
   },

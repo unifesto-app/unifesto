@@ -59,6 +59,7 @@ export class RefundsController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('spaceId') spaceId?: string,
+    @Query('eventId') eventId?: string,
   ) {
     return this.refundsService.getOrganiserRequests(
       req.user.id,
@@ -66,6 +67,7 @@ export class RefundsController {
       Number(page),
       Number(limit),
       spaceId,
+      eventId,
     );
   }
 

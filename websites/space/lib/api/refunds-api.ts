@@ -67,6 +67,19 @@ export interface RefundListParams {
   limit?: number;
   /** Scope the curator queue to a single space's events. */
   spaceId?: string;
+  /** Or to a single event. */
+  eventId?: string;
+}
+
+/**
+ * Curator raises a refund for an attendee. It skips curator review and goes to
+ * Unifesto for approval (base price only). `POST /refunds`.
+ */
+export async function requestRefundOnBehalf(
+  registrationId: string,
+  reason: string
+): Promise<{ data: RefundRequest | null; error: ApiError | null }> {
+  return apiCall<RefundRequest>(backendClient.post("/refunds", { registrationId, reason }));
 }
 
 /** Curator: requests they can verify/track for their events. `GET /refunds/curator/queue`. */

@@ -88,8 +88,12 @@ export default function EventCheckinPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Check-in Management"
-        subtitle="Manage check-in points, grant your team access, and check attendees in"
+        title="Check-in"
+        subtitle={
+          can(currentRole, "event:assign-curators")
+            ? "Manage check-in points, grant your team access, and check attendees in"
+            : "Scan or search to check attendees in"
+        }
         actions={
           can(currentRole, "event:manage-attendees") ? (
             <EventExportMenu eventId={eventId} type="checkins" />
@@ -136,9 +140,13 @@ export default function EventCheckinPage() {
         <StatCard title="Cancelled" value={(stats?.cancelled ?? 0).toString()} icon={XCircle} />
       </div>
 
-      <CheckinPointsCard eventId={eventId} types={types} onChanged={loadTypes} />
-
-      <CheckinAccessCard eventId={eventId} />
+      {/* Setting up points and access is for organisers; Crew just check in. */}
+      {can(currentRole, "event:assign-curators") && (
+        <>
+          <CheckinPointsCard eventId={eventId} types={types} onChanged={loadTypes} />
+          <CheckinAccessCard eventId={eventId} />
+        </>
+      )}
 
       <ScanAndSearchCard
         eventId={eventId}

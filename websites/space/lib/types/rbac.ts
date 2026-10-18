@@ -206,6 +206,7 @@ export type Capability =
   | "event:assign-curators" // add curator / co-curator / crew to an event
   | "event:edit" // edit event content
   | "event:publish" // publish / cancel an event
+  | "event:manage-money" // event refunds + payout requests (D9: Space Admin and Curator)
   | "event:manage-attendees" // manually add / bulk-import attendees, payment links
   | "event:manage-support" // answer attendee cases on the space's Assist desk
   | "event:check-in"; // scan / check attendees in
@@ -222,6 +223,7 @@ const CAPABILITIES: Record<SpaceAppRole, Capability[]> = {
     "event:assign-curators",
     "event:edit",
     "event:publish",
+    "event:manage-money",
     "event:manage-attendees",
     "event:manage-support",
     "event:check-in",
@@ -232,6 +234,7 @@ const CAPABILITIES: Record<SpaceAppRole, Capability[]> = {
     "event:assign-curators",
     "event:edit",
     "event:publish",
+    "event:manage-money",
     "event:manage-attendees",
     "event:manage-support",
     "event:check-in",
