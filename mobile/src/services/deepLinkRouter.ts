@@ -49,6 +49,7 @@ const ALLOWED_PREFIXES = new Set([
   'competition', // a participant's round results / winners
   'judging', // a judge's console (hackathon queue pushes); screens re-check the panel server-side
   'group', // Manage group (team changes: lead handover requests, seats added)
+  'manage', // support case threads (Assist pushes); screens re-check access server-side
 ]);
 
 /**
@@ -67,6 +68,7 @@ const AUTH_REQUIRED_PREFIXES = new Set([
   'competition',
   'judging',
   'group',
+  'manage',
 ]);
 
 /** First path segment, lowercased (e.g. "/ticket/123" -> "ticket"). */

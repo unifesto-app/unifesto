@@ -74,6 +74,8 @@ export default function SpaceSupportPage() {
   }, [load]);
 
   const openTicket = useCallback(async (id: string) => {
+    // Opening a case reads it for your side.
+    setTickets((ts) => ts.map((t) => (t.id === id ? { ...t, unread: false } : t)));
     setDetailLoading(true);
     setError("");
     const { data, error } = await getTicket(id);
@@ -253,6 +255,9 @@ export default function SpaceSupportPage() {
                         <span className="text-xs font-medium text-muted-foreground">
                           #{t.ticketNumber}
                         </span>
+                        {t.unread && (
+                          <span className="size-2 shrink-0 rounded-full bg-primary" aria-label="New reply" />
+                        )}
                         <p className="truncate font-medium text-foreground">
                           {t.subject}
                         </p>

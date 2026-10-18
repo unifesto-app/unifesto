@@ -12,6 +12,7 @@ import * as AuthAPI from '../lib/api/auth';
 import { getMyRegisteredEvents } from '../lib/api/events';
 import { getUserSpaces } from '../lib/api/spaces';
 import { getMyPartnerLinks } from '../lib/api/tracking';
+import { getMyUnreadCount } from '../lib/api/support';
 import { openStoreReview } from '../utils/storeReview';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
@@ -73,17 +74,20 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   // Only partners (an event curator added them) get the Partner stats row.
   const [isPartner, setIsPartner] = useState(false);
+  const [supportUnread, setSupportUnread] = useState(0);
 
   useAnalyticsScreenTracking('Profile');
 
   const load = useCallback(async () => {
     if (!token) return;
-    const [user, partner, regs, spaces] = await Promise.allSettled([
+    const [user, partner, regs, spaces, unread] = await Promise.allSettled([
       AuthAPI.getCurrentUser(token),
       getMyPartnerLinks(),
       getMyRegisteredEvents(1, 50),
       getUserSpaces(token),
+      getMyUnreadCount(),
     ]);
+    if (unread.status === 'fulfilled') setSupportUnread(unread.value);
     if (user.status === 'fulfilled') setProfile(user.value);
     else if (__DEV__) console.error('Failed to load profile:', user.reason);
     if (partner.status === 'fulfilled') setIsPartner(partner.value.ok && partner.value.data.length > 0);
@@ -152,7 +156,7 @@ export default function ProfileScreen() {
   const help = (
     <Section title="Help and more">
       <SettingsGroup style={styles.group}>
-        <SettingsRow icon={icon('lifebuoy')} label="Contact support" onPress={() => router.push('/support')} />
+        <SettingsRow icon={icon('lifebuoy')} label="Contact support" value={supportUnread ? `${supportUnread} new` : undefined} onPress={() => router.push('/support')} />
         <SettingsRow icon={icon('arrows-clockwise')} label="About and updates" value={isUpdatePending ? 'Update ready' : version ? `v${version}` : undefined} onPress={() => router.push('/about')} />
         <SettingsRow icon={icon('star')} label="Rate Unifesto" external onPress={() => openStoreReview().catch(() => {})} />
         <SettingsRow icon={icon('instagram-logo')} label="Instagram" external onPress={() => openExternal('https://www.instagram.com/unifesto.app/', 'Instagram')} />

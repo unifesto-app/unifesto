@@ -699,20 +699,26 @@ export class SupportService {
       ? {}
       : { requesterId: userId };
 
-    // Unread for the viewer's side (D3 badges): Platform's own desk, else your cases.
+    // Unread (D3 badges): `myUnread` = cases you raised; `unread` = the side you
+    // work, so Platform's own desk for admins.
     const fields = this.prisma.supportTicket.fields;
-    const unreadWhere: Prisma.SupportTicketWhereInput = admin
-      ? {
+    const countMyUnread = () =>
+      this.prisma.supportTicket.count({
+        where: {
+          requesterId: userId,
+          OR: [{ requesterLastReadAt: null }, { lastMessageAt: { gt: fields.requesterLastReadAt } }],
+        },
+      });
+    const countDeskUnread = () =>
+      this.prisma.supportTicket.count({
+        where: {
           desk: SupportDesk.PLATFORM,
           status: { not: SupportTicketStatus.CLOSED },
           OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }],
-        }
-      : {
-          requesterId: userId,
-          OR: [{ requesterLastReadAt: null }, { lastMessageAt: { gt: fields.requesterLastReadAt } }],
-        };
+        },
+      });
 
-    const [open, pending, resolved, closed, unread] = await Promise.all([
+    const [open, pending, resolved, closed, myUnread, deskUnread] = await Promise.all([
       this.prisma.supportTicket.count({
         where: { ...scope, status: SupportTicketStatus.OPEN },
       }),
@@ -725,9 +731,18 @@ export class SupportService {
       this.prisma.supportTicket.count({
         where: { ...scope, status: SupportTicketStatus.CLOSED },
       }),
-      this.prisma.supportTicket.count({ where: unreadWhere }),
+      countMyUnread(),
+      admin ? countDeskUnread() : null,
     ]);
 
-    return { open, pending, resolved, closed, unread, total: open + pending + resolved + closed };
+    return {
+      open,
+      pending,
+      resolved,
+      closed,
+      total: open + pending + resolved + closed,
+      unread: deskUnread ?? myUnread,
+      myUnread,
+    };
   }
 }
