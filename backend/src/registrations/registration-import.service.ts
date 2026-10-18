@@ -26,6 +26,7 @@ import { GroupSeatsService } from './group-seats.service';
 import * as crypto from 'crypto';
 import { generateQRCode, generateTicketCode, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
 
 /**
  * Curator-added attendees: bulk CSV import (template, preview, import) and the
@@ -265,7 +266,14 @@ export class RegistrationImportService {
     eventId: string,
     ticketTypeId: string,
     row: ParsedImportRow,
-    state: { remaining: number | null; seen: Set<string> },
+    state: {
+      remaining: number | null;
+      seen: Set<string>;
+      /** Paid ticket only: free seats left to comp (null = unlimited), A27. */
+      freeLeft?: number | null;
+      /** Tickets one row comps for the free-seat quota. */
+      ticketsFor?: (row: ParsedImportRow) => number;
+    },
   ): Promise<
     | { decision: 'create'; seats: number; existingUserId: string | null }
     | { decision: 'skip' | 'error'; reason: string }
@@ -290,6 +298,17 @@ export class RegistrationImportService {
       (await this.hasActiveRegistration(eventId, existingUserId, ticketTypeId))
     ) {
       return { decision: 'skip', reason: 'Already registered for this ticket.' };
+    }
+    // A paid ticket is comped only against an approved free-seat quota (A27).
+    if (state.freeLeft !== undefined && state.freeLeft !== null && state.ticketsFor) {
+      const need = state.ticketsFor(row);
+      if (need > state.freeLeft) {
+        return {
+          decision: 'error',
+          reason: `Paid ticket: no free seats left to add this row for free (${state.freeLeft} left). Add them with a payment link, or request more free seats.`,
+        };
+      }
+      state.freeLeft -= need;
     }
     return { decision: 'create', seats, existingUserId };
   }
@@ -331,12 +350,15 @@ export class RegistrationImportService {
       groupSize: number | null;
       groupMembers: unknown[] | null;
       formResponses: Record<string, unknown>;
+      /** Paid ticket: tickets to draw from the free-seat quota (A27). */
+      freeAddSeats?: number;
     },
   ): Promise<string> {
     const qrCode = generateQRCode();
     const seats = opts.groupSize && opts.groupSize > 1 ? opts.groupSize : 1;
 
     const registration = await this.prisma.$transaction(async (tx) => {
+      if (opts.freeAddSeats) await takeFreeAddSeats(tx, eventId, ticketTypeId, opts.freeAddSeats);
       const reg = await tx.eventRegistration.create({
         data: {
           eventId,
@@ -428,7 +450,7 @@ export class RegistrationImportService {
     // Shared batch state: `seen` de-dupes emails within the file, `remaining`
     // tracks capacity as we go. Same classifier the preview uses, so the report
     // matches whatever the curator reviewed.
-    const state = { remaining, seen: new Set<string>() };
+    const state = { remaining, seen: new Set<string>(), ...(await this.freeSeatState(eventId, ticketType)) };
 
     for (const row of parsed) {
       const verdict = await this.classifyImportRow(
@@ -456,6 +478,7 @@ export class RegistrationImportService {
             groupSize: row.groupSize,
             groupMembers: row.groupMembers,
             formResponses: row.formResponses,
+            freeAddSeats: state.ticketsFor?.(row),
           },
         );
         if (state.remaining != null) state.remaining -= verdict.seats;
@@ -475,7 +498,10 @@ export class RegistrationImportService {
         report.push({
           ...this.rowHead(row),
           status: 'errored',
-          reason: err instanceof SoldOutError ? err.message : 'Could not create the registration.',
+          reason:
+            err instanceof SoldOutError || err instanceof ForbiddenException
+              ? err.message
+              : 'Could not create the registration.',
         });
       }
     }
@@ -494,6 +520,21 @@ export class RegistrationImportService {
 
   private rowHead(row: ParsedImportRow) {
     return { line: row.line, name: row.name, email: row.email };
+  }
+
+  /**
+   * Free-seat accounting for an import (A27). A paid ticket can only be comped
+   * against an approved quota; a free/RSVP ticket needs none (empty state).
+   */
+  private async freeSeatState(
+    eventId: string,
+    ticketType: { id: string; price: Prisma.Decimal | number; kind: string; groupPricingMode: string | null },
+  ): Promise<{ freeLeft?: number | null; ticketsFor?: (row: ParsedImportRow) => number }> {
+    if (!(Number(ticketType.price) > 0)) return {};
+    return {
+      freeLeft: await freeAddSeatsLeft(this.prisma, eventId, ticketType.id),
+      ticketsFor: (row) => ticketsIn(ticketType, { quantity: 1, groupSize: row.groupSize }),
+    };
   }
 
   /**
@@ -544,7 +585,11 @@ export class RegistrationImportService {
       ticketType.totalQuantity == null
         ? null
         : Math.max(0, ticketType.totalQuantity - ticketType.soldCount);
-    const state = { remaining: remainingCapacity, seen: new Set<string>() };
+    const state = {
+      remaining: remainingCapacity,
+      seen: new Set<string>(),
+      ...(await this.freeSeatState(eventId, ticketType)),
+    };
 
     const rows: Array<{
       line: number;
@@ -710,11 +755,13 @@ export class RegistrationImportService {
     // blocked per-event unless a Platform Admin approved a FreeAttendeeAddRequest
     // for it — so the platform fee is never silently waived. Free/RSVP tickets
     // carry no price and are always comped, so they are never gated.
-    if (price > 0 && !wantsPayment && !event.allowFreeAttendeeAdd) {
-      throw new ForbiddenException(
-        'Adding a paid attendee for free needs platform approval for this event. ' +
-          'Collect payment instead, or request the free-add exception.',
-      );
+    // A27: the comp draws seats from an approved free-seat quota (atomically,
+    // in the comp's transaction below). Checked here first too, so a refused
+    // add fails before anything is written.
+    const freeAddSeats = price > 0 && !wantsPayment ? ticketsIn(ticketType, { quantity: 1, groupSize }) : 0;
+    if (freeAddSeats) {
+      const left = await freeAddSeatsLeft(this.prisma, eventId, dto.ticketTypeId);
+      if (left !== null && left < freeAddSeats) throw new ForbiddenException(NO_FREE_ADD_SEATS);
     }
 
     if (!wantsPayment) {
@@ -723,7 +770,7 @@ export class RegistrationImportService {
         eventId,
         userId,
         dto.ticketTypeId,
-        { groupSize, groupMembers, formResponses },
+        { groupSize, groupMembers, formResponses, freeAddSeats },
       );
       if (dto.sendTicketEmail !== false) {
         void this.confirmations.sendRegistrationConfirmations(registrationId).catch((err) =>

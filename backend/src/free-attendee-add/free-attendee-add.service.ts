@@ -5,17 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto } from './dto';
+import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto, RevokeFreeAddRequestDto } from './dto';
 
 /**
  * "Add attendees for free" exception flow — mirrors WhiteLabelService.
  *
- * Comping a PAID ticket in the manual attendee-add flow (adding someone without
- * collecting payment) is blocked by default so the platform's processing fee is
- * never silently waived. An organiser raises a request for one event; a Platform
- * Admin approves — which flips that event's `allowFreeAttendeeAdd` on — or rejects.
- * Authorization to raise the request is enforced at the controller via
- * @Can(EVENT_MANAGE_ATTENDEES); the admin routes are @Roles(ADMIN).
+ * Comping a PAID ticket (single add, CSV import, curator add-seats) is blocked
+ * by default so the platform fee is never silently waived. An organiser asks
+ * for N free seats on one event (optionally one ticket type); a Platform Admin
+ * approves a seat count or rejects, and can revoke later (A27). Comps draw the
+ * quota down through `takeFreeAddSeats`. `event.allowFreeAttendeeAdd` mirrors
+ * "has a live approval" for older clients. Raising a request is gated at the
+ * controller by @Can(EVENT_MANAGE_ATTENDEES); the admin routes are @Roles(ADMIN).
  */
 @Injectable()
 export class FreeAttendeeAddService {
@@ -25,6 +26,7 @@ export class FreeAttendeeAddService {
     return {
       space: { select: { id: true, name: true, slug: true } },
       event: { select: { id: true, title: true, slug: true } },
+      ticketType: { select: { id: true, name: true, price: true } },
       requester: {
         select: {
           id: true,
@@ -39,17 +41,19 @@ export class FreeAttendeeAddService {
   async createRequest(userId: string, dto: CreateFreeAddRequestDto) {
     const event = await this.prisma.event.findUnique({
       where: { id: dto.eventId },
-      select: { id: true, spaceId: true, allowFreeAttendeeAdd: true },
+      select: { id: true, spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
-
-    if (event.allowFreeAttendeeAdd) {
-      throw new BadRequestException(
-        'Free adds are already enabled for this event.',
-      );
+    if (dto.ticketTypeId) {
+      const tt = await this.prisma.eventTicketType.findFirst({
+        where: { id: dto.ticketTypeId, eventId: dto.eventId },
+        select: { id: true },
+      });
+      if (!tt) throw new BadRequestException('That ticket type is not on this event.');
     }
 
-    // One pending request per event.
+    // One pending request per event. An approval no longer blocks a new
+    // request: an organiser who used up their seats asks for more.
     const existing = await this.prisma.freeAttendeeAddRequest.findFirst({
       where: { eventId: dto.eventId, status: 'PENDING' },
       select: { id: true },
@@ -66,6 +70,8 @@ export class FreeAttendeeAddService {
         spaceId: event.spaceId,
         requestedBy: userId,
         reason: dto.reason,
+        ticketTypeId: dto.ticketTypeId ?? null,
+        requestedSeats: dto.seats ?? null,
         status: 'PENDING',
       },
       include: this.requestInclude(),
@@ -76,6 +82,15 @@ export class FreeAttendeeAddService {
   async getMyRequests(userId: string, eventId?: string) {
     return this.prisma.freeAttendeeAddRequest.findMany({
       where: { requestedBy: userId, ...(eventId ? { eventId } : {}) },
+      include: this.requestInclude(),
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Every request on one event, for its curators (who raised it doesn't matter). */
+  async getEventRequests(eventId: string) {
+    return this.prisma.freeAttendeeAddRequest.findMany({
+      where: { eventId },
       include: this.requestInclude(),
       orderBy: { createdAt: 'desc' },
     });
@@ -101,8 +116,9 @@ export class FreeAttendeeAddService {
   }
 
   /**
-   * Admin decision. Approving flips the event's `allowFreeAttendeeAdd` on and
-   * records the decision in one transaction; rejecting only records it.
+   * Admin decision, claimed atomically (PENDING only) so two admins can't both
+   * decide. Approving grants `approvedSeats` (default: what was asked for) and
+   * turns the event's legacy flag on; rejecting only records it.
    */
   async reviewRequest(
     requestId: string,
@@ -116,39 +132,68 @@ export class FreeAttendeeAddService {
     if (req.status !== 'PENDING') {
       throw new BadRequestException('This request has already been reviewed.');
     }
-
-    const reviewedAt = new Date();
-
-    if (dto.status === 'REJECTED') {
-      return this.prisma.freeAttendeeAddRequest.update({
-        where: { id: requestId },
-        data: {
-          status: 'REJECTED',
-          reviewNote: dto.reviewNote ?? null,
-          reviewedBy: adminId,
-          reviewedAt,
-        },
-        include: this.requestInclude(true),
-      });
+    const approvedSeats = dto.approvedSeats ?? req.requestedSeats ?? null;
+    if (dto.status === 'APPROVED' && approvedSeats == null) {
+      throw new BadRequestException('Set how many free seats to approve.');
     }
 
-    const [, updated] = await this.prisma.$transaction([
-      this.prisma.event.update({
-        where: { id: req.eventId },
-        data: { allowFreeAttendeeAdd: true },
-      }),
-      this.prisma.freeAttendeeAddRequest.update({
-        where: { id: requestId },
+    const decided = {
+      reviewNote: dto.reviewNote ?? null,
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+    };
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.freeAttendeeAddRequest.updateMany({
+        where: { id: requestId, status: 'PENDING' },
+        data:
+          dto.status === 'APPROVED'
+            ? { status: 'APPROVED', approvedSeats, ...decided }
+            : { status: 'REJECTED', ...decided },
+      });
+      if (claimed.count !== 1) {
+        throw new ConflictException('This request was just reviewed by someone else.');
+      }
+      if (dto.status === 'APPROVED') {
+        await tx.event.update({ where: { id: req.eventId }, data: { allowFreeAttendeeAdd: true } });
+      }
+    });
+    return this.prisma.freeAttendeeAddRequest.findUniqueOrThrow({
+      where: { id: requestId },
+      include: this.requestInclude(true),
+    });
+  }
+
+  /**
+   * Admin withdraws an approval: seats already comped stay, no new ones. The
+   * event's legacy flag goes off once it has no live approval left.
+   */
+  async revokeRequest(requestId: string, adminId: string, dto: RevokeFreeAddRequestDto) {
+    const req = await this.prisma.freeAttendeeAddRequest.findUnique({
+      where: { id: requestId },
+      select: { eventId: true },
+    });
+    if (!req) throw new NotFoundException('Request not found');
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.freeAttendeeAddRequest.updateMany({
+        where: { id: requestId, status: 'APPROVED' },
         data: {
-          status: 'APPROVED',
+          status: 'REVOKED',
           reviewNote: dto.reviewNote ?? null,
           reviewedBy: adminId,
-          reviewedAt,
+          reviewedAt: new Date(),
         },
-        include: this.requestInclude(true),
-      }),
-    ]);
-
-    return updated;
+      });
+      if (claimed.count !== 1) throw new BadRequestException('Only an approved request can be revoked.');
+      const live = await tx.freeAttendeeAddRequest.count({
+        where: { eventId: req.eventId, status: 'APPROVED' },
+      });
+      if (live === 0) {
+        await tx.event.update({ where: { id: req.eventId }, data: { allowFreeAttendeeAdd: false } });
+      }
+    });
+    return this.prisma.freeAttendeeAddRequest.findUniqueOrThrow({
+      where: { id: requestId },
+      include: this.requestInclude(true),
+    });
   }
 }
