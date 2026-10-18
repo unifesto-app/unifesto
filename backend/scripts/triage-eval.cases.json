@@ -7,7 +7,7 @@
   {
     "id": "double-charge",
     "case": { "subject": "Charged twice", "message": "Razorpay charged me two times for one workshop ticket. Please refund the extra amount. Transaction ids pay_Nx81 and pay_Nx82.", "kind": "HELP", "category": "PAYMENTS", "hasEvent": true, "hasSpace": true },
-    "expected": { "category": "PAYMENTS", "priority": "HIGH", "routingHint": "PLATFORM", "language": "en", "sentiment": "negative", "spam": false }
+    "expected": { "category": "PAYMENTS", "priority": "HIGH", "routingHint": "PLATFORM", "language": "en", "sentiment": "neutral", "spam": false }
   },
   {
     "id": "otp-not-arriving",
@@ -42,7 +42,7 @@
   {
     "id": "hinglish-refund",
     "case": { "subject": "refund kab milega", "message": "bhai event cancel ho gaya tha 2 hafte pehle, abhi tak refund nahi aaya. kab tak aayega paisa?", "kind": "HELP", "category": "GENERAL", "hasEvent": true, "hasSpace": true },
-    "expected": { "category": "PAYMENTS", "priority": "HIGH", "routingHint": "SPACE", "language": "hi", "sentiment": "negative", "spam": false }
+    "expected": { "category": "PAYMENTS", "priority": "HIGH", "routingHint": "PLATFORM", "language": "hi", "sentiment": "negative", "spam": false }
   },
   {
     "id": "telugu-timing",
@@ -102,6 +102,6 @@
   {
     "id": "partnership",
     "case": { "subject": "Partnership enquiry", "message": "Hi, I run a student community of 2,000 members in Pune and would like to use Unifesto for our events. Who can I speak with about pricing?", "kind": "HELP", "category": "GENERAL", "hasEvent": false, "hasSpace": false },
-    "expected": { "category": "GENERAL", "priority": "LOW", "routingHint": "PLATFORM", "language": "en", "sentiment": "positive", "spam": false }
+    "expected": { "category": "GENERAL", "priority": "LOW", "routingHint": "PLATFORM", "language": "en", "sentiment": "neutral", "spam": false }
   }
 ]

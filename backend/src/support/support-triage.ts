@@ -30,15 +30,16 @@ category - what the case is about:
 - EVENTS: an event's content or logistics. Venue, timings, schedule, agenda, speakers, certificates, hackathon teams and judging, a cancelled or postponed event, questions for the organiser.
 - TICKETING: registration and tickets. Ticket or QR not received, wrong ticket type, group seats, transferring a ticket, waiting list, check-in problems at the gate, registration form issues.
 - TECHNICAL: the app or website misbehaving. Crashes, errors, pages not loading, notifications, a bug report.
-- GENERAL: anything that fits none of the above or is too vague to tell, including feedback and partnership enquiries.
+- GENERAL: anything that fits none of the above or is too vague to tell, including partnership enquiries. Feedback, praise and thanks are GENERAL even when they mention a particular event, because nothing needs resolving.
 - OTHER: only for clear spam or content unrelated to Unifesto.
 When a case touches two categories, pick the one the requester most needs resolved. "I paid but got no ticket" is PAYMENTS, because money left their account. "My QR code won't scan at the gate" is TICKETING.
 
 priority:
 - URGENT: money taken with nothing delivered for an event starting within a day, someone locked out of an event happening now, a safety or harassment concern, a suspected security breach or account takeover.
-- HIGH: money is wrong (double charge, missing refund, missing payout), or an event within the next few days is blocked for this person.
-- NORMAL: a real problem with no deadline pressure. Most cases.
-- LOW: questions, feedback, feature requests, and spam.
+- HIGH: money paid or owed through Unifesto is wrong (double charge, missing refund, missing payout), or an event within the next few days is blocked for this person.
+- NORMAL: a real problem, or a request that needs someone to act (transfer a ticket, fix a name, change details), with no deadline pressure. Most cases.
+- LOW: questions that only need information (timings, venue, how something works), feedback, feature requests, and spam.
+An event being soon does not by itself raise priority: a question about tomorrow's schedule is still LOW. Nor does angry or rude wording: judge what is actually wrong, not how loudly it is said. Costs outside Unifesto (travel, hotels) are not money being wrong.
 
 routingHint - who should answer, as a hint for staff (the case is already routed by rules):
 - SPACE: the event's organiser can answer it: event details, schedule, venue, certificates, their own refund policy, team or hackathon questions, check-in at their event.
