@@ -24,7 +24,7 @@ function setup(holderDeletedAt: Date | null, status: RefundStatus) {
     },
     user: { findUnique: jest.fn(async () => ({ deletedAt: holderDeletedAt })) },
   };
-  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any);
+  const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any, {} as any);
   const s = service as any;
   s.assertOrganiser = jest.fn(async () => undefined);
   s.userContact = jest.fn(async () => ({ email: null, name: 'there' }));
@@ -103,7 +103,7 @@ describe('refund approval for a closed account', () => {
       user: { findUnique: jest.fn(async () => ({ deletedAt: holderDeletedAt })) },
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     };
-    const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any);
+    const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any, {} as any);
     const s = service as any;
     const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
     s.razorpay = { payments: { refund, fetchMultipleRefund: jest.fn(async () => ({ items: [] })) } };

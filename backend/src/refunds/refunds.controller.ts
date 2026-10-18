@@ -112,4 +112,15 @@ export class RefundsController {
   async adminRefund(@Request() req, @Body() dto: AdminRefundDto) {
     return this.refundsService.adminRefund(req.user.id, dto);
   }
+
+  /**
+   * A24: send every refund a cancelled event owes (tickets, extra seats, stays
+   * paid online). POST /refunds/admin/event/:eventId/refund-all
+   */
+  @Post('admin/event/:eventId/refund-all')
+  @UseGuards(RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async refundCancelledEvent(@Request() req, @Param('eventId') eventId: string) {
+    return this.refundsService.refundCancelledEvent(req.user.id, eventId);
+  }
 }

@@ -17,6 +17,8 @@ import {
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { esc } from '../email/layout';
+import { openCancelledEventRefunds } from '../refunds/cancelled-event-refunds';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, resolveEventBranding, resolveSpaceBranding } from '../white-label/branding.util';
 import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
@@ -2528,14 +2530,33 @@ export class EventsService {
       throw new ForbiddenException('You cannot cancel this event');
     }
 
-    const updated = await this.prisma.event.update({
-      where: { id: eventId },
+    // Only a live event can be cancelled (A24): a repeat cancel would re-email
+    // everyone, and a completed one could then be hard-deleted with its money.
+    const claimed = await this.prisma.event.updateMany({
+      where: { id: eventId, status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] } },
       data: {
         status: EventStatus.CANCELLED,
         cancelledAt: new Date(),
         cancellationReason: dto.reason,
       },
     });
+    if (claimed.count === 0) {
+      throw new BadRequestException('Only a published or ongoing event can be cancelled');
+    }
+    const updated = await this.prisma.event.findUniqueOrThrow({ where: { id: eventId } });
+
+    // Every paid ticket gets its price back: one refund request each, straight
+    // to Unifesto. The money is held from payouts until they settle.
+    const opened = await openCancelledEventRefunds(this.prisma, eventId, userId, dto.reason);
+    if (opened > 0) {
+      this.emailService
+        .sendRawEmail(
+          process.env.ADMIN_EMAIL || 'aws@unifesto.app',
+          `${opened} refunds waiting: ${event.title} was cancelled`,
+          `<p>${esc(event.title)} was cancelled, so ${opened} paid ${opened === 1 ? 'booking needs' : 'bookings need'} a refund. Send them from Apex: Events, ${esc(event.title)}, Refund all paid.</p>`,
+        )
+        .catch((err) => this.logger.error('Failed to send cancelled-event refunds notice', err));
+    }
 
     // Invalidate event cache
     await this.cache.invalidateEventCache(event.slug);
@@ -2555,10 +2576,17 @@ export class EventsService {
     for (const reg of registrations) {
       const attendeeEmail = reg.user.identities[0]?.email;
       if (attendeeEmail) {
-        const refundInfo =
-          Number(reg.razorpayAmount) > 0
-            ? 'Any payment made will be refunded within 5-7 business days.'
-            : undefined;
+        const paid =
+          Number(reg.razorpayAmount) > 0 &&
+          (reg.paymentStatus === 'PAID' || reg.paymentStatus === 'PARTIALLY_REFUNDED');
+        const base = Math.max(
+          0,
+          Number(reg.totalAmount) - Number(reg.processingFee) - Number(reg.refundedAmount),
+        );
+        const refundInfo = paid
+          ? `Your ticket price of ₹${base.toLocaleString('en-IN')} is coming back to the card or account you paid with. ` +
+            'It can take 5-7 business days to show once sent. The processing fee is not refunded.'
+          : undefined;
 
         this.emailService
           .sendEventCancelled({
@@ -2572,6 +2600,17 @@ export class EventsService {
           })
           .catch((err) => this.logger.error('Failed to send event cancelled email', err));
       }
+    }
+
+    // Sub-events can't run without their parent: cancel the live ones too.
+    const children = await this.prisma.event.findMany({
+      where: { parentEventId: eventId, status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING] } },
+      select: { id: true },
+    });
+    for (const child of children) {
+      await this.cancelEvent(userId, child.id, dto).catch((err) =>
+        this.logger.error(`Cancelling sub-event ${child.id} of ${eventId} failed`, err),
+      );
     }
 
     return updated;

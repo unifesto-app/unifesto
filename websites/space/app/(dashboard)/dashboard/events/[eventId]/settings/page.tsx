@@ -409,8 +409,10 @@ export default function EventSettingsPage() {
                     Are you sure you want to cancel this event?
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    All registered attendees will be notified. Refunds will need
-                    to be processed separately if applicable.
+                    All registered attendees are notified and sub-events are
+                    cancelled too. Every paid attendee gets their ticket price back
+                    (the processing fee is kept), sent by Unifesto. Payouts for this
+                    event stop until those refunds go out.
                   </p>
                 </div>
               </div>

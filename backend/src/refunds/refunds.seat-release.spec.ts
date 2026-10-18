@@ -51,6 +51,7 @@ function approve(reg: { status: RegistrationStatus; refundDueAt?: Date | null })
     { emit: jest.fn() } as any,
     { can: async () => true } as any,
     { eventOverdrawn: async () => 0 } as any,
+    {} as any,
   );
   const s = service as any;
   const refund = jest.fn(async () => ({ id: 'rfnd_1' }));

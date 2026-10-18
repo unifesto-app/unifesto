@@ -30,6 +30,18 @@ describe('PayoutsService event balance', () => {
     return { svc, prisma, planConfig };
   };
 
+  it('a cancelled event with paid rows has nothing to withdraw (A24)', async () => {
+    const { svc, prisma } = build();
+    prisma.event.findUnique.mockResolvedValue({
+      status: 'CANCELLED',
+      spaceId: 'space-1',
+      space: { subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: null } },
+    });
+    const summary = await svc.getEventPayoutSummary('event-1');
+    expect(summary.eventNet).toBe(152);
+    expect(summary.available).toBe(0);
+  });
+
   it('holds open refund requests out of the available balance (A25)', async () => {
     const { svc, prisma } = build();
     prisma.refundRequest.findMany.mockResolvedValue([
