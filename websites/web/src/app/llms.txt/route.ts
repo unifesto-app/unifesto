@@ -1,6 +1,6 @@
 import {
   APP_FEATURES,
-  BUYER_PROCESSING_FEE,
+  buyerFeeText,
   FAQ_HOME,
   pricingFaq,
   FAQ_STAY, FAQ_HUDDLE, HUDDLE_STEPS,
@@ -44,7 +44,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
-- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${BUYER_PROCESSING_FEE}% processing fee on paid tickets
+- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
 - [Request a Space](${SITE.url}/request-space): how organisers get started
@@ -80,7 +80,7 @@ ${APP_FEATURES.map((f) => `- ${f.title}: ${f.body}`).join("\n")}
 
 ${rates.plans.map(plan).join("\n")}
 
-${pricingFaq(rates.plans, rates.buyerFee).map((f) => `- ${f.q} ${f.a}`).join("\n")}
+${pricingFaq(rates.plans, rates.buyerFee, rates.buyerFeeCap).map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## Common questions
 

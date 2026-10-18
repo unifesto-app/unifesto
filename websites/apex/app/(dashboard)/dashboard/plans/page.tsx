@@ -529,6 +529,7 @@ function Field({
  */
 function GlobalFeeCard() {
   const [pct, setPct] = useState<number | null>(null);
+  const [cap, setCap] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -538,7 +539,10 @@ function GlobalFeeCard() {
       const { data, error } = await getPlatformConfig();
       if (cancelled) return;
       if (error) setError(error.message);
-      else if (data) setPct(data.processingFeePercent);
+      else if (data) {
+        setPct(data.processingFeePercent);
+        setCap(data.processingFeeCapPerTicket ?? null);
+      }
       setLoading(false);
     })();
     return () => {
@@ -567,7 +571,7 @@ function GlobalFeeCard() {
           <div className="space-y-1">
             <div className="text-3xl font-semibold tabular-nums">{pct}%</div>
             <p className="text-xs text-muted-foreground">
-              Fixed platform-wide — not editable.
+              {cap ? `Capped at ₹${cap} per ticket. ` : ""}Fixed platform-wide — not editable.
             </p>
           </div>
         )}

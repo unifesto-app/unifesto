@@ -24,7 +24,7 @@ import {
 import { PaymentStatus, RegistrationStatus, Prisma, Provider, FormFieldType } from '@prisma/client';
 import { GroupSeatsService } from './group-seats.service';
 import * as crypto from 'crypto';
-import { generateQRCode, generateTicketCode } from './registration.util';
+import { generateQRCode, generateTicketCode, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 
 /**
@@ -742,7 +742,7 @@ export class RegistrationImportService {
       ticketType.kind === 'GROUP' && ticketType.groupPricingMode === 'PER_PERSON'
         ? price * (groupSize ?? 1)
         : price;
-    const processingFee = this.payments.computeProcessingFee(basePrice);
+    const processingFee = this.payments.computeProcessingFee(basePrice, ticketsIn(ticketType, { quantity: 1, groupSize }));
     const totalAmount = basePrice + processingFee;
 
     // PENDING row + its group seats together; the payment-link webhook then

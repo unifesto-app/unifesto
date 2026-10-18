@@ -447,7 +447,7 @@ export function PaymentStep({ r, waitlist }: { r: EventRegistration; waitlist: b
       <Card style={{ gap: spacing[3] }}>
         <Line label={`${r.selectedTicket?.name}${r.quantity > 1 ? ` × ${r.quantity}` : ''}`} value={money(r.symbol, r.basePrice)} />
         {r.discount > 0 ? <Line label={`Discount (${r.appliedCoupon?.code})`} value={`−${money(r.symbol, r.discount)}`} tone={c.success} /> : null}
-        {r.feePercent > 0 ? <Line label={`Processing fee (${r.feePercent}%)`} value={money(r.symbol, r.fee)} /> : null}
+        {r.feePercent > 0 ? <Line label={`Processing fee (${r.feePercent}%${r.feeCapped ? ', capped' : ''})`} value={money(r.symbol, r.fee)} /> : null}
         <View style={[styles.divider, { backgroundColor: c.border }]} />
         <Line label="Total" value={money(r.symbol, r.total)} strong />
       </Card>

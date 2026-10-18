@@ -18,7 +18,10 @@ export class PublicConfigController {
   @Get('processing-fee')
   @ApiOperation({ summary: 'Get the app-wide processing fee percentage' })
   getProcessingFee() {
-    return { processingFeePercent: this.platformConfig.getProcessingFeePercent() };
+    return {
+      processingFeePercent: this.platformConfig.getProcessingFeePercent(),
+      processingFeeCapPerTicket: this.platformConfig.getProcessingFeeCapPerTicket(),
+    };
   }
 
   /**
@@ -32,6 +35,7 @@ export class PublicConfigController {
   getPlanFees() {
     return {
       buyerProcessingFeePercent: this.platformConfig.getProcessingFeePercent(),
+      buyerProcessingFeeCapPerTicket: this.platformConfig.getProcessingFeeCapPerTicket(),
       plans: SELLABLE_PLANS.map((plan) => {
         const l = this.planConfig.getLimits(plan);
         return {

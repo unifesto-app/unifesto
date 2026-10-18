@@ -7,12 +7,15 @@ describe('PaymentsService', () => {
   const WEBHOOK_SECRET = 'test_webhook_secret';
 
   let service: PaymentsService;
-  let platformConfig: { getProcessingFeePercent: jest.Mock };
+  let platformConfig: { getProcessingFeePercent: jest.Mock; getProcessingFeeCapPerTicket: jest.Mock };
 
   beforeEach(() => {
     process.env.RAZORPAY_KEY_SECRET = KEY_SECRET;
     process.env.RAZORPAY_WEBHOOK_SECRET = WEBHOOK_SECRET;
-    platformConfig = { getProcessingFeePercent: jest.fn().mockReturnValue(2) };
+    platformConfig = {
+      getProcessingFeePercent: jest.fn().mockReturnValue(2),
+      getProcessingFeeCapPerTicket: jest.fn().mockReturnValue(99),
+    };
     service = new PaymentsService(
       platformConfig as unknown as PlatformConfigService,
     );

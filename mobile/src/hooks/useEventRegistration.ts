@@ -14,7 +14,9 @@ import {
   calculateTicketPrice,
   isTicketAvailable,
   isWaitlistOnly,
-  getProcessingFeePercent,
+  getProcessingFeeTerms,
+  buyerFee,
+  NO_FEE,
   type Ticket,
   type CustomField,
 } from '../lib/api/tickets';
@@ -95,11 +97,11 @@ export function useEventRegistration() {
   // Team-wide (per-group) answers, asked once for the whole group.
   const [teamFieldValues, setTeamFieldValues] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
-  // App-wide processing fee % (admin-set); 0 until loaded.
-  const [feePercent, setFeePercent] = useState(0);
+  // App-wide buyer fee terms (percent + per-ticket cap); none until loaded.
+  const [feeTerms, setFeeTerms] = useState(NO_FEE);
 
   useEffect(() => {
-    getProcessingFeePercent().then(setFeePercent).catch(() => setFeePercent(0));
+    getProcessingFeeTerms().then(setFeeTerms).catch(() => setFeeTerms(NO_FEE));
   }, []);
 
   useEffect(() => {
@@ -419,8 +421,12 @@ export function useEventRegistration() {
   // matching the backend exactly.
   const discount = appliedCoupon ? Math.min(appliedCoupon.discount, basePrice) : 0;
   const discountedBase = Math.max(0, basePrice - discount);
-  const fee = basePrice === 0 ? 0 : Math.round(discountedBase * (feePercent / 100) * 100) / 100;
-  const total = basePrice === 0 ? 0 : Math.round(discountedBase * (1 + feePercent / 100) * 100) / 100;
+  // Per-person tickets count each ticket for the cap; a per-group price is one.
+  const feeTickets = selectedTicket?.price_type === 'per_person' ? quantity : 1;
+  const fee = basePrice === 0 ? 0 : buyerFee(discountedBase, feeTerms, feeTickets);
+  const total = basePrice === 0 ? 0 : Math.round((discountedBase + fee) * 100) / 100;
+  const feePercent = feeTerms.percent;
+  const feeCapped = fee > 0 && fee < Math.round(discountedBase * feeTerms.percent + 1e-9) / 100;
 
   const applyCoupon = async () => {
     if (!selectedTicket || !event || !couponInput.trim()) return;
@@ -465,7 +471,7 @@ export function useEventRegistration() {
     } else if (step === 'review') {
       setStep('payment');
       // The fee may have changed while the form was open; refresh the total.
-      getProcessingFeePercent().then(setFeePercent).catch(() => {});
+      getProcessingFeeTerms().then(setFeeTerms).catch(() => {});
     }
   };
 
@@ -581,7 +587,7 @@ export function useEventRegistration() {
         const proceed = await confirmAmountChange(shownPaise, order.amount);
         if (!proceed) {
           // Show the live total; the PENDING registration is reused/cleaned up server-side.
-          getProcessingFeePercent().then(setFeePercent).catch(() => {});
+          getProcessingFeeTerms().then(setFeeTerms).catch(() => {});
           return;
         }
       }
@@ -711,6 +717,7 @@ export function useEventRegistration() {
     discount,
     fee,
     feePercent,
+    feeCapped,
     total,
     couponInput,
     setCouponInput,

@@ -449,7 +449,8 @@ export class StayBookingsService {
       paymentMode: option.paymentMode,
       guests: guests.length,
       nights,
-      feeFor: (base) => this.payments.computeProcessingFee(base),
+      // Each guest gets a stay pass: one ticket each for the fee cap (A34).
+      feeFor: (base) => this.payments.computeProcessingFee(base, guests.length),
     });
 
     let arrivalAt: Date | null = null;

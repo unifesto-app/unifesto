@@ -41,6 +41,7 @@ import {
   formatEventDate,
   formatEventTime,
   SETTLEABLE_PAYMENT,
+  ticketsIn,
 } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 
@@ -414,7 +415,10 @@ export class RegistrationCheckoutService {
 
     // App-wide processing fee (admin-set), applied to every paid registration
     // regardless of the organiser's plan.
-    const processingFee = this.payments.computeProcessingFee(basePrice);
+    const processingFee = this.payments.computeProcessingFee(
+      basePrice,
+      ticketType ? ticketsIn(ticketType, { quantity, groupSize }) : quantity,
+    );
 
     const totalAmount = basePrice + processingFee;
 
@@ -905,7 +909,10 @@ export class RegistrationCheckoutService {
       baseAmount = Math.max(0, baseAmount - couponDiscount);
     }
 
-    const processingFee = this.payments.computeProcessingFee(baseAmount);
+    const processingFee = this.payments.computeProcessingFee(
+      baseAmount,
+      ticketsIn(ticketType, { quantity: dto.quantity, groupSize }),
+    );
     const totalAmount = baseAmount + processingFee;
 
     // The full total is paid via Razorpay (the processing fee is never waived).
