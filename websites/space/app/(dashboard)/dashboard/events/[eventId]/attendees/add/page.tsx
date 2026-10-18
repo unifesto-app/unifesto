@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle, WarningCircle } from "@unifesto/unicon/react";
-import { getEventById } from "@/lib/api/events-api";
+import { getEventById, getManageTicketTypes } from "@/lib/api/events-api";
 import type { Event, EventTicketType, EventFormField } from "@/lib/api/events-api";
 import {
   manualAddAttendee,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/api/free-add-api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { QuestionInputs } from "@/components/events/question-inputs";
-import { formatAnswer } from "@/lib/form-questions";
+import { formatAnswer, visibleFieldIds } from "@/lib/form-questions";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,25 @@ function fieldsForTicket(event: Event, ticketTypeId: string): EventFormField[] {
     .sort((a, b) => a.order - b.order);
 }
 
+/**
+ * A phone as the 10 digits the API wants, or null. Accepts what people paste:
+ * "+91 98765 43210", "098765 43210", "9876543210".
+ */
+function tenDigits(raw: string | undefined): string | null {
+  let d = (raw ?? "").replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return /^[0-9]{10}$/.test(d) ? d : null;
+}
+
+const isBlank = (v: unknown) => v == null || v === "" || (Array.isArray(v) && v.length === 0);
+
+/** The first required, visible question left blank, or null. */
+function missingRequired(fields: EventFormField[], answers: Record<string, unknown>): EventFormField | null {
+  const visible = visibleFieldIds(fields, answers);
+  return fields.find((f) => f.type !== "SECTION" && f.isRequired && visible.has(f.id) && isBlank(answers[f.id])) ?? null;
+}
+
 /** One label/value line in the review summary; hidden when the value is empty. */
 function SummaryRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
@@ -61,14 +80,18 @@ export default function AddAttendeePage() {
   const eventId = params.eventId as string;
 
   const [event, setEvent] = useState<Event | null>(null);
+  // The manage list: hidden and paused tiers too, which an organiser can still
+  // add people to (the public event payload leaves them out).
+  const [managed, setManaged] = useState<EventTicketType[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await getEventById(eventId);
+    const [{ data, error }, tiers] = await Promise.all([getEventById(eventId), getManageTicketTypes(eventId)]);
     if (error) setError(error.message);
     else if (data) setEvent(data);
+    setManaged(tiers.data);
     setLoading(false);
   }, [eventId]);
 
@@ -76,7 +99,7 @@ export default function AddAttendeePage() {
     void load();
   }, [load]);
 
-  const ticketTypes = event?.ticketTypes ?? [];
+  const ticketTypes = managed ?? event?.ticketTypes ?? [];
 
   return (
     <div className="space-y-6">
@@ -260,7 +283,7 @@ function SingleAddForm({
     .map((m) => ({
       name: m.name?.trim() || "Guest",
       email: m.email?.trim() || undefined,
-      mobile: m.mobile?.trim() || undefined,
+      mobile: tenDigits(m.mobile) ?? undefined,
       gender: m.gender?.trim() || undefined,
       customFields:
         m.customFields && Object.keys(m.customFields).length
@@ -277,9 +300,13 @@ function SingleAddForm({
   const validate = (): string | null => {
     if (!name.trim()) return "Name is required.";
     if (!EMAIL_RE.test(email.trim())) return "A valid email is required.";
-    if (!/^[0-9]{10}$/.test(mobile.trim()))
+    if (!tenDigits(mobile))
       return "A valid 10-digit phone number is required.";
     if (!gender) return "Gender is required.";
+    const leadMissing = missingRequired(perMemberFields, formValues);
+    if (leadMissing) return `"${leadMissing.label}" is required.`;
+    const teamMissing = missingRequired(teamFields, teamValues);
+    if (teamMissing) return `"${teamMissing.label}" is required.`;
 
     if (isGroup) {
       if (groupSize < minSize || groupSize > maxSize) {
@@ -293,9 +320,11 @@ function SingleAddForm({
         if (!m?.name?.trim()) return `${who}: name is required.`;
         if (!EMAIL_RE.test((m.email ?? "").trim()))
           return `${who}: a valid email is required.`;
-        if (!/^[0-9]{10}$/.test((m.mobile ?? "").trim()))
+        if (!tenDigits(m.mobile))
           return `${who}: a valid 10-digit phone number is required.`;
         if (!m.gender) return `${who}: gender is required.`;
+        const memberMissing = missingRequired(perMemberFields, m.customFields ?? {});
+        if (memberMissing) return `${who}: "${memberMissing.label}" is required.`;
       }
     }
     return null;
@@ -321,7 +350,7 @@ function SingleAddForm({
       ticketTypeId,
       name: name.trim(),
       email: email.trim(),
-      mobile: mobile.trim(),
+      mobile: tenDigits(mobile) ?? mobile.trim(),
       gender,
       groupSize: isGroup ? groupSize : undefined,
       groupMembers: isGroup ? cleanedMembers : undefined,
@@ -459,6 +488,7 @@ function SingleAddForm({
               <SelectItem key={t.id} value={t.id}>
                 {t.name}
                 {t.price > 0 ? ` — ₹${t.price}` : " — Free"}
+                {t.isVisible === false ? " (hidden)" : t.isActive === false ? " (paused)" : ""}
               </SelectItem>
             ))}
           </SelectContent>

@@ -21,7 +21,7 @@ describe('teamChangeWindow', () => {
 });
 
 describe('addSeatsQuote', () => {
-  const fee = (b: number) => b * 0.05;
+  const fee = (b: number) => ({ base: b, fee: b * 0.05, total: b * 1.05 });
   it('charges per person plus fee on PER_PERSON paid tickets', () => {
     expect(addSeatsQuote({ price: 199, groupPricingMode: GroupPricingMode.PER_PERSON }, 2, fee)).toEqual({
       base: 398,

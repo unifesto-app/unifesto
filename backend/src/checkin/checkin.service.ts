@@ -1282,12 +1282,28 @@ export class CheckinService {
     }
   }
 
-  /** List an event's check-in points (manager-only). */
+  /**
+   * An event's check-in points. Anyone who can check people in sees them
+   * (B15: Crew on web); a member whose grants cover only some points sees
+   * just those.
+   */
   async listCheckinTypes(userId: string, eventId: string) {
-    const event = await this.assertEventOrganiser(userId, eventId);
+    const event = await this.prisma.event.findUnique({ where: { id: eventId }, select: { id: true, spaceId: true } });
+    if (!event) throw new NotFoundException('Event not found');
+    const allPoints = await this.authz.can({ id: userId }, Action.EVENT_CHECK_IN, { eventId });
+    const grants = allPoints
+      ? []
+      : await this.prisma.eventCheckinAccess.findMany({ where: { eventId, userId }, select: { checkinTypeId: true } });
+    if (!allPoints && grants.length === 0) {
+      throw new ForbiddenException('You do not have check-in access for this event');
+    }
     await this.ensureDefaultCheckinType(event.id);
+    const everyPoint = allPoints || grants.some((g) => g.checkinTypeId === null);
     const types = await this.prisma.eventCheckinType.findMany({
-      where: { eventId },
+      where: {
+        eventId,
+        ...(everyPoint ? {} : { id: { in: grants.map((g) => g.checkinTypeId!) } }),
+      },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
       select: { id: true, name: true, order: true },
     });

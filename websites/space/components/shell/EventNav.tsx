@@ -25,11 +25,13 @@ import {
   ChartLineUp,
   Trophy,
   Bed,
+  ArrowCounterClockwise,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
 import { cn } from "@/lib/utils/cn";
+import { AssistInboxLink } from "./AssistInboxLink";
 
 interface EventNavItem {
   href: string;
@@ -72,6 +74,7 @@ const NAV_GROUPS: EventNavGroup[] = [
     label: "Finance",
     items: [
       { href: "/transactions", label: "Transactions", icon: Receipt, requires: "event:publish" },
+      { href: "/refunds", label: "Refunds", icon: ArrowCounterClockwise, requires: "event:manage-money" },
       { href: "/reports", label: "Reports", icon: ChartBar, requires: "event:publish", feature: "hasAnalytics" },
     ],
   },
@@ -186,6 +189,8 @@ export function EventNav({
         <ArrowLeft className="h-[18px] w-[18px] flex-shrink-0" />
         {!collapsed && "All events"}
       </Link>
+      {/* Event-only operators have no space rail; renders nothing for everyone else. */}
+      <AssistInboxLink collapsed={collapsed} onNavigate={onNavigate} />
 
       <nav className={cn("flex-1", collapsed ? "space-y-2" : "space-y-5")}>
         {navGroups.map((group, groupIdx) => {

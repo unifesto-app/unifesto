@@ -550,6 +550,21 @@ export async function getRegistrationById(
 }
 
 /**
+ * Cancel a free or unpaid registration (organiser). The reason goes into the
+ * attendee's cancellation email. Paid tickets are refused: raise a refund.
+ * Backed by `POST /events/:id/registrations/:registrationId/cancel`.
+ */
+export async function cancelRegistrationAsOrganiser(
+  eventId: string,
+  registrationId: string,
+  reason?: string
+): Promise<{ data: { message: string } | null; error: ApiError | null }> {
+  return apiCall<{ message: string }>(
+    backendClient.post(`/events/${eventId}/registrations/${registrationId}/cancel`, reason ? { reason } : {})
+  );
+}
+
+/**
  * Restore a cancelled registration back to REGISTERED (organiser).
  * Re-consumes the seat and re-activates the tickets; leaves payment/refund state
  * untouched. Backed by `POST /events/:id/registrations/:registrationId/restore`.

@@ -983,8 +983,11 @@ export class RefundsService {
     page = 1,
     limit = 20,
     spaceId?: string,
+    /** One event's requests (its Refunds section); still limited to the caller's events. */
+    eventId?: string,
   ) {
-    const eventIds = await this.organiserEventIds(userId, spaceId);
+    const mine = await this.organiserEventIds(userId, spaceId);
+    const eventIds = eventId ? mine.filter((id) => id === eventId) : mine;
     if (eventIds.length === 0) {
       return { requests: [], pagination: { page, limit, total: 0, totalPages: 0 } };
     }
