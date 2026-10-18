@@ -52,7 +52,10 @@ backendClient.interceptors.response.use(
         errors?: unknown;
       };
 
-      if (status === 401 && typeof window !== "undefined") {
+      // A 401 from a sign-in call is a wrong code, not an expired session:
+      // reloading /login would throw away the step the user is on.
+      const isAuthCall = error.config?.url?.startsWith("/auth/") ?? false;
+      if (status === 401 && !isAuthCall && typeof window !== "undefined") {
         clearAuthToken();
         window.location.href = "/login";
       }

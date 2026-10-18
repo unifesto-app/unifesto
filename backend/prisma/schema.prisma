@@ -4901,6 +4901,28 @@ model EventPartnerLink {
 // =====================================================
 
 /// What a page view or short link points at. URL is short links only.
+enum SlugKind {
+  EVENT
+  SPACE
+
+  @@map("slug_kind")
+}
+
+/// A slug an event or space used to have. Lookups by slug fall back here so
+/// shared links and printed QR codes survive a rename; a live slug always wins
+/// (a new owner of the slug is never redirected away). No FK: the target is an
+/// event or a space; a deleted target just 404s as before.
+model SlugHistory {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind      SlugKind
+  slug      String   @db.VarChar(200)
+  targetId  String   @map("target_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([kind, slug])
+  @@map("slug_history")
+}
+
 enum TrafficTarget {
   EVENT
   SPACE

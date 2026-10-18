@@ -149,7 +149,9 @@ function WaitlistToggle({
           <span className="mt-0.5 block text-xs text-muted-foreground">
             {hasCapacity
               ? "Buyers join a queue instead of being turned away. You choose who gets in when a seat frees up."
-              : "Set a capacity first. A ticket with unlimited capacity never sells out, so nobody would ever join the queue."}
+              : draft.waitlistEnabled
+                ? "Saving with no capacity turns the waiting list off: an unlimited ticket never sells out. Anyone already queued stays on the list."
+                : "Set a capacity first. A ticket with unlimited capacity never sells out, so nobody would ever join the queue."}
           </span>
         </span>
       </label>

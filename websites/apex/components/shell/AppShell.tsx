@@ -9,6 +9,7 @@ import { Navbar } from "./Navbar";
 import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 /**
  * Authenticated shell for the platform-admin surface. Apex is platform-staff
@@ -18,19 +19,30 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { role, loading } = useSession();
+  const { role, loading, error, refresh } = useSession();
   const [navOpen, setNavOpen] = useState(false);
   const closeNav = useCallback(() => setNavOpen(false), []);
 
   useEffect(() => {
-    if (loading || role === "platform_admin") return;
+    // A failed load says nothing about the role: don't bounce on it.
+    if (loading || error || role === "platform_admin") return;
     if (role === "space_admin") {
       // External origin — hard navigation, not the SPA router.
       window.location.href = spaceUrl();
     } else {
       router.replace("/no-access");
     }
-  }, [loading, role, router]);
+  }, [loading, error, role, router]);
+
+  if (error && !loading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+        <p className="text-sm text-foreground">Couldn&apos;t load your account.</p>
+        <p className="text-xs text-muted-foreground">{error}</p>
+        <Button onClick={() => void refresh()}>Try again</Button>
+      </div>
+    );
+  }
 
   // Until we know the user is an admin, hold the skeleton rather than flashing
   // mission-control content (a redirect may be in flight).

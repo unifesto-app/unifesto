@@ -285,10 +285,26 @@ export interface CreateEventPayload {
   recurrenceRule?: string;
 }
 
-export interface UpdateEventPayload extends Partial<CreateEventPayload> {
+/** Optional text fields an edit can clear: null clears, undefined leaves as is. */
+type ClearableEventField =
+  | "description"
+  | "venueName"
+  | "venueAddress"
+  | "city"
+  | "state"
+  | "onlineUrl"
+  | "onlinePlatform"
+  | "category";
+
+export type UpdateEventPayload = Omit<Partial<CreateEventPayload>, ClearableEventField> & {
+  [K in ClearableEventField]?: CreateEventPayload[K] | null;
+} & {
   /** URL slug — lowercase letters, numbers and hyphens; must be unique. */
   slug?: string;
-}
+};
+
+/** An update where null clears an optional field. */
+export type Clearing<T> = { [K in keyof T]?: T[K] | null };
 
 export interface EventListParams {
   page?: number;
@@ -625,7 +641,11 @@ export async function createTicketType(
 export async function updateTicketType(
   eventId: string,
   typeId: string,
-  payload: Partial<TicketTypePayload> & {
+  payload: Omit<Partial<TicketTypePayload>, "description" | "totalQuantity"> & {
+    /** null clears it. */
+    description?: string | null;
+    /** null = unlimited. */
+    totalQuantity?: number | null;
     isVisible?: boolean;
     isActive?: boolean;
   }
@@ -800,7 +820,7 @@ export async function createAgenda(
 export async function updateAgenda(
   eventId: string,
   agendaId: string,
-  payload: Partial<AgendaPayload>
+  payload: Clearing<AgendaPayload>
 ): Promise<{ data: EventAgenda | null; error: ApiError | null }> {
   return apiCall<EventAgenda>(
     backendClient.patch(`/events/${eventId}/agenda/${agendaId}`, payload)
@@ -841,7 +861,7 @@ export async function createSpeaker(
 export async function updateSpeaker(
   eventId: string,
   speakerId: string,
-  payload: Partial<SpeakerPayload>
+  payload: Clearing<SpeakerPayload>
 ): Promise<{ data: EventSpeaker | null; error: ApiError | null }> {
   return apiCall<EventSpeaker>(
     backendClient.patch(`/events/${eventId}/speakers/${speakerId}`, payload)
@@ -882,7 +902,7 @@ export async function createPrize(
 export async function updatePrize(
   eventId: string,
   prizeId: string,
-  payload: Partial<PrizePayload>
+  payload: Clearing<PrizePayload>
 ): Promise<{ data: EventPrize | null; error: ApiError | null }> {
   return apiCall<EventPrize>(
     backendClient.patch(`/events/${eventId}/prizes/${prizeId}`, payload)
@@ -921,7 +941,7 @@ export async function createContact(
 export async function updateContact(
   eventId: string,
   contactId: string,
-  payload: Partial<ContactPayload>
+  payload: Clearing<ContactPayload>
 ): Promise<{ data: EventContact | null; error: ApiError | null }> {
   return apiCall<EventContact>(
     backendClient.patch(`/events/${eventId}/contacts/${contactId}`, payload)
