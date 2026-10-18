@@ -34,11 +34,27 @@ describe('NotificationsService in-app copy', () => {
     expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['u-on']);
   });
 
-  it('writes nothing to the feed without `inbox`', async () => {
+  it('keeps a copy by default, typed from data', async () => {
     const { svc, prisma } = build();
     const { inbox: _inbox, ...plain } = opts;
-    await svc.send(['u-on'], plain);
+    await svc.send(['u-on'], { ...plain, data: { type: 'registration', eventId: 'e2' } });
+    expect(prisma.userNotification.createMany.mock.calls[0][0].data[0]).toMatchObject({ type: 'registration', eventId: 'e2' });
+  });
+
+  it('skips the feed for `inbox: false` and staff alerts', async () => {
+    const { svc, prisma } = build();
+    await svc.send(['u-on'], { ...opts, inbox: false });
+    await svc.send(['u-on'], { ...opts, inbox: undefined, category: 'adminAlerts' });
     expect(prisma.userNotification.createMany).not.toHaveBeenCalled();
+  });
+
+  it('only opted-in users get a promotions copy', async () => {
+    const { svc, prisma } = build();
+    prisma.notificationSettings.findMany.mockResolvedValue([
+      { userId: 'u-in', pushEnabled: true, promotions: true },
+    ]);
+    await svc.send(['u-in', 'u-none'], { ...opts, inbox: undefined, category: 'promotions' });
+    expect(prisma.userNotification.createMany.mock.calls[0][0].data.map((r: any) => r.userId)).toEqual(['u-in']);
   });
 
   it('still pushes when the feed write fails', async () => {

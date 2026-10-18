@@ -17,6 +17,7 @@ import UpNextCard, { UpNextCardSkeleton } from '../../src/components/home/UpNext
 import HackathonCard, { useMyHackathon } from '../../src/components/home/HackathonCard';
 import InviteCards from '../../src/components/home/InviteCards';
 import { useMyInvites } from '../../src/hooks/useMyInvites';
+import { useUnreadNotifications } from '../../src/hooks/useUnreadNotifications';
 import PromptCard from '../../src/components/home/PromptCard';
 import SpacePanel from '../../src/components/home/SpacePanel';
 import ApexPanel from '../../src/components/home/ApexPanel';
@@ -39,6 +40,7 @@ export default function HomeTab() {
   const data = useHomeData();
   // Group-seat invites waiting for me (refetched on focus).
   const myInvites = useMyInvites();
+  const unread = useUnreadNotifications();
   const search = useHomeSearch();
   // Shortcuts into the Space / Apex tabs, shown only to people who have them.
   const workspace = useWorkspaceCards();
@@ -146,6 +148,8 @@ export default function HomeTab() {
           locationStatus={data.locationStatus}
           onEnableLocation={() => (data.canAskLocation ? void data.loadLocation() : void Linking.openSettings())}
           onPressAvatar={() => router.navigate('/profile')}
+          unread={unread}
+          onPressBell={() => router.push('/notifications')}
           onPressPreset={(preset) => router.push({ pathname: '/events', params: { preset } })}
           onPressSearch={search.openSheet}
         />

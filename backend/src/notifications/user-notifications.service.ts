@@ -11,7 +11,7 @@ export interface NotificationScope {
 
 /**
  * The signed-in user's in-app notification feed (`user_notifications`). Rows
- * are written by NotificationsService.send({ inbox }); this only reads them and
+ * are written by NotificationsService.send (on by default); this only reads them and
  * marks them read. Every query is pinned to the caller's own userId.
  */
 @Injectable()

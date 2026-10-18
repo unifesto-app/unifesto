@@ -14,11 +14,12 @@ export interface SendOptions {
   /** Set for campaign fan-out; null/undefined for transactional pushes. */
   campaignId?: string;
   /**
-   * Also keep an in-app copy (`user_notifications`) for every recipient. It is
-   * written before the push-preference check, so someone with push off still
-   * sees it in the app.
+   * The in-app copy (`user_notifications`, the bell on Home). On by default:
+   * type falls back to `data.type` (else the category) and eventId to
+   * `data.eventId`. Written before the push-preference check, so someone with
+   * push off still sees it. Pass `false` to skip it.
    */
-  inbox?: { type: string; eventId?: string | null };
+  inbox?: { type: string; eventId?: string | null } | false;
 }
 
 export interface SendSummary {
@@ -71,8 +72,6 @@ export class NotificationsService {
       const unique = [...new Set(userIds)].filter(Boolean);
       if (unique.length === 0) return summary;
 
-      if (opts.inbox) await this.writeInbox(unique, opts);
-
       const settings = await this.prisma.notificationSettings.findMany({
         where: { userId: { in: unique } },
       });
@@ -82,6 +81,11 @@ export class NotificationsService {
       const skipped: string[] = [];
       for (const userId of unique) {
         (this.isAllowed(byUser.get(userId), opts.category) ? allowed : skipped).push(userId);
+      }
+
+      // Staff alerts stay out of the feed; opt-in marketing only reaches those who opted in.
+      if (opts.inbox !== false && !STAFF_CATEGORIES.has(opts.category)) {
+        await this.writeInbox(OPT_IN_CATEGORIES.has(opts.category) ? allowed : unique, opts);
       }
 
       if (skipped.length) {
@@ -155,12 +159,16 @@ export class NotificationsService {
 
   /** The in-app copy. Its own try so a failed insert never costs the push. */
   private async writeInbox(userIds: string[], opts: SendOptions): Promise<void> {
+    if (!userIds.length) return;
+    const inbox = opts.inbox || undefined;
+    const type = inbox?.type ?? (typeof opts.data?.type === 'string' ? opts.data.type : opts.category);
+    const dataEventId = typeof opts.data?.eventId === 'string' ? opts.data.eventId : null;
     try {
       await this.prisma.userNotification.createMany({
         data: userIds.map((userId) => ({
           userId,
-          eventId: opts.inbox!.eventId ?? null,
-          type: opts.inbox!.type,
+          eventId: inbox?.eventId ?? dataEventId,
+          type: type.slice(0, 40),
           title: opts.title,
           body: opts.body,
           deepLink: opts.deepLink ?? null,

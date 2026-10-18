@@ -398,6 +398,7 @@ const feedQuery = (scope: { eventId?: string; type?: string; before?: string }) 
 
 export const getNotifications = (scope: { eventId?: string; type?: string; before?: string }) =>
   call<{ items: InAppNotification[]; nextBefore: string | null }>(`/users/me/notifications${feedQuery(scope)}`);
+export const getUnreadNotificationCount = () => call<{ count: number }>('/users/me/notifications/unread-count');
 export const markNotificationsRead = (scope: { eventId?: string; type?: string; ids?: string[] }): Promise<Result<{ updated: number }>> =>
   call<{ updated: number }>('/users/me/notifications/read', json('POST', scope));
 
