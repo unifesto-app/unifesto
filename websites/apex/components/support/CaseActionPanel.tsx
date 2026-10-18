@@ -23,7 +23,7 @@ import { reviewTransferRequest } from "@/lib/api/registrations-api";
 import { updateContentReport } from "@/lib/api/content-reports-api";
 import { updateBankAccountStatus } from "@/lib/api/payouts-api";
 
-type Run = (id: string, note: string) => Promise<{ error: ApiError | null }>;
+type Run = (id: string, note: string, d: Record<string, any>) => Promise<{ error: ApiError | null }>;
 
 interface Action {
   label: string;
@@ -145,8 +145,17 @@ const SUBJECTS: Record<string, SubjectDef> = {
   FreeAttendeeAddRequest: {
     title: "Free attendee add",
     href: "/dashboard/requests/free-adds",
-    fields: (d) => [["Reason", d.reason]],
-    actions: review(reviewFreeAddRequest),
+    fields: (d) => [
+      ["Seats asked", d.requestedSeats],
+      ["Seats approved", d.approvedSeats != null ? `${d.approvedSeats} (${d.usedSeats} used)` : null],
+      ["Reason", d.reason],
+    ],
+    // Approves the seats asked for; a different count is set on the full queue.
+    actions: review((id, status, reviewNote) => reviewFreeAddRequest(id, status, { reviewNote })).map((a) =>
+      a.label === "Approve"
+        ? { ...a, label: "Approve seats asked", run: (id, n, d) => reviewFreeAddRequest(id, "APPROVED", { reviewNote: note(n), approvedSeats: d.requestedSeats ?? undefined }) }
+        : a
+    ),
   },
   RegistrationTransferRequest: {
     title: "Ticket transfer",
@@ -214,7 +223,7 @@ export function CaseActionPanel({ subject, onDone }: { subject: CaseSubject; onD
     }
     setBusy(a.label);
     setError("");
-    const { error } = await a.run(d.id, text);
+    const { error } = await a.run(d.id, text, d);
     setBusy(null);
     if (error) setError(error.message || `Could not ${a.label.toLowerCase()}.`);
     else {
