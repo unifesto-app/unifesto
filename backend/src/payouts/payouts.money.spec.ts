@@ -25,6 +25,7 @@ function setup(opts: { paid?: number; payouts?: { netAmount: number; status: Pay
     },
     stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
+    refundRequest: { findMany: jest.fn(async () => []) },
     payoutBankAccount: { findFirst: jest.fn(async () => ({ id: 'acct-1' })) },
     payout: {
       findMany: jest.fn(async ({ where }: any) =>

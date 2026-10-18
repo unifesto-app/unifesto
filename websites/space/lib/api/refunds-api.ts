@@ -10,7 +10,8 @@ export type RefundStatus =
   | "PENDING_ADMIN"
   | "PROCESSING"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  | "REFUND_FAILED";
 
 export type RefundRequesterRole = "ATTENDEE" | "CURATOR" | "ADMIN";
 

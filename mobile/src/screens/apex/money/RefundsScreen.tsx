@@ -20,6 +20,8 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'PENDING_CURATOR', label: 'With curator' },
   { value: 'APPROVED', label: 'Refunded' },
   { value: 'REJECTED', label: 'Declined' },
+  { value: 'REFUND_FAILED', label: 'Refund failed' },
+  { value: 'PROCESSING', label: 'Processing' },
   { value: 'all', label: 'All' },
 ];
 
@@ -97,7 +99,7 @@ export default function RefundsScreen() {
             ? inr(r.approvedAmount ?? r.cashRefunded)
             : r.requestedAmount != null
               ? inr(r.requestedAmount)
-              : inr(refundableBase(r.registration));
+              : inr(r.maxRefundable ?? refundableBase(r.registration));
         return (
           <ApexRow
             title={who(r.registration?.user)}

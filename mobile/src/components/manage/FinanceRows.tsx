@@ -45,6 +45,8 @@ export function refundStatus(s: RefundStatus, tokens: StatusPalette) {
       return { text: 'Processing', color: tokens.info ?? tokens.textSecondary };
     case 'APPROVED':
       return { text: 'Refunded', color: tokens.success };
+    case 'REFUND_FAILED':
+      return { text: 'Refund failed', color: tokens.danger };
     default:
       return { text: 'Rejected', color: tokens.danger };
   }

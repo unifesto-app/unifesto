@@ -77,6 +77,11 @@ function setup() {
   return { service, prisma, tx, refund, payouts, update, getStatus: () => status, setStatus: (v: RefundStatus) => (status = v) };
 }
 
+const failedOnLoad = (prisma: any) => {
+  const load = prisma.refundRequest.findUnique;
+  load.mockImplementationOnce(async (...a: any[]) => ({ ...(await load.getMockImplementation()(...a)), status: RefundStatus.REFUND_FAILED }));
+};
+
 describe('refund approval is claimed before money moves (S11)', () => {
   it('a second approval of the same request is refused and Razorpay is called once', async () => {
     const { service, refund } = setup();
@@ -95,11 +100,36 @@ describe('refund approval is claimed before money moves (S11)', () => {
     expect(data.refundedAmount).toEqual({ increment: 20 });
   });
 
-  it('a failed Razorpay call puts the request back in the admin queue', async () => {
+  it('a refund Razorpay refused (4xx) puts the request back in the admin queue', async () => {
     const { service, refund, getStatus } = setup();
-    refund.mockRejectedValueOnce({ error: { description: 'gateway down' } });
-    await expect(service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any)).rejects.toThrow('gateway down');
+    refund.mockRejectedValueOnce({ statusCode: 400, error: { description: 'card closed' } });
+    await expect(service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any)).rejects.toThrow('card closed');
     expect(getStatus()).toBe(RefundStatus.PENDING_ADMIN);
+  });
+
+  it('an unconfirmed refund (timeout / 5xx) stays PROCESSING so nobody can reject it (A25)', async () => {
+    const { service, refund, getStatus } = setup();
+    refund.mockRejectedValueOnce({ statusCode: 502, error: { description: 'gateway down' } });
+    await expect(service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any)).rejects.toThrow(/stays Processing/);
+    expect(getStatus()).toBe(RefundStatus.PROCESSING);
+  });
+
+  it('a REFUND_FAILED request can be approved again to re-send (A25)', async () => {
+    const { service, prisma, refund, setStatus, getStatus } = setup();
+    setStatus(RefundStatus.REFUND_FAILED);
+    failedOnLoad(prisma);
+    await service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any);
+    expect(refund).toHaveBeenCalledTimes(1);
+    expect(getStatus()).toBe(RefundStatus.APPROVED);
+  });
+
+  it('a REFUND_FAILED request cannot be rejected (A25)', async () => {
+    const { service, prisma, setStatus } = setup();
+    setStatus(RefundStatus.REFUND_FAILED);
+    failedOnLoad(prisma);
+    await expect(service.adminDecide('admin', 'rr-1', { action: 'REJECT', note: 'no' } as any)).rejects.toThrow(
+      /not awaiting admin decision/,
+    );
   });
 
   it('once money moved, a failed DB write leaves the request PROCESSING for repair', async () => {

@@ -12,6 +12,7 @@ import {
   getAllRefundRequests,
   adminDecideRefund,
   refundableBase,
+  canSendRefund,
   type RefundRequest,
   type RefundStatus,
 } from "@/lib/api/refunds-api";
@@ -60,6 +61,7 @@ const STATUS_BADGE: Record<
   PROCESSING: { label: "Processing", variant: "warning" },
   APPROVED: { label: "Approved", variant: "success" },
   REJECTED: { label: "Declined", variant: "destructive" },
+  REFUND_FAILED: { label: "Refund failed", variant: "destructive" },
 };
 
 /** Platform admins act on requests a curator has already forwarded. */
@@ -189,6 +191,8 @@ export default function RefundsPage() {
             <SelectItem value={ACTIONABLE}>Awaiting action</SelectItem>
             <SelectItem value="APPROVED">Approved</SelectItem>
             <SelectItem value="REJECTED">Declined</SelectItem>
+            <SelectItem value="REFUND_FAILED">Refund failed</SelectItem>
+            <SelectItem value="PROCESSING">Processing</SelectItem>
             <SelectItem value="all">All requests</SelectItem>
           </SelectContent>
         </Select>
@@ -217,7 +221,7 @@ export default function RefundsPage() {
             <div className="divide-y">
               {visible.map((r) => {
                 const badge = STATUS_BADGE[r.status];
-                const remaining = refundableBase(r.registration);
+                const remaining = refundableBase(r);
                 return (
                   <div
                     key={r.id}
@@ -267,9 +271,9 @@ export default function RefundsPage() {
                           base refundable {money(remaining)}
                         </p>
                       </div>
-                      {r.status === ACTIONABLE && (
+                      {canSendRefund(r) && (
                         <Button size="sm" onClick={() => setActive(r)}>
-                          Review
+                          {r.status === ACTIONABLE ? "Review" : "Retry refund"}
                         </Button>
                       )}
                     </div>
@@ -330,7 +334,9 @@ function RefundReviewDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const maxBase = refundableBase(request.registration);
+  const maxBase = refundableBase(request);
+  // A failed or stuck refund can only be sent again, never declined.
+  const retry = request.status !== "PENDING_ADMIN";
   const defaultAmount =
     request.requestedAmount != null ? Number(request.requestedAmount) : maxBase;
 
@@ -338,6 +344,7 @@ function RefundReviewDialog({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState("");
+  const [shortfall, setShortfall] = useState("");
 
   const submit = async (approve: boolean) => {
     setErr("");
@@ -352,13 +359,19 @@ function RefundReviewDialog({
       setSubmitting(false);
       return;
     }
-    const { error } = await adminDecideRefund(request.id, {
+    const { data, error } = await adminDecideRefund(request.id, {
       action: approve ? "APPROVE" : "REJECT",
       approvedAmount: approve ? amt : undefined,
       note: note.trim() || undefined,
     });
     if (error) {
       setErr(error.message);
+      setSubmitting(false);
+    } else if (approve && data && Number(data.approvedAmount ?? 0) < amt) {
+      // Part of it couldn't go back (an extra-seats payment failed): say so.
+      setShortfall(
+        `Only ${money(data.approvedAmount ?? 0)} of ${money(amt)} went back. ${data.adminNote ?? ""}`.trim()
+      );
       setSubmitting(false);
     } else {
       onDone();
@@ -369,7 +382,7 @@ function RefundReviewDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Review refund</DialogTitle>
+          <DialogTitle>{retry ? "Send refund again" : "Review refund"}</DialogTitle>
           <DialogDescription>
             {request.event?.title} · {name(request.registration?.user)}
           </DialogDescription>
@@ -415,20 +428,32 @@ function RefundReviewDialog({
             />
           </div>
 
+          {request.adminNote && retry && (
+            <p className="text-xs text-muted-foreground">{request.adminNote}</p>
+          )}
           {err && <ErrorNotice message={err} />}
+          {shortfall && <ErrorNotice message={shortfall} />}
         </div>
 
         <DialogFooter className="gap-2 sm:justify-between">
-          <Button
-            variant="destructive"
-            onClick={() => submit(false)}
-            disabled={submitting}
-          >
-            Decline
-          </Button>
-          <Button onClick={() => submit(true)} disabled={submitting}>
-            {submitting ? "Saving…" : "Approve & refund"}
-          </Button>
+          {shortfall ? (
+            <Button onClick={onDone}>Done</Button>
+          ) : (
+            <>
+              {!retry && (
+                <Button
+                  variant="destructive"
+                  onClick={() => submit(false)}
+                  disabled={submitting}
+                >
+                  Decline
+                </Button>
+              )}
+              <Button onClick={() => submit(true)} disabled={submitting}>
+                {submitting ? "Saving…" : retry ? "Send refund" : "Approve & refund"}
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -38,7 +38,7 @@ describe('refundOnce', () => {
 
   it('refuses when the keyed refund went out for a different amount', async () => {
     const { razorpay, refund } = rzp([{ id: 'rfnd_old', amount: 3000, status: 'processed', notes: { refundKey: 'k' } }]);
-    await expect(refundOnce(razorpay, 'pay_1', 50, 'k')).rejects.toThrow('already went out for 30');
+    await expect(refundOnce(razorpay, 'pay_1', 50, 'k')).rejects.toThrow('A refund of ₹30 (rfnd_old) already went out');
     expect(refund).not.toHaveBeenCalled();
   });
 });

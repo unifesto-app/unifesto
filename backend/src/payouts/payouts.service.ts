@@ -10,6 +10,7 @@ import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, Billi
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
+import { OPEN_REFUND_STATUSES } from '../refunds/open-statuses';
 
 /** Round a rupee figure to 2 dp, avoiding binary float drift in comparisons. */
 function round2(n: number): number {
@@ -290,9 +291,30 @@ export class PayoutsService {
       0,
     );
 
-    const available = Math.max(0, eventNet - committed);
+    // Open refund requests are owed to attendees: hold them back from what can
+    // be withdrawn (A25). An unsized request holds the booking's whole base.
+    const openRefunds = await db.refundRequest.findMany({
+      where: { eventId, status: { in: OPEN_REFUND_STATUSES } },
+      select: {
+        requestedAmount: true,
+        registration: { select: this.HELD_SELECT },
+      },
+    });
+    const refundHold = openRefunds.reduce(
+      (sum, r) =>
+        sum +
+        (r.requestedAmount != null
+          ? Number(r.requestedAmount)
+          : Math.max(0, this.ticketRevenue([r.registration]))),
+      0,
+    );
+    const heldGross = Math.max(0, gross - refundHold);
+    const netAfterHold = heldGross - platformShare(heldGross, platformFeePercent);
+
+    const available = Math.max(0, netAfterHold - committed);
     return {
       grossRevenue: round2(gross),
+      refundHold: round2(refundHold),
       platformFeePercent,
       platformFee: round2(platformFee),
       eventNet: round2(eventNet),

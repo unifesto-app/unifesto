@@ -34,6 +34,7 @@ const STATUS: Record<RefundStatus, { label: string; variant: "warning" | "neutra
   PROCESSING: { label: "Processing", variant: "neutral" },
   APPROVED: { label: "Approved", variant: "success" },
   REJECTED: { label: "Rejected", variant: "destructive" },
+  REFUND_FAILED: { label: "Refund failed, Unifesto is re-sending", variant: "destructive" },
 };
 
 const PAGE_SIZE = 20;
