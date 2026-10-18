@@ -17,7 +17,7 @@ import {
 } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentsService } from '../payments/payments.service';
+import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GroupSeatsService } from './group-seats.service';
@@ -451,19 +451,29 @@ export class TeamChangesService {
    * Razorpay webhook fallback for a captured payment no registration claimed.
    * Returns true when the order was an add-seats payment.
    */
-  async completeFromWebhook(orderId: string, paymentId: string, notes?: Record<string, string>) {
-    let p = await this.prisma.groupSeatPurchase.findUnique({ where: { orderId }, select: { id: true } });
+  async completeFromWebhook(
+    orderId: string,
+    paymentId: string,
+    payment: { amount?: unknown; currency?: unknown },
+  ) {
+    const select = { id: true, totalAmount: true } as const;
+    let p = await this.prisma.groupSeatPurchase.findUnique({ where: { orderId }, select });
     if (!p) {
-      let id = notes?.groupSeatPurchaseId;
-      if (!id) {
-        id = await this.payments
-          .fetchOrderNotes(orderId)
-          .then((n) => n?.groupSeatPurchaseId)
-          .catch(() => undefined);
-      }
-      if (id) p = await this.prisma.groupSeatPurchase.findUnique({ where: { id }, select: { id: true } });
+      // Order notes from Razorpay only: payment notes are buyer-set (A13).
+      const id = await this.payments
+        .fetchOrderNotes(orderId)
+        .then((n) => n?.groupSeatPurchaseId)
+        .catch(() => undefined);
+      if (id) p = await this.prisma.groupSeatPurchase.findUnique({ where: { id }, select });
     }
     if (!p) return false;
+    if (!capturedAmountMatches(payment, p.totalAmount)) {
+      this.logger.error(
+        `payment.captured ${paymentId} (order ${orderId}) is ${payment.amount} ${payment.currency}, ` +
+          `seat purchase ${p.id} charges ₹${p.totalAmount} — not settled.`,
+      );
+      return true;
+    }
     await this.settle(p.id, paymentId);
     return true;
   }

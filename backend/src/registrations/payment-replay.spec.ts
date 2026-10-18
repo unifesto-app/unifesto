@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
 import { buildRegistrationsService } from './registrations.testing';
+import { capturedAmountMatches } from '../payments/payments.service';
 
 jest.mock('./form-answers.policy', () => ({
   enforceFormAnswers: jest.fn(async () => undefined),
@@ -45,6 +46,7 @@ describe('RegistrationsService payment replay guards', () => {
         updateMany: jest.fn(async () => ({ count: 1 })),
       },
       eventTicket: { findMany: jest.fn(async () => []) },
+      sessionRegistration: { findFirst: jest.fn(async () => null) },
       event: {
         findUnique: jest.fn(async () => ({
           id: EVENT,
@@ -158,6 +160,50 @@ describe('RegistrationsService payment replay guards', () => {
         data: [{ id: 'razorpay:evt_3', source: 'razorpay' }],
         skipDuplicates: true,
       });
+    });
+  });
+
+  describe('Razorpay webhook trusts only server data (A13)', () => {
+    const captured = (entity: Record<string, unknown>) =>
+      JSON.stringify({
+        event: 'payment.captured',
+        payload: { payment: { entity: { id: 'pay_x', currency: 'INR', notes: {}, ...entity } } },
+      });
+
+    it('ignores buyer-set payment notes naming another registration', async () => {
+      const { svc, prisma } = build({ row: reg({ razorpayAmount: 5000 }), orderNotes: {} });
+      const complete = jest.spyOn(svc.settlement as any, 'completeWebhookPayment');
+      await svc.handleRazorpayWebhook(
+        captured({ order_id: 'order_session', amount: 100, notes: { registrationId: 'reg-1' } }),
+        'sig',
+        'evt_a',
+      );
+      expect(complete).not.toHaveBeenCalled();
+      expect(prisma.eventRegistration.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('does not settle when the captured amount differs from the registration', async () => {
+      const { svc, prisma } = build({ row: reg({ razorpayAmount: 5000 }) });
+      prisma.eventRegistration.findFirst.mockResolvedValue({ id: 'reg-1' });
+      const complete = jest.spyOn(svc.settlement as any, 'completeWebhookPayment');
+      await svc.handleRazorpayWebhook(captured({ order_id: 'order_current', amount: 100 }), 'sig', 'evt_b');
+      expect(complete).not.toHaveBeenCalled();
+    });
+
+    it('settles when amount and currency match', async () => {
+      const { svc, prisma } = build({ row: reg({ razorpayAmount: 5000 }) });
+      prisma.eventRegistration.findFirst.mockResolvedValue({ id: 'reg-1' });
+      const complete = jest
+        .spyOn(svc.settlement as any, 'completeWebhookPayment')
+        .mockResolvedValue(undefined);
+      await svc.handleRazorpayWebhook(captured({ order_id: 'order_current', amount: 500000 }), 'sig', 'evt_c');
+      expect(complete).toHaveBeenCalledWith('reg-1', 'pay_x', 'order_current');
+    });
+
+    it('capturedAmountMatches compares paise and requires INR', () => {
+      expect(capturedAmountMatches({ amount: 52550, currency: 'INR' }, '525.50')).toBe(true);
+      expect(capturedAmountMatches({ amount: 52550, currency: 'USD' }, 525.5)).toBe(false);
+      expect(capturedAmountMatches({ amount: 100, currency: 'INR' }, 5000)).toBe(false);
     });
   });
 

@@ -3,7 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { CacheService } from '../cache/cache.service';
-import { PaymentsService } from '../payments/payments.service';
+import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
@@ -483,8 +483,10 @@ export class RegistrationPaymentsService {
    * priority order:
    *   1. Redis `order:{orderId}` — the fast path (short TTL).
    *   2. A registration whose current `orderId` matches.
-   *   3. The order's `notes.registrationId` (payload notes first, else fetched
-   *      from Razorpay) — the DURABLE identifier that survives payment retries.
+   *   3. The order's `notes.registrationId`, always fetched from Razorpay — the
+   *      DURABLE identifier that survives payment retries. Never the payment's
+   *      own notes: the buyer sets those in Checkout, so trusting them let a
+   *      cheap payment settle any registration (A13).
    *
    * Steps 1–2 both key on the *current* orderId, which a retry overwrites: when
    * an attendee pays, abandons, then retries, the captured payment sits on the
@@ -492,10 +494,7 @@ export class RegistrationPaymentsService {
    * late webhook (after the Redis TTL) found nothing and the money went
    * unrecorded. Step 3 closes that gap because order notes never change.
    */
-  private async resolveRegistrationIdForOrder(
-    orderId: string,
-    paymentData: { notes?: Record<string, string> },
-  ): Promise<string | null> {
+  private async resolveRegistrationIdForOrder(orderId: string): Promise<string | null> {
     const client = this.cache['redis'].getClient();
     const cached = client ? await client.get(`order:${orderId}`) : null;
     if (cached) return cached;
@@ -506,16 +505,12 @@ export class RegistrationPaymentsService {
     });
     if (byOrder) return byOrder.id;
 
-    // Durable fallback via order notes. Payment notes rarely carry them (they're
-    // set on the order, not copied to the payment), so fetch the order's notes.
-    let notesRegId = paymentData.notes?.registrationId as string | undefined;
-    if (!notesRegId) {
-      try {
-        const notes = await this.payments.fetchOrderNotes(orderId);
-        notesRegId = notes?.registrationId;
-      } catch (err) {
-        this.logger.warn(`Could not fetch order notes for ${orderId}: ${err}`);
-      }
+    // Durable fallback via the order's notes, fetched from Razorpay (we set them).
+    let notesRegId: string | undefined;
+    try {
+      notesRegId = (await this.payments.fetchOrderNotes(orderId))?.registrationId;
+    } catch (err) {
+      this.logger.warn(`Could not fetch order notes for ${orderId}: ${err}`);
     }
     if (notesRegId) {
       const exists = await this.prisma.eventRegistration.findUnique({
@@ -580,19 +575,16 @@ export class RegistrationPaymentsService {
       const orderId = paymentData.order_id;
       const paymentId = paymentData.id;
 
-      const registrationId = await this.resolveRegistrationIdForOrder(
-        orderId,
-        paymentData,
-      );
+      const registrationId = await this.resolveRegistrationIdForOrder(orderId);
 
       if (!registrationId) {
         // A Unifesto Stay payment rides the same account-wide webhook; its
         // order notes carry `stayBookingId` instead of `registrationId`.
-        if (await this.stayBookings.completeFromWebhook(orderId, paymentId, paymentData.notes)) {
+        if (await this.stayBookings.completeFromWebhook(orderId, paymentId, paymentData)) {
           return { received: true };
         }
         // Extra seats bought for a group carry `groupSeatPurchaseId`.
-        if (await this.teamChanges.completeFromWebhook(orderId, paymentId, paymentData.notes)) {
+        if (await this.teamChanges.completeFromWebhook(orderId, paymentId, paymentData)) {
           return { received: true };
         }
         // Money was captured at Razorpay but we can't tie it to a registration.
@@ -617,7 +609,7 @@ export class RegistrationPaymentsService {
 
       const registration = await this.prisma.eventRegistration.findUnique({
         where: { id: registrationId },
-        select: { id: true, paymentStatus: true, status: true },
+        select: { id: true, paymentStatus: true, status: true, razorpayAmount: true },
       });
       if (!registration) {
         this.logger.error(
@@ -637,6 +629,14 @@ export class RegistrationPaymentsService {
         this.logger.error(
           `payment.captured for ${registration.status}/${registration.paymentStatus} registration ${registrationId} ` +
             `(order ${orderId}, payment ${paymentId}) — not settled. Resolve via orphaned payments.`,
+        );
+        return { received: true };
+      }
+
+      if (!capturedAmountMatches(paymentData, registration.razorpayAmount)) {
+        this.logger.error(
+          `payment.captured ${paymentId} (order ${orderId}) is ${paymentData.amount} ${paymentData.currency}, ` +
+            `registration ${registrationId} charges ₹${registration.razorpayAmount} — not settled. Resolve via orphaned payments.`,
         );
         return { received: true };
       }

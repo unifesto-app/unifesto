@@ -15,7 +15,7 @@ import {
   StayPaymentMode,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { PaymentsService } from '../payments/payments.service';
+import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { Action, AuthorizationService } from '../auth/authorization';
 import {
@@ -641,28 +641,34 @@ export class StayBookingsService {
   async completeFromWebhook(
     orderId: string,
     paymentId: string,
-    notes?: Record<string, string>,
+    payment: { amount?: unknown; currency?: unknown },
   ) {
     let booking = await this.prisma.stayBooking.findFirst({
       where: { orderId },
-      select: { id: true },
+      select: { id: true, totalAmount: true },
     });
     if (!booking) {
-      let id = notes?.stayBookingId;
-      if (!id) {
-        try {
-          id = (await this.payments.fetchOrderNotes(orderId))?.stayBookingId;
-        } catch {
-          // not ours, or Razorpay unreachable — the registration path logs it
-        }
+      // Order notes from Razorpay only: payment notes are buyer-set (A13).
+      let id: string | undefined;
+      try {
+        id = (await this.payments.fetchOrderNotes(orderId))?.stayBookingId;
+      } catch {
+        // not ours, or Razorpay unreachable — the registration path logs it
       }
       if (id)
         booking = await this.prisma.stayBooking.findUnique({
           where: { id },
-          select: { id: true },
+          select: { id: true, totalAmount: true },
         });
     }
     if (!booking) return false;
+    if (!capturedAmountMatches(payment, booking.totalAmount)) {
+      this.logger.error(
+        `payment.captured ${paymentId} (order ${orderId}) is ${payment.amount} ${payment.currency}, ` +
+          `stay booking ${booking.id} charges ₹${booking.totalAmount} — not settled.`,
+      );
+      return true;
+    }
     await this.settle(booking.id, paymentId, orderId);
     return true;
   }
