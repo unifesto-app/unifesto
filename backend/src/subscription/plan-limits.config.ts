@@ -21,7 +21,8 @@ export interface PlanLimits {
   hasCertificates: boolean;
   /** Gates the sponsors & lead-generation feature (roster, leads, portal). */
   hasSponsors: boolean;
-  processingFeePercent: number;
+  /** Organiser platform fee % per paid ticket (A9). Ships at 0: an admin sets it to go live. */
+  platformFeePercent: number;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }
@@ -44,7 +45,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasLeaderboard: false,
     hasCertificates: false,
     hasSponsors: false,
-    processingFeePercent: 5,
+    platformFeePercent: 0,
     monthlyPrice: 0,
     annualPrice: 0,
   },
@@ -65,7 +66,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasLeaderboard: false,
     hasCertificates: false,
     hasSponsors: false,
-    processingFeePercent: 5,
+    platformFeePercent: 0,
     monthlyPrice: 499,
     annualPrice: 4499,
   },
@@ -86,7 +87,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasLeaderboard: true,
     hasCertificates: true,
     hasSponsors: true,
-    processingFeePercent: 5,
+    platformFeePercent: 0,
     monthlyPrice: 1499,
     annualPrice: 13999,
   },
@@ -107,7 +108,7 @@ export const PLAN_LIMITS: Record<OrgPlan, PlanLimits> = {
     hasLeaderboard: true,
     hasCertificates: true,
     hasSponsors: true,
-    processingFeePercent: 5,
+    platformFeePercent: 0,
     monthlyPrice: null,
     annualPrice: null,
   },

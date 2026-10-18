@@ -1232,7 +1232,10 @@ model PlanConfig {
   hasSponsors        Boolean @default(false) @map("has_sponsors")
 
   // Fees & pricing
-  processingFeePercent Decimal @default(0) @map("processing_fee_percent") @db.Decimal(5, 2)
+  /// Organiser platform fee % per paid ticket on this plan (A9, D10). Read by
+  /// resolvePlatformFeePercent and the platform_fee_percent_for_event trigger
+  /// function, so a change applies to new sales only (A21).
+  platformFeePercent Decimal @default(0) @map("platform_fee_percent") @db.Decimal(5, 2)
   monthlyPrice         Int?    @map("monthly_price") // null = custom / contact sales
   annualPrice          Int?    @map("annual_price")
 

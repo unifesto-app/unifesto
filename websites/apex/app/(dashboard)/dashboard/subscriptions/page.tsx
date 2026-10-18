@@ -43,6 +43,7 @@ import {
   billingSummary,
   BILLING_MODEL_LABEL,
   PLAN_LABEL,
+  SELLABLE_PLANS,
   BILLING_CYCLE_LABEL,
   type SpaceSubscription,
   type BillingStats,
@@ -60,7 +61,6 @@ const MODEL_FILTERS: { label: string; value: BillingModel | "ALL" }[] = [
 ];
 
 const MODELS = Object.keys(BILLING_MODEL_LABEL) as BillingModel[];
-const PLANS = Object.keys(PLAN_LABEL) as OrgPlan[];
 const CYCLES = Object.keys(BILLING_CYCLE_LABEL) as BillingCycle[];
 
 function modelBadgeVariant(
@@ -433,9 +433,10 @@ function EditArrangement({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {PLANS.map((p) => (
+                    {(plan === "GROWTH" ? [...SELLABLE_PLANS, plan] : SELLABLE_PLANS).map((p) => (
                       <SelectItem key={p} value={p}>
                         {PLAN_LABEL[p]}
+                        {p === "GROWTH" ? " (retired)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

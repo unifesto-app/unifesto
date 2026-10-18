@@ -78,9 +78,8 @@ function rowRate(row: Row): string {
     return p == null ? "% of sales" : `${p}% of sales`;
   }
   const m = row.data.monthlyPrice;
-  if (m == null) return "Custom";
-  if (m === 0) return "Free";
-  return `₹${m.toLocaleString("en-IN")}/mo`;
+  const price = m == null ? "Custom" : m === 0 ? "Free" : `₹${m.toLocaleString("en-IN")}/mo`;
+  return `${price} · ${row.data.platformFeePercent}% per ticket`;
 }
 
 function num(n: number | null): string {
@@ -93,7 +92,7 @@ function featureCount(data: PlanInfo | BillingModelConfig): number {
 
 /**
  * Admin: define every billing option — the Free and Revenue-share models, and
- * the four subscription tiers. Saved values drive display *and* enforcement of
+ * the subscription tiers (GROWTH is retired and not listed). Saved values drive display *and* enforcement of
  * limits and features via the backend PlanConfigService. The revenue-share %
  * set here is what the payout service deducts from those organisers' sales.
  */
@@ -287,7 +286,7 @@ function PlanEditor({
   // plan-only
   const [monthly, setMonthly] = useState("");
   const [annual, setAnnual] = useState("");
-  // revenue-share only
+  // revenue-share default cut, or a plan's platform fee
   const [pct, setPct] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -306,6 +305,7 @@ function PlanEditor({
     if (row.kind === "plan") {
       setMonthly(numToStr(row.data.monthlyPrice));
       setAnnual(numToStr(row.data.annualPrice));
+      setPct(numToStr(row.data.platformFeePercent));
     } else if (row.key === "REVENUE_SHARE") {
       setPct(numToStr(row.data.defaultRevenueSharePercent));
     }
@@ -333,6 +333,7 @@ function PlanEditor({
     if (row.kind === "plan") {
       patch.monthlyPrice = toInt(monthly);
       patch.annualPrice = toInt(annual);
+      patch.platformFeePercent = Math.min(100, Math.max(0, Number(pct) || 0));
       res = await updatePlan(row.key, patch);
     } else {
       if (row.key === "REVENUE_SHARE") {
@@ -399,6 +400,18 @@ function PlanEditor({
                         placeholder="Custom"
                         value={annual}
                         onChange={(e) => setAnnual(e.target.value)}
+                        className="h-9"
+                      />
+                    </Field>
+                    <Field label="Platform fee % per ticket">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.5"
+                        placeholder="0"
+                        value={pct}
+                        onChange={(e) => setPct(e.target.value)}
                         className="h-9"
                       />
                     </Field>

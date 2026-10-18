@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
 import { EmailService } from '../email/email.service';
 import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccountStatusDto } from './dto';
-import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
+import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, OrgPlan, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
@@ -197,12 +197,13 @@ export class PayoutsService {
   }
 
   /**
-   * Platform fee % the organiser pays out of their ticket sales, derived from
-   * their billing model. Only REVENUE_SHARE organisers pay a fee; FREE and
-   * SUBSCRIPTION plans pay 0 (subscription organisers pay monthly instead).
+   * Platform fee % the organiser pays out of their ticket sales today: the
+   * plan rate on SUBSCRIPTION, the space's share on REVENUE_SHARE, 0 on FREE
+   * (A9). Each sale is charged the rate frozen on it (A21).
    */
   private resolvePlatformFeePercent(subscription?: {
     billingModel: BillingModel;
+    plan: OrgPlan;
     revenueSharePercent: Prisma.Decimal | null;
   } | null): number {
     return this.planConfig.resolvePlatformFeePercent(subscription);

@@ -16,6 +16,9 @@ import backendClient, { apiCall, ApiError } from "./backend-client";
 
 export type BillingModel = "FREE" | "REVENUE_SHARE" | "SUBSCRIPTION";
 export type OrgPlan = "STARTER" | "GROWTH" | "PRO" | "ENTERPRISE";
+
+/** Plans a space can be put on. GROWTH is retired (D10): shown only for spaces still on it. */
+export const SELLABLE_PLANS: OrgPlan[] = ["STARTER", "PRO", "ENTERPRISE"];
 export type BillingCycle = "MONTHLY" | "ANNUAL";
 
 export interface SubscriptionUser {
@@ -116,7 +119,8 @@ export interface PlanInfo {
   hasCertificates: boolean;
   /** Gates the sponsors & lead-generation feature for organisers on this plan. */
   hasSponsors: boolean;
-  processingFeePercent: number;
+  /** Organiser platform fee % per paid ticket on this plan; new sales only (A9). */
+  platformFeePercent: number;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }

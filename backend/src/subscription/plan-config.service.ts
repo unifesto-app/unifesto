@@ -8,10 +8,16 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PLAN_LIMITS, PlanLimits } from './plan-limits.config';
 
+/**
+ * Plans a space can buy or be put on (D10). GROWTH is retired: still in the
+ * enum for spaces already on it (they pay Starter's rate), never offered.
+ */
+export const SELLABLE_PLANS: OrgPlan[] = [OrgPlan.STARTER, OrgPlan.PRO, OrgPlan.ENTERPRISE];
+
 /** Public shape of a billing-model config (Free / Revenue-share). */
 export interface ModelConfig extends Omit<
   PlanLimits,
-  'processingFeePercent' | 'monthlyPrice' | 'annualPrice'
+  'platformFeePercent' | 'monthlyPrice' | 'annualPrice'
 > {
   billingModel: BillingModel;
   defaultRevenueSharePercent: number | null;
@@ -64,7 +70,7 @@ export class PlanConfigService implements OnModuleInit {
       hasLeaderboard: row.hasLeaderboard,
       hasCertificates: row.hasCertificates,
       hasSponsors: row.hasSponsors,
-      processingFeePercent: Number(row.processingFeePercent),
+      platformFeePercent: Number(row.platformFeePercent),
       monthlyPrice: row.monthlyPrice,
       annualPrice: row.annualPrice,
     };
@@ -194,7 +200,7 @@ export class PlanConfigService implements OnModuleInit {
         hasLeaderboard: m.hasLeaderboard,
         hasCertificates: m.hasCertificates,
         hasSponsors: m.hasSponsors,
-        processingFeePercent: fee,
+        platformFeePercent: fee,
         monthlyPrice: null,
         annualPrice: null,
       };
@@ -204,9 +210,12 @@ export class PlanConfigService implements OnModuleInit {
 
   /**
    * Platform fee % an organiser pays out of ticket sales — the single source
-   * for payouts, exports and plan limits. Only REVENUE_SHARE pays one: the
-   * space's own rate, else the model's default (a null rate is NOT 0%). FREE
-   * and SUBSCRIPTION pay 0.
+   * for payouts, exports and plan limits (A9, D10):
+   *   - SUBSCRIPTION: its plan's `platformFeePercent` (GROWTH is retired and
+   *     pays Starter's rate).
+   *   - REVENUE_SHARE: the space's own rate, else the model's default (a null
+   *     rate is NOT 0%).
+   *   - FREE (comped spaces) and no subscription: 0.
    *
    * MIRRORED in SQL by `platform_fee_percent_for_event` (migration
    * 20261022120000_freeze_platform_fee), which freezes this rate on each sale
@@ -216,9 +225,14 @@ export class PlanConfigService implements OnModuleInit {
   resolvePlatformFeePercent(
     sub?: {
       billingModel: BillingModel;
+      plan?: OrgPlan | null;
       revenueSharePercent?: number | { toString(): string } | null;
     } | null,
   ): number {
+    if (sub?.billingModel === BillingModel.SUBSCRIPTION) {
+      const plan = !sub.plan || sub.plan === OrgPlan.GROWTH ? OrgPlan.STARTER : sub.plan;
+      return this.getLimits(plan).platformFeePercent;
+    }
     if (sub?.billingModel !== BillingModel.REVENUE_SHARE) return 0;
     return sub.revenueSharePercent != null
       ? Number(sub.revenueSharePercent)
@@ -290,7 +304,7 @@ export class PlanConfigService implements OnModuleInit {
       hasLeaderboard: merged.hasLeaderboard,
       hasCertificates: merged.hasCertificates,
       hasSponsors: merged.hasSponsors,
-      processingFeePercent: merged.processingFeePercent,
+      platformFeePercent: merged.platformFeePercent,
       monthlyPrice: merged.monthlyPrice,
       annualPrice: merged.annualPrice,
     };

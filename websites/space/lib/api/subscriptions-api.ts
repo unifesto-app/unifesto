@@ -66,7 +66,8 @@ export interface PlanInfo {
   hasSessions: boolean;
   hasLeaderboard: boolean;
   hasCertificates: boolean;
-  processingFeePercent: number;
+  /** Organiser platform fee % per paid ticket on this plan (A9). */
+  platformFeePercent: number;
   monthlyPrice: number | null;
   annualPrice: number | null;
 }

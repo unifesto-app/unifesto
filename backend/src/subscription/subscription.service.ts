@@ -13,7 +13,7 @@ import {
   OrgPlan,
   Prisma,
 } from '@prisma/client';
-import { PlanConfigService } from './plan-config.service';
+import { PlanConfigService, SELLABLE_PLANS } from './plan-config.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 import {
@@ -64,7 +64,8 @@ export class SubscriptionService {
   }
 
   async getAllPlans() {
-    return this.planConfig.getAll();
+    // GROWTH is retired (D10): never listed, so no client can offer it.
+    return this.planConfig.getAll().filter((p) => SELLABLE_PLANS.includes(p.plan));
   }
 
   /** Admin: edit a plan's definition (limits / features / pricing / fee). */
@@ -157,6 +158,9 @@ export class SubscriptionService {
   }
 
   async createUpgradeOrderForSpace(spaceId: string, dto: UpgradeSubscriptionDto) {
+    if (!SELLABLE_PLANS.includes(dto.plan)) {
+      throw new BadRequestException('That plan is no longer available');
+    }
     const subscription = await this.getSpaceSubscription(spaceId);
 
     if (
@@ -392,6 +396,10 @@ export class SubscriptionService {
     });
     if (!subscription) {
       subscription = await this.createStarterForSpace(spaceId);
+    }
+
+    if (dto.plan !== undefined && dto.plan !== subscription.plan && !SELLABLE_PLANS.includes(dto.plan)) {
+      throw new BadRequestException('That plan is retired; pick Starter, Pro or Enterprise');
     }
 
     const data: Prisma.OrgSubscriptionUpdateInput = {};

@@ -174,7 +174,7 @@ export function PlanEditScreen() {
       if ('plan' in found) {
         f.monthlyPrice = toField(found.monthlyPrice);
         f.annualPrice = toField(found.annualPrice);
-        f.processingFeePercent = toField(found.processingFeePercent);
+        f.platformFeePercent = toField(found.platformFeePercent);
       } else {
         f.defaultRevenueSharePercent = toField(found.defaultRevenueSharePercent);
       }
@@ -259,7 +259,7 @@ export function PlanEditScreen() {
             : [
                 numRow('monthlyPrice', 'Monthly price (₹)', <CurrencyInr size={20} color={tokens.text} />),
                 numRow('annualPrice', 'Annual price (₹)', <CurrencyInr size={20} color={tokens.text} />),
-                numRow('processingFeePercent', 'Processing fee %', <Percent size={20} color={tokens.text} />),
+                numRow('platformFeePercent', 'Platform fee % per ticket', <Percent size={20} color={tokens.text} />),
               ]}
         </SettingsGroup>
 
@@ -349,7 +349,12 @@ export function SubscriptionsScreen() {
 }
 
 const MODEL_OPTIONS = (['FREE', 'REVENUE_SHARE', 'SUBSCRIPTION'] as const).map((m) => ({ value: m, label: MODEL_LABEL[m] }));
-const PLAN_OPTIONS = (['STARTER', 'GROWTH', 'PRO', 'ENTERPRISE'] as const).map((p) => ({ value: p, label: PLAN_LABEL[p] }));
+/** GROWTH is retired (D10): offered only to keep a space that is still on it. */
+const planOptions = (current: OrgPlan) =>
+  ([...(['STARTER', 'PRO', 'ENTERPRISE'] as const), ...(current === 'GROWTH' ? (['GROWTH'] as const) : [])] as OrgPlan[]).map((p) => ({
+    value: p,
+    label: p === 'GROWTH' ? `${PLAN_LABEL[p]} (retired)` : PLAN_LABEL[p],
+  }));
 const CYCLE_OPTIONS = [
   { value: 'MONTHLY' as const, label: 'Monthly' },
   { value: 'ANNUAL' as const, label: 'Yearly' },
@@ -417,7 +422,7 @@ export function SubscriptionEditScreen() {
         {billingModel === 'SUBSCRIPTION' ? (
           <>
             <Text style={[styles.section, { color: tokens.textMuted }]}>Plan</Text>
-            <ChipPicker options={PLAN_OPTIONS} value={plan} onChange={(v) => v && setPlan(v)} />
+            <ChipPicker options={planOptions(sub?.plan ?? plan)} value={plan} onChange={(v) => v && setPlan(v)} />
             <Text style={[styles.section, { color: tokens.textMuted }]}>Billed</Text>
             <ChipPicker options={CYCLE_OPTIONS} value={cycle} onChange={(v) => v && setCycle(v)} />
             <SettingsGroup title="Amount (₹)">

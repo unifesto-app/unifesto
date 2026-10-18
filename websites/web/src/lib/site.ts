@@ -277,8 +277,9 @@ export const APP_FEATURES = [
 
 /* Launch pricing, shown as a discount off the standard price. Indian
    ticketing platforms typically charge 4% to 6% per paid ticket; Unifesto
-   undercuts that on every plan. Keep in sync with PlanConfig in the backend
-   (processingFeePercent, monthlyPrice, annualPrice) before publishing. */
+   undercuts that on every plan. The fees here are only a fallback: /pricing
+   shows the live platform fee per plan from the backend rate card
+   (GET /config/plan-fees, lib/api/rate-card.ts). Prices and copy stay here. */
 export const LAUNCH_OFFER_ENDS = "31 March 2027";
 
 export type Plan = {
@@ -289,7 +290,7 @@ export type Plan = {
   price: number | null;
   standardPrice: number | null;
   annualMonthly: number | null;
-  /** Platform fee per paid ticket, percent. */
+  /** Platform fee per paid ticket, percent. Fallback; live value from the rate card. */
   fee: number;
   standardFee: number;
   includes: string[];
@@ -366,6 +367,8 @@ export const PLANS: Plan[] = [
 ];
 
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+/** Rupees to the paise, dropping a trailing .00 (₹12.50, ₹0). */
+const rupees = (n: number) => `₹${n.toFixed(2).replace(/\.00$/, "")}`;
 
 /* ── FAQs (rendered visibly and as FAQPage structured data) ─────────── */
 
@@ -449,7 +452,8 @@ export const FAQ_HACKATHONS: Faq[] = [
   },
 ];
 
-export const FAQ_PRICING: Faq[] = [
+/** Pricing FAQs, worded from the live rate card (see lib/api/rate-card.ts). */
+export const pricingFaq = (plans: Plan[] = PLANS, buyerFee: number = BUYER_PROCESSING_FEE): Faq[] => [
   {
     q: "What does launch pricing mean?",
     a: `Spaces that join before ${LAUNCH_OFFER_ENDS} lock in the discounted monthly price and platform fee shown on this page.`,
@@ -460,7 +464,7 @@ export const FAQ_PRICING: Faq[] = [
   },
   {
     q: "Who pays the processing fee?",
-    a: `The buyer. Every paid ticket carries a ${BUYER_PROCESSING_FEE}% processing fee, added at checkout on every plan and not refundable. Your platform fee is separate: ${PLANS.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ₹525 and you pay ₹12.50.`,
+    a: `The buyer. Every paid ticket carries a ${buyerFee}% processing fee, added at checkout on every plan and not refundable. Your platform fee is separate: ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ${inr(500 * (1 + buyerFee / 100))} and you pay ${rupees(500 * (plans[0]?.fee ?? 0) / 100)}.`,
   },
   {
     q: "Are payment gateway charges included?",
