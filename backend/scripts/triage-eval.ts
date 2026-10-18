@@ -1,9 +1,9 @@
 /*
  * D13 triage eval: runs the hand-labelled cases in triage-eval.cases.json
  * through the production prompt and reports agreement per field. Calls the
- * real API (about $0.01 a run), so it needs ANTHROPIC_API_KEY.
+ * real API (about $0.002 a run), so it needs ANTHROPIC_API_KEY.
  *
- *   npx ts-node scripts/triage-eval.ts
+ *   npx ts-node -T scripts/triage-eval.ts   (-T: tsc already type-checks it)
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { readFileSync } from 'fs';
