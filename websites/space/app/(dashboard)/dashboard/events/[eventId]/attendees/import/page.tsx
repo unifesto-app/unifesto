@@ -227,8 +227,10 @@ function BulkUploadForm({
           </SelectContent>
         </Select>
         <p className="text-xs text-muted-foreground">
-          Bulk-imported attendees are added for free (no payment). The template
-          columns match this ticket type.
+          Bulk-imported attendees are added without payment. On a paid ticket,
+          each one uses a free seat a platform admin approved for this event;
+          rows past those seats are refused (add them with a payment link from
+          Add attendee). The template columns match this ticket type.
         </p>
       </div>
 
