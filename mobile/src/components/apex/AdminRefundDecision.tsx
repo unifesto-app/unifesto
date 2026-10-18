@@ -15,6 +15,8 @@ interface Props {
   refundId: string;
   /** Upper bound shown to the admin; the server re-checks against the ticket base. */
   refundable: number;
+  /** Set to send again a refund that failed or got stuck: no reject, this amount by default. */
+  owed?: number;
   onDone: () => void;
 }
 
@@ -23,9 +25,11 @@ interface Props {
  * sends the money back through Razorpay right away, so it's confirmed twice:
  * once by the amount field, once by the alert.
  */
-export default function AdminRefundDecision({ refundId, refundable, onDone }: Props) {
+export default function AdminRefundDecision({ refundId, refundable, owed, onDone }: Props) {
   const tokens = useTokens();
-  const [amount, setAmount] = useState(refundable > 0 ? String(refundable) : '');
+  const retry = owed != null;
+  const start = retry ? Math.min(owed, refundable) : refundable;
+  const [amount, setAmount] = useState(start > 0 ? String(start) : '');
   const [note, setNote] = useState('');
   const [rejecting, setRejecting] = useState(false);
   const [busy, setBusy] = useState<'APPROVE' | 'REJECT' | null>(null);
@@ -36,6 +40,14 @@ export default function AdminRefundDecision({ refundId, refundable, onDone }: Pr
     setBusy(null);
     if (!res.ok) {
       AppAlert.alert("Couldn't update", res.message);
+      return;
+    }
+    // Part of it couldn't go back (an extra-seats payment failed): say so.
+    const sent = Number(res.data?.approvedAmount ?? 0);
+    if (action === 'APPROVE' && approvedAmount != null && sent < approvedAmount) {
+      AppAlert.alert(`Only ${inr(sent)} went back`, res.data?.adminNote ?? `${inr(approvedAmount - sent)} is still owed.`, [
+        { text: 'OK', onPress: onDone },
+      ]);
       return;
     }
     onDone();
@@ -77,13 +89,15 @@ export default function AdminRefundDecision({ refundId, refundable, onDone }: Pr
 
   return (
     <>
-      <SettingsGroup title="Unifesto decision" plain>
+      <SettingsGroup title={retry ? 'Send the refund again' : 'Unifesto decision'} plain>
         <FieldRow label="Refund (₹)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={String(refundable)} />
         <FieldRow stacked multiline label="Note (optional)" value={note} onChangeText={setNote} placeholder="Shown with the decision" />
       </SettingsGroup>
       <Text style={[styles.hint, { color: tokens.textMuted }]}>Ticket price only. The app fee is never refunded.</Text>
-      <Button label="Approve and refund" size="lg" fullWidth loading={busy === 'APPROVE'} onPress={confirmApprove} style={{ marginTop: spacing[6] }} />
-      <Button label="Reject" variant="danger" size="lg" fullWidth disabled={busy !== null} onPress={() => setRejecting(true)} style={{ marginTop: spacing[3] }} />
+      <Button label={retry ? 'Send refund' : 'Approve and refund'} size="lg" fullWidth loading={busy === 'APPROVE'} onPress={confirmApprove} style={{ marginTop: spacing[6] }} />
+      {retry ? null : (
+        <Button label="Reject" variant="danger" size="lg" fullWidth disabled={busy !== null} onPress={() => setRejecting(true)} style={{ marginTop: spacing[3] }} />
+      )}
     </>
   );
 }

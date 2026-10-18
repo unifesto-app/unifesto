@@ -4,6 +4,25 @@ import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 
 /**
+ * A refund under this key already went out, for a different amount. Money has
+ * moved: the caller must not release its claim or retry with the new amount.
+ */
+export class RefundAlreadyIssuedError extends Error {
+  constructor(
+    readonly refundId: string,
+    readonly amountRupees: number,
+  ) {
+    super(`A refund of ₹${amountRupees} (${refundId}) already went out for this request`);
+  }
+}
+
+/** Razorpay definitely refused the call (4xx). Anything else may have gone through. */
+export function isRazorpayRejection(err: any): boolean {
+  const code = Number(err?.statusCode);
+  return code >= 400 && code < 500;
+}
+
+/**
  * Refund at most once per `key` (A14). The key rides in the refund's notes, so
  * a retry after a timeout, crash or lost response finds the refund that already
  * went out instead of sending a second one. A refund Razorpay marked `failed`
@@ -25,9 +44,7 @@ export async function refundOnce(
       (r: any) => r.notes?.refundKey === key && r.status !== 'failed',
     );
     if (hit && Number(hit.amount) !== paise) {
-      throw new Error(
-        `Refund ${hit.id} for ${key} already went out for ${Number(hit.amount) / 100}, not ${amountRupees}`,
-      );
+      throw new RefundAlreadyIssuedError(String(hit.id), Number(hit.amount) / 100);
     }
     return hit ? String(hit.id) : null;
   };
@@ -277,6 +294,7 @@ export class PaymentsService {
     status: string;
     amount: number;
     amountRefunded: number;
+    currency: string;
     notes: Record<string, string>;
   }> {
     const p = (await this.razorpay.payments.fetch(paymentId)) as any;
@@ -285,6 +303,7 @@ export class PaymentsService {
       orderId: p.order_id ? String(p.order_id) : null,
       status: String(p.status),
       amount: Number(p.amount),
+      currency: String(p.currency ?? 'INR'),
       amountRefunded: Number(p.amount_refunded ?? 0),
       notes: (p.notes ?? {}) as Record<string, string>,
     };

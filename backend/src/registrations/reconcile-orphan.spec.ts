@@ -43,7 +43,10 @@ describe('RegistrationsService — reconcile orphan guards', () => {
       amount: number;
       amountRefunded: number;
       notes: Record<string, string>;
+      currency: string;
     }>;
+    /** Notes on the server-created order: the only trusted link (A25). */
+    orderNotes?: Record<string, string>;
   }) => {
     const prisma = {
       eventRegistration: {
@@ -66,9 +69,11 @@ describe('RegistrationsService — reconcile orphan guards', () => {
         status: 'captured',
         amount: 20580,
         amountRefunded: 0,
-        notes: { registrationId: DELETED_REG },
+        currency: 'INR',
+        notes: {},
         ...opts.payment,
       })),
+      fetchOrderNotes: jest.fn(async () => opts.orderNotes ?? { registrationId: DELETED_REG }),
     };
     const svc = buildRegistrationsService(
       prisma as any, // prisma
@@ -150,16 +155,31 @@ describe('RegistrationsService — reconcile orphan guards', () => {
 
   it('does not throw the orphan error on the normal same-registration path', async () => {
     // Payment notes point at THIS registration → the ordinary reconcile path.
-    const { svc } = build({
-      ownerExists: false,
-      payment: { notes: { registrationId: REG_ID } },
-    });
+    const { svc } = build({ ownerExists: false, orderNotes: { registrationId: REG_ID } });
     const settle = jest
       .spyOn(svc.settlement as any, 'applyReconciledPayment')
       .mockResolvedValue({ newStatus: PaymentStatus.PAID, changed: true });
 
     await svc.reconcilePendingPayment(REG_ID, { paymentId: PAYMENT_ID });
     expect(settle).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores buyer-set payment notes: only the order notes link a payment (A25)', async () => {
+    // The browser can put any registrationId on the payment; the order says otherwise.
+    const { svc } = build({ ownerExists: true, payment: { notes: { registrationId: REG_ID } } });
+    await expect(svc.reconcilePendingPayment(REG_ID, { paymentId: PAYMENT_ID })).rejects.toThrow(
+      /belongs to a different registration/i,
+    );
+  });
+
+  it('refuses a same-registration payment of the wrong amount unless forced (A25)', async () => {
+    const { svc } = build({ ownerExists: false, orderNotes: { registrationId: REG_ID }, payment: { amount: 100 } });
+    await expect(svc.reconcilePendingPayment(REG_ID, { paymentId: PAYMENT_ID })).rejects.toThrow(/does not match/i);
+  });
+
+  it('refuses a non-INR payment (A25)', async () => {
+    const { svc } = build({ ownerExists: false, orderNotes: { registrationId: REG_ID }, payment: { currency: 'USD' } });
+    await expect(svc.reconcilePendingPayment(REG_ID, { paymentId: PAYMENT_ID })).rejects.toThrow(/not INR/);
   });
 
   it('leaves an already-settled registration untouched', async () => {

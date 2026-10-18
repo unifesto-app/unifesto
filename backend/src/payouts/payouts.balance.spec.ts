@@ -22,12 +22,26 @@ describe('PayoutsService event balance', () => {
       eventRegistration: { findMany: jest.fn(async () => regs) },
       stayBooking: { findMany: jest.fn(async () => []) },
       groupSeatPurchase: { findMany: jest.fn(async () => []) },
+      refundRequest: { findMany: jest.fn(async () => []) },
       payout: { findMany: jest.fn(async () => []), findFirst: jest.fn(async () => null) },
     };
     const planConfig = { resolvePlatformFeePercent: jest.fn(() => 5) };
     const svc = new PayoutsService(prisma, {} as any, {} as any, planConfig as any);
     return { svc, prisma, planConfig };
   };
+
+  it('holds open refund requests out of the available balance (A25)', async () => {
+    const { svc, prisma } = build();
+    prisma.refundRequest.findMany.mockResolvedValue([
+      // A failed refund still owed ₹40, and an unsized request on a ₹100 base.
+      { requestedAmount: 40, registration: regs[0] },
+      { requestedAmount: null, registration: regs[0] },
+    ]);
+    const summary = await svc.getEventPayoutSummary('event-1');
+    expect(summary.eventNet).toBe(152); // what was earned is unchanged
+    expect(summary.available).toBe(19); // (160 − 140) less 5% fee
+    expect(prisma.refundRequest.findMany.mock.calls[0][0].where.status.in).toContain('REFUND_FAILED');
+  });
 
   it('counts a partial refund net of what went back', async () => {
     const { svc } = build();

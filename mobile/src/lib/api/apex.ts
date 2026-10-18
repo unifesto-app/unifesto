@@ -214,7 +214,7 @@ export const reviewWhiteLabelRequest = (id: string, status: Decision, reviewNote
 // ── Refunds (final stage) ────────────────────────────────────────────────────
 
 /** Uses the shared RefundRequest shape from lib/api/finance. */
-export type AdminRefundStatus = 'PENDING_ADMIN' | 'APPROVED' | 'REJECTED';
+export type AdminRefundStatus = 'PENDING_ADMIN' | 'APPROVED' | 'REJECTED' | 'REFUND_FAILED' | 'PROCESSING';
 
 /** GET /refunds/admin/all — every refund request on the platform. */
 export const getAdminRefunds = <T>(status: AdminRefundStatus, page = 1, limit = 30) =>
@@ -222,7 +222,7 @@ export const getAdminRefunds = <T>(status: AdminRefundStatus, page = 1, limit = 
 
 /** PATCH /refunds/:id/admin-decision — approve (optionally partial) sends the money back via Razorpay. */
 export const decideRefund = (id: string, action: 'APPROVE' | 'REJECT', opts: { approvedAmount?: number; note?: string }) =>
-  call<unknown>(`/refunds/${id}/admin-decision`, patch({ action, approvedAmount: opts.approvedAmount, note: opts.note || undefined }));
+  call<{ approvedAmount: string | null; adminNote: string | null }>(`/refunds/${id}/admin-decision`, patch({ action, approvedAmount: opts.approvedAmount, note: opts.note || undefined }));
 
 // ── Payouts ──────────────────────────────────────────────────────────────────
 

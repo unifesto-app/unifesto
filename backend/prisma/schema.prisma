@@ -301,6 +301,9 @@ enum RefundStatus {
   PROCESSING
   APPROVED
   REJECTED
+  /// Razorpay accepted then failed the refund (refund.failed): nothing went
+  /// back. Still owed, held out of payouts, and approvable again to re-send.
+  REFUND_FAILED
 
   @@map("refund_status")
 }

@@ -10,7 +10,9 @@ export type RefundStatus =
   | "PENDING_ADMIN"
   | "PROCESSING"
   | "APPROVED"
-  | "REJECTED";
+  | "REJECTED"
+  /** Razorpay failed the refund later: still owed, approve again to re-send. */
+  | "REFUND_FAILED";
 
 export type RefundRequesterRole = "ATTENDEE" | "CURATOR" | "ADMIN";
 
@@ -38,6 +40,8 @@ export interface RefundRequest {
   razorpayRefundId: string | null;
   /** Set when the refund exceeded what was left to pay out: recover from the space. */
   payoutShortfall?: string | null;
+  /** What can still go back: booking base plus extra-seats payments (list endpoints). */
+  maxRefundable?: number;
   createdAt: string;
   updatedAt: string;
   registration?: {
@@ -120,10 +124,27 @@ export async function adminRefund(payload: {
   return apiCall<RefundRequest>(backendClient.post("/refunds/admin", payload));
 }
 
-/** The base amount (ticket price) that is refundable — the processing fee is retained. */
-export function refundableBase(reg?: RefundRequest["registration"]): number {
+/**
+ * The base that can still be refunded (the processing fee is retained). Uses
+ * the server's cap, which also counts a group's extra-seats payments.
+ */
+export function refundableBase(request: RefundRequest): number {
+  if (request.maxRefundable != null) return Number(request.maxRefundable);
+  const reg = request.registration;
   if (!reg) return 0;
   return (
     Number(reg.totalAmount) - Number(reg.processingFee) - Number(reg.refundedAmount)
+  );
+}
+
+/** Approval claims stuck this long can be approved again (matches the backend). */
+export const STUCK_PROCESSING_MS = 10 * 60_000;
+
+/** An admin can send this request's refund (again): awaiting, failed, or stuck. */
+export function canSendRefund(r: RefundRequest, now = Date.now()): boolean {
+  return (
+    r.status === "PENDING_ADMIN" ||
+    r.status === "REFUND_FAILED" ||
+    (r.status === "PROCESSING" && now - new Date(r.updatedAt).getTime() > STUCK_PROCESSING_MS)
   );
 }

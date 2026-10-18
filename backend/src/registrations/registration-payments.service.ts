@@ -10,7 +10,8 @@ import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
 import { Cron } from '@nestjs/schedule';
 import { CouponsService } from '../coupons/coupons.service';
-import { PaymentStatus, RegistrationStatus, Prisma, WaitlistStatus } from '@prisma/client';
+import { PaymentStatus, RefundStatus, RegistrationStatus, Prisma, WaitlistStatus } from '@prisma/client';
+import { esc, h1, strong } from '../email/layout';
 import { VerifyPaymentDto, RegistrationResponseDto, AdminResolvePendingDto } from './dto';
 import { WaitlistService } from './waitlist.service';
 import { GroupSeatsService } from './group-seats.service';
@@ -672,8 +673,10 @@ export class RegistrationPaymentsService {
   /**
    * Razorpay accepted a refund and later failed it (A15): the money never left.
    * For a refund request, undo what settling recorded (refundedAmount, payment
-   * status) so the amount is refundable again, and note it on the request. Seats
-   * a full refund released stay released. Runs once per refund id.
+   * status) so the amount is refundable again, and move the request to
+   * REFUND_FAILED: still owed, held out of payouts, and approvable again to
+   * re-send. Seats a full refund released stay released. Runs once per refund
+   * id. The attendee and the platform desk are told either way.
    */
   private async onRefundFailed(refund: {
     id: string;
@@ -685,18 +688,26 @@ export class RegistrationPaymentsService {
     const rupees = Number(refund.amount) / 100;
     if (!n.refundRequestId) {
       // ponytail: auto refunds (sold out, late stay, session/seat/stay cancel)
-      // are only logged; their rows already read REFUNDED. Re-issue by hand.
+      // have no request to re-drive; their rows already read REFUNDED (so no
+      // payout counts them). The desk re-issues from the Razorpay dashboard.
       this.logger.error(
         `CRITICAL: Razorpay refund ${refund.id} (₹${rupees}, payment ${refund.payment_id}, ${n.refundKey ?? 'no key'}) FAILED: money not returned. Re-issue it from the Razorpay dashboard.`,
       );
-      return;
-    }
-    await this.prisma.$transaction(async (tx) => {
-      const first = await tx.webhookEvent.createMany({
+      const first = await this.prisma.webhookEvent.createMany({
         data: [{ id: `refund-failed:${refund.id}`, source: 'razorpay' }],
         skipDuplicates: true,
       });
-      if (first.count === 0) return;
+      if (first.count === 1) await this.notifyRefundFailed(refund, rupees, n, false);
+      return;
+    }
+    let first = false;
+    await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.webhookEvent.createMany({
+        data: [{ id: `refund-failed:${refund.id}`, source: 'razorpay' }],
+        skipDuplicates: true,
+      });
+      if (claimed.count === 0) return;
+      first = true;
       const status = (left: unknown) =>
         Number(left) > 0 ? PaymentStatus.PARTIALLY_REFUNDED : PaymentStatus.PAID;
       if (n.groupSeatPurchaseId) {
@@ -720,15 +731,23 @@ export class RegistrationPaymentsService {
       }
       const req = await tx.refundRequest.findUnique({
         where: { id: n.refundRequestId },
-        select: { adminNote: true },
+        select: { adminNote: true, status: true },
       });
       if (req) {
+        // requestedAmount becomes what is still owed: the payout hold and the
+        // re-approve default both read it. A second failed slice adds to it.
+        const owed =
+          req.status === RefundStatus.REFUND_FAILED
+            ? { requestedAmount: { increment: rupees } }
+            : { requestedAmount: new Prisma.Decimal(rupees) };
         await tx.refundRequest.update({
           where: { id: n.refundRequestId },
           data: {
+            status: RefundStatus.REFUND_FAILED,
+            ...owed,
             adminNote: [
               req.adminNote,
-              `Razorpay refund ${refund.id} of ₹${rupees} failed: nothing went back. Raise a new refund.`,
+              `Razorpay refund ${refund.id} of ₹${rupees} failed: nothing went back. Approve again to re-send.`,
             ]
               .filter(Boolean)
               .join(' '),
@@ -736,9 +755,58 @@ export class RegistrationPaymentsService {
         });
       }
     });
+    if (!first) return;
     this.logger.error(
-      `CRITICAL: refund ${refund.id} (₹${rupees}) for request ${n.refundRequestId} failed at Razorpay; refunded amounts reversed`,
+      `CRITICAL: refund ${refund.id} (₹${rupees}) for request ${n.refundRequestId} failed at Razorpay; refunded amounts reversed, request REFUND_FAILED`,
     );
+    await this.notifyRefundFailed(refund, rupees, n, true);
+  }
+
+  /** Tell the payer and the platform desk that a refund didn't go through. */
+  private async notifyRefundFailed(
+    refund: { id: string; payment_id: string },
+    rupees: number,
+    n: Record<string, string>,
+    redrivable: boolean,
+  ): Promise<void> {
+    try {
+      const owner = n.groupSeatPurchaseId
+        ? await this.prisma.groupSeatPurchase.findUnique({ where: { id: n.groupSeatPurchaseId }, select: { userId: true, event: { select: { title: true } } } })
+        : n.registrationId
+          ? await this.prisma.eventRegistration.findUnique({ where: { id: n.registrationId }, select: { userId: true, event: { select: { title: true } } } })
+          : n.stayBookingId
+            ? await this.prisma.stayBooking.findUnique({ where: { id: n.stayBookingId }, select: { userId: true, event: { select: { title: true } } } })
+            : n.sessionRegistrationId
+              ? await this.prisma.sessionRegistration.findUnique({ where: { id: n.sessionRegistrationId }, select: { userId: true, session: { select: { title: true } } } })
+              : null;
+      const title = (owner as any)?.event?.title ?? (owner as any)?.session?.title ?? 'your booking';
+      const identity = owner?.userId
+        ? await this.prisma.userIdentity.findFirst({
+            where: { userId: owner.userId, email: { not: null }, isPrimary: true },
+            select: { email: true },
+          })
+        : null;
+      if (identity?.email) {
+        await this.emailService.sendRawEmail(
+          identity.email,
+          `Your refund for ${title} didn't go through`,
+          h1('Your refund didn’t go through') +
+            `<p>Your bank or card network returned the refund of ${strong(`₹${rupees}`)} for ${strong(esc(title))}. Nothing was taken from you, and the money is still owed to you. Our team is re-sending it and will contact you if we need other details.</p>`,
+        );
+      }
+      await this.emailService.sendRawEmail(
+        process.env.ADMIN_EMAIL || 'aws@unifesto.app',
+        `Refund failed: ₹${rupees} for ${title}`,
+        h1('A refund failed at Razorpay') +
+          `<p>Refund ${esc(refund.id)} of ${strong(`₹${rupees}`)} on payment ${esc(refund.payment_id)} (${esc(n.refundKey ?? 'no key')}) failed. ${
+            redrivable
+              ? 'The request is now Refund failed in Apex → Refunds and its amount is held from payouts. Approve it again to re-send.'
+              : 'This was an automatic refund: re-issue it from the Razorpay dashboard.'
+          }</p>`,
+      );
+    } catch (err) {
+      this.logger.error(`notifyRefundFailed(${refund.id}) failed`, err);
+    }
   }
 
   /**
@@ -848,15 +916,19 @@ export class RegistrationPaymentsService {
       }
 
       // Safety: make sure the payment actually belongs to this registration
-      // before touching money state. The order/payment `notes` carry the
-      // registrationId we set at order creation.
-      let linkedReg = payment.notes?.registrationId;
-      if (!linkedReg && payment.orderId) {
+      // before touching money state. Only the server-created ORDER's notes
+      // count: a payment's own notes are set by the buyer's browser in Checkout
+      // and can name any registration (A25, same rule as the webhook in A13).
+      let linkedReg: string | undefined;
+      if (payment.orderId) {
         try {
           linkedReg = (await this.payments.fetchOrderNotes(payment.orderId)).registrationId;
         } catch {
-          // Notes unavailable — fall through; amount check below still guards.
+          // Notes unavailable — refused below as unconfirmable.
         }
+      }
+      if (payment.currency !== 'INR') {
+        throw new BadRequestException(`Payment is in ${payment.currency}, not INR`);
       }
       if (linkedReg && linkedReg !== registrationId) {
         // The payment's notes name a different registration. Normally we refuse.
@@ -892,57 +964,7 @@ export class RegistrationPaymentsService {
             `That payment is already attached to registration ${alreadyAttached.id}.`,
           );
         }
-        const expectedPaise = Math.round(Number(registration.razorpayAmount) * 100);
-        if (payment.amount !== expectedPaise) {
-          // Amounts differ (a price/fee change, or a genuinely different ticket).
-          // Refuse by default so one attendee's payment can't be silently applied
-          // to another's ticket. An admin who has verified this payment really is
-          // owed to this attendee can override with `allowAmountMismatch` — the
-          // registration still settles at its own recorded price, so the delta
-          // stays visible on the payment rather than rewriting the ticket amount.
-          if (!opts?.allowAmountMismatch) {
-            throw new BadRequestException(
-              `Payment amount (₹${payment.amount / 100}) does not match this registration (₹${
-                expectedPaise / 100
-              }). Re-run with allowAmountMismatch=true to attach it anyway.`,
-            );
-          }
-          this.logger.warn(
-            `Reconcile: FORCING amount-mismatched attach — payment ${payment.id} (₹${
-              payment.amount / 100
-            }) onto registration ${registrationId} (expected ₹${expectedPaise / 100})`,
-          );
-
-          // Re-home the registration onto what was *actually* captured so its
-          // per-registration numbers are cash-accurate. `razorpayAmount` is the
-          // amount charged via Razorpay, so it becomes the captured value. To
-          // preserve the razorpayAmount ≤ totalAmount invariant, lift `totalAmount` when the
-          // capture exceeds it. The extra is treated as processing fee, not
-          // ticket price: bump `processingFee` by the same delta so the ticket
-          // base (totalAmount − processingFee) — and hence the refundable amount,
-          // since refunds are base-only — stays flat. This must run BEFORE
-          // settlement: completeWebhookPayment re-reads the row and only writes
-          // payment status, so it will honour these amounts rather than overwrite.
-          const capturedInr = payment.amount / 100;
-          const oldTotal = Number(registration.totalAmount);
-          const newTotal = Math.max(oldTotal, capturedInr);
-          // Round to paise to avoid binary-float drift (e.g. 3.0000000001).
-          const newFee =
-            Math.round((Number(registration.processingFee) + (newTotal - oldTotal)) * 100) / 100;
-          await this.prisma.eventRegistration.update({
-            where: { id: registrationId },
-            data: {
-              razorpayAmount: new Prisma.Decimal(capturedInr),
-              totalAmount: new Prisma.Decimal(newTotal),
-              processingFee: new Prisma.Decimal(newFee),
-            },
-          });
-          // Keep the in-memory copy consistent for downstream settlement/refund
-          // math in applyReconciledPayment (its refund-base uses these fields).
-          registration.razorpayAmount = new Prisma.Decimal(capturedInr);
-          registration.totalAmount = new Prisma.Decimal(newTotal);
-          registration.processingFee = new Prisma.Decimal(newFee);
-        }
+        await this.matchReconcileAmount(registration, payment, opts);
         this.logger.warn(
           `Reconcile: re-homing orphaned payment ${payment.id} (deleted reg ${linkedReg}) onto registration ${registrationId}`,
         );
@@ -960,6 +982,8 @@ export class RegistrationPaymentsService {
           'Could not confirm that payment belongs to this registration (no linking notes on Razorpay).',
         );
       }
+      // Linked by notes is not enough: the captured amount must be this ticket's.
+      await this.matchReconcileAmount(registration, payment, opts);
 
       return this.applyReconciledPayment(registration, previousStatus, {
         paymentId: payment.id,
@@ -1031,6 +1055,75 @@ export class RegistrationPaymentsService {
         ? 'No payment attempts recorded on Razorpay yet — if the attendee paid, the order was likely replaced by a retry; paste the Razorpay payment id (pay_…) to reconcile it directly'
         : 'A payment is still in progress on Razorpay',
     );
+  }
+
+  /**
+   * The captured amount must equal what this registration charges. An admin who
+   * verified the payment really is owed to this attendee can force a mismatch
+   * (`allowAmountMismatch`); the row is then re-homed onto the captured amount.
+   */
+  private async matchReconcileAmount(
+    registration: {
+      id: string;
+      razorpayAmount: Prisma.Decimal;
+      totalAmount: Prisma.Decimal;
+      processingFee: Prisma.Decimal;
+    },
+    payment: { id: string; amount: number },
+    opts?: { allowAmountMismatch?: boolean },
+  ): Promise<void> {
+    const registrationId = registration.id;
+    const expectedPaise = Math.round(Number(registration.razorpayAmount) * 100);
+    if (payment.amount !== expectedPaise) {
+      // Amounts differ (a price/fee change, or a genuinely different ticket).
+      // Refuse by default so one attendee's payment can't be silently applied
+      // to another's ticket. An admin who has verified this payment really is
+      // owed to this attendee can override with `allowAmountMismatch` — the
+      // registration still settles at its own recorded price, so the delta
+      // stays visible on the payment rather than rewriting the ticket amount.
+      if (!opts?.allowAmountMismatch) {
+        throw new BadRequestException(
+          `Payment amount (₹${payment.amount / 100}) does not match this registration (₹${
+            expectedPaise / 100
+          }). Re-run with allowAmountMismatch=true to attach it anyway.`,
+        );
+      }
+      this.logger.warn(
+        `Reconcile: FORCING amount-mismatched attach — payment ${payment.id} (₹${
+          payment.amount / 100
+        }) onto registration ${registrationId} (expected ₹${expectedPaise / 100})`,
+      );
+
+      // Re-home the registration onto what was *actually* captured so its
+      // per-registration numbers are cash-accurate. `razorpayAmount` is the
+      // amount charged via Razorpay, so it becomes the captured value. To
+      // preserve the razorpayAmount ≤ totalAmount invariant, lift `totalAmount` when the
+      // capture exceeds it. The extra is treated as processing fee, not
+      // ticket price: bump `processingFee` by the same delta so the ticket
+      // base (totalAmount − processingFee) — and hence the refundable amount,
+      // since refunds are base-only — stays flat. This must run BEFORE
+      // settlement: completeWebhookPayment re-reads the row and only writes
+      // payment status, so it will honour these amounts rather than overwrite.
+      const capturedInr = payment.amount / 100;
+      const oldTotal = Number(registration.totalAmount);
+      const newTotal = Math.max(oldTotal, capturedInr);
+      // Round to paise to avoid binary-float drift (e.g. 3.0000000001).
+      const newFee =
+        Math.round((Number(registration.processingFee) + (newTotal - oldTotal)) * 100) / 100;
+      await this.prisma.eventRegistration.update({
+        where: { id: registrationId },
+        data: {
+          razorpayAmount: new Prisma.Decimal(capturedInr),
+          totalAmount: new Prisma.Decimal(newTotal),
+          processingFee: new Prisma.Decimal(newFee),
+        },
+      });
+      // Keep the in-memory copy consistent for downstream settlement/refund
+      // math in applyReconciledPayment (its refund-base uses these fields).
+      registration.razorpayAmount = new Prisma.Decimal(capturedInr);
+      registration.totalAmount = new Prisma.Decimal(newTotal);
+      registration.processingFee = new Prisma.Decimal(newFee);
+    }
   }
 
   /**

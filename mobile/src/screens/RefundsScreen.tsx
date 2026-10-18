@@ -27,6 +27,7 @@ const EMPTY: Record<RefundStatus, string> = {
   PROCESSING: 'Nothing being processed.',
   APPROVED: 'No refunds paid yet.',
   REJECTED: 'No rejected requests.',
+  REFUND_FAILED: 'No failed refunds.',
 };
 
 /**

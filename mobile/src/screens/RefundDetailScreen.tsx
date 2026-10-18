@@ -18,6 +18,9 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import AdminRefundDecision from '../components/apex/AdminRefundDecision';
 import usePlatformAdmin from '../hooks/usePlatformAdmin';
 
+/** Approval claims stuck this long can be approved again (matches the backend). */
+const STUCK_PROCESSING_MS = 10 * 60_000;
+
 const GUTTER = spacing[6];
 
 const when = (iso?: string | null) =>
@@ -97,7 +100,12 @@ export default function RefundDetailScreen() {
   const paid = Number(reg?.totalAmount ?? 0);
   const fee = Number(reg?.processingFee ?? 0);
   const already = Number(reg?.refundedAmount ?? 0);
-  const refundable = Math.max(0, paid - fee - already);
+  // The server's cap also counts a group's extra-seats payments.
+  const refundable = refund.maxRefundable ?? Math.max(0, paid - fee - already);
+  // Unifesto can send a forwarded refund, or send again one that failed or got stuck.
+  const stuck =
+    refund.status === 'PROCESSING' && !!refund.updatedAt && Date.now() - new Date(refund.updatedAt).getTime() > STUCK_PROCESSING_MS;
+  const canSend = refund.status === 'PENDING_ADMIN' || refund.status === 'REFUND_FAILED' || stuck;
   const canReview = refund.status === 'PENDING_CURATOR';
 
   return (
@@ -169,8 +177,13 @@ export default function RefundDetailScreen() {
             </>
           )
         ) : null}
-        {isPlatformAdmin && refund.status === 'PENDING_ADMIN' ? (
-          <AdminRefundDecision refundId={refund.id} refundable={refundable} onDone={() => router.back()} />
+        {isPlatformAdmin && canSend ? (
+          <AdminRefundDecision
+            refundId={refund.id}
+            refundable={refundable}
+            owed={refund.status === 'PENDING_ADMIN' ? undefined : Number(refund.requestedAmount ?? refundable)}
+            onDone={() => router.back()}
+          />
         ) : null}
       </ScrollView>
     </KeyboardAvoidingView>

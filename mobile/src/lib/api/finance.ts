@@ -164,7 +164,8 @@ export function describeAccount(a: {
 
 // ── Refunds ──────────────────────────────────────────────────────────────────
 
-export type RefundStatus = 'PENDING_CURATOR' | 'PENDING_ADMIN' | 'PROCESSING' | 'APPROVED' | 'REJECTED';
+/** REFUND_FAILED: Razorpay failed it later; still owed, an admin sends it again. */
+export type RefundStatus = 'PENDING_CURATOR' | 'PENDING_ADMIN' | 'PROCESSING' | 'APPROVED' | 'REJECTED' | 'REFUND_FAILED';
 
 export interface RefundRequest {
   id: string;
@@ -180,7 +181,10 @@ export interface RefundRequest {
   adminActionAt: string | null;
   approvedAmount: string | null;
   cashRefunded: string;
+  /** Server cap: booking base plus a group's extra-seats payments still refundable. */
+  maxRefundable?: number;
   createdAt: string;
+  updatedAt?: string;
   registration?: {
     id: string;
     totalAmount: string;

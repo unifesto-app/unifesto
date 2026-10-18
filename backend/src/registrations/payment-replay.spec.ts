@@ -218,9 +218,13 @@ describe('RegistrationsService payment replay guards', () => {
       const { svc, prisma } = build({});
       prisma.eventRegistration.update.mockResolvedValue({ id: 'reg-1', refundedAmount: 0 });
       prisma.refundRequest = {
-        findUnique: jest.fn(async () => ({ adminNote: null })),
+        findUnique: jest.fn(async () => ({ adminNote: null, status: 'APPROVED' })),
         update: jest.fn(async () => ({})),
       };
+      const sendRawEmail = jest.fn(async () => null);
+      (svc.settlement as any).emailService.sendRawEmail = sendRawEmail;
+      prisma.eventRegistration.findUnique = jest.fn(async () => ({ userId: 'u-1', event: { title: 'Fest' } }));
+      prisma.userIdentity = { findFirst: jest.fn(async () => ({ email: 'a@x.in' })) };
       const notes = { registrationId: 'reg-1', refundRequestId: 'rr-1' };
       await svc.handleRazorpayWebhook(failed(notes), 'sig', 'evt_rf1');
       expect(prisma.eventRegistration.update).toHaveBeenCalledWith({
@@ -231,9 +235,19 @@ describe('RegistrationsService payment replay guards', () => {
         where: { id: 'reg-1' },
         data: { paymentStatus: PaymentStatus.PAID },
       });
+      // Still owed: REFUND_FAILED, holding the failed amount (A25).
       expect(prisma.refundRequest.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { adminNote: expect.stringContaining('rfnd_1') } }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'REFUND_FAILED',
+            adminNote: expect.stringContaining('rfnd_1'),
+          }),
+        }),
       );
+      expect(String(prisma.refundRequest.update.mock.calls[0][0].data.requestedAmount)).toBe('60');
+      // The attendee and the platform desk both hear about it.
+      expect(sendRawEmail).toHaveBeenCalledWith('a@x.in', expect.stringContaining("didn't go through"), expect.any(String));
+      expect(sendRawEmail).toHaveBeenCalledTimes(2);
 
       // A second delivery of the same refund changes nothing.
       prisma.webhookEvent.createMany.mockResolvedValueOnce({ count: 0 });
@@ -242,10 +256,13 @@ describe('RegistrationsService payment replay guards', () => {
       expect(prisma.eventRegistration.update).not.toHaveBeenCalled();
     });
 
-    it('only logs a failed auto refund', async () => {
+    it('changes no rows for a failed auto refund but tells the desk', async () => {
       const { svc, prisma } = build({});
+      const sendRawEmail = jest.fn(async () => null);
+      (svc.settlement as any).emailService.sendRawEmail = sendRawEmail;
       await svc.handleRazorpayWebhook(failed({ refundKey: 'auto:reg:reg-1' }), 'sig', 'evt_rf3');
       expect(prisma.eventRegistration.update).not.toHaveBeenCalled();
+      expect(sendRawEmail).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('Refund failed'), expect.any(String));
     });
   });
 

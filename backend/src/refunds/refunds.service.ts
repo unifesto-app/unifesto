@@ -32,7 +32,8 @@ import { isPlatformAdmin } from '../events/event-access';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 import { PayoutsService } from '../payouts/payouts.service';
-import { refundOnce } from '../payments/payments.service';
+import { OPEN_REFUND_STATUSES } from './open-statuses';
+import { RefundAlreadyIssuedError, isRazorpayRejection, refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
 
 /** Round to 2 decimal places (money). */
@@ -57,11 +58,7 @@ export function allocateRefund<K>(amount: number, buckets: { key: K; room: numbe
   return out;
 }
 
-const OPEN_STATUSES: RefundStatus[] = [
-  RefundStatus.PENDING_CURATOR,
-  RefundStatus.PENDING_ADMIN,
-  RefundStatus.PROCESSING,
-];
+const OPEN_STATUSES = OPEN_REFUND_STATUSES;
 
 const ALREADY_OPEN = 'A refund request is already open for this registration';
 
@@ -420,7 +417,9 @@ export class RefundsService {
     const stuck =
       request.status === RefundStatus.PROCESSING &&
       request.updatedAt.getTime() < Date.now() - STUCK_PROCESSING_MS;
-    if (request.status !== RefundStatus.PENDING_ADMIN && !(stuck && dto.action === 'APPROVE')) {
+    // A stuck claim or a refund Razorpay failed later can only be sent again.
+    const redrive = stuck || request.status === RefundStatus.REFUND_FAILED;
+    if (request.status !== RefundStatus.PENDING_ADMIN && !(redrive && dto.action === 'APPROVE')) {
       throw new BadRequestException(`Request is ${request.status}, not awaiting admin decision`);
     }
 
@@ -483,18 +482,23 @@ export class RefundsService {
         updatedAt: request.updatedAt,
       });
     } else {
-      await this.transition(requestId, RefundStatus.PENDING_ADMIN, { status: RefundStatus.PROCESSING });
+      await this.transition(requestId, request.status, { status: RefundStatus.PROCESSING });
     }
-    const progress = { moneyMoved: false };
+    // moneyMoved: some refund went out. unsure: Razorpay may have refunded but
+    // didn't say (timeout, 5xx, or a keyed refund already out). Either way the
+    // claim stays PROCESSING, so nobody can reject a refund that went out.
+    const progress = { moneyMoved: false, unsure: false };
     try {
       return await this.settleClaimedRefund(request, adminId, approvedAmount, note, progress);
     } catch (err) {
-      if (!progress.moneyMoved) {
-        // Nothing went back to the payer: put the request back in the queue.
+      if (!progress.moneyMoved && !progress.unsure) {
+        // Razorpay definitely refused: put the request back in its queue.
+        const back =
+          request.status === RefundStatus.REFUND_FAILED ? RefundStatus.REFUND_FAILED : RefundStatus.PENDING_ADMIN;
         await this.prisma.refundRequest
           .update({
             where: { id: requestId, status: RefundStatus.PROCESSING },
-            data: { status: RefundStatus.PENDING_ADMIN },
+            data: { status: back },
           })
           .catch((e) => this.logger.error(`Could not release refund claim ${requestId}`, e));
       }
@@ -509,7 +513,7 @@ export class RefundsService {
     adminId: string,
     approvedAmount: number | null | undefined,
     note: string | null | undefined,
-    progress: { moneyMoved: boolean },
+    progress: { moneyMoved: boolean; unsure: boolean },
   ) {
     const requestId = request.id;
     // Re-read after the claim: the copy the caller loaded may predate a refund
@@ -571,10 +575,21 @@ export class RefundsService {
         progress.moneyMoved = true;
       } catch (err: any) {
         this.logger.error(`Razorpay refund failed for request ${requestId}`, err);
-        throw new BadRequestException(
-          err?.error?.description ||
-            'Razorpay refund failed. Approving again is safe: it never refunds twice.',
-        );
+        if (err instanceof RefundAlreadyIssuedError) {
+          progress.unsure = true;
+          throw new BadRequestException(
+            `${err.message}. Approve again with exactly ₹${err.amountRupees} to record it.`,
+          );
+        }
+        if (!isRazorpayRejection(err)) {
+          progress.unsure = true;
+          throw new BadRequestException(
+            `Razorpay didn't confirm the refund, so it stays Processing. Approve it again after ${
+              STUCK_PROCESSING_MS / 60_000
+            } minutes: it never refunds twice.`,
+          );
+        }
+        throw new BadRequestException(err?.error?.description || 'Razorpay refused the refund.');
       }
     }
 
@@ -597,7 +612,12 @@ export class RefundsService {
         progress.moneyMoved = true;
       } catch (err: any) {
         this.logger.error(`CRITICAL: refund ${requestId}: extra-seats payment ${a.paymentId} refund failed`, err);
-        shortfall = err?.error?.description || 'An extra-seats payment could not be refunded';
+        if (isRazorpayRejection(err)) {
+          shortfall = err?.error?.description || 'An extra-seats payment could not be refunded';
+        } else {
+          progress.unsure = true;
+          shortfall = `Razorpay didn't confirm the extra-seats refund on ${a.paymentId}; check it in Razorpay before raising another`;
+        }
         break;
       }
     }
@@ -936,7 +956,8 @@ export class RefundsService {
         await this.assertOrganiser(userId, request.eventId);
       }
     }
-    return request;
+    const [withCap] = await this.withRefundCap([request]);
+    return withCap;
   }
 
   /**
@@ -977,6 +998,40 @@ export class RefundsService {
     return events.map((e) => e.id);
   }
 
+  /**
+   * What can still go back per request: the booking's base plus any extra
+   * seats bought later (the same cap settleClaimedRefund enforces), so admin
+   * screens never offer less (or more) than the server will accept.
+   */
+  private async withRefundCap<
+    T extends {
+      registrationId: string;
+      registration: { totalAmount: unknown; processingFee: unknown; refundedAmount: unknown };
+    },
+  >(requests: T[]): Promise<(T & { maxRefundable: number })[]> {
+    const addons = await this.prisma.groupSeatPurchase.findMany({
+      where: {
+        registrationId: { in: requests.map((r) => r.registrationId) },
+        seatsAddedAt: { not: null },
+        paymentStatus: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] },
+      },
+      select: { registrationId: true, totalAmount: true, processingFee: true, refundedAmount: true },
+    });
+    return requests.map((r) => ({
+      ...r,
+      maxRefundable: Math.max(
+        0,
+        money(
+          this.basePrice(r.registration) -
+            Number(r.registration.refundedAmount) +
+            addons
+              .filter((a) => a.registrationId === r.registrationId)
+              .reduce((sum, a) => sum + this.addonBase(a) - Number(a.refundedAmount), 0),
+        ),
+      ),
+    }));
+  }
+
   private async paginate(
     where: Prisma.RefundRequestWhereInput,
     page: number,
@@ -1013,7 +1068,7 @@ export class RefundsService {
       this.prisma.refundRequest.count({ where }),
     ]);
     return {
-      requests,
+      requests: await this.withRefundCap(requests),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }
