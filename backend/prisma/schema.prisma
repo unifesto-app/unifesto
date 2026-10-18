@@ -4604,6 +4604,38 @@ model BlogPost {
 }
 
 // =====================================================
+// Help articles (D17): the Assist knowledge base
+// =====================================================
+
+enum HelpArticleStatus {
+  /// Work-in-progress, never public.
+  DRAFT
+  /// Live on unifesto.app/help and readable by the Assist bot.
+  PUBLISHED
+
+  @@map("help_article_status")
+}
+
+model HelpArticle {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  slug     String            @unique @db.VarChar(220)
+  title    String            @db.VarChar(255)
+  /// Article body, in Markdown.
+  body     String            @db.Text
+  category String            @db.VarChar(80)
+  status   HelpArticleStatus @default(DRAFT)
+
+  createdBy String? @map("created_by") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([status, category])
+  @@map("help_articles")
+}
+
+// =====================================================
 // Push notifications platform (OneSignal)
 // =====================================================
 
