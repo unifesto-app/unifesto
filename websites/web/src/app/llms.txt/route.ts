@@ -1,5 +1,6 @@
 import {
   APP_FEATURES,
+  BUYER_PROCESSING_FEE,
   FAQ_HOME,
   FAQ_PRICING,
   FAQ_STAY, FAQ_HUDDLE, HUDDLE_STEPS,
@@ -42,7 +43,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
-- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing
+- [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${BUYER_PROCESSING_FEE}% processing fee on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
 - [Request a Space](${SITE.url}/request-space): how organisers get started

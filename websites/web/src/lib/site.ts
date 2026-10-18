@@ -296,6 +296,12 @@ export type Plan = {
   cta: { label: string; href: string };
 };
 
+/** Processing fee the BUYER pays at checkout on every paid ticket, percent of
+   the ticket price, on every plan. Separate from the organiser's platform fee
+   above. Must match PROCESSING_FEE_PERCENT in
+   backend/src/subscription/platform-config.service.ts. */
+export const BUYER_PROCESSING_FEE = 5;
+
 export const PLANS: Plan[] = [
   {
     id: "starter",
@@ -370,7 +376,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: "Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further.",
+    a: "Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges the organiser a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further. Buyers pay a 5% processing fee at checkout.",
   },
   {
     q: "How does check-in work?",
@@ -451,6 +457,10 @@ export const FAQ_PRICING: Faq[] = [
   {
     q: "Are free events really free?",
     a: "Yes. Free RSVP events carry no platform fee on any plan.",
+  },
+  {
+    q: "Who pays the processing fee?",
+    a: `The buyer. Every paid ticket carries a ${BUYER_PROCESSING_FEE}% processing fee, added at checkout on every plan and not refundable. Your platform fee is separate: ${PLANS.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ₹525 and you pay ₹12.50.`,
   },
   {
     q: "Are payment gateway charges included?",
