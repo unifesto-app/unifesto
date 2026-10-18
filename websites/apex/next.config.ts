@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
   // Ship despite pre-existing type/lint debt (dev never type-checked these).
   // TODO: clean up the type errors and remove these.
   typescript: { ignoreBuildErrors: true },
+  // D8: the Assist inbox replaced the Support page.
+  async redirects() {
+    return [{ source: "/dashboard/support", destination: "/dashboard/assist", permanent: false }];
+  },
   // Note: eslint config moved to eslint.config.mjs (no longer supported in next.config)
   
   // Ensure proper module resolution for client components
