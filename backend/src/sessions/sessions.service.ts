@@ -481,7 +481,7 @@ export class SessionsService {
       Math.round((Number(reg.razorpayAmount) - Number(reg.processingFee)) * 100) / 100,
     );
     try {
-      if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount);
+      if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount, `auto:session:${registrationId}`, { sessionRegistrationId: registrationId });
     } catch (err) {
       this.logger.error(
         `CRITICAL: refund of session registration ${registrationId} failed, retrying later: ${(err as Error).message}`,

@@ -537,7 +537,7 @@ export class TeamChangesService {
     });
     const total = Number(p.totalAmount);
     try {
-      await this.payments.refund(p.paymentId!, total);
+      await this.payments.refund(p.paymentId!, total, `auto:seats:${p.id}`, { groupSeatPurchaseId: p.id });
     } catch (err) {
       this.logger.error(`CRITICAL: add-seats ${p.id} payment ${p.paymentId} couldn't be refunded, retrying later: ${err}`);
       return false;

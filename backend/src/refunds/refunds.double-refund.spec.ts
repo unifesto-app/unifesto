@@ -70,7 +70,7 @@ function setup() {
   const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, payouts as any);
   const s = service as any;
   const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
-  s.razorpay = { payments: { refund } };
+  s.razorpay = { payments: { refund, fetchMultipleRefund: jest.fn(async () => ({ items: [] })) } };
   s.userContact = jest.fn(async () => ({ email: null, name: 'there' }));
   s.notifyEmail = jest.fn();
   s.notifyOtherPayers = jest.fn(async () => undefined);
@@ -133,5 +133,58 @@ describe('refund approval is claimed before money moves (S11)', () => {
     payouts.eventOverdrawn.mockResolvedValueOnce(0).mockResolvedValueOnce(45);
     await service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any);
     expect(update).toHaveBeenCalledWith({ where: { id: 'rr-1' }, data: { payoutShortfall: 45 } });
+  });
+});
+
+describe('stuck PROCESSING refunds and lost Razorpay responses (A14)', () => {
+  const stuckRow = (prisma: any, ageMs: number) =>
+    prisma.refundRequest.findUnique.mockResolvedValue({
+      id: 'rr-1',
+      status: RefundStatus.PROCESSING,
+      updatedAt: new Date(Date.now() - ageMs),
+      eventId: 'ev-1',
+      registrationId: 'reg-1',
+      registration: { event: { title: 'Fest' } },
+    });
+
+  it('approving a stuck request again records the refund that already went out, without a second one', async () => {
+    const { service, prisma, tx, refund, getStatus } = setup();
+    prisma.$transaction.mockRejectedValueOnce(new Error('db down'));
+    await expect(service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any)).rejects.toThrow('db down');
+    expect(getStatus()).toBe(RefundStatus.PROCESSING);
+
+    // Razorpay now lists the refund keyed by this request.
+    (service as any).razorpay.payments.fetchMultipleRefund.mockResolvedValue({
+      items: [{ id: 'rfnd_1', amount: 6000, status: 'processed', notes: { refundKey: 'rr-1' } }],
+    });
+    stuckRow(prisma, 11 * 60_000);
+    await service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any);
+    expect(refund).toHaveBeenCalledTimes(1);
+    expect(getStatus()).toBe(RefundStatus.APPROVED);
+    expect(tx.refundRequest.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ razorpayRefundId: 'rfnd_1' }) }),
+    );
+  });
+
+  it('a timeout after Razorpay accepted the refund is not treated as a failure', async () => {
+    const { service, refund, getStatus } = setup();
+    refund.mockRejectedValueOnce(new Error('ETIMEDOUT'));
+    (service as any).razorpay.payments.fetchMultipleRefund
+      .mockResolvedValueOnce({ items: [] })
+      .mockResolvedValueOnce({
+        items: [{ id: 'rfnd_late', amount: 6000, status: 'processed', notes: { refundKey: 'rr-1' } }],
+      });
+    await service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any);
+    expect(refund).toHaveBeenCalledTimes(1);
+    expect(getStatus()).toBe(RefundStatus.APPROVED);
+  });
+
+  it('a PROCESSING request that is still fresh cannot be approved again', async () => {
+    const { service, prisma, refund } = setup();
+    stuckRow(prisma, 60_000);
+    await expect(service.adminDecide('admin', 'rr-1', { action: 'APPROVE' } as any)).rejects.toThrow(
+      'not awaiting admin decision',
+    );
+    expect(refund).not.toHaveBeenCalled();
   });
 });

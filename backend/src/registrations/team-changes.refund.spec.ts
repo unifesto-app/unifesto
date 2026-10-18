@@ -38,7 +38,7 @@ describe('TeamChangesService add-seats refund', () => {
       where: { id: 'gp-1' },
       data: { refundDueAt: expect.any(Date) },
     });
-    expect(payments.refund).toHaveBeenCalledWith('pay_1', 420);
+    expect(payments.refund).toHaveBeenCalledWith('pay_1', 420, expect.any(String), expect.any(Object));
     expect(prisma.groupSeatPurchase.update).toHaveBeenLastCalledWith({
       where: { id: 'gp-1' },
       data: { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: 420, refundDueAt: null },

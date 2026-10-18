@@ -97,7 +97,7 @@ export class RegistrationPaymentsService {
     });
     const amount = Number(reg.razorpayAmount);
     try {
-      if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount);
+      if (amount > 0 && reg.paymentId) await this.payments.refund(reg.paymentId, amount, `auto:reg:${registrationId}`, { registrationId });
     } catch (err) {
       this.logger.error(`CRITICAL: auto-refund of registration ${registrationId} failed, retrying later: ${err}`);
       return false;
@@ -569,7 +569,16 @@ export class RegistrationPaymentsService {
   private async processRazorpayWebhook(rawBody: string) {
     const payload = JSON.parse(rawBody);
     const event = payload.event;
-    const paymentData = payload.payload.payment.entity;
+    const paymentData = payload.payload.payment?.entity;
+
+    if (event === 'refund.failed') {
+      await this.onRefundFailed(payload.payload.refund.entity);
+      return { received: true };
+    }
+    if (event === 'refund.processed') {
+      // Already recorded when the refund was issued; nothing to change.
+      return { received: true };
+    }
 
     if (event === 'payment.captured') {
       const orderId = paymentData.order_id;
@@ -666,6 +675,78 @@ export class RegistrationPaymentsService {
     }
 
     return { received: true };
+  }
+
+  /**
+   * Razorpay accepted a refund and later failed it (A15): the money never left.
+   * For a refund request, undo what settling recorded (refundedAmount, payment
+   * status) so the amount is refundable again, and note it on the request. Seats
+   * a full refund released stay released. Runs once per refund id.
+   */
+  private async onRefundFailed(refund: {
+    id: string;
+    amount: number;
+    payment_id: string;
+    notes?: Record<string, string>;
+  }) {
+    const n = refund.notes ?? {};
+    const rupees = Number(refund.amount) / 100;
+    if (!n.refundRequestId) {
+      // ponytail: auto refunds (sold out, late stay, session/seat/stay cancel)
+      // are only logged; their rows already read REFUNDED. Re-issue by hand.
+      this.logger.error(
+        `CRITICAL: Razorpay refund ${refund.id} (₹${rupees}, payment ${refund.payment_id}, ${n.refundKey ?? 'no key'}) FAILED: money not returned. Re-issue it from the Razorpay dashboard.`,
+      );
+      return;
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const first = await tx.webhookEvent.createMany({
+        data: [{ id: `refund-failed:${refund.id}`, source: 'razorpay' }],
+        skipDuplicates: true,
+      });
+      if (first.count === 0) return;
+      const status = (left: unknown) =>
+        Number(left) > 0 ? PaymentStatus.PARTIALLY_REFUNDED : PaymentStatus.PAID;
+      if (n.groupSeatPurchaseId) {
+        const p = await tx.groupSeatPurchase.update({
+          where: { id: n.groupSeatPurchaseId },
+          data: { refundedAmount: { decrement: rupees } },
+        });
+        await tx.groupSeatPurchase.update({
+          where: { id: p.id },
+          data: { paymentStatus: status(p.refundedAmount) },
+        });
+      } else if (n.registrationId) {
+        const r = await tx.eventRegistration.update({
+          where: { id: n.registrationId },
+          data: { refundedAmount: { decrement: rupees } },
+        });
+        await tx.eventRegistration.update({
+          where: { id: r.id },
+          data: { paymentStatus: status(r.refundedAmount) },
+        });
+      }
+      const req = await tx.refundRequest.findUnique({
+        where: { id: n.refundRequestId },
+        select: { adminNote: true },
+      });
+      if (req) {
+        await tx.refundRequest.update({
+          where: { id: n.refundRequestId },
+          data: {
+            adminNote: [
+              req.adminNote,
+              `Razorpay refund ${refund.id} of ₹${rupees} failed: nothing went back. Raise a new refund.`,
+            ]
+              .filter(Boolean)
+              .join(' '),
+          },
+        });
+      }
+    });
+    this.logger.error(
+      `CRITICAL: refund ${refund.id} (₹${rupees}) for request ${n.refundRequestId} failed at Razorpay; refunded amounts reversed`,
+    );
   }
 
   /**

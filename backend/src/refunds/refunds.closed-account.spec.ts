@@ -106,7 +106,7 @@ describe('refund approval for a closed account', () => {
     const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any);
     const s = service as any;
     const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
-    s.razorpay = { payments: { refund } };
+    s.razorpay = { payments: { refund, fetchMultipleRefund: jest.fn(async () => ({ items: [] })) } };
     s.userContact = jest.fn(async () => ({ email: null, name: 'there' }));
     s.notifyEmail = jest.fn();
     s.notifyOtherPayers = jest.fn(async () => undefined);

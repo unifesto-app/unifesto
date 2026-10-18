@@ -4,6 +4,50 @@ import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 
 /**
+ * Refund at most once per `key` (A14). The key rides in the refund's notes, so
+ * a retry after a timeout, crash or lost response finds the refund that already
+ * went out instead of sending a second one. A refund Razorpay marked `failed`
+ * doesn't count, so a failed one can be retried under the same key. Throws only
+ * when Razorpay holds no live refund for the key. Returns the refund id.
+ */
+export async function refundOnce(
+  razorpay: Razorpay,
+  paymentId: string,
+  amountRupees: number,
+  key: string,
+  notes: Record<string, string> = {},
+): Promise<string> {
+  const paise = Math.round(amountRupees * 100);
+  const find = async (): Promise<string | null> => {
+    // ponytail: first 100 refunds of a payment; no payment gets near that.
+    const list: any = await razorpay.payments.fetchMultipleRefund(paymentId, { count: 100 });
+    const hit = (list?.items ?? []).find(
+      (r: any) => r.notes?.refundKey === key && r.status !== 'failed',
+    );
+    if (hit && Number(hit.amount) !== paise) {
+      throw new Error(
+        `Refund ${hit.id} for ${key} already went out for ${Number(hit.amount) / 100}, not ${amountRupees}`,
+      );
+    }
+    return hit ? String(hit.id) : null;
+  };
+  const existing = await find();
+  if (existing) return existing;
+  try {
+    const r: any = await razorpay.payments.refund(paymentId, {
+      amount: paise,
+      notes: { ...notes, refundKey: key },
+    } as any);
+    return String(r.id);
+  } catch (err) {
+    // A timeout or 5xx may still have refunded: look again before failing.
+    const after = await find().catch(() => null);
+    if (after) return after;
+    throw err;
+  }
+}
+
+/**
  * True when a captured Razorpay payment is exactly `expectedRupees` in INR.
  * Webhooks must check this before settling: the row a payment resolves to is
  * only trusted when the money matches what that row charges.
@@ -164,15 +208,19 @@ export class PaymentsService {
   }
 
   /**
-   * Refund a captured payment. `amount` is in rupees (converted to paise here).
-   * Throws if Razorpay rejects the refund — callers decide how to treat a
-   * failed refund (log, queue for retry, surface to an admin).
+   * Refund a captured payment once per `key` (see {@link refundOnce}). `amount`
+   * is in rupees. Throws if no refund went out — callers decide how to treat
+   * that (log, queue for retry, surface to an admin); retrying is always safe.
    */
-  async refund(paymentId: string, amount: number): Promise<void> {
-    await this.razorpay.payments.refund(paymentId, {
-      amount: Math.round(amount * 100),
-    });
-    this.logger.log(`Refund initiated for payment ${paymentId}`);
+  async refund(
+    paymentId: string,
+    amount: number,
+    key: string,
+    notes: Record<string, string> = {},
+  ): Promise<string> {
+    const id = await refundOnce(this.razorpay, paymentId, amount, key, notes);
+    this.logger.log(`Refund ${id} (${key}) for payment ${paymentId}`);
+    return id;
   }
 
   /**

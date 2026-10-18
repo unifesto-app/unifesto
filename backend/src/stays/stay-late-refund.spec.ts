@@ -53,7 +53,7 @@ describe('StayBookingsService late-payment refund', () => {
   it('a successful refund clears the flag', async () => {
     const { svc, prisma, payments } = build();
     await expect(svc.refundDue('b-1')).resolves.toBe(true);
-    expect(payments.refund).toHaveBeenCalledWith('pay_1', 1020);
+    expect(payments.refund).toHaveBeenCalledWith('pay_1', 1020, expect.any(String), expect.any(Object));
     expect(prisma.stayBooking.update).toHaveBeenCalledWith({
       where: { id: 'b-1' },
       data: { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: 1020, refundDueAt: null },

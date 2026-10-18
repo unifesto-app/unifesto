@@ -32,6 +32,7 @@ import { isPlatformAdmin } from '../events/event-access';
 import { REDACTED_REFUND_REASON } from '../common/account-deletion';
 import Razorpay from 'razorpay';
 import { PayoutsService } from '../payouts/payouts.service';
+import { refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
 
 /** Round to 2 decimal places (money). */
@@ -63,6 +64,13 @@ const OPEN_STATUSES: RefundStatus[] = [
 ];
 
 const ALREADY_OPEN = 'A refund request is already open for this registration';
+
+/**
+ * A PROCESSING request untouched this long is stuck (crash or failed DB write
+ * mid-settle). An admin may approve it again: Razorpay refunds are keyed by the
+ * request id, so a retry records what already went out instead of paying twice.
+ */
+const STUCK_PROCESSING_MS = 10 * 60_000;
 
 /** P2025 = conditional update matched nothing; P2002 = open-request unique index. */
 function isPrismaCode(err: unknown, code: string): boolean {
@@ -148,10 +156,11 @@ export class RefundsService {
     requestId: string,
     from: RefundStatus,
     data: Prisma.RefundRequestUpdateInput,
+    also: Prisma.RefundRequestWhereInput = {},
   ) {
     try {
       return await this.prisma.refundRequest.update({
-        where: { id: requestId, status: from },
+        where: { ...also, id: requestId, status: from },
         data,
       });
     } catch (err) {
@@ -408,7 +417,10 @@ export class RefundsService {
       },
     });
     if (!request) throw new NotFoundException('Refund request not found');
-    if (request.status !== RefundStatus.PENDING_ADMIN) {
+    const stuck =
+      request.status === RefundStatus.PROCESSING &&
+      request.updatedAt.getTime() < Date.now() - STUCK_PROCESSING_MS;
+    if (request.status !== RefundStatus.PENDING_ADMIN && !(stuck && dto.action === 'APPROVE')) {
       throw new BadRequestException(`Request is ${request.status}, not awaiting admin decision`);
     }
 
@@ -453,7 +465,8 @@ export class RefundsService {
    * Claims the request (PENDING_ADMIN -> PROCESSING) before any money moves, so
    * a concurrent approval of the same request gets a 409 instead of a second
    * Razorpay refund. If nothing went back the claim is released; once money has
-   * moved it is never released (a stuck PROCESSING row is for manual repair).
+   * moved it is never released. A stuck PROCESSING row is re-claimed by
+   * approving it again (see STUCK_PROCESSING_MS): keyed refunds make that safe.
    */
   private async settleApprovedRefund(
     request: Prisma.RefundRequestGetPayload<{
@@ -464,7 +477,14 @@ export class RefundsService {
     note: string | null | undefined,
   ) {
     const requestId = request.id;
-    await this.transition(requestId, RefundStatus.PENDING_ADMIN, { status: RefundStatus.PROCESSING });
+    if (request.status === RefundStatus.PROCESSING) {
+      // Re-claim a stuck one; matching updatedAt lets only one admin win.
+      await this.transition(requestId, RefundStatus.PROCESSING, { status: RefundStatus.PROCESSING }, {
+        updatedAt: request.updatedAt,
+      });
+    } else {
+      await this.transition(requestId, RefundStatus.PENDING_ADMIN, { status: RefundStatus.PROCESSING });
+    }
     const progress = { moneyMoved: false };
     try {
       return await this.settleClaimedRefund(request, adminId, approvedAmount, note, progress);
@@ -544,16 +564,16 @@ export class RefundsService {
         throw new BadRequestException('No payment id on registration; cannot issue a cash refund');
       }
       try {
-        const refund = await this.razorpay.payments.refund(reg.paymentId, {
-          amount: Math.round(regCash * 100),
-          notes: { registrationId: reg.id, refundRequestId: requestId },
-        } as any);
-        razorpayRefundId = (refund as any)?.id ?? null;
+        razorpayRefundId = await refundOnce(this.razorpay, reg.paymentId, regCash, requestId, {
+          registrationId: reg.id,
+          refundRequestId: requestId,
+        });
         progress.moneyMoved = true;
       } catch (err: any) {
         this.logger.error(`Razorpay refund failed for request ${requestId}`, err);
         throw new BadRequestException(
-          err?.error?.description || 'Razorpay refund failed; nothing was charged back',
+          err?.error?.description ||
+            'Razorpay refund failed. Approving again is safe: it never refunds twice.',
         );
       }
     }
@@ -566,11 +586,14 @@ export class RefundsService {
     for (const slice of plan.filter((p) => p.key !== null)) {
       const a = addons.find((x) => x.id === slice.key)!;
       try {
-        const refund = await this.razorpay.payments.refund(a.paymentId as string, {
-          amount: Math.round(slice.amount * 100),
-          notes: { groupSeatPurchaseId: a.id, refundRequestId: requestId },
-        } as any);
-        addonDone.push({ id: a.id, amount: slice.amount, refundId: (refund as any)?.id ?? null, payerId: a.userId });
+        const refundId = await refundOnce(
+          this.razorpay,
+          a.paymentId as string,
+          slice.amount,
+          `${requestId}:${a.id}`,
+          { groupSeatPurchaseId: a.id, refundRequestId: requestId },
+        );
+        addonDone.push({ id: a.id, amount: slice.amount, refundId, payerId: a.userId });
         progress.moneyMoved = true;
       } catch (err: any) {
         this.logger.error(`CRITICAL: refund ${requestId}: extra-seats payment ${a.paymentId} refund failed`, err);
@@ -579,6 +602,8 @@ export class RefundsService {
       }
     }
     const refundedNow = money(regSlice + addonDone.reduce((sum, d) => sum + d.amount, 0));
+    // Nothing went back (the only slice left failed): never mark that APPROVED.
+    if (refundedNow <= 0) throw new BadRequestException(shortfall ?? 'Nothing could be refunded');
     const cashPortion = money(regCash + addonDone.reduce((sum, d) => sum + d.amount, 0));
     const adminNote = [
       note?.trim(),

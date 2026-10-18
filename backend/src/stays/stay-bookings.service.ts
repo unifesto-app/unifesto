@@ -747,7 +747,7 @@ export class StayBookingsService {
     });
     const total = num(b.totalAmount);
     try {
-      await this.payments.refund(b.paymentId!, total);
+      await this.payments.refund(b.paymentId!, total, `auto:stay:${b.id}`, { stayBookingId: b.id });
     } catch (err) {
       this.logger.error(
         `CRITICAL: stay ${b.id}: late payment ${b.paymentId} could not be refunded, retrying later: ${err}`,
@@ -1075,7 +1075,7 @@ export class StayBookingsService {
       // The stay price comes back; the processing fee is kept, as with tickets.
       refunded = Math.max(0, num(b.totalAmount) - num(b.processingFee));
       try {
-        await this.payments.refund(b.paymentId!, refunded);
+        await this.payments.refund(b.paymentId!, refunded, `stay-cancel:${b.id}`, { stayBookingId: b.id });
       } catch (err) {
         // Put it back so the team can retry rather than lose track of the money.
         await this.prisma.stayBooking.update({

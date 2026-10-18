@@ -54,7 +54,7 @@ function approve(reg: { status: RegistrationStatus; refundDueAt?: Date | null })
   );
   const s = service as any;
   const refund = jest.fn(async () => ({ id: 'rfnd_1' }));
-  s.razorpay = { payments: { refund } };
+  s.razorpay = { payments: { refund, fetchMultipleRefund: jest.fn(async () => ({ items: [] })) } };
   s.userContact = jest.fn(async () => ({ email: null, name: 'there' }));
   s.notifyEmail = jest.fn();
   s.notifyOtherPayers = jest.fn(async () => undefined);

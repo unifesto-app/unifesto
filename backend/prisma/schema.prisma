@@ -297,7 +297,7 @@ enum RefundStatus {
   PENDING_CURATOR
   PENDING_ADMIN
   /// Claimed by an admin approval while Razorpay is called. A row stuck here
-  /// means money may have moved but the DB write failed: repair by hand.
+  /// (10+ min) can be approved again: refunds are keyed, so it never pays twice.
   PROCESSING
   APPROVED
   REJECTED
