@@ -281,7 +281,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 
 | # | Item | Status |
 |---|---|---|
-| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | in progress (#PR), not deployed |
+| C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | done (#177), not deployed |
 | C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | planned |
 | C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | planned |
 | C4 | **Notification preferences grid and quiet hours.** Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
