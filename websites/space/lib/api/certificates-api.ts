@@ -262,11 +262,14 @@ export async function importTemplate(
   );
 }
 
-/** `DELETE /certificates/templates/:templateId` — also deletes its certificates. */
+/**
+ * `DELETE /certificates/templates/:templateId`. A template with issued
+ * certificates is retired (`retired: true`) and its certificates stay valid.
+ */
 export async function deleteTemplate(
   templateId: string
-): Result<{ deleted: boolean; certificatesDeleted: number }> {
-  return apiCall<{ deleted: boolean; certificatesDeleted: number }>(
+): Result<{ deleted: boolean; certificatesDeleted: number; retired?: boolean }> {
+  return apiCall<{ deleted: boolean; certificatesDeleted: number; retired?: boolean }>(
     backendClient.delete(`/certificates/templates/${templateId}`)
   );
 }

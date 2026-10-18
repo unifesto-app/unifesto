@@ -11,13 +11,21 @@ import { Queue, Worker, Job } from 'bullmq';
 import type Redis from 'ioredis';
 import { RedisService } from '../redis/redis.service';
 import { CertificatesService } from './certificates.service';
+// Only used at run time (moduleRef.get); reports.service imports this file
+// back and breaks the cycle with forwardRef.
+import { ReportsService } from '../reports/reports.service';
 
 const QUEUE_NAME = 'certificate-issuance';
 
-/** `issue` jobs carry a batch; `reissue-revoked` jobs an event + requester. */
+/**
+ * `issue` jobs carry a batch; `reissue-revoked` jobs an event + requester;
+ * `report` jobs an event report to render (B19: report PDFs are as heavy as
+ * certificates, so they run here too, off the API replicas).
+ */
 type IssuanceJobData =
   | { batchId: string }
-  | { eventId: string; userId: string };
+  | { eventId: string; userId: string }
+  | { reportId: string };
 
 /**
  * BullMQ-backed queue for certificate issuance.
@@ -110,7 +118,10 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
           strict: false,
         });
         const data = job.data;
-        if ('batchId' in data) await service.processBatch(data.batchId);
+        if ('reportId' in data) {
+          const reports = this.moduleRef.get(ReportsService, { strict: false });
+          await reports.generateById(data.reportId);
+        } else if ('batchId' in data) await service.processBatch(data.batchId);
         else await service.reissueAllRevokedNow(data.userId, data.eventId);
       },
       { connection: this.workerConnection, concurrency },
@@ -143,6 +154,11 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
    */
   add(batchId: string): Promise<boolean> {
     return this.enqueue('issue', { batchId });
+  }
+
+  /** Enqueue an event report render (same contract). */
+  addReport(reportId: string): Promise<boolean> {
+    return this.enqueue('report', { reportId });
   }
 
   /** Enqueue "reissue every revoked certificate" for an event (same contract). */

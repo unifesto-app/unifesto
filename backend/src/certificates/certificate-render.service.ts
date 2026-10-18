@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { existsSync } from 'fs';
+import { join } from 'path';
 import axios from 'axios';
 import PDFDocument from 'pdfkit';
 import * as QRCode from 'qrcode';
@@ -15,6 +16,9 @@ import {
   DEFAULT_FONT_FAMILY,
   fontFilePath,
   normaliseFamily,
+  FONT_DIR,
+  SCRIPT_FONTS,
+  scriptFontFor,
 } from './certificate-fonts';
 
 /**
@@ -107,6 +111,8 @@ interface QrPlacement {
 
 /** Register the bundled TTFs with @napi-rs/canvas exactly once per process. */
 let canvasFontsRegistered = false;
+/** Script fallback families that are actually registered. */
+const canvasScriptFamilies = new Set<string>();
 function ensureCanvasFonts(logger: Logger): void {
   if (canvasFontsRegistered) return;
   canvasFontsRegistered = true;
@@ -121,6 +127,22 @@ function ensureCanvasFonts(logger: Logger): void {
       if (bold && bold !== reg) GlobalFonts.registerFromPath(bold, font.family);
     } catch (err) {
       logger.warn(`Could not register font ${font.family}: ${String(err)}`);
+    }
+  }
+
+  // Indian-script fallbacks (B19); Skia picks them per glyph from the
+  // family list each text field is drawn with.
+  for (const f of SCRIPT_FONTS) {
+    for (const file of new Set([f.regular, f.bold])) {
+      const path = join(FONT_DIR, file);
+      try {
+        if (existsSync(path)) {
+          GlobalFonts.registerFromPath(path, f.family);
+          canvasScriptFamilies.add(f.family);
+        }
+      } catch (err) {
+        logger.warn(`Could not register font ${f.family}: ${String(err)}`);
+      }
     }
   }
 
@@ -342,7 +364,8 @@ export class CertificateRenderService {
       const family = normaliseFamily(field.fontFamily);
       const style = field.italic ? 'italic ' : '';
       const weight = field.bold ? 'bold ' : '';
-      ctx.font = `${style}${weight}${field.fontSize}px "${family}"`;
+      const fallbacks = [...canvasScriptFamilies].map((f) => `, "${f}"`).join('');
+      ctx.font = `${style}${weight}${field.fontSize}px "${family}"${fallbacks}`;
       ctx.fillStyle = field.color ?? '#000000';
       ctx.textAlign = field.align ?? 'left';
       ctx.textBaseline = 'top';
@@ -445,7 +468,19 @@ export class CertificateRenderService {
 
         // Registered font names, so each TTF is embedded only once per doc.
         const registered = new Set<string>();
-        const useFont = (field: CertificateFieldDef) => {
+        const useFont = (field: CertificateFieldDef, text: string) => {
+          // pdfkit has no glyph fallback: a name in an Indian script takes the
+          // matching Noto face for the whole field (B19).
+          const script = scriptFontFor(text, !!field.bold);
+          if (script) {
+            const name = `${script.family}-${field.bold ? 'b' : 'r'}`;
+            if (!registered.has(name)) {
+              doc.registerFont(name, script.path);
+              registered.add(name);
+            }
+            doc.font(name);
+            return;
+          }
           const family = normaliseFamily(field.fontFamily);
           if (family === DEFAULT_FONT_FAMILY) {
             doc.font(this.helvetica(field));
@@ -475,7 +510,7 @@ export class CertificateRenderService {
         for (const field of input.fields) {
           const text = this.resolveText(field, input.values);
           if (!text) continue;
-          useFont(field);
+          useFont(field, text);
           doc
             .fontSize(field.fontSize)
             .fillColor(field.color ?? '#000000')

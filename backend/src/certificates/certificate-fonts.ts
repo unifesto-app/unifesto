@@ -66,6 +66,41 @@ export function fontFilePath(
   return existsSync(full) ? full : null;
 }
 
+/**
+ * Noto Sans faces for Indian scripts (B19). Every curated font above is
+ * Latin-only, so a name like "प्रिया" or "ప్రియ" drew as empty boxes. A field
+ * whose text uses one of these scripts switches to the matching face. The
+ * files are optional: when one isn't bundled the field renders as before.
+ */
+export const SCRIPT_FONTS: { family: string; range: RegExp; regular: string; bold: string }[] = [
+  ['Devanagari', /[\u0900-\u097F]/],
+  ['Bengali', /[\u0980-\u09FF]/],
+  ['Gurmukhi', /[\u0A00-\u0A7F]/],
+  ['Gujarati', /[\u0A80-\u0AFF]/],
+  ['Oriya', /[\u0B00-\u0B7F]/],
+  ['Tamil', /[\u0B80-\u0BFF]/],
+  ['Telugu', /[\u0C00-\u0C7F]/],
+  ['Kannada', /[\u0C80-\u0CFF]/],
+  ['Malayalam', /[\u0D00-\u0D7F]/],
+].map(([script, range]) => ({
+  family: `Noto Sans ${script}`,
+  range: range as RegExp,
+  regular: `NotoSans${script}-Regular.ttf`,
+  bold: `NotoSans${script}-Bold.ttf`,
+}));
+
+/** The bundled Noto face for the first Indian script in `text`, if any. */
+export function scriptFontFor(text: string, bold: boolean): { family: string; path: string } | null {
+  for (const f of SCRIPT_FONTS) {
+    if (!f.range.test(text)) continue;
+    const full = [bold ? f.bold : f.regular, f.regular]
+      .map((file) => join(FONT_DIR, file))
+      .find((path) => existsSync(path));
+    return full ? { family: f.family, path: full } : null;
+  }
+  return null;
+}
+
 /** Resolve an untrusted family to a known one (default when unrecognised). */
 export function normaliseFamily(family: string | undefined): string {
   return family && CERTIFICATE_FONT_FAMILIES.includes(family)
