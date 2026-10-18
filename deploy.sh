@@ -11,10 +11,15 @@ set -euo pipefail
 #   ./deploy.sh apex           # just the platform-admin dashboard
 #   ./deploy.sh backend space  # both of these, leave the rest alone
 #
+# Port 22 is closed on the server's security group: SSH goes through AWS
+# Systems Manager. Needs the AWS CLI + session-manager-plugin, a signed-in
+# profile (`aws login --profile unifesto`) and the `Host i-*` ProxyCommand
+# entry in ~/.ssh/config that runs `aws ssm start-session ... AWS-StartSSHSession`.
+#
 # Override targets via env vars:
-#   SERVER=ubuntu@1.2.3.4 KEY=~/.ssh/unifesto-key.pem REMOTE_DIR=/home/ubuntu/unifesto ./deploy.sh
+#   SERVER=ubuntu@i-0123456789abcdef0 KEY=~/.ssh/unifesto-key.pem REMOTE_DIR=/home/ubuntu/unifesto ./deploy.sh
 
-SERVER="${SERVER:-ubuntu@13.205.35.224}"
+SERVER="${SERVER:-ubuntu@i-079d51280d1964117}"
 KEY="${KEY:-$HOME/.ssh/unifesto-key.pem}"
 REMOTE_DIR="${REMOTE_DIR:-/home/ubuntu/unifesto}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -96,6 +101,7 @@ rsync -az --delete \
   --exclude '.DS_Store' \
   --exclude '/_company' \
   --exclude '/.claude/settings.local.json' \
+  --exclude '/.claude/worktrees' \
   --exclude '/backend/coverage' \
   --exclude '/backend/.env.local' \
   --exclude '/backend/prisma/manual' \
