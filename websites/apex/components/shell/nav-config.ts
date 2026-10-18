@@ -35,6 +35,9 @@ import {
   LinkBreak,
   Flag,
   Coins,
+  CloudArrowUp,
+  ImageSquare,
+  ChartLineUp,
 } from "@unifesto/unicon/react";
 
 export interface NavItem {
@@ -124,7 +127,10 @@ export const adminNav: NavGroup[] = [
     items: [
       { href: "/dashboard/status", label: "Status", icon: Pulse, keywords: "uptime health" },
       { href: "/dashboard/logs", label: "Logs", icon: ListChecks, keywords: "api audit" },
-      { href: "/dashboard/app-version", label: "App versions", icon: DeviceMobile, keywords: "ota updates mobile" },
+      { href: "/dashboard/app-version", label: "App versions", icon: DeviceMobile, keywords: "store minimum update prompt" },
+      { href: "/dashboard/ota", label: "OTA updates", icon: CloudArrowUp, keywords: "eas rollout promote revert expo" },
+      { href: "/dashboard/default-images", label: "Default images", icon: ImageSquare, keywords: "banners logos placeholder" },
+      { href: "/dashboard/stats-recipients", label: "Stats recipients", icon: ChartLineUp, keywords: "whatsapp daily weekly digest" },
     ],
   },
 ];
