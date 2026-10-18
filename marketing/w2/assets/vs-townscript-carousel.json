@@ -1,0 +1,49 @@
+{
+  "template": "carousel",
+  "slides": [
+    {
+      "kind": "cover",
+      "label": "Townscript alternatives",
+      "title": "Unifesto vs Townscript, *honestly.*",
+      "lede": "Which one fits a college club or fest, as of 30 Oct 2026.",
+      "shot": "shots/01-dashboard-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Your team",
+      "text": "*Townscript: an organiser account.*\n\nUnifesto: a Space with Curator, Co-Curator and Crew roles per event.",
+      "shot": "shots/03-iam-roles-matrix.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Team events",
+      "text": "*Every member, not just the lead.*\n\nUnifesto: the lead pays once, each member claims a seat, answers their own questions and gets a pass.",
+      "shot": "shots/03-squad-ticket-detail-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Hackathons",
+      "text": "*Not listed on Townscript.*\n\nUnifesto Sprint: teams, rounds, judging and a help desk (Pro).",
+      "shot": "shots/01-sprint-hub-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Where Townscript wins",
+      "text": "Many currencies. A widget for your own website. No app for attendees. A 2% listed platform fee. *We'll say it first.*"
+    },
+    {
+      "kind": "step",
+      "title": "The fees",
+      "text": "Townscript: 2% + 2% gateway (domestic).\n\nUnifesto Starter: 2.5% + Razorpay. Pro: 1.5% + Razorpay, ₹1,499/month.\n\n*Launch pricing, all excl. taxes, as of 30 Oct 2026.*"
+    },
+    {
+      "kind": "cta",
+      "title": "Running a club? *Try a Space.*",
+      "lede": "Free for RSVP events. Full comparison on our blog.",
+      "pills": [
+        "unifesto.app/blog",
+        "Save for later"
+      ]
+    }
+  ]
+}

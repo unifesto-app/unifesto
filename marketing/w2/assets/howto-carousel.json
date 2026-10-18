@@ -1,0 +1,12 @@
+{
+  "template": "carousel",
+  "slides": [
+    { "kind": "cover", "label": "How to sell event tickets online", "title": "Tickets that *sell themselves.*", "lede": "Ticket types, group tickets, questions and coupons for your next fest.", "shot": "shots/01-aurora-fest-ticket-types-mobile.jpg" },
+    { "kind": "step", "title": "Plan three tickets", "text": "Early bird with an end date, Regular, and a team ticket. The early bird stops selling on its own.", "shot": "shots/01-aurora-fest-ticket-types.jpg" },
+    { "kind": "step", "title": "Sell teams one ticket", "text": "The lead pays once. Each member claims a seat and gets their own pass.", "shot": "shots/03-squad-ticket-detail-mobile.jpg" },
+    { "kind": "step", "title": "Ask only what you'll use", "text": "14 question types. Choose if the lead answers or *every member does.*", "shot": "shots/04-registration-question-types.jpg" },
+    { "kind": "step", "title": "Give your club a code", "text": "Percent or flat off, with a limit. When it's used up, it stops.", "shot": "shots/10-discount-code-form.jpg" },
+    { "kind": "step", "title": "Share one tracked link", "text": "Attendees register and pay in the free Unifesto app and get a QR pass. You see which link sold.", "shot": "shots/02-buildnight-team-ticket.jpg" },
+    { "kind": "cta", "title": "Open sales *this week.*", "lede": "Free RSVP events cost nothing. Full video on our YouTube.", "pills": ["unifesto.app/organisers", "Save for later"] }
+  ]
+}
