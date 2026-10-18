@@ -1,6 +1,10 @@
-# Status checks for every PR and push to main. Each job only runs when its app
-# (or this file) changed; the "CI passed" job is the single required check, and
-# it passes when every job either succeeded or was skipped as unaffected.
+# Status checks for every PR and push to main, in ONE job: "CI passed", the
+# single required check. GitHub bills each job rounded up to a whole minute, so
+# separate changes/app/gate jobs cost ~4 billed minutes per run for ~2 of work
+# (Oct 2026: 340 billed min per 80 runs vs ~196 as one job). Each app's checks
+# only run when its folder (or this file) changed; a docs-only change runs just
+# the filter. Every app step runs even if an earlier one failed, so one run
+# reports every broken app.
 name: CI
 
 on:
@@ -18,16 +22,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  changes:
+  ci-passed:
+    name: CI passed
     runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      mobile: ${{ steps.filter.outputs.mobile }}
-      web: ${{ steps.filter.outputs.web }}
-      space: ${{ steps.filter.outputs.space }}
-      apex: ${{ steps.filter.outputs.apex }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The OTA status report counts mobile commits on main: needs history.
+          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -50,37 +52,111 @@ jobs:
               - *ci
               - 'websites/apex/**'
 
-  backend:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
-    # Dummy values only: some services build Razorpay/S3 clients in their
-    # constructors from process.env. Locally these come from backend/.env.
-    env:
-      RAZORPAY_KEY_ID: rzp_test_ci
-      RAZORPAY_KEY_SECRET: ci-not-a-secret
-      RAZORPAY_WEBHOOK_SECRET: ci-not-a-secret
-      AWS_REGION: ap-south-1
-      S3_BUCKET_NAME: ci-bucket
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
+      # ── mobile (Node 22) ────────────────────────────────────────────────
       - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && steps.filter.outputs.mobile == 'true' }}
         with:
-          node-version: 24
+          node-version: 22
           cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - run: npm ci
-      - run: npx prisma generate
+          cache-dependency-path: mobile/package-lock.json
+      - name: Mobile
+        if: ${{ !cancelled() && steps.filter.outputs.mobile == 'true' }}
+        working-directory: mobile
+        run: |
+          npm ci
+          echo "::group::Type-check"; npx tsc --noEmit; echo "::endgroup::"
+          # Bundle from a clean checkout: catches source files that exist
+          # locally but were never committed (e.g. gitignored
+          # src/widgets/android), which only fail on EAS.
+          echo "::group::Bundle (Android + iOS)"
+          npx expo export --platform android --output-dir /tmp/export-android
+          npx expo export --platform ios --output-dir /tmp/export-ios
+          echo "::endgroup::"
+          echo "::group::Expo config resolves (runtime + updates)"; npx expo config --type public > /dev/null; echo "::endgroup::"
+      - name: Report OTA status to Apex (stale-OTA alarm)
+        # Main's fingerprints vs the live store builds + its mobile commits, so
+        # Apex › OTA updates can show what main holds that nobody has received.
+        # Skips with a warning until the secrets are set.
+        if: ${{ !cancelled() && steps.filter.outputs.mobile == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        working-directory: mobile
+        env:
+          OTA_STATUS_URL: ${{ vars.OTA_STATUS_URL || 'https://api.unifesto.app' }}
+          OTA_STATUS_SECRET: ${{ secrets.OTA_STATUS_SECRET }}
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+        run: node scripts/ota-status-report.js
+
+      # O7: does this PR keep main OTA-reachable? Fingerprints the PR (merge
+      # ref) and its base; fails when the base matched a live store runtime in
+      # the base's runtime-fingerprints.json and the PR does not. Reuses the
+      # head install from the Mobile step. No EAS credentials.
+      - name: OTA-safe · secret present
+        id: ota
+        if: ${{ !cancelled() && steps.filter.outputs.mobile == 'true' && github.event_name == 'pull_request' }}
+        env:
+          # The only env var feeding app.config.js, so the only one in the fingerprint.
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+        run: |
+          if [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
+            echo "::warning title=OTA-safe::GOOGLE_MAPS_ANDROID_API_KEY secret is not set (or not shared with this PR), so fingerprints can't match production. Check skipped."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: ${{ !cancelled() && steps.ota.outputs.ok == 'true' }}
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: .ota-base
+      - name: OTA-safe
+        if: ${{ !cancelled() && steps.ota.outputs.ok == 'true' }}
+        working-directory: mobile
+        env:
+          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
+        run: |
+          (cd ../.ota-base/mobile && npm ci)
+          node scripts/ota-ci-check.js ../.ota-base/mobile
+
+      # ── websites (Node 22) ──────────────────────────────────────────────
+      - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: websites/web/package-lock.json
+      - name: Web
+        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' }}
+        working-directory: websites/web
+        run: npm ci && npx next typegen && npx tsc --noEmit -p .
+
+      - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: websites/space/package-lock.json
+      - name: Space
+        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' }}
+        working-directory: websites/space
+        run: npm ci && npx next typegen && npx tsc --noEmit -p .
+
+      - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' }}
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: websites/apex/package-lock.json
+      - name: Apex
+        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' }}
+        working-directory: websites/apex
+        run: npm ci && npx next typegen && npx tsc --noEmit -p .
+
+      # ── backend (Node 24, last so it doesn't change the others' Node) ───
       - name: Migrations have no destructive SQL without review
         # New migrations must be additive. DROP COLUMN / DROP TABLE fails the
         # build unless the file carries a `-- contract-step` comment (the
         # reviewed second half of an expand/contract change). Other destructive
         # SQL only warns. See remove_chat, 2026-09-25 (S37).
-        if: github.event_name == 'pull_request'
-        working-directory: .
+        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         run: |
           git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
           added=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}" -- 'backend/prisma/migrations/*/migration.sql' || true)
@@ -101,159 +177,25 @@ jobs:
             fi
           done
           exit $failed
-      - name: Type-check
-        run: npx tsc --noEmit -p tsconfig.json
-      - name: Unit tests
-        run: npm test -- --ci
-
-  mobile:
-    needs: changes
-    if: needs.changes.outputs.mobile == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: mobile
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # The OTA status report counts mobile commits on main: needs history.
-          fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
       - uses: actions/setup-node@v4
+        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' }}
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
-          cache-dependency-path: mobile/package-lock.json
-      - run: npm ci
-      - name: Type-check
-        run: npx tsc --noEmit
-      - name: Bundle from a clean checkout (Android + iOS)
-        # Catches source files that exist locally but were never committed
-        # (e.g. gitignored src/widgets/android), which only fail on EAS.
-        run: |
-          npx expo export --platform android --output-dir /tmp/export-android
-          npx expo export --platform ios --output-dir /tmp/export-ios
-      - name: Expo config resolves (runtime + updates)
-        run: npx expo config --type public > /dev/null
-      - name: Report OTA status to Apex (stale-OTA alarm)
-        # Main's fingerprints vs the live store builds + its mobile commits, so
-        # Apex › OTA updates can show what main holds that nobody has received.
-        # Skips with a warning until the secrets are set.
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+          cache-dependency-path: backend/package-lock.json
+      - name: Backend
+        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' }}
+        working-directory: backend
+        # Dummy values only: some services build Razorpay/S3 clients in their
+        # constructors from process.env. Locally these come from backend/.env.
         env:
-          OTA_STATUS_URL: ${{ vars.OTA_STATUS_URL || 'https://api.unifesto.app' }}
-          OTA_STATUS_SECRET: ${{ secrets.OTA_STATUS_SECRET }}
-          GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
-        run: node scripts/ota-status-report.js
-
-  ota-safe:
-    # O7: does this PR keep main OTA-reachable? Fingerprints the PR (merge ref)
-    # and its base; fails when the base matched a live store runtime in the
-    # base's runtime-fingerprints.json and the PR does not. No EAS credentials.
-    name: OTA-safe
-    needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.mobile == 'true'
-    runs-on: ubuntu-latest
-    env:
-      # The only env var feeding app.config.js, so the only one in the fingerprint.
-      GOOGLE_MAPS_ANDROID_API_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_API_KEY }}
-    steps:
-      - name: Secret present
-        id: secret
+          RAZORPAY_KEY_ID: rzp_test_ci
+          RAZORPAY_KEY_SECRET: ci-not-a-secret
+          RAZORPAY_WEBHOOK_SECRET: ci-not-a-secret
+          AWS_REGION: ap-south-1
+          S3_BUCKET_NAME: ci-bucket
         run: |
-          if [ -z "$GOOGLE_MAPS_ANDROID_API_KEY" ]; then
-            echo "::warning title=OTA-safe::GOOGLE_MAPS_ANDROID_API_KEY secret is not set (or not shared with this PR), so fingerprints can't match production. Check skipped."
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "ok=true" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/checkout@v4
-        if: steps.secret.outputs.ok == 'true'
-      - uses: actions/checkout@v4
-        if: steps.secret.outputs.ok == 'true'
-        with:
-          ref: ${{ github.event.pull_request.base.sha }}
-          path: .ota-base
-      - uses: actions/setup-node@v4
-        if: steps.secret.outputs.ok == 'true'
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            mobile/package-lock.json
-            .ota-base/mobile/package-lock.json
-      - name: Install head and base
-        if: steps.secret.outputs.ok == 'true'
-        run: |
-          (cd mobile && npm ci)
-          (cd .ota-base/mobile && npm ci)
-      - name: Compare fingerprints with the live runtimes
-        if: steps.secret.outputs.ok == 'true'
-        working-directory: mobile
-        run: node scripts/ota-ci-check.js ../.ota-base/mobile
-
-  web:
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: websites/web
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: websites/web/package-lock.json
-      - run: npm ci
-      - run: npx next typegen
-      - name: Type-check
-        run: npx tsc --noEmit -p .
-
-  space:
-    needs: changes
-    if: needs.changes.outputs.space == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: websites/space
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: websites/space/package-lock.json
-      - run: npm ci
-      - run: npx next typegen
-      - name: Type-check
-        run: npx tsc --noEmit -p .
-
-  apex:
-    needs: changes
-    if: needs.changes.outputs.apex == 'true'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: websites/apex
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: websites/apex/package-lock.json
-      - run: npm ci
-      - run: npx next typegen
-      - name: Type-check
-        run: npx tsc --noEmit -p .
-
-  ci-passed:
-    name: CI passed
-    if: always()
-    needs: [changes, backend, mobile, ota-safe, web, space, apex]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Every affected job succeeded
-        run: |
-          echo '${{ toJSON(needs) }}' | jq -e 'to_entries | all(.value.result == "success" or .value.result == "skipped")'
+          npm ci
+          npx prisma generate
+          echo "::group::Type-check"; npx tsc --noEmit -p tsconfig.json; echo "::endgroup::"
+          echo "::group::Unit tests"; npm test -- --ci; echo "::endgroup::"
