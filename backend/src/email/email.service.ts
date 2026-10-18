@@ -383,6 +383,14 @@ export class EmailService {
   }
 
   // =====================================================
+  // SUPPORT
+  // =====================================================
+
+  async sendSupportCaseUpdate(data: T.SupportCaseUpdateData): Promise<void> {
+    await this.deliver('resend', data.email, T.supportCaseUpdateEmail(data));
+  }
+
+  // =====================================================
   // SPACES
   // =====================================================
 

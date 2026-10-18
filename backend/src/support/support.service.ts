@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { sniffMime, UPLOAD_EXT } from '../registrations/form-uploads.service';
@@ -20,6 +21,24 @@ import {
   SupportMessageSide,
 } from '@prisma/client';
 import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
+
+/** D3: something happened on a case that the other side should hear about. */
+export const SUPPORT_CASE_EVENT = 'support.case';
+export interface SupportCaseEvent {
+  ticketId: string;
+  kind: 'CREATED' | 'REPLIED' | 'STATUS' | 'ESCALATED';
+  /** The side to tell. */
+  to: 'REQUESTER' | 'DESK';
+  /** Who did it; never told about their own action. */
+  actorId: string;
+  /** A reply's text, for the push and email body. */
+  message?: string;
+}
+
+/** Unread for one side: nothing read yet, or a message since it last read. */
+export function isUnread(lastReadAt: Date | null, lastMessageAt: Date): boolean {
+  return !lastReadAt || lastMessageAt > lastReadAt;
+}
 
 /** Lightweight person shape embedded in ticket payloads. */
 const userSelect = {
@@ -101,7 +120,12 @@ export class SupportService {
     private readonly prisma: PrismaService,
     private readonly authz: AuthorizationService,
     private readonly storage: StorageService,
+    private readonly events: EventEmitter2,
   ) {}
+
+  private notify(e: SupportCaseEvent) {
+    this.events.emit(SUPPORT_CASE_EVENT, e);
+  }
 
   /* ---------------------------------------------------------------------- */
   /* Access (decision D2)                                                    */
@@ -115,7 +139,7 @@ export class SupportService {
    * Space-side support access: the event's support team (Space Admin by
    * inheritance), or for a space-level case with no event, the Space Admins.
    */
-  private isSpaceSupport(userId: string, c: CaseAccess) {
+  private isSpaceSupport(userId: string, c: Omit<CaseAccess, 'requesterId'>) {
     if (c.eventId) {
       return this.authz.can({ id: userId }, Action.EVENT_MANAGE_SUPPORT, { eventId: c.eventId });
     }
@@ -140,6 +164,29 @@ export class SupportService {
   private async isDeskMember(userId: string, c: CaseAccess): Promise<boolean> {
     if (await this.isPlatform(userId)) return true;
     return c.desk === SupportDesk.SPACE && this.isSpaceSupport(userId, c);
+  }
+
+  /**
+   * Everyone who works the case's space desk now (D3 notifications): role
+   * holders on the event or space, kept when they pass the same check as access.
+   */
+  async spaceDeskMemberIds(c: Omit<CaseAccess, 'requesterId'>): Promise<string[]> {
+    if (c.desk !== SupportDesk.SPACE) return [];
+    const scopes: Prisma.UserRoleWhereInput[] = [];
+    if (c.eventId) scopes.push({ eventId: c.eventId });
+    if (c.spaceId) scopes.push({ spaceId: c.spaceId, eventId: null });
+    if (!scopes.length) return [];
+    const roles = await this.prisma.userRole.findMany({
+      where: { OR: scopes },
+      select: { userId: true },
+      distinct: ['userId'],
+    });
+    // ponytail: one access check per role holder; fine for a space's team size.
+    const ids: string[] = [];
+    for (const { userId } of roles) {
+      if (await this.isSpaceSupport(userId, c)) ids.push(userId);
+    }
+    return ids;
   }
 
   /* ---------------------------------------------------------------------- */
@@ -195,6 +242,7 @@ export class SupportService {
       (!!eventSpaceId ||
         !(await this.authz.can({ id: requesterId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: targetSpaceId })));
 
+    const now = new Date();
     const ticket = await this.prisma.supportTicket.create({
       data: {
         subject: dto.subject,
@@ -207,7 +255,9 @@ export class SupportService {
         kind,
         eventId,
         registrationId: dto.registrationId ?? null,
-        requesterLastReadAt: new Date(),
+        // Same instant for both, so the requester's own first message isn't unread.
+        lastMessageAt: now,
+        requesterLastReadAt: now,
         ...(dto.clientInfo ? { clientInfo: cleanClientInfo(dto.clientInfo) } : {}),
         messages: {
           create: {
@@ -225,6 +275,7 @@ export class SupportService {
       },
     });
 
+    this.notify({ ticketId: ticket.id, kind: 'CREATED', to: 'DESK', actorId: requesterId });
     return ticket;
   }
 
@@ -279,7 +330,13 @@ export class SupportService {
     ]);
 
     return {
-      tickets,
+      // Platform reads as the desk on its own cases; everyone else as the requester.
+      tickets: tickets.map((t) => ({
+        ...t,
+        unread: admin
+          ? t.desk === SupportDesk.PLATFORM && isUnread(t.deskLastReadAt, t.lastMessageAt)
+          : isUnread(t.requesterLastReadAt, t.lastMessageAt),
+      })),
       pagination: {
         page,
         limit: take,
@@ -315,12 +372,26 @@ export class SupportService {
       throw new ForbiddenException('You cannot view this ticket');
     }
 
+    // Opening the thread reads it for the viewer's side (D3). Past the access
+    // check, a viewer who is neither requester nor Platform is space support;
+    // a space that only keeps read after escalation doesn't mark the desk read.
+    const isRequester = ticket.requesterId === userId;
+    const platform = !isRequester && (await this.isPlatform(userId));
+    const readField = isRequester
+      ? 'requesterLastReadAt'
+      : platform || ticket.desk === SupportDesk.SPACE
+        ? 'deskLastReadAt'
+        : null;
+    if (readField) {
+      await this.prisma.supportTicket.update({ where: { id }, data: { [readField]: new Date() } });
+    }
+
     // Internal desk notes never reach the requester.
-    if (ticket.requesterId === userId) {
+    if (isRequester) {
       ticket.messages = ticket.messages.filter((m) => !m.internal);
     }
     // The space desk gets the requester's email, not their phone number.
-    else if (!(await this.isPlatform(userId))) {
+    else if (!platform) {
       const { mobileNumber: _phone, ...requester } = ticket.requester;
       return { ...ticket, requester };
     }
@@ -401,6 +472,10 @@ export class SupportService {
       }),
     ]);
 
+    // A bot chat is the requester talking to the bot; the desk hears on handoff.
+    if (nextStatus !== SupportTicketStatus.BOT) {
+      this.notify({ ticketId: id, kind: 'REPLIED', to: admin ? 'REQUESTER' : 'DESK', actorId: userId, message: dto.body });
+    }
     return message;
   }
 
@@ -489,10 +564,10 @@ export class SupportService {
   /* Admin mutations                                                         */
   /* ---------------------------------------------------------------------- */
 
-  async updateTicket(id: string, dto: UpdateTicketDto) {
+  async updateTicket(id: string, dto: UpdateTicketDto, actorId: string) {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');
@@ -521,7 +596,7 @@ export class SupportService {
         dto.status === SupportTicketStatus.CLOSED ? new Date() : null;
     }
 
-    return this.prisma.supportTicket.update({
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data,
       include: {
@@ -531,6 +606,14 @@ export class SupportService {
         _count: { select: { messages: true } },
       },
     });
+    if (
+      dto.status &&
+      dto.status !== ticket.status &&
+      (dto.status === SupportTicketStatus.RESOLVED || dto.status === SupportTicketStatus.CLOSED)
+    ) {
+      this.notify({ ticketId: id, kind: 'STATUS', to: 'REQUESTER', actorId });
+    }
+    return updated;
   }
 
   /**
@@ -553,7 +636,7 @@ export class SupportService {
       throw new ForbiddenException('You cannot change this ticket');
     }
 
-    return this.prisma.supportTicket.update({
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data: {
         status,
@@ -563,6 +646,10 @@ export class SupportService {
           : {}),
       },
     });
+    if (status === SupportTicketStatus.OPEN) {
+      this.notify({ ticketId: id, kind: 'STATUS', to: 'DESK', actorId: userId });
+    }
+    return updated;
   }
 
   /**
@@ -587,7 +674,7 @@ export class SupportService {
       throw new BadRequestException('This ticket is closed. Open a new ticket to continue.');
     }
 
-    return this.prisma.supportTicket.update({
+    const updated = await this.prisma.supportTicket.update({
       where: { id },
       data: {
         desk: SupportDesk.PLATFORM,
@@ -596,6 +683,10 @@ export class SupportService {
         resolvedAt: null,
       },
     });
+    // Platform hears about it; so does the requester when the space escalated.
+    this.notify({ ticketId: id, kind: 'ESCALATED', to: 'DESK', actorId: userId });
+    this.notify({ ticketId: id, kind: 'ESCALATED', to: 'REQUESTER', actorId: userId });
+    return updated;
   }
 
   /* ---------------------------------------------------------------------- */
@@ -608,7 +699,20 @@ export class SupportService {
       ? {}
       : { requesterId: userId };
 
-    const [open, pending, resolved, closed] = await Promise.all([
+    // Unread for the viewer's side (D3 badges): Platform's own desk, else your cases.
+    const fields = this.prisma.supportTicket.fields;
+    const unreadWhere: Prisma.SupportTicketWhereInput = admin
+      ? {
+          desk: SupportDesk.PLATFORM,
+          status: { not: SupportTicketStatus.CLOSED },
+          OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }],
+        }
+      : {
+          requesterId: userId,
+          OR: [{ requesterLastReadAt: null }, { lastMessageAt: { gt: fields.requesterLastReadAt } }],
+        };
+
+    const [open, pending, resolved, closed, unread] = await Promise.all([
       this.prisma.supportTicket.count({
         where: { ...scope, status: SupportTicketStatus.OPEN },
       }),
@@ -621,8 +725,9 @@ export class SupportService {
       this.prisma.supportTicket.count({
         where: { ...scope, status: SupportTicketStatus.CLOSED },
       }),
+      this.prisma.supportTicket.count({ where: unreadWhere }),
     ]);
 
-    return { open, pending, resolved, closed, total: open + pending + resolved + closed };
+    return { open, pending, resolved, closed, unread, total: open + pending + resolved + closed };
   }
 }

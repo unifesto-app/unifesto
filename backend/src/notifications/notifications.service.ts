@@ -41,6 +41,10 @@ const OPT_IN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['promotion
 // `pushEnabled` switch applies, so an admin can't silently lose ops alerts.
 const STAFF_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlerts']);
 
+// No NotificationSettings column: only `pushEnabled` applies. Staff alerts, and
+// support replies the person is waiting on.
+const NO_COLUMN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlerts', 'support']);
+
 // Category defaults for users with no NotificationSettings row yet.
 function isCategoryAllowedByDefault(category: NotificationCategory): boolean {
   return !OPT_IN_CATEGORIES.has(category);
@@ -186,7 +190,7 @@ export class NotificationsService {
   ): boolean {
     if (!settings) return isCategoryAllowedByDefault(category);
     if (!settings.pushEnabled) return false;
-    if (STAFF_CATEGORIES.has(category)) return true;
+    if (NO_COLUMN_CATEGORIES.has(category)) return true;
     return !!settings[category];
   }
 
