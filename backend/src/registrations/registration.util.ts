@@ -21,6 +21,20 @@ export const HOLDS_SEAT_PAYMENT: PaymentStatus[] = [
   PaymentStatus.PAID,
   PaymentStatus.PARTIALLY_REFUNDED,
 ];
+/**
+ * How many tickets a purchase is, for the per-ticket buyer-fee cap (A34): each
+ * seat of a per-person group, a flat-priced group as one, else the quantity.
+ */
+export const ticketsIn = (
+  ticketType: { kind?: string | null; groupPricingMode?: string | null },
+  sizes: { quantity?: number | null; groupSize?: number | null },
+): number =>
+  ticketType.kind === 'GROUP'
+    ? ticketType.groupPricingMode === 'PER_PERSON'
+      ? sizes.groupSize ?? 1
+      : 1
+    : sizes.quantity ?? 1;
+
 /** Reason stamped on a paid row cancelled because its ticket sold out mid-payment. */
 export const SOLD_OUT_REASON =
   'Sold out while the payment was in progress; refunded in full';

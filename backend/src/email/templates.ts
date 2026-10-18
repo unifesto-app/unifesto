@@ -574,6 +574,36 @@ export function certificateIssuedEmail(d: CertificateIssuedData): Email {
 }
 
 // =====================================================
+// SUPPORT (Assist cases)
+// =====================================================
+
+export interface SupportCaseUpdateData {
+  email: string;
+  name?: string | null;
+  ticketNumber: number;
+  subject: string;
+  /** What happened, e.g. "New reply to your request". */
+  headline: string;
+  /** The message, shown as a quote. Plain text. */
+  message?: string | null;
+  /** Where to read and reply; without it the mail points at the app. */
+  cta?: { label: string; url: string } | null;
+}
+
+export function supportCaseUpdateEmail(d: SupportCaseUpdateData): Email {
+  return {
+    subject: `${d.headline} · #${d.ticketNumber}`,
+    html: layout(
+      `${h1(esc(d.headline))}
+      ${greet(d.name)}
+      ${p(`${strong(`#${d.ticketNumber}`)} ${esc(d.subject)}`)}
+      ${d.message ? note(esc(d.message).replace(/\n/g, '<br>')) : ''}
+      ${d.cta ? button(d.cta.label, d.cta.url) : p('Open the Unifesto app and go to Help to read and reply.')}`,
+    ),
+  };
+}
+
+// =====================================================
 // SPACES
 // =====================================================
 

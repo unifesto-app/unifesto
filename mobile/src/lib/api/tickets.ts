@@ -10,19 +10,43 @@ import { postMultipart } from './upload';
 import { Linking } from 'react-native';
 import { AppAlert } from '../../components/ui/AppAlert';
 
+/** The buyer processing fee: a percent of the ticket price, capped per ticket (A34). */
+export interface ProcessingFeeTerms {
+  percent: number;
+  /** Most the fee can be per ticket in rupees; null = no cap. */
+  capPerTicket: number | null;
+}
+
+export const NO_FEE: ProcessingFeeTerms = { percent: 0, capPerTicket: null };
+
 /**
- * App-wide processing fee percentage (admin-set), applied to paid tickets.
- * Public endpoint; returns 0 on any failure so pricing never over-charges.
+ * App-wide buyer processing fee terms. Public endpoint; falls back to no fee
+ * on any failure so the preview never over-charges (the server's order amount
+ * is what's actually paid).
  */
-export async function getProcessingFeePercent(): Promise<number> {
+export async function getProcessingFeeTerms(): Promise<ProcessingFeeTerms> {
   try {
     const response = await makePublicRequest('/config/processing-fee');
-    if (!response?.ok) return 0;
+    if (!response?.ok) return NO_FEE;
     const data = await response.json();
-    return Number(data.processingFeePercent) || 0;
+    return {
+      percent: Number(data.processingFeePercent) || 0,
+      capPerTicket: Number(data.processingFeeCapPerTicket) || null,
+    };
   } catch {
-    return 0;
+    return NO_FEE;
   }
+}
+
+/**
+ * The buyer fee exactly as the backend computes it (PaymentsService
+ * .computeProcessingFee): the percent of the base, rounded to the paise, never
+ * more than the cap per ticket. A ticket is one priced unit: each per-person
+ * seat, a flat-priced group as one, each guest of a stay.
+ */
+export function buyerFee(base: number, terms: ProcessingFeeTerms, tickets = 1): number {
+  const fee = Math.round(base * terms.percent + 1e-9) / 100;
+  return terms.capPerTicket ? Math.min(fee, terms.capPerTicket * Math.max(1, Math.trunc(tickets))) : fee;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {

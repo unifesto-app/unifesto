@@ -181,6 +181,8 @@ export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
 /** App-wide platform settings (admin). */
 export interface PlatformConfig {
   processingFeePercent: number;
+  /** Most the buyer fee can be per ticket, in rupees (A34). */
+  processingFeeCapPerTicket?: number;
   /**
    * Days after an event ends that organisers may still issue certificates and
    * import/add attendees. 0 closes those actions the moment the event ends.

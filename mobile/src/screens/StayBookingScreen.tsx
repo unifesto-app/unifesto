@@ -25,7 +25,7 @@ import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getProfile } from '../lib/api/profile';
-import { getProcessingFeePercent } from '../lib/api/tickets';
+import { buyerFee, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
 import {
   addDays,
   dayLabel,
@@ -81,7 +81,7 @@ export default function StayBookingScreen() {
   const [stay, setStay] = useState<Stay | null>(null);
   const [option, setOption] = useState<StayOption | null>(null);
   const [loadError, setLoadError] = useState('');
-  const [feePercent, setFeePercent] = useState(0);
+  const [feeTerms, setFeeTerms] = useState(NO_FEE);
 
   const [checkIn, setCheckIn] = useState('');
   const [checkOut, setCheckOut] = useState('');
@@ -110,7 +110,7 @@ export default function StayBookingScreen() {
       setCheckIn(firstOpen);
       setCheckOut(addDays(firstOpen, 1));
     });
-    void getProcessingFeePercent().then(setFeePercent);
+    void getProcessingFeeTerms().then(setFeeTerms);
     // Prefill the booker from the profile.
     void getProfile().then((p) => {
       setGuests((g) => {
@@ -149,7 +149,8 @@ export default function StayBookingScreen() {
   for (let d = addDays(checkIn || stay.checkInFrom, 1); d <= stay.checkOutUntil; d = addDays(d, 1)) checkOutDays.push(d);
   const nights = checkIn && checkOut ? Math.round((fromDay(checkOut).getTime() - fromDay(checkIn).getTime()) / 86400000) : 0;
   const base = estimate(option, guests.length, nights);
-  const fee = option.paymentMode === 'ONLINE' ? Math.round(base * feePercent) / 100 : 0;
+  // Each guest is one ticket for the fee cap, as on the server.
+  const fee = option.paymentMode === 'ONLINE' ? buyerFee(base, feeTerms, guests.length) : 0;
   const fullNight = (() => {
     for (let d = checkIn; d && d < checkOut; d = addDays(d, 1)) if ((nightsMap.get(d) ?? 0) < guests.length) return d;
     return null;

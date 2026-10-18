@@ -16,8 +16,12 @@ import {
   hideEvent,
   restoreEvent,
   deleteEvent,
+  setAttendeeControls,
+  type AttendeeControls,
   type Event,
 } from "@/lib/api/events-api";
+import { toLocalDatetime } from "@/lib/constants/event-form";
+import { Toggle } from "@/components/hackathon/HackParts";
 import {
   getEventEligibleAccounts,
   setEventPayoutAccount,
@@ -286,6 +290,13 @@ export default function EventSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      {!isCompleted && !isCancelled && (
+        <AttendeeControlsCard
+          event={event}
+          onSaved={(c) => setEvent((e) => (e ? { ...e, ...c } : e))}
+        />
+      )}
 
       {/* Payout account — default destination for this event's earnings. */}
       <EventPayoutAccountCard eventId={eventId} />
@@ -578,6 +589,143 @@ export default function EventSettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+type ControlsPatch = Parameters<typeof setAttendeeControls>[1];
+
+/**
+ * Team-change and detail-edit switches (same as mobile Event settings). Each
+ * change saves at once; the card shows what the server returned.
+ */
+function AttendeeControlsCard({
+  event,
+  onSaved,
+}: {
+  event: Event;
+  onSaved: (c: AttendeeControls) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [now] = useState(() => Date.now());
+
+  async function save(body: ControlsPatch) {
+    setBusy(true);
+    setError("");
+    const { data, error } = await setAttendeeControls(event.id, body);
+    setBusy(false);
+    if (error) setError(error.message);
+    else if (data) onSaved(data);
+  }
+
+  // A new deadline defaults to the day before the event starts, never in the past.
+  const defaultDeadline = () =>
+    new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString();
+
+  const editsLocked =
+    event.attendeeEditsEnabled &&
+    event.attendeeEditsUntil &&
+    new Date(event.attendeeEditsUntil).getTime() <= now;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Attendees</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 px-4 py-4">
+        {error && <ErrorNotice message={error} />}
+
+        <Toggle
+          label="Allow team changes"
+          hint="Team leads can add, remove or replace members and hand over the lead. You can always do this from Attendees."
+          checked={!!event.allowTeamChanges}
+          disabled={busy}
+          onChange={(v) => save({ allowTeamChanges: v })}
+        />
+        {event.allowTeamChanges && (
+          <Deadline
+            toggleLabel="Lock teams at a set time"
+            inputLabel="Teams lock"
+            value={event.teamChangesUntil ?? null}
+            busy={busy}
+            onChange={(v) => save({ teamChangesUntil: v === undefined ? defaultDeadline() : v })}
+          />
+        )}
+
+        <div className="border-t border-border pt-4">
+          <Toggle
+            label="Attendees can edit their details"
+            hint="People can change their registration answers from their ticket. Group leads edit the team's, members their own."
+            checked={!!event.attendeeEditsEnabled}
+            disabled={busy}
+            onChange={(v) => save({ attendeeEditsEnabled: v })}
+          />
+        </div>
+        {event.attendeeEditsEnabled && (
+          <Deadline
+            toggleLabel="Close edits at a set time"
+            inputLabel="Edits close"
+            value={event.attendeeEditsUntil ?? null}
+            busy={busy}
+            onChange={(v) => save({ attendeeEditsUntil: v === undefined ? defaultDeadline() : v })}
+          />
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          {editsLocked
+            ? "The edit deadline has passed, so details are locked. Move the deadline or turn it off to reopen."
+            : "You can always edit any attendee's details from Attendees, whatever these say."}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * An optional deadline: a switch, then a date-time field once it's on.
+ * onChange(undefined) asks for the default deadline, null clears it.
+ */
+function Deadline({
+  toggleLabel,
+  inputLabel,
+  value,
+  busy,
+  onChange,
+}: {
+  toggleLabel: string;
+  inputLabel: string;
+  value: string | null;
+  busy: boolean;
+  onChange: (iso: string | null | undefined) => void;
+}) {
+  const local = value ? toLocalDatetime(value) : "";
+  return (
+    <div className="space-y-3 pl-4">
+      <Toggle
+        label={toggleLabel}
+        checked={!!value}
+        disabled={busy}
+        onChange={(on) => onChange(on ? undefined : null)}
+      />
+      {value && (
+        <div className="space-y-1">
+          <Label htmlFor={`deadline-${toggleLabel}`}>{inputLabel}</Label>
+          {/* Uncontrolled and saved on blur, so a half-typed date never saves. */}
+          <input
+            key={local}
+            id={`deadline-${toggleLabel}`}
+            type="datetime-local"
+            defaultValue={local}
+            disabled={busy}
+            onBlur={(e) => {
+              const v = e.target.value;
+              if (v && v !== local) onChange(new Date(v).toISOString());
+            }}
+            className="flex h-9 w-full max-w-xs rounded-md border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
+          />
+        </div>
+      )}
     </div>
   );
 }

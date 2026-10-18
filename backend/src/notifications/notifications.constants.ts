@@ -11,7 +11,8 @@ export type NotificationCategory =
   | 'promotions' // admin marketing broadcasts (opt-IN: off by default)
   | 'productUpdates' // admin product/app announcements (opt-OUT: on by default)
   | 'organiserAnnouncements'
-  | 'adminAlerts'; // platform-staff operational alerts (no settings column)
+  | 'adminAlerts' // platform-staff operational alerts (no settings column)
+  | 'support'; // Assist case replies and updates you're part of (no settings column)
 
 /**
  * Domain event names on the in-process bus. Domain services emit these; the
