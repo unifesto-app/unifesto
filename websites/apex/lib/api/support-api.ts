@@ -66,6 +66,8 @@ export interface SupportTicket {
   updatedAt: string;
   messages?: SupportMessage[];
   _count?: { messages: number };
+  /** List endpoint: a message your side hasn't opened yet. */
+  unread?: boolean;
 }
 
 export interface SupportTicketsResponse {
@@ -84,6 +86,10 @@ export interface SupportStats {
   resolved: number;
   closed: number;
   total: number;
+  /** Cases on the side you work (Platform's desk for admins) with a message you haven't opened. */
+  unread: number;
+  /** Cases you raised with a reply you haven't opened. */
+  myUnread: number;
 }
 
 export interface ListTicketsParams {
