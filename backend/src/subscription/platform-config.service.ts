@@ -230,6 +230,18 @@ export class PlatformConfigService implements OnModuleInit {
   }
 
   /**
+   * Whether an AI feature (D12) is switched on. Read straight from the
+   * database so a kill switch flipped through one replica stops them all.
+   */
+  async isAiFeatureEnabled(feature: string): Promise<boolean> {
+    const row = await this.prisma.platformConfig.findUnique({
+      where: { id: CONFIG_ID },
+      select: { aiEnabledFeatures: true },
+    });
+    return row?.aiEnabledFeatures.includes(feature) ?? false;
+  }
+
+  /**
    * Admin replace of the stats recipient list. Numbers are normalised to E.164
    * and de-duplicated; an invalid entry rejects the whole save.
    */

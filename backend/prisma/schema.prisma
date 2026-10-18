@@ -2402,6 +2402,11 @@ model PlatformConfig {
   // stale-OTA alarm in Apex › OTA updates.
   otaMainStatus Json? @map("ota_main_status")
 
+  // AI features (D12) that are switched on. A feature runs only while listed
+  // here, so each one ships dark until its eval passes, and removing it is the
+  // kill switch. Read fresh per call so every replica sees the change at once.
+  aiEnabledFeatures String[] @default([]) @map("ai_enabled_features")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("platform_config")
@@ -5424,4 +5429,35 @@ model PmApiToken {
 
   @@index([userId])
   @@map("pm_api_tokens")
+}
+
+enum AiRunOutcome {
+  OK
+  REFUSED
+  ERROR
+}
+
+/// One Claude call made through AiService (D12): what it cost and how it
+/// ended. Also the source of the per-user daily caps.
+model AiRun {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// AiService feature key, e.g. "triage".
+  feature          String       @db.VarChar(32)
+  model            String       @db.VarChar(64)
+  inputTokens      Int          @default(0) @map("input_tokens")
+  outputTokens     Int          @default(0) @map("output_tokens")
+  cacheReadTokens  Int          @default(0) @map("cache_read_tokens")
+  cacheWriteTokens Int          @default(0) @map("cache_write_tokens")
+  costUsd          Decimal      @default(0) @map("cost_usd") @db.Decimal(10, 6)
+  latencyMs        Int          @map("latency_ms")
+  outcome          AiRunOutcome
+  /// Who the call was made for (no FK: a log row outlives its user).
+  userId           String?      @map("user_id") @db.Uuid
+  /// What the call was about, e.g. "case:<id>".
+  subject          String?      @db.VarChar(80)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, feature, createdAt])
+  @@index([createdAt])
+  @@map("ai_runs")
 }
