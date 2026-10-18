@@ -131,6 +131,12 @@ export interface Event {
    * request. When false, the manual-add "collect payment" toggle is forced on.
    */
   allowFreeAttendeeAdd?: boolean;
+  /** Team leads may change their team (see AttendeeControls). */
+  allowTeamChanges?: boolean;
+  teamChangesUntil?: string | null;
+  /** Attendees may edit their own registration answers. */
+  attendeeEditsEnabled?: boolean;
+  attendeeEditsUntil?: string | null;
   tags: string[];
   category?: string;
   visibility: EventVisibility;
@@ -493,6 +499,26 @@ export async function cancelEvent(
   return apiCall<Event>(
     backendClient.patch(`/events/${id}/cancel`, { reason })
   );
+}
+
+/** Curator switches for team changes and attendee detail edits. Deadlines: null = until the event ends. */
+export interface AttendeeControls {
+  allowTeamChanges: boolean;
+  teamChangesUntil: string | null;
+  teamChangesOpen: boolean;
+  attendeeEditsEnabled: boolean;
+  attendeeEditsUntil: string | null;
+  attendeeEditsOpen: boolean;
+}
+
+/** Backed by `PATCH /events/:eventId/attendee-controls` (event:edit). */
+export async function setAttendeeControls(
+  id: string,
+  body: Partial<
+    Pick<AttendeeControls, "allowTeamChanges" | "teamChangesUntil" | "attendeeEditsEnabled" | "attendeeEditsUntil">
+  >
+): Promise<{ data: AttendeeControls | null; error: ApiError | null }> {
+  return apiCall<AttendeeControls>(backendClient.patch(`/events/${id}/attendee-controls`, body));
 }
 
 /**
