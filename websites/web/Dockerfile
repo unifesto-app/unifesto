@@ -3,7 +3,7 @@
 # ============================================================
 # Deps — install once, cached on package manifests.
 # ============================================================
-FROM node:20-bookworm-slim AS deps
+FROM node:24-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -17,7 +17,7 @@ RUN npm ci
 #     --build-arg NEXT_PUBLIC_API_URL=https://api.unifesto.app \
 #     -t unifesto-web .
 # ============================================================
-FROM node:20-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -31,7 +31,7 @@ RUN npm run build
 # ============================================================
 # Runner — minimal image serving the standalone server.
 # ============================================================
-FROM node:20-bookworm-slim AS runner
+FROM node:24-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

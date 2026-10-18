@@ -157,6 +157,12 @@ services:
       - "3000"
     depends_on:
       - backend
+    # Measured ~80 MB resident (2026-10-18); the cap keeps a leak from
+    # starving the API replicas on the shared 8 GB host.
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   space:
     build:
@@ -172,6 +178,11 @@ services:
       - "3000"
     depends_on:
       - backend
+    # Measured ~80 MB resident (2026-10-18).
+    deploy:
+      resources:
+        limits:
+          memory: 384M
 
   web:
     build:
@@ -190,6 +201,11 @@ services:
       - "3000"
     depends_on:
       - backend
+    # Measured ~145 MB resident (2026-10-18); SSR + ISR cache, so more headroom.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
 
 volumes:
   caddy_data:
