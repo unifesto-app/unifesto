@@ -8,11 +8,11 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { FAQ_PRICING, LAUNCH_OFFER_ENDS, PLANS, SITE, inr } from "@/lib/site";
+import { BUYER_PROCESSING_FEE, FAQ_PRICING, LAUNCH_OFFER_ENDS, PLANS, SITE, inr } from "@/lib/site";
 
 export const metadata: Metadata = withSocial({
   title: "Pricing: free RSVP events, from 1% per paid ticket",
-  description: `Free RSVP events on every plan. Paid tickets from 2.5% on Starter, 1.5% on Pro and 1% on Enterprise at launch pricing, below the 4% to 6% typical in India. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
+  description: `Free RSVP events on every plan. Paid tickets from 2.5% on Starter, 1.5% on Pro and 1% on Enterprise at launch pricing, below the 4% to 6% typical in India. Buyers pay a 5% processing fee at checkout. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
   alternates: { canonical: "/pricing" },
 }, { title: "Unifesto pricing", description: "Free RSVP events. Paid tickets from 1%. Launch pricing, locked in." });
 
@@ -107,7 +107,7 @@ export default function PricingPage() {
           })}
         </div>
         <p className="mt-8 text-center text-sm text-paper/55">
-          Prices exclude 18% GST. Razorpay payment gateway charges are separate. Free RSVP events carry no platform fee on any plan.
+          Prices exclude 18% GST. Buyers pay a {BUYER_PROCESSING_FEE}% processing fee at checkout on paid tickets, on every plan. Razorpay payment gateway charges are separate. Free RSVP events carry no fees on any plan.
         </p>
       </Section>
 
