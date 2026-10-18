@@ -29,6 +29,12 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils/cn";
 import {
+  getExternalStatus,
+  reconcileSeatCounts,
+  type ExternalMonitor,
+  type ExternalStatus,
+} from "@/lib/api/platform-tools-api";
+import {
   getStatusSummary,
   createIncident,
   updateIncident,
@@ -199,6 +205,8 @@ export default function StatusPage() {
             </CardContent>
           </Card>
 
+          <OutsideView />
+
           {/* Past incidents */}
           <div>
             <h2 className="mb-3 text-base font-semibold text-foreground">
@@ -226,6 +234,110 @@ export default function StatusPage() {
         </>
       )}
     </div>
+  );
+}
+
+/* ------------------------- outside view + maintenance ---------------------- */
+
+const MONITOR_BADGE: Record<ExternalMonitor["status"], "success" | "destructive" | "warning" | "neutral"> = {
+  up: "success",
+  down: "destructive",
+  degraded: "warning",
+  paused: "neutral",
+  unknown: "neutral",
+};
+const upPct = (v: number | null) => (v == null ? "–" : `${v.toFixed(2)}%`);
+
+/**
+ * UptimeRobot's view from outside our network (the bars above are our own
+ * sampler, which can't see an outage that takes it down too). Plus the
+ * one-off seat-count recount, which was backend-only.
+ */
+function OutsideView() {
+  const [ext, setExt] = useState<ExternalStatus | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [recount, setRecount] = useState<{ busy: boolean; result: string }>({ busy: false, result: "" });
+
+  useEffect(() => {
+    void getExternalStatus().then(({ data, error }) => {
+      setExt(data);
+      setLoadError(error?.message ?? "");
+    });
+  }, []);
+
+  const runRecount = async () => {
+    if (!window.confirm("Recount seats on every event and ticket type? Groups count as their group size. Safe to re-run.")) return;
+    setRecount({ busy: true, result: "" });
+    const { data, error } = await reconcileSeatCounts();
+    setRecount({
+      busy: false,
+      result: error
+        ? error.message
+        : `Done: ${data?.eventsReset ?? 0} events and ${data?.ticketTypesReset ?? 0} ticket types recounted.`,
+    });
+  };
+
+  return (
+    <>
+      <div>
+        <h2 className="mb-1 text-base font-semibold text-foreground">From outside</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          UptimeRobot{ext?.fetchedAt ? ` · checked ${new Date(ext.fetchedAt).toLocaleTimeString("en-IN")}` : ""}
+        </p>
+        <Card>
+          <CardContent className="divide-y divide-border p-0">
+            {loadError || ext?.error ? (
+              <p className="p-4 text-sm text-destructive">{loadError || ext?.error}</p>
+            ) : !ext ? (
+              <div className="p-4">
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ) : !ext.configured ? (
+              <p className="p-4 text-sm text-muted-foreground">UptimeRobot isn&apos;t connected on the server.</p>
+            ) : ext.monitors.length === 0 ? (
+              <p className="p-4 text-sm text-muted-foreground">No monitors set up.</p>
+            ) : (
+              ext.monitors.map((m) => (
+                <div key={m.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-foreground">{m.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      24h {upPct(m.uptime.day)} · 7d {upPct(m.uptime.week)} · 30d {upPct(m.uptime.month)}
+                      {m.responseMs != null ? ` · ${m.responseMs} ms` : ""}
+                    </p>
+                    {m.lastDown && (
+                      <p className="text-xs text-muted-foreground">
+                        Last down {new Date(m.lastDown.at).toLocaleString("en-IN")} for {Math.max(1, Math.round(m.lastDown.durationSec / 60))} min
+                        {m.lastDown.reason ? ` (${m.lastDown.reason})` : ""}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={MONITOR_BADGE[m.status]}>{m.status.charAt(0).toUpperCase() + m.status.slice(1)}</Badge>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-base font-semibold text-foreground">Maintenance</h2>
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">Recount seats</p>
+              <p className="text-xs text-muted-foreground">
+                Rebuilds every event&apos;s and ticket type&apos;s sold-seat counter from its bookings, counting groups as their size.
+              </p>
+              {recount.result && <p className="mt-1 text-xs text-foreground">{recount.result}</p>}
+            </div>
+            <Button variant="outline" onClick={runRecount} disabled={recount.busy}>
+              {recount.busy ? "Recounting…" : "Recount seats"}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }
 

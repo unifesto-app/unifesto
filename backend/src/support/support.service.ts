@@ -69,8 +69,13 @@ interface ListParams {
   status?: SupportTicketStatus;
   category?: SupportTicketCategory;
   priority?: SupportTicketPriority;
+  kind?: SupportCaseKind;
+  desk?: SupportDesk;
+  /** A user id, or `none` for unassigned. */
   assignedToId?: string;
   spaceId?: string;
+  /** Only cases with a message the viewer's side hasn't opened. */
+  unread?: boolean;
   search?: string;
   page?: number;
   limit?: number;
@@ -101,6 +106,26 @@ const ATTACHMENT_MIMES = ['application/pdf', 'image/jpeg', 'image/png', 'image/w
 const ATTACHMENTS_PER_MESSAGE = 5;
 /** How long a "view attachment" link works. */
 const ATTACHMENT_LINK_SECONDS = 5 * 60;
+/**
+ * Typed records a case can wrap (`subjectType` = Prisma model name). The Apex
+ * inbox (D8) shows the record and acts on it through its own endpoint.
+ */
+const SUBJECT_MODELS = {
+  RefundRequest: 'refundRequest',
+  SpaceRequest: 'spaceRequest',
+  SpaceStatusRequest: 'spaceStatusRequest',
+  SpaceOwnershipRequest: 'spaceOwnershipRequest',
+  SubSpaceRequest: 'subSpaceRequest',
+  WhiteLabelRequest: 'whiteLabelRequest',
+  FreeAttendeeAddRequest: 'freeAttendeeAddRequest',
+  RegistrationTransferRequest: 'registrationTransferRequest',
+  EventOwnershipTransfer: 'eventOwnershipTransfer',
+  SubEventAttachRequest: 'subEventAttachRequest',
+  ContentReport: 'contentReport',
+  PayoutBankAccount: 'payoutBankAccount',
+} as const;
+export type CaseSubject = { type: string; data: Record<string, unknown> };
+
 const attachmentSelect = { id: true, name: true, mime: true, size: true, createdAt: true } satisfies Prisma.SupportAttachmentSelect;
 
 /** The case fields access is decided on. */
@@ -296,22 +321,44 @@ export class SupportService {
     if (!admin) {
       where.requesterId = userId;
     } else if (params.assignedToId) {
-      where.assignedToId = params.assignedToId;
+      where.assignedToId = params.assignedToId === 'none' ? null : params.assignedToId;
     }
 
     if (params.status) where.status = params.status;
     if (params.category) where.category = params.category;
     if (params.priority) where.priority = params.priority;
+    if (params.kind) where.kind = params.kind;
+    if (admin && params.desk) where.desk = params.desk;
     if (params.spaceId) where.spaceId = params.spaceId;
-    if (params.search) {
-      const search = params.search.trim();
-      where.OR = [
-        { subject: { contains: search, mode: 'insensitive' } },
-        ...(/^\d+$/.test(search)
-          ? [{ ticketNumber: Number(search) }]
-          : []),
-      ];
+    const and: Prisma.SupportTicketWhereInput[] = [];
+    if (params.unread) {
+      // Same rule as the `unread` flag below and the stats badge.
+      const fields = this.prisma.supportTicket.fields;
+      and.push(
+        admin
+          ? { desk: SupportDesk.PLATFORM, OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }] }
+          : { OR: [{ requesterLastReadAt: null }, { lastMessageAt: { gt: fields.requesterLastReadAt } }] },
+      );
     }
+    const search = params.search?.trim();
+    if (search) {
+      const text = { contains: search, mode: 'insensitive' as const };
+      and.push({
+        OR: [
+          { subject: text },
+          ...(/^#?\d+$/.test(search) ? [{ ticketNumber: Number(search.replace('#', '')) }] : []),
+          // Staff find a case by who raised it; requesters only search their own.
+          ...(admin
+            ? [
+                { contactEmail: text },
+                { requester: { fullName: text } },
+                { requester: { identities: { some: { email: text } } } },
+              ]
+            : []),
+        ],
+      });
+    }
+    if (and.length) where.AND = and;
 
     const [tickets, total] = await Promise.all([
       this.prisma.supportTicket.findMany({
@@ -396,7 +443,26 @@ export class SupportService {
       return { ...ticket, requester };
     }
 
-    return ticket;
+    // ponytail: typed records go to Platform only; the Space inbox (D9) opens its own kinds.
+    return platform ? { ...ticket, subjects: await this.caseSubjects(ticket) } : ticket;
+  }
+
+  /** The typed records behind a case: its subject, plus refunds raised from it. */
+  async caseSubjects(c: { id: string; subjectType: string | null; subjectId: string | null }): Promise<CaseSubject[]> {
+    const out: CaseSubject[] = [];
+    const model = c.subjectType && SUBJECT_MODELS[c.subjectType as keyof typeof SUBJECT_MODELS];
+    if (model && c.subjectId) {
+      const data = await (this.prisma[model] as any).findUnique({ where: { id: c.subjectId } });
+      if (data) out.push({ type: c.subjectType!, data });
+    }
+    const refunds = await this.prisma.refundRequest.findMany({
+      where: { supportTicketId: c.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    for (const r of refunds) {
+      if (!out.some((o) => o.data.id === r.id)) out.push({ type: 'RefundRequest', data: r });
+    }
+    return out;
   }
 
   /* ---------------------------------------------------------------------- */
@@ -718,7 +784,8 @@ export class SupportService {
         },
       });
 
-    const [open, pending, resolved, closed, myUnread, deskUnread] = await Promise.all([
+    const active = { ...scope, status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.PENDING] } };
+    const [open, pending, resolved, closed, myUnread, deskUnread, unassigned, kinds] = await Promise.all([
       this.prisma.supportTicket.count({
         where: { ...scope, status: SupportTicketStatus.OPEN },
       }),
@@ -733,6 +800,8 @@ export class SupportService {
       }),
       countMyUnread(),
       admin ? countDeskUnread() : null,
+      this.prisma.supportTicket.count({ where: { ...scope, status: SupportTicketStatus.OPEN, assignedToId: null } }),
+      this.prisma.supportTicket.groupBy({ by: ['kind'], where: active, _count: { _all: true } }),
     ]);
 
     return {
@@ -743,6 +812,10 @@ export class SupportService {
       total: open + pending + resolved + closed,
       unread: deskUnread ?? myUnread,
       myUnread,
+      /** Open with nobody assigned. */
+      unassigned,
+      /** Open + awaiting-reply cases per kind (D8 inbox tabs). */
+      byKind: Object.fromEntries(kinds.map((k) => [k.kind, k._count._all])) as Partial<Record<SupportCaseKind, number>>,
     };
   }
 }
