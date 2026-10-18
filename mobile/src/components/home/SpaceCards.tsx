@@ -11,7 +11,7 @@ import { GUTTER } from './Section';
 import { spaceBanner, spaceLogo, spaceMembers } from '../../utils/eventFormat';
 import { coverOr, logoOr, useDefaultImages } from '../../lib/defaultImages';
 import { ArrowRight } from '@unifesto/unicon/react-native';
-import { SPACE_ROLE_LABEL } from '../manage/MemberRow';
+import { SPACE_ROLE_LABEL } from '../../lib/api/spaceMembers';
 import PressableScale from '../ui/PressableScale';
 
 const CARD_W = 148;
