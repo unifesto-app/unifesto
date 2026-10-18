@@ -41,7 +41,7 @@ This comparison is as of 21 Oct 2026. It covers what organisers of college fests
 |---|---|---|
 | Price to start | Free with a Google account | Free (Starter plan, ₹0 a month) |
 | Fee on free events | None | None |
-| Fee on paid tickets | No payments built in | The attendee pays a 5% processing fee at checkout; the organiser keeps 100% of the ticket price |
+| Fee on paid tickets | No payments built in, so no fee | Organiser: 2.5% platform fee on Starter. Buyer: 5% processing fee at checkout |
 | Collect payment | Not built in; needs a payment link, UPI screenshots or an add-on | Razorpay checkout, money paid out to your bank account |
 | Ticket types and prices | Not built in | Multiple ticket types per event, early bird, sales windows |
 | Team registration | One response per person; team details typed in by hand | Group tickets: the lead pays once, members claim their own seat |
@@ -62,7 +62,7 @@ Sources for Google Forms: [Google Forms help](https://support.google.com/docs/to
 
 Google Forms is the better pick in these cases, and we use it ourselves for surveys.
 
-- **It costs nothing, ever.** Google Forms has no fee on anything, because it does not handle money. On Unifesto, attendees pay a 5% processing fee on paid tickets.
+- **It costs nothing, ever.** Google Forms has no fee on anything, because it does not handle money. On Unifesto, paid tickets carry a platform fee for the organiser and a 5% processing fee for the buyer.
 - **Nobody needs an app.** Anyone with a browser can fill a Google Form. Unifesto registration happens in the Unifesto app, so attendees install it first.
 - **It is ready in two minutes.** You do not need approval to start. A Unifesto Space is requested and approved before your first event.
 - **Everyone already knows it.** Your team and your attendees have used it before.
@@ -104,14 +104,22 @@ Imported attendees appear in the same attendee list as everyone who registers in
 
 ## Pricing (as of 21 Oct 2026)
 
-| | Google Forms | Unifesto |
-|---|---|---|
-| Monthly price | Free | ₹0 on the Starter plan |
-| Free RSVP events | Free | No fee |
-| Paid tickets | No payments built in | The attendee pays a 5% processing fee at checkout |
-| What the organiser keeps | Whatever reaches your UPI | 100% of the ticket price, paid out to your bank |
+| Fee (as of 21 Oct 2026) | Who pays | Starter | Pro | Enterprise |
+|---|---|---|---|---|
+| Platform fee | Organiser, per paid ticket | 2.5% | 1.5% | 1% |
+| Processing fee | Buyer, added at checkout | 5% | 5% | 5% |
+| Free RSVP events | Nobody | No fees | No fees | No fees |
 
-Pro and Enterprise add features such as waiting lists, certificates and Unifesto Sprint. See the [pricing page](https://www.unifesto.app/pricing) for plan prices.
+On a ₹500 ticket on Starter, the buyer pays ₹525 and the organiser gets ₹487.50. Platform fees are launch pricing for Spaces that join before 31 March 2027.
+
+Google Forms charges nothing, because it does not take payments. Collecting by UPI has no platform fee either, but you match every payment by hand. Compared like for like on a free event, both cost ₹0.
+
+| ₹500 ticket, as of 21 Oct 2026 | Google Forms + UPI | Unifesto Starter |
+|---|---|---|
+| Buyer pays | ₹500 | ₹525 |
+| Organiser gets | ₹500, matched by hand | ₹487.50, paid out to your bank |
+
+Pro and Enterprise also add features such as waiting lists, certificates and Unifesto Sprint. Plan prices are on the [pricing page](https://www.unifesto.app/pricing).
 
 ## FAQ
 
@@ -129,7 +137,7 @@ Not by default. A Google Form asks people to sign in to a Google account when it
 
 ### Is Unifesto free like Google Forms?
 
-Unifesto's Starter plan costs ₹0 a month, and free RSVP events have no fee, as of 21 Oct 2026. On paid tickets, the attendee pays a 5% processing fee at checkout and the organiser keeps 100% of the ticket price.
+Unifesto's Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the organiser pays a platform fee (2.5% on Starter, 1.5% on Pro, 1% on Enterprise) and the buyer pays a 5% processing fee at checkout, as of 21 Oct 2026. On a ₹500 ticket on Starter, the buyer pays ₹525 and the organiser gets ₹487.50.
 
 ### Do attendees need the Unifesto app to register?
 

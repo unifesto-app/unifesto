@@ -36,7 +36,7 @@ Free RSVP events cost nothing. Full video on our YouTube, free team form templat
 ```
 Unifesto vs Townscript, honestly 🤝
 
-Townscript wins on: many currencies, a website widget, no app for attendees, a lower listed fee for buyers (2% + 2% gateway vs our 5%).
+Townscript wins on: many currencies, a website widget, no app for attendees, lower fees (4% listed vs 7.5% on our Starter plan).
 
 We win on: one Space for your whole club, roles per event, group tickets with a seat per member, hackathons in the same place.
 

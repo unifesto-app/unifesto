@@ -85,7 +85,7 @@ Townscript vs Unifesto.
 Townscript sells in many currencies. We're rupees only.
 Townscript has a widget for your own website. We don't.
 Townscript attendees buy on the web. Ours register in our app.
-Townscript lists 2% + 2% gateway. Our buyers pay a 5% processing fee (organisers keep 100%).
+Townscript lists 2% + 2% gateway. Ours adds up to more: 2.5% platform fee on Starter plus a 5% processing fee for the buyer.
 
 Where we're different: we built Unifesto for clubs and fests that run many events with one team. A Space that outlives the committee, roles per event, group tickets with a seat per member, hackathons in the same place.
 
