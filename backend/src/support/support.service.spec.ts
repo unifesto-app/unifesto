@@ -471,3 +471,100 @@ describe('SupportService (D8 Apex Assist inbox)', () => {
     expect(await service.caseSubjects({ id: 't-1', subjectType: 'User', subjectId: 'u-1' })).toEqual([]);
   });
 });
+
+describe('SupportService (D9 Space Assist inbox)', () => {
+  const whereOf = (prisma: any) => prisma.supportTicket.findMany.mock.calls[0][0].where;
+  const onDesk = { OR: [{ desk: SupportDesk.SPACE }, { escalatedAt: { not: null } }] };
+  const curator: Role = { code: RoleCode.CURATOR, scope: RoleScope.EVENT, eventId: 'ev-1' };
+  const crew: Role = { code: RoleCode.CREW, scope: RoleScope.EVENT, eventId: 'ev-1' };
+  const spaceAdmin: Role = { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'sp-1' };
+  const otherSpaceAdmin: Role = { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'sp-2' };
+  const spaceCase = { requesterId: 'user-1', desk: SupportDesk.SPACE, eventId: 'ev-1', spaceId: 'sp-1', escalatedAt: null };
+
+  describe('desk listing scope', () => {
+    it('a Space Admin lists every event and space-level case on the desk, not only their own', async () => {
+      const { prisma, service } = setup({ roles: [spaceAdmin] });
+      await service.listTickets('staff', { deskSpaceId: 'sp-1', spaceId: 'sp-9' });
+      const where = whereOf(prisma);
+      expect(where.requesterId).toBeUndefined();
+      expect(where.spaceId).toBeUndefined();
+      expect(where.AND[0]).toEqual({
+        AND: [onDesk, { OR: [{ event: { spaceId: 'sp-1' } }, { eventId: null, spaceId: 'sp-1' }] }],
+      });
+    });
+
+    it('an event support team lists only the events where they pass event:manage-support', async () => {
+      const { prisma, service } = setup({ roles: [curator] });
+      await service.listTickets('staff', { deskSpaceId: 'sp-1' });
+      expect(whereOf(prisma).AND[0]).toEqual({ AND: [onDesk, { eventId: { in: ['ev-1'] } }] });
+    });
+
+    it('Crew, another space and strangers get no desk', async () => {
+      for (const roles of [[crew], [otherSpaceAdmin], []]) {
+        await expect(setup({ roles }).service.listTickets('staff', { deskSpaceId: 'sp-1' })).rejects.toBeInstanceOf(ForbiddenException);
+        await expect(setup({ roles }).service.spaceDeskUnread('staff', 'sp-1')).rejects.toBeInstanceOf(ForbiddenException);
+      }
+    });
+
+    it('the space desk scope agrees with canSeeCase', async () => {
+      const { service } = setup({ roles: [curator] });
+      expect(await service.canSeeCase('staff', spaceCase)).toBe(true);
+      expect(await service.spaceDeskScope('staff', 'sp-1')).not.toBeNull();
+    });
+
+    it('rows are unread only while on the space desk; the requester shows email, not phone', async () => {
+      const { prisma, service } = setup({ roles: [spaceAdmin] });
+      const t = (over: any) => ({ lastMessageAt: new Date(1), deskLastReadAt: null, requesterLastReadAt: null, ...over });
+      prisma.supportTicket.findMany.mockResolvedValue([
+        t({ id: 'a', desk: SupportDesk.SPACE }),
+        t({ id: 'b', desk: SupportDesk.PLATFORM, escalatedAt: new Date(0) }),
+      ]);
+      const res = await service.listTickets('staff', { deskSpaceId: 'sp-1', unread: true });
+      expect(res.tickets.map((x: any) => x.unread)).toEqual([true, false]);
+      const args = prisma.supportTicket.findMany.mock.calls[0][0];
+      expect(args.include.requester.select).not.toHaveProperty('mobileNumber');
+      expect(args.include.requester.select).toHaveProperty('identities');
+      expect(args.where.AND[1]).toMatchObject({ desk: SupportDesk.SPACE });
+    });
+
+    it('counts unread open cases on the space desk only', async () => {
+      const { prisma, service } = setup({ roles: [spaceAdmin] });
+      prisma.supportTicket.count.mockResolvedValue(3);
+      expect(await service.spaceDeskUnread('staff', 'sp-1')).toEqual({ unread: 3 });
+      expect(prisma.supportTicket.count.mock.calls[0][0].where.AND[1]).toMatchObject({
+        desk: SupportDesk.SPACE,
+        status: { not: SupportTicketStatus.CLOSED },
+      });
+    });
+  });
+
+  describe('internal notes', () => {
+    it('the desk writes a note without touching the case or telling anyone', async () => {
+      const { prisma, events, service } = setup({ roles: [curator], ticket: spaceCase });
+      await service.addMessage('t-1', { body: 'refund looks fine', internal: true }, 'staff');
+      expect(prisma.supportMessage.create.mock.calls[0][0].data).toMatchObject({ internal: true, side: SupportMessageSide.DESK });
+      expect(prisma.supportTicket.update).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(events.emit).not.toHaveBeenCalled();
+    });
+
+    it('the requester, Crew and a space after escalation cannot write notes', async () => {
+      await expect(
+        setup({ ticket: spaceCase }).service.addMessage('t-1', { body: 'x', internal: true }, 'user-1'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(
+        setup({ roles: [crew], ticket: spaceCase }).service.addMessage('t-1', { body: 'x', internal: true }, 'staff'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      const escalated = { ...spaceCase, desk: SupportDesk.PLATFORM, escalatedAt: new Date() };
+      await expect(
+        setup({ roles: [curator], ticket: escalated }).service.addMessage('t-1', { body: 'x', internal: true }, 'staff'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('Platform can write a note on any case', async () => {
+      const { prisma, service } = setup({ admin: true, ticket: spaceCase });
+      await service.addMessage('t-1', { body: 'x', internal: true }, 'admin-1');
+      expect(prisma.supportMessage.create.mock.calls[0][0].data.internal).toBe(true);
+    });
+  });
+});

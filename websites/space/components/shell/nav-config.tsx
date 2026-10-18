@@ -17,6 +17,7 @@ import {
   Handshake,
   Funnel,
   ChartLineUp,
+  Tray,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
@@ -32,6 +33,8 @@ export interface NavItem {
   keywords?: string;
   /** Reachable from the command palette only; the sidebar shows its parent. */
   paletteOnly?: boolean;
+  /** Shows the space desk's unread case count. */
+  unreadBadge?: boolean;
 }
 
 export interface NavGroup {
@@ -90,7 +93,17 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Support",
-    items: [{ href: "/support", label: "Support", icon: Lifebuoy, keywords: "help ticket contact" }],
+    items: [
+      {
+        href: "/assist",
+        label: "Assist inbox",
+        icon: Tray,
+        requires: "event:manage-support",
+        keywords: "assist desk cases attendee questions help inbox",
+        unreadBadge: true,
+      },
+      { href: "/support", label: "Support", icon: Lifebuoy, keywords: "help ticket contact unifesto" },
+    ],
   },
 ];
 

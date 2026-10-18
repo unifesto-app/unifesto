@@ -33,6 +33,8 @@ interface TicketThreadProps {
    */
   viewerIsStaff: boolean;
   onReply: (body: string) => Promise<void>;
+  /** Desk only: adds an "Internal note" mode to the composer. */
+  onNote?: (body: string) => Promise<void>;
   /** Disable the composer (e.g. a closed ticket). */
   disabled?: boolean;
   disabledHint?: string;
@@ -43,18 +45,21 @@ export function TicketThread({
   messages,
   viewerIsStaff,
   onReply,
+  onNote,
   disabled = false,
   disabledHint,
 }: TicketThreadProps) {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [noting, setNoting] = useState(false);
+  const asNote = noting && !!onNote;
 
   const send = async () => {
     const text = body.trim();
     if (!text || sending) return;
     setSending(true);
     try {
-      await onReply(text);
+      await (asNote && onNote ? onNote(text) : onReply(text));
       setBody("");
     } finally {
       setSending(false);
@@ -74,16 +79,19 @@ export function TicketThread({
               <div
                 className={cn(
                   "max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm whitespace-pre-wrap break-words",
-                  mine
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-foreground"
+                  m.internal
+                    ? "border border-dashed border-warning/40 bg-warning-soft text-foreground"
+                    : mine
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                 )}
               >
                 {m.body}
               </div>
               <span className="px-1 text-xs text-muted-foreground">
                 {authorName(m)}
-                {m.isStaffReply ? " · Support" : ""} · {formatTime(m.createdAt)}
+                {m.internal ? " · Internal note" : m.isStaffReply ? " · Support" : ""} ·{" "}
+                {formatTime(m.createdAt)}
               </span>
             </li>
           );
@@ -96,23 +104,42 @@ export function TicketThread({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
+          {onNote && (
+            <div className="flex gap-1" role="group" aria-label="Message type">
+              {[
+                { note: false, label: "Reply" },
+                { note: true, label: "Internal note" },
+              ].map((o) => (
+                <Button
+                  key={o.label}
+                  size="sm"
+                  variant={noting === o.note ? "secondary" : "ghost"}
+                  aria-pressed={noting === o.note}
+                  onClick={() => setNoting(o.note)}
+                >
+                  {o.label}
+                </Button>
+              ))}
+            </div>
+          )}
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Write a reply…"
+            placeholder={asNote ? "Write a note for your team…" : "Write a reply…"}
             rows={3}
-            aria-label="Reply to ticket"
+            aria-label={asNote ? "Internal note" : "Reply to ticket"}
+            className={asNote ? "border-dashed border-warning/60 bg-warning-soft" : undefined}
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send();
             }}
           />
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              ⌘/Ctrl + Enter to send
+              {asNote ? "Only your team sees notes. " : ""}⌘/Ctrl + Enter to send
             </span>
             <Button size="sm" onClick={send} disabled={!body.trim() || sending}>
               <PaperPlaneRight className="h-4 w-4" weight="fill" />
-              {sending ? "Sending…" : "Send reply"}
+              {sending ? "Sending…" : asNote ? "Add note" : "Send reply"}
             </Button>
           </div>
         </div>

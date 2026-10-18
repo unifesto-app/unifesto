@@ -58,6 +58,12 @@ const publicUserSelect = {
   avatarUrl: true,
 } satisfies Prisma.UserSelect;
 
+/** The requester as the space desk sees them: email, never phone. */
+const deskRequesterSelect = {
+  ...publicUserSelect,
+  identities: userSelect.identities,
+} satisfies Prisma.UserSelect;
+
 const spaceSelect = {
   id: true,
   name: true,
@@ -74,6 +80,8 @@ interface ListParams {
   /** A user id, or `none` for unassigned. */
   assignedToId?: string;
   spaceId?: string;
+  /** D9: list this space's desk (cases the caller works or keeps read on) instead. */
+  deskSpaceId?: string;
   /** Only cases with a message the viewer's side hasn't opened. */
   unread?: boolean;
   search?: string;
@@ -214,8 +222,56 @@ export class SupportService {
     return ids;
   }
 
+  /**
+   * D9: the cases one space's desk shows the caller, as a filter (same rules
+   * as canSeeCase). Space Admins get every event and space-level case; event
+   * support teams get the events where their role passes event:manage-support.
+   * Cases stay listed read-only after escalation. Null when the caller has none.
+   */
+  async spaceDeskScope(userId: string, spaceId: string): Promise<Prisma.SupportTicketWhereInput | null> {
+    const onDesk: Prisma.SupportTicketWhereInput = {
+      OR: [{ desk: SupportDesk.SPACE }, { escalatedAt: { not: null } }],
+    };
+    if (await this.authz.can({ id: userId }, Action.SPACE_MANAGE_SETTINGS, { spaceId })) {
+      return { AND: [onDesk, { OR: [{ event: { spaceId } }, { eventId: null, spaceId }] }] };
+    }
+    const roles = await this.prisma.userRole.findMany({
+      where: { userId, event: { spaceId } },
+      select: { eventId: true },
+      distinct: ['eventId'],
+    });
+    // ponytail: one access check per event role; fine for one person's events in a space.
+    const eventIds: string[] = [];
+    for (const { eventId } of roles) {
+      if (eventId && (await this.authz.can({ id: userId }, Action.EVENT_MANAGE_SUPPORT, { eventId }))) {
+        eventIds.push(eventId);
+      }
+    }
+    return eventIds.length ? { AND: [onDesk, { eventId: { in: eventIds } }] } : null;
+  }
+
+  /** D9: unread cases on the space desk for the caller (Space sidebar badge). */
+  async spaceDeskUnread(userId: string, spaceId: string): Promise<{ unread: number }> {
+    const scope = await this.spaceDeskScope(userId, spaceId);
+    if (!scope) throw new ForbiddenException('You do not work this space desk');
+    const fields = this.prisma.supportTicket.fields;
+    const unread = await this.prisma.supportTicket.count({
+      where: {
+        AND: [
+          scope,
+          {
+            desk: SupportDesk.SPACE,
+            status: { not: SupportTicketStatus.CLOSED },
+            OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }],
+          },
+        ],
+      },
+    });
+    return { unread };
+  }
+
   /* ---------------------------------------------------------------------- */
-  /* Create                                                                  */
+  /* Create                                                                */
   /* ---------------------------------------------------------------------- */
 
   async createTicket(dto: CreateTicketDto, requesterId: string) {
@@ -309,16 +365,24 @@ export class SupportService {
   /* ---------------------------------------------------------------------- */
 
   async listTickets(userId: string, params: ListParams) {
-    // ponytail: space desks don't list their cases yet; the Space inbox is D9.
-    const admin = await this.isPlatform(userId);
+    // Three views: a space's desk (D9), Platform's inbox (admins), or my own cases.
+    const deskSpaceId = params.deskSpaceId;
+    const admin = !deskSpaceId && (await this.isPlatform(userId));
+    // The desk the viewer reads as, if any.
+    const viewerDesk = deskSpaceId ? SupportDesk.SPACE : admin ? SupportDesk.PLATFORM : null;
     const { page = 1, limit = 20 } = params;
     const take = Math.min(Math.max(limit, 1), 100);
     const skip = (Math.max(page, 1) - 1) * take;
 
     const where: Prisma.SupportTicketWhereInput = {};
+    const and: Prisma.SupportTicketWhereInput[] = [];
 
-    // Non-admins only ever see their own tickets.
-    if (!admin) {
+    if (deskSpaceId) {
+      const scope = await this.spaceDeskScope(userId, deskSpaceId);
+      if (!scope) throw new ForbiddenException('You do not work this space desk');
+      and.push(scope);
+    } else if (!admin) {
+      // Everyone else only ever sees their own tickets.
       where.requesterId = userId;
     } else if (params.assignedToId) {
       where.assignedToId = params.assignedToId === 'none' ? null : params.assignedToId;
@@ -329,14 +393,13 @@ export class SupportService {
     if (params.priority) where.priority = params.priority;
     if (params.kind) where.kind = params.kind;
     if (admin && params.desk) where.desk = params.desk;
-    if (params.spaceId) where.spaceId = params.spaceId;
-    const and: Prisma.SupportTicketWhereInput[] = [];
+    if (params.spaceId && !deskSpaceId) where.spaceId = params.spaceId;
     if (params.unread) {
-      // Same rule as the `unread` flag below and the stats badge.
+      // Same rule as the `unread` flag below and the stats badges.
       const fields = this.prisma.supportTicket.fields;
       and.push(
-        admin
-          ? { desk: SupportDesk.PLATFORM, OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }] }
+        viewerDesk
+          ? { desk: viewerDesk, OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }] }
           : { OR: [{ requesterLastReadAt: null }, { lastMessageAt: { gt: fields.requesterLastReadAt } }] },
       );
     }
@@ -347,8 +410,8 @@ export class SupportService {
         OR: [
           { subject: text },
           ...(/^#?\d+$/.test(search) ? [{ ticketNumber: Number(search.replace('#', '')) }] : []),
-          // Staff find a case by who raised it; requesters only search their own.
-          ...(admin
+          // Desks find a case by who raised it; requesters only search their own.
+          ...(viewerDesk
             ? [
                 { contactEmail: text },
                 { requester: { fullName: text } },
@@ -366,8 +429,9 @@ export class SupportService {
         skip,
         take,
         include: {
-          requester: { select: userSelect },
-          assignedTo: { select: userSelect },
+          // Only Platform gets contact details beyond the requester's email.
+          requester: { select: admin ? userSelect : deskRequesterSelect },
+          assignedTo: { select: publicUserSelect },
           space: { select: spaceSelect },
           _count: { select: { messages: true } },
         },
@@ -377,11 +441,11 @@ export class SupportService {
     ]);
 
     return {
-      // Platform reads as the desk on its own cases; everyone else as the requester.
+      // A desk reads as the desk on the cases it holds now; everyone else as the requester.
       tickets: tickets.map((t) => ({
         ...t,
-        unread: admin
-          ? t.desk === SupportDesk.PLATFORM && isUnread(t.deskLastReadAt, t.lastMessageAt)
+        unread: viewerDesk
+          ? t.desk === viewerDesk && isUnread(t.deskLastReadAt, t.lastMessageAt)
           : isUnread(t.requesterLastReadAt, t.lastMessageAt),
       })),
       pagination: {
@@ -499,6 +563,24 @@ export class SupportService {
       throw new BadRequestException(
         'This ticket is closed. Open a new ticket to continue.',
       );
+    }
+
+    // D9: an internal note is for the desk only. It leaves status, read state
+    // and lastMessageAt alone and notifies nobody, so the requester never sees
+    // a trace of it (not even an unread dot).
+    if (dto.internal) {
+      if (!admin) throw new ForbiddenException('Only the desk can add internal notes');
+      return this.prisma.supportMessage.create({
+        data: {
+          ticketId: id,
+          authorId: userId,
+          isStaffReply: true,
+          side: SupportMessageSide.DESK,
+          internal: true,
+          body: dto.body,
+        },
+        include: { author: { select: publicUserSelect } },
+      });
     }
 
     // A staff reply moves the ball to the requester; a requester reply

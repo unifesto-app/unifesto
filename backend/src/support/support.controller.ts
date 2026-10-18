@@ -85,6 +85,41 @@ export class SupportController {
     });
   }
 
+  /**
+   * D9: one space's desk inbox. Space Admins see every case on the desk;
+   * event support teams see their events' cases. Escalated cases stay listed
+   * read-only. 403 when the caller works no part of this desk.
+   */
+  @Get('spaces/:spaceId/desk')
+  @ApiOperation({ summary: "List a space desk's cases" })
+  listSpaceDesk(
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+    @Req() req: any,
+    @Query('status', new ParseEnumPipe(SupportTicketStatus, { optional: true })) status?: SupportTicketStatus,
+    @Query('kind', new ParseEnumPipe(SupportCaseKind, { optional: true })) kind?: SupportCaseKind,
+    @Query('unread') unread?: string,
+    @Query('search') search?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
+  ) {
+    return this.supportService.listTickets(req.user.id, {
+      deskSpaceId: spaceId,
+      status,
+      kind,
+      unread: unread === 'true',
+      search,
+      page,
+      limit,
+    });
+  }
+
+  /** D9: unread cases on a space desk for the caller (sidebar badge). */
+  @Get('spaces/:spaceId/desk/unread')
+  @ApiOperation({ summary: 'Unread count for a space desk' })
+  spaceDeskUnread(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Req() req: any) {
+    return this.supportService.spaceDeskUnread(req.user.id, spaceId);
+  }
+
   /** Summary counts for the current viewer (global for admins, own otherwise). */
   @Get('tickets/stats')
   @ApiOperation({ summary: 'Support ticket counts by status' })
@@ -99,7 +134,7 @@ export class SupportController {
     return this.supportService.getTicket(id, req.user.id);
   }
 
-  /** Post a reply to a ticket (owner or admin). */
+  /** Post a reply to a ticket (owner or the current desk), or with `internal` a desk-only note. */
   @Post('tickets/:id/messages')
   @ApiOperation({ summary: 'Reply to a support ticket' })
   addMessage(
