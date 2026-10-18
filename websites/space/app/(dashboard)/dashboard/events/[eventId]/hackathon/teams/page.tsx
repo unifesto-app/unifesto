@@ -12,6 +12,7 @@ import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Chips, HackPage, hackBase, useResult } from "@/components/hackathon/HackParts";
 import { getTeams } from "@/lib/api/hackathon";
 import { joinedLabel } from "@/lib/hackathon";
+import { Pager, usePaged } from "@/components/shared/ListControls";
 
 type Filter = "all" | "active" | "nops" | "noroom" | "cancelled";
 const FILTERS: { value: Filter; label: string }[] = [
@@ -41,6 +42,7 @@ export default function HackathonTeamsPage() {
       return [t.teamCode, t.name, t.leadName, t.statement?.code, t.statement?.title].some((s) => s?.toLowerCase().includes(q));
     });
   }, [teams, query, filter]);
+  const { page, setPage, totalPages, pageItems } = usePaged(shown, 50);
 
   return (
     <HackPage eventId={eventId} title="Teams" subtitle="Cancelled teams keep their Team ID." error={error} ready={!!teams}>
@@ -61,13 +63,23 @@ export default function HackathonTeamsPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <div className="relative sm:w-80">
                 <MagnifyingGlass className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-9" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Team ID, team or lead name" />
+                <Input className="pl-9" value={query} onChange={(e) => {
+                    setQuery(e.target.value);
+                    setPage(1);
+                  }} placeholder="Team ID, team or lead name" />
               </div>
-              <Chips options={FILTERS} value={filter} onChange={setFilter} />
+              <Chips
+                options={FILTERS}
+                value={filter}
+                onChange={(v) => {
+                  setFilter(v);
+                  setPage(1);
+                }}
+              />
             </div>
             <ListGroup title={`${shown.length} of ${teams.length}`}>
               {shown.length === 0 && <ListRow label="No teams match" />}
-              {shown.map((t) => (
+              {pageItems.map((t) => (
                 <ListRow
                   key={t.id}
                   label={
@@ -86,6 +98,7 @@ export default function HackathonTeamsPage() {
                 />
               ))}
             </ListGroup>
+            <Pager page={page} totalPages={totalPages} onPage={setPage} />
           </>
         )
       )}

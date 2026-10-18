@@ -20,6 +20,7 @@ import {
   type SessionStatus,
 } from "@/lib/api/sessions-api";
 import type { SpaceWithHierarchy } from "@/lib/types/rbac";
+import { Pager, usePaged } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -119,6 +120,7 @@ export default function SpaceSessionsPage() {
       return true;
     });
   }, [sessions, search, status]);
+  const { page, setPage, totalPages, pageItems } = usePaged(filtered, 24);
 
   const subtitle = loading
     ? "Loading sessions…"
@@ -149,7 +151,10 @@ export default function SpaceSessionsPage() {
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search by title"
             className="pl-9"
             aria-label="Search sessions"
@@ -157,7 +162,10 @@ export default function SpaceSessionsPage() {
         </div>
         <Select
           value={status}
-          onValueChange={(v) => setStatus(v as SessionFilterValue)}
+          onValueChange={(v) => {
+            setStatus(v as SessionFilterValue);
+            setPage(1);
+          }}
         >
           <SelectTrigger className="w-44" aria-label="Filter by status">
             <SelectValue />
@@ -213,7 +221,7 @@ export default function SpaceSessionsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((session) => (
+          {pageItems.map((session) => (
             <Link
               key={session.id}
               href={`/dashboard/sessions/${session.id}`}
@@ -268,6 +276,7 @@ export default function SpaceSessionsPage() {
           ))}
         </div>
       )}
+      <Pager page={page} totalPages={totalPages} onPage={setPage} />
     </div>
   );
 }
