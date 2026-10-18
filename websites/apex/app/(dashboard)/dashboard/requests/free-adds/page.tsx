@@ -18,20 +18,35 @@ import {
 import {
   getFreeAddRequests,
   reviewFreeAddRequest,
+  revokeFreeAddRequest,
   type FreeAddRequest,
+  type FreeAddStatus,
 } from "@/lib/api/free-add-api";
 import type { RequestStatus } from "@/lib/api/requests-api";
 
 const STATUS_VARIANT: Record<
-  RequestStatus,
+  FreeAddStatus,
   "warning" | "success" | "destructive"
-> = { PENDING: "warning", APPROVED: "success", REJECTED: "destructive" };
+> = { PENDING: "warning", APPROVED: "success", REJECTED: "destructive", REVOKED: "destructive" };
 
-const FILTERS: { label: string; value: RequestStatus }[] = [
+const FILTERS: { label: string; value: FreeAddStatus }[] = [
   { label: "Pending", value: "PENDING" },
   { label: "Approved", value: "APPROVED" },
   { label: "Declined", value: "REJECTED" },
+  { label: "Revoked", value: "REVOKED" },
 ];
+
+/** "VIP only · 12 of 20 seats used" style summary of an approval's scope. */
+function seatsLine(r: FreeAddRequest) {
+  const scope = r.ticketType ? `${r.ticketType.name} only` : "Any ticket";
+  if (r.status === "PENDING") {
+    return `${scope} · ${r.requestedSeats != null ? `${r.requestedSeats} seats asked` : "no seat count given"}`;
+  }
+  if (r.status === "APPROVED" || r.status === "REVOKED") {
+    return `${scope} · ${r.usedSeats} of ${r.approvedSeats ?? "unlimited"} seats used`;
+  }
+  return scope;
+}
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -54,7 +69,7 @@ export default function FreeAddRequestsPage() {
   const [requests, setRequests] = useState<FreeAddRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<RequestStatus>("PENDING");
+  const [filter, setFilter] = useState<FreeAddStatus>("PENDING");
   const [acting, setActing] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -74,10 +89,26 @@ export default function FreeAddRequestsPage() {
     load();
   }, [load]);
 
-  const decide = async (id: string, status: "APPROVED" | "REJECTED") => {
-    if (!window.confirm(`${status === "APPROVED" ? "Approve" : "Decline"} this request? This can't be undone.`)) return;
+  const decide = async (r: FreeAddRequest, status: "APPROVED" | "REJECTED") => {
+    const id = r.id;
+    let approvedSeats: number | undefined;
+    if (status === "APPROVED") {
+      // An approval is a seat quota: every comp of a paid ticket uses one.
+      const raw = window.prompt(
+        `How many paid seats can ${r.event?.title ?? "this event"} add for free (${r.ticketType ? `${r.ticketType.name} only` : "any ticket"})?`,
+        String(r.requestedSeats ?? "")
+      );
+      if (raw === null) return;
+      approvedSeats = Math.trunc(Number(raw));
+      if (!(approvedSeats >= 1)) {
+        setError("Enter a whole number of seats, 1 or more.");
+        return;
+      }
+    } else if (!window.confirm("Decline this request? This can't be undone.")) {
+      return;
+    }
     setActing(id);
-    const { error } = await reviewFreeAddRequest(id, status);
+    const { error } = await reviewFreeAddRequest(id, status, { approvedSeats });
     if (error) {
       setError(error.message || "Could not update the request.");
     } else {
@@ -86,11 +117,20 @@ export default function FreeAddRequestsPage() {
     setActing(null);
   };
 
+  const revoke = async (r: FreeAddRequest) => {
+    if (!window.confirm(`Revoke the free seats for ${r.event?.title ?? "this event"}? Seats already added stay; no new ones can be added for free.`)) return;
+    setActing(r.id);
+    const { error } = await revokeFreeAddRequest(r.id);
+    if (error) setError(error.message || "Could not revoke the approval.");
+    else await load();
+    setActing(null);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Free-add requests"
-        subtitle="Approve organisers to add attendees for free (comp a paid ticket) on a specific event"
+        subtitle="Approve a number of free seats on a paid ticket (comps) for one event, or revoke them"
       />
 
       <Card>
@@ -177,6 +217,7 @@ export default function FreeAddRequestsPage() {
                         {r.reason}
                       </p>
                     )}
+                    <p className="mt-1 text-sm text-foreground">{seatsLine(r)}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                       <span>By {requesterName(r)}</span>
                       <span>Requested {formatDate(r.createdAt)}</span>
@@ -194,18 +235,29 @@ export default function FreeAddRequestsPage() {
                         size="sm"
                         variant="outline"
                         disabled={acting === r.id}
-                        onClick={() => decide(r.id, "REJECTED")}
+                        onClick={() => decide(r, "REJECTED")}
                       >
                         Decline
                       </Button>
                       <Button
                         size="sm"
                         disabled={acting === r.id}
-                        onClick={() => decide(r.id, "APPROVED")}
+                        onClick={() => decide(r, "APPROVED")}
                       >
                         Approve
                       </Button>
                     </div>
+                  )}
+                  {r.status === "APPROVED" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="shrink-0"
+                      disabled={acting === r.id}
+                      onClick={() => revoke(r)}
+                    >
+                      Revoke
+                    </Button>
                   )}
                 </li>
               ))}

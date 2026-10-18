@@ -197,9 +197,20 @@ export class EmailCampaignsService {
   // READ / CANCEL (scope-filtered)
   // ==========================================================================
 
-  async listCampaigns(scope: CampaignScope, page = 1, limit = 20) {
+  async listCampaigns(scope: CampaignScope, page = 1, limit = 20, search?: string) {
     const skip = (page - 1) * limit;
-    const where: Prisma.EmailCampaignWhereInput = { spaceId: scope.spaceId };
+    const term = search?.trim();
+    const where: Prisma.EmailCampaignWhereInput = {
+      spaceId: scope.spaceId,
+      ...(term
+        ? {
+            OR: [
+              { subject: { contains: term, mode: 'insensitive' } },
+              { subjectB: { contains: term, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
 
     const [campaigns, total] = await Promise.all([
       this.prisma.emailCampaign.findMany({

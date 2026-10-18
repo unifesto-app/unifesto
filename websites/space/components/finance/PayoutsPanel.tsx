@@ -31,6 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { matches, Pager, SearchBox, usePaged } from "@/components/shared/ListControls";
 
 const money = (v: number | string) => inr(v);
 
@@ -58,6 +59,7 @@ export function PayoutsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [requestEvent, setRequestEvent] = useState<Event | null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +81,8 @@ export function PayoutsPanel() {
   // Payouts already come space-scoped from the backend (every event in the
   // space, not just the caller's own), so no client-side filtering is needed.
   const spacePayouts = payouts;
+  const shown = spacePayouts.filter((p) => matches(search, p.event?.title, p.utr, STATUS[p.status].label));
+  const { page, setPage, totalPages, pageItems } = usePaged(shown);
   const now = Date.now();
   // Any revenue-earning event can be drawn down — it need not have ended, so a
   // live event with sales is requestable. We surface events with paid tickets
@@ -144,8 +148,22 @@ export function PayoutsPanel() {
                   description="Once you request a payout for an event, it appears here with its status and transfer details."
                 />
               ) : (
+                <>
+                <div className="px-4 pb-2">
+                  <SearchBox
+                    value={search}
+                    onChange={(v) => {
+                      setSearch(v);
+                      setPage(1);
+                    }}
+                    placeholder="Search event, UTR or status"
+                  />
+                </div>
+                {shown.length === 0 && (
+                  <p className="px-4 pb-4 text-sm text-muted-foreground">No payouts match “{search}”.</p>
+                )}
                 <div className="divide-y divide-border">
-                  {spacePayouts.map((p) => {
+                  {pageItems.map((p) => {
                     const s = STATUS[p.status];
                     return (
                       <div key={p.id} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -165,6 +183,10 @@ export function PayoutsPanel() {
                     );
                   })}
                 </div>
+                <div className="px-4 pb-4">
+                  <Pager page={page} totalPages={totalPages} onPage={setPage} />
+                </div>
+                </>
               )}
             </CardContent>
           </Card>

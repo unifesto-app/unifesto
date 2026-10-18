@@ -263,7 +263,7 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | A6 | **GST invoices for platform fees and monthly export.** GST tax invoices for platform fees, GSTR-ready monthly export; TDS/TCS check with CA (from W9) | planned |
 | A7 | **Revenue analytics in Apex.** Revenue analytics in Apex: GMV, net revenue, take rate per space/month, cohorts (from W9) | planned |
 | A8 | Zoho Books monthly revenue sync + runway/burn summary (D4) | parked (2026-10-18): needs the A5 ledger and T11 margins first; |
-| A9 | **Charge the plan platform fee to organisers (2.5 / 1.5 / 1%).** Rates in `plan_configs.platformFeePercent` (renamed from `processingFeePercent`), read by the resolver and `platform_fee_percent_for_event`; GROWTH hidden, pays Starter's rate; `/pricing` reads `/subscription/plans`. Migration ships the rates at 0 and an admin sets them in Apex once A10's notice is out, so deploying is not going live (D10) | in review (#199): ships at 0%; go live = A10 notice, then set rates in Apex Plans |
+| A9 | **Charge the plan platform fee to organisers (2.5 / 1.5 / 1%).** Rates in `plan_configs.platformFeePercent` (renamed from `processingFeePercent`), read by the resolver and `platform_fee_percent_for_event`; GROWTH hidden, pays Starter's rate; `/pricing` reads `/subscription/plans`. Migration ships the rates at 0 and an admin sets them in Apex once A10's notice is out, so deploying is not going live (D10) | done (#199), not deployed: ships at 0%; go live = A10 notice, then set rates in Apex Plans |
 | A10 | **Notify existing organisers before the platform fee starts.** | planned |
 | A11 | **Site states both fees everywhere (extend PR #180).** | planned |
 | A12 | **Pricing decisions from the India price-sensitivity analysis.** | done: decided 2026-10-18 (D11); builds are A33, A34; GST waits for registration (A6) |
@@ -281,14 +281,15 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | A24 | **Refund cancelled events and hold their payouts.** Stopgap ahead of D6 (Assist wraps it later). | done (#192), deployed; base only, fee kept. Left: run the cancelled-events SQL from #192 and Refund all paid for each hit |
 | A25 | **Close the gaps left in A13, A14 and A15.** Follow-ups to the DONE fixes in #183 and #184. | done (#191), deployed |
 | A26 | **Add confirm dialogs to the remaining irreversible actions.** A2 (DONE) missed these; each still fires on one tap. | planned |
-| A27 | **Close free-seat loopholes on paid tickets.** Paid seats can be given away with no fee. | planned |
+| A27 | **Close free-seat loopholes on paid tickets.** Paid seats can be given away with no fee. | in review (#207): free-add approvals are revocable seat quotas; old approvals stay unlimited until revoked |
 | A28 | **Fix group seat edits, transfers and member data.** Money (high, confirmed). | planned |
 | A29 | **Stop series edits and deletes from cascading money rows.** S14 (DONE) guarded event delete, but other paths still lose paid data. | planned |
 | A30 | **Re-home payouts and roles on event ownership transfer.** acceptOwnershipTransfer moves only spaceId (backend/src/events/events.service.ts:1114-1131); | planned |
 | A31 | **Make checkout trust the server total and stock.** - Mobile skips payment and shows 'You're going' from its own computed total even when the server created a paid order (mobile/src/hooks/useEventRegistration.ts:572-574). | planned |
 | A32 | **Add UTR, payer record and notices to manual payouts.** Manual payouts (RazorpayX was removed) lack basics. | planned |
 | A33 | **Organisers can absorb the buyer fee, per event.** "Include the fee in my ticket price": the buyer pays the listed price and the fee comes out of the organiser's share (₹500 → base ₹476.19). Refunds stay base-only. After A31; mobile parts before the 20 Nov freeze (D11) | planned |
-| A34 | **Cap the buyer fee at ₹99 per ticket.** min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; applies above a ₹1,980 ticket (D11) | in review (#202) |
+| A34 | **Cap the buyer fee at ₹99 per ticket.** min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; applies above a ₹1,980 ticket (D11) | done (#202), not deployed |
+| A35 | **Keep the mobile a curator types for imported and manually added attendees.** New accounts get a placeholder mobile and the typed one is dropped, so lists, exports and WhatsApp use a fake number. Store it on the registration and prefer it where the account mobile is a placeholder; never make it the account mobile. Split from A27 | planned |
 
 ### B · Operator productivity
 
@@ -298,8 +299,8 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | B2 | **Bulk check-in in Space.** Bulk check-in in Space (`POST /checkin/event/:id/bulk` + client `registrations-api.ts:850` exist) | done (#154), live |
 | B3 | Session edit after create in Space (`updateSession` exists) | done (#155), live |
 | B4 | **Team-change window toggle in event settings.** Team-change window toggle (`PATCH /events/:eventId/attendee-controls`) in event settings | done (#201), not deployed |
-| B5 | **CSV exports for Space and Apex lists.** CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | planned |
-| B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: orphaned payments (content reports, request queues and support moved to D8) | planned |
+| B5 | **CSV exports for Space and Apex lists.** CSV export. Space: members, rsvps, waitlist, coupon redemptions, check-in log. Apex: transactions, payouts, financials, users | done (#204), not deployed |
+| B6 | **Search and pagination for Space and Apex lists.** Search + pagination. Space: rsvps, coupons, sponsors roster, leads, email, sessions, waitlist, hackathon teams, payouts. Apex: orphaned payments (content reports, request queues and support moved to D8) | done (#206), not deployed |
 | B7 | **Apex: one tabbed request inbox.** Apex: one tabbed request inbox replacing 7 queues | dropped: merged into D8 |
 | B8 | **Apex web: add admin tools that are mobile-only today.** Apex web: OTA, default images, stats recipients, system health, seat-count reconcile (mobile-only or backend-only today) | planned |
 | B9 | Subspace link requests from Space (`createSubSpaceRequest` unused) | dropped: merged into D5 |
@@ -746,3 +747,6 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-18** · A34 built (#202): buyer fee min(5%, ₹99) per ticket in `computeProcessingFee`, served to web and mobile; stays count each guest, a flat-priced group counts as one ticket.
 - **2026-10-18** · Track D: D3 built (#203). Case events push, in-app and email the other side (Platform desk gets staff push only); opening a thread reads it; unread dots + counts in mobile, Apex and Space. Data-only migration 20261024100000 backfills read state. Backend jest 106/106 on Node 24. Not deployed.
 - **2026-10-18** · Track D: D12 built (#205). `backend/src/ai` `AiService.run()` on `claude-haiku-5-5`: cached system prompt, per-feature max_tokens + per-user 24h cap, every call logged in `ai_runs` with USD cost; refusal, truncation or error returns `{ ok: false }` for a human (D7). Features ship dark: `platform_config.ai_enabled_features` is the kill switch (no Apex toggle yet). Migration 20261025100000. Backend jest 917/917 on Node 24. Not deployed.
+- **2026-10-18** · B6 (#206): shared search box + pager (`components/shared/ListControls.tsx`, Space and Apex). Search + paging on coupons, sponsor roster, leads, payouts, Apex orphaned payments; paging on sessions, hackathon teams, and the waiting list (was stuck at the first 100); server-side subject search on email campaigns (`?search=`). Members page uses the shared pager. RSVP tiers skipped (a handful per event). Rebuild backend + space + apex.
+- **2026-10-18** · A27 built (#207): a free-add approval is now a revocable seat quota on one ticket type or any, drawn atomically by single add, CSV import and curator add-seats. Approvals from before stay unlimited until revoked. The placeholder-mobile part moved to A35. A9 (#199) and A34 (#202) merged, not deployed.
+- **2026-10-18** · B5 (#204): exports for waiting list, check-in log and coupon redemptions on the existing event export route (CSV/Excel/PDF, same Growth plan gate and `event:manage-attendees` check); Space members CSV (page now loads every member, was cut at 100); Apex transactions, users (all pages of the current filter), payouts and financials (one row per event) CSV. RSVPs are in the attendee export. Backend jest 897/897. No migration; rebuild backend + space + apex.

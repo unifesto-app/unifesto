@@ -14,7 +14,7 @@ import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { Roles, CurrentUser } from '../auth/decorators';
 import { Can, CanGuard, Action } from '../auth/authorization';
 import { FreeAttendeeAddService } from './free-attendee-add.service';
-import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto } from './dto';
+import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto, RevokeFreeAddRequestDto } from './dto';
 
 @Controller('free-attendee-add')
 export class FreeAttendeeAddController {
@@ -42,6 +42,14 @@ export class FreeAttendeeAddController {
     @Query('eventId') eventId?: string,
   ) {
     return this.service.getMyRequests(user.id, eventId);
+  }
+
+  /** Every free-add request on one event, for anyone who adds its attendees. */
+  @Get('events/:eventId/requests')
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.EVENT_MANAGE_ATTENDEES, { eventKey: 'eventId' })
+  async eventRequests(@Param('eventId') eventId: string) {
+    return this.service.getEventRequests(eventId);
   }
 
   /**
@@ -73,5 +81,17 @@ export class FreeAttendeeAddController {
     @Body() dto: ReviewFreeAddRequestDto,
   ) {
     return this.service.reviewRequest(id, user.id, dto);
+  }
+
+  /** Platform admin withdraws an approval (no more free seats from it). */
+  @Patch('requests/:id/revoke')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async revoke(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Body() dto: RevokeFreeAddRequestDto,
+  ) {
+    return this.service.revokeRequest(id, user.id, dto);
   }
 }
