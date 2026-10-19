@@ -2,7 +2,15 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { randomUUID } from 'crypto';
+import { MessageChannel } from '@prisma/client';
 import { buildEventIcs, IcsEventInput } from '../events/calendar/ics.util';
+import {
+  AttemptResult,
+  DeliveryOpts,
+  isTransientStatus,
+  trackedSend,
+} from '../notifications/message-delivery';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import {
@@ -86,22 +94,39 @@ export class EmailService {
    * Send a call-site-built email via Resend. A body fragment is wrapped in the
    * branded layout; a full document (starts with <!DOCTYPE or <html) goes as is.
    */
-  async sendRawEmail(to: string, subject: string, html: string, attachments?: Attachment[]): Promise<string | null> {
+  async sendRawEmail(
+    to: string,
+    subject: string,
+    html: string,
+    attachments?: Attachment[],
+    delivery?: DeliveryOpts,
+  ): Promise<string | null> {
     const isDocument = /^\s*<(!doctype|html)/i.test(html);
-    return this.sendViaResend(to, subject, isDocument ? html : layout(html), attachments);
+    const res = await this.track(
+      'resend',
+      to,
+      subject,
+      (key) => this.sendViaResend(to, subject, isDocument ? html : layout(html), attachments, undefined, key),
+      delivery,
+    );
+    return res.id;
   }
 
-  /** Send via Resend (transactional). */
+  /**
+   * Send via Resend (transactional). Resend's SDK doesn't retry; `track`
+   * does, reusing `idempotencyKey` so a retried timeout can't send twice.
+   */
   protected async sendViaResend(
     to: string,
     subject: string,
     html: string,
     attachments?: Attachment[],
     sender?: Sender,
-  ): Promise<string | null> {
+    idempotencyKey?: string,
+  ): Promise<AttemptResult> {
     if (!this.resend) {
       this.logger.warn(`Email to ${to} not sent: RESEND_API_KEY not configured`);
-      return null;
+      return { id: null, error: 'not_configured' };
     }
 
     try {
@@ -121,27 +146,31 @@ export class EmailService {
           ...(sender?.replyTo ? { replyTo: sender.replyTo } : {}),
           ...(attachments?.length ? { attachments } : {}),
         },
-        { signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS) },
+        { signal: AbortSignal.timeout(OUTBOUND_TIMEOUT_MS), ...(idempotencyKey ? { idempotencyKey } : {}) },
       );
 
       if (error) {
         this.logger.error(`Resend error: ${error.message}`);
-        return null;
+        // statusCode null = the fetch itself failed (network, timeout).
+        return { id: null, error: error.message, retryable: isTransientStatus(error.statusCode) };
       }
-      return data?.id || null;
+      return { id: data?.id || null, error: data?.id ? undefined : 'no_message_id' };
     } catch (error) {
       this.logger.error(`Resend exception: ${error.message}`);
-      return null;
+      return { id: null, error: error.message, retryable: true };
     }
   }
 
-  /** Send via AWS SES (bulk). */
+  /**
+   * Send via AWS SES (bulk). Never marked retryable: the AWS SDK already
+   * retries throttling and 5xx itself (standard mode, 3 attempts).
+   */
   private async sendViaSES(
     to: string | string[],
     subject: string,
     html: string,
     sender?: Sender,
-  ): Promise<string | null> {
+  ): Promise<AttemptResult> {
     try {
       const command = new SendEmailCommand({
         Source: sender?.fromName ? `${sender.fromName} <${this.bulkAddress}>` : this.fromBulk,
@@ -153,29 +182,61 @@ export class EmailService {
         },
       });
       const result = await this.sesClient.send(command);
-      return result.MessageId || null;
+      return { id: result.MessageId || null, error: result.MessageId ? undefined : 'no_message_id' };
     } catch (error) {
       this.logger.error(`SES error: ${error.message}`);
-      return null;
+      return { id: null, error: error.message };
     }
   }
 
-  /** Send a template on a channel, log the outcome, never throw. */
+  /** One logged, retried, optionally deduped send (C3). Never throws. */
+  private track(
+    via: 'resend' | 'ses',
+    to: string | string[],
+    label: string,
+    send: (idempotencyKey: string) => Promise<AttemptResult>,
+    delivery?: DeliveryOpts,
+  ) {
+    const key = randomUUID();
+    return trackedSend(
+      this.prisma,
+      {
+        channel: MessageChannel.EMAIL,
+        provider: via,
+        label,
+        recipient: Array.isArray(to) ? to.join(',') : to,
+        ...delivery,
+      },
+      () => send(key),
+    );
+  }
+
+  /**
+   * Send a template on a channel, log the outcome, never throw. `label`
+   * replaces the subject in the delivery log when the subject holds a secret.
+   */
   private async deliver(
     via: 'resend' | 'ses',
     to: string | null | undefined,
     { subject, html }: T.Email,
-    opts?: { attachments?: Attachment[]; sender?: Sender },
+    opts?: { attachments?: Attachment[]; sender?: Sender; delivery?: DeliveryOpts; label?: string },
   ): Promise<boolean> {
     if (!to) return false;
     try {
-      const id =
-        via === 'ses'
-          ? await this.sendViaSES(to, subject, html, opts?.sender)
-          : await this.sendViaResend(to, subject, html, opts?.attachments, opts?.sender);
-      if (id) this.logger.log(`Sent "${subject}" to ${to} (${id})`);
-      else this.logger.error(`Failed to send "${subject}" to ${to}`);
-      return !!id;
+      const res = await this.track(
+        via,
+        to,
+        opts?.label ?? subject,
+        (key) =>
+          via === 'ses'
+            ? this.sendViaSES(to, subject, html, opts?.sender)
+            : this.sendViaResend(to, subject, html, opts?.attachments, opts?.sender, key),
+        opts?.delivery,
+      );
+      if (res.deduped) this.logger.log(`Skipped "${opts?.label ?? subject}" to ${to}: already sent`);
+      else if (res.ok) this.logger.log(`Sent "${opts?.label ?? subject}" to ${to} (${res.id})`);
+      else this.logger.error(`Failed to send "${opts?.label ?? subject}" to ${to}`);
+      return res.ok;
     } catch (error) {
       this.logger.error(`Error sending "${subject}" to ${to}`, error);
       return false;
@@ -248,9 +309,10 @@ export class EmailService {
     to: string | null | undefined,
     data: D,
     build: (d: D) => T.Email,
+    delivery?: DeliveryOpts,
   ): Promise<boolean> {
     const { brand, sender } = await this.brandFor(data.eventId);
-    return this.deliver(via, to, build({ ...data, brand }), { sender });
+    return this.deliver(via, to, build({ ...data, brand }), { sender, delivery });
   }
 
   /**
@@ -295,7 +357,8 @@ export class EmailService {
   // =====================================================
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
-    await this.deliver('ses', email, T.otpEmail(otp));
+    // The subject carries the code: log a fixed label instead.
+    await this.deliver('ses', email, T.otpEmail(otp), { label: 'Sign-in code', delivery: { kind: 'otp' } });
   }
 
   async sendWelcomeEmail(email: string, userName: string): Promise<void> {
@@ -306,37 +369,41 @@ export class EmailService {
   // REGISTRATIONS & EVENTS
   // =====================================================
 
-  async sendRegistrationConfirmation(data: T.RegistrationConfirmationData): Promise<void> {
+  async sendRegistrationConfirmation(
+    data: T.RegistrationConfirmationData,
+    delivery?: DeliveryOpts,
+  ): Promise<boolean> {
     // Not deliverBranded: the .ics needs the resolved brand for its links.
     const { brand, sender } = await this.brandFor(data.eventId);
-    await this.deliver('resend', data.email, T.registrationConfirmationEmail({ ...data, brand }), {
+    return this.deliver('resend', data.email, T.registrationConfirmationEmail({ ...data, brand }), {
       attachments: this.buildIcsAttachment(data, brand),
       sender,
+      delivery,
     });
   }
 
-  async sendPaymentConfirmation(data: T.PaymentConfirmationData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.paymentConfirmationEmail);
+  async sendPaymentConfirmation(data: T.PaymentConfirmationData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.paymentConfirmationEmail, delivery);
   }
 
   async sendCancellationConfirmation(data: T.CancellationConfirmationData): Promise<void> {
     await this.deliverBranded('resend', data.email, data, T.cancellationConfirmationEmail);
   }
 
-  async sendEventReminder(data: T.EventReminderData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.eventReminderEmail);
+  async sendEventReminder(data: T.EventReminderData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.eventReminderEmail, delivery);
   }
 
-  async sendEventStartingSoon(data: T.EventStartingSoonData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.eventStartingSoonEmail);
+  async sendEventStartingSoon(data: T.EventStartingSoonData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.eventStartingSoonEmail, delivery);
   }
 
-  async sendEventCancelled(data: T.EventCancelledData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.eventCancelledEmail);
+  async sendEventCancelled(data: T.EventCancelledData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.eventCancelledEmail, delivery);
   }
 
-  async sendEventUpdated(data: T.EventUpdatedData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.eventUpdatedEmail);
+  async sendEventUpdated(data: T.EventUpdatedData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.eventUpdatedEmail, delivery);
   }
 
   async sendEventPublished(data: T.EventPublishedData): Promise<void> {
@@ -351,8 +418,8 @@ export class EmailService {
     await this.deliverBranded('resend', data.email, data, T.waitlistConfirmationEmail);
   }
 
-  async sendWaitlistPromoted(data: T.WaitlistPromotedData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.waitlistPromotedEmail);
+  async sendWaitlistPromoted(data: T.WaitlistPromotedData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.waitlistPromotedEmail, delivery);
   }
 
   async sendWaitlistRevoked(data: T.WaitlistRevokedData): Promise<void> {
@@ -394,12 +461,12 @@ export class EmailService {
   // SPACES
   // =====================================================
 
-  async sendSpaceApproved(data: T.SpaceApprovedData): Promise<void> {
-    await this.deliver('resend', data.email, T.spaceApprovedEmail(data));
+  async sendSpaceApproved(data: T.SpaceApprovedData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliver('resend', data.email, T.spaceApprovedEmail(data), { delivery });
   }
 
-  async sendSpaceRejected(data: T.SpaceRejectedData): Promise<void> {
-    await this.deliver('resend', data.email, T.spaceRejectedEmail(data));
+  async sendSpaceRejected(data: T.SpaceRejectedData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliver('resend', data.email, T.spaceRejectedEmail(data), { delivery });
   }
 
   async sendNewSpaceSubmittedToAdmin(data: T.NewSpaceSubmittedData): Promise<void> {
@@ -457,8 +524,14 @@ export class EmailService {
   /** Bulk campaign send via SES. Returns the messageId for logging, never throws. */
   async sendCustomCampaignEmail(data: CustomCampaignData): Promise<{ messageId: string | null; error?: string }> {
     try {
-      const messageId = await this.sendViaSES(data.to, data.subject, data.html);
-      return { messageId };
+      const res = await this.track(
+        'ses',
+        data.to,
+        data.subject,
+        () => this.sendViaSES(data.to, data.subject, data.html),
+        { kind: 'campaign' },
+      );
+      return { messageId: res.id, ...(res.error ? { error: res.error } : {}) };
     } catch (error) {
       this.logger.error(`Error sending custom campaign ${data.campaignId}: ${error.message}`);
       return { messageId: null, error: error.message };

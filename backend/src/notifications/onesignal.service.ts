@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
+import { isTransientAxiosError } from './message-delivery';
 
 export interface OneSignalSendParams {
   /**
@@ -16,6 +17,12 @@ export interface OneSignalSendParams {
   title: string;
   body: string;
   data?: Record<string, unknown>;
+  /**
+   * OneSignal `idempotency_key`: a repeat request with the same key (within
+   * 30 days) returns the first notification instead of sending again, so a
+   * retried timeout can't double-push.
+   */
+  idempotencyKey?: string;
 }
 
 /** OneSignal's 404 for a transfer to an external id that has no user yet. */
@@ -29,6 +36,8 @@ export interface OneSignalSendResult {
   id: string | null;
   recipients?: number;
   error?: string;
+  /** Transient failure (network, timeout, 429, 5xx): worth retrying. */
+  retryable?: boolean;
 }
 
 /**
@@ -139,6 +148,7 @@ export class OneSignalService {
           headings: { en: params.title },
           contents: { en: params.body },
           ...(params.data ? { data: params.data } : {}),
+          ...(params.idempotencyKey ? { idempotency_key: params.idempotencyKey } : {}),
         },
         {
           headers: {
@@ -177,7 +187,7 @@ export class OneSignalService {
         err?.message ||
         'unknown';
       this.logger.error(`OneSignal send failed: ${detail}`);
-      return { id: null, error: String(detail) };
+      return { id: null, error: String(detail), retryable: isTransientAxiosError(err) };
     }
   }
 }

@@ -1,8 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, PushLogStatus } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { MessageChannel, MessageDeliveryStatus, Prisma, PushLogStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OneSignalService } from './onesignal.service';
 import { NotificationCategory } from './notifications.constants';
+import {
+  AttemptResult,
+  DeliveryMeta,
+  claimDelivery,
+  finishDelivery,
+  logDeliveries,
+  withRetry,
+} from './message-delivery';
 
 export interface SendOptions {
   category: NotificationCategory;
@@ -20,6 +29,14 @@ export interface SendOptions {
    * push off still sees it. Pass `false` to skip it.
    */
   inbox?: { type: string; eventId?: string | null } | false;
+  /**
+   * Idempotency key (C3), single-recipient sends only (ignored otherwise).
+   * Already sent ⇒ nothing happens, not even the inbox copy, and the summary
+   * reports it as sent.
+   */
+  dedupKey?: string;
+  /** Delivery-log kind; defaults to the category. */
+  kind?: string;
 }
 
 export interface SendSummary {
@@ -76,6 +93,17 @@ export class NotificationsService {
       const unique = [...new Set(userIds)].filter(Boolean);
       if (unique.length === 0) return summary;
 
+      // Dedup (C3) is per message, so only for one recipient.
+      let claimed = false;
+      if (opts.dedupKey && unique.length === 1) {
+        const claim = await claimDelivery(this.prisma, this.deliveryMeta(unique[0], opts));
+        if (claim === 'skip') {
+          summary.sent = 1;
+          return summary;
+        }
+        claimed = claim === 'claimed';
+      }
+
       const settings = await this.prisma.notificationSettings.findMany({
         where: { userId: { in: unique } },
       });
@@ -94,6 +122,7 @@ export class NotificationsService {
 
       if (skipped.length) {
         await this.logMany(skipped, opts.category, PushLogStatus.SKIPPED_PREF, opts.campaignId);
+        await this.logDeliveries(skipped, opts, claimed, MessageDeliveryStatus.SKIPPED);
         summary.skipped += skipped.length;
       }
       if (allowed.length === 0) return summary;
@@ -105,14 +134,21 @@ export class NotificationsService {
 
       for (let i = 0; i < allowed.length; i += SEND_BATCH_SIZE) {
         const batch = allowed.slice(i, i + SEND_BATCH_SIZE);
-        const result = await this.oneSignal.send({
-          externalIds: batch,
-          title: opts.title,
-          body: opts.body,
-          data,
-        });
+        // Same key on every retry: OneSignal drops the duplicate.
+        const idempotencyKey = randomUUID();
+        const { result, attempts } = await withRetry(() =>
+          this.oneSignal.send({ externalIds: batch, title: opts.title, body: opts.body, data, idempotencyKey }),
+        );
         const status = result.id ? PushLogStatus.SENT : PushLogStatus.FAILED;
         await this.logMany(batch, opts.category, status, opts.campaignId, result.id, result.error);
+        await this.logDeliveries(
+          batch,
+          opts,
+          claimed,
+          result.id ? MessageDeliveryStatus.SENT : MessageDeliveryStatus.FAILED,
+          result,
+          attempts,
+        );
         if (result.id) summary.sent += batch.length;
         else summary.failed += batch.length;
       }
@@ -144,12 +180,19 @@ export class NotificationsService {
         ...(opts.data ?? {}),
         ...(opts.deepLink ? { deepLink: opts.deepLink } : {}),
       };
-      const result = await this.oneSignal.send({
-        includedSegments: segments,
-        title: opts.title,
-        body: opts.body,
-        data,
-      });
+      const idempotencyKey = randomUUID();
+      const { result, attempts } = await withRetry(() =>
+        this.oneSignal.send({ includedSegments: segments, title: opts.title, body: opts.body, data, idempotencyKey }),
+      );
+      // No user list for a segment: one row, recipient = the segment name(s).
+      await finishDelivery(
+        this.prisma,
+        { channel: MessageChannel.PUSH, provider: 'onesignal', kind: 'broadcast', label: opts.title, recipient: segments.join(',') },
+        false,
+        result.id ? MessageDeliveryStatus.SENT : MessageDeliveryStatus.FAILED,
+        result,
+        attempts,
+      );
       if (result.id) {
         summary.sent = result.recipients ?? 0;
       } else {
@@ -203,6 +246,52 @@ export class NotificationsService {
     if (!settings.pushEnabled) return false;
     if (NO_COLUMN_CATEGORIES.has(category)) return true;
     return !!settings[category];
+  }
+
+  private deliveryMeta(userId: string, opts: SendOptions): DeliveryMeta {
+    return {
+      channel: MessageChannel.PUSH,
+      provider: 'onesignal',
+      kind: opts.kind ?? opts.category,
+      label: opts.title,
+      recipient: userId,
+      userId,
+      dedupKey: opts.dedupKey,
+    };
+  }
+
+  /**
+   * message_deliveries rows for a push batch (C3), next to PushLog: push shows
+   * up in the same per-user history query as email and WhatsApp. A claimed
+   * dedup row (single recipient) is updated instead of inserted.
+   */
+  private async logDeliveries(
+    userIds: string[],
+    opts: SendOptions,
+    claimed: boolean,
+    status: MessageDeliveryStatus,
+    result?: AttemptResult,
+    attempts = 0,
+  ): Promise<void> {
+    if (claimed) {
+      await finishDelivery(this.prisma, this.deliveryMeta(userIds[0], opts), true, status, result, attempts);
+      return;
+    }
+    await logDeliveries(
+      this.prisma,
+      userIds.map((userId) => {
+        const { dedupKey: _ignored, ...meta } = this.deliveryMeta(userId, opts);
+        return {
+          ...meta,
+          label: meta.label.slice(0, 255),
+          kind: meta.kind?.slice(0, 64),
+          status,
+          providerMessageId: result?.id ?? null,
+          error: result?.id ? null : (result?.error ?? null),
+          attempts,
+        };
+      }),
+    );
   }
 
   private async logMany(

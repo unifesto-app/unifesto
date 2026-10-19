@@ -19,11 +19,15 @@ describe('EmailService without RESEND_API_KEY', () => {
     expect(() => new EmailService(config)).not.toThrow();
   });
 
-  it('returns null from a send instead of calling Resend', async () => {
+  it('returns a non-retryable failure instead of calling Resend', async () => {
     const service = new EmailService(config) as unknown as {
-      sendViaResend: (to: string, subject: string, html: string) => Promise<string | null>;
+      sendViaResend: (to: string, subject: string, html: string) => Promise<unknown>;
     };
-    await expect(service.sendViaResend('a@b.co', 'Hi', '<p>Hi</p>')).resolves.toBeNull();
+    await expect(service.sendViaResend('a@b.co', 'Hi', '<p>Hi</p>')).resolves.toEqual({ id: null, error: 'not_configured' });
+  });
+
+  it('sendRawEmail returns null when nothing was sent', async () => {
+    await expect(new EmailService(config).sendRawEmail('a@b.co', 'Hi', '<p>Hi</p>')).resolves.toBeNull();
   });
 });
 
