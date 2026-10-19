@@ -369,7 +369,7 @@ One support system for everything a person needs help with. Every item is an **A
 | D17 | Help articles in Apex as the bot's knowledge base (from K7) | done (#214), live 19 Oct: `HelpArticle` + `/help` API, Apex `/dashboard/help`, web `/help`; event FAQs already in `EventFaq` |
 | D18 | Nightly insights over closed cases (Batch API): themes and missing articles | parked (2026-10-18): nightly insights need case volume that only exists after D8, D9 and launch. |
 | | **Phase 4 · Operations** | |
-| D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | planned |
+| D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | done (#254) |
 | D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | planned |
 | | **Phase 5 · More case kinds** | |
 | D21 | **Ticket issue reports become HELP cases.** `ContentReport` REGISTRATION ("Report an issue" on a ticket) goes to the event's Space desk; moderation keeps event/space reports | done (#229), live 19 Oct |
@@ -790,3 +790,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · C10 + C11 inbox splits staff help-desk queries into a Staff tab with mark-all-read, title cut to 200 and bell refresh on every push; segment broadcasts now read their real sent/failed from OneSignal (its create response dropped `recipients`; the 27 Sept "All users" app-update pushes actually reached 1126 and 1120 devices with 15 and 1 failed) and Apex push/email/WhatsApp consoles gain a staff-only test audience. Needs migrate deploy + rebuild backend + apex; mobile rides 5.0.0. (#249)
 - **2026-10-19** · C3 + C2 add a message_deliveries log with retries and dedup for every push/email/WhatsApp send, plus NotifyService.notify() with a kind registry and one channel policy (notify.policy.ts). Needs `prisma migrate deploy` (20261031100000_message_deliveries) and a backend rebuild; no env changes. (#248)
 - **2026-10-19** · Track D: D23 built. A guest asking to cancel a stay paid online opens a CANCELLATION case on the event's Space desk (Space Assist "Cancel and refund", mobile "Ask to cancel and refund"); the team's cancel posts the refund and resolves it. A host's session cancel opens a case per paid booking, resolved when its refund goes. Money logic unchanged. No migration; rebuild backend + space. (#252)
+- **2026-10-19** · Track D: D19 built. Saved replies (`CannedReply`, Unifesto desk + per space) with CRUD and an insert picker in Apex and Space Assist; SLA due time from priority (Grievance 24 h / 15 days), overdue filter, and 30-day median first-reply and resolution times per desk in both stats headers. Migration 20261101100000. Not deployed. (#254)
