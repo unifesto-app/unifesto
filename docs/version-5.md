@@ -489,7 +489,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | planned |
-| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | planned |
+| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#293) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
@@ -831,3 +831,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · H23 branded registration and stay emails use a neutral "find your ticket in the Unifesto app" line. (#288)
 - **2026-10-19** · O17 backend: Apple sign-in stores an encrypted refresh token, and account deletion revokes it at Apple (5.1.1(v)); failures are reported on the PRIVACY case. Needs migrate + APPLE_TEAM_ID/KEY_ID/PRIVATE_KEY env before submit. (#291)
 - **2026-10-19** · J13 deploy.sh refuses dirty trees, non-main HEADs and non-green CI (FORCE=1 override), guards DROP migrations, tags images by SHA with ./deploy.sh rollback, and checks required env keys (#292)
+- **2026-10-19** · J4 Sentry projects created (unifesto-backend/web/space/apex/mobile); backend DSN set, @sentry/nextjs wired into web, space, apex (errors only, PII masked) (#293)
