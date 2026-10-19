@@ -1,6 +1,6 @@
 # W1 · 19–25 Oct · One Space for your whole team
 
-Track P item P5. Everything here is a **draft**. Nothing has been posted, uploaded, scheduled or sent. Publish each item yourself, or approve it one at a time in chat.
+Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothing has been posted, uploaded, scheduled or sent. Publish each item yourself, or approve it one at a time in chat.
 
 ## Before anything goes out
 
@@ -34,7 +34,7 @@ Email: none in W1 (every 2 weeks, first one in W2).
 
 ## What you need to do
 
-- **Record** the long video Mon (script + shot list in `01`), and 40 s of extra footage for Short 3.
+- **Record** the screen clips for the long video Mon (shot list in `01`, the S rows), and 40 s of extra footage for Short 3. Bujji scenes + voice are rendered in `~/Startups/unifesto-video`.
 - **Edit** the long video, 3 Shorts (cut points in `01` and `04`) and the 75 s LinkedIn cut.
 - **Approve** each post, then publish it yourself (or tell me which one to prepare next).
 

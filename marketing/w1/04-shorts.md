@@ -6,16 +6,17 @@
 
 ## Short 1: Who can do what in your club
 
-**Out:** Mon 19 Oct, 7 PM IST. **Cut from:** long video 3:30–4:30, reframed to 9:16 on the IAM grid (pan left to right across the columns). **Cover:** `assets/short1-cover.png`.
+**Out:** Mon 19 Oct, 7 PM IST (slips to Tue with the long video if the render isn't ready). **Cut from:** long video 2:50–4:05 (Bujji's keycards + IAM grid), reframed to 9:16, Bujji full frame. **Cover:** `assets/short1-cover.png`.
 
-| Time | On screen | On-screen text | Voiceover |
+| Time | On screen | On-screen text | Bujji says |
 |---|---|---|---|
-| 0–2 s | Cover frame | Who can do what in your club | Not everyone in your club needs the money. |
-| 2–10 s | IAM grid, Curator column | Curator: runs the event | The Curator runs the event end to end. |
-| 10–18 s | Co-Curator column | Co-Curator: helps, no money | The Co-Curator helps, but money stays with the Curator. |
-| 18–28 s | Crew column, hover check-in | Crew: scans at the gate | Crew scan passes at the gate and answer the help desk. |
-| 28–38 s | Hover a checkbox | You decide, per Space | And you can change what each role can do, just for your club. |
-| 38–45 s | Space home | Full guide on the channel | Full 10-minute setup on our channel. |
+| 0–3 s | Bujji, worried eyes | Should your gate volunteer see your bank details? | Should your gate volunteer see your bank details? |
+| 3–9 s | Spreadsheet vs My Space split | Everyone sees everything vs everyone sees their part | In a spreadsheet, everyone sees everything. In a Space, everyone sees their part. |
+| 9–17 s | CURATOR keycard | Curator: runs the event | A Curator runs an event end to end, money included. |
+| 17–25 s | CO-CURATOR keycard, money struck through | Co-Curator: helps, no money | A Co-Curator helps, but publishing and money stay with the Curator. |
+| 25–33 s | CREW keycard | Crew: scans at the gate | Crew see the event and scan passes at the gate. That's it. |
+| 33–40 s | IAM grid, hover a checkbox | You decide, per Space | And you decide what each role can do, just for your club. |
+| 40–45 s | Ring 03 locks | Full guide on the channel | Full guide on our channel. See you among the stars! |
 
 **YouTube title:** Who can do what in your college club #shorts
 **YouTube description:** How to run a college club: give each person the right role. Full guide: https://www.unifesto.app/links?utm_source=youtube&utm_campaign=v5-w1
@@ -38,7 +39,7 @@ Full 10-minute setup on our YouTube. Link in bio.
 
 ## Short 2: Every event gets its own team
 
-**Out:** Wed 21 Oct, 7 PM IST. **Cut from:** long video 5:25–6:30 (team roster, role picker open). **Cover:** `assets/short2-cover.png`.
+**Out:** Wed 21 Oct, 7 PM IST. **Cut from:** long video 4:05–5:14 (event moons, team roster, role picker open, one avatar as Crew and Curator). **Cover:** `assets/short2-cover.png`.
 
 | Time | On screen | On-screen text | Voiceover |
 |---|---|---|---|

@@ -37,7 +37,7 @@ If you ran a club in college, what did you lose when the old team left?
 
 ## Tue 20 Oct · LinkedIn video (company page, then reshare from founder)
 
-**Cut:** 75 s, 16:9, from the long video: 0:00–0:20 (hook) + 3:30–4:30 (roles) + 7:45–8:05 (recap). Put it in the slot of `assets/linkedin-frame/01.png` (overlay; slot 1376x774 at 272, 236). Burned-in captions, because most people watch muted. `assets/linkedin-frame/02.png` is the preview poster.
+**Cut:** 75 s, 16:9, from the long video: 0:00–0:22 (hook) + 3:05–3:40 (keycards) + 5:58–6:06 ("Your president graduates. Your club doesn't."). Put it in the slot of `assets/linkedin-frame/01.png` (overlay; slot 1376x774 at 272, 236). Burned-in captions, because most people watch muted. `assets/linkedin-frame/02.png` is the preview poster.
 
 **Post text:**
 
