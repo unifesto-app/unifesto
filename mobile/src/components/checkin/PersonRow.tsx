@@ -33,6 +33,8 @@ interface PersonRowProps {
   aside?: string;
   /** Inline check-in control for search results. */
   action?: { state: 'idle' | 'busy' | 'done'; onPress: () => void };
+  /** Small "Undo" link under the trailing text, for a mistaken check-in. */
+  undo?: { busy: boolean; onPress: () => void };
 }
 
 /**
@@ -40,7 +42,7 @@ interface PersonRowProps {
  * and either a timestamp or an inline "Check in" pill that flips to a green
  * "Checked in" once done.
  */
-export default function PersonRow({ name, avatarUrl, sub, aside, action }: PersonRowProps) {
+export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }: PersonRowProps) {
   const tokens = useTokens();
 
   let trailing: React.ReactNode = null;
@@ -73,6 +75,25 @@ export default function PersonRow({ name, avatarUrl, sub, aside, action }: Perso
     );
   } else if (aside) {
     trailing = <Text style={[styles.aside, { color: tokens.textMuted }]}>{aside}</Text>;
+  }
+  if (undo) {
+    trailing = (
+      <View style={styles.trailing}>
+        {trailing}
+        {undo.busy ? (
+          <ActivityIndicator size="small" color={tokens.textMuted} />
+        ) : (
+          <Pressable
+            onPress={undo.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={`Undo ${name}'s check-in`}
+            hitSlop={8}
+          >
+            <Text style={[styles.undoText, { color: tokens.accent }]}>Undo</Text>
+          </Pressable>
+        )}
+      </View>
+    );
   }
 
   return (
@@ -117,6 +138,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  trailing: { alignItems: 'flex-end', gap: 4 },
+  undoText: { fontSize: typography.fontSize.sm, ...font('semibold') },
   done: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   doneText: { fontSize: typography.fontSize.sm, ...font('semibold') },
 });

@@ -8,7 +8,9 @@ import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useCheckinHub } from '../hooks/useCheckinHub';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';
 import { useIsOffline } from '../lib/offline/connectivity';
-import { offlineStats } from '../lib/offline/checkinQueue';
+import { offlineStats, pullChanges } from '../lib/offline/checkinQueue';
+import { undoCheckin, type RecentCheckin } from '../lib/api/checkin';
+import { AppAlert } from '../components/ui/AppAlert';
 import useTopSpacing from '../hooks/useTopSpacing';
 import CheckinProgressCard from '../components/checkin/CheckinProgressCard';
 import OfflineCheckinPanel from '../components/checkin/OfflineCheckinPanel';
@@ -68,6 +70,31 @@ export default function EventCheckinScreen() {
     () => (hub.recent ?? []).filter((r) => !activePoint || r.checkinType === activePoint.name),
     [hub.recent, activePoint],
   );
+
+  const [undoingId, setUndoingId] = useState<string | null>(null);
+  const undo = (r: RecentCheckin) => {
+    if (!r.checkinTypeId || undoingId) return;
+    const at = r.checkinType ? ` at ${r.checkinType}` : '';
+    AppAlert.alert(`Undo ${r.attendeeName}'s check-in${at}?`, 'They can be scanned in again afterwards.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Undo check-in',
+        style: 'destructive',
+        onPress: async () => {
+          setUndoingId(r.id);
+          try {
+            await undoCheckin(r.registrationId, r.checkinTypeId!, r.memberIndex);
+            hub.refresh();
+            if (offline.store) void pullChanges(offline.store);
+          } catch (e) {
+            AppAlert.alert("Couldn't undo", e instanceof Error ? e.message : 'Please try again.');
+          } finally {
+            setUndoingId(null);
+          }
+        },
+      },
+    ]);
+  };
 
   // A single-point event goes straight in; with several, pass the chip choice
   // (or none, and the scanner asks).
@@ -181,6 +208,7 @@ export default function EventCheckinScreen() {
                   .filter(Boolean)
                   .join(' · ')}
                 aside={timeAgo(r.checkedInAt)}
+                undo={!isOffline && r.checkinTypeId ? { busy: undoingId === r.id, onPress: () => undo(r) } : undefined}
               />
             ))
           )}

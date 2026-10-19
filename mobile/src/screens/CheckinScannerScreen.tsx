@@ -12,6 +12,7 @@ import {
   isGroupScan,
   scanQRCode,
   submitGroupCheckin,
+  undoCheckin,
   type CheckinStats,
   type GroupScanResult,
   type ScanResult,
@@ -19,7 +20,14 @@ import {
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';
 import { isOnline, useIsOffline } from '../lib/offline/connectivity';
-import { enqueueCheckin, findEntry, judgeOfflineScan, offlineStats, recordLiveCheckin } from '../lib/offline/checkinQueue';
+import {
+  enqueueCheckin,
+  findEntry,
+  judgeOfflineScan,
+  offlineStats,
+  pullChanges,
+  recordLiveCheckin,
+} from '../lib/offline/checkinQueue';
 import useTopSpacing from '../hooks/useTopSpacing';
 import PointChips from '../components/checkin/PointChips';
 import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticle';
@@ -36,6 +44,8 @@ import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 const RESCAN_COOLDOWN = 2500;
 // How long each verdict stays up. Problems stay longer: staff need to act.
 const SHOW_MS = { success: 2200, already: 3500, error: 4000 } as const;
+// A verdict with an Undo stays long enough to reach for it.
+const UNDO_MS = 5000;
 
 // The camera overlay is dark in both themes, so this screen uses fixed colours.
 // Camera-overlay controls: clear Liquid Glass with a dark tint (white text stays
@@ -104,7 +114,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     setFeedback(f);
     buzz(f.kind);
-    feedbackTimer.current = setTimeout(() => setFeedback(null), SHOW_MS[f.kind]);
+    feedbackTimer.current = setTimeout(() => setFeedback(null), f.undo ? UNDO_MS : SHOW_MS[f.kind]);
   }, []);
 
   const dismiss = useCallback(() => {
@@ -112,8 +122,27 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
     setFeedback(null);
   }, []);
 
+  /** Reverse a check-in this screen just made (online only), then refresh counts and the saved list. */
+  const undoLast = useCallback(
+    async (registrationId: string, point: string, name: string, memberIndexes?: number[]) => {
+      dismiss();
+      try {
+        if (memberIndexes) await Promise.all(memberIndexes.map((i) => undoCheckin(registrationId, point, i)));
+        else await undoCheckin(registrationId, point);
+        show({ kind: 'already', title: 'Check-in undone', name });
+        lastScanRef.current = null; // the same QR can go straight back in
+        void loadStats();
+        // The server touched the registration, so a changes pull rebuilds its roster entry.
+        if (offline.store) void pullChanges(offline.store);
+      } catch (e) {
+        show({ kind: 'error', title: "Couldn't undo", detail: e instanceof Error ? e.message : 'Please try again.' });
+      }
+    },
+    [dismiss, show, loadStats, offline.store],
+  );
+
   const showResult = useCallback(
-    (r: ScanResult) => {
+    (r: ScanResult, registrationId?: string) => {
       const name = attendeeName(r.attendee);
       if (r.alreadyCheckedIn) {
         const at = r.checkedInAt
@@ -121,10 +150,16 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
           : null;
         show({ kind: 'already', title: 'Already checked in', name, detail: at ? `First scanned at ${at}` : r.ticketType });
       } else {
-        show({ kind: 'success', title: 'Checked in', name, detail: r.ticketType });
+        show({
+          kind: 'success',
+          title: 'Checked in',
+          name,
+          detail: r.ticketType,
+          undo: registrationId ? () => void undoLast(registrationId, pointId, name) : undefined,
+        });
       }
     },
-    [show],
+    [show, undoLast, pointId],
   );
 
   /** Judge a scan against the saved guest list and queue the check-in. */
@@ -208,7 +243,8 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
           setSelected(new Set(result.members.filter((m) => !m.checkedInAtPoint).map((m) => m.index)));
           return;
         }
-        showResult(result);
+        // The scan reply has no registration id; the saved list maps the code to one.
+        showResult(result, offline.store?.byCode.get(code)?.registrationId);
         // Keep the saved list current so a later offline rescan reads "already in".
         if (offline.store) recordLiveCheckin(offline.store, { code }, pointId, result.checkedInAt);
         if (!result.alreadyCheckedIn) void loadStats();
@@ -275,11 +311,15 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
       if (offline.store) {
         recordLiveCheckin(offline.store, { registrationId: group.registrationId }, pointId, null, Array.from(selected));
       }
+      const name = group.leadName ? `${group.leadName}'s group` : 'Group checked in';
+      // Only members this submit put in; ones already in stay in.
+      const added = Array.from(selected).filter((i) => !group.members.find((m) => m.index === i)?.checkedInAtPoint);
       show({
         kind: 'success',
         title: `${res.checkedInCount} of ${res.total} in`,
-        name: group.leadName ? `${group.leadName}'s group` : 'Group checked in',
+        name,
         detail: group.ticketType,
+        undo: added.length ? () => void undoLast(group.registrationId, pointId, name, added) : undefined,
       });
       void loadStats();
       closeGroup();
@@ -289,7 +329,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
     } finally {
       setSubmitting(false);
     }
-  }, [group, groupOffline, offline.store, pointId, submitting, selected, show, loadStats, closeGroup]);
+  }, [group, groupOffline, offline.store, pointId, submitting, selected, show, loadStats, closeGroup, undoLast]);
 
   // --- Gates: loading → no access → choose a point → camera permission ---
 
@@ -414,7 +454,9 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
 
       {/* Bottom: verdict + tools */}
       <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing[4]) + spacing[2] }]}>
-        {feedback ? <ScanResultCard feedback={feedback} onDismiss={dismiss} /> : null}
+        {feedback ? (
+          <ScanResultCard feedback={feedback} onDismiss={dismiss} onUndo={isOffline ? undefined : feedback.undo} />
+        ) : null}
         <View style={styles.tools}>
           <Pressable
             onPress={() => setTorch((t) => !t)}
