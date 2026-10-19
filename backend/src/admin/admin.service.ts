@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
+import { NotifyService } from '../notifications/notify.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { SpaceStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
@@ -51,6 +52,7 @@ export class AdminService {
     private readonly storage: StorageService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly notify: NotifyService,
   ) {
     this.startTime = Date.now();
     const region = this.configService.get<string>('AWS_REGION');
@@ -773,30 +775,14 @@ export class AdminService {
   async approveSpace(id: string, adminId: string) {
     const space = await this.prisma.space.findUnique({
       where: { id },
-      include: {
-        creator: {
-          select: {
-            fullName: true,
-            username: true,
-            identities: {
-              where: { email: { not: null } },
-              orderBy: { isPrimary: 'desc' },
-              select: { email: true },
-              take: 1,
-            },
-          },
-        },
-      },
+      include: { creator: { select: { fullName: true, username: true } } },
     });
     if (!space) {
       throw new NotFoundException('Space not found');
     }
-    if (space.status === SpaceStatus.APPROVED || space.status === SpaceStatus.ACTIVE) {
-      throw new BadRequestException('Space is already approved');
-    }
-
-    const updated = await this.prisma.space.update({
-      where: { id },
+    // Atomic claim: a double click approves (and tells the creator) once.
+    const claimed = await this.prisma.space.updateMany({
+      where: { id, status: { notIn: [SpaceStatus.APPROVED, SpaceStatus.ACTIVE] } },
       data: {
         status: SpaceStatus.APPROVED,
         approvedAt: new Date(),
@@ -804,20 +790,23 @@ export class AdminService {
         rejectedAt: null,
         rejectionReason: null,
       },
+    });
+    if (!claimed.count) {
+      throw new BadRequestException('Space is already approved');
+    }
+    const updated = await this.prisma.space.findUniqueOrThrow({
+      where: { id },
       select: { id: true, name: true, status: true, approvedAt: true, approvedBy: true },
     });
     this.logger.log(`Space ${id} approved by admin ${adminId}`);
-    const email = space.creator?.identities[0]?.email;
-    if (email) {
-      this.emailService
-        .sendSpaceApproved({
-          email,
-          organizerName: space.creator.fullName || space.creator.username || 'there',
-          spaceName: space.name,
-          spaceSlug: space.slug,
-        })
-        .catch((err) => this.logger.error('Failed to send space approved email', err));
-    }
+    // Push + email to the creator (critical). notify() never throws.
+    void this.notify.notify(space.createdBy, 'space.approved', {
+      spaceId: space.id,
+      approvedAt: updated.approvedAt!,
+      organizerName: space.creator?.fullName || space.creator?.username || 'there',
+      spaceName: space.name,
+      spaceSlug: space.slug,
+    });
     return updated;
   }
 
@@ -828,33 +817,27 @@ export class AdminService {
   async rejectSpace(id: string, adminId: string, reason?: string) {
     const space = await this.prisma.space.findUnique({
       where: { id },
-      include: {
-        creator: {
-          select: {
-            fullName: true,
-            username: true,
-            identities: {
-              where: { email: { not: null } },
-              orderBy: { isPrimary: 'desc' },
-              select: { email: true },
-              take: 1,
-            },
-          },
-        },
-      },
+      include: { creator: { select: { fullName: true, username: true } } },
     });
     if (!space) {
       throw new NotFoundException('Space not found');
     }
 
-    const updated = await this.prisma.space.update({
-      where: { id },
+    // Atomic claim: a double click rejects (and tells the creator) once.
+    const claimed = await this.prisma.space.updateMany({
+      where: { id, status: { not: SpaceStatus.REJECTED } },
       data: {
         status: SpaceStatus.REJECTED,
         rejectedAt: new Date(),
         approvedBy: adminId,
         rejectionReason: reason?.trim() || null,
       },
+    });
+    if (!claimed.count) {
+      throw new BadRequestException('Space is already rejected');
+    }
+    const updated = await this.prisma.space.findUniqueOrThrow({
+      where: { id },
       select: {
         id: true,
         name: true,
@@ -864,17 +847,12 @@ export class AdminService {
       },
     });
     this.logger.log(`Space ${id} rejected by admin ${adminId}`);
-    const email = space.creator?.identities[0]?.email;
-    if (email) {
-      this.emailService
-        .sendSpaceRejected({
-          email,
-          organizerName: space.creator.fullName || space.creator.username || 'there',
-          spaceName: space.name,
-          rejectionReason: reason?.trim() || 'Not given',
-        })
-        .catch((err) => this.logger.error('Failed to send space rejected email', err));
-    }
+    void this.notify.notify(space.createdBy, 'space.rejected', {
+      spaceId: space.id,
+      organizerName: space.creator?.fullName || space.creator?.username || 'there',
+      spaceName: space.name,
+      rejectionReason: reason?.trim() || 'Not given',
+    });
     return updated;
   }
 
