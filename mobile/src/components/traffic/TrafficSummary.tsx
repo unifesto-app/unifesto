@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
   card: { marginTop: spacing[4], padding: spacing[5], borderRadius: cosmosCardRadius },
   grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: spacing[4], marginBottom: spacing[5] },
   cell: { width: '50%', paddingRight: spacing[2] },
-  value: { fontSize: 22, lineHeight: 30, ...cosmosFont.display },
+  value: { fontSize: 22, lineHeight: 30, ...cosmosFont.figure },
   label: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   bars: { height: BARS_HEIGHT, flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   bar: { flex: 1, borderRadius: 2 },

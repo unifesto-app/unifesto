@@ -70,7 +70,7 @@ export default function ManageSpaceScreen() {
   const list = m.buckets[m.tab];
   const isSpaceAdmin = m.space?.userRole?.code === 'SPACE_ADMIN';
   const go = (path: string) => () => router.push(`/manage/space/${spaceId}/${path}` as never);
-  const glyph = { size: ICON, color: c.text, weight: 'fill' as const };
+  const glyph = { size: ICON, color: c.text };
   // Assist desk: null while loading or for someone who works no part of it (403).
   const [deskUnread, setDeskUnread] = useState<number | null>(null);
   useFocusEffect(
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   sub: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { flexDirection: 'row', marginTop: spacing[5], paddingTop: spacing[4], borderTopWidth: StyleSheet.hairlineWidth },
   stat: { flex: 1, alignItems: 'center', gap: 4, minHeight: 44 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[5] },
   // minHeight, not height: a fixed height clips the label at large Dynamic Type sizes.

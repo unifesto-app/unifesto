@@ -193,7 +193,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
             label="Open your call"
             variant="ghost"
             fullWidth
-            icon={<VideoCamera size={18} color={tokens.accent} weight="fill" />}
+            icon={<VideoCamera size={18} color={tokens.text} />}
             onPress={() => void Linking.openURL(meeting)}
             style={{ marginTop: spacing[1] }}
           />
@@ -255,7 +255,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
               {q.waiting.map((w) => (
                 <SettingsRow
                   key={w.requestId}
-                  icon={<Hourglass size={ICON} color={tokens.textMuted} weight="fill" />}
+                  icon={<Hourglass size={ICON} color={tokens.textMuted} />}
                   label={`${w.position}. ${w.team?.teamCode ?? '—'}  ${w.team?.name ?? ''}`}
                   value={[w.team?.themeLabel, w.roundName].filter(Boolean).join(' · ') || undefined}
                 />

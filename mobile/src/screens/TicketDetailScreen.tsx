@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   // The QR keeps its white field: scanners need the contrast.
   qr: { padding: 14, borderRadius: cosmosCardRadius, backgroundColor: '#ffffff' },
   voidText: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  code: { marginTop: spacing[4], fontSize: 18, fontVariant: ['tabular-nums'], ...cosmosFont.display, letterSpacing: 2 },
+  code: { marginTop: spacing[4], fontSize: 18, ...cosmosFont.figure, letterSpacing: 2 },
   hint: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   facts: { marginTop: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   factIcon: { width: STUB, alignItems: 'center' },
   dateStub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   stubMonth: { fontSize: 11, ...cosmosFont.strong },
-  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.figure },
   factTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   factSub: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + STUB + spacing[4] },

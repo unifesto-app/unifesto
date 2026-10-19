@@ -60,7 +60,7 @@ export default function TrendingList({ events, onPress }: { events: Event[]; onP
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingVertical: spacing[3] },
-  rank: { width: 30, fontSize: 15, ...cosmosFont.display },
+  rank: { width: 30, fontSize: 15, ...cosmosFont.figure },
   // Event covers are 4:3.
   thumb: { width: 76, height: 57, borderRadius: 12, overflow: 'hidden' },
   title: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },

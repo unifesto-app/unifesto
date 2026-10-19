@@ -106,13 +106,13 @@ export default function StaysManageScreen() {
 
       <SettingsGroup title="Bookings">
         <SettingsRow
-          icon={<ClipboardText size={24} color={tokens.accent} weight="fill" />}
+          icon={<ClipboardText size={24} color={tokens.text} />}
           label="Requests and guests"
           value={data.pendingRequests ? `${data.pendingRequests} new` : undefined}
           onPress={() => router.push(`/manage/event/${eventId}/stay-bookings`)}
         />
         <SettingsRow
-          icon={<QrCode size={24} color={tokens.accent} weight="fill" />}
+          icon={<QrCode size={24} color={tokens.text} />}
           label="Scan Stay Pass"
           onPress={() => router.push(`/manage/event/${eventId}/stay-scan`)}
         />

@@ -126,7 +126,7 @@ export default function HackathonEvaluateScreen() {
   }
 
   const req = data.openRequest;
-  const icon = (I: typeof Gavel) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof Gavel) => <I size={ICON} color={tokens.text} />;
   const notReady = data.stage === 'NEEDS_PS' || data.stage === 'CANCELLED';
   const copy = req ? teamRequestCopy(req) : null;
   const called = req?.status === 'CALLED';
@@ -261,7 +261,7 @@ export default function HackathonEvaluateScreen() {
               return (
                 <SettingsRow
                   key={`${e.kind}:${e.id}`}
-                  icon={e.isAvailable ? icon(e.online ? VideoCamera : UsersThree) : <Coffee size={ICON} color={tokens.textMuted} weight="fill" />}
+                  icon={e.isAvailable ? icon(e.online ? VideoCamera : UsersThree) : <Coffee size={ICON} color={tokens.textMuted} />}
                   label={e.location ? `${e.name} · ${e.location}` : e.name}
                   value={
                     e.alreadyEvaluated

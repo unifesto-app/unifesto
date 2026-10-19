@@ -39,6 +39,6 @@ export default function ManageStats({ stats, loading }: { stats: ManageStat[]; l
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: spacing[3] },
   tile: { flex: 1, borderRadius: cosmosCardRadius, paddingVertical: spacing[4], paddingHorizontal: spacing[4], gap: 4 },
-  value: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
+  value: { fontSize: 20, lineHeight: 28, ...cosmosFont.figure },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

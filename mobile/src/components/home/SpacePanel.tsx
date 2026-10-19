@@ -44,7 +44,7 @@ const plural = (n: number, one: string) => `${n.toLocaleString('en-IN')} ${one}$
 export default function SpacePanel(p: SpacePanelProps) {
   const tokens = useTokens();
   const c = useCosmos();
-  const glyph = { size: 24, color: c.primary, weight: 'fill' as const };
+  const glyph = { size: 24, color: c.primary };
 
   return (
     <View style={styles.wrap}>

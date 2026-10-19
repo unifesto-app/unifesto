@@ -17,6 +17,7 @@ import { openStoreReview } from '../utils/storeReview';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import StatusBarScrim from '../components/ui/StatusBarScrim';
 import AuthButton from '../components/auth/AuthButton';
 import BrandWordmark from '../components/BrandWordmark';
 import { GUTTER, Section } from '../components/home/Section';
@@ -194,6 +195,7 @@ export default function ProfileScreen() {
           {help}
           {footer}
         </ScrollView>
+        <StatusBarScrim />
       </View>
     );
   }
@@ -302,6 +304,7 @@ export default function ProfileScreen() {
 
         {footer}
       </ScrollView>
+      <StatusBarScrim />
     </View>
   );
 }

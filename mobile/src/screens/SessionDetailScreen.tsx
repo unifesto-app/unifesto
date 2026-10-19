@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], padding: spacing[4] },
   stub: { width: STUB, height: STUB, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   stubMonth: { fontSize: 11, ...cosmosFont.strong },
-  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.figure },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },
