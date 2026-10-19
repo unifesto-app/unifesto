@@ -813,3 +813,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · N1 badge/pass printing: Space roster "Print badges" (A4 sheet with cut marks or 4x3in / 62mm / DYMO labels), one badge per claimed group seat on the member's own QR, streamed PDF (#272)
 - **2026-10-19** · G2 mobile on-site tools survive offline/slow networks: 15s/90s request timeouts, last-good copy instead of wiping on 5xx/timeout/offline, retry for upserted writes only, one offline/saved-data banner (#273)
 - **2026-10-19** · G13 mobile polish from the 18 Oct device audit (number figures, status-bar scrim, bare icons, city label, draft counts, host logo) (#274)
+- **2026-10-19** · Removed the dead global font patch; LiveSession text sets DM Sans explicitly (G13 follow-up) (#275)
