@@ -41,16 +41,7 @@ export function SettingsGroup({ title, action, plain, surface, style, children }
   const rows = React.Children.toArray(children).filter(Boolean);
   return (
     <View style={[styles.group, style]}>
-      {title || action ? (
-        <View style={styles.titleRow}>
-          {title ? <Text style={[styles.title, { color: tokens.textMuted }]}>{title}</Text> : <View />}
-          {action ? (
-            <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
-              <Text style={[styles.action, { color: tokens.accent }]}>{action.label}</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      <GroupTitle title={title} action={action} />
       <View style={[styles.card, surface ? { backgroundColor: surface } : null]}>
         {surface ? null : <CardBackdrop shape={styles.card} />}
         {rows.map((row, i) => (
@@ -62,6 +53,58 @@ export function SettingsGroup({ title, action, plain, surface, style, children }
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+function GroupTitle({ title, action }: Pick<SettingsGroupProps, 'title' | 'action'>) {
+  const tokens = useTokens();
+  if (!title && !action) return null;
+  return (
+    <View style={styles.titleRow}>
+      {title ? <Text style={[styles.title, { color: tokens.textMuted }]}>{title}</Text> : <View />}
+      {action ? (
+        <Pressable onPress={action.onPress} hitSlop={10} accessibilityRole="button">
+          <Text style={[styles.action, { color: tokens.accent }]}>{action.label}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** A SettingsGroup's top spacing and title, for a group whose rows are list items (see GroupCell). */
+export function SettingsGroupHeader({ title, action, style }: Omit<SettingsGroupProps, 'children' | 'plain' | 'surface'>) {
+  return (
+    <View style={[styles.group, style]}>
+      <GroupTitle title={title} action={action} />
+    </View>
+  );
+}
+
+/**
+ * One row of a SettingsGroup-style card rendered as a FlatList item: the card
+ * surface is drawn per row (rounded only at the ends) so long groups can
+ * virtualise. Same look as SettingsGroup; `divider` overrides the hairline inset.
+ */
+export function GroupCell({ index, count, plain, divider, style, children }: {
+  index: number;
+  count: number;
+  plain?: boolean;
+  divider?: StyleProp<ViewStyle>;
+  style?: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+}) {
+  const tokens = useTokens();
+  const top = index === 0 ? borderRadius.xl : 0;
+  const bottom = index === count - 1 ? borderRadius.xl : 0;
+  const shape = { borderTopLeftRadius: top, borderTopRightRadius: top, borderBottomLeftRadius: bottom, borderBottomRightRadius: bottom };
+  return (
+    <View style={[shape, styles.cell, style]}>
+      <CardBackdrop shape={shape} />
+      {children}
+      {index < count - 1 ? (
+        <View style={[styles.divider, plain && styles.dividerPlain, { backgroundColor: tokens.border }, divider]} />
+      ) : null}
     </View>
   );
 }
@@ -114,6 +157,7 @@ const styles = StyleSheet.create({
   title: { fontSize: typography.fontSize.sm, ...font('semibold') },
   action: { fontSize: typography.fontSize.sm, ...font('semibold') },
   card: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  cell: { overflow: 'hidden' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

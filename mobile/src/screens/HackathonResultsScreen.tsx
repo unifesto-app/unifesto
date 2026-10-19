@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
@@ -7,7 +7,7 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { GroupCell, SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
@@ -18,6 +18,7 @@ import {
   setRoundDecisions,
   updateHackathonConfig,
   type HackathonResults,
+  type ResultRound,
   type ResultTeam,
   type ScoringMode,
 } from '../lib/api/hackathon';
@@ -69,6 +70,13 @@ export default function HackathonResultsScreen() {
   );
   useHackathonSocket(eventId, () => void load());
 
+  const roundId = data?.rounds.some((r) => r.id === view) ? view : null;
+  const openTeam = useCallback(
+    (teamId: string) =>
+      router.push({ pathname: `/manage/event/${eventId}/hackathon/result`, params: { teamId, ...(roundId ? { roundId } : {}) } }),
+    [router, eventId, roundId],
+  );
+
   if (!data) {
     return (
       <View style={[styles.center, { backgroundColor: tokens.bg }]}>
@@ -78,8 +86,6 @@ export default function HackathonResultsScreen() {
   }
 
   const round = data.rounds.find((r) => r.id === view) ?? null;
-  const openTeam = (teamId: string) =>
-    router.push({ pathname: `/manage/event/${eventId}/hackathon/result`, params: { teamId, ...(round ? { roundId: round.id } : {}) } });
 
   const setMode = async (mode: ScoringMode) => {
     if (mode === data.scoringMode) return;
@@ -166,24 +172,9 @@ export default function HackathonResultsScreen() {
     );
   };
 
-  const overallValue = (t: ResultTeam) => {
-    const won = t.awards.filter((a) => a.published).map((a) => a.title);
-    return [t.total != null ? formatScore(t.total) : 'Not scored', ...won].join(' · ');
-  };
-  const overallIcon = (t: ResultTeam) =>
-    t.awards.some((a) => a.published) ? (
-      <Trophy size={ICON} color={tokens.accent} weight="fill" />
-    ) : t.psChangedAfterEvalAt ? (
-      <WarningCircle size={ICON} color={tokens.warning} weight="fill" />
-    ) : t.stage === 'CANCELLED' || t.stage === 'ELIMINATED' ? (
-      <XCircle size={ICON} color={tokens.textMuted} weight="fill" />
-    ) : (
-      <CheckCircle size={ICON} color={tokens.success} weight="fill" />
-    );
-
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
+      <FlatList<{ t: ResultTeam; p?: ResultRound }>
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -200,126 +191,175 @@ export default function HackathonResultsScreen() {
             progressViewOffset={topSpacing}
           />
         }
-      >
-        <ChipPicker
-          options={[{ value: OVERALL, label: 'Overall' }, ...data.rounds.map((r) => ({ value: r.id, label: r.name }))]}
-          value={view}
-          onChange={(v) => v && setView(v)}
-        />
-
-        {!round ? (
+        data={round ? roundTeams : data.teams.map((t) => ({ t }))}
+        keyExtractor={(item) => item.t.id}
+        ListHeaderComponent={
           <>
-            <SettingsGroup title={data.scoringMode === 'CUMULATIVE' ? 'Ranking · rounds added up' : `Ranking · ${data.rounds.find((r) => r.id === data.finalRoundId)?.name ?? 'final round'}`}>
-              {data.teams.length === 0 ? <SettingsRow label="No teams yet" /> : null}
-              {data.teams.map((t) => (
-                <SettingsRow
-                  key={t.id}
-                  icon={overallIcon(t)}
-                  label={`${t.rank != null ? `${t.rank}. ` : ''}${teamLabel(t)}`}
-                  value={t.stage === 'CANCELLED' ? 'Cancelled' : overallValue(t)}
-                  onPress={() => openTeam(t.id)}
-                />
-              ))}
-            </SettingsGroup>
-            {data.teams.some((t) => t.psChangedAfterEvalAt) ? (
-              <Text style={[styles.note, { color: tokens.warning }]}>
-                Teams with a warning sign had their problem statement changed after they were evaluated. Their marks are kept.
-              </Text>
-            ) : null}
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
-              Only submitted marks count. Rankings are a guide: you decide who advances and who wins.
-            </Text>
-
-            <View style={{ marginTop: spacing[8] }}>
-              <BlockTitle>How the winner is decided</BlockTitle>
-              <ChipPicker
-                options={SCORING_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-                value={data.scoringMode}
-                onChange={(v) => v && !busy && void setMode(v)}
-              />
-            </View>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
-              {SCORING_MODE_OPTIONS.find((o) => o.value === data.scoringMode)?.hint} Choose which rounds count on each round’s screen.
-            </Text>
-
-            <SettingsGroup plain>
-              <SwitchRow
-                label="Share judges’ notes with teams"
-                hint="Each team sees notes about its own team, without judges’ names. Never marks."
-                value={data.revealReviews}
-                disabled={busy}
-                onValueChange={setReveal}
-              />
-            </SettingsGroup>
+            <ChipPicker
+              options={[{ value: OVERALL, label: 'Overall' }, ...data.rounds.map((r) => ({ value: r.id, label: r.name }))]}
+              value={view}
+              onChange={(v) => v && setView(v)}
+            />
+            <SettingsGroupHeader
+              title={
+                !round
+                  ? data.scoringMode === 'CUMULATIVE'
+                    ? 'Ranking · rounds added up'
+                    : `Ranking · ${data.rounds.find((r) => r.id === data.finalRoundId)?.name ?? 'final round'}`
+                  : round.kind === 'MENTORING'
+                    ? `${round.name} · mentoring`
+                    : `${round.name} · out of ${formatScore(round.maxScore)}`
+              }
+            />
           </>
-        ) : (
-          <>
-            <SettingsGroup title={round.kind === 'MENTORING' ? `${round.name} · mentoring` : `${round.name} · out of ${formatScore(round.maxScore)}`}>
-              {roundTeams.length === 0 ? <SettingsRow label="No teams in this round" /> : null}
-              {roundTeams.map(({ t, p }) => (
-                <SettingsRow
-                  key={t.id}
-                  icon={
-                    p.standing === 'ADVANCED' ? (
-                      <CheckCircle size={ICON} color={tokens.success} weight="fill" />
-                    ) : p.standing === 'ELIMINATED' ? (
-                      <XCircle size={ICON} color={tokens.danger} weight="fill" />
-                    ) : (
-                      <CircleDashed size={ICON} color={tokens.textMuted} />
-                    )
-                  }
-                  label={`${p.rank != null ? `${p.rank}. ` : ''}${teamLabel(t)}`}
-                  value={
-                    round.kind === 'MENTORING'
-                      ? `${p.evaluations.length} session${p.evaluations.length === 1 ? '' : 's'}`
-                      : `${p.score != null ? formatScore(p.score) : 'Not evaluated'}${round.eliminationEnabled ? ` · ${standingLabel(p.standing)}` : ''}`
-                  }
-                  onPress={() => openTeam(t.id)}
-                />
-              ))}
-            </SettingsGroup>
-            {round.eliminationEnabled && roundTeams.length && round.status !== 'PENDING' ? (
-              <>
-                <SettingsGroup title="Advance the top teams" plain>
-                  <FieldRow label="How many go through" value={topN} onChangeText={setTopN} keyboardType="number-pad" placeholder="10" />
-                </SettingsGroup>
-                <Button
-                  label="Advance top teams, eliminate the rest"
-                  variant="secondary"
-                  fullWidth
-                  loading={busy}
-                  disabled={!topN}
-                  onPress={applyTopN}
-                  style={{ marginTop: spacing[3] }}
-                />
-                <Text style={[styles.note, { color: tokens.textMuted }]}>
-                  Teams tied at the cut all go through. Change any single team from the round’s screen.
-                </Text>
-              </>
-            ) : null}
-            {!round.eliminationEnabled ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>This round doesn’t eliminate: every team goes on.</Text>
-            ) : null}
-          </>
+        }
+        ListEmptyComponent={
+          <GroupCell index={0} count={1}>
+            <SettingsRow label={round ? 'No teams in this round' : 'No teams yet'} />
+          </GroupCell>
+        }
+        renderItem={({ item, index }) => (
+          <GroupCell index={index} count={round ? roundTeams.length : data.teams.length}>
+            {round && item.p ? (
+              <RoundRow t={item.t} p={item.p} round={round} onOpen={openTeam} />
+            ) : (
+              <OverallRow t={item.t} onOpen={openTeam} />
+            )}
+          </GroupCell>
         )}
+        ListFooterComponent={
+          <>
+            {!round ? (
+              <>
+                {data.teams.some((t) => t.psChangedAfterEvalAt) ? (
+                  <Text style={[styles.note, { color: tokens.warning }]}>
+                    Teams with a warning sign had their problem statement changed after they were evaluated. Their marks are kept.
+                  </Text>
+                ) : null}
+                <Text style={[styles.note, { color: tokens.textMuted }]}>
+                  Only submitted marks count. Rankings are a guide: you decide who advances and who wins.
+                </Text>
 
-        <Button
-          label="Export results (CSV)"
-          variant="secondary"
-          size="lg"
-          fullWidth
-          loading={busy}
-          icon={<FileCsv size={18} color={tokens.text} weight="fill" />}
-          onPress={() => void exportCsv()}
-          style={{ marginTop: spacing[8] }}
-        />
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
-          Every team, each judge’s marks per criterion, round scores, decisions, totals and awards.
-        </Text>
-      </ScrollView>
+                <View style={{ marginTop: spacing[8] }}>
+                  <BlockTitle>How the winner is decided</BlockTitle>
+                  <ChipPicker
+                    options={SCORING_MODE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                    value={data.scoringMode}
+                    onChange={(v) => v && !busy && void setMode(v)}
+                  />
+                </View>
+                <Text style={[styles.note, { color: tokens.textMuted }]}>
+                  {SCORING_MODE_OPTIONS.find((o) => o.value === data.scoringMode)?.hint} Choose which rounds count on each round’s screen.
+                </Text>
+
+                <SettingsGroup plain>
+                  <SwitchRow
+                    label="Share judges’ notes with teams"
+                    hint="Each team sees notes about its own team, without judges’ names. Never marks."
+                    value={data.revealReviews}
+                    disabled={busy}
+                    onValueChange={setReveal}
+                  />
+                </SettingsGroup>
+              </>
+            ) : (
+              <>
+                {round.eliminationEnabled && roundTeams.length && round.status !== 'PENDING' ? (
+                  <>
+                    <SettingsGroup title="Advance the top teams" plain>
+                      <FieldRow label="How many go through" value={topN} onChangeText={setTopN} keyboardType="number-pad" placeholder="10" />
+                    </SettingsGroup>
+                    <Button
+                      label="Advance top teams, eliminate the rest"
+                      variant="secondary"
+                      fullWidth
+                      loading={busy}
+                      disabled={!topN}
+                      onPress={applyTopN}
+                      style={{ marginTop: spacing[3] }}
+                    />
+                    <Text style={[styles.note, { color: tokens.textMuted }]}>
+                      Teams tied at the cut all go through. Change any single team from the round’s screen.
+                    </Text>
+                  </>
+                ) : null}
+                {!round.eliminationEnabled ? (
+                  <Text style={[styles.note, { color: tokens.textMuted }]}>This round doesn’t eliminate: every team goes on.</Text>
+                ) : null}
+              </>
+            )}
+
+            <Button
+              label="Export results (CSV)"
+              variant="secondary"
+              size="lg"
+              fullWidth
+              loading={busy}
+              icon={<FileCsv size={18} color={tokens.text} weight="fill" />}
+              onPress={() => void exportCsv()}
+              style={{ marginTop: spacing[8] }}
+            />
+            <Text style={[styles.note, { color: tokens.textMuted }]}>
+              Every team, each judge’s marks per criterion, round scores, decisions, totals and awards.
+            </Text>
+          </>
+        }
+      />
     </KeyboardAvoidingView>
   );
 }
+
+const OverallRow = React.memo(function OverallRow({ t, onOpen }: { t: ResultTeam; onOpen: (teamId: string) => void }) {
+  const tokens = useTokens();
+  const won = t.awards.filter((a) => a.published).map((a) => a.title);
+  return (
+    <SettingsRow
+      icon={
+        t.awards.some((a) => a.published) ? (
+          <Trophy size={ICON} color={tokens.accent} weight="fill" />
+        ) : t.psChangedAfterEvalAt ? (
+          <WarningCircle size={ICON} color={tokens.warning} weight="fill" />
+        ) : t.stage === 'CANCELLED' || t.stage === 'ELIMINATED' ? (
+          <XCircle size={ICON} color={tokens.textMuted} weight="fill" />
+        ) : (
+          <CheckCircle size={ICON} color={tokens.success} weight="fill" />
+        )
+      }
+      label={`${t.rank != null ? `${t.rank}. ` : ''}${teamLabel(t)}`}
+      value={t.stage === 'CANCELLED' ? 'Cancelled' : [t.total != null ? formatScore(t.total) : 'Not scored', ...won].join(' · ')}
+      onPress={() => onOpen(t.id)}
+    />
+  );
+});
+
+const RoundRow = React.memo(function RoundRow({ t, p, round, onOpen }: {
+  t: ResultTeam;
+  p: ResultRound;
+  round: HackathonResults['rounds'][number];
+  onOpen: (teamId: string) => void;
+}) {
+  const tokens = useTokens();
+  return (
+    <SettingsRow
+      icon={
+        p.standing === 'ADVANCED' ? (
+          <CheckCircle size={ICON} color={tokens.success} weight="fill" />
+        ) : p.standing === 'ELIMINATED' ? (
+          <XCircle size={ICON} color={tokens.danger} weight="fill" />
+        ) : (
+          <CircleDashed size={ICON} color={tokens.textMuted} />
+        )
+      }
+      label={`${p.rank != null ? `${p.rank}. ` : ''}${teamLabel(t)}`}
+      value={
+        round.kind === 'MENTORING'
+          ? `${p.evaluations.length} session${p.evaluations.length === 1 ? '' : 's'}`
+          : `${p.score != null ? formatScore(p.score) : 'Not evaluated'}${round.eliminationEnabled ? ` · ${standingLabel(p.standing)}` : ''}`
+      }
+      onPress={() => onOpen(t.id)}
+    />
+  );
+});
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },

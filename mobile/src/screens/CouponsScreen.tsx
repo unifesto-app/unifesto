@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
@@ -7,7 +7,7 @@ import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { describeDiscount, getCoupons, type Coupon } from '../lib/api/coupons';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -53,7 +53,10 @@ export default function CouponsScreen() {
     }, [load]),
   );
 
-  const open = (couponId: string) => router.push({ pathname: `/manage/event/${eventId}/coupon`, params: { couponId } });
+  const open = useCallback(
+    (couponId: string) => router.push({ pathname: `/manage/event/${eventId}/coupon`, params: { couponId } }),
+    [router, eventId],
+  );
 
   if (!coupons) {
     return (
@@ -66,7 +69,7 @@ export default function CouponsScreen() {
   const now = Date.now();
 
   return (
-    <ScrollView
+    <FlatList
       style={{ backgroundColor: tokens.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       showsVerticalScrollIndicator={false}
@@ -83,43 +86,53 @@ export default function CouponsScreen() {
           progressViewOffset={topSpacing}
         />
       }
-    >
-      <Text style={[styles.intro, { color: tokens.textSecondary }]}>
-        Buyers enter a code at checkout. Discounts come off the ticket price, not the processing fee.
-      </Text>
-      {error ? <Text style={[styles.intro, { color: tokens.danger }]}>{error}</Text> : null}
-
-      <SettingsGroup>
-        {coupons.length === 0 ? <SettingsRow label="No codes yet" /> : null}
-        {coupons.map((c) => {
-          const s = state(c, now);
-          return (
-            <View key={c.id}>
-              <SettingsRow
-                label={c.code}
-                value={s}
-                onPress={() => open(c.id)}
-              />
-              <Text style={[styles.sub, { color: s === 'Live' ? tokens.textMuted : tokens.warning }]} onPress={() => open(c.id)}>
-                {describeDiscount(c)} · used {c.confirmedCount}
-                {c.usageLimit != null ? ` of ${c.usageLimit}` : ''}
-              </Text>
-            </View>
-          );
-        })}
-      </SettingsGroup>
-
-      <Button
-        label="New code"
-        variant="secondary"
-        fullWidth
-        icon={<Plus size={18} color={tokens.text} weight="bold" />}
-        onPress={() => open('new')}
-        style={{ marginTop: spacing[5] }}
-      />
-    </ScrollView>
+      data={coupons}
+      keyExtractor={(c) => c.id}
+      ListHeaderComponent={
+        <>
+          <Text style={[styles.intro, { color: tokens.textSecondary }]}>
+            Buyers enter a code at checkout. Discounts come off the ticket price, not the processing fee.
+          </Text>
+          {error ? <Text style={[styles.intro, { color: tokens.danger }]}>{error}</Text> : null}
+          <SettingsGroupHeader />
+        </>
+      }
+      ListEmptyComponent={
+        <GroupCell index={0} count={1}>
+          <SettingsRow label="No codes yet" />
+        </GroupCell>
+      }
+      renderItem={({ item, index }) => (
+        <GroupCell index={index} count={coupons.length}>
+          <CouponRow c={item} s={state(item, now)} onOpen={open} />
+        </GroupCell>
+      )}
+      ListFooterComponent={
+        <Button
+          label="New code"
+          variant="secondary"
+          fullWidth
+          icon={<Plus size={18} color={tokens.text} weight="bold" />}
+          onPress={() => open('new')}
+          style={{ marginTop: spacing[5] }}
+        />
+      }
+    />
   );
 }
+
+const CouponRow = React.memo(function CouponRow({ c, s, onOpen }: { c: Coupon; s: string; onOpen: (couponId: string) => void }) {
+  const tokens = useTokens();
+  return (
+    <>
+      <SettingsRow label={c.code} value={s} onPress={() => onOpen(c.id)} />
+      <Text style={[styles.sub, { color: s === 'Live' ? tokens.textMuted : tokens.warning }]} onPress={() => onOpen(c.id)}>
+        {describeDiscount(c)} · used {c.confirmedCount}
+        {c.usageLimit != null ? ` of ${c.usageLimit}` : ''}
+      </Text>
+    </>
+  );
+});
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },

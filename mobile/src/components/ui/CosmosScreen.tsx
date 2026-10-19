@@ -1,5 +1,14 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type FlatListProps,
+  type ScrollViewProps,
+} from 'react-native';
 import { RefreshControl } from './RefreshControl';
 import CosmosBackdrop from './CosmosBackdrop';
 import useTopSpacing from '../../hooks/useTopSpacing';
@@ -15,6 +24,31 @@ interface CosmosScreenProps extends Omit<ScrollViewProps, 'refreshControl'> {
   /** Bottom padding of the scroll content (default 120; forms with a SaveBar need ~180). */
   bottom?: number;
 }
+
+/** The scroller props both CosmosScreen and CosmosList share. */
+function useCosmosScroll(refreshing: boolean, onRefresh: (() => void) | undefined, bottom: number, contentContainerStyle: ScrollViewProps['contentContainerStyle']) {
+  const c = useCosmos();
+  const topSpacing = useTopSpacing();
+  return {
+    contentContainerStyle: [{ paddingTop: topSpacing, paddingBottom: bottom }, contentContainerStyle],
+    refreshControl: onRefresh ? (
+      <RefreshControl
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        tintColor={c.text}
+        colors={[c.text]}
+        progressViewOffset={topSpacing}
+      />
+    ) : undefined,
+  };
+}
+
+const SCROLL_DEFAULTS = {
+  contentInsetAdjustmentBehavior: 'never',
+  automaticallyAdjustContentInsets: false,
+  showsVerticalScrollIndicator: false,
+  keyboardShouldPersistTaps: 'handled',
+} as const;
 
 /**
  * A pushed screen in the cosmos theme: black ground with the night sky behind a
@@ -32,7 +66,7 @@ export default function CosmosScreen({
   ...scroll
 }: CosmosScreenProps) {
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
+  const shared = useCosmosScroll(refreshing, onRefresh, bottom, contentContainerStyle);
   const Wrap = keyboard ? KeyboardAvoidingView : View;
 
   return (
@@ -41,29 +75,25 @@ export default function CosmosScreen({
       {...(keyboard ? { behavior: Platform.OS === 'ios' ? ('padding' as const) : ('height' as const) } : {})}
     >
       <CosmosBackdrop horizon={false} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        {...scroll}
-        contentContainerStyle={[{ paddingTop: topSpacing, paddingBottom: bottom }, contentContainerStyle]}
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={c.text}
-              colors={[c.text]}
-              progressViewOffset={topSpacing}
-            />
-          ) : undefined
-        }
-      >
+      <ScrollView {...SCROLL_DEFAULTS} {...scroll} {...shared}>
         {children}
       </ScrollView>
       {footer}
     </Wrap>
+  );
+}
+
+type CosmosListProps<T> = Omit<FlatListProps<T>, 'refreshControl'> & Pick<CosmosScreenProps, 'refreshing' | 'onRefresh' | 'bottom'>;
+
+/** CosmosScreen with a FlatList as the scroller, for long lists. */
+export function CosmosList<T>({ refreshing = false, onRefresh, bottom = 120, contentContainerStyle, ...list }: CosmosListProps<T>) {
+  const c = useCosmos();
+  const shared = useCosmosScroll(refreshing, onRefresh, bottom, contentContainerStyle);
+  return (
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <FlatList {...SCROLL_DEFAULTS} {...list} {...shared} />
+    </View>
   );
 }
 

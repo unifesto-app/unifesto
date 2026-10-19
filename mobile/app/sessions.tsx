@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../src/components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { Stack, useRouter } from 'expo-router';
@@ -79,20 +79,22 @@ export default function SessionsListScreen() {
     const list = sessions
       .filter((s) => !platform || platformOf(s) === platform)
       .sort((a, b) => +new Date(a.startDateTime) - +new Date(b.startDateTime));
-    const out: { label: string; items: Session[] }[] = [];
+    const out: { label: string; data: Session[] }[] = [];
     for (const s of list) {
       const label = dayLabel(new Date(s.startDateTime));
       const last = out[out.length - 1];
-      if (last && last.label === label) last.items.push(s);
-      else out.push({ label, items: [s] });
+      if (last && last.label === label) last.data.push(s);
+      else out.push({ label, data: [s] });
     }
     return out;
   }, [sessions, platform]);
 
+  const open = useCallback((s: Session) => router.push(`/session/${s.slug}`), [router]);
+
   return (
     <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
       <Stack.Screen options={{ title: 'Unifesto Huddle', headerShown: true }} />
-      <ScrollView
+      <SectionList
         contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[12] }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -107,88 +109,90 @@ export default function SessionsListScreen() {
             progressViewOffset={topSpacing}
           />
         }
-      >
-        <Text style={[styles.title, { color: tokens.text }]}>Live and upcoming</Text>
-        <Text style={[styles.lead, { color: tokens.textSecondary }]}>Online talks and workshops from spaces on Unifesto.</Text>
+        sections={loading ? [] : groups}
+        keyExtractor={(s) => s.id}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <>
+            <Text style={[styles.title, { color: tokens.text }]}>Live and upcoming</Text>
+            <Text style={[styles.lead, { color: tokens.textSecondary }]}>Online talks and workshops from spaces on Unifesto.</Text>
 
-        {mine.length > 0 ? (
-          <View style={{ marginTop: spacing[8] }}>
-            <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>My sessions</Text>
-            <View style={{ gap: spacing[4] }}>
-              {mine.map((s) => (
-                <SessionRow key={s.id} s={s} now={now} withDay onPress={() => router.push(`/session/${s.slug}`)} />
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {platforms.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsWrap}>
-            {[null, ...platforms].map((p) => {
-              const active = platform === p;
-              return (
-                <Pressable
-                  key={p ?? 'all'}
-                  onPress={() => setPlatform(p)}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  {!active ? <CardBackdrop shape={styles.chip} /> : null}
-                  <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{p ?? 'All'}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        ) : null}
-
-        {loading ? (
-          <View style={{ marginTop: spacing[6], gap: spacing[4] }}>
-            {[0, 1, 2, 3].map((i) => (
-              <View key={i} style={styles.row}>
-                <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Skeleton width="85%" height={14} borderRadius={6} />
-                  <Skeleton width="55%" height={12} borderRadius={6} />
+            {mine.length > 0 ? (
+              <View style={{ marginTop: spacing[8] }}>
+                <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>My sessions</Text>
+                <View style={{ gap: spacing[4] }}>
+                  {mine.map((s) => (
+                    <SessionRow key={s.id} s={s} live={isLive(s, now)} withDay onOpen={open} />
+                  ))}
                 </View>
               </View>
-            ))}
-          </View>
-        ) : groups.length === 0 ? (
-          <View style={styles.empty}>
-            <VideoCamera size={48} color={tokens.textSecondary} weight="duotone" />
-            <Text style={[styles.emptyTitle, { color: tokens.text }]}>No sessions coming up</Text>
-            <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>
-              When spaces schedule online talks or workshops, they show up here.
-            </Text>
-          </View>
-        ) : (
-          groups.map((g) => (
-            <View key={g.label} style={{ marginTop: spacing[8] }}>
-              <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>{g.label}</Text>
-              <View style={{ gap: spacing[4] }}>
-                {g.items.map((s) => (
-                  <SessionRow key={s.id} s={s} now={now} onPress={() => router.push(`/session/${s.slug}`)} />
-                ))}
-              </View>
+            ) : null}
+
+            {platforms.length > 1 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsWrap}>
+                {[null, ...platforms].map((p) => {
+                  const active = platform === p;
+                  return (
+                    <Pressable
+                      key={p ?? 'all'}
+                      onPress={() => setPlatform(p)}
+                      style={({ pressed }) => [
+                        styles.chip,
+                        { backgroundColor: active ? tokens.text : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                      ]}
+                    >
+                      {!active ? <CardBackdrop shape={styles.chip} /> : null}
+                      <Text style={[styles.chipText, { color: active ? tokens.bg : tokens.text }]}>{p ?? 'All'}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
+          </>
+        }
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ marginTop: spacing[6], gap: spacing[4] }}>
+              {[0, 1, 2, 3].map((i) => (
+                <View key={i} style={styles.row}>
+                  <Skeleton width={THUMB_W} height={THUMB_H} borderRadius={borderRadius.md} />
+                  <View style={{ flex: 1, gap: 8 }}>
+                    <Skeleton width="85%" height={14} borderRadius={6} />
+                    <Skeleton width="55%" height={12} borderRadius={6} />
+                  </View>
+                </View>
+              ))}
             </View>
-          ))
+          ) : (
+            <View style={styles.empty}>
+              <VideoCamera size={48} color={tokens.textSecondary} weight="duotone" />
+              <Text style={[styles.emptyTitle, { color: tokens.text }]}>No sessions coming up</Text>
+              <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>
+                When spaces schedule online talks or workshops, they show up here.
+              </Text>
+            </View>
+          )
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.groupLabel, { color: tokens.textMuted, marginTop: spacing[8] }]}>{section.label}</Text>
         )}
-      </ScrollView>
+        ItemSeparatorComponent={ItemGap}
+        renderItem={({ item }) => <SessionRow s={item} live={isLive(item, now)} onOpen={open} />}
+      />
     </View>
   );
 }
 
+const ItemGap = () => <View style={{ height: spacing[4] }} />;
+
 /** One session: 4:3 thumb, live marker, title, time, platform, host and price. */
-function SessionRow({ s, now, withDay, onPress }: { s: Session; now: number; withDay?: boolean; onPress: () => void }) {
+const SessionRow = React.memo(function SessionRow({ s, live, withDay, onOpen }: { s: Session; live: boolean; withDay?: boolean; onOpen: (s: Session) => void }) {
   const tokens = useTokens();
-  const live = isLive(s, now);
   const price = Number(s.price);
   const start = new Date(s.startDateTime);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => onOpen(s)}
       accessibilityRole="button"
       accessibilityLabel={s.title}
       style={({ pressed }) => [styles.row, { opacity: pressed ? 0.75 : 1 }]}
@@ -214,7 +218,7 @@ function SessionRow({ s, now, withDay, onPress }: { s: Session; now: number; wit
       </View>
     </Pressable>
   );
-}
+});
 
 /** Pulsing "Live now" marker. */
 function LiveChip({ color }: { color: string }) {

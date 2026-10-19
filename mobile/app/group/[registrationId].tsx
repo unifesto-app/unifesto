@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,7 +14,7 @@ import {
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowCounterClockwise, CaretRight, Crown, EnvelopeSimple, GenderIntersex, Minus, Phone, Plus, Star, User, UsersThree } from '@unifesto/unicon/react-native';
-import { SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
+import { GroupCell, SettingsGroup, SettingsRow } from '../../src/components/profile/SettingsGroup';
 import { profileGenderToAttendeeOption } from '../../src/utils/profile';
 import AttendeeForm from '../../src/components/AttendeeForm';
 import CustomFieldInput from '../../src/components/CustomFieldInput';
@@ -239,212 +240,221 @@ export default function ManageGroupRoute() {
     <View style={[styles.flex, { backgroundColor: tokens.bg }]}>
       {header}
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
+        <FlatList
           contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: spacing[10] + insets.bottom }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
-        >
-          <Text style={[styles.title, { color: tokens.text }]}>My group</Text>
-          {g.totalCount > 0 ? (
+          data={g.isMember ? [] : g.rows}
+          keyExtractor={(row) => row.key}
+          ListHeaderComponent={
             <>
-              <Text style={[styles.body, { color: tokens.textSecondary, marginTop: 4 }]}>
-                {allFilled
-                  ? 'Everyone is in. Nice.'
-                  : `${g.filledCount} of ${g.totalCount} ${g.usesSeats ? 'seats filled' : 'members added'}`}
-              </Text>
-              <View style={[styles.track, { backgroundColor: tokens.elevated }]}>
-                <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: allFilled ? tokens.success : tokens.accent }]} />
-              </View>
-            </>
-          ) : null}
-
-          {/* Lead handover: asked of me (member), or waiting on someone (lead). */}
-          {g.team?.leadTransfer ? (
-            <View style={[styles.card, { marginTop: spacing[5] }]}>
-              <CardBackdrop shape={styles.card} />
-              <View style={styles.nameRow}>
-                <Crown size={20} color={tokens.accent} weight="duotone" />
-                <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>
-                  {g.team.leadTransfer.toMe ? 'Lead your team?' : `Waiting for ${g.team.leadTransfer.toName}`}
-                </Text>
-              </View>
-              <Text style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
-                {g.team.leadTransfer.toMe
-                  ? `${g.team.leadTransfer.fromName} wants you to take over as team lead. You'll manage the team and its booking, including refunds.`
-                  : `You asked ${g.team.leadTransfer.toName} to take over as team lead. Nothing changes until they accept.`}
-              </Text>
-              {g.team.leadTransfer.toMe ? (
-                <View style={[styles.actions, { marginTop: spacing[4] }]}>
-                  <Button label="Accept" onPress={() => void g.answerTransfer(true)} style={{ flex: 1 }} />
-                  <Button label="Decline" variant="secondary" onPress={() => void g.answerTransfer(false)} style={{ flex: 1 }} />
-                </View>
-              ) : (
-                <Pressable onPress={() => void g.cancelTransfer()} hitSlop={8} style={{ marginTop: spacing[3] }}>
-                  <Text style={[styles.link, { color: tokens.danger }]}>Cancel request</Text>
-                </Pressable>
-              )}
-            </View>
-          ) : null}
-
-          {/* The organiser's window for team changes (lead only). */}
-          {g.team?.isLead && g.usesSeats ? (
-            <Text style={[styles.small, { color: tokens.textMuted, marginTop: spacing[4] }]}>
-              {g.team.open
-                ? g.team.until
-                  ? `You can change your team until ${new Date(g.team.until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.`
-                  : 'You can change your team until the event ends.'
-                : `${g.team.lockedReason ?? 'Team changes are closed.'} Ask the organiser if you need a change.`}
-            </Text>
-          ) : null}
-
-          {g.isMember ? (
-            <View style={{ marginTop: spacing[6] }}>
-              <SettingsGroup>
-                <SettingsRow icon={<User size={24} color={tokens.accent} weight="duotone" />} label={g.details?.member?.name || 'Me'} />
-              </SettingsGroup>
-              <Text style={[styles.body, { color: tokens.textMuted, marginTop: spacing[2] }]}>
-                Name, email, phone and gender can't be changed here. You can change your name and gender in your profile.
-              </Text>
-            </View>
-          ) : g.rows.length > 0 ? (
-            <View style={[styles.card, { paddingVertical: spacing[1], paddingHorizontal: 0, marginTop: spacing[6] }]}>
-              <CardBackdrop shape={styles.card} />
-              {g.rows.map((row, idx) => (
-                <View key={row.key}>
-                  <Row row={row} />
-                  {idx < g.rows.length - 1 ? (
-                    <View style={[styles.divider, { backgroundColor: tokens.border, marginLeft: spacing[4] + AVATAR + spacing[3] }]} />
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text style={[styles.body, { color: tokens.textMuted, textAlign: 'center', marginTop: spacing[8] }]}>
-              There's nothing to manage for this ticket.
-            </Text>
-          )}
-
-          {/* Lead: grow the team, inside the window and its size limit. */}
-          {g.team?.isLead && g.teamOpen && g.usesSeats && g.team.canAddUpTo !== 0 ? (
-            <View style={[styles.card, { marginTop: spacing[4] }]}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.cardTitle, { color: tokens.text }]}>Add people</Text>
-              <Text style={[styles.small, { color: tokens.textMuted }]}>
-                {g.team.addNeedsPayment
-                  ? `₹${g.team.addPricePerSeat} per person, plus the processing fee. Each new seat gets an invite link.`
-                  : 'New seats are free on this ticket. Each one gets an invite link.'}
-              </Text>
-              <View style={[styles.stepper, { marginTop: spacing[4] }]}>
-                <Pressable
-                  onPress={() => g.setAddCount(Math.max(1, g.addCount - 1))}
-                  disabled={g.addCount <= 1}
-                  hitSlop={10}
-                  accessibilityLabel="One fewer seat"
-                  style={{ opacity: g.addCount <= 1 ? 0.3 : 1 }}
-                >
-                  <Minus size={22} color={tokens.text} weight="bold" />
-                </Pressable>
-                <Text style={[styles.stepCount, { color: tokens.text }]}>{g.addCount}</Text>
-                <Pressable
-                  onPress={() => g.setAddCount(Math.min(g.team?.isLead ? g.team.canAddUpTo ?? 20 : 20, 20, g.addCount + 1))}
-                  hitSlop={10}
-                  accessibilityLabel="One more seat"
-                >
-                  <Plus size={22} color={tokens.text} weight="bold" />
-                </Pressable>
-                <Button
-                  label={g.team.addNeedsPayment ? `Pay ₹${g.team.addPricePerSeat * g.addCount} + fee` : `Add ${g.addCount} seat${g.addCount > 1 ? 's' : ''}`}
-                  loading={g.adding}
-                  onPress={() => void g.addSeats()}
-                  style={{ flex: 1 }}
-                />
-              </View>
-            </View>
-          ) : null}
-
-          {/* Lead: the per-group questions, asked once for everyone. Teammate: their own answers. */}
-          {g.details && g.teamFields.length > 0 ? (
-            <View style={[styles.card, { marginTop: spacing[4] }]}>
-              <CardBackdrop shape={styles.card} />
-              <Text style={[styles.cardTitle, { color: tokens.text }]}>{g.isMember ? 'My answers' : 'Team answers'}</Text>
-              {g.details.editable ? (
+              <Text style={[styles.title, { color: tokens.text }]}>My group</Text>
+              {g.totalCount > 0 ? (
                 <>
-                  {g.details.editsUntil ? (
-                    <Text style={[styles.small, { color: tokens.textMuted }]}>
-                      You can change these until{' '}
-                      {new Date(g.details.editsUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.
-                    </Text>
-                  ) : null}
-                  {visibleFields(g.teamFields, g.teamDraft).map((field) => (
-                    <CustomFieldInput key={field.id} field={field} value={g.teamDraft[field.id]} onChange={(v) => g.changeTeamAnswer(field.id, v)} />
-                  ))}
-                  <Button label={g.isMember ? 'Save my answers' : 'Save team answers'} loading={g.savingTeam} disabled={!g.teamChanged} onPress={g.saveTeam} fullWidth style={{ marginTop: spacing[4] }} />
-                </>
-              ) : (
-                <>
-                  <Text style={[styles.small, { color: tokens.textMuted }]}>
-                    {g.details.lockedReason ?? 'These can’t be changed right now.'} Ask the organiser if something is wrong.
+                  <Text style={[styles.body, { color: tokens.textSecondary, marginTop: 4 }]}>
+                    {allFilled
+                      ? 'Everyone is in. Nice.'
+                      : `${g.filledCount} of ${g.totalCount} ${g.usesSeats ? 'seats filled' : 'members added'}`}
                   </Text>
-                  {visibleFields(g.teamFields, g.teamDraft)
-                    .filter((field) => field.field_type !== 'section')
-                    .map((field) => (
-                      <Text key={field.id} style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
-                        {field.label}: <Text style={{ color: tokens.text }}>{displayAnswer(field, g.teamDraft[field.id]) || 'Not answered'}</Text>
-                      </Text>
-                    ))}
+                  <View style={[styles.track, { backgroundColor: tokens.elevated }]}>
+                    <View style={[styles.fill, { width: `${Math.round(progress * 100)}%`, backgroundColor: allFilled ? tokens.success : tokens.accent }]} />
+                  </View>
                 </>
-              )}
-            </View>
-          ) : null}
+              ) : null}
 
-          {/* Inline invite (seats) — opened from an open row */}
-          {g.composerOpen ? (
-            <View style={[styles.card, { marginTop: spacing[4] }]}>
-              <CardBackdrop shape={styles.card} />
-              <View style={styles.cardHead}>
-                <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>
-                  {g.replacing ? `Replace ${g.replacing.name}` : 'Invite by email'}
+              {/* Lead handover: asked of me (member), or waiting on someone (lead). */}
+              {g.team?.leadTransfer ? (
+                <View style={[styles.card, { marginTop: spacing[5] }]}>
+                  <CardBackdrop shape={styles.card} />
+                  <View style={styles.nameRow}>
+                    <Crown size={20} color={tokens.accent} weight="duotone" />
+                    <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>
+                      {g.team.leadTransfer.toMe ? 'Lead your team?' : `Waiting for ${g.team.leadTransfer.toName}`}
+                    </Text>
+                  </View>
+                  <Text style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
+                    {g.team.leadTransfer.toMe
+                      ? `${g.team.leadTransfer.fromName} wants you to take over as team lead. You'll manage the team and its booking, including refunds.`
+                      : `You asked ${g.team.leadTransfer.toName} to take over as team lead. Nothing changes until they accept.`}
+                  </Text>
+                  {g.team.leadTransfer.toMe ? (
+                    <View style={[styles.actions, { marginTop: spacing[4] }]}>
+                      <Button label="Accept" onPress={() => void g.answerTransfer(true)} style={{ flex: 1 }} />
+                      <Button label="Decline" variant="secondary" onPress={() => void g.answerTransfer(false)} style={{ flex: 1 }} />
+                    </View>
+                  ) : (
+                    <Pressable onPress={() => void g.cancelTransfer()} hitSlop={8} style={{ marginTop: spacing[3] }}>
+                      <Text style={[styles.link, { color: tokens.danger }]}>Cancel request</Text>
+                    </Pressable>
+                  )}
+                </View>
+              ) : null}
+
+              {/* The organiser's window for team changes (lead only). */}
+              {g.team?.isLead && g.usesSeats ? (
+                <Text style={[styles.small, { color: tokens.textMuted, marginTop: spacing[4] }]}>
+                  {g.team.open
+                    ? g.team.until
+                      ? `You can change your team until ${new Date(g.team.until).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.`
+                      : 'You can change your team until the event ends.'
+                    : `${g.team.lockedReason ?? 'Team changes are closed.'} Ask the organiser if you need a change.`}
                 </Text>
-                <Pressable onPress={() => g.setComposerOpen(false)} hitSlop={10}>
-                  <Text style={[styles.link, { color: tokens.textSecondary }]}>Cancel</Text>
-                </Pressable>
-              </View>
-              <Text style={[styles.small, { color: tokens.textMuted, marginTop: 4 }]}>
-                {g.replacing
-                  ? `${g.replacing.name} loses this seat and is told by email. The new person gets a link to claim it.`
-                  : 'They get a link to claim this seat as their own ticket and fill in their own details.'}
+              ) : null}
+
+              {g.isMember ? (
+                <View style={{ marginTop: spacing[6] }}>
+                  <SettingsGroup>
+                    <SettingsRow icon={<User size={24} color={tokens.accent} weight="duotone" />} label={g.details?.member?.name || 'Me'} />
+                  </SettingsGroup>
+                  <Text style={[styles.body, { color: tokens.textMuted, marginTop: spacing[2] }]}>
+                    Name, email, phone and gender can't be changed here. You can change your name and gender in your profile.
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          }
+          ListEmptyComponent={
+            g.isMember ? null : (
+              <Text style={[styles.body, { color: tokens.textMuted, textAlign: 'center', marginTop: spacing[8] }]}>
+                There's nothing to manage for this ticket.
               </Text>
-              <View style={[styles.inputRow, { backgroundColor: tokens.fill }]}>
-                <EnvelopeSimple size={20} color={tokens.textMuted} />
-                <TextInput
-                  style={[styles.input, { color: tokens.text }]}
-                  value={g.email}
-                  onChangeText={g.setEmail}
-                  placeholder="name@email.com"
-                  placeholderTextColor={tokens.textMuted}
-                  selectionColor={tokens.accent}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  returnKeyType="send"
-                  autoFocus
-                  onSubmitEditing={g.invite}
-                />
-              </View>
-              <Pressable
-                onPress={g.invite}
-                disabled={g.inviting || !g.email.trim()}
-                style={({ pressed }) => [
-                  styles.send,
-                  { backgroundColor: tokens.accent, opacity: g.inviting || !g.email.trim() ? 0.5 : pressed ? 0.85 : 1 },
-                ]}
-              >
-                {g.inviting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.sendText}>{g.replacing ? 'Replace and invite' : 'Send invite'}</Text>}
-              </Pressable>
-            </View>
-          ) : null}
-        </ScrollView>
+            )
+          }
+          renderItem={({ item, index }) => (
+            <GroupCell
+              index={index}
+              count={g.rows.length}
+              divider={styles.rosterDivider}
+              style={[index === 0 && styles.rosterFirst, index === g.rows.length - 1 && styles.rosterLast]}
+            >
+              <Row row={item} />
+            </GroupCell>
+          )}
+          ListFooterComponent={
+            <>
+              {/* Lead: grow the team, inside the window and its size limit. */}
+              {g.team?.isLead && g.teamOpen && g.usesSeats && g.team.canAddUpTo !== 0 ? (
+                <View style={[styles.card, { marginTop: spacing[4] }]}>
+                  <CardBackdrop shape={styles.card} />
+                  <Text style={[styles.cardTitle, { color: tokens.text }]}>Add people</Text>
+                  <Text style={[styles.small, { color: tokens.textMuted }]}>
+                    {g.team.addNeedsPayment
+                      ? `₹${g.team.addPricePerSeat} per person, plus the processing fee. Each new seat gets an invite link.`
+                      : 'New seats are free on this ticket. Each one gets an invite link.'}
+                  </Text>
+                  <View style={[styles.stepper, { marginTop: spacing[4] }]}>
+                    <Pressable
+                      onPress={() => g.setAddCount(Math.max(1, g.addCount - 1))}
+                      disabled={g.addCount <= 1}
+                      hitSlop={10}
+                      accessibilityLabel="One fewer seat"
+                      style={{ opacity: g.addCount <= 1 ? 0.3 : 1 }}
+                    >
+                      <Minus size={22} color={tokens.text} weight="bold" />
+                    </Pressable>
+                    <Text style={[styles.stepCount, { color: tokens.text }]}>{g.addCount}</Text>
+                    <Pressable
+                      onPress={() => g.setAddCount(Math.min(g.team?.isLead ? g.team.canAddUpTo ?? 20 : 20, 20, g.addCount + 1))}
+                      hitSlop={10}
+                      accessibilityLabel="One more seat"
+                    >
+                      <Plus size={22} color={tokens.text} weight="bold" />
+                    </Pressable>
+                    <Button
+                      label={g.team.addNeedsPayment ? `Pay ₹${g.team.addPricePerSeat * g.addCount} + fee` : `Add ${g.addCount} seat${g.addCount > 1 ? 's' : ''}`}
+                      loading={g.adding}
+                      onPress={() => void g.addSeats()}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Lead: the per-group questions, asked once for everyone. Teammate: their own answers. */}
+              {g.details && g.teamFields.length > 0 ? (
+                <View style={[styles.card, { marginTop: spacing[4] }]}>
+                  <CardBackdrop shape={styles.card} />
+                  <Text style={[styles.cardTitle, { color: tokens.text }]}>{g.isMember ? 'My answers' : 'Team answers'}</Text>
+                  {g.details.editable ? (
+                    <>
+                      {g.details.editsUntil ? (
+                        <Text style={[styles.small, { color: tokens.textMuted }]}>
+                          You can change these until{' '}
+                          {new Date(g.details.editsUntil).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}.
+                        </Text>
+                      ) : null}
+                      {visibleFields(g.teamFields, g.teamDraft).map((field) => (
+                        <CustomFieldInput key={field.id} field={field} value={g.teamDraft[field.id]} onChange={(v) => g.changeTeamAnswer(field.id, v)} />
+                      ))}
+                      <Button label={g.isMember ? 'Save my answers' : 'Save team answers'} loading={g.savingTeam} disabled={!g.teamChanged} onPress={g.saveTeam} fullWidth style={{ marginTop: spacing[4] }} />
+                    </>
+                  ) : (
+                    <>
+                      <Text style={[styles.small, { color: tokens.textMuted }]}>
+                        {g.details.lockedReason ?? 'These can’t be changed right now.'} Ask the organiser if something is wrong.
+                      </Text>
+                      {visibleFields(g.teamFields, g.teamDraft)
+                        .filter((field) => field.field_type !== 'section')
+                        .map((field) => (
+                          <Text key={field.id} style={[styles.body, { color: tokens.textSecondary, marginTop: spacing[2] }]}>
+                            {field.label}: <Text style={{ color: tokens.text }}>{displayAnswer(field, g.teamDraft[field.id]) || 'Not answered'}</Text>
+                          </Text>
+                        ))}
+                    </>
+                  )}
+                </View>
+              ) : null}
+
+              {/* Inline invite (seats) — opened from an open row */}
+              {g.composerOpen ? (
+                <View style={[styles.card, { marginTop: spacing[4] }]}>
+                  <CardBackdrop shape={styles.card} />
+                  <View style={styles.cardHead}>
+                    <Text style={[styles.cardTitle, { color: tokens.text, marginBottom: 0 }]}>
+                      {g.replacing ? `Replace ${g.replacing.name}` : 'Invite by email'}
+                    </Text>
+                    <Pressable onPress={() => g.setComposerOpen(false)} hitSlop={10}>
+                      <Text style={[styles.link, { color: tokens.textSecondary }]}>Cancel</Text>
+                    </Pressable>
+                  </View>
+                  <Text style={[styles.small, { color: tokens.textMuted, marginTop: 4 }]}>
+                    {g.replacing
+                      ? `${g.replacing.name} loses this seat and is told by email. The new person gets a link to claim it.`
+                      : 'They get a link to claim this seat as their own ticket and fill in their own details.'}
+                  </Text>
+                  <View style={[styles.inputRow, { backgroundColor: tokens.fill }]}>
+                    <EnvelopeSimple size={20} color={tokens.textMuted} />
+                    <TextInput
+                      style={[styles.input, { color: tokens.text }]}
+                      value={g.email}
+                      onChangeText={g.setEmail}
+                      placeholder="name@email.com"
+                      placeholderTextColor={tokens.textMuted}
+                      selectionColor={tokens.accent}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="email-address"
+                      returnKeyType="send"
+                      autoFocus
+                      onSubmitEditing={g.invite}
+                    />
+                  </View>
+                  <Pressable
+                    onPress={g.invite}
+                    disabled={g.inviting || !g.email.trim()}
+                    style={({ pressed }) => [
+                      styles.send,
+                      { backgroundColor: tokens.accent, opacity: g.inviting || !g.email.trim() ? 0.5 : pressed ? 0.85 : 1 },
+                    ]}
+                  >
+                    {g.inviting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.sendText}>{g.replacing ? 'Replace and invite' : 'Send invite'}</Text>}
+                  </Pressable>
+                </View>
+              ) : null}
+            </>
+          }
+        />
       </KeyboardAvoidingView>
     </View>
   );
@@ -465,7 +475,7 @@ function SeatActions({ actions }: { actions: SeatAction[] }) {
 }
 
 /** One person-slot: who it is (or the seat's state). Tap to open its page. */
-function Row({ row }: { row: GroupRow }) {
+const Row = React.memo(function Row({ row }: { row: GroupRow }) {
   const tokens = useTokens();
   const leadMark = row.isLead ? <Star size={12} color={tokens.accent} weight="fill" /> : null;
 
@@ -518,7 +528,7 @@ function Row({ row }: { row: GroupRow }) {
       <CaretRight size={14} color={tokens.textMuted} />
     </Pressable>
   );
-}
+});
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -544,6 +554,10 @@ const styles = StyleSheet.create({
   stepCount: { minWidth: 24, textAlign: 'center', fontSize: typography.fontSize.lg, ...font('semibold') },
   action: { fontSize: typography.fontSize.sm, ...font('semibold') },
   divider: { height: StyleSheet.hairlineWidth },
+  // The roster card: a little air above the first row and below the last.
+  rosterFirst: { marginTop: spacing[6], paddingTop: spacing[1] },
+  rosterLast: { paddingBottom: spacing[1] },
+  rosterDivider: { marginLeft: spacing[4] + AVATAR + spacing[3] },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',

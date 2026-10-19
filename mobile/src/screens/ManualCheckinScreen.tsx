@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { MagnifyingGlass, UserFocus, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
@@ -12,6 +12,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import PersonRow from '../components/checkin/PersonRow';
 import PointChips from '../components/checkin/PointChips';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import { GroupCell } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import { attendeeName } from '../utils/checkinFormat';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -209,50 +210,52 @@ export default function ManualCheckinScreen() {
   );
 
   return (
-    <ScrollView
+    <FlatList
       style={{ backgroundColor: tokens.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
-    >
-      {header}
-      {results.length === 0 ? (
-        emptyState
-      ) : (
-        <View style={styles.card}>
-          <CardBackdrop shape={styles.card} />
-          {results.map((item, i) => (
-            <View key={rowKey(item)}>
-              <PersonRow
-                name={attendeeName(item.attendee)}
-                avatarUrl={item.attendee.avatarUrl}
-                sub={[
-                  item.ticketType,
-                  item.groupLeadName && item.memberIndex !== 0 ? `${item.groupLeadName}'s group` : null,
-                  item.memberIndex === 0 ? 'Group lead' : null,
-                  item.claimable === false ? 'Seat not claimed' : null,
-                  item.attendee.username && item.attendee.fullName ? `@${item.attendee.username}` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                action={{
-                  state: item.checkedInAtPoint ? 'done' : busyId === rowKey(item) ? 'busy' : 'idle',
-                  onPress: () => void checkIn(item),
-                }}
-                undo={
-                  item.checkedInAtPoint && !isOffline
-                    ? { busy: busyId === rowKey(item), onPress: () => undo(item) }
-                    : undefined
-                }
-              />
-              {i < results.length - 1 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
-            </View>
-          ))}
-        </View>
+      data={results}
+      keyExtractor={rowKey}
+      ListHeaderComponent={header}
+      ListEmptyComponent={emptyState}
+      renderItem={({ item, index }) => (
+        <GroupCell index={index} count={results.length} style={styles.cell} divider={styles.divider}>
+          <ResultRow item={item} busy={busyId === rowKey(item)} canUndo={!isOffline} onCheckIn={checkIn} onUndo={undo} />
+        </GroupCell>
       )}
-    </ScrollView>
+    />
   );
 }
+
+const ResultRow = React.memo(function ResultRow({ item, busy, canUndo, onCheckIn, onUndo }: {
+  item: AttendeeSearchResult;
+  busy: boolean;
+  canUndo: boolean;
+  onCheckIn: (r: AttendeeSearchResult) => Promise<void>;
+  onUndo: (r: AttendeeSearchResult) => void;
+}) {
+  return (
+    <PersonRow
+      name={attendeeName(item.attendee)}
+      avatarUrl={item.attendee.avatarUrl}
+      sub={[
+        item.ticketType,
+        item.groupLeadName && item.memberIndex !== 0 ? `${item.groupLeadName}'s group` : null,
+        item.memberIndex === 0 ? 'Group lead' : null,
+        item.claimable === false ? 'Seat not claimed' : null,
+        item.attendee.username && item.attendee.fullName ? `@${item.attendee.username}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      action={{
+        state: item.checkedInAtPoint ? 'done' : busy ? 'busy' : 'idle',
+        onPress: () => void onCheckIn(item),
+      }}
+      undo={item.checkedInAtPoint && canUndo ? { busy, onPress: () => onUndo(item) } : undefined}
+    />
+  );
+});
 
 function Empty({ title, body }: { title: string; body: string }) {
   const tokens = useTokens();
@@ -279,8 +282,8 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, fontSize: typography.fontSize.base, paddingVertical: 0, ...font() },
   chips: { marginTop: spacing[3] },
-  card: { marginHorizontal: GUTTER, borderRadius: borderRadius.xl, overflow: 'hidden' },
-  divider: { height: StyleSheet.hairlineWidth, marginLeft: spacing[4] + 40 + spacing[3] },
+  cell: { marginHorizontal: GUTTER },
+  divider: { marginLeft: spacing[4] + 40 + spacing[3] },
   empty: { alignItems: 'center', paddingTop: spacing[16], paddingHorizontal: spacing[8], gap: spacing[2] },
   emptyTitle: { fontSize: typography.fontSize.lg, marginTop: spacing[2], ...font('semibold') },
   emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...font() },
