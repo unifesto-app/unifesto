@@ -18,6 +18,28 @@ const DEBOUNCE_MS = 400;
  * still decided by the HTTP endpoints.
  */
 export default function useHackathonSocket(eventId: string | undefined, onChange: () => void, enabled = true): { live: boolean } {
+  return useEventRoomSocket('hackathon', eventId, onChange, enabled);
+}
+
+/**
+ * Live engagement on an event (L1 polls; later Q&A and quizzes): the same
+ * refetch pings, on the event's engagement room. Attendees and operators only.
+ */
+export function useEngagementSocket(eventId: string | undefined, onChange: () => void, enabled = true): { live: boolean } {
+  return useEventRoomSocket('engagement', eventId, onChange, enabled);
+}
+
+/**
+ * One event room on the /leaderboard socket: `<channel>:subscribe`, then
+ * `<channel>:changed` pings. Engagement pings reach a whole audience at once,
+ * so their refetch is spread over a random extra second and a half.
+ */
+function useEventRoomSocket(
+  channel: 'hackathon' | 'engagement',
+  eventId: string | undefined,
+  onChange: () => void,
+  enabled: boolean,
+): { live: boolean } {
   const [live, setLive] = useState(false);
   const cb = useRef(onChange);
   cb.current = onChange;
@@ -29,7 +51,7 @@ export default function useHackathonSocket(eventId: string | undefined, onChange
     let timer: ReturnType<typeof setTimeout> | null = null;
     const fire = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(() => cb.current(), DEBOUNCE_MS);
+      timer = setTimeout(() => cb.current(), DEBOUNCE_MS + (channel === 'engagement' ? Math.random() * 1500 : 0));
     };
 
     void getToken().then((token) => {
@@ -44,7 +66,7 @@ export default function useHackathonSocket(eventId: string | undefined, onChange
         reconnectionDelayMax: 10_000,
       });
       socket.on('connect', () => {
-        socket?.emit('hackathon:subscribe', { eventId }, (res: { ok?: boolean } | undefined) => {
+        socket?.emit(`${channel}:subscribe`, { eventId }, (res: { ok?: boolean } | undefined) => {
           setLive(!!res?.ok);
         });
         fire(); // catch up on anything missed while disconnected
@@ -56,13 +78,13 @@ export default function useHackathonSocket(eventId: string | undefined, onChange
         if (reason === 'io server disconnect' && !cancelled) socket?.connect();
       });
       socket.on('connect_error', () => setLive(false));
-      socket.on('hackathon:changed', (p: { eventId?: string }) => {
+      socket.on(`${channel}:changed`, (p: { eventId?: string }) => {
         if (!p?.eventId || p.eventId === eventId) fire();
       });
     });
 
     const offPush = onNotificationArrived((n) => {
-      if (n.type === 'hackathon' && (!n.eventId || n.eventId === eventId)) fire();
+      if (n.type === channel && (!n.eventId || n.eventId === eventId)) fire();
     });
     const appState = AppState.addEventListener('change', (s) => {
       if (s === 'active') fire();
@@ -73,11 +95,11 @@ export default function useHackathonSocket(eventId: string | undefined, onChange
       if (timer) clearTimeout(timer);
       offPush();
       appState.remove();
-      socket?.emit('hackathon:unsubscribe');
+      socket?.emit(`${channel}:unsubscribe`);
       socket?.disconnect();
       setLive(false);
     };
-  }, [eventId, enabled]);
+  }, [channel, eventId, enabled]);
 
   // Fallback: poll while the socket isn't delivering.
   useEffect(() => {

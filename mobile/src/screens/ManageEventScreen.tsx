@@ -17,6 +17,7 @@ import {
   Handshake,
   Lightning,
   ListBullets,
+  ListChecks,
   Medal,
   PencilSimple,
   QrCode,
@@ -235,6 +236,10 @@ export default function ManageEventScreen() {
               label="Scan Stay Pass"
               onPress={() => router.push({ pathname: `/manage/event/${e.id}/stay-scan`, params: { desk: '1' } })}
             />
+          ) : null}
+          {/* Live polls need event:edit, which hosts have; the server re-checks. */}
+          {h.access.hosts ? (
+            <SettingsRow icon={icon(ListChecks)} label="Live polls" onPress={() => router.push(`/manage/event/${e.id}/polls`)} />
           ) : null}
           {h.access.hosts ? (
             <SettingsRow
