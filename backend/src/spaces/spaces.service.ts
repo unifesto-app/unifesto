@@ -529,23 +529,16 @@ export class SpacesService {
   }
 
   /**
-   * Update space status (approve/reject)
+   * Update space status (approve/reject). No first-party client calls this
+   * (Apex uses AdminService.approveSpace / rejectSpace, which tell the creator
+   * through notify()), so it sends nothing.
    */
   async updateSpaceStatus(
     id: string,
     dto: UpdateSpaceStatusDto,
     approvedBy: string,
   ) {
-    const space = await this.prisma.space.findUnique({ 
-      where: { id },
-      include: {
-        creator: {
-          include: {
-            identities: true,
-          },
-        },
-      },
-    });
+    const space = await this.prisma.space.findUnique({ where: { id } });
 
     if (!space) {
       throw new NotFoundException('Space not found');
@@ -572,27 +565,6 @@ export class SpacesService {
       where: { id },
       data: updateData,
     });
-
-    // Send email notifications (non-blocking)
-    const organizerEmail = space.creator.identities.find(i => i.email)?.email;
-    
-    if (organizerEmail) {
-      if (dto.status === SpaceStatus.APPROVED) {
-        this.emailService.sendSpaceApproved({
-          email: organizerEmail,
-          organizerName: space.creator.fullName || space.creator.username || 'there',
-          spaceName: space.name,
-          spaceSlug: space.slug,
-        }).catch(err => this.logger.error('Failed to send space approved email', err));
-      } else if (dto.status === SpaceStatus.REJECTED && dto.rejectionReason) {
-        this.emailService.sendSpaceRejected({
-          email: organizerEmail,
-          organizerName: space.creator.fullName || space.creator.username || 'there',
-          spaceName: space.name,
-          rejectionReason: dto.rejectionReason,
-        }).catch(err => this.logger.error('Failed to send space rejected email', err));
-      }
-    }
 
     return updatedSpace;
   }

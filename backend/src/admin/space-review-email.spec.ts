@@ -11,7 +11,8 @@ describe('AdminService space review notices', () => {
     const prisma = {
       space: {
         findUnique: jest.fn(async () => space),
-        update: jest.fn(async () => ({ id: 'sp-1', approvedAt: new Date(1_700_000_000_000) })),
+        updateMany: jest.fn(async () => ({ count: 1 })),
+        findUniqueOrThrow: jest.fn(async () => ({ id: 'sp-1', approvedAt: new Date(1_700_000_000_000) })),
       },
     };
     const email = {
@@ -21,7 +22,7 @@ describe('AdminService space review notices', () => {
     const notify = { notify: jest.fn(async () => ({})) };
     const config = { get: () => 'ap-south-1' };
     const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, email as any, notify as any);
-    return { svc, email, notify };
+    return { svc, email, notify, prisma };
   };
 
   it('approving tells the creator (space.approved, deduped per approval by the kind)', async () => {
@@ -42,5 +43,15 @@ describe('AdminService space review notices', () => {
       expect.objectContaining({ spaceId: 'sp-1', rejectionReason: 'Add a logo' }),
     );
     expect(email.sendSpaceRejected).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['approve', (svc: AdminService) => svc.approveSpace('sp-1', 'admin-1'), /already approved/],
+    ['reject', (svc: AdminService) => svc.rejectSpace('sp-1', 'admin-1', 'x'), /already rejected/],
+  ] as const)('a double-click %s loses the atomic claim and tells nobody twice', async (_n, act, msg) => {
+    const { svc, notify, prisma } = build();
+    prisma.space.updateMany.mockResolvedValue({ count: 0 });
+    await expect(act(svc)).rejects.toThrow(msg);
+    expect(notify.notify).not.toHaveBeenCalled();
   });
 });

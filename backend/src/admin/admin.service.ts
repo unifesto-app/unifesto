@@ -780,12 +780,9 @@ export class AdminService {
     if (!space) {
       throw new NotFoundException('Space not found');
     }
-    if (space.status === SpaceStatus.APPROVED || space.status === SpaceStatus.ACTIVE) {
-      throw new BadRequestException('Space is already approved');
-    }
-
-    const updated = await this.prisma.space.update({
-      where: { id },
+    // Atomic claim: a double click approves (and tells the creator) once.
+    const claimed = await this.prisma.space.updateMany({
+      where: { id, status: { notIn: [SpaceStatus.APPROVED, SpaceStatus.ACTIVE] } },
       data: {
         status: SpaceStatus.APPROVED,
         approvedAt: new Date(),
@@ -793,6 +790,12 @@ export class AdminService {
         rejectedAt: null,
         rejectionReason: null,
       },
+    });
+    if (!claimed.count) {
+      throw new BadRequestException('Space is already approved');
+    }
+    const updated = await this.prisma.space.findUniqueOrThrow({
+      where: { id },
       select: { id: true, name: true, status: true, approvedAt: true, approvedBy: true },
     });
     this.logger.log(`Space ${id} approved by admin ${adminId}`);
@@ -820,14 +823,21 @@ export class AdminService {
       throw new NotFoundException('Space not found');
     }
 
-    const updated = await this.prisma.space.update({
-      where: { id },
+    // Atomic claim: a double click rejects (and tells the creator) once.
+    const claimed = await this.prisma.space.updateMany({
+      where: { id, status: { not: SpaceStatus.REJECTED } },
       data: {
         status: SpaceStatus.REJECTED,
         rejectedAt: new Date(),
         approvedBy: adminId,
         rejectionReason: reason?.trim() || null,
       },
+    });
+    if (!claimed.count) {
+      throw new BadRequestException('Space is already rejected');
+    }
+    const updated = await this.prisma.space.findUniqueOrThrow({
+      where: { id },
       select: {
         id: true,
         name: true,

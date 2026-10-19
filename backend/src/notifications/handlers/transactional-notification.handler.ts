@@ -179,7 +179,11 @@ export class TransactionalNotificationHandler {
     private readonly notify: NotifyService,
   ) {}
 
-  /** notify() per person, in turn (see NotifyBatchEvent). notify() never throws. */
+  /**
+   * notify() per person, in turn (see NotifyBatchEvent). notify() never throws.
+   * In-process: a restart mid-batch drops the rest (accepted; per-person dedup
+   * makes re-triggering the batch safe).
+   */
   @OnEvent(NotificationEvents.NotifyBatch, { async: true })
   async onNotifyBatch(e: NotifyBatchEvent): Promise<void> {
     for (const i of e.items) {
