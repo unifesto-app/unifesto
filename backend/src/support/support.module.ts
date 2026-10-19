@@ -9,11 +9,12 @@ import { EmailModule } from '../email/email.module';
 import { SupportNotifier } from './support-notifier';
 import { SupportTriage } from './support-triage';
 import { AiModule } from '../ai/ai.module';
+import { SubjectCases } from './subject-cases';
 
 @Module({
   imports: [PrismaModule, AuthModule, StorageModule, NotificationsModule, EmailModule, AiModule],
   controllers: [SupportController],
-  providers: [SupportService, SupportNotifier, SupportTriage],
+  providers: [SupportService, SupportNotifier, SupportTriage, SubjectCases],
   exports: [SupportService],
 })
 export class SupportModule {}
