@@ -38,6 +38,7 @@ import {
 } from '@livekit/react-native';
 import { Track } from 'livekit-client';
 import { useTheme } from '../context/ThemeContext';
+import { font } from '../theme/fontHelpers';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import { joinSession } from '../lib/api/sessions';
 
@@ -337,7 +338,7 @@ function CallControl({
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: '#0a0a0a' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  msg: { marginTop: 12, fontSize: 15, textAlign: 'center' },
+  msg: { marginTop: 12, fontSize: 15, textAlign: 'center', ...font() },
   grid: {
     flexGrow: 1,
     flexDirection: 'row',
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  waiting: { color: '#888', fontSize: 15 },
+  waiting: { color: '#888', fontSize: 15, ...font() },
   tile: {
     width: '47%',
     aspectRatio: 3 / 4,
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
     left: 8,
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    ...font('semibold'),
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowRadius: 3,
   },
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#2a2a2a',
   },
-  leaveText: { color: '#fff', fontWeight: '600' },
+  leaveText: { color: '#fff', ...font('semibold') },
   chatContainer: { flex: 1, backgroundColor: '#0a0a0a' },
   chatHeader: {
     flexDirection: 'row',
@@ -408,10 +409,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#333',
   },
-  chatTitle: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  chatTitle: { color: '#fff', fontSize: 18, ...font('bold') },
   chatList: { flex: 1 },
-  chatFrom: { color: '#9aa', fontSize: 12, fontWeight: '600', marginBottom: 2 },
-  chatMessage: { color: '#fff', fontSize: 15 },
+  chatFrom: { color: '#9aa', fontSize: 12, marginBottom: 2, ...font('semibold') },
+  chatMessage: { color: '#fff', fontSize: 15, ...font() },
   chatInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -428,6 +429,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: '#fff',
     fontSize: 15,
+    ...font(),
   },
   chatSend: {
     width: 44,

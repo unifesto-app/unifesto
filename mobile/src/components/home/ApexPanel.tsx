@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     gap: 2,
   },
-  needCount: { fontSize: typography.fontSize.xl, lineHeight: 30, ...cosmosFont.display },
+  needCount: { fontSize: typography.fontSize.xl, lineHeight: 30, ...cosmosFont.figure },
   needLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   clear: {
     flexDirection: 'row',

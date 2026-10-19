@@ -106,7 +106,7 @@ export default function FinanceScreen() {
 
   const { fin, payouts, toReview, accounts } = state;
   const hasVerified = accounts?.some((a) => a.status === 'VERIFIED') ?? true;
-  const icon = (I: typeof Bank) => <I size={ICON} color={c.text} weight="fill" />;
+  const icon = (I: typeof Bank) => <I size={ICON} color={c.text} />;
 
   return (
     <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   pad: { paddingHorizontal: GUTTER },
   card: { borderRadius: cosmosCardRadius, padding: spacing[5] },
   eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  heroValue: { marginTop: spacing[2], fontSize: 32, lineHeight: 42, ...cosmosFont.display },
+  heroValue: { marginTop: spacing[2], fontSize: 32, lineHeight: 42, ...cosmosFont.figure },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   warn: { flexDirection: 'row', gap: spacing[3], alignItems: 'flex-start', marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius },
   warnText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
   },
   totalLabel: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  totalValue: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  totalValue: { fontSize: 17, lineHeight: 24, ...cosmosFont.figure },
   note: {
     marginTop: spacing[3],
     marginHorizontal: GUTTER + spacing[1],

@@ -261,7 +261,7 @@ export default function HackathonRoundScreen() {
 
   const mode = JUDGING_MODE_OPTIONS.find((o) => o.value === draft.judgingMode);
   const mentoring = draft.kind === 'MENTORING';
-  const icon = (I: typeof Play, color = tokens.accent) => <I size={ICON} color={color} weight="fill" />;
+  const icon = (I: typeof Play, color = tokens.text) => <I size={ICON} color={color} />;
   const criteriaUrl = (metricId?: string) => ({
     pathname: `/manage/event/${eventId}/hackathon/criterion`,
     params: { roundId: roundId!, ...(metricId ? { metricId } : {}) },

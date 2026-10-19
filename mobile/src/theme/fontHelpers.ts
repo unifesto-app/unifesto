@@ -11,6 +11,10 @@
 // Each family is a distinct STATIC face registered in app/_layout.tsx; the
 // weight lives in the family name, so we set fontFamily only (never fontWeight,
 // which would trigger Android synthetic bolding on an already-weighted face).
+//
+// There is no app-wide default family: RN Text only inherits fontFamily from a
+// parent Text, so every top-level text style must set one (via these helpers or
+// cosmos fonts) or it renders in the system font.
 
 import type { TextStyle } from 'react-native';
 import {

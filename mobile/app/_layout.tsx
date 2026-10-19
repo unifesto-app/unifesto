@@ -27,7 +27,6 @@ import { tagCrashReports } from '../src/lib/appBuild';
 import { showWhatsNewIfNeeded } from '../src/lib/whatsNew';
 import { loadDefaultImages } from '../src/lib/defaultImages';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
-import { applyGlobalFont } from '../src/theme/globalFont';
 import { darkTokens, lightTokens } from '../src/theme/tokens';
 
 // Dev-only noise filter. On the New Architecture every native-driven core
@@ -64,10 +63,6 @@ if (__DEV__) {
     if (!isNoise(args)) console.warn(...args);
   });
 }
-
-// Make DM Sans the app-wide default for every Text/TextInput that doesn't
-// explicitly pick another family. Runs once at module load, before any render.
-applyGlobalFont();
 
 // Crash reporting. Crashlytics collection is independent of Firebase Analytics
 // (which stays deactivated for Apple ATT compliance) and is enabled explicitly here.

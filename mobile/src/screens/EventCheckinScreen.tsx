@@ -176,7 +176,7 @@ export default function EventCheckinScreen() {
         <View style={styles.gutter}>
           <SettingsGroup title="Unifesto Sprint">
             <SettingsRow
-              icon={<Lifebuoy size={24} color={tokens.accent} weight="fill" />}
+              icon={<Lifebuoy size={24} color={tokens.text} />}
               label="Help desk"
               value={openQueries ? `${openQueries} open` : 'All clear'}
               onPress={() => router.push(`/hackathon/${eventId}/help-desk`)}

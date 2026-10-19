@@ -87,7 +87,7 @@ export default function PartnerStatsScreen() {
     );
   }
 
-  const icon = (I: typeof Eye) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof Eye) => <I size={ICON} color={tokens.text} />;
   const e = stats.event;
 
   const copyLink = async () => {

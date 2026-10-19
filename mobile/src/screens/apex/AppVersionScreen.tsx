@@ -159,7 +159,7 @@ export default function AppVersionScreen() {
         {STORES.map(({ key, title, Logo }) => (
           <SettingsGroup key={key} title={title}>
             <FormRow
-              icon={<ArrowCircleUp size={ICON} color={tokens.accent} weight="fill" />}
+              icon={<ArrowCircleUp size={ICON} color={tokens.text} />}
               value={draft[key].latestVersion}
               onChangeText={set(key, 'latestVersion')}
               placeholder="Empty = no update prompt"
@@ -168,7 +168,7 @@ export default function AppVersionScreen() {
               trailing={hint('Latest')}
             />
             <FormRow
-              icon={<ShieldWarning size={ICON} color={tokens.accent} weight="fill" />}
+              icon={<ShieldWarning size={ICON} color={tokens.text} />}
               value={draft[key].minimumVersion}
               onChangeText={set(key, 'minimumVersion')}
               placeholder="2.0.0"
@@ -177,7 +177,7 @@ export default function AppVersionScreen() {
               trailing={hint('Minimum')}
             />
             <FormRow
-              icon={<Logo size={ICON} color={tokens.accent} weight="fill" />}
+              icon={<Logo size={ICON} color={tokens.text} />}
               value={draft[key].storeUrl}
               onChangeText={set(key, 'storeUrl')}
               placeholder="https://…"

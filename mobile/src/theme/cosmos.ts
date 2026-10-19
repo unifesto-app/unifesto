@@ -2,6 +2,7 @@
 // ported for the login, splash and Home. Black ground, light type, one silver accent; the
 // light set flips the same roles exactly like the web's [data-theme="light"].
 import React, { createContext, useContext, useMemo } from 'react';
+import type { TextStyle } from 'react-native';
 import { useTokens } from '../context/ThemeContext';
 
 const dark = {
@@ -99,6 +100,11 @@ export const cosmosFont = {
   display: { fontFamily: 'Michroma', letterSpacing: 0.3 },
   body: { fontFamily: 'HankenGrotesk' },
   strong: { fontFamily: 'HankenGrotesk-SemiBold' },
+  /**
+   * Counts, prices, dates, codes. Michroma's 0 is a rounded box that reads as O
+   * and it has no ₹ or tabular figures, so numbers never use `display`.
+   */
+  figure: { fontFamily: 'HankenGrotesk-SemiBold', fontVariant: ['tabular-nums', 'lining-nums'] as TextStyle['fontVariant'] },
 } as const;
 
 /** Controls (fields, buttons, segments): soft, rounded corners. Never square boxes. */

@@ -181,7 +181,7 @@ export default function EventSettingsScreen() {
   const canHide = (isCompleted || isCancelled) && !isHidden;
   const canDelete = isDraft || isCancelled;
   const canCancel = status === 'PUBLISHED';
-  const icon = (I: typeof Trash, color = tokens.accent) => <I size={ICON} color={color} weight="fill" />;
+  const icon = (I: typeof Trash, color = tokens.text) => <I size={ICON} color={color} />;
   const radio = (on: boolean) =>
     on ? <CheckCircle size={22} color={tokens.accent} weight="fill" /> : <CircleIcon size={22} color={tokens.textMuted} />;
 

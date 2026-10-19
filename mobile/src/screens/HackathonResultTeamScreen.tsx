@@ -169,7 +169,7 @@ export default function HackathonResultTeamScreen() {
                 {ev.locked && r.status === 'ACTIVE' ? (
                   <SettingsGroup plain>
                     <SettingsRow
-                      icon={<LockOpen size={22} color={tokens.accent} weight="fill" />}
+                      icon={<LockOpen size={22} color={tokens.text} />}
                       label="Reopen for 5 minutes"
                       onPress={() => reopen(ev.judgmentId, ev.judgeName)}
                     />

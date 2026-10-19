@@ -210,7 +210,7 @@ export function CircleRow({
         style={[styles.tile, styles.more, { borderColor: c.outline }]}
       >
         <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
-        <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs and communities near you</Text>
+        <Text style={[styles.tileMeta, { color: c.muted, marginTop: 6 }]}>Clubs, communities and organisers</Text>
         <ArrowRight size={18} color={c.text} style={{ marginTop: spacing[4] }} />
       </PressableScale>
     </ScrollView>
@@ -235,19 +235,20 @@ const styles = StyleSheet.create({
   },
   meta: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   stats: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
-  statValue: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.display },
+  statValue: { fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   tileRow: { paddingHorizontal: GUTTER, gap: spacing[3] },
   tile: { width: TILE_W, borderRadius: cosmosCardRadius, padding: spacing[4] },
-  tileTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
+  // The role pill wraps under the logo rather than truncating ("Space ad…").
+  tileTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
   tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: 14, overflow: 'hidden' },
-  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, flexShrink: 1 },
+  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   roleText: { fontSize: 11, ...cosmosFont.strong },
   tileName: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.25, ...cosmosFont.strong },
   tileMeta: { marginTop: 3, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   // Pinned to the bottom so counts line up across tiles with one- and two-line names.
   tileFoot: { marginTop: 'auto', paddingTop: spacing[4], flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  tileCount: { fontSize: 16, ...cosmosFont.display },
+  tileCount: { fontSize: 16, ...cosmosFont.figure },
   more: { borderWidth: 1, borderStyle: 'dashed', justifyContent: 'center' },
   moreTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

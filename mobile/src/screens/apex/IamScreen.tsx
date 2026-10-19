@@ -135,7 +135,7 @@ export default function IamScreen() {
         <>
           <SettingsGroup title="Platform">
             <SettingsRow
-              icon={<ShieldCheck size={26} color={tokens.accent} weight="fill" />}
+              icon={<ShieldCheck size={26} color={tokens.text} />}
               label={roleLabel(admin.code)}
               trailing={<Lock size={18} color={tokens.textMuted} weight="fill" />}
             />

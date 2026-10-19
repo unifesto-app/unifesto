@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     gap: 2,
   },
-  stubNumber: { fontSize: 24, lineHeight: 26, ...cosmosFont.display },
+  stubNumber: { fontSize: 24, lineHeight: 26, ...cosmosFont.figure },
   stubLabel: { fontSize: 12, ...cosmosFont.strong },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, padding: spacing[3], gap: spacing[2] },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },

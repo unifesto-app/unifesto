@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
   padded: { marginTop: spacing[4], padding: spacing[5] },
   // Section owns the top spacing and the title; the card just needs the gutter.
   group: { marginTop: 0, marginHorizontal: GUTTER },
-  big: { fontSize: 36, lineHeight: 46, ...cosmosFont.display },
+  big: { fontSize: 36, lineHeight: 46, ...cosmosFont.figure },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   note: {
     marginTop: spacing[3],

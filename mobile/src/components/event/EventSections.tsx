@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   speakerRole: { marginTop: 3, textAlign: 'center', fontSize: typography.fontSize.xs, lineHeight: 16, ...cosmosFont.body },
   chip: { marginTop: spacing[3], paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
   chipText: { fontSize: 11, ...cosmosFont.strong },
-  place: { width: 44, fontSize: 15, lineHeight: 21, ...cosmosFont.display },
+  place: { width: 44, fontSize: 15, lineHeight: 21, ...cosmosFont.figure },
   prizeValue: { maxWidth: '35%', fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sponsor: { gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   optIn: {

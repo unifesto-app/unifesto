@@ -99,7 +99,7 @@ export default function MyCirclesScreen() {
     >
       <View style={{ flex: 1 }}>
         <Text style={[styles.moreTitle, { color: c.text }]}>Find more circles</Text>
-        <Text style={[styles.meta, { color: c.muted }]}>Clubs and communities near you</Text>
+        <Text style={[styles.meta, { color: c.muted }]}>Clubs, communities and organisers</Text>
       </View>
       <ArrowRight size={18} color={c.text} />
     </Pressable>

@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   stats: { flexDirection: 'row', marginTop: spacing[5], paddingTop: spacing[4], borderTopWidth: StyleSheet.hairlineWidth },
   stat: { flex: 1, alignItems: 'center', gap: 4, minHeight: 44 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   firstSection: { marginTop: spacing[10] },
   // Section owns the top spacing and the title; the card just needs the gutter.

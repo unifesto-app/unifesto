@@ -442,8 +442,9 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
         ) : null}
         {d.faqs.length > 0 ? <FaqSection items={d.faqs} /> : null}
         <HostedBySection
-          space={event.space ? { ...event.space, logoUrl: event.branding?.logoUrl || event.space.logoUrl } : event.space}
-          coHosts={event.coHosts}
+          // Same logo the space page shows (its default when none is set), never an initial.
+          space={event.space ? { ...event.space, logoUrl: event.branding?.logoUrl || hostLogo } : event.space}
+          coHosts={event.coHosts?.map((h) => ({ ...h, logoUrl: logoOr(defaults, h.id, h.logoUrl) }))}
           curators={event.curators}
           contacts={d.contacts}
           onOpenSpace={(spaceId) => router.push(`/space/${spaceId}`)}
@@ -553,7 +554,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stubMonth: { fontSize: 11, ...cosmosFont.strong },
-  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.display },
+  stubDay: { marginTop: 1, fontSize: 20, lineHeight: 24, ...cosmosFont.figure },
   factRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   // Same column as the date stub, so every line's text starts at one edge.
   factIcon: { width: STUB, alignItems: 'center' },

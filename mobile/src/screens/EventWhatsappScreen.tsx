@@ -197,7 +197,7 @@ export default function EventWhatsappScreen() {
 
         <SettingsGroup title="Invite">
           <SettingsRow
-            icon={<PaperPlaneTilt size={28} color={tokens.accent} weight="fill" />}
+            icon={<PaperPlaneTilt size={28} color={tokens.text} />}
             label="Send invite to attendees"
             trailing={sending ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
             onPress={sending ? undefined : dirty ? () => AppAlert.alert('Save first', 'Save your link changes before sending.') : confirmBlast}
