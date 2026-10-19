@@ -320,13 +320,13 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | # | Item | Status |
 |---|---|---|
 | C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | done |
-| C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | planned |
-| C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | planned |
+| C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | done (orchestrator; call sites move in the C9 follow-up), not deployed (#248) |
+| C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | done, not deployed (#248) |
 | C4 | **Notification preferences grid and quiet hours.** Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
 | C5 | **Provider delivery webhooks and email suppression.** Provider webhooks: SES bounces/complaints → suppress, WhatsApp status, OneSignal delivery | planned |
 | C6 | Apex per-user message history + failure dashboard | planned |
 | C7 | **Native: rich push images and action buttons.** Native (store build): iOS Notification Service Extension for images, push action buttons | parked (2026-10-18): native (Notification Service Extension) with no room before the 20 Nov freeze, and the next store window after 5.0.0 isn't planned. |
-| C8 | **Add unsubscribe and consent to marketing sends.** Must land before the P track's curator emails and the P9 launch sends on 2 Dec. | planned |
+| C8 | **Add unsubscribe and consent to marketing sends.** Must land before the P track's curator emails and the P9 launch sends on 2 Dec. | done, not deployed (#250) |
 | C9 | **Send event mail and confirmations to the right people.** Quick one first (high, live): paid-registration WhatsApp confirmations format times with toLocaleTimeString('en-US') and no timeZone, then append 'IST' (backend/src/registrations/registration-payments.service.ts:364-386, :1366-139 | done, not deployed (#246) |
 | C10 | **Add filters and mark-all-read to the notification inbox.** Follow-up to C1 (merged #177), found on a real iPhone. | done, not deployed (#249) |
 | C11 | **Check all-user push broadcasts reach people.** Apex Notifications shows both 'All users' app-update broadcasts (27 Sept) as '0 sent'. | done, not deployed (#249) |
@@ -369,12 +369,12 @@ One support system for everything a person needs help with. Every item is an **A
 | D17 | Help articles in Apex as the bot's knowledge base (from K7) | done (#214), live 19 Oct: `HelpArticle` + `/help` API, Apex `/dashboard/help`, web `/help`; event FAQs already in `EventFaq` |
 | D18 | Nightly insights over closed cases (Batch API): themes and missing articles | parked (2026-10-18): nightly insights need case volume that only exists after D8, D9 and launch. |
 | | **Phase 4 · Operations** | |
-| D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | planned |
+| D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | done (#254) |
 | D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | planned |
 | | **Phase 5 · More case kinds** | |
 | D21 | **Ticket issue reports become HELP cases.** `ContentReport` REGISTRATION ("Report an issue" on a ticket) goes to the event's Space desk; moderation keeps event/space reports | done (#229), live 19 Oct |
 | D22 | Payout requests + bank account verification as Platform cases (with S23) | planned |
-| D23 | Stay + session cancellations and refunds through D6 (with S51) | planned |
+| D23 | Stay + session cancellations and refunds through D6 (with S51) | done (#252) |
 | D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | done (#247) |
 | D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | planned |
 | D26 | WhatsApp inbox → "Convert to case", later a full channel | planned |
@@ -788,3 +788,7 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · D24 built: account deletion is a PRIVACY case on the Platform desk (subject User). Request posts the erase date (status PENDING), cancel and the daily erase post their lines and close it; a new request reopens it. Mobile My help thread shows "Keep my account" while pending. No migration; rebuild backend; mobile rides 5.0.0. (#247)
 - **2026-10-19** · Track D: D6 built. Every refund request is an Assist case (REFUND, or CANCELLATION for a paid cancel or cancelled event): curator stage on the Space desk, forwarding moves it to Platform, decisions and settlement post SYSTEM lines and resolve it; a paid registration cancel is one flow that creates the refund and records cancellationReason; cancelEvent refunds open their cases the same way. Space Assist reviews refunds in the case. Data migration 20261030120000 backfills cases for open refunds. Rebuild backend + space. (#245)
 - **2026-10-19** · C10 + C11 inbox splits staff help-desk queries into a Staff tab with mark-all-read, title cut to 200 and bell refresh on every push; segment broadcasts now read their real sent/failed from OneSignal (its create response dropped `recipients`; the 27 Sept "All users" app-update pushes actually reached 1126 and 1120 devices with 15 and 1 failed) and Apex push/email/WhatsApp consoles gain a staff-only test audience. Needs migrate deploy + rebuild backend + apex; mobile rides 5.0.0. (#249)
+- **2026-10-19** · C3 + C2 add a message_deliveries log with retries and dedup for every push/email/WhatsApp send, plus NotifyService.notify() with a kind registry and one channel policy (notify.policy.ts). Needs `prisma migrate deploy` (20261031100000_message_deliveries) and a backend rebuild; no env changes. (#248)
+- **2026-10-19** · Track D: D23 built. A guest asking to cancel a stay paid online opens a CANCELLATION case on the event's Space desk (Space Assist "Cancel and refund", mobile "Ask to cancel and refund"); the team's cancel posts the refund and resolves it. A host's session cancel opens a case per paid booking, resolved when its refund goes. Money logic unchanged. No migration; rebuild backend + space. (#252)
+- **2026-10-19** · Track D: D19 built. Saved replies (`CannedReply`, Unifesto desk + per space) with CRUD and an insert picker in Apex and Space Assist; SLA due time from priority (Grievance 24 h / 15 days), overdue filter, and 30-day median first-reply and resolution times per desk in both stats headers. Migration 20261101100000. Not deployed. (#254)
+- **2026-10-19** · C8 marketing sends now carry a signed unsubscribe link, one-click List-Unsubscribe headers and the postal address. Recipients exclude opt-outs, deleted accounts and, for platform bulk mail and WhatsApp marketing templates, anyone without promotions on. WhatsApp STOP is recorded and blasts are audited. Needs migration 20261030100000_marketing_opt_out plus a rebuild of backend, space and apex, and an OTA for mobile Apex. (#250)

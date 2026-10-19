@@ -85,6 +85,7 @@ export class WhatsAppAdminController {
       adminUserId: user.id,
       audience: 'USER',
       userIds: [user.id],
+      test: true,
     });
   }
 

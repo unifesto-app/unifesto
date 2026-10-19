@@ -20,7 +20,8 @@ import {
   SupportDesk,
   SupportMessageSide,
 } from '@prisma/client';
-import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
+import { CreateTicketDto, CreateMessageDto, UpdateTicketDto, CannedReplyDto, UpdateCannedReplyDto } from './dto';
+import { slaFor, overdueWhere, deskTimes, DESK_TIMES_DAYS } from './support-sla';
 
 /** D3: something happened on a case that the other side should hear about. */
 export const SUPPORT_CASE_EVENT = 'support.case';
@@ -84,6 +85,8 @@ interface ListParams {
   deskSpaceId?: string;
   /** Only cases with a message the viewer's side hasn't opened. */
   unread?: boolean;
+  /** D19: only cases past their SLA due time. */
+  overdue?: boolean;
   search?: string;
   page?: number;
   limit?: number;
@@ -132,6 +135,7 @@ const SUBJECT_MODELS = {
   SubEventAttachRequest: 'subEventAttachRequest',
   ContentReport: 'contentReport',
   PayoutBankAccount: 'payoutBankAccount',
+  StayBooking: 'stayBooking',
 } as const;
 export type CaseSubject = { type: string; data: Record<string, unknown> };
 
@@ -445,6 +449,7 @@ export class SupportService {
           : { OR: [{ requesterLastReadAt: null }, { lastMessageAt: { gt: fields.requesterLastReadAt } }] },
       );
     }
+    if (params.overdue) and.push(overdueWhere());
     const search = params.search?.trim();
     if (search) {
       const text = { contains: search, mode: 'insensitive' as const };
@@ -486,6 +491,8 @@ export class SupportService {
       // A desk reads as the desk on the cases it holds now; everyone else as the requester.
       tickets: tickets.map((t) => ({
         ...t,
+        // D19: the deadline is the desk's business, not the requester's.
+        ...(viewerDesk ? { sla: slaFor(t) } : {}),
         unread: viewerDesk
           ? t.desk === viewerDesk && isUnread(t.deskLastReadAt, t.lastMessageAt)
           : isUnread(t.requesterLastReadAt, t.lastMessageAt),
@@ -545,11 +552,13 @@ export class SupportService {
       return { ...own, messages: ticket.messages.filter((m) => !m.internal) };
     }
     const subjects = await this.caseSubjects(ticket);
-    if (platform) return { ...ticket, subjects };
+    const sla = slaFor(ticket);
+    if (platform) return { ...ticket, sla, subjects };
     // The space desk gets the requester's email, not their phone number, and of
-    // the typed records only refunds: it reviews those first (D6).
+    // the typed records only the money it acts on: refunds it reviews first
+    // (D6) and stays it cancels and refunds (D23).
     const { mobileNumber: _phone, ...requester } = ticket.requester;
-    return { ...ticket, requester, subjects: subjects.filter((x) => x.type === 'RefundRequest') };
+    return { ...ticket, requester, sla, subjects: subjects.filter((x) => x.type === 'RefundRequest' || x.type === 'StayBooking') };
   }
 
   /** The typed records behind a case: its subject, plus refunds raised from it. */
@@ -973,7 +982,7 @@ export class SupportService {
       });
 
     const active = { ...scope, status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.PENDING] } };
-    const [open, pending, resolved, closed, myUnread, deskUnread, unassigned, kinds] = await Promise.all([
+    const [open, pending, resolved, closed, myUnread, deskUnread, unassigned, kinds, overdue, desks] = await Promise.all([
       this.prisma.supportTicket.count({
         where: { ...scope, status: SupportTicketStatus.OPEN },
       }),
@@ -990,6 +999,8 @@ export class SupportService {
       admin ? countDeskUnread() : null,
       this.prisma.supportTicket.count({ where: { ...scope, status: SupportTicketStatus.OPEN, assignedToId: null } }),
       this.prisma.supportTicket.groupBy({ by: ['kind'], where: active, _count: { _all: true } }),
+      admin ? this.prisma.supportTicket.count({ where: overdueWhere() }) : null,
+      admin ? this.deskTimesByDesk() : null,
     ]);
 
     return {
@@ -1004,6 +1015,75 @@ export class SupportService {
       unassigned,
       /** Open + awaiting-reply cases per kind (D8 inbox tabs). */
       byKind: Object.fromEntries(kinds.map((k) => [k.kind, k._count._all])) as Partial<Record<SupportCaseKind, number>>,
+      /** D19, Platform only: cases past their SLA due time. */
+      ...(admin ? { overdue, desks } : {}),
     };
+  }
+
+  /** Cases opened in the last DESK_TIMES_DAYS days, as their desk now stands. */
+  private recentCases(where: Prisma.SupportTicketWhereInput) {
+    // ponytail: medians in memory; fine to a few thousand cases a month, then move to percentile_cont.
+    return this.prisma.supportTicket.findMany({
+      where: { AND: [where, { createdAt: { gte: new Date(Date.now() - DESK_TIMES_DAYS * 86400000) } }] },
+      select: { desk: true, createdAt: true, firstResponseAt: true, resolvedAt: true },
+    });
+  }
+
+  /** D19: first-response and resolution medians per desk, for the Apex stats header. */
+  private async deskTimesByDesk() {
+    const rows = await this.recentCases({});
+    return Object.fromEntries(
+      Object.values(SupportDesk).map((d) => [d, deskTimes(rows.filter((r) => r.desk === d))]),
+    ) as Record<SupportDesk, ReturnType<typeof deskTimes>>;
+  }
+
+  /** D19: one space desk's header: what is waiting, what is late, and how fast it answers. */
+  async spaceDeskStats(userId: string, spaceId: string) {
+    const scope = await this.spaceDeskScope(userId, spaceId);
+    if (!scope) throw new ForbiddenException('You do not work this space desk');
+    const onDesk: Prisma.SupportTicketWhereInput = { AND: [scope, { desk: SupportDesk.SPACE }] };
+    const [open, pending, overdue, rows] = await Promise.all([
+      this.prisma.supportTicket.count({ where: { AND: [onDesk, { status: SupportTicketStatus.OPEN }] } }),
+      this.prisma.supportTicket.count({ where: { AND: [onDesk, { status: SupportTicketStatus.PENDING }] } }),
+      this.prisma.supportTicket.count({ where: { AND: [onDesk, overdueWhere()] } }),
+      this.recentCases(onDesk),
+    ]);
+    return { open, pending, overdue, ...deskTimes(rows) };
+  }
+
+  /* ---------------------------------------------------------------------- */
+  /* Canned replies (D19)                                                    */
+  /* ---------------------------------------------------------------------- */
+
+  /** Unifesto's replies are Platform's; a space's are for whoever works its desk. */
+  private async assertCannedAccess(userId: string, spaceId: string | null) {
+    const ok = spaceId ? !!(await this.spaceDeskScope(userId, spaceId)) : await this.isPlatform(userId);
+    if (!ok) throw new ForbiddenException('You do not work this desk');
+  }
+
+  async listCannedReplies(userId: string, spaceId: string | null) {
+    await this.assertCannedAccess(userId, spaceId);
+    return this.prisma.cannedReply.findMany({ where: { spaceId }, orderBy: { title: 'asc' } });
+  }
+
+  async createCannedReply(userId: string, dto: CannedReplyDto) {
+    const spaceId = dto.spaceId ?? null;
+    await this.assertCannedAccess(userId, spaceId);
+    return this.prisma.cannedReply.create({ data: { spaceId, title: dto.title, body: dto.body } });
+  }
+
+  async updateCannedReply(userId: string, id: string, dto: UpdateCannedReplyDto) {
+    const reply = await this.prisma.cannedReply.findUnique({ where: { id }, select: { spaceId: true } });
+    if (!reply) throw new NotFoundException('Saved reply not found');
+    await this.assertCannedAccess(userId, reply.spaceId);
+    return this.prisma.cannedReply.update({ where: { id }, data: { title: dto.title, body: dto.body } });
+  }
+
+  async deleteCannedReply(userId: string, id: string) {
+    const reply = await this.prisma.cannedReply.findUnique({ where: { id }, select: { spaceId: true } });
+    if (!reply) throw new NotFoundException('Saved reply not found');
+    await this.assertCannedAccess(userId, reply.spaceId);
+    await this.prisma.cannedReply.delete({ where: { id } });
+    return { deleted: true };
   }
 }

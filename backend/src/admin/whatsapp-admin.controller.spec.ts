@@ -23,6 +23,7 @@ describe('WhatsAppAdminController broadcast confirm step', () => {
       adminUserId: 'me',
       audience: 'USER',
       userIds: ['me'],
+      test: true,
     });
   });
 });

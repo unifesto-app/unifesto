@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, WhatsappMessageDirection } from '@prisma/client';
+import { MarketingChannel, MessageChannel, Prisma, WhatsappMessageDirection } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
@@ -9,6 +9,18 @@ import { StorageService } from '../storage/storage.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { WhatsappInboundEvent } from '../notifications/notifications.events';
+import {
+  MARKETABLE_USER,
+  marketingOptOuts,
+  recordMarketingOptOut,
+} from '../common/marketing-opt-out';
+import {
+  AttemptResult,
+  DeliveryOpts,
+  isRetryableAxiosError,
+  trackedSend,
+} from '../notifications/message-delivery';
+import { OUTBOUND_TIMEOUT_MS } from '../common/http/outbound-timeouts';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 
 interface WhatsAppTemplateComponent {
@@ -60,6 +72,10 @@ const TEMPLATES = {
 const HEADER_IMAGES = {
   EVENT_REGISTRATION: 'https://unifesto-storage-bucket.s3.ap-south-1.amazonaws.com/whatsapp-headers/registration_confirmed.png',
 } as const;
+
+/** Fail closed: only templates Meta files as UTILITY or AUTHENTICATION skip the opt-in. */
+const isMarketingCategory = (category: string) =>
+  !['UTILITY', 'AUTHENTICATION'].includes(category.toUpperCase());
 
 @Injectable()
 export class WhatsAppService {
@@ -127,13 +143,17 @@ export class WhatsAppService {
    */
   private formatPhoneNumber(phoneNumber: string): string {
     if (!phoneNumber) return '';
+    // Not a phone number at all (a closed account's `deleted-<hex>`
+    // placeholder): its hex digits must never turn into a stranger's number.
+    if (/[^\d\s+().-]/.test(phoneNumber)) return '';
 
     const hadPlus = phoneNumber.trim().startsWith('+');
     let digits = phoneNumber.replace(/\D/g, '');
     if (!digits) return '';
 
-    // Already E.164 (author typed a +): trust it, just re-attach the +.
-    if (hadPlus) return '+' + digits;
+    // Already E.164 (author typed a +): trust it, just re-attach the +. No
+    // country code starts with 0 (that's the `+0…` placeholder form).
+    if (hadPlus) return digits.startsWith('0') ? '' : '+' + digits;
 
     // No +. Only add a country code when one is clearly absent — otherwise we
     // double-prefix (e.g. Meta's wa_id "919848945690" must NOT become
@@ -209,7 +229,10 @@ export class WhatsAppService {
   // =====================================================
 
   /**
-   * Send template message via WhatsApp API
+   * Send template message via WhatsApp API. Logged to message_deliveries,
+   * optionally deduped by `delivery.dedupKey`. Retries only what can't have
+   * gone out (429, connection never made): Meta has no idempotency key, so a
+   * timeout or 5xx is never retried. Never throws.
    */
   private async sendTemplateMessage(
     to: string,
@@ -218,6 +241,7 @@ export class WhatsAppService {
     hasImageHeader = false,
     imageUrl?: string,
     languageCode = 'en',
+    delivery?: DeliveryOpts,
   ): Promise<boolean> {
     // Skip if phone number is empty
     if (!to) {
@@ -269,29 +293,54 @@ export class WhatsAppService {
         },
       };
 
-      const response = await axios.post(this.apiUrl, message, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const messageId = response.data.messages?.[0]?.id;
-      this.logger.log(`WhatsApp template sent: ${templateName} to ${formattedPhone}, ID: ${messageId}`);
-      return true;
-    } catch (error: any) {
-      if (error.response) {
-        this.logger.error(`WhatsApp API error for template ${templateName}`, {
-          status: error.response.status,
-          error: error.response.data?.error,
-          phone: formattedPhone,
-        });
-      } else {
-        this.logger.error(`WhatsApp send error for template ${templateName}`, error);
+      const res = await this.trackedPost(formattedPhone, templateName, message, delivery);
+      if (res.ok) {
+        this.logger.log(`WhatsApp template ${res.deduped ? 'already sent' : 'sent'}: ${templateName} to ${formattedPhone}, ID: ${res.id}`);
       }
+      return res.ok;
+    } catch (error: any) {
+      this.logger.error(`WhatsApp send error for template ${templateName}`, error);
       // DO NOT throw - notification failures must never break main flow
       return false;
     }
+  }
+
+  /** POST one outbound message to Meta through the C3 delivery log. Never throws. */
+  private trackedPost(phone: string, label: string, message: unknown, delivery?: DeliveryOpts) {
+    return trackedSend(
+      this.prisma,
+      { channel: MessageChannel.WHATSAPP, provider: 'meta', label, recipient: phone, ...delivery },
+      async (): Promise<AttemptResult> => {
+        try {
+          const response = await axios.post(this.apiUrl, message, {
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: OUTBOUND_TIMEOUT_MS,
+          });
+          const id = response.data?.messages?.[0]?.id ?? null;
+          return { id, error: id ? undefined : 'no_message_id' };
+        } catch (error: any) {
+          if (error.response) {
+            this.logger.error(`WhatsApp API error for ${label}`, {
+              status: error.response.status,
+              error: error.response.data?.error,
+              phone,
+            });
+          } else {
+            this.logger.error(`WhatsApp send error for ${label}`, error);
+          }
+          const detail = error.response?.data?.error?.message ?? error.message;
+          return {
+            id: null,
+            error: error.response ? `${error.response.status}: ${detail}` : String(detail),
+            // Meta has no idempotency key: never retry what may have been sent.
+            retryable: isRetryableAxiosError(error, false),
+          };
+        }
+      },
+    );
   }
 
   // =====================================================
@@ -331,14 +380,10 @@ export class WhatsAppService {
           ],
         },
       };
-      const axios = require('axios');
-      await axios.post(this.apiUrl, message, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      this.logger.log(`WhatsApp OTP sent to ${phoneNumber}`);
+      // Label is the template name; the code itself is never logged.
+      const res = await this.trackedPost(formattedPhone, TEMPLATES.OTP, message, { kind: 'otp' });
+      if (res.ok) this.logger.log(`WhatsApp OTP sent to ${phoneNumber}`);
+      else this.logger.error('Failed to send WhatsApp OTP');
     } catch (error) {
       this.logger.error('Failed to send WhatsApp OTP', error);
     }
@@ -571,6 +616,10 @@ export class WhatsAppService {
 
     this.logger.log(`Stored inbound WhatsApp message from ${waId} (type=${type})`);
 
+    if (type === 'text' && /^\s*(stop|unsubscribe)\s*[.!]?\s*$/i.test(body ?? '')) {
+      await this.recordStop(waId);
+    }
+
     // Push the platform admins (handled in NotificationsModule; emit-only, so
     // WhatsAppModule never imports it).
     const alert: WhatsappInboundEvent = {
@@ -579,6 +628,28 @@ export class WhatsAppService {
       preview: body || mediaNote || `[${type}]`,
     };
     this.events.emit(NotificationEvents.WhatsappInbound, alert);
+  }
+
+  /**
+   * "STOP" / "UNSUBSCRIBE" from a number: no more blasts to it. Transactional
+   * templates (OTP, registration, group invite) still go out. The message
+   * itself stays in the inbox, so admins see it too.
+   */
+  private async recordStop(waId: string): Promise<void> {
+    const address = this.formatPhoneNumber(`+${waId}`);
+    if (!address) return;
+    const user = await this.prisma.user.findFirst({
+      where: { mobileNumber: { in: [address, waId] } },
+      select: { id: true },
+    });
+    await recordMarketingOptOut(this.prisma, {
+      channel: MarketingChannel.WHATSAPP,
+      address,
+      spaceId: null,
+      userId: user?.id,
+      source: 'whatsapp_stop',
+    });
+    this.logger.log(`WhatsApp marketing opt-out recorded for ${address}`);
   }
 
   /**
@@ -1134,7 +1205,26 @@ export class WhatsAppService {
     audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
+    templateName?: string;
+    languageCode?: string;
+    /** Already looked up by the caller; else looked up from `templateName`. */
+    category?: string;
+    /** The admin's send-to-me test: their own prefs don't apply. */
+    test?: boolean;
   }): Promise<Array<{ userId: string; name: string; mobileNumber: string }>> {
+    // Consent: never closed or closing accounts; marketing templates only to
+    // people who opted in to promotions; nobody who replied STOP. A test (to
+    // me, or to the staff list) skips the prefs: it isn't marketing anyone.
+    const consent = !params.test && params.audience !== 'STAFF';
+    const marketing =
+      consent &&
+      isMarketingCategory(
+        params.category ?? (await this.templateCategory(params.templateName, params.languageCode)),
+      );
+    const userWhere: Prisma.UserWhereInput = {
+      ...MARKETABLE_USER,
+      ...(marketing ? { notificationSettings: { promotions: true } } : {}),
+    };
     const select = {
       id: true,
       fullName: true,
@@ -1151,7 +1241,7 @@ export class WhatsAppService {
 
     if (params.audience === 'ALL') {
       users = await this.prisma.user.findMany({
-        where: { mobileNumber: { not: '' } },
+        where: { mobileNumber: { not: '' }, ...userWhere },
         select,
       });
     } else if (params.audience === 'SPACE') {
@@ -1162,14 +1252,14 @@ export class WhatsAppService {
       // event-scoped role). Distinct users, since one person may hold several
       // roles in the same space.
       const roles = await this.prisma.userRole.findMany({
-        where: { spaceId: params.spaceId, eventId: null },
+        where: { spaceId: params.spaceId, eventId: null, user: userWhere },
         select: { user: { select } },
         distinct: ['userId'],
       });
       users = roles.map((r) => r.user);
     } else if (params.audience === 'STAFF') {
       users = await this.prisma.user.findMany({
-        where: { ...PLATFORM_STAFF_WHERE, mobileNumber: { not: '' } },
+        where: { ...PLATFORM_STAFF_WHERE, mobileNumber: { not: '' }, ...MARKETABLE_USER },
         select,
       });
     } else {
@@ -1177,10 +1267,14 @@ export class WhatsAppService {
         throw new BadRequestException('At least one userId is required.');
       }
       users = await this.prisma.user.findMany({
-        where: { id: { in: params.userIds } },
+        where: { id: { in: params.userIds }, ...userWhere },
         select,
       });
     }
+
+    const stopped = consent
+      ? await marketingOptOuts(this.prisma, MarketingChannel.WHATSAPP, null)
+      : null;
 
     // De-dupe by the number we'll actually dial.
     const seen = new Set<string>();
@@ -1188,6 +1282,7 @@ export class WhatsAppService {
     for (const u of users) {
       const dial = this.formatPhoneNumber(u.mobileNumber);
       if (!dial || seen.has(dial)) continue;
+      if (stopped && (stopped.addresses.has(dial) || stopped.userIds.has(u.id))) continue;
       seen.add(dial);
       recipients.push(this.mapRecipient(u));
     }
@@ -1195,9 +1290,22 @@ export class WhatsAppService {
   }
 
   /**
-   * Fill a template's body parameters for one recipient. Any parameter equal to
-   * the `{name}` token is replaced with the recipient's name; everything else is
-   * sent verbatim to every recipient.
+   * Meta category of an approved template (MARKETING / UTILITY /
+   * AUTHENTICATION), or UNKNOWN when it can't be looked up.
+   */
+  private async templateCategory(name?: string, languageCode?: string): Promise<string> {
+    if (!name?.trim()) return 'UNKNOWN';
+    const templates = await this.listMessageTemplates().catch(
+      () => [] as Awaited<ReturnType<WhatsAppService['listMessageTemplates']>>,
+    );
+    const named = templates.filter((t) => t.name === name.trim());
+    const hit = named.find((t) => t.language === (languageCode || 'en')) ?? named[0];
+    return hit?.category.toUpperCase() || 'UNKNOWN';
+  }
+
+  /**
+   * Fill a template's body parameters for one recipient. `{name}` anywhere in
+   * a parameter becomes the recipient's name; the rest is sent verbatim.
    *
    * Personalization policy (name fallback, which tokens exist) lives here — see
    * the linked note in the PR/handoff; keep it in sync with what the UI hints.
@@ -1207,9 +1315,7 @@ export class WhatsAppService {
     recipient: { name: string },
   ): string[] {
     const name = recipient.name || 'there';
-    return bodyParams.map((p) =>
-      p.trim().toLowerCase() === '{name}' ? name : p,
-    );
+    return bodyParams.map((p) => p.replace(/\{name\}/gi, () => name));
   }
 
   /**
@@ -1218,6 +1324,7 @@ export class WhatsAppService {
    * pacing keeps us under Meta's per-second cap. Logs a final tally.
    */
   private async runBroadcast(
+    broadcastId: string,
     recipients: Array<{ userId: string; name: string; mobileNumber: string }>,
     templateName: string,
     bodyParams: string[],
@@ -1234,6 +1341,7 @@ export class WhatsAppService {
         false,
         undefined,
         languageCode,
+        { kind: 'broadcast', userId: r.userId },
       );
       if (ok) sent += 1;
       else failed += 1;
@@ -1241,6 +1349,12 @@ export class WhatsAppService {
     this.logger.log(
       `WhatsApp broadcast "${templateName}" finished: ${sent} sent, ${failed} failed of ${recipients.length}.`,
     );
+    await this.prisma.whatsappBroadcast
+      .update({
+        where: { id: broadcastId },
+        data: { sentCount: sent, failedCount: failed, finishedAt: new Date() },
+      })
+      .catch((err) => this.logger.error(`Broadcast ${broadcastId} tally not saved: ${err?.message ?? err}`));
     return { sent, failed };
   }
 
@@ -1258,6 +1372,7 @@ export class WhatsAppService {
     templateName: string;
     bodyParams?: string[];
     languageCode?: string;
+    test?: boolean;
   }): Promise<{ audience: string; recipientCount: number; status: 'started' }> {
     if (!this.isConfigured()) {
       throw new BadRequestException('WhatsApp is not configured on the server.');
@@ -1266,20 +1381,42 @@ export class WhatsAppService {
       throw new BadRequestException('A template name is required.');
     }
 
+    const templateName = params.templateName.trim();
+    const bodyParams = (params.bodyParams ?? []).map((p) => String(p));
+    const languageCode = params.languageCode?.trim() || 'en';
+    const category = await this.templateCategory(templateName, languageCode);
+
     const recipients = await this.resolveBroadcastRecipients({
       audience: params.audience,
       spaceId: params.spaceId,
       userIds: params.userIds,
+      category,
+      test: params.test,
     });
     if (recipients.length === 0) {
       throw new BadRequestException(
-        'No reachable recipients for that audience (nobody with a valid mobile number).',
+        isMarketingCategory(category) && !params.test
+          ? 'No reachable recipients: a marketing template only goes to people who opted in to promotions and have a valid mobile number.'
+          : 'No reachable recipients for that audience (nobody with a valid mobile number).',
       );
     }
 
-    const templateName = params.templateName.trim();
-    const bodyParams = (params.bodyParams ?? []).map((p) => String(p));
-    const languageCode = params.languageCode?.trim() || 'en';
+    // Audit trail: who sent what to whom. Counts are filled in when the run ends.
+    const broadcast = await this.prisma.whatsappBroadcast.create({
+      data: {
+        sentById: params.adminUserId,
+        templateName,
+        languageCode,
+        category,
+        audience: params.audience,
+        spaceId: params.spaceId ?? null,
+        userIds: params.userIds ?? [],
+        bodyParams,
+        isTest: !!params.test || params.audience === 'STAFF',
+        recipientCount: recipients.length,
+      },
+      select: { id: true },
+    });
 
     this.logger.log(
       `Admin ${params.adminUserId} starting WhatsApp broadcast "${templateName}" ` +
@@ -1289,7 +1426,7 @@ export class WhatsAppService {
     // Fire-and-forget: a platform-wide audience can be thousands of sequential,
     // rate-limited sends — far longer than an HTTP request should wait. The loop
     // is fully fail-soft, so a detached run is safe.
-    void this.runBroadcast(recipients, templateName, bodyParams, languageCode).catch(
+    void this.runBroadcast(broadcast.id, recipients, templateName, bodyParams, languageCode).catch(
       (err) =>
         this.logger.error(
           `WhatsApp broadcast "${templateName}" crashed: ${
@@ -1556,9 +1693,10 @@ export class WhatsAppService {
       isOnline: boolean;
       onlineUrl?: string;
     },
-  ): Promise<void> {
+    delivery?: DeliveryOpts,
+  ): Promise<boolean> {
     try {
-      if (!mobileNumber) return;
+      if (!mobileNumber) return false;
 
       const venue = this.formatVenue({
         type: data.isOnline ? 'ONLINE' : 'IN_PERSON',
@@ -1567,7 +1705,7 @@ export class WhatsAppService {
         onlineUrl: data.onlineUrl,
       });
 
-      await this.sendTemplateMessage(
+      return await this.sendTemplateMessage(
         mobileNumber,
         TEMPLATES.EVENT_REGISTRATION,
         [
@@ -1579,9 +1717,12 @@ export class WhatsAppService {
         ],
         true, // has image header
         HEADER_IMAGES.EVENT_REGISTRATION,
+        'en',
+        delivery,
       );
     } catch (error) {
       this.logger.error('Failed to send registration confirmation', error);
+      return false;
     }
   }
 
@@ -1604,6 +1745,7 @@ export class WhatsAppService {
       inviteUrl: string;
       isCommunity: boolean;
     },
+    delivery?: DeliveryOpts,
   ): Promise<boolean> {
     try {
       if (!mobileNumber || !data.inviteUrl) return false;
@@ -1618,6 +1760,9 @@ export class WhatsAppService {
           data.inviteUrl,
         ],
         false, // no image header
+        undefined,
+        'en',
+        delivery,
       );
     } catch (error) {
       this.logger.error('Failed to send WhatsApp group invite', error);

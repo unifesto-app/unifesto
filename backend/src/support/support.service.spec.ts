@@ -41,6 +41,9 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
         desk: SupportDesk.PLATFORM,
         eventId: null,
         escalatedAt: null,
+        kind: 'HELP',
+        priority: 'NORMAL',
+        createdAt: new Date(),
         messages: [],
         ...ticket,
       })),
@@ -58,6 +61,13 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
     supportAttachment: {
       create: jest.fn(async (args: any) => args.data),
       findUnique: jest.fn(async () => attachment),
+    },
+    cannedReply: {
+      findMany: jest.fn(async () => []),
+      findUnique: jest.fn(async () => ({ spaceId: 'sp-1' })),
+      create: jest.fn(async (args: any) => args.data),
+      update: jest.fn(async (args: any) => args.data),
+      delete: jest.fn(async () => ({})),
     },
     $transaction: jest.fn(async (ops: any[]) => Promise.all(ops)),
   };
@@ -643,5 +653,39 @@ describe('SupportService (D9 Space Assist inbox)', () => {
       await service.addMessage('t-1', { body: 'x', internal: true }, 'admin-1');
       expect(prisma.supportMessage.create.mock.calls[0][0].data.internal).toBe(true);
     });
+  });
+});
+
+describe('SupportService (D19 canned replies + SLA)', () => {
+  const spaceAdmin: Role = { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'sp-1' };
+  const otherSpaceAdmin: Role = { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'sp-2' };
+
+  it("keeps Unifesto's saved replies to Platform and a space's to its desk", async () => {
+    await expect(setup({ roles: [spaceAdmin] }).service.listCannedReplies('staff', null)).rejects.toThrow(ForbiddenException);
+    await expect(setup({ admin: true }).service.listCannedReplies('admin-1', null)).resolves.toEqual([]);
+
+    const own = setup({ roles: [spaceAdmin] });
+    await own.service.createCannedReply('staff', { spaceId: 'sp-1', title: 'Hi', body: 'Hello' });
+    expect(own.prisma.cannedReply.create).toHaveBeenCalledWith({ data: { spaceId: 'sp-1', title: 'Hi', body: 'Hello' } });
+
+    // Editing goes by the reply's own space, not anything the caller sends.
+    const other = setup({ roles: [otherSpaceAdmin] });
+    await expect(other.service.updateCannedReply('staff', 'cr-1', { title: 'x' })).rejects.toThrow(ForbiddenException);
+    await expect(other.service.deleteCannedReply('staff', 'cr-1')).rejects.toThrow(ForbiddenException);
+    expect(other.prisma.cannedReply.delete).not.toHaveBeenCalled();
+  });
+
+  it('filters overdue cases and gives the desk, not the requester, the due time', async () => {
+    const staff = setup({ admin: true });
+    await staff.service.listTickets('admin-1', { overdue: true });
+    expect(staff.prisma.supportTicket.findMany.mock.calls[0][0].where.AND[0].status).toEqual({
+      in: [SupportTicketStatus.OPEN, SupportTicketStatus.PENDING],
+    });
+
+    const ticket = { kind: 'HELP', priority: 'NORMAL', createdAt: new Date(Date.now() - 25 * 3600_000), requester: { id: 'user-1' } };
+    const got: any = await setup({ admin: true, ticket }).service.getTicket('t-1', 'admin-1');
+    expect(got.sla).toMatchObject({ stage: 'RESPOND', overdue: true });
+    const own: any = await setup({ ticket }).service.getTicket('t-1', 'user-1');
+    expect(own.sla).toBeUndefined();
   });
 });

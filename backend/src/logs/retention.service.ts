@@ -24,6 +24,7 @@ export const RETENTION: ReadonlyArray<{
   { table: 'user_notifications', column: 'created_at', days: 180 },
   { table: 'email_campaign_logs', column: 'sent_at', days: 365 },
   { table: 'whatsapp_messages', column: 'created_at', days: 365 },
+  { table: 'message_deliveries', column: 'created_at', days: 180 },
 ];
 
 /** Rows per DELETE, so no single statement holds locks for long. */

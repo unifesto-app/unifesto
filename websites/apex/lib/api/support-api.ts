@@ -92,6 +92,8 @@ export interface SupportTicket {
   _count?: { messages: number };
   /** List endpoint: a message your side hasn't opened yet. */
   unread?: boolean;
+  /** Desk viewers: the SLA deadline it works to now (null once its clock stops). */
+  sla?: CaseSla | null;
   /** Detail endpoint, Platform only: the typed records this case wraps. */
   subjects?: CaseSubject[];
 }
@@ -126,6 +128,10 @@ export interface SupportStats {
   unassigned: number;
   /** Open + awaiting-reply cases per kind. */
   byKind: Partial<Record<SupportCaseKind, number>>;
+  /** D19: cases past their SLA due time. */
+  overdue?: number;
+  /** D19: median reply and resolution times per desk over the last 30 days. */
+  desks?: Record<SupportDesk, DeskTimes>;
 }
 
 export interface ListTicketsParams {
@@ -138,6 +144,8 @@ export interface ListTicketsParams {
   assignedToId?: string;
   spaceId?: string;
   unread?: boolean;
+  /** D19: only cases past their SLA due time. */
+  overdue?: boolean;
   search?: string;
   page?: number;
   limit?: number;
@@ -279,4 +287,65 @@ export function requesterName(t: SupportTicket): string {
 
 export function requesterEmail(t: SupportTicket): string | null {
   return t.contactEmail || t.requester?.identities?.[0]?.email || null;
+}
+
+/* -------------------------------------------------------------------------- */
+/* D19: saved replies and SLA                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** The deadline a case works to: the desk's first reply, then resolution. */
+export interface CaseSla {
+  stage: "RESPOND" | "RESOLVE";
+  dueAt: string;
+  overdue: boolean;
+}
+
+/** Median minutes to the desk's first reply and to resolution over the last 30 days. */
+export interface DeskTimes {
+  firstResponseMins: number | null;
+  resolutionMins: number | null;
+  cases: number;
+}
+
+export interface CannedReply {
+  id: string;
+  spaceId: string | null;
+  title: string;
+  body: string;
+}
+
+/** `GET /support/canned-replies` — a desk's saved replies (no spaceId = Unifesto's). */
+export async function listCannedReplies(spaceId?: string): Promise<Result<CannedReply[]>> {
+  return apiCall<CannedReply[]>(
+    backendClient.get(`/support/canned-replies${spaceId ? `?spaceId=${spaceId}` : ""}`)
+  );
+}
+
+export async function createCannedReply(input: { spaceId?: string; title: string; body: string }): Promise<Result<CannedReply>> {
+  return apiCall<CannedReply>(backendClient.post("/support/canned-replies", input));
+}
+
+export async function updateCannedReply(id: string, input: { title: string; body: string }): Promise<Result<CannedReply>> {
+  return apiCall<CannedReply>(backendClient.patch(`/support/canned-replies/${id}`, input));
+}
+
+export async function deleteCannedReply(id: string): Promise<Result<{ deleted: boolean }>> {
+  return apiCall<{ deleted: boolean }>(backendClient.delete(`/support/canned-replies/${id}`));
+}
+
+/** "3h 20m", "2d 4h" — a desk time or what is left on a deadline. */
+export function formatMins(mins: number | null | undefined): string {
+  if (mins == null) return "No data";
+  const m = Math.abs(Math.round(mins));
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return m % 60 ? `${h}h ${m % 60}m` : `${h}h`;
+  return h % 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : `${Math.floor(h / 24)}d`;
+}
+
+/** "Reply due in 3h" / "Resolution overdue by 2d". */
+export function slaText(sla: CaseSla): string {
+  const what = sla.stage === "RESPOND" ? "Reply" : "Resolution";
+  const mins = (new Date(sla.dueAt).getTime() - Date.now()) / 60000;
+  return sla.overdue ? `${what} overdue by ${formatMins(mins)}` : `${what} due in ${formatMins(mins)}`;
 }
