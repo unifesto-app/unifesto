@@ -314,7 +314,7 @@ describe('EmailCampaignsService', () => {
         user: { findMany: jest.fn().mockResolvedValue([user('admin', 'a@x.com')]) },
         notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
       };
-      await expect(build(prisma).countAudience({}, { targetType: EmailTargetType.STAFF })).resolves.toEqual({
+      await expect(build(prisma).countAudience({ spaceId: null }, { targetType: EmailTargetType.STAFF })).resolves.toEqual({
         recipientCount: 1,
       });
       expect(prisma.user.findMany.mock.calls[0][0].where).toEqual({
