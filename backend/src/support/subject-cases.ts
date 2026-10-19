@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import {
   SupportCaseKind,
@@ -8,13 +8,15 @@ import {
   SupportTicketStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SUPPORT_CASE_EVENT, type SupportCaseEvent } from './support.service';
 
 /**
  * Typed records that live in their own tables (requests, payouts, privacy…)
  * get an Assist case through these events, so their services never import
  * SupportModule (it sits above EventsModule, so that would be a cycle). The
  * record's own flow keeps sending its own notifications; the case only holds
- * the thread, so nothing here notifies anyone.
+ * the thread, so nothing here notifies anyone unless `notify` is set (a record
+ * with no notifications of its own, like an event request).
  */
 export const SUBJECT_CASE_OPEN = 'assist.subject.open';
 export const SUBJECT_CASE_UPDATE = 'assist.subject.update';
@@ -35,6 +37,8 @@ export interface SubjectCaseOpen {
   /** The requester's first message: what they asked for, in words. */
   message: string;
   category?: SupportTicketCategory;
+  /** Tell the desk through D3 (staff push on Platform). */
+  notify?: boolean;
 }
 
 export interface SubjectCaseUpdate {
@@ -46,6 +50,8 @@ export interface SubjectCaseUpdate {
   text: string;
   /** Move the case too: RESOLVED or CLOSED once decided. */
   status?: SupportTicketStatus;
+  /** Tell the requester through D3 when this resolves or closes the case. */
+  notify?: boolean;
 }
 
 /** Publish helpers. `events` is optional so unit specs can build services without one. */
@@ -65,6 +71,7 @@ export const decideSubjectCase = (
     actorId: e.actorId,
     text: `${e.by ?? 'Unifesto'} ${e.approved ? 'approved' : 'declined'} ${e.what}.${e.note ? ` Note: ${e.note}` : ''}`,
     status: SupportTicketStatus.RESOLVED,
+    notify: e.notify,
   });
 
 /** Opens and updates the case that wraps a typed record. Failures are logged, never thrown back. */
@@ -72,7 +79,14 @@ export const decideSubjectCase = (
 export class SubjectCases {
   private readonly logger = new Logger(SubjectCases.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly events?: EventEmitter2,
+  ) {}
+
+  private tell(e: SupportCaseEvent) {
+    this.events?.emit(SUPPORT_CASE_EVENT, e);
+  }
 
   @OnEvent(SUBJECT_CASE_OPEN, { async: true })
   async onOpen(e: SubjectCaseOpen): Promise<string | null> {
@@ -103,6 +117,7 @@ export class SubjectCases {
         },
         select: { id: true },
       });
+      if (e.notify) this.tell({ ticketId: t.id, kind: 'CREATED', to: 'DESK', actorId: e.requesterId });
       return t.id;
     } catch (err) {
       this.logger.error(`open ${e.subjectType} ${e.subjectId}: ${err instanceof Error ? err.message : String(err)}`);
@@ -144,6 +159,9 @@ export class SubjectCases {
           },
         }),
       ]);
+      if (e.notify && e.status) {
+        this.tell({ ticketId: c.id, kind: 'STATUS', to: 'REQUESTER', actorId: e.actorId ?? c.requesterId, message: e.text });
+      }
     } catch (err) {
       this.logger.error(`update ${e.subjectType} ${e.subjectId}: ${err instanceof Error ? err.message : String(err)}`);
     }
