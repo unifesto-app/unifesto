@@ -104,11 +104,6 @@ export function useMyTickets() {
       const isCancelledTab = key === 'cancelled';
       const response = await getMyRegisteredEvents(pageNum, PAGE_SIZE, isCancelledTab ? 'cancelled' : 'active');
 
-      if (!response) {
-        patch(key, { ...(reset ? { items: [] } : {}), hasMore: false });
-        return;
-      }
-
       const ownEvents = (response?.data || response?.events || []).map((r: any) => flatten(r));
 
       // On the first page, also include tickets where the user is a group
@@ -149,7 +144,8 @@ export function useMyTickets() {
         },
       }));
     } catch {
-      patch(key, { ...(reset ? { items: [] } : {}), hasMore: false });
+      // Keep what's on screen: a failed refresh must not read as "no tickets".
+      patch(key, { hasMore: false });
     } finally {
       patch(key, { loading: false, loadingMore: false });
     }

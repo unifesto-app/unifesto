@@ -1,4 +1,4 @@
-import { makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
+import { expectOk, makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
 
 /**
  * Organiser white-label theme (backend `branding.util`). Set only when the
@@ -239,9 +239,8 @@ export const getEvents = async (params?: {
   if (params?.endDate) query.append('endDate', params.endDate);
   if (params?.free) query.append('free', 'true');
 
-  const response = await makePublicRequest(`/events?${query.toString()}`);
-  if (!response?.ok) return null;
-  return response.json();
+  // Throws on failure so lists can show "Couldn't load" instead of "No events yet".
+  return expectOk(await makePublicRequest(`/events?${query.toString()}`), "Couldn't load events");
 };
 
 export const getEventBySlug = async (slug: string) => {
@@ -354,8 +353,8 @@ export const getMyRegisteredEvents = async (
   const response = await makeAuthenticatedRequest(
     `/users/me/registrations?page=${page}&limit=${limit}&scope=${scope}`,
   );
-  if (!response?.ok) return null;
-  return response.json();
+  // Throws on failure: an empty list would read as "no tickets" (and wipe the widget).
+  return expectOk(response, "Couldn't load your tickets");
 };
 
 export const getFeaturedEvents = async (limit = 10) => {

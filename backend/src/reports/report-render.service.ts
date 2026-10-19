@@ -26,6 +26,8 @@ export interface ReportRenderInput {
   window: { from: Date | null; to: Date | null };
   data: ReportData;
   generatedAt: Date;
+  /** M3 AI summary, printed above the sections when present. */
+  aiSummary?: string | null;
 }
 
 // A restrained, print-friendly palette — dark ink on white, one accent.
@@ -75,6 +77,7 @@ export class ReportRenderService {
       }
 
       this.drawHeader(doc, input);
+      if (input.aiSummary) this.drawSummary(doc, input.aiSummary);
 
       // Canonical section order, regardless of the order sections were chosen.
       const order: ReportSection[] = [
@@ -185,6 +188,17 @@ export class ReportRenderService {
   // ---------------------------------------------------------------------------
   // Sections
   // ---------------------------------------------------------------------------
+
+  private drawSummary(doc: PDFKit.PDFDocument, summary: string) {
+    this.sectionTitle(doc, 'Summary');
+    doc.fillColor(INK).fontSize(10).font(this.f.regular).text(summary, { lineGap: 2 });
+    doc
+      .moveDown(0.3)
+      .fillColor(MUTED)
+      .fontSize(8)
+      .text('Written by AI from this report’s figures. Check it before you share it.');
+    doc.moveDown(1);
+  }
 
   private drawOverview(doc: PDFKit.PDFDocument, o: ReportOverview) {
     this.sectionTitle(doc, 'Overview');

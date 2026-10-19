@@ -71,8 +71,8 @@ export default function AccountSettingsScreen() {
     }
     try {
       const [userProfile, userIdentities] = await Promise.all([
-        AuthAPI.getCurrentUser(token),
-        AuthAPI.getUserIdentities(token),
+        AuthAPI.getCurrentUser(),
+        AuthAPI.getUserIdentities(),
       ]);
       setProfile(userProfile);
       setIdentities(userIdentities);
@@ -94,7 +94,7 @@ export default function AccountSettingsScreen() {
 
   const makePrimary = async (identityId: string) => {
     try {
-      await setPrimaryIdentity(token!, identityId);
+      await setPrimaryIdentity(identityId);
       await loadData();
     } catch (e: any) {
       AppAlert.alert('Error', e.message || 'Failed to set primary email');
@@ -109,7 +109,7 @@ export default function AccountSettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            for (const identity of group.identities) await removeIdentity(token!, identity.id);
+            for (const identity of group.identities) await removeIdentity(identity.id);
             await loadData();
           } catch (e: any) {
             AppAlert.alert('Error', e.message || 'Failed to remove account');
