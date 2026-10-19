@@ -1,5 +1,6 @@
 import { apiBase, withInternal } from "@/lib/api/internal";
 import type { Branding } from "@/components/BrandedChrome";
+import { mapAdditionalInfo, type AdditionalInfo } from "@/lib/api/additional-info";
 // Universal module (no browser APIs): usable from both Client Components and
 // server code such as `generateMetadata` / the OG image routes. Do not add a
 // "use client" directive here or server-side callers will break.
@@ -18,6 +19,8 @@ export interface Event {
   image_url?: string;
   start_date: string;
   end_date: string;
+  /** IANA zone the organiser set; times on the event page render in it. */
+  timezone?: string;
   registration_start?: string;
   registration_end?: string;
   venue?: string;
@@ -84,6 +87,37 @@ export interface Event {
    * opt-in button. Empty for events with no sponsors.
    */
   sponsors?: PublicSponsor[];
+  /** Sale state of each visible ticket type (full on the detail payload). */
+  tickets?: TicketSale[];
+  /** Agenda, speakers, prizes, contacts and FAQs (detail payload only). */
+  sections?: AdditionalInfo;
+}
+
+export interface TicketSale {
+  sold_out: boolean;
+  waitlist: boolean;
+  sale_start?: string;
+  sale_end?: string;
+}
+
+/**
+ * Whether the event page can offer Register, using the mobile ticket rules: a
+ * ticket is buyable inside its sale window until sold out, and a sold-out one
+ * with a waiting list still takes sign-ups (into the queue). No ticket data
+ * means nothing to judge, so it stays open.
+ */
+export function registrationState(
+  tickets: TicketSale[] | undefined,
+  now: number,
+): "open" | "upcoming" | "sold_out" | "closed" {
+  if (!tickets?.length) return "open";
+  const started = (t: TicketSale) => !t.sale_start || Date.parse(t.sale_start) <= now;
+  const ended = (t: TicketSale) => !!t.sale_end && Date.parse(t.sale_end) < now;
+  const live = tickets.filter((t) => started(t) && !ended(t));
+  if (live.some((t) => !t.sold_out || t.waitlist)) return "open";
+  if (tickets.some((t) => !started(t) && !t.sold_out)) return "upcoming";
+  if (live.length || tickets.every((t) => t.sold_out)) return "sold_out";
+  return "closed";
 }
 
 /** A sponsor as it appears publicly at an event (see backend EffectiveSponsor). */
@@ -260,6 +294,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     image_url: (r.coverImageUrl ?? r.image_url) as string | undefined,
     start_date: (r.startDateTime ?? r.start_date) as string,
     end_date: (r.endDateTime ?? r.end_date) as string,
+    timezone: r.timezone as string | undefined,
     venue: (r.venueName ?? r.venue) as string | undefined,
     venue_address: (r.venueAddress ?? r.venue_address) as string | undefined,
     city: r.city as string | undefined,
@@ -316,6 +351,13 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
         tier: (s.tier ?? null) as PublicSponsor["tier"],
       }),
     ),
+    tickets: ownTicketTypes.map((t) => ({
+      sold_out: t.totalQuantity != null && Number(t.soldCount ?? 0) >= Number(t.totalQuantity),
+      waitlist: Boolean(t.waitlistEnabled),
+      sale_start: (t.saleStartsAt ?? undefined) as string | undefined,
+      sale_end: (t.saleEndsAt ?? undefined) as string | undefined,
+    })),
+    sections: mapAdditionalInfo(r),
   };
 }
 

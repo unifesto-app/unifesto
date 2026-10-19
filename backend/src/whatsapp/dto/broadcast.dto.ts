@@ -24,11 +24,13 @@ import {
  *           templates: only those who opted in to promotions).
  *   SPACE — the members of one Space (space-scoped roles, event roles excluded).
  *   USER  — one or more explicitly chosen users.
+ *   STAFF — platform ADMINs only (test sends).
  */
 export enum WhatsAppBroadcastAudience {
   ALL = 'ALL',
   SPACE = 'SPACE',
   USER = 'USER',
+  STAFF = 'STAFF',
 }
 
 /**

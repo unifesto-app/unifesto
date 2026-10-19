@@ -107,9 +107,12 @@ function makeHarness() {
   };
 
   const sends: { to: string; userName: string; inviteUrl: string; isCommunity: boolean }[] = [];
+  // Numbers Meta rejects (the send resolves false).
+  const rejected = new Set<string>();
   const whatsappService = {
     sendEventWhatsAppGroupInvite: async (to: string, d: any) => {
       sends.push({ to, ...d });
+      return !rejected.has(to);
     },
   };
 
@@ -123,7 +126,7 @@ function makeHarness() {
     none, none, none, none, none,
   );
 
-  return { svc, registrations, sends };
+  return { svc, registrations, sends, rejected };
 }
 
 describe('sendGroupInviteBlast — per-member group invite', () => {
@@ -158,5 +161,20 @@ describe('sendGroupInviteBlast — per-member group invite', () => {
     // Only seat 3 remains eligible (no phone) → attempted but skipped; no sends.
     expect(second).toEqual({ eligible: 1, sent: 0, noPhone: 1, noLink: 0, failed: 0 });
     expect(sends).toHaveLength(0);
+  });
+
+  it('a send Meta rejects is not marked sent, so the next blast retries it (C9)', async () => {
+    const { svc, registrations, sends, rejected } = makeHarness();
+    rejected.add('9111111111').add('9333333333');
+    const first = await svc.sendGroupInviteBlast('ev1');
+    expect(first).toMatchObject({ sent: 1, failed: 2 });
+    expect(registrations.find((r) => r.id === 'r1')!.whatsappInviteSentAt).toBeNull();
+    expect(registrations.find((r) => r.id === 'r2')!.groupSeats[1].whatsappInviteSentAt).toBeNull();
+
+    rejected.clear();
+    sends.length = 0;
+    const second = await svc.sendGroupInviteBlast('ev1');
+    expect(second).toMatchObject({ sent: 2, failed: 0 });
+    expect(sends.map((x) => x.to).sort()).toEqual(['9111111111', '9333333333']);
   });
 });

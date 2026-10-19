@@ -312,6 +312,23 @@ describe('EmailCampaignsService', () => {
       );
     });
 
+    it('staff audience mails platform ADMINs only, and only from the platform', async () => {
+      const prisma: any = {
+        user: { findMany: jest.fn().mockResolvedValue([user('admin', 'a@x.com')]) },
+        notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
+        marketingOptOut: { findMany: jest.fn().mockResolvedValue([]) },
+      };
+      await expect(build(prisma).countAudience({ spaceId: null }, { targetType: EmailTargetType.STAFF })).resolves.toEqual({
+        recipientCount: 1,
+      });
+      expect(prisma.user.findMany.mock.calls[0][0].where).toEqual({
+        roles: { some: { role: { code: 'ADMIN' }, spaceId: null, eventId: null } },
+      });
+      await expect(
+        build({}).countAudience({ spaceId: 's1' }, { targetType: EmailTargetType.STAFF }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
     it('applies the same space scoping as a real send', async () => {
       await expect(
         build({}).countAudience({ spaceId: 's1' }, { targetType: EmailTargetType.ALL_USERS }),

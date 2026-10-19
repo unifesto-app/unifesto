@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { MarketingChannel, Prisma, WhatsappMessageDirection } from '@prisma/client';
+import { MarketingChannel, MessageChannel, Prisma, WhatsappMessageDirection } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,6 +14,14 @@ import {
   marketingOptOuts,
   recordMarketingOptOut,
 } from '../common/marketing-opt-out';
+import {
+  AttemptResult,
+  DeliveryOpts,
+  isRetryableAxiosError,
+  trackedSend,
+} from '../notifications/message-delivery';
+import { OUTBOUND_TIMEOUT_MS } from '../common/http/outbound-timeouts';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 
 interface WhatsAppTemplateComponent {
   type: string;
@@ -221,7 +229,10 @@ export class WhatsAppService {
   // =====================================================
 
   /**
-   * Send template message via WhatsApp API
+   * Send template message via WhatsApp API. Logged to message_deliveries,
+   * optionally deduped by `delivery.dedupKey`. Retries only what can't have
+   * gone out (429, connection never made): Meta has no idempotency key, so a
+   * timeout or 5xx is never retried. Never throws.
    */
   private async sendTemplateMessage(
     to: string,
@@ -230,6 +241,7 @@ export class WhatsAppService {
     hasImageHeader = false,
     imageUrl?: string,
     languageCode = 'en',
+    delivery?: DeliveryOpts,
   ): Promise<boolean> {
     // Skip if phone number is empty
     if (!to) {
@@ -281,29 +293,54 @@ export class WhatsAppService {
         },
       };
 
-      const response = await axios.post(this.apiUrl, message, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const messageId = response.data.messages?.[0]?.id;
-      this.logger.log(`WhatsApp template sent: ${templateName} to ${formattedPhone}, ID: ${messageId}`);
-      return true;
-    } catch (error: any) {
-      if (error.response) {
-        this.logger.error(`WhatsApp API error for template ${templateName}`, {
-          status: error.response.status,
-          error: error.response.data?.error,
-          phone: formattedPhone,
-        });
-      } else {
-        this.logger.error(`WhatsApp send error for template ${templateName}`, error);
+      const res = await this.trackedPost(formattedPhone, templateName, message, delivery);
+      if (res.ok) {
+        this.logger.log(`WhatsApp template ${res.deduped ? 'already sent' : 'sent'}: ${templateName} to ${formattedPhone}, ID: ${res.id}`);
       }
+      return res.ok;
+    } catch (error: any) {
+      this.logger.error(`WhatsApp send error for template ${templateName}`, error);
       // DO NOT throw - notification failures must never break main flow
       return false;
     }
+  }
+
+  /** POST one outbound message to Meta through the C3 delivery log. Never throws. */
+  private trackedPost(phone: string, label: string, message: unknown, delivery?: DeliveryOpts) {
+    return trackedSend(
+      this.prisma,
+      { channel: MessageChannel.WHATSAPP, provider: 'meta', label, recipient: phone, ...delivery },
+      async (): Promise<AttemptResult> => {
+        try {
+          const response = await axios.post(this.apiUrl, message, {
+            headers: {
+              'Authorization': `Bearer ${this.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: OUTBOUND_TIMEOUT_MS,
+          });
+          const id = response.data?.messages?.[0]?.id ?? null;
+          return { id, error: id ? undefined : 'no_message_id' };
+        } catch (error: any) {
+          if (error.response) {
+            this.logger.error(`WhatsApp API error for ${label}`, {
+              status: error.response.status,
+              error: error.response.data?.error,
+              phone,
+            });
+          } else {
+            this.logger.error(`WhatsApp send error for ${label}`, error);
+          }
+          const detail = error.response?.data?.error?.message ?? error.message;
+          return {
+            id: null,
+            error: error.response ? `${error.response.status}: ${detail}` : String(detail),
+            // Meta has no idempotency key: never retry what may have been sent.
+            retryable: isRetryableAxiosError(error, false),
+          };
+        }
+      },
+    );
   }
 
   // =====================================================
@@ -343,14 +380,10 @@ export class WhatsAppService {
           ],
         },
       };
-      const axios = require('axios');
-      await axios.post(this.apiUrl, message, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      this.logger.log(`WhatsApp OTP sent to ${phoneNumber}`);
+      // Label is the template name; the code itself is never logged.
+      const res = await this.trackedPost(formattedPhone, TEMPLATES.OTP, message, { kind: 'otp' });
+      if (res.ok) this.logger.log(`WhatsApp OTP sent to ${phoneNumber}`);
+      else this.logger.error('Failed to send WhatsApp OTP');
     } catch (error) {
       this.logger.error('Failed to send WhatsApp OTP', error);
     }
@@ -1169,7 +1202,7 @@ export class WhatsAppService {
    * by their (formatted) phone number so nobody is messaged twice.
    */
   async resolveBroadcastRecipients(params: {
-    audience: 'ALL' | 'SPACE' | 'USER';
+    audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
     templateName?: string;
@@ -1180,8 +1213,9 @@ export class WhatsAppService {
     test?: boolean;
   }): Promise<Array<{ userId: string; name: string; mobileNumber: string }>> {
     // Consent: never closed or closing accounts; marketing templates only to
-    // people who opted in to promotions; nobody who replied STOP.
-    const consent = !params.test;
+    // people who opted in to promotions; nobody who replied STOP. A test (to
+    // me, or to the staff list) skips the prefs: it isn't marketing anyone.
+    const consent = !params.test && params.audience !== 'STAFF';
     const marketing =
       consent &&
       isMarketingCategory(
@@ -1223,6 +1257,11 @@ export class WhatsAppService {
         distinct: ['userId'],
       });
       users = roles.map((r) => r.user);
+    } else if (params.audience === 'STAFF') {
+      users = await this.prisma.user.findMany({
+        where: { ...PLATFORM_STAFF_WHERE, mobileNumber: { not: '' }, ...MARKETABLE_USER },
+        select,
+      });
     } else {
       if (!params.userIds?.length) {
         throw new BadRequestException('At least one userId is required.');
@@ -1302,6 +1341,7 @@ export class WhatsAppService {
         false,
         undefined,
         languageCode,
+        { kind: 'broadcast', userId: r.userId },
       );
       if (ok) sent += 1;
       else failed += 1;
@@ -1326,7 +1366,7 @@ export class WhatsAppService {
    */
   async sendBroadcastTemplate(params: {
     adminUserId: string;
-    audience: 'ALL' | 'SPACE' | 'USER';
+    audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
     templateName: string;
@@ -1372,7 +1412,7 @@ export class WhatsAppService {
         spaceId: params.spaceId ?? null,
         userIds: params.userIds ?? [],
         bodyParams,
-        isTest: !!params.test,
+        isTest: !!params.test || params.audience === 'STAFF',
         recipientCount: recipients.length,
       },
       select: { id: true },
@@ -1653,9 +1693,10 @@ export class WhatsAppService {
       isOnline: boolean;
       onlineUrl?: string;
     },
-  ): Promise<void> {
+    delivery?: DeliveryOpts,
+  ): Promise<boolean> {
     try {
-      if (!mobileNumber) return;
+      if (!mobileNumber) return false;
 
       const venue = this.formatVenue({
         type: data.isOnline ? 'ONLINE' : 'IN_PERSON',
@@ -1664,7 +1705,7 @@ export class WhatsAppService {
         onlineUrl: data.onlineUrl,
       });
 
-      await this.sendTemplateMessage(
+      return await this.sendTemplateMessage(
         mobileNumber,
         TEMPLATES.EVENT_REGISTRATION,
         [
@@ -1676,9 +1717,12 @@ export class WhatsAppService {
         ],
         true, // has image header
         HEADER_IMAGES.EVENT_REGISTRATION,
+        'en',
+        delivery,
       );
     } catch (error) {
       this.logger.error('Failed to send registration confirmation', error);
+      return false;
     }
   }
 
@@ -1691,6 +1735,7 @@ export class WhatsAppService {
    * Sent right after a successful registration when the event (or its parent)
    * has an organiser-supplied invite link. Fail-soft: a missing template or a
    * bad number logs and returns — it must never disturb the registration flow.
+   * Returns whether Meta accepted it, so callers mark an invite sent only then.
    */
   async sendEventWhatsAppGroupInvite(
     mobileNumber: string,
@@ -1700,11 +1745,12 @@ export class WhatsAppService {
       inviteUrl: string;
       isCommunity: boolean;
     },
-  ): Promise<void> {
+    delivery?: DeliveryOpts,
+  ): Promise<boolean> {
     try {
-      if (!mobileNumber || !data.inviteUrl) return;
+      if (!mobileNumber || !data.inviteUrl) return false;
 
-      await this.sendTemplateMessage(
+      return await this.sendTemplateMessage(
         mobileNumber,
         TEMPLATES.EVENT_WHATSAPP_GROUP,
         [
@@ -1714,9 +1760,13 @@ export class WhatsAppService {
           data.inviteUrl,
         ],
         false, // no image header
+        undefined,
+        'en',
+        delivery,
       );
     } catch (error) {
       this.logger.error('Failed to send WhatsApp group invite', error);
+      return false;
     }
   }
 

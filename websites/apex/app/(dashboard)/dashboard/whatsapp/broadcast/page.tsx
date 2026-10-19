@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   WhatsappLogo,
+  ShieldCheck,
   Users,
   UsersThree,
   User as UserIcon,
@@ -262,7 +263,8 @@ export default function WhatsAppBroadcastPage() {
   const selectedSpace = spaces.find((s) => s.id === spaceId) ?? null;
 
   const audienceReady =
-    (audience === "ALL") ||
+    audience === "ALL" ||
+    audience === "STAFF" ||
     (audience === "SPACE" && !!spaceId) ||
     (audience === "USER" && selectedUsers.length > 0);
 
@@ -274,6 +276,7 @@ export default function WhatsAppBroadcastPage() {
 
   const recipientHint = useMemo(() => {
     if (audience === "ALL") return "every user in the app with a mobile number";
+    if (audience === "STAFF") return "platform staff only";
     if (audience === "SPACE")
       return selectedSpace
         ? `${selectedSpace.memberCount} member${selectedSpace.memberCount === 1 ? "" : "s"} of ${selectedSpace.name}`
@@ -359,7 +362,7 @@ export default function WhatsAppBroadcastPage() {
           <CardTitle className="text-base">1 · Who receives it</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <AudienceCard
               active={audience === "SPACE"}
               icon={UsersThree}
@@ -380,6 +383,13 @@ export default function WhatsAppBroadcastPage() {
               title="Everyone"
               description="All app users with a number"
               onClick={() => setAudience("ALL")}
+            />
+            <AudienceCard
+              active={audience === "STAFF"}
+              icon={ShieldCheck}
+              title="Staff only"
+              description="Platform admins, for a test run"
+              onClick={() => setAudience("STAFF")}
             />
           </div>
 

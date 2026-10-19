@@ -47,6 +47,7 @@ const TARGETS: { value: EmailTargetType; label: string; needsId?: "event" | "spa
   { value: "EVENT_REGISTRANTS", label: "Registrants of an event", needsId: "event" },
   { value: "WAITLIST", label: "Waitlist of an event", needsId: "event" },
   { value: "SINGLE_USER", label: "A single user", needsId: "user" },
+  { value: "STAFF", label: "Staff only (test run)" },
 ];
 
 export default function ComposeCampaignPage() {

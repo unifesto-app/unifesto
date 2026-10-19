@@ -60,3 +60,22 @@ describe('OneSignalService.linkSubscriptionToExternalId', () => {
     expect(isMissingTargetUser(httpError(400, { errors: [{ title: 'Target user does not exist' }] }))).toBe(false);
   });
 });
+
+describe('OneSignalService.getDeliveryStats', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    process.env.ONESIGNAL_APP_ID = 'app';
+    process.env.ONESIGNAL_REST_API_KEY = 'key';
+  });
+
+  it("reads a notification's delivery counts, null when OneSignal can't say", async () => {
+    mocked.get.mockResolvedValueOnce({ data: { successful: 1120, failed: 1, errored: 0, converted: 16 } });
+    await expect(new OneSignalService().getDeliveryStats('n1')).resolves.toEqual({ successful: 1120, failed: 1, errored: 0 });
+    expect(mocked.get).toHaveBeenCalledWith(
+      'https://api.onesignal.com/notifications/n1',
+      expect.objectContaining({ params: { app_id: 'app' } }),
+    );
+    mocked.get.mockRejectedValueOnce(httpError(404, {}));
+    await expect(new OneSignalService().getDeliveryStats('gone')).resolves.toBeNull();
+  });
+});

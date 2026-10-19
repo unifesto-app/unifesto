@@ -13,9 +13,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService, SendSummary } from './notifications.service';
+import { OneSignalService } from './onesignal.service';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { NotificationCategory } from './notifications.constants';
-import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { attendingUserIds } from '../common/attendance';
 import {
   CreateOrganiserAnnouncementDto,
   CreatePushBroadcastDto,
@@ -23,7 +25,7 @@ import {
 } from './dto/push-campaign.dto';
 
 interface TargetSegment {
-  type: 'all' | 'event' | 'space' | 'users';
+  type: 'all' | 'event' | 'space' | 'users' | 'staff';
   eventId?: string;
   spaceId?: string;
   userIds?: string[];
@@ -31,6 +33,15 @@ interface TargetSegment {
 
 // N4: cap organiser announcements so an event can't be spammed.
 const ORGANISER_ANNOUNCEMENTS_PER_DAY = 3;
+
+// OneSignal segment used by the all-users broadcast fallback so unlinked devices
+// (no external_id) still receive it. "Total Subscriptions" is the built-in segment
+// on current OneSignal apps (the legacy "Subscribed Users" does not exist on ours,
+// so every broadcast was rejected); overridable for accounts that renamed it.
+const BROADCAST_SEGMENT = process.env.ONESIGNAL_BROADCAST_SEGMENT || 'Total Subscriptions';
+
+const MINUTE = 60 * 1000;
+const DAY = 24 * 60 * MINUTE;
 
 @Injectable()
 export class PushCampaignService {
@@ -40,6 +51,7 @@ export class PushCampaignService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly events: EventsService,
+    private readonly oneSignal: OneSignalService,
   ) {}
 
   // ── Admin broadcasts ────────────────────────────────────────────────────────
@@ -78,14 +90,18 @@ export class PushCampaignService {
 
   /**
    * How many people a broadcast would reach right now, for the confirm step:
-   * the same recipients and pref filter `dispatch` uses.
+   * the same recipients and pref filter `dispatch` uses. An all-users,
+   * opt-out broadcast goes to the OneSignal segment, which can also reach
+   * signed-out devices, so for that one this is the floor. A staff test sends
+   * as `adminAlerts` (see dispatch), so it counts that way too.
    */
   async countAudience(
     target: TargetSegment,
     category: NotificationCategory = 'productUpdates',
   ): Promise<{ recipientCount: number }> {
     const userIds = await this.resolveSegment(target);
-    return { recipientCount: await this.notifications.countAllowed(userIds, category) };
+    const sendAs: NotificationCategory = target.type === 'staff' ? 'adminAlerts' : category;
+    return { recipientCount: await this.notifications.countAllowed(userIds, sendAs) };
   }
 
   /**
@@ -162,7 +178,46 @@ export class PushCampaignService {
       }),
       this.prisma.pushCampaign.count({ where }),
     ]);
+    // Stored numbers now; fresher ones land for the next view.
+    void this.refreshSegmentStats(items).catch((err) =>
+      this.logger.warn(`Segment stats refresh failed: ${err instanceof Error ? err.message : String(err)}`),
+    );
     return { items, total, page, limit };
+  }
+
+  // ponytail: per-process memory; with several backend replicas each reads at most once per 5 min.
+  private readonly statsReadAt = new Map<string, number>();
+
+  /**
+   * Segment broadcasts learn their sent/failed counts from OneSignal after the
+   * fact (its create response has none). Re-read while the numbers can still
+   * move (first day) or were never filled, at most once per 5 minutes per row,
+   * and never past 30 days (OneSignal stops answering for old notifications).
+   */
+  async refreshSegmentStats(items: PushCampaign[]): Promise<void> {
+    const now = Date.now();
+    const due = items.filter((c) => {
+      const sentAt = c.sentAt?.getTime() ?? 0;
+      const lastRead = Math.max(this.statsReadAt.get(c.id) ?? 0, c.updatedAt.getTime());
+      return (
+        c.oneSignalId &&
+        c.status === PushCampaignStatus.SENT &&
+        sentAt > now - 30 * DAY &&
+        lastRead < now - 5 * MINUTE &&
+        (sentAt > now - DAY || (c.sentCount === 0 && c.failedCount === 0))
+      );
+    });
+    await Promise.all(
+      due.map(async (c) => {
+        this.statsReadAt.set(c.id, now);
+        const stats = await this.oneSignal.getDeliveryStats(c.oneSignalId!);
+        if (!stats) return;
+        const sentCount = stats.successful;
+        const failedCount = stats.failed + stats.errored;
+        if (sentCount === c.sentCount && failedCount === c.failedCount) return;
+        await this.prisma.pushCampaign.update({ where: { id: c.id }, data: { sentCount, failedCount } });
+      }),
+    );
   }
 
   async getById(id: string): Promise<PushCampaign> {
@@ -254,31 +309,61 @@ export class PushCampaignService {
       const deepLink = (campaign.data as any)?.deepLink as string | undefined;
       const data = (campaign.data as Record<string, unknown>) ?? undefined;
 
-      // Always an enumerated user list, never a OneSignal segment: `send`
-      // applies each person's category switch (product updates included) and
-      // writes their in-app copy, which a segment blast can do neither of.
-      // Devices never linked to an account (signed out) are not reached.
-      const userIds = await this.resolveRecipients(campaign);
-      const summary = await this.notifications.send(userIds, {
-        category,
-        title: campaign.title,
-        body: campaign.body,
-        data,
-        deepLink,
-        campaignId: campaign.id,
-      });
+      // All-users broadcasts of an opt-OUT category fan out to the whole
+      // subscribed segment — this reaches devices with no external_id linkage,
+      // which enumerated external_id targeting cannot. Opt-IN promotions must
+      // never segment-blast (that would send marketing to non-consenting users),
+      // so they stay on the enumerated + pref-filtered path.
+      // Accepted gap (C8): the segment can't see the per-user productUpdates
+      // switch (only turning push off in the app drops the device) and writes
+      // no inbox copies. We keep it because a per-user send only reaches devices
+      // linked by external_id, and that link was broken until the next store
+      // build: the 27 Sept segment sends reached ~1,120 devices each.
+      const segment = (campaign.targetSegment as unknown as TargetSegment) ?? { type: 'all' };
+      const useSegment =
+        campaign.scope === PushScope.PLATFORM &&
+        segment.type === 'all' &&
+        category !== 'promotions';
 
+      // Staff-only test run: marked as a test, kept out of the inbox, and sent
+      // as a staff alert so the admins' own category prefs can't swallow it.
+      const staffTest = segment.type === 'staff';
+
+      let summary: SendSummary & { oneSignalId?: string | null };
+      if (useSegment) {
+        summary = await this.notifications.sendToSegments([BROADCAST_SEGMENT], {
+          title: campaign.title,
+          body: campaign.body,
+          data,
+          deepLink,
+        });
+      } else {
+        const userIds = await this.resolveRecipients(campaign);
+        summary = await this.notifications.send(userIds, {
+          category: staffTest ? 'adminAlerts' : category,
+          title: staffTest ? `[Test] ${campaign.title}` : campaign.title,
+          body: campaign.body,
+          data,
+          deepLink,
+          campaignId: campaign.id,
+          ...(staffTest ? { inbox: false as const } : {}),
+        });
+      }
+
+      // A segment send OneSignal didn't accept (no id) reached nobody.
+      const rejected = useSegment && !summary.oneSignalId;
       await this.prisma.pushCampaign.update({
         where: { id: campaignId },
         data: {
-          status: PushCampaignStatus.SENT,
-          sentAt: new Date(),
+          status: rejected ? PushCampaignStatus.FAILED : PushCampaignStatus.SENT,
+          sentAt: rejected ? null : new Date(),
           sentCount: summary.sent,
           failedCount: summary.failed,
+          oneSignalId: summary.oneSignalId ?? null,
         },
       });
       this.logger.log(
-        `Campaign ${campaignId} sent: ` +
+        `Campaign ${campaignId} ${rejected ? 'rejected by OneSignal' : 'sent'} (${useSegment ? `segment:${BROADCAST_SEGMENT}` : 'external_id'}): ` +
           `${summary.sent} sent, ${summary.failed} failed, ${summary.skipped} skipped`,
       );
     } catch (err: any) {
@@ -302,11 +387,8 @@ export class PushCampaignService {
     if (segment.type === 'event') {
       const eventId = segment.eventId;
       if (!eventId) return [];
-      const regs = await this.prisma.eventRegistration.findMany({
-        where: { eventId, ...COUNTS_AS_ATTENDING },
-        select: { userId: true },
-      });
-      return [...new Set(regs.map((r) => r.userId))];
+      // Leads plus group members who joined: GroupSeat is the roster.
+      return attendingUserIds(this.prisma, eventId);
     }
 
     if (segment.type === 'space') {
@@ -326,6 +408,11 @@ export class PushCampaignService {
         select: { id: true },
       });
       return users.map((u) => u.id);
+    }
+
+    if (segment.type === 'staff') {
+      const staff = await this.prisma.user.findMany({ where: PLATFORM_STAFF_WHERE, select: { id: true } });
+      return staff.map((u) => u.id);
     }
 
     // type 'all': every open account (pref opt-out enforced in NotificationsService.send).

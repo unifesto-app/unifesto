@@ -123,7 +123,7 @@ export class RegistrationAttendeesService {
           noPhone++;
         } else {
           try {
-            await this.whatsappService.sendEventWhatsAppGroupInvite(
+            const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(
               reg.user.mobileNumber,
               {
                 userName: reg.user.fullName || reg.user.username || 'there',
@@ -132,6 +132,7 @@ export class RegistrationAttendeesService {
                 isCommunity,
               },
             );
+            if (!accepted) throw new Error('WhatsApp did not accept the invite');
             await this.prisma.eventRegistration.update({
               where: { id: reg.id },
               data: { whatsappInviteSentAt: new Date() },

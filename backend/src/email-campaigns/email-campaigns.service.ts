@@ -35,6 +35,7 @@ import {
   TestCampaignDto,
 } from './dto/campaign.dto';
 import { EmailCampaignQueue } from './email-campaigns.queue';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 
 /** A SENDING campaign with no progress for this long is treated as stranded. */
 export const STALE_SENDING_MS = 15 * 60 * 1000;
@@ -204,6 +205,7 @@ export class EmailCampaignsService {
       case EmailTargetType.ALL_USERS:
       case EmailTargetType.ORGANISERS_ONLY:
       case EmailTargetType.SEGMENT:
+      case EmailTargetType.STAFF:
         return null;
       default:
         throw new BadRequestException('Unsupported target type');
@@ -559,8 +561,11 @@ export class EmailCampaignsService {
     resolved: Recipient[],
   ): Promise<Recipient[]> {
     const ids = resolved.flatMap((r) => (r.userId ? [r.userId] : []));
+    // 1:1 mail and the staff test list aren't bulk marketing.
     const needsOptIn =
-      !campaign.spaceId && campaign.targetType !== EmailTargetType.SINGLE_USER;
+      !campaign.spaceId &&
+      campaign.targetType !== EmailTargetType.SINGLE_USER &&
+      campaign.targetType !== EmailTargetType.STAFF;
     const [emailOff, optOuts, promotionsOn] = await Promise.all([
       emailOptedOutUserIds(this.prisma, ids),
       marketingOptOuts(this.prisma, MarketingChannel.EMAIL, campaign.spaceId),
@@ -654,6 +659,11 @@ export class EmailCampaignsService {
             select: RECIPIENT_SELECT,
             distinct: ['id'],
           }),
+        );
+
+      case EmailTargetType.STAFF:
+        return this.usersToRecipients(
+          await this.prisma.user.findMany({ where: PLATFORM_STAFF_WHERE, select: RECIPIENT_SELECT }),
         );
 
       case EmailTargetType.SEGMENT:

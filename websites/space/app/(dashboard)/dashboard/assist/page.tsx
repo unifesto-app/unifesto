@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TicketThread, statusBadgeVariant } from "@/components/support/TicketThread";
+import { RefundCasePanel } from "@/components/support/RefundCasePanel";
+import type { RefundRequest } from "@/lib/api/refunds-api";
 import {
   listSpaceDesk,
   getTicket,
@@ -143,6 +145,9 @@ export default function AssistInboxPage() {
     const closed = selected.status === "CLOSED";
     const withUnifesto = selected.desk === "PLATFORM";
     const email = requesterEmail(selected);
+    const refunds = (selected.subjects ?? [])
+      .filter((s) => s.type === "RefundRequest")
+      .map((s) => s.data as unknown as RefundRequest);
     return (
       <div className="space-y-6">
         <Button variant="ghost" size="sm" className="-ml-2 w-fit" onClick={() => setSelected(null)}>
@@ -165,7 +170,8 @@ export default function AssistInboxPage() {
                 {requesterName(selected)}
                 {email ? ` · ${email}` : ""} · opened {timeAgo(selected.createdAt)}
               </p>
-              {!withUnifesto && !closed && (
+              {/* A refund goes to Unifesto by forwarding it, not by escalating the case. */}
+              {!withUnifesto && !closed && refunds.length === 0 && (
                 <Button variant="outline" size="sm" disabled={acting} onClick={handleEscalate}>
                   <ArrowUpRight className="h-4 w-4" /> Escalate to Unifesto
                 </Button>
@@ -194,6 +200,10 @@ export default function AssistInboxPage() {
             )}
           </CardContent>
         </Card>
+
+        {refunds.map((r) => (
+          <RefundCasePanel key={r.id} refund={r} onDone={() => Promise.all([openTicket(selected.id), load()])} />
+        ))}
       </div>
     );
   }

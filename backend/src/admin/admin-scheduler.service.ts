@@ -55,7 +55,7 @@ export class AdminSchedulerService {
     const adminEmail = process.env.ADMIN_EMAIL || 'aws@unifesto.app';
     await this.emailService.sendDailyAdminDigest({
       adminEmail,
-      date: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      date: now.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric' }),
       newUsers,
       newSpaces,
       newEvents,
@@ -67,7 +67,7 @@ export class AdminSchedulerService {
     // Same numbers, second channel: broadcast to the "Unifesto Stats" WhatsApp list.
     await this.whatsapp.broadcastStatsUpdate({
       label: 'Daily Snapshot',
-      periodText: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      periodText: now.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
       newUsers,
       newSpaces,
       newEvents,
@@ -110,7 +110,7 @@ export class AdminSchedulerService {
     const adminEmail = process.env.ADMIN_EMAIL || 'aws@unifesto.app';
     await this.emailService.sendWeeklyReport({
       adminEmail,
-      weekStarting: weekAgo.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+      weekStarting: weekAgo.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric' }),
       metrics: [
         { label: 'Total Users', value: totalUsers.toLocaleString(), change: `+${newUsers} this week` },
         { label: 'Active Events', value: totalEvents.toLocaleString(), change: `+${newEvents} this week` },
@@ -121,7 +121,7 @@ export class AdminSchedulerService {
 
     await this.whatsapp.broadcastStatsUpdate({
       label: 'Weekly Digest',
-      periodText: `${weekAgo.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}–${now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`,
+      periodText: `${weekAgo.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' })}–${now.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' })}`,
       newUsers,
       newSpaces,
       newEvents,
@@ -168,7 +168,7 @@ export class AdminSchedulerService {
     const adminEmail = process.env.ADMIN_EMAIL || 'aws@unifesto.app';
     await this.emailService.sendMonthlyInvoiceSummary({
       adminEmail,
-      month: firstOfLastMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+      month: firstOfLastMonth.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', month: 'long', year: 'numeric' }),
       totalRevenue: Number(revenue._sum.razorpayAmount || 0),
       totalTransactions: transactions,
       topEvents: topEvents.map(e => ({ title: e.title, revenue: e.registeredCount * 499 })),

@@ -46,6 +46,8 @@ const nextConfig: NextConfig = {
       { source: '/events/:space', destination: '/space/:space', permanent: true },
       // Hackathons were renamed Unifesto Sprint.
       { source: '/hackathons', destination: '/sprint', permanent: true },
+      // There is no public API yet; the old /docs page described one.
+      { source: '/docs', destination: '/help', permanent: true },
     ];
   },
   async rewrites() {
