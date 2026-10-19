@@ -8,7 +8,7 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import { listMyTickets, type SupportTicket } from '../lib/api/support';
-import TicketRow, { isActiveTicket } from '../components/support/TicketRow';
+import TicketRow from '../components/support/TicketRow';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
@@ -22,8 +22,6 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 const SUPPORT_EMAIL = 'support@unifesto.app';
 const WHATSAPP_NUMBER = '919346095136';
 const WHATSAPP_DISPLAY = '+91 93460 95136';
-/** Requests shown here; older ones stay reachable from their notifications. */
-const SHOWN = 10;
 
 const WEB = 'https://unifesto.app';
 // Every legal page on the website (websites/web/src/components/Footer.tsx legal bar,
@@ -67,8 +65,9 @@ function supportMailto() {
 
 /**
  * Profile › Support. Signed in, a tracked request comes first (replies land in
- * the app and the team sees the build it came from), then the requests already
- * raised, still-open ones on top. Email and WhatsApp follow for a quick word,
+ * the app and the team sees the build it came from), then My help: every case
+ * I raised (questions, refunds, requests, reports…), newest activity first,
+ * with a dot on the ones that have news. Email and WhatsApp follow for a quick word,
  * and the legal pages close the page.
  */
 export default function SupportScreen() {
@@ -82,10 +81,9 @@ export default function SupportScreen() {
   const load = useCallback(async () => {
     if (!user) return setTickets([]);
     const list = await listMyTickets();
-    // Platform admins get every ticket from this endpoint; this page is only mine.
-    // ponytail: filters the newest 50, so an admin's own older requests can drop off; add a `mine` query param if that bites.
-    const mine = list.filter((t) => !t.requester || t.requester.id === user.id);
-    setTickets([...mine.filter(isActiveTicket), ...mine.filter((t) => !isActiveTicket(t))].slice(0, SHOWN));
+    // Platform admins get every case from this endpoint; this page is only mine.
+    // ponytail: filters the newest 100, so an admin's own older cases can drop off; add a `mine` query param if that bites.
+    setTickets(list.filter((t) => t.requesterId === user.id));
   }, [user]);
 
   // On focus, so a request raised or answered elsewhere shows on return.
@@ -133,7 +131,7 @@ export default function SupportScreen() {
         </View>
 
         {user && (tickets === null || tickets.length > 0) ? (
-          <Section title="My requests" subtitle="Open ones first">
+          <Section title="My help" subtitle="Everything I've raised, newest first">
             <View style={[styles.list, styles.pad]}>
               {tickets === null
                 ? [0, 1].map((i) => <Skeleton key={i} width="100%" height={76} borderRadius={cosmosCardRadius} />)

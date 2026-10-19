@@ -99,6 +99,17 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
   const openEvent = () => t.eventSlug && router.push(`/event/${t.eventSlug}`);
 
+  // A case about this ticket; the backend sends it to the organiser's desk (D2).
+  // A group member's ticket is the lead's registration, so it goes as the event.
+  const getHelp = () =>
+    router.push({
+      pathname: '/manage/support/new',
+      params: {
+        ...(t.ticket?.isGroupMember || !t.registrationId ? { eventId: t.eventId } : { registrationId: t.registrationId }),
+        about: t.title,
+      },
+    });
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -115,12 +126,14 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
                 ? [{ id: 'calendar', title: 'Add to calendar', icon: MENU_ICONS.calendar }]
                 : []),
               ...(t.eventSlug ? [{ id: 'event', title: 'View event', icon: MENU_ICONS.website }] : []),
+              { id: 'help', title: 'Get help', icon: MENU_ICONS.help },
               { id: 'report', title: 'Report an issue', icon: MENU_ICONS.report, destructive: true },
               ...(t.canDelete ? [{ id: 'delete', title: 'Delete ticket', icon: MENU_ICONS.delete, destructive: true }] : []),
             ]}
             onSelect={(action) => {
               if (action === 'calendar') t.addToCalendar();
               else if (action === 'event') openEvent();
+              else if (action === 'help') getHelp();
               else if (action === 'report') setReportOpen(true);
               else if (action === 'delete') t.confirmDelete(() => router.back());
             }}
@@ -129,7 +142,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, c.text]);
+  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, t.eventId, t.registrationId, t.title, c.text]);
 
   if (!t.ticket) {
     return (
