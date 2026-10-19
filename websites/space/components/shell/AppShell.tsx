@@ -20,6 +20,7 @@ import { SpaceSwitcher } from "./SpaceSwitcher";
 import { CommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
 import { FeeNoticeBanner } from "./FeeNoticeBanner";
+import { LegalAcceptSheet } from "./LegalAcceptSheet";
 
 /**
  * Authenticated shell. Waits for the session, sends accounts with no operator
@@ -88,6 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <CommandPalette />
+      <LegalAcceptSheet onSignOut={handleSignOut} />
 
         {/* Full-width below the fixed header. The dashboard layout adds the
             space sidebar and its own centered content column; other authed
