@@ -13,6 +13,8 @@ import AppStoreBadge from '@/app/assets/svg/Download_on_the_App_Store_Badge_US-U
 export default function DownloadPage() {
   const [platform, setPlatform] = useState<'ios' | 'android' | 'unknown'>('unknown');
   const [redirecting, setRedirecting] = useState(false);
+  // The page that sent a desktop visitor here (openAppOrStore), e.g. /event/x.
+  const [from, setFrom] = useState<string | null>(null);
 
   const APP_PACKAGE = 'com.unifesto.app';
   const IOS_APP_ID = '6767165496';
@@ -36,6 +38,10 @@ export default function DownloadPage() {
     }
 
     setPlatform(detectedPlatform);
+
+    // Same-site paths only, so this can't become an open redirect.
+    const f = new URLSearchParams(window.location.search).get('from');
+    if (f?.startsWith('/') && !f.startsWith('//')) setFrom(f);
 
     // Auto-redirect after a short delay
     if (detectedPlatform !== 'unknown') {
@@ -74,7 +80,18 @@ export default function DownloadPage() {
         accentFrom={1}
         lede={
           <>
-            Discover and register for events, keep every ticket in one place, and get in with one scan.
+            {from ? (
+              <>
+                Registration happens in the app. Open{' '}
+                <span className="break-all font-semibold text-paper">{window.location.host}{from}</span> on your phone, or get
+                the app below.{' '}
+                <a href={from} className="link-draw font-semibold text-primary">
+                  Back to where you were
+                </a>
+              </>
+            ) : (
+              'Discover and register for events, keep every ticket in one place, and get in with one scan.'
+            )}
             {redirecting && platform !== 'unknown' && (
               <span role="status" className="mt-6 flex items-center gap-2 text-sm font-semibold text-primary">
                 <CircleNotch className="h-4 w-4 animate-spin" weight="bold" aria-hidden="true" />

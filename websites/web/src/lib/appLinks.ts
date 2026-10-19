@@ -46,74 +46,34 @@ export function androidIntentUrl(scheme: string): string {
 const noopSubscribe = () => () => {};
 
 /**
- * `href` for an "Open in app" link. The click handler (openAppOrStore) is the
- * main path, but taps before hydration, long-press "open" and in-app browsers
- * that follow the href directly use this, so on Android it must be the intent
- * URL too. The server render can't know the platform: it starts as the scheme
- * and switches on hydration.
+ * `href` for an "Open in app" link: where openAppOrStore would go. The click
+ * handler is the main path, but taps before hydration, long-press "open" and
+ * in-app browsers that follow the href directly use this. The server render
+ * can't know the platform: it starts as /download (which forwards phones to
+ * their store) and switches on hydration.
  */
 export function useAppHref(scheme: string): string {
-  const android = useSyncExternalStore(
-    noopSubscribe,
-    () => detectMobilePlatform() === 'android',
-    () => false,
-  );
-  return android ? androidIntentUrl(scheme) : scheme;
+  const platform = useSyncExternalStore(noopSubscribe, detectMobilePlatform, () => 'unknown' as const);
+  return platform === 'android' ? androidIntentUrl(scheme) : storeUrlFor(platform);
 }
 
 /**
- * Try to open the app via its custom scheme. If the app is installed the page
- * backgrounds (visibility → hidden) and we do nothing further. If it isn't
- * installed the page stays visible, so after a short delay we send the user to
- * the store. On desktop there's no app to open → go straight to the store page.
+ * Hand off to the app. Android: an intent URL opens the app, or the Play Store
+ * when it isn't installed. iOS: straight to the App Store (it shows "Open"
+ * when the app is installed). A custom scheme there makes Safari alert
+ * "address is invalid" when the app is missing, and installed users already
+ * reach the app through Universal Links and the Smart App Banner. Desktop:
+ * /download, carrying the current page so it can point back to it.
  *
- * Returns a cleanup function (cancels the pending store redirect + listeners).
+ * Returns a cleanup function (kept for callers that run it from an effect).
  */
-export function openAppOrStore(
-  scheme: string,
-  opts: { delayMs?: number } = {},
-): () => void {
+export function openAppOrStore(scheme: string): () => void {
   const platform = detectMobilePlatform();
-
-  // Desktop / unknown: no app to open — send them to the download page.
-  if (platform === 'unknown') {
-    window.location.href = '/download';
-    return () => {};
-  }
-
-  // Android: a bare custom scheme is often ignored by Chrome and in-app
-  // browsers. An intent:// URL is the supported way: Chrome opens the app if
-  // it's installed and goes to the fallback (Play Store) itself if not.
-  if (platform === 'android') {
-    window.location.href = androidIntentUrl(scheme);
-    return () => {};
-  }
-
-  let appOpened = false;
-  const markOpened = () => {
-    appOpened = true;
-  };
-  const onVisibility = () => {
-    if (document.visibilityState === 'hidden') markOpened();
-  };
-  document.addEventListener('visibilitychange', onVisibility);
-  window.addEventListener('pagehide', markOpened);
-  window.addEventListener('blur', markOpened);
-
-  // Attempt to open the app.
-  window.location.href = scheme;
-
-  const timer = window.setTimeout(() => {
-    if (!appOpened && document.visibilityState === 'visible') {
-      window.location.href = storeUrlFor(platform);
-    }
-  }, opts.delayMs ?? 1500);
-
-  const cleanup = () => {
-    window.clearTimeout(timer);
-    document.removeEventListener('visibilitychange', onVisibility);
-    window.removeEventListener('pagehide', markOpened);
-    window.removeEventListener('blur', markOpened);
-  };
-  return cleanup;
+  window.location.href =
+    platform === 'android'
+      ? androidIntentUrl(scheme)
+      : platform === 'ios'
+        ? APP_STORE_URL
+        : `/download?from=${encodeURIComponent(window.location.pathname)}`;
+  return () => {};
 }

@@ -59,6 +59,8 @@ export interface SupportTicket {
   requesterId: string;
   eventId: string | null;
   registrationId: string | null;
+  /** The typed record it wraps, e.g. User for an account deletion (D24). */
+  subjectType?: string | null;
   /** Set when the space handed it to Unifesto; the space keeps read. */
   escalatedAt: string | null;
   lastMessageAt: string;

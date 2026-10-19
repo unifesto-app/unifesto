@@ -39,7 +39,7 @@ export default function NotFound() {
       <Navbar />
       <section className="flex flex-1 items-center px-4 pb-24 pt-32 sm:px-8 sm:pt-36">
         <div className="mx-auto w-full max-w-4xl">
-          <p className="enter font-mono text-xs uppercase tracking-[0.2em] text-paper/50">Error 404 · Gate closed</p>
+          <p className="enter font-mono text-xs uppercase tracking-[0.2em] text-paper/65">Error 404 · Gate closed</p>
           <h1
             className="waterline-load mt-4 font-display text-[clamp(2rem,6vw,3.5rem)] font-bold leading-[1.05] text-paper"
             style={{ letterSpacing: "-0.03em" }}
@@ -65,8 +65,8 @@ export default function NotFound() {
           >
             <div className="flex-1 p-6 sm:p-8">
               <div className="flex items-center justify-between gap-4">
-                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/50">Admit one</span>
-                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/50">No. 000404</span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/65">Admit one</span>
+                <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-paper/65">No. 000404</span>
               </div>
               <p
                 className="mt-5 font-display text-[clamp(4rem,14vw,7rem)] font-bold leading-[0.85] text-primary"
@@ -77,7 +77,7 @@ export default function NotFound() {
               <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
                 {FIELDS.map(([k, v]) => (
                   <div key={k} className="min-w-0">
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/45">{k}</dt>
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-paper/65">{k}</dt>
                     <dd className="mt-1 truncate text-sm font-medium text-paper">{v}</dd>
                   </div>
                 ))}
@@ -101,7 +101,7 @@ export default function NotFound() {
                     <span key={i} className="bg-paper/80" style={{ width: `${w * 2}px` }} />
                   ))}
                 </div>
-                <p className="mt-2 font-mono text-[10px] tracking-[0.2em] text-paper/45">UNF-404-000404</p>
+                <p className="mt-2 font-mono text-[10px] tracking-[0.2em] text-paper/65">UNF-404-000404</p>
               </div>
               <span
                 className="stamp -rotate-12 rounded-md px-3 py-1 font-mono text-sm font-bold uppercase tracking-[0.2em] text-destructive shadow-[inset_0_0_0_2px_var(--destructive)]"
@@ -127,7 +127,7 @@ export default function NotFound() {
           </div>
           <nav aria-label="Other places" className="enter mt-12 flex flex-wrap gap-x-6 gap-y-3" style={{ ["--d" as string]: "600ms" }}>
             {WAYS.map((w) => (
-              <Link key={w.href} href={w.href} className="link-draw text-sm text-paper/60 transition-colors duration-150 hover:text-paper">
+              <Link key={w.href} href={w.href} className="link-draw text-sm text-paper/75 transition-colors duration-150 hover:text-paper">
                 {w.label}
               </Link>
             ))}

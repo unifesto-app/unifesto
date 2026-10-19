@@ -82,6 +82,23 @@ export async function rejectSpaceRequest(
   );
 }
 
+/** `PATCH /spaces/event-requests/:id/approve`: personal space + draft event (D7). */
+export async function approveEventRequest(
+  id: string
+): Promise<{ data: unknown | null; error: ApiError | null }> {
+  return apiCall(backendClient.patch(`/spaces/event-requests/${id}/approve`));
+}
+
+/** `PATCH /spaces/event-requests/:id/reject`. */
+export async function rejectEventRequest(
+  id: string,
+  reviewNote?: string
+): Promise<{ data: unknown | null; error: ApiError | null }> {
+  return apiCall(
+    backendClient.patch(`/spaces/event-requests/${id}/reject`, { reviewNote })
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* Sub-space requests                                                          */
 /* -------------------------------------------------------------------------- */

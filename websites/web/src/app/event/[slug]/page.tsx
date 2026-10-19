@@ -13,7 +13,7 @@ import EventDetailClient from "./EventDetailClient";
 // One fetch per request, shared by generateMetadata and the page.
 const getEventBySlug = cache(fetchEvent);
 
-/** Same rule as EventDetailClient: drafts and space-only events aren't public. */
+/** Drafts and space-only events aren't public; private ones stay reachable by direct link. */
 const isPublic = (e: Event | null): e is Event =>
   !!e && e.status !== "DRAFT" && e.visibility !== "SPACE_ONLY";
 
@@ -138,7 +138,7 @@ function eventLd(event: Event) {
 
 export default async function EventDetailPage({ params }: Props) {
   // The interactive UI stays a client component; the server layer emits
-  // metadata and structured data. Forward the same params promise down.
+  // metadata and structured data and hands it the one event fetch.
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!isPublic(event)) notFound();
@@ -152,7 +152,7 @@ export default async function EventDetailPage({ params }: Props) {
   return (
     <>
       <JsonLd data={eventLd(event)} />
-      <EventDetailClient params={params} initialEvent={event} />
+      <EventDetailClient event={event} />
     </>
   );
 }
