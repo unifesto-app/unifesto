@@ -377,8 +377,8 @@ One support system for everything a person needs help with. Every item is an **A
 | D23 | Stay + session cancellations and refunds through D6 (with S51) | done (#252) |
 | D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | done (#247) |
 | D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | done (#256) |
-| D26 | WhatsApp inbox → "Convert to case", later a full channel | planned |
-| D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | planned |
+| D26 | WhatsApp inbox → "Convert to case", later a full channel | done (#282) |
+| D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | done (#282) |
 | D28 | Space verification request (optional) | parked (2026-10-18): marked optional; verification is admin-set (Space.verifiedAt, live since #91) without a request flow. |
 | D29 | **Clear the support and WhatsApp backlog.** Ops task, not code. Apex Support has 217 Open tickets ('Needs a reply'), 0 awaiting, 0 resolved, and the oldest refund requests are 12+ days old with 1 message. | next |
 
@@ -819,3 +819,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · L2 live Q&A: ask, upvote, moderation queue on Space web + mobile (#277)
 - **2026-10-19** · H14: certificate emails go via Resend from the space's verified sending domain; otherwise SES unchanged (needs H20 Resend upgrade) (#280)
 - **2026-10-19** · D22 built: payout requests and payout-account verification open Platform REQUEST cases (Payout / PayoutBankAccount); paid, cancelled, verified and rejected post SYSTEM lines and resolve them, so "why was my account rejected?" is answered in the thread; money logic and S23 stay in payouts.service; Apex Assist Payout panel. No migration; rebuild backend + apex. (#281)
+- **2026-10-19** · D26 Apex WhatsApp "Convert to case" (picked messages → Platform HELP case, number matched to account, conversation links to it) and D27 hackathon help desk "Escalate to organiser" (Space web + mobile → Space-desk case with team/room, query keeps escalatedAt + caseId); additive migration 20261105100000_assist_links; rebuild backend + apex + space. (#282)
