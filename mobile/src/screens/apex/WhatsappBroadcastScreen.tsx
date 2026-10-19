@@ -13,12 +13,15 @@ import SelectRow from '../../components/manage/SelectRow';
 import SaveBar from '../../components/manage/SaveBar';
 import EntityPickerRow, { type PickerItem } from '../../components/apex/EntityPickerRow';
 import { Button } from '../../components/ui';
+import { AppAlert } from '../../components/ui/AppAlert';
 import { titleCase } from '../../lib/apexQueues';
 import {
+  countWhatsappAudience,
   listBroadcastSpaces,
   listWhatsappTemplates,
   searchBroadcastUsers,
   sendWhatsappBroadcast,
+  sendWhatsappTest,
   type BroadcastSpace,
   type WhatsappAudience,
   type WhatsappTemplate,
@@ -69,6 +72,8 @@ export default function WhatsappBroadcastScreen() {
   const [params, setParams] = useState<string[]>([]);
   const [confirmText, setConfirmText] = useState('');
   const [sending, setSending] = useState(false);
+  const [counting, setCounting] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
   const [sentTo, setSentTo] = useState<number | null>(null);
 
@@ -107,14 +112,51 @@ export default function WhatsappBroadcastScreen() {
           : 'the members of the chosen space'
         : `${users.length} selected ${users.length === 1 ? 'person' : 'people'}`;
 
+  const target = {
+    audience,
+    spaceId: audience === 'SPACE' ? spaceId : undefined,
+    userIds: audience === 'USER' ? users.map((u) => u.id) : undefined,
+  };
+
+  // The server counts who it would actually dial (deduped numbers) before anything goes out.
+  const confirmSend = async () => {
+    if (!ready || sending || counting || !template) return;
+    setCounting(true);
+    setError('');
+    const res = await countWhatsappAudience(target);
+    setCounting(false);
+    if (!res.ok) return setError(res.message || "Couldn't count the audience.");
+    const n = res.data.recipientCount;
+    if (!n) return setError('Nobody in this audience has a number WhatsApp can reach.');
+    AppAlert.alert(
+      `Send to ${n.toLocaleString('en-IN')} ${n === 1 ? 'person' : 'people'}?`,
+      `${template.name} goes to ${recipients}. Each message is billed, and it can't be stopped once started.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Start broadcast', style: audience === 'ALL' ? 'destructive' : 'default', onPress: () => void send() },
+      ],
+    );
+  };
+
+  const sendTest = async () => {
+    if (!template || testing || !params.every((p) => p.trim())) return;
+    setTesting(true);
+    const res = await sendWhatsappTest({
+      templateName: template.name,
+      languageCode: template.language,
+      bodyParams: params.map((p) => p.trim()),
+    });
+    setTesting(false);
+    if (res.ok) AppAlert.alert('Test sent', 'Check WhatsApp on the number on your account.');
+    else AppAlert.alert("Test didn't send", res.message);
+  };
+
   const send = async () => {
     if (!ready || sending || !template) return;
     setSending(true);
     setError('');
     const res = await sendWhatsappBroadcast({
-      audience,
-      spaceId: audience === 'SPACE' ? spaceId : undefined,
-      userIds: audience === 'USER' ? users.map((u) => u.id) : undefined,
+      ...target,
       templateName: template.name,
       languageCode: template.language,
       bodyParams: params.map((p) => p.trim()),
@@ -138,7 +180,15 @@ export default function WhatsappBroadcastScreen() {
           Meta's dashboards.
         </Text>
         <View style={styles.doneActions}>
-          <Button label="Send another" onPress={() => setSentTo(null)} />
+          <Button
+            label="Send another"
+            onPress={() => {
+              // Start from a blank template so the same blast can't go out again on one tap.
+              setTemplateKey('');
+              setParams([]);
+              setSentTo(null);
+            }}
+          />
           <Button label="Back to inbox" variant="secondary" onPress={() => router.back()} />
         </View>
       </View>
@@ -240,9 +290,18 @@ export default function WhatsappBroadcastScreen() {
         <Text style={[styles.summary, { color: tokens.textMuted }]}>
           {template ? template.name : 'No template'} → {recipients}
         </Text>
+        {template && params.every((p) => p.trim()) ? (
+          <Button
+            label="Send a test to me"
+            variant="secondary"
+            onPress={() => void sendTest()}
+            loading={testing}
+            style={{ marginTop: spacing[4] }}
+          />
+        ) : null}
       </ScrollView>
 
-      <SaveBar visible={ready} label="Start broadcast" onPress={() => void send()} loading={sending} error={error} />
+      <SaveBar visible={ready} label="Start broadcast" onPress={() => void confirmSend()} loading={sending || counting} error={error} />
     </KeyboardAvoidingView>
   );
 }

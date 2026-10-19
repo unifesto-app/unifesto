@@ -18,6 +18,7 @@ import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Input } from "@/components/ui/input";
+import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -513,6 +514,21 @@ function MarkPaidDialog({
   };
 
   const cancel = async () => {
+    const ok = await confirmDialog({
+      title: "Cancel this payout?",
+      description: (
+        <>
+          <p>
+            {money(payout.netAmount)} to {orgName(payout)} won&apos;t be paid. The amount
+            goes back to their balance, to request again.
+          </p>
+          <p>This can&apos;t be undone.</p>
+        </>
+      ),
+      confirmLabel: "Cancel payout",
+      destructive: true,
+    });
+    if (!ok) return;
     setErr("");
     setSubmitting(true);
     const { error } = await cancelPayout(payout.id);
