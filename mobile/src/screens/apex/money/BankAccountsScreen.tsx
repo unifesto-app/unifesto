@@ -4,7 +4,6 @@ import { RefreshControl } from '../../../components/ui/RefreshControl';
 import * as Clipboard from 'expo-clipboard';
 import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import { getAllBankAccounts, setBankAccountStatus, type AdminBankAccount } from '../../../lib/api/apexMoney';
 import type { BankAccountStatus } from '../../../lib/api/finance';
 import ChipPicker from '../../../components/manage/ChipPicker';
@@ -50,8 +49,6 @@ export default function BankAccountsScreen() {
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [reason, setReason] = useState('');
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('ApexBankAccounts');
 
   const load = useCallback(
     async (next: number) => {

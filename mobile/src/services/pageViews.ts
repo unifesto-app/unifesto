@@ -2,7 +2,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 import { API_URL } from '../lib/constants';
-import ConsentManager from './ConsentManager';
 import { recentTouch } from './utm';
 
 /**
@@ -10,8 +9,8 @@ import { recentTouch } from './utm';
  * looked at a page next to how many registered.
  *
  * The visitor is a random id made on this install (never the IDFV/Android id
- * and never the account), so views are anonymous. Consent-gated like the rest
- * of analytics: nothing is sent once analytics consent is withdrawn. Repeat
+ * and never the account), so views are anonymous and first-party only: no
+ * third-party SDK and nothing linked to the user, so no ATT consent. Repeat
  * views of one page inside 30 minutes are dropped here, and again server-side.
  */
 
@@ -46,7 +45,7 @@ function getVisitorId(): Promise<string | null> {
  */
 export async function trackPageView(kind: 'event' | 'space', id: string, slug?: string | null): Promise<void> {
   try {
-    if (!id || !ConsentManager.isTrackingAllowed()) return;
+    if (!id) return;
     const key = `${kind}:${id}`;
     const now = Date.now();
     if (now - (lastSent.get(key) ?? 0) < DEDUPE_MS) return;

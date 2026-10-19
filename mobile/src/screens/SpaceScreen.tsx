@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowUpRight, Gavel, Handshake, QrCode } from '@unifesto/unicon/react-native';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useWorkspaceCards } from '../hooks/useWorkspaceCards';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
@@ -42,8 +41,6 @@ export default function SpaceScreen() {
   const { sections, loaded, spaces, checkinEvents, judgingEvents, sponsorships, refresh } = useSpaceAccess();
   const w = useWorkspaceCards();
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('Space');
 
   // Pick up new assignments whenever the tab comes into view.
   useFocusEffect(

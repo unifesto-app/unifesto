@@ -5,7 +5,6 @@ import { CaretDown, CaretUp } from '@unifesto/unicon/react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Updates from 'expo-updates';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { buildInfo, buildLabel } from '../lib/appBuild';
 import { checkForOtaNow, restartIntoUpdate } from '../lib/otaUpdate';
 import { getStoreUpdate, openStoreListing, type StoreUpdate } from '../lib/appUpdate';
@@ -49,8 +48,6 @@ export default function AboutScreen() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [showEarlier, setShowEarlier] = useState(false);
   const icon = useMemo(currentAppIconPreview, []);
-
-  useAnalyticsScreenTracking('About');
 
   const checkNow = async () => {
     setStatus({ kind: 'checking' });

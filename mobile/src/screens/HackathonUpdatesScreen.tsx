@@ -8,7 +8,6 @@ import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getNotifications,
   markNotificationsRead,
@@ -55,8 +54,6 @@ export default function HackathonUpdatesScreen() {
   const [hasStaff, setHasStaff] = useState(false);
   // Bumped by every reload and tab switch; a response from an older one is dropped.
   const gen = useRef(0);
-
-  useAnalyticsScreenTracking(eventId ? 'HackathonUpdates' : 'Notifications');
 
   const scope: FeedScope = eventId
     ? { eventId }

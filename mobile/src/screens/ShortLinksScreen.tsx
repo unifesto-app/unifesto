@@ -6,7 +6,6 @@ import * as Clipboard from 'expo-clipboard';
 import { LinkSimple } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createShortLink,
   getShortLinks,
@@ -57,8 +56,6 @@ export default function ShortLinksScreen() {
   const [url, setUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
-
-  useAnalyticsScreenTracking('ShortLinks');
 
   const load = useCallback(async () => {
     if (!scope) return;

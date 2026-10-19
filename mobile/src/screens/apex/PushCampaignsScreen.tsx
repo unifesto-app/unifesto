@@ -5,7 +5,6 @@ import { Plus } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
 import ManageStats from '../../components/manage/ManageStats';
@@ -43,7 +42,6 @@ export default function PushCampaignsScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexPushCampaigns');
 
   const fetchPage = useCallback(async (page: number) => {
     const res = await listPushCampaigns(page, PAGE_SIZE);

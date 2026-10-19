@@ -10,7 +10,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { addCriterion, deleteCriterion, getRound, updateCriterion, type Criterion } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -39,8 +38,6 @@ export default function HackathonCriterionEditorScreen() {
   const initial = useRef(JSON.stringify(EMPTY));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonCriterionEditor');
 
   useEffect(() => {
     if (isNew || !eventId || !roundId) return;

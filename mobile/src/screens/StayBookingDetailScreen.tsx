@@ -19,7 +19,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getFormUploadUrl, FIELD_TYPE_MAP, type CustomField } from '../lib/api/tickets';
 import {
   approveStayBooking,
@@ -67,8 +66,6 @@ export default function StayBookingDetailScreen() {
   const [allocation, setAllocation] = useState('');
   const [staffNote, setStaffNote] = useState('');
   const [reason, setReason] = useState('');
-
-  useAnalyticsScreenTracking('StayBookingDetail');
 
   const take = (data: TeamStayBooking) => {
     setB(data);

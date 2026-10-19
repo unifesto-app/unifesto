@@ -14,7 +14,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import {
   createStay,
@@ -103,8 +102,6 @@ export default function StayEditorScreen() {
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('StayEditor');
 
   // A new stay defaults to the event's own dates (night before check-out day).
   useEffect(() => {

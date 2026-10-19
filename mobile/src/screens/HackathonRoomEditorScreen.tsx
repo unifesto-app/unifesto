@@ -10,7 +10,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import MultiChips from '../components/hackathon/MultiChips';
 import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
@@ -44,8 +43,6 @@ export default function HackathonRoomEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonRoomEditor');
 
   useEffect(() => {
     if (!eventId) return;

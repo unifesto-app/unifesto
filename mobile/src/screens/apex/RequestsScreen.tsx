@@ -4,7 +4,6 @@ import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { fetchAllRequests, orderSections, sourceDef, type RequestSource, type RequestTab, type SourceResult } from '../../lib/apexRequests';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { ApexRow } from '../../components/apex/ApexRow';
@@ -45,8 +44,6 @@ export default function RequestsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('ApexRequests');
 
   const load = useCallback(async () => {
     const gen = ++generation.current;

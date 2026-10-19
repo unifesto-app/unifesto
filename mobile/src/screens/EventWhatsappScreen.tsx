@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlaneTilt } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getWhatsappConfig, setTicketWhatsappLink, updateEvent, type EventWhatsappConfig } from '../lib/api/eventAdmin';
 import { sendWhatsappBlast } from '../lib/api/manageEvent';
 import { FieldRow } from '../components/manage/FormFields';
@@ -39,8 +38,6 @@ export default function EventWhatsappScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
-
-  useAnalyticsScreenTracking('EventWhatsapp');
 
   const load = useCallback(async () => {
     if (!eventId) return;

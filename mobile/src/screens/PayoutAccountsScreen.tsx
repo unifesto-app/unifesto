@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bank, CurrencyInr, Plus } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { deleteBankAccount, describeAccount, getMyBankAccounts, type BankAccount } from '../lib/api/finance';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -34,8 +33,6 @@ export default function PayoutAccountsScreen() {
   const [accounts, setAccounts] = useState<BankAccount[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('PayoutAccounts');
 
   const load = useCallback(async () => {
     const res = await getMyBankAccounts();

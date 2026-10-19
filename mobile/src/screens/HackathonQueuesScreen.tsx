@@ -8,7 +8,6 @@ import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profi
 import SlotTimer from '../components/hackathon/SlotTimer';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
   forceComplete,
@@ -48,8 +47,6 @@ export default function HackathonQueuesScreen() {
   const [data, setData] = useState<QueueMonitor | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonQueues');
 
   const load = useCallback(async () => {
     if (!eventId) return;

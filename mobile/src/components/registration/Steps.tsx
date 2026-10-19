@@ -147,13 +147,15 @@ function TicketOption({ s, selected, onPress }: { s: TicketState; selected: bool
     ? { text: 'You already have this ticket', color: c.success }
     : s.blocked
       ? { text: 'Not available with your current ticket', color: c.muted }
-      : s.waitlistOnly
-        ? { text: 'Sold out · join the waiting list', color: c.warn }
-        : !s.available
-          ? { text: s.spotsLeft <= 0 ? 'Sold out' : 'Not on sale right now', color: c.muted }
-          : s.spotsLeft <= 10
-            ? { text: `Only ${s.spotsLeft} left`, color: c.warn }
-            : null;
+      : s.iosBlocked
+        ? { text: "Paid tickets for online events aren't available in the iOS app", color: c.muted }
+        : s.waitlistOnly
+          ? { text: 'Sold out · join the waiting list', color: c.warn }
+          : !s.available
+            ? { text: s.spotsLeft <= 0 ? 'Sold out' : 'Not on sale right now', color: c.muted }
+            : s.spotsLeft <= 10
+              ? { text: `Only ${s.spotsLeft} left`, color: c.warn }
+              : null;
   const team = t.type === 'group' ? (t.max_purchase > t.min_purchase ? `Team of ${t.min_purchase} to ${t.max_purchase}` : `Team of ${t.min_purchase}`) : null;
   const per = t.price > 0 && t.price_type === 'per_person' ? 'per person' : t.price > 0 && t.price_type === 'per_group' ? 'per team' : null;
   const price = t.price === 0 ? 'Free' : money(s.symbol, t.price);

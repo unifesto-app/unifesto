@@ -4,7 +4,6 @@ import { RefreshControl } from '../../../components/ui/RefreshControl';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import type { AdminPayout, PayoutStatus } from '../../../lib/api/apex';
 import { listPayouts } from '../../../lib/api/apexMoney';
 import { describeAccount } from '../../../lib/api/finance';
@@ -58,8 +57,6 @@ export default function SettlementsScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('ApexSettlements');
 
   const load = useCallback(async () => {
     const res = await fetchAllPayouts();

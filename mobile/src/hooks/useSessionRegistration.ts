@@ -5,13 +5,13 @@
  */
 
 import { useState } from 'react';
-import { Platform } from 'react-native';
 import RazorpayCheckout from 'react-native-razorpay';
 import {
   registerForSession,
   verifySessionPayment,
   type Session,
 } from '../lib/api/sessions';
+import { isIosDigitalPurchaseBlocked } from '../lib/iosPurchasePolicy';
 
 interface PrefillUser {
   fullName?: string | null;
@@ -28,9 +28,9 @@ export interface SessionRegistrationResult {
 
 export const PAID_SESSION_IOS_NOTE = "Registration for paid sessions isn't available in the iOS app.";
 
-/** True when this session needs payment and we're on iOS (see register()). */
+/** True when this session needs payment and we're on iOS (see lib/iosPurchasePolicy). */
 export function isPaidSessionBlocked(session: Pick<Session, 'price'>): boolean {
-  return Platform.OS === 'ios' && Number(session.price) > 0;
+  return isIosDigitalPurchaseBlocked(session.price);
 }
 
 export function useSessionRegistration() {
@@ -40,9 +40,6 @@ export function useSessionRegistration() {
     session: Session,
     user?: PrefillUser | null
   ): Promise<SessionRegistrationResult> {
-    // App Store 3.1.1: live online sessions are digital services, which iOS
-    // only allows through In-App Purchase. Paid ones can't be bought in the
-    // iOS app (free ones and joining a session bought elsewhere still work).
     if (isPaidSessionBlocked(session)) {
       return { success: false, paid: false, error: PAID_SESSION_IOS_NOTE };
     }

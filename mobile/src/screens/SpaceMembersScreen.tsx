@@ -9,7 +9,6 @@ import { useAuth } from '../context/AuthContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { useSpaceMembers, type MemberFilter } from '../hooks/useSpaceMembers';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import MemberRow from '../components/manage/MemberRow';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { AppAlert, type AppAlertButton } from '../components/ui/AppAlert';
@@ -39,8 +38,6 @@ export default function SpaceMembersScreen() {
   const { spaces, refresh: refreshAccess } = useSpaceAccess();
   const m = useSpaceMembers(spaceId);
   const creatorId = spaces.find((s) => s.id === spaceId)?.creator?.id;
-
-  useAnalyticsScreenTracking('SpaceMembers');
 
   const openAdd = () => router.push(`/manage/space/${spaceId}/add-member`);
 

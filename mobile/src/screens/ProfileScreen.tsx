@@ -14,7 +14,6 @@ import { getUserSpaces } from '../lib/api/spaces';
 import { getMyPartnerLinks } from '../lib/api/tracking';
 import { getMyUnreadCount } from '../lib/api/support';
 import { openStoreReview } from '../utils/storeReview';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import StatusBarScrim from '../components/ui/StatusBarScrim';
@@ -76,8 +75,6 @@ export default function ProfileScreen() {
   // Only partners (an event curator added them) get the Partner stats row.
   const [isPartner, setIsPartner] = useState(false);
   const [supportUnread, setSupportUnread] = useState(0);
-
-  useAnalyticsScreenTracking('Profile');
 
   const load = useCallback(async () => {
     if (!token) return;

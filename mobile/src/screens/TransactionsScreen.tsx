@@ -6,7 +6,6 @@ import * as Sharing from 'expo-sharing';
 import { Export, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { downloadTransactionsExport, getTransactions, type ExportFormat, type TransactionRow } from '../lib/api/transactions';
 import { getUsage } from '../lib/api/billing';
 import { num, summarize } from '../lib/transactionSummary';
@@ -57,8 +56,6 @@ export default function TransactionsScreen() {
   const [ticket, setTicket] = useState('');
   const [canExport, setCanExport] = useState<boolean | null>(null);
   const [exporting, setExporting] = useState(false);
-
-  useAnalyticsScreenTracking('Transactions');
 
   const load = useCallback(async () => {
     if (!eventId) return;

@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, Warning, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow } from '../../components/manage/FormFields';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -60,7 +59,6 @@ export default function WhatsappBroadcastScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexWhatsappBroadcast');
 
   const [audience, setAudience] = useState<WhatsappAudience>('SPACE');
   const [spaces, setSpaces] = useState<BroadcastSpace[]>([]);

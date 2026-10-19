@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams } from 'expo-router';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getWaitlist,
   getWaitlistSummary,
@@ -55,8 +54,6 @@ export default function WaitlistScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-
-  useAnalyticsScreenTracking('Waitlist');
 
   const load = useCallback(async () => {
     if (!eventId) return;

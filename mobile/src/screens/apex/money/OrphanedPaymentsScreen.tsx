@@ -4,7 +4,6 @@ import { RefreshControl } from '../../../components/ui/RefreshControl';
 import { useRouter } from 'expo-router';
 import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import { getOrphanedPayments, reconcileTransaction, type OrphanedPaymentRow, type OrphanedPayments } from '../../../lib/api/apexMoney';
 import ChipPicker from '../../../components/manage/ChipPicker';
 import ManageStats from '../../../components/manage/ManageStats';
@@ -45,8 +44,6 @@ export default function OrphanedPaymentsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('ApexOrphanedPayments');
 
   const load = useCallback(async () => {
     const gen = ++generation.current;

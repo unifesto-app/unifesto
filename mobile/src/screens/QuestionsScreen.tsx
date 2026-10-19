@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useEngagementSocket } from '../hooks/useHackathonSocket';
 import { getQaBoard, moderateQuestion, setQaPremoderated, type QaBoard, type Question, type QuestionStatus } from '../lib/api/questions';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
@@ -39,8 +38,6 @@ export default function QuestionsScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-
-  useAnalyticsScreenTracking('Questions');
 
   const load = useCallback(async () => {
     if (!eventId) return;

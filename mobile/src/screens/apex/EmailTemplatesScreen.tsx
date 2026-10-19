@@ -5,7 +5,6 @@ import { Plus } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
 import { ApexRow, shortDate } from '../../components/apex/ApexRow';
 import { listEmailTemplates, type EmailTemplate } from '../../lib/api/apexComms';
@@ -24,7 +23,6 @@ export default function EmailTemplatesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  useAnalyticsScreenTracking('ApexEmailTemplates');
 
   const load = useCallback(async () => {
     const res = await listEmailTemplates();

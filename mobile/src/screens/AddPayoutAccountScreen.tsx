@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { addBankAccount, type NewBankAccount } from '../lib/api/finance';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
@@ -45,8 +44,6 @@ export default function AddPayoutAccountScreen() {
   const [confirmNumber, setConfirmNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('AddPayoutAccount');
 
   const set = (patch: Partial<NewBankAccount>) => {
     setError('');

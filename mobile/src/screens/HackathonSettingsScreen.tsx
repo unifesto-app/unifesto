@@ -9,7 +9,6 @@ import DateTimeRow from '../components/manage/DateTimeRow';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getHackathonOverview,
   updateHackathonConfig,
@@ -78,8 +77,6 @@ export default function HackathonSettingsScreen() {
   const initial = useRef('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonSettings');
 
   useEffect(() => {
     if (!eventId) return;

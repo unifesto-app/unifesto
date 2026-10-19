@@ -4,7 +4,6 @@ import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { getExternalStatus, getPlatformStatus, type ExternalMonitor, type ExternalStatus, type PlatformStatus, type StatusIncident } from '../../lib/api/apex';
 import { titleCase } from '../../lib/apexQueues';
 import { CardBackdrop } from '../../components/ui/CardSurface';
@@ -153,8 +152,6 @@ export default function PlatformStatusScreen() {
   const [external, setExternal] = useState<ExternalStatus | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('ApexStatus');
 
   const load = useCallback(async () => {
     const [res, ext] = await Promise.all([getPlatformStatus(), getExternalStatus()]);

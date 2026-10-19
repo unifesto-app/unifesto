@@ -35,6 +35,14 @@ export async function GET() {
               comment: 'Matches group-seat claim links (fast-registration)'
             },
             {
+              '/': '/session/*',
+              comment: 'Matches Huddle session pages'
+            },
+            {
+              '/': '/huddle',
+              comment: 'Matches the Huddle page (the app opens its sessions list)'
+            },
+            {
               '/': '/signup',
               comment: 'Matches signup app-open links'
             },

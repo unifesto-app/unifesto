@@ -12,7 +12,6 @@ import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { runImportTeams } from '../components/hackathon/importTeamsFlow';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getHackathonOverview, getTeams, type HackathonOverview, type TeamRow } from '../lib/api/hackathon';
 import { joinedLabel } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -42,8 +41,6 @@ export default function HackathonTeamsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-
-  useAnalyticsScreenTracking('HackathonTeams');
 
   const load = useCallback(async () => {
     if (!eventId) return;

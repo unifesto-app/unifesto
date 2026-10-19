@@ -24,7 +24,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   cancelMyStay,
   createStayOrder,
@@ -63,8 +62,6 @@ export default function StayPassScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [paying, setPaying] = useState(false);
   const [cancelling, setCancelling] = useState(false);
-
-  useAnalyticsScreenTracking('StayPass');
 
   const load = useCallback(async () => {
     if (!bookingId) return;

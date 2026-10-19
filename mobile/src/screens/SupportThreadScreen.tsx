@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { cancelAccountDeletion } from '../lib/api/profile';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   assistStep,
@@ -48,8 +47,6 @@ export default function SupportThreadScreen() {
   const [note, setNote] = useState(false);
   const [sending, setSending] = useState(false);
   const [acting, setActing] = useState(false);
-
-  useAnalyticsScreenTracking('SupportThread');
 
   const load = useCallback(async () => {
     if (!ticketId) return;

@@ -8,7 +8,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { dayLabel, getTeamStays, PROPERTY_LABELS, type TeamStay } from '../lib/api/stays';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -28,8 +27,6 @@ export default function StaysManageScreen() {
   const [data, setData] = useState<{ pendingRequests: number; stays: TeamStay[] } | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('StaysManage');
 
   const load = useCallback(async () => {
     if (!eventId) return;

@@ -1,7 +1,6 @@
 const withModularHeaders = require('./plugins/withModularHeaders');
 // const withAndroidEdgeToEdge = require('./plugins/withAndroidEdgeToEdge');
 // const withAndroidEdgeToEdgeStyles = require('./plugins/withAndroidStyles');
-const withFirebaseDisableAutoInit = require('./plugins/withFirebaseDisableAutoInit');
 const withRemoveOrientationRestrictions = require('./plugins/withRemoveOrientationRestrictions');
 const withRemoveSplashScreen = require('./plugins/withRemoveSplashScreen');
 const withSceneDelegate = require('./plugins/withSceneDelegate');
@@ -54,17 +53,12 @@ module.exports = () => {
       appStoreUrl: "https://apps.apple.com/in/app/unifesto-discover-events/id6767165496",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
-        NSCameraUsageDescription: "Unifesto uses the camera to scan ticket QR codes at event check-in and sponsor booths, take profile and event photos, and show your video in live sessions.",
-        NSMicrophoneUsageDescription: "We need microphone access so you can speak in live sessions.",
+        // Camera, microphone and location strings are set by the expo-camera and
+        // expo-location plugins below (a plugin overwrites these keys at prebuild).
         NSPhotoLibraryUsageDescription: "Unifesto uses your photo library so you can choose a profile photo, event covers, space logos and banners, and images for registration questions.",
         NSPhotoLibraryAddUsageDescription: "Unifesto needs permission to save event tickets and QR codes to your photo library.",
-        NSUserNotificationsUsageDescription: "We need permission to send you notifications about event updates, ticket confirmations, and important announcements.",
-        NSLocationWhenInUseUsageDescription: "Unifesto uses your location to help you discover nearby events and provide location-based event recommendations. Your location data is only used while you're using the app and is never shared with third parties.",
-        // Firebase auto-initialization disabled for ATT compliance
+        // Push goes through OneSignal, so Firebase must not swizzle the app delegate.
         FirebaseAppDelegateProxyEnabled: false,
-        FirebaseAnalyticsCollectionEnabled: false,
-        FirebaseAnalyticsCollectionDeactivated: true,
-        FirebaseScreenReportingEnabled: false,
       },
       associatedDomains: [
         "applinks:unifesto.app",
@@ -87,8 +81,6 @@ module.exports = () => {
         backgroundColor: "#000000"
       },
       permissions: [
-        "android.permission.READ_PHONE_STATE",
-        "android.permission.READ_DEVICE_CONFIG",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.INTERNET",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -97,6 +89,13 @@ module.exports = () => {
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.BLUETOOTH_CONNECT"
+      ],
+      // Never used, and sensitive for Play review; stripped even if a library's
+      // manifest merges them back in.
+      blockedPermissions: [
+        "android.permission.READ_PHONE_STATE",
+        "android.permission.READ_DEVICE_CONFIG",
+        "android.permission.SYSTEM_ALERT_WINDOW"
       ],
       intentFilters: [
         {
@@ -130,6 +129,11 @@ module.exports = () => {
             },
             {
               scheme: "https",
+              host: "unifesto.app",
+              pathPrefix: "/claim"
+            },
+            {
+              scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/event"
             },
@@ -152,6 +156,11 @@ module.exports = () => {
               scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/huddle"
+            },
+            {
+              scheme: "https",
+              host: "www.unifesto.app",
+              pathPrefix: "/claim"
             }
           ],
           category: [
@@ -171,12 +180,7 @@ module.exports = () => {
             "DEFAULT"
           ]
         }
-      ],
-      // Suppress Android 15 edge-to-edge deprecation warnings
-      // These are from React Native/Expo libraries, not our code
-      compileSdkVersion: 35,
-      targetSdkVersion: 35,
-      buildToolsVersion: "35.0.0"
+      ]
     },
     web: {
       bundler: "metro",
@@ -332,7 +336,6 @@ module.exports = () => {
   // Disabled edge-to-edge plugins to fix status bar overlap on Android
   // modifiedConfig = withAndroidEdgeToEdge(modifiedConfig);
   // modifiedConfig = withAndroidEdgeToEdgeStyles(modifiedConfig);
-  modifiedConfig = withFirebaseDisableAutoInit(modifiedConfig);
   modifiedConfig = withRemoveOrientationRestrictions(modifiedConfig);
   modifiedConfig = withRemoveSplashScreen(modifiedConfig);
   modifiedConfig = withSceneDelegate(modifiedConfig);

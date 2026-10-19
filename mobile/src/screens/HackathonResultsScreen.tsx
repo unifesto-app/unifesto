@@ -10,7 +10,6 @@ import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields
 import { GroupCell, SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
   getResults,
@@ -51,8 +50,6 @@ export default function HackathonResultsScreen() {
   const [topN, setTopN] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonResults');
 
   const load = useCallback(async () => {
     if (!eventId) return;

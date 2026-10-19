@@ -3,7 +3,6 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, Vi
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import ManageStats from '../../components/manage/ManageStats';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -46,7 +45,6 @@ export function SessionsAdminScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const [status, setStatus] = useState('');
-  useAnalyticsScreenTracking('ApexSessions');
   const fetchPage = useCallback(
     async (search: string, page: number) => {
       const r = await listAdminSessions({ search, status: (status || undefined) as AdminSessionStatus | undefined, page, limit: 20 });
@@ -83,7 +81,6 @@ export function SessionAdminDetailScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexSessionDetail');
   const [s, setS] = useState<AdminSessionDetail | null>(null);
   const [error, setError] = useState('');
 
@@ -159,7 +156,6 @@ export function LogsScreen() {
   const [status, setStatus] = useState('error');
   const [stats, setStats] = useState<LogStats | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
-  useAnalyticsScreenTracking('ApexLogs');
 
   useEffect(() => {
     void getLogStats().then((r) => r.ok && setStats(r.data));

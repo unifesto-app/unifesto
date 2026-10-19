@@ -5,7 +5,6 @@ import { Lock, ShieldCheck } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { AppAlert } from '../../components/ui/AppAlert';
 import {
@@ -36,7 +35,6 @@ const cellKey = (code: string, action: string) => `${code}|${action}`;
 export default function IamScreen() {
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexIam');
 
   const [matrix, setMatrix] = useState<CapabilityMatrix | null>(null);
   const [error, setError] = useState('');

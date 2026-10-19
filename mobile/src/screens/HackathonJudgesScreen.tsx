@@ -7,7 +7,6 @@ import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getJudges, getPanels, type Judge, type Panel } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -35,8 +34,6 @@ export default function HackathonJudgesScreen() {
   const [panels, setPanels] = useState<Panel[]>([]);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonJudges');
 
   const load = useCallback(async () => {
     if (!eventId) return;

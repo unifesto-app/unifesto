@@ -16,7 +16,6 @@ import {
 } from "../../navigation/HeaderActions";
 import { useTokens } from "../../context/ThemeContext";
 import useTopSpacing from "../../hooks/useTopSpacing";
-import useAnalyticsScreenTracking from "../../hooks/useAnalyticsScreenTracking";
 import {
   conversationName,
   getWhatsappConversations,
@@ -43,8 +42,6 @@ export default function WhatsappInboxScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking("ApexWhatsappInbox");
 
   // Debounce typing into the search box.
   useEffect(() => {

@@ -10,7 +10,6 @@ import QuickTiles, { type QuickTile } from '../components/profile/QuickTiles';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getMyHackathon, type HackathonHub } from '../lib/api/hackathon';
 import { evalStatusLabel, stageCopy, venueMapsUrl } from '../lib/hackathon';
 import { isEventOver } from '../lib/eventEnded';
@@ -36,8 +35,6 @@ export default function HackathonHubScreen() {
   const [hub, setHub] = useState<HackathonHub | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonHub');
 
   const load = useCallback(async () => {
     if (!eventId) return;

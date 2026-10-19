@@ -10,7 +10,6 @@ import { BlockTitle } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getCertificateBatch,
   getHackathonCertificates,
@@ -46,8 +45,6 @@ export default function HackathonCertificatesScreen() {
   const [issuing, setIssuing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const pending = useRef<Set<string>>(new Set());
-
-  useAnalyticsScreenTracking('HackathonCertificates');
 
   const load = useCallback(async () => {
     if (!eventId) return;

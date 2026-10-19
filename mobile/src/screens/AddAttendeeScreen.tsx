@@ -5,7 +5,6 @@ import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { splitFields } from '../hooks/useEventRegistration';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
@@ -84,8 +83,6 @@ export default function AddAttendeeScreen() {
   const [freeBusy, setFreeBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('AddAttendee');
 
   useEffect(() => {
     if (!eventId) return;

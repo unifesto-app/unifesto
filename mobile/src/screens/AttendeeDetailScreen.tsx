@@ -7,7 +7,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, Phone, Receipt, User, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail, type GroupSeatRow } from '../lib/api/manageEvent';
 import { attendeeBadge } from '../components/manage/AttendeeRow';
 import SeatRow, { seatPerson } from '../components/manage/SeatRow';
@@ -64,8 +63,6 @@ export default function AttendeeDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [restoring, setRestoring] = useState(false);
-
-  useAnalyticsScreenTracking('AttendeeDetail');
 
   const load = useCallback(async () => {
     if (!eventId || !registrationId) return;

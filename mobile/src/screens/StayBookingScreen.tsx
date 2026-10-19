@@ -23,7 +23,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getProfile } from '../lib/api/profile';
 import { buyerFee, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
 import {
@@ -93,8 +92,6 @@ export default function StayBookingScreen() {
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('StayBooking');
 
   useEffect(() => {
     if (!eventId) return;

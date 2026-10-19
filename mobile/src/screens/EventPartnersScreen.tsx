@@ -14,7 +14,6 @@ import * as Clipboard from 'expo-clipboard';
 import { Handshake } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { createPartnerLink, getPartnerLinks, revokePartnerLink, type PartnerLink } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { FieldRow } from '../components/manage/FormFields';
@@ -46,8 +45,6 @@ export default function EventPartnersScreen() {
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
-
-  useAnalyticsScreenTracking('EventPartners');
 
   const load = useCallback(async () => {
     if (!eventId) return;

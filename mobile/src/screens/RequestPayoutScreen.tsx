@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, CircleIcon } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   describeAccount,
   getEligibleAccounts,
@@ -49,8 +48,6 @@ export default function RequestPayoutScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('RequestPayout');
 
   useEffect(() => {
     if (!eventId) return;

@@ -6,7 +6,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Phone, PlusCircle, WhatsappLogo, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
@@ -44,7 +43,6 @@ export default function StatsRecipientsScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexStatsRecipients');
 
   const [saved, setSaved] = useState<string[] | null>(null);
   const [draft, setDraft] = useState<string[] | null>(null);

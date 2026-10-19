@@ -44,7 +44,6 @@ import {
   type Icon,
 } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import StatusBarScrim from '../components/ui/StatusBarScrim';
@@ -218,8 +217,6 @@ export default function ApexScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [moreStats, setMoreStats] = useState(false);
-
-  useAnalyticsScreenTracking('Apex');
 
   const load = useCallback(async () => {
     // Everything in parallel; a failing count or chart just stays blank.

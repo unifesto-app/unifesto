@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { FieldRow } from '../../components/manage/FormFields';
@@ -35,7 +34,6 @@ export default function EmailTemplateEditScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexEmailTemplateEdit');
 
   const [original, setOriginal] = useState<EmailTemplatePayload | null>(isNew ? EMPTY : null);
   const [form, setForm] = useState<EmailTemplatePayload>(EMPTY);

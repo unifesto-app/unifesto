@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   CATEGORY_LABEL,
   DESK_STATUS_LABEL,
@@ -38,8 +37,6 @@ export default function SpaceSupportScreen() {
   const { spaceId, admin } = useLocalSearchParams<{ spaceId: string; admin?: string }>();
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('all');
-
-  useAnalyticsScreenTracking('SpaceSupport');
 
   const fetchPage = useCallback(
     async (search: string, page: number) => {

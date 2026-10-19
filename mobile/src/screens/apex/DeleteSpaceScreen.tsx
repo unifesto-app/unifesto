@@ -3,7 +3,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleShe
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';
@@ -21,7 +20,6 @@ export default function DeleteSpaceScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexDeleteSpace');
 
   const [space, setSpace] = useState<AdminSpaceDetail | null>(null);
   const [error, setError] = useState('');

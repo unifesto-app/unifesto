@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTokens } from '../../../context/ThemeContext';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import { listRefunds, refundableBase } from '../../../lib/api/apexMoney';
 import type { RefundRequest, RefundStatus } from '../../../lib/api/finance';
 import SearchList from '../../../components/apex/SearchList';
@@ -42,7 +41,6 @@ export default function RefundsScreen() {
   const tokens = useTokens();
   const [filter, setFilter] = useState<Filter>('PENDING_ADMIN');
   const [counts, setCounts] = useState<{ waiting: number; approved: number; declined: number } | null>(null);
-  useAnalyticsScreenTracking('ApexRefunds');
 
   // Totals per stage for the tiles; refreshed whenever we come back from a decision.
   useFocusEffect(

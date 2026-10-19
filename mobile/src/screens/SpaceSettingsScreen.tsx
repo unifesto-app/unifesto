@@ -7,7 +7,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { pickImageAtAspect } from '../utils/pickImage';
 import { Buildings, ImageSquare } from '@unifesto/unicon/react-native';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getSpaceProfile,
   updateSpaceProfile,
@@ -70,8 +69,6 @@ export default function SpaceSettingsScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState<'logo' | 'banner' | null>(null);
-
-  useAnalyticsScreenTracking('SpaceSettings');
 
   const load = useCallback(async () => {
     if (!spaceId) return;

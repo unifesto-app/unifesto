@@ -7,7 +7,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getPortalLeads, type PortalLead } from '../lib/api/sponsorPortal';
 import { SPONSOR_LEAD_SOURCE } from '../lib/api/spaceSponsors';
 import { shareCsv, slugPart } from '../lib/csvShare';
@@ -42,8 +41,6 @@ export default function SponsorPortalScreen() {
   const [eventFilter, setEventFilter] = useState('');
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('SponsorPortal');
 
   const load = useCallback(async () => {
     if (!sponsorId) return;

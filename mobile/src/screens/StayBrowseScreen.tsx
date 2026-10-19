@@ -9,7 +9,6 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   dayLabel,
   GENDER_LABELS,
@@ -41,8 +40,6 @@ export default function StayBrowseScreen() {
   const [data, setData] = useState<EventStays | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('StayBrowse');
 
   const load = useCallback(async () => {
     if (!eventId) return;

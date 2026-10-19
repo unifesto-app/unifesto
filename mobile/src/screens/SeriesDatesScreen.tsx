@@ -4,7 +4,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { detachOccurrence, getOccurrences, type Occurrence } from '../lib/api/hierarchy';
 import { describeRecurrence, parseRRuleToState } from '../lib/recurrence';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -32,8 +31,6 @@ export default function SeriesDatesScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-
-  useAnalyticsScreenTracking('SeriesDates');
 
   const load = useCallback(async () => {
     if (!eventId) return;

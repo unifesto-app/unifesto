@@ -12,7 +12,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
   createRound,
@@ -95,8 +94,6 @@ export default function HackathonRoundScreen() {
   const [saving, setSaving] = useState(false);
   const [acting, setActing] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonRound');
 
   const apply = useCallback((r: RoundDetail, resetDraft: boolean) => {
     setRound(r);

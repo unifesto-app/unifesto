@@ -7,7 +7,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getResults, reopenJudgment, type HackathonResults } from '../lib/api/hackathon';
 import { formatScore, formatWhen, standingLabel } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -27,8 +26,6 @@ export default function HackathonResultTeamScreen() {
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<HackathonResults | null>(null);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonResultTeam');
 
   const load = useCallback(async () => {
     if (!eventId) return;

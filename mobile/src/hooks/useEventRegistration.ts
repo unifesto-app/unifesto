@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { verifyPayment, createRegistration, isWaitlistJoin, validateCoupon, type CouponQuote } from '../lib/api/registrations';
 import { getEventById, getEventBySlug, getMyRegistrationsForEvent, type Event } from '../lib/api/events';
 import { attributionFor } from '../services/utm';
+import { isIosDigitalPurchaseBlocked } from '../lib/iosPurchasePolicy';
 import { displayAnswer, firstFormProblem } from '../utils/formQuestions';
 import {
   getEventCustomFields,
@@ -46,6 +47,8 @@ export interface TicketState {
   ticket: Ticket;
   owned: boolean;
   blocked: boolean;
+  /** Paid ticket to an online event on iOS: same rule as paid sessions (lib/iosPurchasePolicy). */
+  iosBlocked: boolean;
   waitlistOnly: boolean;
   available: boolean;
   selectable: boolean;
@@ -291,13 +294,15 @@ export function useEventRegistration() {
   const ticketStates: TicketState[] = tickets.map((ticket) => {
     const owned = ownedTicketTypeIds.has(ticket.id);
     const blocked = ticket.blockedByTicketTypeIds.some((id) => ownedTicketTypeIds.has(id));
+    const iosBlocked = event?.type === 'ONLINE' && isIosDigitalPurchaseBlocked(ticket.price);
     // Sold out but queueing: selectable, but buys a place in line, not a seat.
-    const waitlistOnly = isWaitlistOnly(ticket) && !owned && !blocked;
-    const available = isTicketAvailable(ticket) && !owned && !blocked;
+    const waitlistOnly = isWaitlistOnly(ticket) && !owned && !blocked && !iosBlocked;
+    const available = isTicketAvailable(ticket) && !owned && !blocked && !iosBlocked;
     return {
       ticket,
       owned,
       blocked,
+      iosBlocked,
       waitlistOnly,
       available,
       selectable: available || waitlistOnly,

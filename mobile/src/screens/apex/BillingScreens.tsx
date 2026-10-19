@@ -5,7 +5,6 @@ import { CurrencyInr, Hash, NotePencil, Percent } from '@unifesto/unicon/react-n
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import ManageStats from '../../components/manage/ManageStats';
@@ -72,7 +71,6 @@ export function PlansScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexPlans');
   const [plans, setPlans] = useState<PlanInfo[] | null>(null);
   const [models, setModels] = useState<BillingModelConfig[]>([]);
   const [error, setError] = useState('');
@@ -151,7 +149,6 @@ export function PlanEditScreen() {
   const { key } = useLocalSearchParams<{ key: string }>();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexPlanEdit');
   const model = isModelKey(key ?? '');
   const [item, setItem] = useState<PlanInfo | BillingModelConfig | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
@@ -332,7 +329,6 @@ const arrangement = (s: SpaceSubscription) =>
 export function SubscriptionsScreen() {
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexSubscriptions');
   const [model, setModel] = useState('');
   const [stats, setStats] = useState<BillingStats | null>(null);
 
@@ -401,7 +397,6 @@ export function SubscriptionEditScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexSubscriptionEdit');
   const sub = subCache.get(spaceId ?? '');
 
   const [billingModel, setBillingModel] = useState<BillingModel>(sub?.billingModel ?? 'FREE');

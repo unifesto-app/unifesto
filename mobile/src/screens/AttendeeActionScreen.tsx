@@ -5,7 +5,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   cancelAttendee,
   getTransferRequestFor,
@@ -68,8 +67,6 @@ export default function AttendeeActionScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [existing, setExisting] = useState<TransferRequest | null>(null);
-
-  useAnalyticsScreenTracking('AttendeeAction');
 
   useEffect(() => {
     if (action === 'transfer' && registrationId) void getTransferRequestFor(registrationId).then(setExisting);

@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { Scissors } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { conversion, getTraffic, scopeParams, type PlatformTrafficStats } from '../../lib/api/traffic';
 import { sourceLabel } from '../../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
@@ -27,8 +26,6 @@ export default function TrafficScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('ApexTraffic');
 
   const load = useCallback(async () => {
     const res = await getTraffic<PlatformTrafficStats>({ kind: 'admin' });

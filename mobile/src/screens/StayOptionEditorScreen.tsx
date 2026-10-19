@@ -11,7 +11,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createStayOption,
   deleteStayOption,
@@ -93,8 +92,6 @@ export default function StayOptionEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('StayOptionEditor');
 
   useEffect(() => {
     if (isNew || !eventId || !stayId) return;

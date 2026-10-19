@@ -6,6 +6,8 @@
  * its own prebuild). Hashing them made the local runtime differ from the
  * build's, so EAS failed the build and OTA updates published locally would
  * never reach it. They don't change the native API surface, so skip them.
+ * (Hand edits to a library go in patches/ via patch-package instead: postinstall
+ * applies them on EAS too, so the hash matches without an ignore here.)
  *
  * sourceSkips: npm scripts are tooling, not native code, but Expo hashes the
  * whole package.json "scripts" block by default, so renaming an ota:* script
@@ -21,8 +23,6 @@ const config = {
   ignorePaths: [
     // react-native-maps' config plugin sets HAVE_GOOGLE_MAPS here at prebuild.
     'node_modules/react-native-maps/ios/AirMaps/RNMapsDefines.h',
-    // Hand-edited locally to drop the legacy package="" attribute.
-    'node_modules/@react-native-masked-view/masked-view/android/src/main/AndroidManifest.xml',
     // Gradle/CMake output from local Android builds.
     'node_modules/**/android/build/**',
     'node_modules/**/android/.cxx/**',

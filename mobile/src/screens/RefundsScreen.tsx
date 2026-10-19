@@ -3,7 +3,6 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRefundQueue, type RefundRequest, type RefundStatus } from '../lib/api/finance';
 import { RefundRow } from '../components/manage/FinanceRows';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
@@ -49,8 +48,6 @@ export default function RefundsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('Refunds');
 
   const fetchPage = useCallback(
     async (next: number) => {

@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTokens } from '../../../context/ThemeContext';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import { getTransactions, type LedgerTransaction, type TransactionsPage, type TxnStatus } from '../../../lib/api/apexMoney';
 import SearchList from '../../../components/apex/SearchList';
 import { ApexRow, shortDate } from '../../../components/apex/ApexRow';
@@ -45,7 +44,6 @@ export default function TransactionsScreen() {
   const tokens = useTokens();
   const [status, setStatus] = useState<TxnStatus | 'all'>('all');
   const [summary, setSummary] = useState<TransactionsPage['summary'] | null>(null);
-  useAnalyticsScreenTracking('ApexTransactions');
 
   const fetchPage = useCallback(
     async (search: string, page: number) => {

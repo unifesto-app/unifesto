@@ -17,7 +17,6 @@ import { ArrowDown, ArrowUp, Camera, Plus, Tag, TextAa, TextAlignLeft } from '@u
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
@@ -49,7 +48,6 @@ export function CategoriesListScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexCategories');
 
   const [items, setItems] = useState<AdminCategory[] | null>(null);
   const [error, setError] = useState('');
@@ -176,7 +174,6 @@ export function CategoryEditScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking(isNew ? 'ApexCategoryNew' : 'ApexCategoryEdit');
 
   const [loaded, setLoaded] = useState(isNew);
   const [loadError, setLoadError] = useState('');

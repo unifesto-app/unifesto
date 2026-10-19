@@ -6,7 +6,6 @@ import * as Clipboard from 'expo-clipboard';
 import { EnvelopeSimple, InstagramLogo, LinkSimple, LinkedinLogo, Scissors, WhatsappLogo } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from '../lib/api/tracking';
 import { conversion, getTraffic, scopeParams, type TrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -44,8 +43,6 @@ export default function EventTrackingScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('EventTracking');
 
   const load = useCallback(async () => {
     if (!eventId) return;

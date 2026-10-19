@@ -10,7 +10,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { getMyHelp, HELP_STATUS_LABEL, raiseHelpQuery, type MyHelp } from '../lib/api/hackathon';
 import { timeAgo } from '../utils/checkinFormat';
@@ -38,8 +37,6 @@ export default function HackathonHelpScreen() {
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonHelp');
 
   const load = useCallback(async () => {
     if (!eventId) return;

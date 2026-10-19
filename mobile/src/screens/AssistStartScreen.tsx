@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { startAssist } from '../lib/api/support';
 import { Composer, GUTTER } from '../components/support/CaseThread';
 import { AssistNotice } from '../components/support/AssistParts';
@@ -26,8 +25,6 @@ export default function AssistStartScreen() {
   const topSpacing = useTopSpacing();
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
-
-  useAnalyticsScreenTracking('AssistStart');
 
   const send = async () => {
     const text = message.trim();

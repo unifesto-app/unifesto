@@ -5,7 +5,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { SECTIONS, type ContentItem, type ContentSection } from '../lib/api/eventContent';
 import ChipPicker from '../components/manage/ChipPicker';
@@ -41,8 +40,6 @@ export default function EventContentScreen() {
   const [lists, setLists] = useState<Lists | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('EventContent');
 
   const load = useCallback(async () => {
     if (!eventId) return;
