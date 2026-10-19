@@ -118,6 +118,29 @@ export class PollsService {
     return { ok: true };
   }
 
+  /**
+   * L4 projector: the live poll, else the last one closed. Counts follow the
+   * poll's own rule as if the room had voted; the total always shows.
+   */
+  async display(eventId: string) {
+    const poll =
+      (await this.prisma.poll.findFirst({ where: { eventId, status: 'LIVE' }, orderBy: { launchedAt: 'desc' } })) ??
+      (await this.prisma.poll.findFirst({ where: { eventId, status: 'CLOSED' }, orderBy: { closedAt: 'desc' } }));
+    if (!poll) return null;
+    const counts = (await this.counts([poll.id])).get(poll.id);
+    const results = poll.options.map((_, i) => counts?.[i] ?? 0);
+    return {
+      id: poll.id,
+      question: poll.question,
+      options: poll.options,
+      status: poll.status,
+      launchedAt: poll.launchedAt,
+      closedAt: poll.closedAt,
+      totalVotes: results.reduce((a, b) => a + b, 0),
+      results: resultsVisible(poll, true) ? results : null,
+    };
+  }
+
   /** The attendee panel: live and closed polls, newest first, with counts where allowed. */
   async feed(eventId: string, userId: string) {
     if (!(await canJoinEngagement(this.prisma, this.authz, eventId, userId))) {

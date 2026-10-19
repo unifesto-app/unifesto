@@ -23,6 +23,8 @@ export const ASK_LIMIT = { max: 3, windowMs: 60_000 };
 
 /** The newest questions only; a room past this is a Slido-scale problem. */
 const FEED_LIMIT = 300;
+/** A projector fits a dozen at most. */
+const DISPLAY_LIMIT = 50;
 
 /** Where a moderator may move a question from, per target. Nothing goes back to PENDING. */
 export const MODERATION_FROM: Record<ModerationTarget, QuestionStatus[]> = {
@@ -129,6 +131,40 @@ export class QuestionsService {
   /** The moderation queue: every question, every status. */
   listForManage(eventId: string, agendaId?: string) {
     return this.load(eventId, { eventId, ...(agendaId ? { agendaId } : {}) }, null);
+  }
+
+  /**
+   * L4 projector wall: approved and answered questions, ranked. No author: the
+   * wall is shown to the whole hall and asking has no "show my name" choice,
+   * so the user relation is never even selected.
+   */
+  async display(eventId: string) {
+    const rows = await this.prisma.question.findMany({
+      where: { eventId, status: { in: ['APPROVED', 'ANSWERED'] } },
+      select: {
+        id: true,
+        text: true,
+        status: true,
+        pinned: true,
+        createdAt: true,
+        agenda: { select: { title: true } },
+        _count: { select: { votes: true } },
+      },
+      // The top of the ranking in SQL (enum order puts APPROVED before ANSWERED), then the exact rule.
+      orderBy: [{ pinned: 'desc' }, { status: 'asc' }, { votes: { _count: 'desc' } }, { createdAt: 'asc' }],
+      take: DISPLAY_LIMIT,
+    });
+    return rankQuestions(
+      rows.map((q) => ({
+        id: q.id,
+        text: q.text,
+        status: q.status,
+        pinned: q.pinned,
+        agendaTitle: q.agenda?.title ?? null,
+        votes: q._count.votes,
+        createdAt: q.createdAt,
+      })),
+    );
   }
 
   async ask(eventId: string, userId: string, dto: AskQuestionDto) {

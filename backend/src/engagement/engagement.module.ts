@@ -3,6 +3,8 @@ import { AuthModule } from '../auth/auth.module';
 import { LeaderboardModule } from '../leaderboard/leaderboard.module';
 import { PollsController } from './polls.controller';
 import { PollsService } from './polls.service';
+import { ProjectorController } from './projector.controller';
+import { ProjectorService } from './projector.service';
 import { QuestionsController } from './questions.controller';
 import { QuestionsService } from './questions.service';
 import { QuizzesController } from './quizzes.controller';
@@ -15,7 +17,7 @@ import { QuizzesService } from './quizzes.service';
  */
 @Module({
   imports: [AuthModule, LeaderboardModule],
-  controllers: [PollsController, QuestionsController, QuizzesController],
-  providers: [PollsService, QuestionsService, QuizzesService],
+  controllers: [PollsController, QuestionsController, QuizzesController, ProjectorController],
+  providers: [PollsService, QuestionsService, QuizzesService, ProjectorService],
 })
 export class EngagementModule {}
