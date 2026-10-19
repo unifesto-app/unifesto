@@ -1,4 +1,5 @@
-import { makeAuthenticatedRequest } from './helpers';
+import { makeAuthenticatedRequest, type ApiRequestInit } from './helpers';
+import { OFFLINE_MESSAGE } from './errors';
 
 /**
  * Operator-side event endpoints for the mobile event hub. Each call resolves to
@@ -8,17 +9,17 @@ import { makeAuthenticatedRequest } from './helpers';
  */
 export type Result<T> = { ok: true; data: T } | { ok: false; denied: boolean; message: string };
 
-export async function call<T>(path: string, init?: RequestInit): Promise<Result<T>> {
+export async function call<T>(path: string, init?: ApiRequestInit): Promise<Result<T>> {
   try {
     const response = await makeAuthenticatedRequest(path, init);
-    if (!response) return { ok: false, denied: false, message: 'No connection' };
+    if (!response) return { ok: false, denied: false, message: OFFLINE_MESSAGE };
     const body = await response.json().catch(() => null);
     if (response.ok) return { ok: true, data: body as T };
     const message: string = (Array.isArray(body?.message) ? body.message[0] : body?.message) || 'Something went wrong';
     const denied = response.status === 403 || (response.status === 400 && /unauthori[sz]ed/i.test(message));
     return { ok: false, denied, message };
   } catch {
-    return { ok: false, denied: false, message: 'No connection' };
+    return { ok: false, denied: false, message: OFFLINE_MESSAGE };
   }
 }
 

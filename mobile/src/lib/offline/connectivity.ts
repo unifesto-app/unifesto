@@ -13,6 +13,8 @@ const PROBE_INTERVAL_MS = 8_000;
 const PROBE_TIMEOUT_MS = 5_000;
 
 let online = true;
+/** Online, but the last answer was an error we covered with a saved copy. */
+let servingSaved = false;
 let probeTimer: ReturnType<typeof setInterval> | null = null;
 const listeners = new Set<() => void>();
 
@@ -24,7 +26,11 @@ function setOnline(next: boolean) {
   listeners.forEach((l) => l());
 }
 
-export function reportNetworkSuccess() {
+export function reportNetworkSuccess(servedSaved = false) {
+  if (servedSaved !== servingSaved) {
+    servingSaved = servedSaved;
+    if (online) listeners.forEach((l) => l());
+  }
   setOnline(true);
 }
 
@@ -82,6 +88,14 @@ function subscribe(listener: () => void) {
 /** Re-renders when connectivity flips. */
 export function useIsOffline(): boolean {
   return !useSyncExternalStore(subscribe, isOnline, isOnline);
+}
+
+export type NetworkNotice = 'offline' | 'saved' | null;
+const notice = (): NetworkNotice => (!online ? 'offline' : servingSaved ? 'saved' : null);
+
+/** What the banner says: offline, online but showing saved data (server error), or nothing. */
+export function useNetworkNotice(): NetworkNotice {
+  return useSyncExternalStore(subscribe, notice, notice);
 }
 
 /** Run `fn` each time the app comes back online (e.g. to refetch a screen). */

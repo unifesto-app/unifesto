@@ -69,8 +69,9 @@ const OFFLINE_ALLOWLIST: RegExp[] = [
   /^\/spaces\/[^/]+(\/palette)?$/,
   /^\/spaces\/slug\/[^/]+$/,
   /^\/sessions(\/[^/]+)?$/,
-  // Staff at the door: which events they can check in for
+  // Staff at the door: which events they can check in for, and the Space tab
   /^\/checkin\/my-events$/,
+  /^\/users\/me\/access$/,
 ];
 
 export function shouldCache(path: string): boolean {

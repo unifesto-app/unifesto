@@ -11,8 +11,25 @@ import {
 import { clearCheckinRosters } from '../offline/checkinStorage';
 import { cachedGet, invalidateApiCache } from './memoryCache';
 import { readJson, refreshEndsSession } from './errors';
+import {
+  REQUEST_TIMEOUT_MS,
+  UPLOAD_TIMEOUT_MS,
+  fetchWithTimeout,
+  forgetGood,
+  recallGood,
+  rememberGood,
+  settle,
+  withRetry,
+} from './resilience';
 
 export { ApiError, errorFrom, expectOk, readJson } from './errors';
+
+/**
+ * `retry`: try again (twice, with backoff) when unreached or transient. Only
+ * for writes the server upserts: scores, statuses, lead scans. Never money or
+ * approvals, which fail once with a clear message instead.
+ */
+export type ApiRequestInit = RequestInit & { retry?: boolean };
 
 /**
  * Tokens are readable after the first unlock since boot, not only while the
@@ -75,6 +92,7 @@ export async function clearToken(): Promise<void> {
     [TOKEN_KEY, REFRESH_KEY, ...Object.values(LEGACY_KEYS)].map((k) => SecureStore.deleteItemAsync(k)),
   );
   invalidateApiCache();
+  forgetGood();
   // Signed out (explicitly or by a dead refresh): the account's offline copies
   // go too, including saved guest lists (attendee names). Unsynced check-ins
   // are kept, keyed by user, so they upload on that account's next sign-in.
@@ -82,36 +100,32 @@ export async function clearToken(): Promise<void> {
 }
 
 /**
- * Runs a request and keeps connectivity + the offline cache in step with it:
- * a successful GET is saved, and a GET that fails at the network level is
- * answered from the last saved copy (marked with OFFLINE_CACHE_HEADER).
- * Non-GETs are never replayed — they fail as before so the caller can say so.
+ * Runs a request with a timeout and keeps connectivity + the saved copies in
+ * step with it (see `settle`): a good GET is saved, in memory for any path and
+ * on disk for the offline allowlist; a GET that fails for a transient reason is
+ * answered from that copy (marked with OFFLINE_CACHE_HEADER) instead of wiping
+ * the screen. Non-GETs are never replayed from a copy.
  */
-async function withOfflineCache(
+function withOfflineCache(
   scope: CacheScope,
   path: string,
-  method: string,
-  run: () => Promise<Response>,
+  init: RequestInit,
 ): Promise<Response> {
-  try {
-    const response = await run();
-    reportNetworkSuccess();
-    if (method === 'GET' && response.ok) {
-      response
-        .clone()
-        .text()
-        .then((body) => writeCache(scope, path, body))
-        .catch(() => {});
-    }
-    return response;
-  } catch (error) {
-    reportNetworkFailure();
-    if (method === 'GET') {
-      const hit = await readCache(scope, path);
-      if (hit) return cachedResponse(hit);
-    }
-    throw error;
-  }
+  const method = init.method ?? 'GET';
+  const key = `${scope}:${path}`;
+  const timeout = init.body instanceof FormData ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+  return settle(method, () => fetchWithTimeout(`${BASE_URL}${path}`, init, timeout), {
+    save: (body) => {
+      rememberGood(key, body);
+      void writeCache(scope, path, body);
+    },
+    saved: async () => {
+      const hit = recallGood(key) ?? (await readCache(scope, path));
+      return hit ? cachedResponse(hit) : null;
+    },
+    reached: reportNetworkSuccess,
+    unreached: reportNetworkFailure,
+  });
 }
 
 /**
@@ -144,11 +158,15 @@ async function refreshSession(): Promise<RefreshResult> {
     try {
       const refreshToken = await getRefreshToken();
       if (!refreshToken) return 'ended';
-      const res = await fetch(`${BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
+      const res = await fetchWithTimeout(
+        `${BASE_URL}/auth/refresh`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refreshToken }),
+        },
+        REQUEST_TIMEOUT_MS,
+      );
       if (!res.ok) return refreshEndsSession(res.status) ? 'ended' : null;
       const data = await readJson<{ accessToken?: string; refreshToken?: string }>(res);
       if (!data?.accessToken) return null;
@@ -177,13 +195,14 @@ export async function refreshAccessToken(): Promise<string | null> {
 
 export async function makeAuthenticatedRequest(
   path: string,
-  options: RequestInit = {}
+  { retry, ...options }: ApiRequestInit = {}
 ): Promise<Response | null> {
   const method = options.method ?? 'GET';
   if (method === 'GET') {
     return cachedGet(`user:${path}`, path, () => sendAuthenticatedRequest(path, options, method));
   }
-  const response = await sendAuthenticatedRequest(path, options, method);
+  const send = () => sendAuthenticatedRequest(path, options, method);
+  const response = await (retry ? withRetry(send) : send());
   if (response?.ok) invalidateApiCache();
   return response;
 }
@@ -200,14 +219,14 @@ async function sendAuthenticatedRequest(
   }
 
   const doFetch = (t: string) =>
-    withOfflineCache('user', path, method, () => fetch(`${BASE_URL}${path}`, {
+    withOfflineCache('user', path, {
       ...options,
       headers: {
         Authorization: `Bearer ${t}`,
         'Content-Type': 'application/json',
         ...options.headers,
       },
-    }));
+    });
 
   try {
     let response = await doFetch(token);
@@ -277,15 +296,13 @@ async function sendPublicRequest(
   scope: CacheScope,
 ): Promise<Response | null> {
   try {
-    return await withOfflineCache(scope, path, method, () =>
-      fetch(`${BASE_URL}${path}`, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-      }),
-    );
+    return await withOfflineCache(scope, path, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
   } catch (error) {
     // Network/fetch failure. Return null to preserve the caller contract,
     // but log so the failure is observable instead of silently swallowed.
