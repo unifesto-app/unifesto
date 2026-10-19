@@ -4,7 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SupportCaseKind, SupportDesk } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { decideSubjectCase, openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto, RevokeFreeAddRequestDto } from './dto';
 
 /**
@@ -20,7 +23,10 @@ import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto, RevokeFreeAddRequestD
  */
 @Injectable()
 export class FreeAttendeeAddService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events?: EventEmitter2,
+  ) {}
 
   private requestInclude(withContact = false) {
     return {
@@ -41,7 +47,7 @@ export class FreeAttendeeAddService {
   async createRequest(userId: string, dto: CreateFreeAddRequestDto) {
     const event = await this.prisma.event.findUnique({
       where: { id: dto.eventId },
-      select: { id: true, spaceId: true },
+      select: { id: true, spaceId: true, title: true },
     });
     if (!event) throw new NotFoundException('Event not found');
     if (dto.ticketTypeId) {
@@ -64,7 +70,7 @@ export class FreeAttendeeAddService {
       );
     }
 
-    return this.prisma.freeAttendeeAddRequest.create({
+    const row = await this.prisma.freeAttendeeAddRequest.create({
       data: {
         eventId: dto.eventId,
         spaceId: event.spaceId,
@@ -76,6 +82,19 @@ export class FreeAttendeeAddService {
       },
       include: this.requestInclude(),
     });
+    openSubjectCase(this.events, {
+      subjectType: 'FreeAttendeeAddRequest',
+      subjectId: row.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'FREE_ATTENDEE_ADD',
+      desk: SupportDesk.PLATFORM,
+      spaceId: event.spaceId,
+      eventId: event.id,
+      subject: `Free seats for ${event.title}`,
+      message: dto.reason?.trim() || `Please let me add ${dto.seats ?? 'some'} attendees for free.`,
+    });
+    return row;
   }
 
   /** Requests raised by this user (optionally scoped to one event). */
@@ -157,6 +176,14 @@ export class FreeAttendeeAddService {
         await tx.event.update({ where: { id: req.eventId }, data: { allowFreeAttendeeAdd: true } });
       }
     });
+    decideSubjectCase(this.events, {
+      subjectType: 'FreeAttendeeAddRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: dto.status === 'APPROVED',
+      what: dto.status === 'APPROVED' ? `${approvedSeats} free seats` : 'the free seats',
+      note: dto.reviewNote,
+    });
     return this.prisma.freeAttendeeAddRequest.findUniqueOrThrow({
       where: { id: requestId },
       include: this.requestInclude(true),
@@ -190,6 +217,12 @@ export class FreeAttendeeAddService {
       if (live === 0) {
         await tx.event.update({ where: { id: req.eventId }, data: { allowFreeAttendeeAdd: false } });
       }
+    });
+    updateSubjectCase(this.events, {
+      subjectType: 'FreeAttendeeAddRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      text: `Unifesto withdrew the free seats. Seats already added stay.${dto.reviewNote ? ` Note: ${dto.reviewNote}` : ''}`,
     });
     return this.prisma.freeAttendeeAddRequest.findUniqueOrThrow({
       where: { id: requestId },

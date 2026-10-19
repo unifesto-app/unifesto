@@ -1620,6 +1620,7 @@ export class WhatsAppService {
    * Sent right after a successful registration when the event (or its parent)
    * has an organiser-supplied invite link. Fail-soft: a missing template or a
    * bad number logs and returns — it must never disturb the registration flow.
+   * Returns whether Meta accepted it, so callers mark an invite sent only then.
    */
   async sendEventWhatsAppGroupInvite(
     mobileNumber: string,
@@ -1629,11 +1630,11 @@ export class WhatsAppService {
       inviteUrl: string;
       isCommunity: boolean;
     },
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
-      if (!mobileNumber || !data.inviteUrl) return;
+      if (!mobileNumber || !data.inviteUrl) return false;
 
-      await this.sendTemplateMessage(
+      return await this.sendTemplateMessage(
         mobileNumber,
         TEMPLATES.EVENT_WHATSAPP_GROUP,
         [
@@ -1646,6 +1647,7 @@ export class WhatsAppService {
       );
     } catch (error) {
       this.logger.error('Failed to send WhatsApp group invite', error);
+      return false;
     }
   }
 

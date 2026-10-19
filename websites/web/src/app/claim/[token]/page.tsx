@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { openAppOrStore, storeUrlFor } from "@/lib/appLinks";
+import { detectMobilePlatform, openAppOrStore, storeUrlFor } from "@/lib/appLinks";
 import { brandGradient } from "@/lib/styles";
 
 /**
@@ -18,9 +18,10 @@ export default function ClaimPage() {
   const token = String(params.token ?? "");
   const deepLink = `unifesto://claim/${token}`;
 
-  // Try to open the app automatically on arrival (mobile).
+  // Try to open the app automatically on arrival (phones only: on desktop
+  // this page already says where to go, so don't navigate away from it).
   useEffect(() => {
-    return openAppOrStore(deepLink);
+    if (detectMobilePlatform() !== "unknown") return openAppOrStore(deepLink);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

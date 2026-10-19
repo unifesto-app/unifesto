@@ -483,6 +483,36 @@ export function waitlistRevokedEmail(d: WaitlistRevokedData): Email {
 }
 
 // =====================================================
+// STAYS
+// =====================================================
+
+export interface StayUpdateData {
+  /** Space theme for the header, button and footer (gated by EmailService). */
+  brand?: EmailBrand | null;
+  /** The stay's event, so EmailService resolves the brand + sender. */
+  eventId?: string;
+  email: string;
+  userName: string;
+  /** Same words as the push: the title is the heading and subject. */
+  title: string;
+  body: string;
+}
+
+export function stayUpdateEmail(d: StayUpdateData): Email {
+  return {
+    subject: d.title,
+    html: layout(
+      `${h1(esc(d.title))}
+      ${greet(d.userName)}
+      ${p(esc(d.body))}
+      ${small('Your Stay Pass and booking details are in the Unifesto app.')}`,
+      '',
+      d.brand,
+    ),
+  };
+}
+
+// =====================================================
 // PAYMENTS
 // =====================================================
 

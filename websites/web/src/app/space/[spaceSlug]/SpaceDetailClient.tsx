@@ -164,7 +164,7 @@ export default function SpaceDetailClient({ params, initialSpace = null, session
 
       {/* ── Hero: 4:3 banner beside the 1:1 logo, name and stats ── */}
       <section className="px-5 pt-28 sm:px-8 md:pt-32">
-        <div className="mx-auto grid max-w-5xl items-start gap-8 md:grid-cols-2 md:gap-12">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-8 md:grid-cols-2 md:gap-12">
           <div
             className="enter aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center"
             style={

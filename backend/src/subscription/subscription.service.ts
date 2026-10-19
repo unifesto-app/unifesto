@@ -651,6 +651,7 @@ export class SubscriptionService {
 
   private formatDate(date: Date): string {
     return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Kolkata',
       day: 'numeric',
       month: 'long',
       year: 'numeric',

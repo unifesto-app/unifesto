@@ -457,3 +457,27 @@ export async function getMyOwnershipRequests(
     })
   );
 }
+
+/** Hierarchy changes Unifesto reviews (backend `SubSpaceRequestType`). */
+export type SubSpaceRequestType =
+  | "JOIN_SUPER"
+  | "CONVERT_AND_JOIN"
+  | "CONVERT_TO_SUPER"
+  | "CONVERT_TO_REGULAR"
+  | "REMOVE_CHILD"
+  | "REMOVE_PARENT";
+
+/**
+ * Ask Unifesto to change where a space sits in the hierarchy. Backed by
+ * `POST /spaces/sub-space-requests`; it opens an Assist case for the reply.
+ */
+export async function createSubSpaceRequest(payload: {
+  requestType: SubSpaceRequestType;
+  targetSpaceId: string;
+  subSpaceId?: string;
+  reason?: string;
+}): Promise<{ data: { id: string } | null; error: ApiError | null }> {
+  return apiCall<{ id: string }>(
+    backendClient.post("/spaces/sub-space-requests", payload)
+  );
+}
