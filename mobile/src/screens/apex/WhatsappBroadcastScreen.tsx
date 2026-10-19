@@ -116,6 +116,9 @@ export default function WhatsappBroadcastScreen() {
     audience,
     spaceId: audience === 'SPACE' ? spaceId : undefined,
     userIds: audience === 'USER' ? users.map((u) => u.id) : undefined,
+    // The server needs the template: a marketing one only counts opted-in people.
+    templateName: template?.name,
+    languageCode: template?.language,
   };
 
   // The server counts who it would actually dial (deduped numbers) before anything goes out.

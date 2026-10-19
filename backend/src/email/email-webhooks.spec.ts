@@ -2,6 +2,7 @@ import { createHmac, createSign, generateKeyPairSync } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { MessageDeliveryStatus } from '@prisma/client';
 import { EmailService } from './email.service';
+import { EmailWebhooksController } from './email-webhooks.controller';
 import {
   applyEmailEvent,
   resendEvent,
@@ -47,6 +48,8 @@ describe('SNS signature (SES webhook)', () => {
       'https://evil.example.com/SimpleNotificationService-abc.pem',
       'https://sns.ap-south-1.amazonaws.com.evil.com/x.pem',
       'http://sns.ap-south-1.amazonaws.com/x.pem',
+      // a real SNS host, but not the topic's region
+      'https://sns.us-east-1.amazonaws.com/SimpleNotificationService-abc.pem',
     ]) {
       const m = sign({ ...base, SigningCertURL: url });
       await expect(verifySnsSignature(m, getCert)).resolves.toBe(false);
@@ -161,5 +164,49 @@ describe('EmailService suppression at the transport', () => {
     const { service } = build();
     await service.sendCustomCampaignEmail({ to: ['gone@example.com', 'ok@example.com'], subject: 'S', html: 'h', campaignId: 'c' });
     expect(service.sendViaSES).toHaveBeenCalledWith(['ok@example.com'], 'S', 'h');
+  });
+
+  it('campaign raw send with List-Unsubscribe skips a suppressed address too', async () => {
+    const { prisma, service } = build();
+    service.sendBulkWithHeaders = jest.fn();
+    const res = await service.sendCustomCampaignEmail({ to: 'gone@example.com', subject: 'S', html: 'h', campaignId: 'c', unsubscribeUrl: 'https://u' });
+    expect(res).toEqual({ messageId: null, error: 'suppressed' });
+    expect(service.sendBulkWithHeaders).not.toHaveBeenCalled();
+    expect(prisma.messageDelivery.create).toHaveBeenCalledWith({ data: expect.objectContaining({ status: 'SUPPRESSED', kind: 'campaign' }) });
+  });
+});
+
+describe('webhook race: event before the delivery row exists', () => {
+  const secret = 'whsec_' + Buffer.from('k').toString('base64');
+  const build = (rows: number) => {
+    const prisma: any = {
+      messageDelivery: { updateMany: jest.fn().mockResolvedValue({ count: 0 }), count: jest.fn().mockResolvedValue(rows) },
+      emailSuppression: { upsert: jest.fn().mockResolvedValue({}) },
+    };
+    const config: any = { get: (k: string) => (k === 'RESEND_WEBHOOK_SECRET' ? secret : undefined) };
+    return { prisma, ctrl: new EmailWebhooksController(prisma, config) };
+  };
+  const call = (ctrl: EmailWebhooksController, ageS: number) => {
+    const body = { type: 'email.bounced', data: { email_id: 're-9', to: ['x@y.co'], bounce: { type: 'Permanent' } } };
+    const raw = JSON.stringify(body);
+    const ts = String(Math.floor(Date.now() / 1000) - ageS);
+    const sig = 'v1,' + createHmac('sha256', Buffer.from('k')).update(`m.${ts}.${raw}`).digest('base64');
+    return ctrl.resend('m', ts, sig, { body, rawBody: Buffer.from(raw) } as any);
+  };
+
+  it('asks for a retry (503) when fresh and no row matches, after suppressing', async () => {
+    const { prisma, ctrl } = build(0);
+    await expect(call(ctrl, 10)).rejects.toMatchObject({ status: 503 });
+    expect(prisma.emailSuppression.upsert).toHaveBeenCalled();
+  });
+
+  it('acks when the row exists but was already further along', async () => {
+    const { ctrl } = build(1);
+    await expect(call(ctrl, 10)).resolves.toEqual({ ok: true });
+  });
+
+  it('acks a missing row once the event is old (never logged, stop retrying)', async () => {
+    const { ctrl } = build(0);
+    await expect(call(ctrl, 200)).resolves.toEqual({ ok: true });
   });
 });

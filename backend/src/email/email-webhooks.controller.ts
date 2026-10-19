@@ -15,7 +15,9 @@ import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   applyEmailEvent,
+  EmailEvent,
   isSnsUrl,
+  ROW_RACE_WINDOW_MS,
   resendEvent,
   sesEvent,
   SnsMessage,
@@ -65,7 +67,7 @@ export class EmailWebhooksController {
     }
 
     if (m.Type === 'SubscriptionConfirmation') {
-      if (!isSnsUrl(m.SubscribeURL)) throw new BadRequestException('Bad SubscribeURL');
+      if (!isSnsUrl(m.SubscribeURL, m.TopicArn)) throw new BadRequestException('Bad SubscribeURL');
       const res = await fetch(m.SubscribeURL!, { signal: AbortSignal.timeout(5000), redirect: 'error' });
       this.logger.log(`SNS subscription to ${m.TopicArn} confirmed (${res.status})`);
       return { ok: true };
@@ -79,7 +81,7 @@ export class EmailWebhooksController {
       return { ok: true }; // e.g. the plain-text "test" notification
     }
     const ev = sesEvent(n);
-    if (ev) await applyEmailEvent(this.prisma, 'ses', ev);
+    if (ev) await this.apply('ses', ev, Date.parse(m.Timestamp));
     return { ok: true };
   }
 
@@ -102,7 +104,19 @@ export class EmailWebhooksController {
       throw new ForbiddenException('Invalid signature');
     }
     const ev = resendEvent(req.body);
-    if (ev) await applyEmailEvent(this.prisma, 'resend', ev);
+    if (ev) await this.apply('resend', ev, Number(timestamp) * 1000);
     return { ok: true };
+  }
+
+  /**
+   * Apply an event. A fresh event whose message has no delivery row yet
+   * (the send's log write hasn't landed) gets a 503 so SNS/Svix retry it;
+   * suppression has already been recorded either way.
+   */
+  private async apply(source: 'ses' | 'resend', ev: EmailEvent, eventAtMs: number) {
+    const matched = await applyEmailEvent(this.prisma, source, ev);
+    if (!matched && Date.now() - eventAtMs < ROW_RACE_WINDOW_MS) {
+      throw new ServiceUnavailableException('Message not logged yet, retry');
+    }
   }
 }

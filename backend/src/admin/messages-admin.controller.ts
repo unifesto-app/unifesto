@@ -50,6 +50,7 @@ class StatsQueryDto {
 }
 
 const PAGE = 50;
+const SEARCH_WINDOW_MS = 30 * 86_400_000;
 
 /**
  * C6 message history + failure dashboard (platform admins only).
@@ -70,11 +71,13 @@ export class MessagesAdminController {
     const and: Prisma.MessageDeliveryWhereInput[] = [];
     if (q.userId) and.push({ OR: await this.userMatch(q.userId) });
     if (q.recipient) and.push({ recipient: { contains: q.recipient.trim(), mode: 'insensitive' } });
+    // A substring scan can't use an index: bound it to 30 days unless dated.
+    const from = q.from ?? (q.recipient && !q.to ? new Date(Date.now() - SEARCH_WINDOW_MS).toISOString() : undefined);
     if (q.channel) and.push({ channel: q.channel });
     if (q.status) and.push({ status: { in: q.status.split(',') as MessageDeliveryStatus[] } });
     if (q.kind) and.push({ kind: q.kind });
-    if (q.from || q.to) {
-      and.push({ createdAt: { ...(q.from ? { gte: new Date(q.from) } : {}), ...(q.to ? { lte: new Date(q.to) } : {}) } });
+    if (from || q.to) {
+      and.push({ createdAt: { ...(from ? { gte: new Date(from) } : {}), ...(q.to ? { lte: new Date(q.to) } : {}) } });
     }
     const take = q.limit ?? PAGE;
     const rows = await this.prisma.messageDelivery.findMany({
@@ -98,9 +101,9 @@ export class MessagesAdminController {
       select: { mobileNumber: true, identities: { select: { email: true } } },
     });
     const or: Prisma.MessageDeliveryWhereInput[] = [{ userId }, { channel: MessageChannel.PUSH, recipient: userId }];
-    for (const email of new Set((user?.identities ?? []).flatMap((i) => (i.email ? [i.email] : [])))) {
-      or.push({ channel: MessageChannel.EMAIL, recipient: { equals: email, mode: 'insensitive' } });
-    }
+    // Exact `in` (as stored and lowercased) so the (recipient, created_at) index is used.
+    const emails = [...new Set((user?.identities ?? []).flatMap((i) => (i.email ? [i.email, i.email.toLowerCase()] : [])))];
+    if (emails.length) or.push({ channel: MessageChannel.EMAIL, recipient: { in: emails } });
     const phones = phoneForms(user?.mobileNumber);
     if (phones.length) or.push({ channel: MessageChannel.WHATSAPP, recipient: { in: phones } });
     return or;

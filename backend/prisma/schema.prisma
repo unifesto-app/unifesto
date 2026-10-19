@@ -571,6 +571,38 @@ model NotificationSettings {
   @@map("notification_settings")
 }
 
+enum MarketingChannel {
+  EMAIL
+  WHATSAPP
+
+  @@map("marketing_channel")
+}
+
+/// "Stop sending me marketing." Keyed by `address`: a lowercased email for
+/// EMAIL, an E.164 number (+919876543210) for WHATSAPP. `spaceId` null = all
+/// marketing on that channel; set = only that space's campaigns. `userId` is
+/// filled when the address matched an account, so the opt-out follows the
+/// person if their address changes. Plain uuids, no FKs: a suppression must
+/// outlive the account or space. Read by email campaigns (+ the audience count)
+/// and the WhatsApp blast; transactional mail never reads it.
+model MarketingOptOut {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  channel MarketingChannel
+  address String           @db.VarChar(255)
+  userId  String?          @map("user_id") @db.Uuid
+  spaceId String?          @map("space_id") @db.Uuid
+  // link (unsubscribe page) | one_click (List-Unsubscribe-Post) | whatsapp_stop
+  source  String           @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([channel, spaceId])
+  @@index([address])
+  @@index([userId])
+  @@map("marketing_opt_outs")
+}
+
 /// The in-app copy of a notification, kept whether or not the push was sent
 /// (push can be off; the in-app feed still shows it). Written by
 /// NotificationsService.send when the caller passes `inbox`.
@@ -1108,6 +1140,7 @@ model Space {
   subSpaceRequests         SubSpaceRequest[]        @relation("SubSpaceRequests")
   targetSpaceRequests      SubSpaceRequest[]        @relation("TargetSpaceRequests")
   supportTickets           SupportTicket[]
+  cannedReplies            CannedReply[]
   coHostedEvents           EventCoHost[]
   eventTransfersFrom       EventOwnershipTransfer[] @relation("EventTransferFromSpace")
   eventTransfersTo         EventOwnershipTransfer[] @relation("EventTransferToSpace")
@@ -2998,6 +3031,21 @@ model SupportTicket {
   @@index([eventId])
   @@index([subjectType, subjectId])
   @@map("support_tickets")
+}
+
+/// D19: a saved reply the desk inserts into the composer. No space = the Unifesto desk's.
+model CannedReply {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId String? @map("space_id") @db.Uuid
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  title   String  @db.VarChar(100)
+  body    String  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@map("canned_replies")
 }
 
 model SupportMessage {
@@ -4972,6 +5020,34 @@ model WhatsappMessage {
   @@index([conversationId, createdAt])
   @@index([createdAt]) // retention sweep (RetentionService)
   @@map("whatsapp_messages")
+}
+
+/// Audit trail for Apex WhatsApp template blasts: who sent which template to
+/// which audience, when, and how many went out. Plain uuids, no FKs.
+model WhatsappBroadcast {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  sentById     String   @map("sent_by_id") @db.Uuid
+  templateName String   @map("template_name") @db.VarChar(512)
+  languageCode String   @map("language_code") @db.VarChar(10)
+  // Meta template category (MARKETING / UTILITY / AUTHENTICATION), UNKNOWN when
+  // the lookup failed (then it was treated as marketing).
+  category     String   @db.VarChar(20)
+  audience     String   @db.VarChar(10) // ALL | SPACE | USER
+  spaceId      String?  @map("space_id") @db.Uuid
+  userIds      String[] @map("user_ids") @db.Uuid
+  bodyParams   String[] @map("body_params")
+  isTest       Boolean  @default(false) @map("is_test")
+
+  recipientCount Int @map("recipient_count")
+  sentCount      Int @default(0) @map("sent_count")
+  failedCount    Int @default(0) @map("failed_count")
+
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("whatsapp_broadcasts")
 }
 
 /// What a content report points at. Polymorphic (no FK): the target is looked

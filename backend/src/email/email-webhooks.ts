@@ -26,17 +26,23 @@ export interface SnsMessage {
   Token?: string;
 }
 
-/** An https URL on an SNS regional host (cert and SubscribeURL must be one). */
-export function isSnsUrl(url: string | undefined, pathSuffix = ''): boolean {
-  if (!url) return false;
+/** The SNS host for a topic's region: arn:aws:sns:<region>:... -> sns.<region>.amazonaws.com(.cn). */
+export function snsHostFor(topicArn: string | undefined): string | null {
+  const region = /^arn:aws(?:-cn)?:sns:([a-z0-9-]+):\d+:[\w-]+$/.exec(topicArn ?? '')?.[1];
+  if (!region) return null;
+  return `sns.${region}.amazonaws.com${region.startsWith('cn-') ? '.cn' : ''}`;
+}
+
+/**
+ * An https URL on exactly the SNS host of the topic's region (the signing
+ * cert and SubscribeURL must both be one).
+ */
+export function isSnsUrl(url: string | undefined, topicArn: string | undefined, pathSuffix = ''): boolean {
+  const host = snsHostFor(topicArn);
+  if (!url || !host) return false;
   try {
     const u = new URL(url);
-    return (
-      u.protocol === 'https:' &&
-      !u.port &&
-      /^sns\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$/.test(u.hostname) &&
-      u.pathname.endsWith(pathSuffix)
-    );
+    return u.protocol === 'https:' && !u.port && u.hostname === host && u.pathname.endsWith(pathSuffix);
   } catch {
     return false;
   }
@@ -54,7 +60,10 @@ function snsStringToSign(m: SnsMessage): string {
     .join('');
 }
 
+// Certs that have verified a message. ponytail: cleared when it passes 20
+// entries (SNS rotates certs rarely), an LRU if that ever thrashes.
 const certCache = new Map<string, string>();
+const CERT_CACHE_MAX = 20;
 
 async function fetchCert(url: string): Promise<string> {
   const res = await fetch(url, { signal: AbortSignal.timeout(5000), redirect: 'error' });
@@ -64,23 +73,26 @@ async function fetchCert(url: string): Promise<string> {
 
 /**
  * Verify an SNS message signature (SignatureVersion 1 = SHA1, 2 = SHA256).
- * The cert must come from https://sns.<region>.amazonaws.com/...pem; it is
- * cached per URL. `getCert` is injectable for specs.
+ * The cert must come from https://sns.<topic region>.amazonaws.com/...pem; it
+ * is cached per URL once it has verified a message. `getCert` is injectable
+ * for specs.
  */
 export async function verifySnsSignature(
   m: SnsMessage,
   getCert: (url: string) => Promise<string> = fetchCert,
 ): Promise<boolean> {
-  if (!m?.Signature || !isSnsUrl(m.SigningCertURL, '.pem')) return false;
+  if (!m?.Signature || !isSnsUrl(m.SigningCertURL, m.TopicArn, '.pem')) return false;
   const algo = m.SignatureVersion === '1' ? 'RSA-SHA1' : m.SignatureVersion === '2' ? 'RSA-SHA256' : null;
   if (!algo) return false;
   try {
-    let cert = certCache.get(m.SigningCertURL);
-    if (!cert) {
-      cert = await getCert(m.SigningCertURL);
+    const cached = certCache.get(m.SigningCertURL);
+    const cert = cached ?? (await getCert(m.SigningCertURL));
+    const ok = createVerify(algo).update(snsStringToSign(m), 'utf8').verify(cert, m.Signature, 'base64');
+    if (ok && !cached) {
+      if (certCache.size >= CERT_CACHE_MAX) certCache.clear();
       certCache.set(m.SigningCertURL, cert);
     }
-    return createVerify(algo).update(snsStringToSign(m), 'utf8').verify(cert, m.Signature, 'base64');
+    return ok;
   } catch {
     return false;
   }
@@ -200,14 +212,24 @@ export function resendEvent(body: any): EmailEvent | null {
   }
 }
 
-/** Apply one event: move the delivery row, suppress addresses. */
+/**
+ * Apply one event: suppress addresses (idempotent), then move the delivery
+ * row. Returns false when no row has that provider id yet: the callback can
+ * beat the send's own log write, so the caller asks the provider to retry.
+ */
 export async function applyEmailEvent(
   db: Pick<PrismaClient, 'messageDelivery' | 'emailSuppression'>,
   source: 'ses' | 'resend',
   ev: EmailEvent,
-): Promise<void> {
-  await applyProviderEvent(db, MessageChannel.EMAIL, ev.messageId, ev.event, ev.detail);
+): Promise<boolean> {
   for (const address of ev.suppress?.addresses ?? []) {
     await suppressAddress(db, address, ev.suppress!.reason, source, ev.suppress!.details);
   }
+  const moved = await applyProviderEvent(db, MessageChannel.EMAIL, ev.messageId, ev.event, ev.detail);
+  if (moved > 0) return true;
+  // 0 also means "already further along" (e.g. delivered after opened): fine.
+  return (await db.messageDelivery.count({ where: { channel: MessageChannel.EMAIL, providerMessageId: ev.messageId } })) > 0;
 }
+
+/** How long after an event a missing row is still worth a provider retry. */
+export const ROW_RACE_WINDOW_MS = 2 * 60 * 1000;
