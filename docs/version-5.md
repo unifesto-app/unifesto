@@ -464,7 +464,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | planned; needs you (#146 adds the guard: clear 403 when Resend refuses on the domain limit) |
 | H21 | **Apex white-label form loads the target's live branding.** It showed #3491ff for every space, so Apply could overwrite a real colour | done, live 16 Oct (#140) |
 | H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | done (#146), live 19 Oct |
-| H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | planned; needs a decision |
+| H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | done (#288) |
 | H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | done (#146), live 19 Oct |
 | H25 | **Fix white-label custom-domain forms, sender names and takeover.** Quick one first (high, live since #106): the CORS allowlist accepts only *.unifesto.app and localhost (backend/src/common/cors.ts:13-18, main.ts:73-89). | done (#269) |
 
@@ -828,3 +828,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · L4 projector view: full-screen read-only Space page for poll results, the Q&A wall and live quizzes, opened by operators or with a revocable display link (no login, no attendee PII). (#287)
 - **2026-10-19** · O17 mobile: Firebase Analytics + fake consent removed, one iOS IAP rule for paid sessions and online events, price-free billing, sticky forced-update gate, /claim app links, sensitive Android permissions blocked, 8 unused deps dropped, masked-view patch via patch-package (#289)
 - **2026-10-19** · F7 mobile What's new sheet for 5.0.0: shown once after updating (never on fresh install), organiser section for operators, Profile › What's new reopens it (#290)
+- **2026-10-19** · H23 branded registration and stay emails use a neutral "find your ticket in the Unifesto app" line. (#288)
