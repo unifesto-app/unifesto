@@ -8,7 +8,7 @@ Covers mobile, backend, and all four websites (web, space, apex, plus the retire
 
 - **Pick a track** from [Tracks](#tracks) and work through its items. Several tracks can be open at once.
 - **Status:** `next` · `planned` · `in progress` · `done` · `parked` · `dropped`. Never delete an item. Mark it `dropped` with a reason instead.
-- **When something lands:** tick it, then add a line to [Log](#log): date, what, PR.
+- **When something lands:** don't edit this file in the PR (every PR touching it made every other PR conflict and re-run CI). Put `Log: <one line>` and `Status: <ID> <new status>` lines in the PR body; on merge, `.github/workflows/v5-log.yml` adds the Log line (dated, with the PR number) and sets that row's status on main. Plan edits with no PR go straight to main as a `docs(v5):` commit.
 - **When something ships:** add a row to [Releases](#releases). A release is just whatever was finished when you decided to ship.
 
 ### Shipping rules
