@@ -71,7 +71,14 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
                 res.setHeader('x-request-id', id);
                 return id;
               },
-              redact: ['req.headers.authorization', 'req.headers.cookie'],
+              redact: [
+                'req.headers.authorization',
+                'req.headers.cookie',
+                'req.headers["x-internal-key"]',
+                'req.headers["x-ota-status-secret"]',
+                'req.headers["x-display-token"]',
+                'req.headers["x-razorpay-signature"]',
+              ],
               // The external uptime probe would otherwise be most of the log.
               autoLogging: { ignore: (req) => req.url === '/health' },
             },
