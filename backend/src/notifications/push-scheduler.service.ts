@@ -5,7 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { PushCampaignService } from './push-campaign.service';
 import { NotificationsService } from './notifications.service';
-import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { attendingUserIds } from '../common/attendance';
 
 @Injectable()
 export class PushSchedulerService {
@@ -62,11 +62,7 @@ export class PushSchedulerService {
       const first = await this.redis.setNx(`push:reminder:${event.id}`, '1', 3 * 24 * 60 * 60);
       if (!first) continue; // already reminded
 
-      const regs = await this.prisma.eventRegistration.findMany({
-        where: { eventId: event.id, ...COUNTS_AS_ATTENDING },
-        select: { userId: true },
-      });
-      const userIds = [...new Set(regs.map((r) => r.userId))];
+      const userIds = await attendingUserIds(this.prisma, event.id);
       if (userIds.length === 0) continue;
 
       await this.notifications.send(userIds, {

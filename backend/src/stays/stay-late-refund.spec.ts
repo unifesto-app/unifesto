@@ -28,7 +28,7 @@ describe('StayBookingsService late-payment refund', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
     jest.spyOn(svc as any, 'fits').mockResolvedValue('No beds left'); // truthy = doesn't fit
     return { svc, prisma, payments };
@@ -80,7 +80,7 @@ describe('StayBookingsService.cancel claim', () => {
     };
     const prisma: any = { stayBooking: { updateMany: jest.fn(async () => ({ count: 0 })) } };
     const payments = { refund: jest.fn() };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'loadForEvent').mockResolvedValue(b);
     await expect(svc.cancel('ev-1', 'b-1', 'u-1', { refund: true } as any)).rejects.toThrow(/just changed/);
     expect(prisma.stayBooking.updateMany).toHaveBeenCalledWith(
@@ -89,5 +89,31 @@ describe('StayBookingsService.cancel claim', () => {
       }),
     );
     expect(payments.refund).not.toHaveBeenCalled();
+  });
+});
+
+describe('stay notices also go by email (C9)', () => {
+  it('emails the guest the same notice as the push, branded by the event', async () => {
+    const prisma: any = {
+      stayBooking: {
+        findUnique: jest.fn(async () => ({
+          eventId: 'ev-1',
+          user: { fullName: 'Asha', username: null, identities: [{ email: 'asha@x.in' }] },
+        })),
+      },
+    };
+    const notifications = { send: jest.fn(async () => undefined) };
+    const email = { sendStayUpdate: jest.fn(async () => undefined) };
+    const svc = new StayBookingsService(prisma, {} as any, {} as any, notifications as any, {} as any, {} as any, email as any);
+    (svc as any).notify('u-1', 'b-1', 'Stay request approved', 'Pay ₹500 by 2 Dec to confirm your bed at Hostel.');
+    await new Promise((r) => setImmediate(r));
+    expect(notifications.send).toHaveBeenCalledWith(['u-1'], expect.objectContaining({ title: 'Stay request approved' }));
+    expect(email.sendStayUpdate).toHaveBeenCalledWith({
+      email: 'asha@x.in',
+      eventId: 'ev-1',
+      userName: 'Asha',
+      title: 'Stay request approved',
+      body: 'Pay ₹500 by 2 Dec to confirm your bed at Hostel.',
+    });
   });
 });

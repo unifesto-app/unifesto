@@ -15,7 +15,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
 import { NotificationsService } from './notifications.service';
 import { NotificationCategory } from './notifications.constants';
-import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { attendingUserIds } from '../common/attendance';
 import {
   CreateOrganiserAnnouncementDto,
   CreatePushBroadcastDto,
@@ -327,11 +327,8 @@ export class PushCampaignService {
     if (segment.type === 'event') {
       const eventId = segment.eventId;
       if (!eventId) return [];
-      const regs = await this.prisma.eventRegistration.findMany({
-        where: { eventId, ...COUNTS_AS_ATTENDING },
-        select: { userId: true },
-      });
-      return [...new Set(regs.map((r) => r.userId))];
+      // Leads plus group members who joined: GroupSeat is the roster.
+      return attendingUserIds(this.prisma, eventId);
     }
 
     if (segment.type === 'space') {

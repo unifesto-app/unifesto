@@ -38,8 +38,6 @@ import {
   generateQRCode,
   generateTicketCode,
   seatsFor,
-  formatEventDate,
-  formatEventTime,
   SETTLEABLE_PAYMENT,
   ticketsIn,
 } from './registration.util';
@@ -543,85 +541,11 @@ export class RegistrationCheckoutService {
         return reg;
       });
 
-      // Fetch full registration with user and event for notifications
-      const fullRegistration = await this.prisma.eventRegistration.findUnique({
-        where: { id: registration.id },
-        include: {
-          user: true,
-          // space.name feeds the calendar (.ics) ORGANIZER line.
-          event: {
-          include: {
-            space: {
-              select: { name: true },
-            },
-          },
-        },
-        },
-      });
-
-      // Send WhatsApp notification (non-blocking)
-      try {
-        if (fullRegistration?.user?.mobileNumber) {
-          const evDate = formatEventDate(fullRegistration.event.startDateTime);
-          const evTime = formatEventTime(
-            fullRegistration.event.startDateTime,
-            fullRegistration.event.endDateTime,
-          );
-          await this.whatsappService.sendRegistrationConfirmation(
-            fullRegistration.user.mobileNumber,
-            {
-              userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
-              eventTitle: fullRegistration.event.title,
-              eventDate: evDate,
-              eventTime: evTime,
-              venueName: fullRegistration.event.venueName || undefined,
-              city: fullRegistration.event.city || undefined,
-              isOnline: fullRegistration.event.type === 'ONLINE',
-              onlineUrl: fullRegistration.event.onlineUrl || undefined,
-            },
-          );
-        }
-      } catch (error) {
-        this.logger.error('Failed to send free-ticket WhatsApp notification', error);
-      }
-
-      // Send email notification (non-blocking)
-      const identity = await this.prisma.userIdentity.findFirst({
-        where: { userId, email: { not: null }, isPrimary: true },
-        select: { email: true },
-      });
-
-      if (identity?.email && fullRegistration) {
-        const evDate = formatEventDate(fullRegistration.event.startDateTime);
-        const evTime = formatEventTime(
-          fullRegistration.event.startDateTime,
-          fullRegistration.event.endDateTime,
-        );
-
-        this.emailService.sendRegistrationConfirmation({
-          email: identity.email,
-          userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
-          eventId: fullRegistration.event.id,
-          eventTitle: fullRegistration.event.title,
-          eventDate: evDate,
-          eventTime: evTime,
-          venueName: fullRegistration.event.venueName || undefined,
-          city: fullRegistration.event.city || undefined,
-          isOnline: fullRegistration.event.type === 'ONLINE',
-          onlineUrl: fullRegistration.event.onlineUrl || undefined,
-          qrCode: fullRegistration.qrCode,
-          ticketCode: undefined,
-          // Raw fields for the "Add to calendar" .ics attachment.
-          eventSlug: fullRegistration.event.slug,
-          eventStartDateTime: fullRegistration.event.startDateTime,
-          eventEndDateTime: fullRegistration.event.endDateTime,
-          eventTimezone: fullRegistration.event.timezone,
-          eventType: fullRegistration.event.type,
-          venueAddress: fullRegistration.event.venueAddress || undefined,
-          eventDescription: fullRegistration.event.description || undefined,
-          organiserName: fullRegistration.event.space?.name || undefined,
-        }).catch((err) => this.logger.error('Failed to send free-ticket confirmation email', err));
-      }
+      // Same confirmations as every other settled registration: WhatsApp,
+      // ticket email, group invite, push and group member tickets.
+      void this.confirmations
+        .sendRegistrationConfirmations(registration.id)
+        .catch((err) => this.logger.error('Failed to send free-ticket confirmations', err));
 
       return {
         registrationId: registration.id,

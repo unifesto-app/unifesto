@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
 import { GroupSeatsService } from './group-seats.service';
+import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { SoldOutError, takeTicketSeats } from './capacity.util';
 import { ticketsIn } from './registration.util';
 import { NotificationEvents } from '../notifications/notifications.constants';
@@ -64,6 +65,7 @@ export class WaitlistService {
     private readonly events: EventEmitter2,
     private readonly groupSeats: GroupSeatsService,
     private readonly authz: AuthorizationService,
+    private readonly confirmations: RegistrationConfirmationsService,
   ) {}
 
   /**
@@ -572,8 +574,10 @@ export class WaitlistService {
         paymentId: null,
         orderId: null,
       });
-      void this.notifyOffered(result.reg.userId, event, result, true).catch(
-        (err) => this.logger.error('Failed to send waitlist offer email', err),
+      // Confirmed outright, so they get the usual confirmation with their QR
+      // (email, push, WhatsApp), not an offer email.
+      void this.confirmations.sendRegistrationConfirmations(registrationId).catch(
+        (err) => this.logger.error('Failed to send waitlist confirmation', err),
       );
       return {
         registrationId,
@@ -584,7 +588,7 @@ export class WaitlistService {
       };
     }
 
-    void this.notifyOffered(result.reg.userId, event, result, false).catch(
+    void this.notifyOffered(result.reg.userId, event, result).catch(
       (err) => this.logger.error('Failed to send waitlist offer email', err),
     );
 
@@ -970,7 +974,6 @@ export class WaitlistService {
     userId: string,
     event: { id: string; title: string; startDateTime: Date },
     offer: { totalAmount: number },
-    autoConfirmed: boolean,
   ) {
     const to = await this.recipient(userId);
     if (!to) return;
@@ -1010,13 +1013,12 @@ export class WaitlistService {
       isOnline: full?.type === 'ONLINE',
       onlineUrl: full?.onlineUrl ?? undefined,
       registrationUrl: `${process.env.WEB_URL || ''}/events/${full?.slug ?? event.id}`,
-      amountDue: autoConfirmed ? 0 : offer.totalAmount,
+      amountDue: offer.totalAmount,
       // No deadline any more — the seat is held until paid for or revoked.
       expiresInHours: null,
     });
 
-    // Offline push (best-effort, decoupled). Auto-confirmed free offers read as
-    // a confirmation; paid offers prompt the pay-to-claim.
+    // Offline push (best-effort, decoupled): prompts the pay-to-claim.
     this.events.emit(NotificationEvents.WaitlistOffer, {
       userId,
       eventId: event.id,

@@ -11,11 +11,16 @@ function build(opts: { claimed?: number; children?: { id: string }[] } = {}) {
   const event = { id: 'ev-1', spaceId: 'sp-1', slug: 'fest', title: 'Fest', startDateTime: new Date('2026-12-01') };
   const paidReg = {
     id: 'reg-paid', paymentStatus: 'PAID', razorpayAmount: 105, totalAmount: 105, processingFee: 5, refundedAmount: 0,
-    user: { fullName: 'Asha', username: null, identities: [{ email: 'asha@x.in' }] },
+    user: { id: 'u-asha', fullName: 'Asha', username: null, identities: [{ email: 'asha@x.in' }] },
+    // A teammate who joined the group (and the lead's own seat, deduped).
+    groupSeats: [
+      { claimedBy: { id: 'u-asha', fullName: 'Asha', username: null, identities: [{ email: 'asha@x.in' }] } },
+      { claimedBy: { id: 'u-kiran', fullName: 'Kiran', username: null, identities: [{ email: 'kiran@x.in' }] } },
+    ],
   };
   const freeReg = {
     id: 'reg-free', paymentStatus: 'PAID', razorpayAmount: 0, totalAmount: 0, processingFee: 0, refundedAmount: 0,
-    user: { fullName: 'Ravi', username: null, identities: [{ email: 'ravi@x.in' }] },
+    user: { id: 'u-ravi', fullName: 'Ravi', username: null, identities: [{ email: 'ravi@x.in' }] },
   };
   let childCalls = 0;
   const prisma: any = {
@@ -73,6 +78,16 @@ describe('cancelEvent (A24)', () => {
     const byEmail = Object.fromEntries(email.sendEventCancelled.mock.calls.map(([a]: any) => [a.email, a.refundInfo]));
     expect(byEmail['asha@x.in']).toMatch(/₹100 .*processing fee is not refunded/);
     expect(byEmail['ravi@x.in']).toBeUndefined();
+  });
+
+  it('mails only attending bookings, plus each joined group member once, without a refund line', async () => {
+    const { svc, prisma, email } = build();
+    await svc.cancelEvent('u-1', 'ev-1', {} as any);
+    const query = prisma.eventRegistration.findMany.mock.calls.find(([a]: any) => a.include)[0];
+    expect(query.where).toMatchObject({ isWaitlisted: false, paymentStatus: { in: ['PAID', 'PARTIALLY_REFUNDED'] } });
+    const sent = email.sendEventCancelled.mock.calls.map(([a]: any) => [a.email, a.refundInfo]);
+    expect(sent.map(([e]: any) => e).sort()).toEqual(['asha@x.in', 'kiran@x.in', 'ravi@x.in']);
+    expect(Object.fromEntries(sent)['kiran@x.in']).toBeUndefined();
   });
 
   it('cancels live sub-events with the parent', async () => {

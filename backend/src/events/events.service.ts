@@ -34,6 +34,7 @@ import {
   type DeletedFilter,
 } from '../common/soft-delete';
 import {
+  CLAIMED_MEMBER_SEAT,
   COUNTS_AS_ATTENDING,
   IS_GROUP_BOOKING,
   IS_INDIVIDUAL_BOOKING,
@@ -2372,25 +2373,13 @@ export class EventsService {
     }
 
     if (significantChanges.length > 0 && event.status === EventStatus.PUBLISHED) {
-      // Notify all registered attendees (non-blocking)
-      const registrations = await this.prisma.eventRegistration.findMany({
-        where: { eventId, status: { not: 'CANCELLED' } },
-        include: {
-          user: {
-            include: {
-              identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
-            },
-          },
-        },
-      });
-
-      for (const reg of registrations) {
-        const attendeeEmail = reg.user.identities[0]?.email;
-        if (attendeeEmail) {
+      // Notify everyone attending, group members included (non-blocking)
+      for (const r of await this.attendeeRecipients(eventId)) {
+        if (r.email) {
           this.emailService
             .sendEventUpdated({
-              email: attendeeEmail,
-              userName: reg.user.fullName || reg.user.username || 'there',
+              email: r.email,
+              userName: r.name,
               eventId: updated.id,
               eventTitle: updated.title,
               changes: significantChanges,
@@ -2649,6 +2638,43 @@ export class EventsService {
     return updated;
   }
 
+  /**
+   * Who to mail about a change to an event: the holder of every attending
+   * booking (with the row, for refund lines) plus group members who claimed a
+   * seat. One entry per person, primary email first.
+   */
+  private async attendeeRecipients(eventId: string) {
+    const person = {
+      id: true,
+      fullName: true,
+      username: true,
+      identities: {
+        where: { email: { not: null } },
+        orderBy: { isPrimary: 'desc' as const },
+        select: { email: true },
+        take: 1,
+      },
+    };
+    const regs = await this.prisma.eventRegistration.findMany({
+      where: { eventId, ...COUNTS_AS_ATTENDING },
+      include: {
+        user: { select: person },
+        groupSeats: { where: CLAIMED_MEMBER_SEAT, select: { claimedBy: { select: person } } },
+      },
+    });
+    const out = new Map<string, { email: string | null; name: string; reg: (typeof regs)[number] | null }>();
+    const add = (
+      u: { id: string; fullName: string | null; username: string | null; identities: { email: string | null }[] } | null,
+      reg: (typeof regs)[number] | null,
+    ) => {
+      if (!u || out.has(u.id)) return;
+      out.set(u.id, { email: u.identities[0]?.email ?? null, name: u.fullName || u.username || 'there', reg });
+    };
+    for (const reg of regs) add(reg.user, reg);
+    for (const reg of regs) for (const seat of reg.groupSeats ?? []) add(seat.claimedBy, null);
+    return [...out.values()];
+  }
+
   async cancelEvent(userId: string, eventId: string, dto: CancelEventDto) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -2694,28 +2720,17 @@ export class EventsService {
     // Invalidate event cache
     await this.cache.invalidateEventCache(event.slug);
 
-    // Send cancellation emails to all registered attendees (non-blocking)
-    const registrations = await this.prisma.eventRegistration.findMany({
-      where: { eventId, status: { not: 'CANCELLED' } },
-      include: {
-        user: {
-          include: {
-            identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
-          },
-        },
-      },
-    });
-
-    for (const reg of registrations) {
-      const attendeeEmail = reg.user.identities[0]?.email;
+    // Cancellation emails to everyone attending, group members included. Only
+    // the booking holder paid, so only they get the refund line (non-blocking).
+    for (const { email: attendeeEmail, name, reg } of await this.attendeeRecipients(eventId)) {
       if (attendeeEmail) {
         const paid =
+          !!reg &&
           Number(reg.razorpayAmount) > 0 &&
           (reg.paymentStatus === 'PAID' || reg.paymentStatus === 'PARTIALLY_REFUNDED');
-        const base = Math.max(
-          0,
-          Number(reg.totalAmount) - Number(reg.processingFee) - Number(reg.refundedAmount),
-        );
+        const base = paid
+          ? Math.max(0, Number(reg.totalAmount) - Number(reg.processingFee) - Number(reg.refundedAmount))
+          : 0;
         const refundInfo = paid
           ? `Your ticket price of ₹${base.toLocaleString('en-IN')} is coming back to the card or account you paid with. ` +
             'It can take 5-7 business days to show once sent. The processing fee is not refunded.'
@@ -2724,7 +2739,7 @@ export class EventsService {
         this.emailService
           .sendEventCancelled({
             email: attendeeEmail,
-            userName: reg.user.fullName || reg.user.username || 'there',
+            userName: name,
             eventId: event.id,
             eventTitle: event.title,
             eventDate: this.formatEventDate(event.startDateTime),
