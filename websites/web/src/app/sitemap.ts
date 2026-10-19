@@ -118,7 +118,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     page('/press', 'monthly', 0.5),
     page('/support', 'monthly', 0.6),
     page('/help', 'weekly', 0.6),
-    page('/docs', 'monthly', 0.5),
     page('/privacy', 'yearly', 0.3),
     page('/terms', 'yearly', 0.3),
     page('/refund', 'yearly', 0.3),

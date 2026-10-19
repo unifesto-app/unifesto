@@ -42,7 +42,6 @@ const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
       { label: "Careers", href: "/careers", description: "Open roles" },
       { label: "Press", href: "/press", description: "Releases and media kit" },
       { label: "Blog", href: "/blog", description: "Notes from running events" },
-      { label: "Docs", href: "/docs", description: "Developer reference" },
       { label: "Support", href: "/support", description: "Help, FAQs and contact" },
     ],
   },

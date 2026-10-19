@@ -2,7 +2,7 @@
 
 import { optimized } from "@/lib/img";
 import Link from "next/link";
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   CaretDown,
   CaretRight,
@@ -24,37 +24,39 @@ import { BrandFooter, BrandHeader, BrandTheme, brandStyle, hasBrandedChrome } fr
 import LeadCaptureForm from "@/components/LeadCaptureForm";
 import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/components/DetailParts";
 import { registerEventInterest } from "@/lib/api/leads";
-import { getEventBySlug, type Event, type SubEventSummary } from "@/lib/api/events";
+import { registrationState, type Event, type SubEventSummary } from "@/lib/api/events";
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from "@/lib/calendar";
 import { openAppOrStore, useAppHref } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
-import { getEventAdditionalInfo, type AgendaItem, type Speaker, type Prize, type Faq, type Contact } from "@/lib/api/additional-info";
 
 interface Props {
-  params: Promise<{ slug: string }>;
-  /** Fetched by the server page; lets the hero render in the initial HTML. */
-  initialEvent?: Event | null;
+  /** Fetched (and checked public) by the server page, so it all renders in the initial HTML. */
+  event: Event;
 }
 
 /** Long agendas start folded to this many slots (as on mobile). */
 const AGENDA_PREVIEW = 4;
 const PLACE: Record<number, string> = { 1: "1st", 2: "2nd", 3: "3rd" };
 
-const time = (d: Date) => d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
-const shortDate = (d: Date) => d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+// Formatted in the event's zone, never the renderer's: the server runs in UTC,
+// so local formatting gave wrong times in the HTML and a hydration mismatch.
+const fmt = (d: Date, tz: string, o: Intl.DateTimeFormatOptions) => d.toLocaleString("en-IN", { timeZone: tz, ...o });
+const time = (d: Date, tz: string) => fmt(d, tz, { hour: "numeric", minute: "2-digit", hour12: true });
+const shortDate = (d: Date, tz: string) => fmt(d, tz, { day: "numeric", month: "short" });
 const countLabel = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** Facts-card date lines: "Saturday, 12 Oct" / "6:30 pm – 9:00 pm", or "12 Oct – 14 Oct" / "From 6:30 pm". */
-function whenLines(startIso: string, endIso?: string | null) {
+function whenLines(startIso: string, endIso: string | null | undefined, tz: string) {
   const start = new Date(startIso);
   const end = endIso ? new Date(endIso) : null;
-  if (!end || start.toDateString() === end.toDateString()) {
+  const day = (d: Date) => fmt(d, tz, { dateStyle: "short" });
+  if (!end || day(start) === day(end)) {
     return {
-      title: start.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" }),
-      sub: `${time(start)}${end ? ` – ${time(end)}` : ""}`,
+      title: fmt(start, tz, { weekday: "long", day: "numeric", month: "short" }),
+      sub: `${time(start, tz)}${end ? ` – ${time(end, tz)}` : ""}`,
     };
   }
-  return { title: `${shortDate(start)} – ${shortDate(end)}`, sub: `From ${time(start)}` };
+  return { title: `${shortDate(start, tz)} – ${shortDate(end, tz)}`, sub: `From ${time(start, tz)}` };
 }
 
 /** "Starts in 3h" / "In 5 days" while the event is ahead (mobile countdownLabel). */
@@ -74,6 +76,9 @@ function countdownLabel(iso: string, now = new Date()): string {
 
 const noopSubscribe = () => () => {};
 
+/** Shown in place of Register when no ticket can be bought right now. */
+const NOT_OPEN = { upcoming: "Registration opens soon", sold_out: "Sold out", closed: "Registration closed" } as const;
+
 /** Upcoming and live sub-events first (soonest first), finished ones after. */
 function orderSubEvents(subs: SubEventSummary[]): SubEventSummary[] {
   const done = (s: SubEventSummary) => (s.status === "COMPLETED" ? 1 : 0);
@@ -87,96 +92,14 @@ function subPrice(sub: SubEventSummary): string {
   return "";
 }
 
-export default function EventDetailClient({ params, initialEvent = null }: Props) {
-  const [event, setEvent] = useState<Event | null>(initialEvent);
-  const [loading, setLoading] = useState(!initialEvent);
+export default function EventDetailClient({ event }: Props) {
   // Client-only: a countdown rendered on the server would never match hydration.
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
-
-  const [agenda, setAgenda] = useState<AgendaItem[]>([]);
-  const [speakers, setSpeakers] = useState<Speaker[]>([]);
-  const [prizes, setPrizes] = useState<Prize[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [faqs, setFaqs] = useState<Faq[]>([]);
+  const { agenda = [], speakers = [], prizes = [], contacts = [], faqs = [] } = event.sections ?? {};
   const [agendaOpen, setAgendaOpen] = useState(false);
   // Captured once so render stays pure; decides whether the event is over.
   const [now] = useState(() => Date.now());
-  const appHref = useAppHref(`unifesto://event/${event?.slug ?? ""}`);
-
-  useEffect(() => {
-    const loadEvent = async () => {
-      try {
-        const { slug } = await params;
-        const eventData = initialEvent ?? (await getEventBySlug(slug));
-        // The public site only shows events that have been published and are
-        // publicly viewable. Unpublished (draft) events and space-only events
-        // are treated as not-found; private events stay reachable by direct link.
-        const viewable =
-          eventData &&
-          eventData.status !== "DRAFT" &&
-          eventData.visibility !== "SPACE_ONLY";
-        if (!viewable) {
-          setEvent(null);
-          setLoading(false);
-          return;
-        }
-        setEvent(eventData);
-        // Render the page now; agenda/speakers fill in after, instead of
-        // holding the whole page (and its LCP) behind another request.
-        setLoading(false);
-
-        try {
-          const info = await getEventAdditionalInfo(eventData.id);
-          setAgenda(info.agenda);
-          setSpeakers(info.speakers);
-          setPrizes(info.prizes);
-          setContacts(info.contacts);
-          setFaqs(info.faqs);
-        } catch (error) {
-          console.error("Error loading additional info:", error);
-        }
-      } catch (error) {
-        console.error("Error loading event:", error);
-        // A failed side fetch must not blank an event we already have.
-        if (!initialEvent) setEvent(null);
-        setLoading(false);
-      }
-    };
-    loadEvent();
-  }, [params, initialEvent]);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-canvas">
-        <Navbar />
-        <div aria-hidden className="mx-auto grid max-w-5xl gap-8 px-5 pt-28 sm:px-8 md:grid-cols-2 md:pt-32">
-          <div className="aspect-[4/3] w-full animate-pulse rounded-3xl bg-night-2" />
-          <div className="space-y-4">
-            <div className="h-9 w-5/6 animate-pulse rounded-lg bg-paper/[0.05]" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-paper/[0.05]" />
-            <div className="h-52 w-full animate-pulse rounded-3xl bg-paper/[0.05]" />
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (!event) {
-    return (
-      <main className="flex min-h-screen flex-col bg-canvas">
-        <Navbar />
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-20 text-center">
-          <XCircle className="h-12 w-12 text-paper/45" aria-hidden />
-          <h1 className="font-display text-2xl text-paper">Event not found</h1>
-          <p className="text-sm text-paper/65">This event doesn&apos;t exist or has been removed.</p>
-          <Link href="/events" className="btn btn-lg btn-secondary mt-2">
-            Browse events
-          </Link>
-        </div>
-        <Footer />
-      </main>
-    );
-  }
+  const appHref = useAppHref(`unifesto://event/${event.slug}`);
 
   // ── Derived display bits (same rules as the mobile event screen) ──────────
   const isOnline = event.event_type?.toUpperCase() === "ONLINE";
@@ -197,9 +120,10 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
     openAppOrStore(withStoredUtm(appDeepLink));
   };
 
+  const tz = event.timezone || "Asia/Kolkata";
   const start = new Date(event.start_date);
-  const chip = { day: String(start.getDate()), month: start.toLocaleDateString("en-IN", { month: "short" }) };
-  const when = whenLines(event.start_date, event.end_date);
+  const chip = { day: fmt(start, tz, { day: "numeric" }), month: fmt(start, tz, { month: "short" }) };
+  const when = whenLines(event.start_date, event.end_date, tz);
   const countdown = hydrated ? countdownLabel(event.start_date, new Date(now)) : null;
 
   const hasVenue = !isOnline && !!(event.venue || event.venue_address || event.city);
@@ -220,6 +144,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
   const subEvents = event.sub_events ?? [];
   const isUmbrella = subEvents.length > 0 && (event.ticket_type_count ?? 0) === 0;
   const subCount = countLabel(subEvents.length, "sub-event");
+  const reg = isUmbrella ? "open" : registrationState(event.tickets, now);
   const bar = isUmbrella
     ? { label: "Multi-part event", value: subCount }
     : event.is_free
@@ -256,7 +181,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
 
       {/* ── Hero: clean 4:3 cover beside the name, host and facts ── */}
       <section className="px-5 pt-28 sm:px-8 md:pt-32">
-        <div className="mx-auto grid max-w-5xl items-start gap-8 md:grid-cols-2 md:gap-12">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-8 md:grid-cols-2 md:gap-12">
           <div
             className="enter relative aspect-[4/3] w-full overflow-hidden rounded-3xl bg-night-2 bg-cover bg-center md:sticky md:top-28"
             style={
@@ -358,7 +283,11 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
               ) : isOver ? (
                 <FactRow icon={<Ticket className="h-6 w-6 text-paper/45" aria-hidden />} title="This event has ended" />
               ) : (
-                <FactRow icon={<Ticket className="h-6 w-6 text-paper" aria-hidden />} title={isUmbrella ? subCount : priceLabel} />
+                <FactRow
+                  icon={<Ticket className="h-6 w-6 text-paper" aria-hidden />}
+                  title={isUmbrella ? subCount : priceLabel}
+                  sub={reg === "open" ? undefined : NOT_OPEN[reg]}
+                />
               )}
             </Card>
           </div>
@@ -385,7 +314,7 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
                   />
                   <p className="mt-3 line-clamp-2 text-[15px] font-semibold text-paper">{sub.title}</p>
                   <p className="mt-1 truncate text-sm text-paper/60">
-                    {[shortDate(new Date(sub.start_date)), sub.venue || sub.city].filter(Boolean).join(" · ")}
+                    {[shortDate(new Date(sub.start_date), tz), sub.venue || sub.city].filter(Boolean).join(" · ")}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-paper/85">{subPrice(sub)}</p>
                 </Link>
@@ -400,8 +329,8 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
               {(agendaOpen ? agenda : agenda.slice(0, AGENDA_PREVIEW)).map((item) => (
                 <div key={item.id} className="flex gap-4 border-t border-paper/10 p-4 first:border-t-0">
                   <div className="w-20 shrink-0">
-                    <p className="text-sm font-semibold text-paper">{time(new Date(item.start_time))}</p>
-                    {item.end_time && <p className="text-xs text-paper/50">{time(new Date(item.end_time))}</p>}
+                    <p className="text-sm font-semibold text-paper">{time(new Date(item.start_time), tz)}</p>
+                    {item.end_time && <p className="text-xs text-paper/50">{time(new Date(item.end_time), tz)}</p>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[15px] font-semibold text-paper">{item.title}</p>
@@ -591,11 +520,13 @@ export default function EventDetailClient({ params, initialEvent = null }: Props
             <a href="#inside" className="btn btn-lg btn-primary shrink-0">
               View events
             </a>
-          ) : (
+          ) : reg === "open" ? (
             <a href={appHref} onClick={openApp} className="btn btn-lg btn-primary shrink-0">
               <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden />
               Register
             </a>
+          ) : (
+            <span className="shrink-0 text-sm font-semibold text-paper/70">{NOT_OPEN[reg]}</span>
           )}
         </ActionBar>
       )}
