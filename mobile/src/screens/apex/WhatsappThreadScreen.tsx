@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlaneRight, Phone } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
@@ -20,6 +20,7 @@ import useTopSpacing from '../../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import {
   conversationName,
+  convertWhatsappToCase,
   getWhatsappConversation,
   messagePreview,
   replyWhatsapp,
@@ -51,6 +52,9 @@ export default function WhatsappThreadScreen() {
   const [error, setError] = useState('');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  // D26: messages picked to copy into an Assist case; null until the first load pre-picks.
+  const [picked, setPicked] = useState<Set<string> | null>(null);
+  const [converting, setConverting] = useState(false);
   const inFlight = useRef(false);
 
   useAnalyticsScreenTracking('ApexWhatsappThread');
@@ -62,6 +66,13 @@ export default function WhatsappThreadScreen() {
     inFlight.current = false;
     if (res.ok) {
       setConvo(res.data);
+      // Pre-pick what's unanswered (inbound after our last reply), once, so polling keeps the admin's picks.
+      setPicked((p) => {
+        if (p) return p;
+        const msgs = res.data.messages ?? [];
+        const lastOut = msgs.map((m) => m.direction).lastIndexOf('OUTBOUND');
+        return new Set(msgs.slice(lastOut + 1).filter((m) => m.direction === 'INBOUND').map((m) => m.id));
+      });
       setError('');
     } else {
       setError(res.denied ? 'Only Unifesto platform admins can see this.' : res.message);
@@ -91,9 +102,30 @@ export default function WhatsappThreadScreen() {
     await load();
   };
 
+  const togglePick = (msgId: string) =>
+    setPicked((p) => {
+      const next = new Set(p);
+      if (!next.delete(msgId)) next.add(msgId);
+      return next;
+    });
+
+  const convert = async () => {
+    if (!id || !picked?.size) return;
+    setConverting(true);
+    const res = await convertWhatsappToCase(id, [...picked]);
+    setConverting(false);
+    if (!res.ok) {
+      AppAlert.alert("Couldn't open the case", res.message);
+      return;
+    }
+    setConvo((c) => c && { ...c, caseId: res.data.caseId });
+  };
+
   const title = convo ? conversationName(convo) : name || 'WhatsApp';
   const messages = [...(convo?.messages ?? [])].reverse(); // newest first for the inverted list
   const windowOpen = !!convo?.replyWindowOpen;
+  const caseId = convo?.caseId;
+  const pickCount = picked?.size ?? 0;
 
   return (
     <KeyboardAvoidingView
@@ -106,9 +138,28 @@ export default function WhatsappThreadScreen() {
           title,
           headerRight: convo
             ? () => (
-                <Pressable hitSlop={12} onPress={() => void Linking.openURL(`tel:+${convo.waId}`)} accessibilityLabel="Call">
-                  <Phone size={22} color={tokens.accent} />
-                </Pressable>
+                <View style={styles.headerActions}>
+                  {caseId ? (
+                    <Pressable hitSlop={8} onPress={() => router.push(`/manage/support/${caseId}`)}>
+                      <Text style={[styles.headerAction, { color: tokens.accent }]}>Open case</Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      hitSlop={8}
+                      onPress={() => void convert()}
+                      disabled={!pickCount || converting}
+                      accessibilityHint="Tap messages to choose what goes into the case"
+                      style={{ opacity: !pickCount || converting ? 0.4 : 1 }}
+                    >
+                      <Text style={[styles.headerAction, { color: tokens.accent }]}>
+                        {converting ? 'Opening…' : `Convert to case (${pickCount})`}
+                      </Text>
+                    </Pressable>
+                  )}
+                  <Pressable hitSlop={12} onPress={() => void Linking.openURL(`tel:+${convo.waId}`)} accessibilityLabel="Call">
+                    <Phone size={22} color={tokens.accent} />
+                  </Pressable>
+                </View>
               )
             : undefined,
         }}
@@ -124,7 +175,14 @@ export default function WhatsappThreadScreen() {
           keyExtractor={(m) => m.id}
           contentContainerStyle={styles.list}
           ListFooterComponent={<View style={{ height: topSpacing }} />}
-          renderItem={({ item }) => <Bubble message={item} />}
+          extraData={picked}
+          renderItem={({ item }) => (
+            <Bubble
+              message={item}
+              picked={!caseId && !!picked?.has(item.id)}
+              onPick={caseId ? undefined : () => togglePick(item.id)}
+            />
+          )}
           keyboardDismissMode="interactive"
           showsVerticalScrollIndicator={false}
         />
@@ -165,7 +223,7 @@ export default function WhatsappThreadScreen() {
   );
 }
 
-function Bubble({ message }: { message: WhatsappMessage }) {
+function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?: boolean; onPick?: () => void }) {
   const tokens = useTokens();
   const mine = message.direction === 'OUTBOUND';
   const failed = mine && (message.status === 'failed' || !!message.errorText);
@@ -173,11 +231,17 @@ function Bubble({ message }: { message: WhatsappMessage }) {
   const tick = mine ? (failed ? 'Not sent' : message.status ? message.status.charAt(0).toUpperCase() + message.status.slice(1) : '') : '';
   return (
     <View style={[styles.bubbleWrap, mine ? styles.right : styles.left]}>
-      <View style={[styles.bubble, mine && { backgroundColor: tokens.accent }]}>
+      <Pressable
+        disabled={!onPick}
+        onPress={onPick}
+        accessibilityRole={onPick ? 'checkbox' : undefined}
+        accessibilityState={onPick ? { checked: !!picked } : undefined}
+        style={[styles.bubble, mine && { backgroundColor: tokens.accent }, { borderColor: picked ? tokens.text : 'transparent' }]}
+      >
         {!mine ? <CardBackdrop shape={styles.bubble} /> : null}
         {message.mediaUrl ? <Image source={{ uri: message.mediaUrl }} style={styles.media} contentFit="cover" /> : null}
         {text ? <Text style={[styles.body, { color: mine ? '#fff' : tokens.text }]}>{text}</Text> : null}
-      </View>
+      </Pressable>
       <Text style={[styles.meta, { color: failed ? tokens.danger : tokens.textMuted, textAlign: mine ? 'right' : 'left' }]}>
         {[whenShort(message.createdAt), tick].filter(Boolean).join('  ·  ')}
         {failed && message.errorText ? `  ·  ${message.errorText}` : ''}
@@ -188,12 +252,15 @@ function Bubble({ message }: { message: WhatsappMessage }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  headerAction: { fontSize: typography.fontSize.base, ...font('medium') },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
   list: { paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
   bubbleWrap: { marginVertical: spacing[1], maxWidth: '82%' },
   left: { alignSelf: 'flex-start' },
   right: { alignSelf: 'flex-end' },
-  bubble: { borderRadius: borderRadius.xl, paddingHorizontal: spacing[3], paddingVertical: spacing[2], overflow: 'hidden' },
+  // Transparent 2px border always, so picking a message doesn't shift the layout.
+  bubble: { borderRadius: borderRadius.xl, borderWidth: 2, paddingHorizontal: spacing[3], paddingVertical: spacing[2], overflow: 'hidden' },
   media: { width: 220, height: 220, borderRadius: borderRadius.lg, marginBottom: spacing[1] },
   body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.35, ...font() },
   meta: { marginTop: 2, marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
