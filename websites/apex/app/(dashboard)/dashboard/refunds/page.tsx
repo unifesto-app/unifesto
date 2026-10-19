@@ -41,12 +41,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { inr } from "@/lib/utils/money";
 
 const PAGE_SIZE = 20;
 
-function money(v: number | string): string {
-  return `₹${Number(v || 0).toLocaleString("en-IN")}`;
-}
+const money = inr;
 
 function name(u?: { fullName: string | null; username: string | null }): string {
   return u?.fullName || u?.username || "Unknown";

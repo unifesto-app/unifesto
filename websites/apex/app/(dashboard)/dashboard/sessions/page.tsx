@@ -33,9 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { inr } from "@/lib/utils/money";
 
 const PAGE_SIZE = 20;
-const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = inr;
 const fmt = (v?: string | null) =>
   v ? new Date(v).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 

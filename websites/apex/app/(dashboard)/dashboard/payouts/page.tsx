@@ -44,12 +44,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { inr } from "@/lib/utils/money";
 
 const PAGE_SIZE = 20;
 
-function money(v: number | string): string {
-  return `₹${Number(v || 0).toLocaleString("en-IN")}`;
-}
+const money = inr;
 
 function orgName(p: Payout): string {
   return p.user?.fullName || p.user?.username || "Organiser";

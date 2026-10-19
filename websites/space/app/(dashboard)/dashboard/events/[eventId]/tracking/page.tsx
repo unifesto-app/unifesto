@@ -65,8 +65,8 @@ export default function EventTrackingPage() {
               stats={[
                 { label: "Page views", value: fmt(traffic.views) },
                 { label: "Visitors", value: fmt(traffic.visitors) },
-                { label: "Registrations", value: fmt(traffic.registrations) },
-                { label: "Registered per visitor", value: conversion(traffic.registrations, traffic.visitors) },
+                { label: "Bookings", value: fmt(traffic.registrations) },
+                { label: "Bookings per visitor", value: conversion(traffic.registrations, traffic.visitors) },
               ]}
               daily={traffic.daily.map((d) => d.views)}
               caption={`Views of the event page in the app, last ${traffic.days} days`}
@@ -74,7 +74,7 @@ export default function EventTrackingPage() {
           )}
 
           <ListGroup
-            title="Where registrations came from"
+            title="Where bookings came from"
             description={
               total > 0
                 ? `${sources!.tagged} of ${total} came through a tracking link. Direct means none was opened in the 7 days before registering.`
@@ -82,7 +82,7 @@ export default function EventTrackingPage() {
             }
           >
             {total === 0 ? (
-              <ListRow label="No confirmed registrations yet" />
+              <ListRow label="No confirmed bookings yet" />
             ) : (
               sources!.sources.map((s) => (
                 <ListRow
