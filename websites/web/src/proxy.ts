@@ -1,13 +1,10 @@
 import { withInternal } from '@/lib/api/internal';
 import { NextResponse } from 'next/server';
+import { isOwnHost } from '@/lib/own-host';
 import type { NextRequest } from 'next/server';
 
 const MAIN = 'https://www.unifesto.app';
 const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.unifesto.app';
-
-/** Our own hosts; anything else is a space's custom domain. */
-const isOwnHost = (h: string) =>
-  h === 'unifesto.app' || h.endsWith('.unifesto.app') || h === 'localhost' || /^[\d.]+$/.test(h) || h.endsWith('.localhost');
 
 // host -> space slug (null = not a live custom domain), kept for a minute so a
 // page load doesn't ask the API on every request.
@@ -50,7 +47,14 @@ export async function proxy(request: NextRequest) {
 
   if (hostname === 'unifesto.app') return NextResponse.redirect(`${MAIN}${pathname}${search}`, 308);
 
-  if (isOwnHost(hostname)) return NextResponse.next();
+  if (isOwnHost(hostname)) {
+    // Only this proxy may set the tenant headers; drop any a client sent.
+    if (!request.headers.has('x-tenant-host') && !request.headers.has('x-tenant-space')) return NextResponse.next();
+    const clean = new Headers(request.headers);
+    clean.delete('x-tenant-host');
+    clean.delete('x-tenant-space');
+    return NextResponse.next({ request: { headers: clean } });
+  }
 
   const slug = await tenantSlug(hostname);
   if (!slug) return new NextResponse('Not found', { status: 404 });
@@ -65,6 +69,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.rewrite(url, { request: { headers } });
   }
   if (pathname === `/space/${slug}`) return NextResponse.redirect(`https://${hostname}/`, 308);
+  // Its own robots.txt and sitemap, not Unifesto's (src/app/space/[spaceSlug]/).
+  if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+    const url = request.nextUrl.clone();
+    url.pathname = `/space/${slug}${pathname}`;
+    return NextResponse.rewrite(url, { request: { headers } });
+  }
   if (
     pathname.startsWith('/event/') ||
     pathname.startsWith(`/space/${slug}/`) || // its OG image

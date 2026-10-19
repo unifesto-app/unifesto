@@ -82,7 +82,7 @@ export default async function SpacePage({ params }: Props) {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: space.name,
-    url: `${SITE.url}/space/${space.slug}`,
+    url: space.branding?.customDomain ? `https://${space.branding.customDomain}/` : `${SITE.url}/space/${space.slug}`,
     description: toSummary(space.description),
     logo: space.logo_url,
     sameAs: space.website ? [space.website] : undefined,

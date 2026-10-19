@@ -92,8 +92,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /* schema.org Event, server-rendered, so search engines (event rich results)
-   and AI crawlers that never run the client bundle still read the essentials. */
+   and AI crawlers that never run the client bundle still read the essentials.
+   A white-labelled event points at its space's custom domain, not ours. */
 function eventLd(event: Event) {
+  const domain = event.branding?.customDomain;
+  const base = domain ? `https://${domain}` : SITE.url;
   const online = /online|virtual/i.test(event.event_type ?? "");
   const host = event.space ?? event.organization;
   const image = event.banner_url ?? event.image_url ?? event.thumbnail_url;
@@ -109,7 +112,7 @@ function eventLd(event: Event) {
       ? "https://schema.org/OnlineEventAttendanceMode"
       : "https://schema.org/OfflineEventAttendanceMode",
     location: online
-      ? { "@type": "VirtualLocation", url: `${SITE.url}/event/${event.slug}` }
+      ? { "@type": "VirtualLocation", url: `${base}/event/${event.slug}` }
       : {
           "@type": "Place",
           name: event.venue || event.city || "Venue to be announced",
@@ -121,13 +124,13 @@ function eventLd(event: Event) {
           },
         },
     image: image ? [image] : undefined,
-    url: `${SITE.url}/event/${event.slug}`,
+    url: `${base}/event/${event.slug}`,
     organizer: host
-      ? { "@type": "Organization", name: host.name, url: host.slug ? `${SITE.url}/space/${host.slug}` : undefined }
-      : { "@id": `${SITE.url}/#org` },
+      ? { "@type": "Organization", name: host.name, url: domain ? `${base}/` : host.slug ? `${SITE.url}/space/${host.slug}` : undefined }
+      : { "@type": "Organization", name: SITE.name, url: SITE.url },
     offers: {
       "@type": "Offer",
-      url: `${SITE.url}/event/${event.slug}`,
+      url: `${base}/event/${event.slug}`,
       price: event.is_free || event.has_free_tickets ? 0 : (event.price ?? 0),
       priceCurrency: event.currency || "INR",
       availability: "https://schema.org/InStock",

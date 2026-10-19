@@ -14,7 +14,8 @@ import FaqList from "@/components/site/FaqList";
 import { PassScreen, ManageScreen } from "@/components/visuals/AppScreens";
 import { PILLAR_VISUALS } from "@/components/visuals/Product";
 import { LeaderboardVisual } from "@/components/visuals/Hackathon";
-import { FAQ_HOME, PILLARS, PROOF } from "@/lib/site";
+import { FAQ_HOME, PILLARS, PROOF, SITE, SOCIAL } from "@/lib/site";
+import JsonLd from "@/components/site/JsonLd";
 
 export const metadata: Metadata = withSocial({
   title: { absolute: "Unifesto: Event ticketing, QR check-in and payouts for India" },
@@ -23,12 +24,42 @@ export const metadata: Metadata = withSocial({
   alternates: { canonical: "/" },
 }, { title: "Unifesto: Run the whole event, not just the ticket page", description: "Tickets, QR check-in, payouts, certificates, sponsors and hackathons for clubs, communities and institutions in India." });
 
+/* Who we are, for search engines and AI assistants. Home page only (Google's
+   advice), which also keeps it off a space's custom domain, whose `/` is the
+   space page. */
+const orgLd = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${SITE.url}/#org`,
+    name: SITE.name,
+    legalName: SITE.legalName,
+    url: SITE.url,
+    logo: SITE.logo,
+    email: SITE.email,
+    description: SITE.description,
+    foundingLocation: { "@type": "Place", name: "Hyderabad, Telangana, India" },
+    areaServed: "IN",
+    sameAs: [SITE.appStore, SITE.playStore, ...Object.values(SOCIAL)],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${SITE.url}/#website`,
+    name: SITE.name,
+    url: SITE.url,
+    publisher: { "@id": `${SITE.url}/#org` },
+    inLanguage: "en-IN",
+  },
+];
+
 const HIGHLIGHTS = ["tickets", "door", "money"] as const;
 
 export default function Home() {
   const pillars = HIGHLIGHTS.map((id) => PILLARS.find((p) => p.id === id)!);
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-canvas">
+      <JsonLd data={orgLd} />
       <Navbar />
       <Hero />
       <MarqueeBar />

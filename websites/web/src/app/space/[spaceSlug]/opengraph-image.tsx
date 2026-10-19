@@ -30,7 +30,8 @@ export default async function Image({ params }: Props) {
   return new ImageResponse(
     (
       <OgCard
-        wordmark={base.wordmark}
+        // White-labelled: the card carries the space, not Unifesto.
+        wordmark={space?.branding?.name ? false : base.wordmark}
         kind="Space"
         title={space?.name ?? "Space on Unifesto"}
         subtitle={plain(space?.description)}
