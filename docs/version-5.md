@@ -423,7 +423,7 @@ One support system for everything a person needs help with. Every item is an **A
 | G7 | Unicon: redraw glyphs in our own style, tab bar + Home first | parked (2026-10-18): redrawing Unicon glyphs in a house style is design polish with no user value before 5.0.0; |
 | G8 | **Organiser event-day mode on mobile.** Organiser "event day" mode on mobile: one cockpit with live check-in count, today's revenue, announce, help-desk queue | planned |
 | G9 | **Unify the mobile API client: refresh, errors and deep links.** - A silent refresh that fails with 5xx or 429 signs the user out (mobile/src/lib/api/helpers.ts:129, :190); | done (#263) |
-| G10 | **Fix check-in for group members, undo and offline sync.** Groups: bulk check-in (a B2 regression) and Space web scan check in whole groups at registration level (backend/src/checkin/checkin.service.ts:1036, :1180, team-changes.service.ts:263), and a member's pass shows 'You are checked i | planned |
+| G10 | **Fix check-in for group members, undo and offline sync.** Groups: bulk check-in (a B2 regression) and Space web scan check in whole groups at registration level (backend/src/checkin/checkin.service.ts:1036, :1180, team-changes.service.ts:263), and a member's pass shows 'You are checked i | done (#268) |
 | G11 | **Add ended-event states to tickets, hubs and Space.** Visual audit. | planned |
 | G12 | **Fix mobile attendee and organiser screens.** Quick ones first. | done (#265) |
 | G13 | **Polish mobile from the 18 Oct device audit.** Low and medium items from the real-iPhone pass. | planned |
@@ -806,3 +806,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G12 mobile screen fixes: shared email check, iOS alert/crop overlay, Stays desk collect-and-check-in, live ticket pass, faster event page with sold-out/closed states, decimal number answers, favourite sign-in prompt, space role + team by slug (#265)
 - **2026-10-19** · M1 AI event draft: notes or a link → editable description/agenda/FAQs on the space edit page, applied per section; `event_draft` feature off by default, SSRF-guarded link import, 10-case eval (#266)
 - **2026-10-19** · G10 part 1: groups check in per member everywhere, audited undo, soft-deleted points, late offline sync, people-based stats, Space recent card on /recent (#267)
+- **2026-10-19** · G10 part 2: member pass reads own check-ins, offline queues sync on foreground/reconnect and never across accounts, file-backed guest lists, proactive download (#268)
