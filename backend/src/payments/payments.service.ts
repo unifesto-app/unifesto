@@ -283,6 +283,37 @@ export class PaymentsService {
   }
 
   /**
+   * A22: `paymentId` was captured for a row another payment (`paidBy`) already
+   * paid: two tabs, a retried checkout. Nothing was delivered for it, so all of
+   * it goes back, fee included, under one key so retries never refund twice. A
+   * same-payment replay (or a row nobody paid) is a no-op. The caller checks
+   * the row is in a paid state. Throws only on a failure a retry may clear
+   * (Razorpay's webhook retry re-runs this); a refusal is logged for an admin.
+   */
+  async refundIfDuplicate(
+    paidBy: string | null | undefined,
+    paymentId: string,
+    context: string,
+  ): Promise<void> {
+    if (!paidBy || paidBy === paymentId) return;
+    this.logger.error(
+      `Duplicate capture ${paymentId} on ${context}, already paid by ${paidBy}: refunding it in full`,
+    );
+    try {
+      const p = await this.fetchPayment(paymentId);
+      const left = (p.amount - p.amountRefunded) / 100;
+      if (p.status !== 'captured' || left <= 0) return; // uncaptured auths lapse on their own
+      await this.refund(paymentId, left, `dup:${paymentId}`, { reason: 'duplicate_capture', context });
+    } catch (err) {
+      if (err instanceof RefundAlreadyIssuedError) return; // money already went back
+      if (!isRazorpayRejection(err)) throw err;
+      this.logger.error(
+        `CRITICAL: duplicate capture ${paymentId} on ${context} could not be refunded, refund it by hand: ${(err as any)?.error?.description ?? err}`,
+      );
+    }
+  }
+
+  /**
    * Fetch every payment attempt Razorpay recorded against an order, newest
    * first. Used to reconcile a registration whose status never updated (e.g. a
    * missed webhook): the caller inspects `status` to decide PAID vs FAILED.
