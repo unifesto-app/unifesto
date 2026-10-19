@@ -23,6 +23,8 @@ import { ReportDataService, ReportWindow } from './report-data.service';
 import { ReportRenderService } from './report-render.service';
 import { CreateReportDto } from './dto';
 import { CertificateIssuanceQueue } from '../certificates/certificates.queue';
+import { AiService } from '../ai/ai.service';
+import { eventHasEnded, reportSummaryFacts, reportSummaryRequest } from './report-summary';
 
 /** Every section, in canonical order — the content of a DEFAULT report. */
 /** A PENDING report older than this was cut off mid-render. */
@@ -77,6 +79,7 @@ export class ReportsService {
     private readonly authz: AuthorizationService,
     @Inject(forwardRef(() => CertificateIssuanceQueue))
     private readonly queue: CertificateIssuanceQueue,
+    private readonly ai: AiService,
   ) {}
 
   // =====================================================
@@ -213,7 +216,7 @@ export class ReportsService {
       where: {
         eventId,
         status: ReportStatus.PENDING,
-        createdAt: { gte: new Date(Date.now() - REPORT_STALE_MS) },
+        updatedAt: { gte: new Date(Date.now() - REPORT_STALE_MS) },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -235,9 +238,40 @@ export class ReportsService {
     // Rendered in cert-worker (B19), not on this API replica; inline only
     // when no queue is configured (local dev).
     if (!(await this.queue.addReport(report.id))) {
-      void this.generate(report.id, event, eventId, sections, window, title);
+      void this.generate(report.id, event, eventId, sections, window, title, userId);
     }
     return report;
+  }
+
+  /**
+   * Regenerate a report in place (M3): the same request re-rendered, with a
+   * fresh AI summary on top. Only for ended events, where the summary applies.
+   */
+  async regenerate(userId: string, eventId: string, reportId: string) {
+    const event = await this.assertCanManage(eventId, userId);
+    const report = await this.prisma.eventReport.findFirst({ where: { id: reportId, eventId } });
+    if (!report) throw new NotFoundException('Report not found');
+    if (report.status === ReportStatus.PENDING) return report;
+    if (!eventHasEnded(event)) {
+      throw new BadRequestException('A summary is written once the event has ended.');
+    }
+    // generatedBy moves to whoever asked, so the AI daily cap counts their call.
+    const pending = await this.prisma.eventReport.update({
+      where: { id: reportId },
+      data: { status: ReportStatus.PENDING, error: null, aiSummary: null, aiSummaryAt: null, generatedBy: userId },
+    });
+    if (!(await this.queue.addReport(reportId))) {
+      void this.generate(
+        reportId,
+        event,
+        eventId,
+        report.sections as ReportSection[],
+        { from: report.dateFrom, to: report.dateTo },
+        report.title,
+        userId,
+      );
+    }
+    return pending;
   }
 
   /** Worker entry point: render a queued report from its stored request. */
@@ -253,6 +287,7 @@ export class ReportsService {
       report.sections as ReportSection[],
       { from: report.dateFrom, to: report.dateTo },
       report.title,
+      report.generatedBy,
     );
   }
 
@@ -263,10 +298,19 @@ export class ReportsService {
     sections: ReportSection[],
     window: ReportWindow,
     title: string,
+    userId: string,
   ): Promise<void> {
     const report = { id: reportId };
     try {
-      const data = await this.data.gather(eventId, sections, window);
+      // An ended event also gets the M3 summary, written from this same gather
+      // (overview + tickets come from the one registration read; only drawn if asked for).
+      const ended = eventHasEnded(event);
+      const data = await this.data.gather(
+        eventId,
+        ended ? [...new Set([...sections, ReportSection.OVERVIEW, ReportSection.TICKETS])] : sections,
+        window,
+      );
+      const aiSummary = ended ? await this.summarise(reportId, userId, event, window, data) : null;
       const generatedAt = new Date();
       const pdf = await this.render.renderPdf({
         event: {
@@ -282,6 +326,7 @@ export class ReportsService {
         window,
         data,
         generatedAt,
+        aiSummary,
       });
 
       const fileName = `${slugify(title, { lower: true, strict: true }).slice(0, 60) || 'event-report'}.pdf`;
@@ -297,6 +342,8 @@ export class ReportsService {
           status: ReportStatus.READY,
           fileUrl,
           fileName,
+          aiSummary,
+          aiSummaryAt: aiSummary ? generatedAt : null,
           stats: (data.overview ??
             data.revenue ??
             null) as unknown as Prisma.InputJsonValue,
@@ -312,6 +359,29 @@ export class ReportsService {
         })
         .catch(() => undefined);
     }
+  }
+
+  /** Prose around code-computed figures (D7, D15); refusal, error or switched off → none. */
+  private async summarise(
+    reportId: string,
+    userId: string,
+    event: Awaited<ReturnType<ReportsService['assertCanManage']>>,
+    window: ReportWindow,
+    data: Awaited<ReturnType<ReportDataService['gather']>>,
+  ): Promise<string | null> {
+    if (!data.overview) return null;
+    const facts = reportSummaryFacts({
+      event: { ...event, venue: this.venueLabel(event) },
+      window,
+      overview: data.overview,
+      tickets: data.tickets ?? [],
+    });
+    const res = await this.ai.run('report_summary', {
+      ...reportSummaryRequest(facts),
+      userId,
+      subject: `report:${reportId}`,
+    });
+    return res.ok ? res.text : null;
   }
 
   private defaultTitle(eventTitle: string): string {
@@ -344,7 +414,7 @@ export class ReportsService {
       where: {
         eventId,
         status: ReportStatus.PENDING,
-        createdAt: { lt: new Date(Date.now() - REPORT_STALE_MS) },
+        updatedAt: { lt: new Date(Date.now() - REPORT_STALE_MS) },
       },
       data: { status: ReportStatus.FAILED, error: 'Generation was interrupted. Please try again.' },
     });
@@ -363,6 +433,7 @@ export class ReportsService {
         fileUrl: true,
         fileName: true,
         error: true,
+        aiSummary: true,
         createdAt: true,
       },
     });
