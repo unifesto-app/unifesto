@@ -15,6 +15,8 @@ export async function redirectSystemPath({ path, initial }: { path: string; init
   // AASA + Android intent filters still hand /signup links to the app; the
   // signup route is gone, so send them to login.
   if (/^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)signup(?:[/?#]|$)/i.test(path)) return '/login';
+  // The web /huddle page is marketing; in the app, Huddle is the sessions list.
+  if (/^(?:[a-z]+:\/\/(?:[^/]*\/)?|\/)huddle(?:[/?#]|$)/i.test(path)) return '/sessions';
   try {
     const token = claimTokenFrom(path);
     if (token) {
