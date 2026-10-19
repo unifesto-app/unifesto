@@ -537,7 +537,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| M1 | **AI: draft event content from a few lines or a link.** Draft event description, agenda and FAQs from a few lines or an imported link | planned |
+| M1 | **AI: draft event content from a few lines or a link.** Draft event description, agenda and FAQs from a few lines or an imported link | done (#266) |
 | M2 | Email/WhatsApp copy suggestions in campaigns | parked (2026-10-18): low value; revisit after D12 (AI foundation) and C8 (unsubscribe and consent) land. |
 | M3 | Post-event report summary (attendance, revenue, feedback themes) | done (#264) |
 | M4 | **Who to nudge: past attendees likely to register.** "Who to nudge": past attendees likely to register, for a curator-approved campaign | parked (2026-10-18): nudging past attendees needs consent and unsubscribe (C8, I2) first, or it is a DPDP and spam risk. |
@@ -804,3 +804,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G9 mobile API client unified: refresh signs out only on a refused token, one token source, ApiError convention, error states, crash fallback, cold-start push links (#263)
 - **2026-10-19** · M3 AI post-event report summary: code-computed facts, stored on the report, PDF + space page, regenerate, 8-case eval (off by default; no feedback themes yet) (#264)
 - **2026-10-19** · G12 mobile screen fixes: shared email check, iOS alert/crop overlay, Stays desk collect-and-check-in, live ticket pass, faster event page with sold-out/closed states, decimal number answers, favourite sign-in prompt, space role + team by slug (#265)
+- **2026-10-19** · M1 AI event draft: notes or a link → editable description/agenda/FAQs on the space edit page, applied per section; `event_draft` feature off by default, SSRF-guarded link import, 10-case eval (#266)
