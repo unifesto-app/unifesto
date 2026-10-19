@@ -489,7 +489,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | planned |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | planned |
-| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#295) |
+| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#296) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
@@ -834,3 +834,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · J4 Sentry projects created (unifesto-backend/web/space/apex/mobile); backend DSN set, @sentry/nextjs wired into web, space, apex (errors only, PII masked) (#293)
 - **2026-10-19** · J4 mobile Sentry (@sentry/react-native via Expo plugin, project unifesto-mobile), native: rides the 5.0.0 store build (#294)
 - **2026-10-19** · J4 web source maps: apex/space/web upload to unifesto-<app> at build via a BuildKit secret, maps deleted after upload (#295)
+- **2026-10-19** · J4 mobile source maps: EAS builds upload to unifesto-mobile (SENTRY_AUTH_TOKEN EAS env), metro on getSentryExpoConfig, OTA upload step in docs/OTA.md; native, must merge before the 20 Nov freeze (#296)
