@@ -114,7 +114,7 @@ export default function EventWaitlistPage() {
     const who = entry.user.fullName || entry.user.username || "They";
     setNotice(
       data?.needsPayment
-        ? `${who} has been let in. Their seat is held until they pay ₹${data.amountDue} — revoke the offer if they never do.`
+        ? `${who} has been let in. Their seat is held until they pay ₹${data.amountDue}. Revoke the offer if they never do.`
         : `${who} is confirmed. The ticket is free, so there was nothing to pay.`
     );
     await load();
@@ -180,7 +180,7 @@ export default function EventWaitlistPage() {
     <div className="space-y-6">
       <PageHeader
         title="Waiting list"
-        subtitle="People queued for a sold-out ticket. Letting someone in holds their seat until they pay — with no time limit. Revoke an offer to free the seat if they never do."
+        subtitle="People queued for a sold-out ticket. Letting someone in holds their seat until they pay, with no time limit. Revoke an offer to free the seat if they never do."
         actions={<EventExportMenu eventId={eventId} type="waitlist" />}
       />
 

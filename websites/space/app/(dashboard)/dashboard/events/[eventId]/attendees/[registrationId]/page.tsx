@@ -29,6 +29,8 @@ import {
   addGroupSeats,
   makeGroupLead,
   type TransferRequest,
+  REGISTRATION_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
 } from "@/lib/api/registrations-api";
 import type {
   Registration,
@@ -467,10 +469,10 @@ export default function AttendeeDetailPage() {
             actions={
               <div className="flex items-center gap-2">
                 <Badge variant={statusBadgeVariant(registration.status)}>
-                  {registration.status}
+                  {REGISTRATION_STATUS_LABEL[registration.status] ?? registration.status}
                 </Badge>
                 <Badge variant={paymentBadgeVariant(registration.paymentStatus)}>
-                  {registration.paymentStatus}
+                  {PAYMENT_STATUS_LABEL[registration.paymentStatus] ?? registration.paymentStatus}
                 </Badge>
                 {registration.status !== "CANCELLED" && (
                   <Button
@@ -601,7 +603,7 @@ export default function AttendeeDetailPage() {
                 )}
                 <Field label="Status">
                   <Badge variant={statusBadgeVariant(registration.status)}>
-                    {registration.status}
+                    {REGISTRATION_STATUS_LABEL[registration.status] ?? registration.status}
                   </Badge>
                 </Field>
                 {registration.isWaitlisted && (
@@ -656,7 +658,7 @@ export default function AttendeeDetailPage() {
                   <Badge
                     variant={paymentBadgeVariant(registration.paymentStatus)}
                   >
-                    {registration.paymentStatus}
+                    {PAYMENT_STATUS_LABEL[registration.paymentStatus] ?? registration.paymentStatus}
                   </Badge>
                 </Field>
                 <Field label="Total amount">

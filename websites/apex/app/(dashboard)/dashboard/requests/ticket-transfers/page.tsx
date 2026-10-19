@@ -35,7 +35,7 @@ const FILTERS: { label: string; value: RequestStatus }[] = [
 ];
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -107,7 +107,7 @@ export default function TicketTransfersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Ticket transfers"
-        subtitle="Review organiser requests to move a registration to another account"
+        subtitle="Review curators' requests to move a registration to another account"
       />
 
       <Card>
@@ -164,7 +164,7 @@ export default function TicketTransfersPage() {
               title={filter === "PENDING" ? "The queue is clear" : "Nothing here"}
               description={
                 filter === "PENDING"
-                  ? "When an organiser requests a ticket transfer, it lands here."
+                  ? "When a curator requests a ticket transfer, it lands here."
                   : `No ${filter.toLowerCase()} transfer requests yet.`
               }
             />

@@ -159,7 +159,7 @@ export default function EventWhatsAppPage() {
       if (data.failed > 0) parts.push(`${data.failed} failed`);
       alert(
         data.eligible === 0
-          ? "Everyone has already been invited or has joined — nothing to send."
+          ? "Everyone has already been invited or has joined. Nothing to send."
           : parts.join(" · ") + "."
       );
     }
@@ -183,7 +183,7 @@ export default function EventWhatsAppPage() {
       <PageHeader
         eyebrow="Registrations"
         title="WhatsApp group"
-        subtitle="Route registered attendees into a private WhatsApp group. This link is only ever sent to people who register — it never shows on the public event page."
+        subtitle="Route registered attendees into a private WhatsApp group. This link is only ever sent to people who register. It never shows on the public event page."
       />
 
       {error && <ErrorNotice message={error} />}
@@ -241,7 +241,7 @@ export default function EventWhatsAppPage() {
           </CardHeader>
           <CardContent className="space-y-4 px-4 py-4">
             <p className="text-sm text-muted-foreground">
-              Give a ticket tier its own group — holders of that ticket are
+              Give a ticket tier its own group. Holders of that ticket are
               invited here instead of the event group. Leave blank to use the
               event group above.
             </p>
@@ -295,7 +295,7 @@ export default function EventWhatsAppPage() {
         <CardContent className="space-y-4 px-4 py-4">
           <p className="text-sm text-muted-foreground">
             Message the invite link to confirmed attendees who haven&apos;t been
-            invited yet or already joined. Safe to run more than once — nobody is
+            invited yet or already joined. Safe to run more than once: nobody is
             messaged twice.
           </p>
           <Button

@@ -839,7 +839,7 @@ export default function EventCertificatesPage() {
                               variant="neutral"
                               title={`Emailed ${new Date(
                                 cert.emailedAt
-                              ).toLocaleString()}`}
+                              ).toLocaleString("en-IN")}`}
                             >
                               Emailed
                             </Badge>

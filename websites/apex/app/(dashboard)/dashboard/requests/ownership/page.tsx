@@ -45,7 +45,7 @@ const FILTERS: { label: string; value: OwnershipRequestStatus }[] = [
 ];
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",

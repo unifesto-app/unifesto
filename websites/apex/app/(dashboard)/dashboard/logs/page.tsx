@@ -56,7 +56,7 @@ function timeAgo(iso: string) {
 }
 
 function fullTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString("en-IN", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -145,14 +145,14 @@ export default function LogsPage() {
     () => [
       {
         title: "Requests (24h)",
-        value: stats?.last24h.toLocaleString() ?? "0",
-        hint: `${stats?.total.toLocaleString() ?? 0} total`,
+        value: stats?.last24h.toLocaleString("en-IN") ?? "0",
+        hint: `${stats?.total.toLocaleString("en-IN") ?? 0} total`,
         icon: Pulse,
         tone: "neutral" as const,
       },
       {
         title: "Errors (24h)",
-        value: stats?.errors24h.toLocaleString() ?? "0",
+        value: stats?.errors24h.toLocaleString("en-IN") ?? "0",
         hint: "4xx & 5xx",
         icon: Warning,
         tone: "neutral" as const,
@@ -326,7 +326,7 @@ export default function LogsPage() {
       {!loading && total > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Page {page} of {totalPages} · {total.toLocaleString()} requests
+            Page {page} of {totalPages} · {total.toLocaleString("en-IN")} requests
           </span>
           <div className="flex gap-2">
             <Button

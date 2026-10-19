@@ -126,7 +126,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Reports"
-        subtitle="Generate a formatted PDF summary of this event — a full report, or a custom one with just the sections you need."
+        subtitle="Generate a formatted PDF summary of this event: a full report, or a custom one with just the sections you need."
       />
 
       {error && (
@@ -150,7 +150,7 @@ export default function ReportsPage() {
                   {
                     key: "DEFAULT" as ReportType,
                     title: "Default",
-                    desc: "The full report — every section.",
+                    desc: "The full report, every section.",
                   },
                   {
                     key: "CUSTOM" as ReportType,
@@ -295,7 +295,7 @@ export default function ReportsPage() {
               <EmptyState
                 icon={ChartBar}
                 title="No reports yet"
-                description="Generate your first report above — it will appear here, ready to download."
+                description="Generate your first report above. It will appear here, ready to download."
               />
             </CardContent>
           </Card>

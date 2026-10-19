@@ -217,7 +217,7 @@ export default function EventTicketsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tickets"
-        subtitle="Paid or free tickets — individual or group, each with its own form"
+        subtitle="Paid or free tickets, for individuals or groups, each with its own form"
         actions={
           !draft ? (
             <Button onClick={() => setDraft({ ...EMPTY_DRAFT })}>
@@ -267,7 +267,7 @@ export default function EventTicketsPage() {
             <EmptyState
               icon={Ticket}
               title="No ticket types yet"
-              description="Create individual or group tickets — free or paid. For one-click free entry, use the RSVPs tab instead."
+              description="Create individual or group tickets, free or paid. For one-click free entry, use the RSVPs tab instead."
             />
           </CardContent>
         </Card>

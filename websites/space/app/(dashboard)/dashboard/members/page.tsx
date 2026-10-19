@@ -87,7 +87,7 @@ function initials(name?: string | null, username?: string | null): string {
 function formatDate(isoDate: string): string {
   try {
     const d = new Date(isoDate);
-    return d.toLocaleDateString("en-US", {
+    return d.toLocaleDateString("en-IN", {
       month: "short",
       day: "numeric",
       year: "numeric",

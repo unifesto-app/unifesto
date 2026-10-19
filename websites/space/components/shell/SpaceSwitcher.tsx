@@ -28,8 +28,8 @@ export function SpaceSwitcher() {
 
   if (spaces.length === 1) {
     return (
-      <div className="flex flex-col leading-tight">
-        <span className="text-sm font-medium text-foreground">
+      <div className="flex min-w-0 flex-col leading-tight">
+        <span className="truncate text-sm font-medium text-foreground">
           {currentSpace.name}
         </span>
         {ROLE_LABEL[role] && (
@@ -55,7 +55,7 @@ export function SpaceSwitcher() {
           const section = pathname.split("/").slice(0, 3).join("/");
           if (section !== pathname) router.push(section);
         }}
-        className="h-9 max-w-[220px] cursor-pointer appearance-none truncate rounded-md border border-input bg-card pl-3 pr-8 text-sm font-medium text-foreground hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="h-9 max-w-[128px] cursor-pointer sm:max-w-[220px] appearance-none truncate rounded-md border border-input bg-card pl-3 pr-8 text-sm font-medium text-foreground hover:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         {spaces.map((s) => (
           <option key={s.id} value={s.id}>

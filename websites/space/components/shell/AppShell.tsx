@@ -52,7 +52,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <CommandPaletteProvider>
       <div className="min-h-screen bg-background">
         <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* min-w-0 lets the switcher shrink instead of pushing the right side
+              off a 375px screen (B12). */}
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <MobileNavToggle />
             <Image
             src="/UnifestoAppWordmark.png"
@@ -69,7 +71,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SpaceSwitcher />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <CommandPaletteTrigger />
           <ThemeToggle />
           <div className="hidden text-right sm:block">

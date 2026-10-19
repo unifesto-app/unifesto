@@ -492,7 +492,7 @@ export default function AssistInboxPage() {
       {total > 0 && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Page {page} of {totalPages} · {total.toLocaleString()} {total === 1 ? "case" : "cases"}
+            Page {page} of {totalPages} · {total.toLocaleString("en-IN")} {total === 1 ? "case" : "cases"}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
