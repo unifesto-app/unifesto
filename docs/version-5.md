@@ -805,3 +805,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · M3 AI post-event report summary: code-computed facts, stored on the report, PDF + space page, regenerate, 8-case eval (off by default; no feedback themes yet) (#264)
 - **2026-10-19** · G12 mobile screen fixes: shared email check, iOS alert/crop overlay, Stays desk collect-and-check-in, live ticket pass, faster event page with sold-out/closed states, decimal number answers, favourite sign-in prompt, space role + team by slug (#265)
 - **2026-10-19** · M1 AI event draft: notes or a link → editable description/agenda/FAQs on the space edit page, applied per section; `event_draft` feature off by default, SSRF-guarded link import, 10-case eval (#266)
+- **2026-10-19** · G10 part 1: groups check in per member everywhere, audited undo, soft-deleted points, late offline sync, people-based stats, Space recent card on /recent (#267)
