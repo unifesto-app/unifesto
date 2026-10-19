@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SupportController } from './support.controller';
+import { GrievanceController } from './grievance.controller';
 import { SupportService } from './support.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AuthModule } from '../auth/auth.module';
@@ -15,7 +16,7 @@ import { SubjectCases } from './subject-cases';
 
 @Module({
   imports: [PrismaModule, AuthModule, StorageModule, NotificationsModule, EmailModule, AiModule],
-  controllers: [SupportController],
+  controllers: [SupportController, GrievanceController],
   providers: [SupportService, SupportNotifier, SupportTriage, SupportCopilot, SupportBot, SubjectCases],
   exports: [SupportService],
 })

@@ -79,6 +79,7 @@ export function buildRegistrationsService(
     teamChanges,
     confirmations,
     sessions,
+    { notify: jest.fn(async () => ({})) } as any,
   );
   const checkout = new RegistrationCheckoutService(
     prisma,

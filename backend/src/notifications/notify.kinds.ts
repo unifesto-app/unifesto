@@ -26,6 +26,14 @@ export interface PushCopy {
 /** Template data minus what notify() fills in itself (the address, the brand). */
 type MailData<D> = Omit<D, 'email' | 'brand'>;
 
+/** Every stay notice: the booking, and the words the push and email share. */
+export interface StayNotice {
+  bookingId: string;
+  eventId?: string;
+  userName: string;
+  stayName: string;
+}
+
 /** What each kind's caller passes to notify(). */
 export interface NotifyKindData {
   'registration.confirmed': MailData<T.RegistrationConfirmationData> & { registrationId: string; eventId: string };
@@ -37,11 +45,21 @@ export interface NotifyKindData {
   'event.reminder.24h': MailData<T.EventReminderData> & { eventId: string; eventSlug?: string };
   'event.reminder.1h': MailData<T.EventStartingSoonData> & { eventId: string; eventSlug?: string };
   'event.cancelled': MailData<T.EventCancelledData> & { eventId: string };
-  /** Not deduped by default (an event can change twice); pass opts.dedupKey per change. */
+  /**
+   * Critical: a time or venue change must reach everyone by email. Not deduped
+   * by default (an event can change twice); pass opts.dedupKey per change.
+   */
   'event.updated': MailData<T.EventUpdatedData> & { eventId: string; eventSlug?: string };
-  'stay.payment_due': { bookingId: string; eventId?: string; userName: string; stayName: string; amountText: string; dueText: string };
-  'stay.confirmed': { bookingId: string; eventId?: string; userName: string; stayName: string; note?: string };
-  'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string };
+  'stay.payment_due': StayNotice & { amountText: string; dueText: string };
+  'stay.confirmed': StayNotice & { note?: string };
+  'stay.declined': StayNotice & { reason?: string };
+  'stay.cancelled': StayNotice & { reason?: string; refundText?: string };
+  /** A late payment sent back in full. */
+  'stay.refunded': StayNotice & { amountText: string };
+  /** The payment window closed and the bed was released. */
+  'stay.expired': StayNotice;
+  /** approvedAt keys the dedup per approval, so approve, reject, approve tells them again. */
+  'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string; approvedAt: Date };
   /** Not deduped by default (a resubmitted space can be rejected again). */
   'space.rejected': MailData<T.SpaceRejectedData> & { spaceId: string };
 }
@@ -56,7 +74,13 @@ export interface KindDef<D> {
    * `${kind}:${entity}:${userId}:${channel}`. null = no dedup.
    */
   entity: (d: D) => string | null;
+  /** The push copy; also the in-app inbox copy. */
   push: (d: D) => PushCopy;
+  /**
+   * The push copy goes to the in-app inbox only, with no device push: another
+   * notice already buzzes the phone for the same moment.
+   */
+  inboxOnly?: true;
   email?: (svc: EmailService, to: string, d: D, delivery: DeliveryOpts) => Promise<boolean>;
   /**
    * WhatsApp costs money per message. Standing decision: only OTP, ONE
@@ -70,27 +94,26 @@ export interface KindDef<D> {
 
 const eventLink = (d: { eventSlug?: string; eventId: string }) => `unifesto://event/${d.eventSlug || d.eventId}`;
 
-/** Stay mail: C9's stayUpdateEmail says the same words as the push. */
-function stayEmail<D extends { eventId?: string; userName: string }>(copy: (d: D) => PushCopy) {
-  return (svc: EmailService, to: string, d: D, delivery: DeliveryOpts) => {
-    const { title, body } = copy(d);
-    return svc.sendStayUpdate({ email: to, eventId: d.eventId, userName: d.userName, title, body }, delivery);
+/**
+ * A stay notice: critical (push + email always, as C9 sent them), deduped per
+ * booking (each state is entered once), and the email says the push's words.
+ */
+function stayKind<D extends StayNotice>(title: string, body: (d: D) => string): KindDef<D> {
+  const push = (d: D): PushCopy => ({
+    title,
+    body: body(d),
+    deepLink: `unifesto://stay/pass/${d.bookingId}`,
+    data: { type: 'stay', bookingId: d.bookingId },
+  });
+  return {
+    category: 'registrationUpdates',
+    criticality: 'critical',
+    entity: (d) => d.bookingId,
+    push,
+    email: (svc, to, d, delivery) =>
+      svc.sendStayUpdate({ email: to, eventId: d.eventId, userName: d.userName, title, body: body(d) }, delivery),
   };
 }
-
-const stayPaymentDueCopy = (d: NotifyKindData['stay.payment_due']): PushCopy => ({
-  title: 'Stay request approved',
-  body: `Pay ${d.amountText} by ${d.dueText} to confirm your bed at ${d.stayName}.`,
-  deepLink: `unifesto://stay/pass/${d.bookingId}`,
-  data: { type: 'stay', bookingId: d.bookingId },
-});
-
-const stayConfirmedCopy = (d: NotifyKindData['stay.confirmed']): PushCopy => ({
-  title: 'Your stay is confirmed',
-  body: `Your Stay Pass for ${d.stayName} is ready.${d.note ? ` ${d.note}` : ''}`,
-  deepLink: `unifesto://stay/pass/${d.bookingId}`,
-  data: { type: 'stay', bookingId: d.bookingId },
-});
 
 export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   'registration.confirmed': {
@@ -123,6 +146,9 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   'payment.confirmed': {
     category: 'registrationUpdates',
     criticality: 'critical',
+    // registration.confirmed's "You're in!" push already covers this moment:
+    // the receipt is email + inbox.
+    inboxOnly: true,
     entity: (d) => d.razorpayPaymentId,
     push: (d) => ({
       title: 'Payment received',
@@ -194,7 +220,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   },
   'event.updated': {
     category: 'registrationUpdates',
-    criticality: 'normal',
+    criticality: 'critical',
     entity: () => null,
     push: (d) => ({
       title: `${d.eventTitle} was updated`,
@@ -206,24 +232,22 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     }),
     email: (svc, to, d, delivery) => svc.sendEventUpdated({ ...d, email: to }, delivery),
   },
-  'stay.payment_due': {
-    category: 'registrationUpdates',
-    criticality: 'critical',
-    entity: (d) => d.bookingId,
-    push: stayPaymentDueCopy,
-    email: stayEmail(stayPaymentDueCopy),
-  },
-  'stay.confirmed': {
-    category: 'registrationUpdates',
-    criticality: 'critical',
-    entity: (d) => d.bookingId,
-    push: stayConfirmedCopy,
-    email: stayEmail(stayConfirmedCopy),
-  },
+  'stay.payment_due': stayKind('Stay request approved', (d) =>
+    `Pay ${d.amountText} by ${d.dueText} to confirm your bed at ${d.stayName}.`),
+  'stay.confirmed': stayKind('Your stay is confirmed', (d) =>
+    `Your Stay Pass for ${d.stayName} is ready.${d.note ? ` ${d.note}` : ''}`),
+  'stay.declined': stayKind('Stay request declined', (d) =>
+    `${d.stayName}: ${d.reason || "the event team couldn't fit you in this time."}`),
+  'stay.cancelled': stayKind('Your stay was cancelled', (d) =>
+    `${d.stayName}: ${d.reason || 'cancelled by the event team'}.${d.refundText ? ` ${d.refundText} is being refunded (5–7 days).` : ''}`),
+  'stay.refunded': stayKind('Stay payment refunded', (d) =>
+    `Your payment for ${d.stayName} arrived after the booking closed, so ${d.amountText} is on its way back.`),
+  'stay.expired': stayKind('Stay payment window closed', (d) =>
+    `Your bed at ${d.stayName} was released because it wasn't paid in time.`),
   'space.approved': {
     category: 'spaceUpdates',
     criticality: 'critical',
-    entity: (d) => d.spaceId,
+    entity: (d) => `${d.spaceId}:${d.approvedAt.getTime()}`,
     push: (d) => ({
       title: `${d.spaceName} is approved`,
       body: 'Your space is live. Open the Space app to create your first event.',

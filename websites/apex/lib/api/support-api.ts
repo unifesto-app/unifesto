@@ -84,6 +84,9 @@ export interface SupportTicket {
   assignedToId: string | null;
   assignedTo: SupportUser | null;
   resolvedAt: string | null;
+  /** D20: the requester's 1-5 rating once resolved, and optional comment. */
+  rating?: number | null;
+  ratingComment?: string | null;
   closedAt: string | null;
   lastMessageAt: string;
   createdAt: string;

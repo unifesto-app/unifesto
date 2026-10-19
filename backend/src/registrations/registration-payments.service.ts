@@ -37,6 +37,7 @@ import {
   formatEventTime,
 } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { NotifyService } from '../notifications/notify.service';
 
 /**
  * Settling payments: client verify, the Razorpay webhook, admin reconcile /
@@ -60,6 +61,7 @@ export class RegistrationPaymentsService {
     private readonly teamChanges: TeamChangesService,
     private readonly confirmations: RegistrationConfirmationsService,
     private readonly sessions: SessionsService,
+    private readonly notify: NotifyService,
     private readonly events?: EventEmitter2,
   ) {}
 
@@ -1279,8 +1281,9 @@ export class RegistrationPaymentsService {
   /**
    * What a settled paid registration sends: the shared confirmation (WhatsApp,
    * ticket email with QR, group invite, push, group member tickets) and the
-   * payment receipt to the user's best email. Callers invoke it only after
-   * winning the PAID claim, so it runs once per payment. Never throws.
+   * payment receipt through notify() (deduped on the Razorpay payment id).
+   * Callers invoke it only after winning the PAID claim, so it runs once per
+   * payment. Never throws.
    */
   private async sendPaidConfirmations(registrationId: string, paymentId: string): Promise<void> {
     try {
@@ -1294,27 +1297,25 @@ export class RegistrationPaymentsService {
         },
       });
       if (!reg) return;
-      const email = await this.groupSeats.primaryEmail(reg.userId, null);
-      if (!email) return;
-      this.emailService
-        .sendPaymentConfirmation({
-          email,
-          userName: reg.user.fullName || reg.user.username || 'there',
-          eventId: reg.event.id,
-          eventTitle: reg.event.title,
-          eventDate: formatEventDate(reg.event.startDateTime),
-          eventTime: formatEventTime(reg.event.startDateTime, reg.event.endDateTime),
-          venueName: reg.event.venueName || undefined,
-          city: reg.event.city || undefined,
-          isOnline: reg.event.type === 'ONLINE',
-          onlineUrl: reg.event.onlineUrl || undefined,
-          amount: Number(reg.totalAmount) - Number(reg.processingFee),
-          processingFee: Number(reg.processingFee),
-          razorpayPaymentId: paymentId,
-          ticketCode: reg.tickets[0]?.ticketCode || undefined,
-          qrCode: reg.qrCode,
-        })
-        .catch((err) => this.logger.error('Failed to send payment confirmation email', err));
+      // The receipt (push + email), once per payment. Not awaited: the verify
+      // response shouldn't wait on it, and notify() never throws.
+      void this.notify.notify(reg.userId, 'payment.confirmed', {
+        userName: reg.user.fullName || reg.user.username || 'there',
+        eventId: reg.event.id,
+        eventSlug: reg.event.slug,
+        eventTitle: reg.event.title,
+        eventDate: formatEventDate(reg.event.startDateTime),
+        eventTime: formatEventTime(reg.event.startDateTime, reg.event.endDateTime),
+        venueName: reg.event.venueName || undefined,
+        city: reg.event.city || undefined,
+        isOnline: reg.event.type === 'ONLINE',
+        onlineUrl: reg.event.onlineUrl || undefined,
+        amount: Number(reg.totalAmount) - Number(reg.processingFee),
+        processingFee: Number(reg.processingFee),
+        razorpayPaymentId: paymentId,
+        ticketCode: reg.tickets[0]?.ticketCode || undefined,
+        qrCode: reg.qrCode,
+      });
     } catch (error) {
       this.logger.error(`Failed to send confirmations for registration ${registrationId}`, error);
     }

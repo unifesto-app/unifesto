@@ -320,11 +320,11 @@ From the audit: dead and pre-pivot code across all three apps. Zero behaviour ch
 | # | Item | Status |
 |---|---|---|
 | C1 | **In-app notification inbox.** (bell on Home), read/unread, backed by a delivery log | done |
-| C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | done (orchestrator; call sites move in the C9 follow-up), not deployed (#248) |
+| C2 | **Single notify orchestrator with channel fallback.** One `notify(user, event, data)` orchestrator: channel by preference + category, fallback push → WhatsApp → email by criticality (from W4) | done, not deployed (#258) |
 | C3 | **Per-message delivery log with retries and dedup.** Delivery log per message (queued/sent/delivered/opened/failed, provider id), retries, dedup keys | done, not deployed (#248) |
 | C4 | **Notification preferences grid and quiet hours.** Preferences: category × channel grid, quiet hours (IST), transactional vs marketing split | planned |
-| C5 | **Provider delivery webhooks and email suppression.** Provider webhooks: SES bounces/complaints → suppress, WhatsApp status, OneSignal delivery | planned |
-| C6 | Apex per-user message history + failure dashboard | planned |
+| C5 | **Provider delivery webhooks and email suppression.** Provider webhooks: SES bounces/complaints → suppress, WhatsApp status, OneSignal delivery | done, not deployed (#257) |
+| C6 | Apex per-user message history + failure dashboard | done, not deployed (#257) |
 | C7 | **Native: rich push images and action buttons.** Native (store build): iOS Notification Service Extension for images, push action buttons | parked (2026-10-18): native (Notification Service Extension) with no room before the 20 Nov freeze, and the next store window after 5.0.0 isn't planned. |
 | C8 | **Add unsubscribe and consent to marketing sends.** Must land before the P track's curator emails and the P9 launch sends on 2 Dec. | done, not deployed (#250) |
 | C9 | **Send event mail and confirmations to the right people.** Quick one first (high, live): paid-registration WhatsApp confirmations format times with toLocaleTimeString('en-US') and no timeZone, then append 'IST' (backend/src/registrations/registration-payments.service.ts:364-386, :1366-139 | done, not deployed (#246) |
@@ -370,13 +370,13 @@ One support system for everything a person needs help with. Every item is an **A
 | D18 | Nightly insights over closed cases (Batch API): themes and missing articles | parked (2026-10-18): nightly insights need case volume that only exists after D8, D9 and launch. |
 | | **Phase 4 · Operations** | |
 | D19 | Canned replies, SLA by priority, first-response and resolution metrics (old D6) | done (#254) |
-| D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | planned |
+| D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | done (#253) |
 | | **Phase 5 · More case kinds** | |
 | D21 | **Ticket issue reports become HELP cases.** `ContentReport` REGISTRATION ("Report an issue" on a ticket) goes to the event's Space desk; moderation keeps event/space reports | done (#229), live 19 Oct |
 | D22 | Payout requests + bank account verification as Platform cases (with S23) | planned |
 | D23 | Stay + session cancellations and refunds through D6 (with S51) | done (#252) |
 | D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | done (#247) |
-| D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | planned |
+| D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | done (#256) |
 | D26 | WhatsApp inbox → "Convert to case", later a full channel | planned |
 | D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | planned |
 | D28 | Space verification request (optional) | parked (2026-10-18): marked optional; verification is admin-set (Space.verifiedAt, live since #91) without a request flow. |
@@ -792,3 +792,7 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · Track D: D23 built. A guest asking to cancel a stay paid online opens a CANCELLATION case on the event's Space desk (Space Assist "Cancel and refund", mobile "Ask to cancel and refund"); the team's cancel posts the refund and resolves it. A host's session cancel opens a case per paid booking, resolved when its refund goes. Money logic unchanged. No migration; rebuild backend + space. (#252)
 - **2026-10-19** · Track D: D19 built. Saved replies (`CannedReply`, Unifesto desk + per space) with CRUD and an insert picker in Apex and Space Assist; SLA due time from priority (Grievance 24 h / 15 days), overdue filter, and 30-day median first-reply and resolution times per desk in both stats headers. Migration 20261101100000. Not deployed. (#254)
 - **2026-10-19** · C8 marketing sends now carry a signed unsubscribe link, one-click List-Unsubscribe headers and the postal address. Recipients exclude opt-outs, deleted accounts and, for platform bulk mail and WhatsApp marketing templates, anyone without promotions on. WhatsApp STOP is recorded and blasts are audited. Needs migration 20261030100000_marketing_opt_out plus a rebuild of backend, space and apex, and an OTA for mobile Apex. (#250)
+- **2026-10-19** · C5 + C6 built. Email delivery webhooks are live at POST /webhooks/ses (SNS signature + topic allowlist) and POST /webhooks/resend (Svix), and WhatsApp status callbacks now update the delivery log by wamid. Hard bounces and complaints go to a new email_suppressions list (migration 20261101100000_email_suppressions); every email send except sign-in codes skips suppressed addresses and logs SUPPRESSED, and campaign audiences drop them. Apex gets a Messages page (failures, top errors, delivery log, suppression list with add/remove) and a Messages card on each user's page, backed by /admin/messages, /admin/messages/stats and /admin/email-suppressions. New env SES_SNS_TOPIC_ARNS and RESEND_WEBHOOK_SECRET; manual setup is an SES -> SNS topic with an HTTPS subscription to /webhooks/ses and a Resend dashboard webhook to /webhooks/resend. Deploy needs migrate deploy plus a rebuild of backend and apex. OneSignal per-user delivery is skipped (needs OneSignal-side event streams). (#257)
+- **2026-10-19** · Track D: D20 built. Hourly cron closes RESOLVED cases 7 days after resolution; requesters rate resolved cases 1-5 with an optional comment (new `rating_comment`) in Space Support and mobile, shown to the desks. Migration 20261101110000. Not deployed. (#253)
+- **2026-10-19** · Track D: D25 built. Public `POST /support/grievances` (email sign-in code) opens a GRIEVANCE case on the Platform desk, held to 24 h / 15 days by D19's SLA; `/grievance` on web has the form. Officer name/email still from `LEGAL.grievance`, awaiting I1. No migration. Not deployed. (#256)
+- **2026-10-19** · C2 notify migration: stays (6 notices), space approve/reject, waitlist offer, event cancel/update (via new NotifyBatch bus event) and the payment receipt now go through notify(); registration.confirmed stays direct (Redis guard also covers the group fan-out) and the T-24h/T-1h reminders stay direct (per-user notify would unbatch the OneSignal push and drop the QR email for push users); backend rebuild only, no migration. (#258)

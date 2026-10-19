@@ -32,6 +32,7 @@ import {
   UpdateCannedReplyDto,
   StartAssistDto,
   AssistMessageDto,
+  RateTicketDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -295,6 +296,13 @@ export class SupportController {
       req.user.id,
       SupportTicketStatus.CLOSED,
     );
+  }
+
+  /** D20: the requester rates a resolved case 1-5 with an optional comment. */
+  @Post('tickets/:id/rating')
+  @ApiOperation({ summary: 'Rate your resolved ticket' })
+  rate(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RateTicketDto, @Req() req: any) {
+    return this.supportService.rate(id, req.user.id, dto);
   }
 
   /** Requester reopens their own ticket. */

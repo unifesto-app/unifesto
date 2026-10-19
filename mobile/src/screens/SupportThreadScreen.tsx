@@ -22,6 +22,7 @@ import {
 } from '../lib/api/support';
 import { CaseMessages, Composer, GUTTER, personName, sideOf } from '../components/support/CaseThread';
 import { AssistActions, AssistNotice } from '../components/support/AssistParts';
+import { RateCase } from '../components/support/RateCase';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
@@ -209,7 +210,10 @@ export default function SupportThreadScreen() {
         ) : deletionPending ? (
           <Button label="Keep my account" variant="ghost" loading={acting} onPress={keepAccount} style={styles.action} />
         ) : (
-          <Button label={closed ? 'Reopen request' : 'Mark as solved'} variant="ghost" loading={acting} onPress={toggle} style={styles.action} />
+          <>
+            {closed || ticket.status === 'RESOLVED' ? <RateCase ticket={ticket} onRated={load} /> : null}
+            <Button label={closed ? 'Reopen request' : 'Mark as solved'} variant="ghost" loading={acting} onPress={toggle} style={styles.action} />
+          </>
         )}
       </ScrollView>
 
