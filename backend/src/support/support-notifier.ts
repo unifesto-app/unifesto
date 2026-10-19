@@ -21,6 +21,8 @@ export function requesterHeadline(e: SupportCaseEvent, status: SupportTicketStat
       return null;
     case 'ESCALATED':
       return 'Unifesto is now helping with your request';
+    case 'SENT_TO_SPACE':
+      return 'The organiser is now helping with your request';
     default:
       return null;
   }
@@ -37,6 +39,8 @@ export function deskHeadline(e: SupportCaseEvent, n: number): string {
       return `#${n} was reopened`;
     case 'ESCALATED':
       return `#${n} was escalated to Unifesto`;
+    case 'SENT_TO_SPACE':
+      return `Unifesto passed #${n} to you`;
   }
 }
 

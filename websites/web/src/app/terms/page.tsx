@@ -106,7 +106,9 @@ const sections: LegalSection[] = [
     body: (
       <ul>
         <li>Payments are processed by Razorpay in Indian rupees. Prices are set by organisers and shown before you pay.</li>
-        <li>Unifesto charges organisers a platform fee on paid tickets, as listed on our <a href="/pricing">pricing page</a>. A processing fee may be shown to attendees at checkout; it is not refundable. Fees exclude GST, which is charged as applicable.</li>
+        <li>From 2 November 2026, Unifesto charges organisers a platform fee on paid tickets sold from that date, at the rate for their plan listed on our <a href="/pricing">pricing page</a>. Tickets sold before then are not affected. We give organisers at least 14 days&apos; notice before changing a plan&apos;s rate, and a change applies only to tickets sold after it.</li>
+        <li>Attendees pay a processing fee of 5% of the ticket price at checkout, capped at ₹99 per ticket, unless the organiser includes it in the ticket price. The processing fee is not refundable.</li>
+        <li>Where GST or another tax applies to our fees, it is shown before you pay.</li>
         <li>Organisers receive payouts to a verified bank account on their Space, after deducting fees and refunds. We may hold or adjust a payout to cover refunds, chargebacks, or suspected fraud.</li>
         <li>Refunds follow our <a href="/refund">Refund and Cancellation Policy</a>.</li>
       </ul>
@@ -232,6 +234,7 @@ export default function TermsPage() {
       lines={["Terms of Service"]}
       lede="The agreement between you and Unifesto, for attendees and organisers alike."
       sections={sections}
+      effective="19 October 2026"
     />
   );
 }
