@@ -1,6 +1,5 @@
 import type { EmailService } from '../email/email.service';
 import type * as T from '../email/templates';
-import { esc, greet, h1, p } from '../email/layout';
 import type { WhatsAppService } from '../whatsapp/whatsapp.service';
 import type { DeliveryOpts } from './message-delivery';
 import type { NotificationCategory } from './notifications.constants';
@@ -40,8 +39,8 @@ export interface NotifyKindData {
   'event.cancelled': MailData<T.EventCancelledData> & { eventId: string };
   /** Not deduped by default (an event can change twice); pass opts.dedupKey per change. */
   'event.updated': MailData<T.EventUpdatedData> & { eventId: string; eventSlug?: string };
-  'stay.payment_due': { bookingId: string; userName?: string; stayName: string; amountText: string; dueText: string };
-  'stay.confirmed': { bookingId: string; userName?: string; stayName: string; note?: string };
+  'stay.payment_due': { bookingId: string; eventId?: string; userName: string; stayName: string; amountText: string; dueText: string };
+  'stay.confirmed': { bookingId: string; eventId?: string; userName: string; stayName: string; note?: string };
   'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string };
   /** Not deduped by default (a resubmitted space can be rejected again). */
   'space.rejected': MailData<T.SpaceRejectedData> & { spaceId: string };
@@ -63,19 +62,19 @@ export interface KindDef<D> {
    * WhatsApp costs money per message. Standing decision: only OTP, ONE
    * registration confirmation, group invites and stats use it, so only
    * registration.confirmed sets this. Don't add it lightly.
+   * (registration.confirmed is not routed through notify() yet: C9's
+   * sendPaidConfirmations + Redis reg:confirmation guard own it for now.)
    */
   whatsapp?: (svc: WhatsAppService, phone: string, d: D, delivery: DeliveryOpts) => Promise<boolean>;
 }
 
 const eventLink = (d: { eventSlug?: string; eventId: string }) => `unifesto://event/${d.eventSlug || d.eventId}`;
 
-/** For kinds with no dedicated email template: the push copy as a plain branded mail. */
-function pushCopyEmail<D extends { userName?: string }>(copy: (d: D) => PushCopy) {
+/** Stay mail: C9's stayUpdateEmail says the same words as the push. */
+function stayEmail<D extends { eventId?: string; userName: string }>(copy: (d: D) => PushCopy) {
   return (svc: EmailService, to: string, d: D, delivery: DeliveryOpts) => {
-    const c = copy(d);
-    return svc
-      .sendRawEmail(to, c.title, `${h1(esc(c.title))}${greet(d.userName)}${p(esc(c.body))}`, undefined, delivery)
-      .then((id) => !!id);
+    const { title, body } = copy(d);
+    return svc.sendStayUpdate({ email: to, eventId: d.eventId, userName: d.userName, title, body }, delivery);
   };
 }
 
@@ -212,14 +211,14 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
     criticality: 'critical',
     entity: (d) => d.bookingId,
     push: stayPaymentDueCopy,
-    email: pushCopyEmail(stayPaymentDueCopy),
+    email: stayEmail(stayPaymentDueCopy),
   },
   'stay.confirmed': {
     category: 'registrationUpdates',
     criticality: 'critical',
     entity: (d) => d.bookingId,
     push: stayConfirmedCopy,
-    email: pushCopyEmail(stayConfirmedCopy),
+    email: stayEmail(stayConfirmedCopy),
   },
   'space.approved': {
     category: 'spaceUpdates',

@@ -140,4 +140,14 @@ describe('NotificationsService delivery log (C3)', () => {
     });
     expect(prisma.messageDelivery.createMany).not.toHaveBeenCalled();
   });
+
+  it('a throw after the claim finishes the claimed row as FAILED', async () => {
+    const { svc, prisma } = withDeliveries();
+    prisma.notificationSettings.findMany.mockRejectedValue(new Error('db blip'));
+    await svc.send(['u-on'], { ...opts, dedupKey: 'k:push' });
+    expect(prisma.messageDelivery.update).toHaveBeenCalledWith({
+      where: { dedupKey: 'k:push' },
+      data: expect.objectContaining({ status: 'FAILED', error: 'db blip' }),
+    });
+  });
 });

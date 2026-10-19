@@ -15,8 +15,8 @@ import { MessageChannel, MessageDeliveryStatus, Prisma, PrismaClient } from '@pr
 export interface DeliveryOpts {
   /**
    * Idempotency key. A second send with the same key is skipped (and reported
-   * as success) once the first is SENT/DELIVERED/OPENED, or while it is still
-   * in flight; it is retried when the first FAILED or was SKIPPED.
+   * as success) unless the first FAILED or was SKIPPED (then it is sent
+   * again); a SUPPRESSED address is never re-sent.
    */
   dedupKey?: string;
   /** Notify kind (or push category) for the history view. */
@@ -64,20 +64,30 @@ export const RETRY_BACKOFF_MS = [500, 2000];
 /** A QUEUED claim older than this is a crashed sender; another may take over. */
 const STALE_CLAIM_MS = 10 * 60 * 1000;
 
-const DONE: MessageDeliveryStatus[] = [
-  MessageDeliveryStatus.SENT,
-  MessageDeliveryStatus.DELIVERED,
-  MessageDeliveryStatus.OPENED,
-];
+/** A dedup row in one of these may be sent again. */
+const RECLAIMABLE: MessageDeliveryStatus[] = [MessageDeliveryStatus.FAILED, MessageDeliveryStatus.SKIPPED];
 
-/** Transient = worth retrying: no HTTP status (network error, timeout), 429 or 5xx. Never other 4xx. */
-export function isTransientStatus(status: number | null | undefined): boolean {
-  return status == null || status === 429 || status >= 500;
+/**
+ * Retry rules. A timeout or reset is never retried on any channel: it already
+ * cost the caller 15s, and the provider may have sent it anyway. Retried:
+ *  - 429 (the provider refused, nothing went out);
+ *  - a connection that was never made (DNS, refused);
+ *  - 5xx, only where the provider dedups on an idempotency key (Resend,
+ *    OneSignal). Meta has none, so a WhatsApp 5xx is not retried.
+ */
+const NEVER_CONNECTED = new Set(['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']);
+
+/** HTTP status worth retrying (no status = unknown, e.g. a timeout: no). */
+export function isTransientStatus(status: number | null | undefined, idempotent = true): boolean {
+  if (status == null) return false;
+  return status === 429 || (idempotent && status >= 500);
 }
 
-/** For axios errors: transient when there was no response, or a 429/5xx one. */
-export function isTransientAxiosError(err: any): boolean {
-  return isTransientStatus(err?.response?.status);
+/** For axios errors; `idempotent` = the request carries a provider idempotency key. */
+export function isRetryableAxiosError(err: any, idempotent: boolean): boolean {
+  const status = err?.response?.status;
+  if (status == null) return NEVER_CONNECTED.has(err?.code ?? err?.cause?.code);
+  return isTransientStatus(status, idempotent);
 }
 
 function message(err: unknown): string {
@@ -88,7 +98,8 @@ const clip = (s: string | null | undefined, n: number) => (s == null ? s : s.sli
 
 /**
  * Run `attempt` up to 1 + RETRY_BACKOFF_MS.length times, retrying only results
- * marked `retryable` (a thrown error counts as retryable). Never throws.
+ * marked `retryable`. A thrown error is not retried (it may be a timeout).
+ * Never throws.
  */
 export async function withRetry<R extends AttemptResult>(
   attempt: () => Promise<R>,
@@ -101,7 +112,7 @@ export async function withRetry<R extends AttemptResult>(
       result = await attempt();
     } catch (err) {
       // R only adds optional fields (e.g. OneSignal's recipients).
-      result = { id: null, error: message(err), retryable: true } as R;
+      result = { id: null, error: message(err) } as R;
     }
     if (result.id || !result.retryable || attempts > RETRY_BACKOFF_MS.length) {
       return { result, attempts };
@@ -119,7 +130,8 @@ export async function withRetry<R extends AttemptResult>(
  * Insert-first on the unique key, so two racing senders (Razorpay webhook and
  * verifyPayment confirming the same registration) can't both win: the loser
  * gets P2002, then a conditional UPDATE that only re-claims a FAILED/SKIPPED
- * (or stale QUEUED) row. Postgres re-checks that WHERE under the row lock.
+ * (or stale QUEUED) row. Never SUPPRESSED: that address bounced or complained.
+ * Postgres re-checks that WHERE under the row lock.
  */
 export async function claimDelivery(
   db: Db | undefined,
@@ -142,7 +154,7 @@ export async function claimDelivery(
       where: {
         dedupKey: meta.dedupKey,
         OR: [
-          { status: { notIn: [...DONE, MessageDeliveryStatus.QUEUED] } },
+          { status: { in: RECLAIMABLE } },
           { status: MessageDeliveryStatus.QUEUED, updatedAt: { lt: new Date(Date.now() - STALE_CLAIM_MS) } },
         ],
       },

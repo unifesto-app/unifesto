@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { RETRY_BACKOFF_MS, isTransientStatus, trackedSend } from './message-delivery';
+import { RETRY_BACKOFF_MS, isRetryableAxiosError, isTransientStatus, trackedSend } from './message-delivery';
 
 const meta = { channel: 'EMAIL' as const, provider: 'resend' as const, label: 'Hi', recipient: 'a@b.co', kind: 'k' };
 const p2002 = () => new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '6' });
@@ -36,12 +36,18 @@ describe('trackedSend (C3 delivery log)', () => {
     expect(d.messageDelivery.create.mock.calls[0][0].data).toMatchObject({ status: 'FAILED', error: '422: bad', attempts: 1 });
   });
 
-  it('retries transient failures (and throws) up to 2 extra times', async () => {
+  it('never retries a thrown error (it may be a timeout)', async () => {
+    const attempt = jest.fn().mockRejectedValue(new Error('timeout of 15000ms exceeded'));
+    expect((await trackedSend(db() as any, meta, attempt)).ok).toBe(false);
+    expect(attempt).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries retryable failures up to 2 extra times', async () => {
     const d = db();
     const attempt = jest
       .fn()
       .mockResolvedValueOnce({ id: null, error: '503', retryable: true })
-      .mockRejectedValueOnce(new Error('ECONNRESET'))
+      .mockResolvedValueOnce({ id: null, error: '429', retryable: true })
       .mockResolvedValueOnce({ id: 'm3' });
     const res = await trackedSend(d as any, meta, attempt);
     expect(res.ok).toBe(true);
@@ -71,9 +77,10 @@ describe('trackedSend (C3 delivery log)', () => {
     const res = await trackedSend(d as any, { ...meta, dedupKey: 'k1' }, attempt);
     expect(res).toEqual({ ok: true, id: null, deduped: true });
     expect(attempt).not.toHaveBeenCalled();
-    // Only FAILED/SKIPPED/SUPPRESSED or a stale QUEUED row can be re-claimed.
+    // Only FAILED/SKIPPED or a stale QUEUED row can be re-claimed: never SUPPRESSED or sent.
     const where = d.messageDelivery.updateMany.mock.calls[0][0].where;
-    expect(where.OR[0].status.notIn).toEqual(['SENT', 'DELIVERED', 'OPENED', 'QUEUED']);
+    expect(where.OR[0]).toEqual({ status: { in: ['FAILED', 'SKIPPED'] } });
+    expect(where.OR[1].status).toBe('QUEUED');
   });
 
   it('dedup: re-sends when the earlier attempt FAILED', async () => {
@@ -97,8 +104,20 @@ describe('trackedSend (C3 delivery log)', () => {
     await expect(trackedSend(undefined, meta, async () => ({ id: 'm1' }))).resolves.toMatchObject({ ok: true });
   });
 
-  it('classifies transient statuses', () => {
-    expect([null, undefined, 429, 500, 503].map(isTransientStatus)).toEqual([true, true, true, true, true]);
-    expect([400, 401, 404, 422].map(isTransientStatus)).toEqual([false, false, false, false]);
+  it('classifies statuses: 429/5xx retry, unknown (timeout) and other 4xx never', () => {
+    expect([429, 500, 503].map((s) => isTransientStatus(s))).toEqual([true, true, true]);
+    expect([null, undefined, 400, 404, 422].map((s) => isTransientStatus(s))).toEqual([false, false, false, false, false]);
+  });
+
+  it('WhatsApp (no idempotency key): retries only 429 and never-connected errors', () => {
+    const http = (status: number) => ({ response: { status } });
+    const net = (code: string) => ({ code });
+    expect(isRetryableAxiosError(http(429), false)).toBe(true);
+    expect(isRetryableAxiosError(http(503), false)).toBe(false);
+    expect(isRetryableAxiosError(http(400), false)).toBe(false);
+    for (const c of ['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN']) expect(isRetryableAxiosError(net(c), false)).toBe(true);
+    for (const c of ['ECONNABORTED', 'ETIMEDOUT', 'ECONNRESET', 'ERR_CANCELED']) expect(isRetryableAxiosError(net(c), false)).toBe(false);
+    // With an idempotency key (OneSignal) a 5xx is safe to retry.
+    expect(isRetryableAxiosError(http(503), true)).toBe(true);
   });
 });

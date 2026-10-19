@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import { isTransientAxiosError } from './message-delivery';
+import { isRetryableAxiosError } from './message-delivery';
 
 export interface OneSignalSendParams {
   /**
@@ -187,7 +187,7 @@ export class OneSignalService {
         err?.message ||
         'unknown';
       this.logger.error(`OneSignal send failed: ${detail}`);
-      return { id: null, error: String(detail), retryable: isTransientAxiosError(err) };
+      return { id: null, error: String(detail), retryable: isRetryableAxiosError(err, !!params.idempotencyKey) };
     }
   }
 }

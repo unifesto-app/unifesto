@@ -12,9 +12,10 @@ import type { WhatsappInboundEvent } from '../notifications/notifications.events
 import {
   AttemptResult,
   DeliveryOpts,
-  isTransientAxiosError,
+  isRetryableAxiosError,
   trackedSend,
 } from '../notifications/message-delivery';
+import { OUTBOUND_TIMEOUT_MS } from '../common/http/outbound-timeouts';
 
 interface WhatsAppTemplateComponent {
   type: string;
@@ -215,8 +216,9 @@ export class WhatsAppService {
 
   /**
    * Send template message via WhatsApp API. Logged to message_deliveries,
-   * transient failures (network, timeout, 429, 5xx) retried twice, optionally
-   * deduped by `delivery.dedupKey`. Never throws.
+   * optionally deduped by `delivery.dedupKey`. Retries only what can't have
+   * gone out (429, connection never made): Meta has no idempotency key, so a
+   * timeout or 5xx is never retried. Never throws.
    */
   private async sendTemplateMessage(
     to: string,
@@ -301,6 +303,7 @@ export class WhatsAppService {
               'Authorization': `Bearer ${this.accessToken}`,
               'Content-Type': 'application/json',
             },
+            timeout: OUTBOUND_TIMEOUT_MS,
           });
           const id = response.data?.messages?.[0]?.id ?? null;
           return { id, error: id ? undefined : 'no_message_id' };
@@ -318,7 +321,8 @@ export class WhatsAppService {
           return {
             id: null,
             error: error.response ? `${error.response.status}: ${detail}` : String(detail),
-            retryable: isTransientAxiosError(error),
+            // Meta has no idempotency key: never retry what may have been sent.
+            retryable: isRetryableAxiosError(error, false),
           };
         }
       },
@@ -1630,6 +1634,7 @@ export class WhatsAppService {
       inviteUrl: string;
       isCommunity: boolean;
     },
+    delivery?: DeliveryOpts,
   ): Promise<boolean> {
     try {
       if (!mobileNumber || !data.inviteUrl) return false;
@@ -1644,6 +1649,9 @@ export class WhatsAppService {
           data.inviteUrl,
         ],
         false, // no image header
+        undefined,
+        'en',
+        delivery,
       );
     } catch (error) {
       this.logger.error('Failed to send WhatsApp group invite', error);

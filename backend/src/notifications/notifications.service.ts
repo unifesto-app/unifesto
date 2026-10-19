@@ -89,12 +89,13 @@ export class NotificationsService {
    */
   async send(userIds: string[], opts: SendOptions): Promise<SendSummary> {
     const summary: SendSummary = { sent: 0, failed: 0, skipped: 0 };
+    // Dedup (C3) is per message, so only for one recipient.
+    let claimed = false;
+    let claimedUser = '';
     try {
       const unique = [...new Set(userIds)].filter(Boolean);
       if (unique.length === 0) return summary;
 
-      // Dedup (C3) is per message, so only for one recipient.
-      let claimed = false;
       if (opts.dedupKey && unique.length === 1) {
         const claim = await claimDelivery(this.prisma, this.deliveryMeta(unique[0], opts));
         if (claim === 'skip') {
@@ -102,6 +103,7 @@ export class NotificationsService {
           return summary;
         }
         claimed = claim === 'claimed';
+        claimedUser = unique[0];
       }
 
       const settings = await this.prisma.notificationSettings.findMany({
@@ -152,9 +154,17 @@ export class NotificationsService {
         if (result.id) summary.sent += batch.length;
         else summary.failed += batch.length;
       }
+      claimed = false; // finished above
     } catch (err: any) {
       // Swallow — this path must never surface into a domain request.
       this.logger.error(`notifications.send failed: ${err?.message ?? err}`);
+      // Don't leave a claimed dedup row QUEUED (it would block retries for 10 min).
+      if (claimed) {
+        await finishDelivery(this.prisma, this.deliveryMeta(claimedUser, opts), true, MessageDeliveryStatus.FAILED, {
+          id: null,
+          error: String(err?.message ?? err),
+        });
+      }
     }
     return summary;
   }

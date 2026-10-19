@@ -29,6 +29,21 @@ describe('EmailService without RESEND_API_KEY', () => {
   it('sendRawEmail returns null when nothing was sent', async () => {
     await expect(new EmailService(config).sendRawEmail('a@b.co', 'Hi', '<p>Hi</p>')).resolves.toBeNull();
   });
+
+  it('sendRawEmailTracked reports a dedup skip as ok (nothing sent twice)', async () => {
+    const { Prisma } = jest.requireActual('@prisma/client');
+    const prisma: any = {
+      messageDelivery: {
+        create: jest.fn().mockRejectedValue(new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '6' })),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }), // already SENT
+      },
+    };
+    const service = new EmailService(config, prisma) as any;
+    service.sendViaResend = jest.fn();
+    const res = await service.sendRawEmailTracked('a@b.co', 'Hi', '<p>Hi</p>', undefined, { dedupKey: 'k:email' });
+    expect(res).toEqual({ ok: true, id: null, deduped: true });
+    expect(service.sendViaResend).not.toHaveBeenCalled();
+  });
 });
 
 describe('EmailService brandFor', () => {

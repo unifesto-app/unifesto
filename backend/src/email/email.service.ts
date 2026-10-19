@@ -9,6 +9,7 @@ import {
   AttemptResult,
   DeliveryOpts,
   isTransientStatus,
+  TrackedResult,
   trackedSend,
 } from '../notifications/message-delivery';
 import { PrismaService } from '../prisma/prisma.service';
@@ -101,15 +102,25 @@ export class EmailService {
     attachments?: Attachment[],
     delivery?: DeliveryOpts,
   ): Promise<string | null> {
+    return (await this.sendRawEmailTracked(to, subject, html, attachments, delivery)).id;
+  }
+
+  /** `sendRawEmail` with the full outcome: `ok` is also true for a dedup skip (id null). */
+  sendRawEmailTracked(
+    to: string,
+    subject: string,
+    html: string,
+    attachments?: Attachment[],
+    delivery?: DeliveryOpts,
+  ): Promise<TrackedResult> {
     const isDocument = /^\s*<(!doctype|html)/i.test(html);
-    const res = await this.track(
+    return this.track(
       'resend',
       to,
       subject,
       (key) => this.sendViaResend(to, subject, isDocument ? html : layout(html), attachments, undefined, key),
       delivery,
     );
-    return res.id;
   }
 
   /**
@@ -151,13 +162,14 @@ export class EmailService {
 
       if (error) {
         this.logger.error(`Resend error: ${error.message}`);
-        // statusCode null = the fetch itself failed (network, timeout).
+        // statusCode null = the fetch itself failed; the SDK hides whether it
+        // was a timeout, so it isn't retried. 429/5xx are (idempotency key).
         return { id: null, error: error.message, retryable: isTransientStatus(error.statusCode) };
       }
       return { id: data?.id || null, error: data?.id ? undefined : 'no_message_id' };
     } catch (error) {
       this.logger.error(`Resend exception: ${error.message}`);
-      return { id: null, error: error.message, retryable: true };
+      return { id: null, error: error.message };
     }
   }
 
@@ -238,7 +250,7 @@ export class EmailService {
       else this.logger.error(`Failed to send "${opts?.label ?? subject}" to ${to}`);
       return res.ok;
     } catch (error) {
-      this.logger.error(`Error sending "${subject}" to ${to}`, error);
+      this.logger.error(`Error sending "${opts?.label ?? subject}" to ${to}`, error);
       return false;
     }
   }
@@ -426,8 +438,8 @@ export class EmailService {
     await this.deliverBranded('resend', data.email, data, T.waitlistRevokedEmail);
   }
 
-  async sendStayUpdate(data: T.StayUpdateData): Promise<void> {
-    await this.deliverBranded('resend', data.email, data, T.stayUpdateEmail);
+  async sendStayUpdate(data: T.StayUpdateData, delivery?: DeliveryOpts): Promise<boolean> {
+    return this.deliverBranded('resend', data.email, data, T.stayUpdateEmail, delivery);
   }
 
   /**
