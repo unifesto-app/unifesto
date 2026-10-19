@@ -287,6 +287,8 @@ export interface WhatsappConversation {
   unreadCount: number;
   /** Free-form replies are only allowed within 24h of their last message. */
   replyWindowOpen: boolean;
+  /** D26: the Assist case this thread was converted into, if any. */
+  caseId: string | null;
   messages?: WhatsappMessage[];
 }
 
@@ -300,6 +302,10 @@ export const getWhatsappConversation = (id: string) => call<WhatsappConversation
 
 export const replyWhatsapp = (id: string, body: string) =>
   call<{ id: string; status: string }>(`/admin/whatsapp/conversations/${id}/reply`, post({ body }));
+
+/** D26: copy the picked messages into a Platform HELP case. Idempotent: a second call returns the same case. */
+export const convertWhatsappToCase = (id: string, messageIds: string[]) =>
+  call<{ caseId: string }>(`/admin/whatsapp/conversations/${id}/case`, post({ messageIds }));
 
 const MEDIA_LABEL: Record<string, string> = {
   image: 'Photo',
