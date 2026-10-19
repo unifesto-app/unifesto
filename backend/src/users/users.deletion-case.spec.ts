@@ -51,3 +51,48 @@ describe('UsersService account deletion case', () => {
     await expect(svc.requestAccountDeletion('u1')).resolves.toHaveProperty('deletionScheduledFor');
   });
 });
+
+// I5: a due deletion that fails or is blocked says so on the case, once.
+describe('UsersService.purgeDueDeletions reporting', () => {
+  function build(lastLine: string | null = null) {
+    const prisma = {
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'u1' }]) },
+      supportMessage: { findFirst: jest.fn().mockResolvedValue(lastLine ? { body: lastLine } : null) },
+    };
+    const events = { emitAsync: jest.fn().mockResolvedValue([]) };
+    const svc = new UsersService(prisma as never, {} as never, {} as never, events as never);
+    (svc as any).assertAccountCanClose = jest.fn();
+    const lines = () => events.emitAsync.mock.calls.filter(([n]) => n === SUBJECT_CASE_UPDATE).map(([, l]) => l);
+    return { svc, lines, prisma };
+  }
+
+  it('a failed erasure is logged and posted to the case for the desk', async () => {
+    const { svc, lines } = build();
+    (svc as any).closeAccount = jest.fn().mockRejectedValue(new Error('FK violation'));
+    await expect(svc.purgeDueDeletions()).resolves.toEqual({ closed: 0, blocked: 0 });
+    expect(lines()).toEqual([expect.objectContaining({ status: 'OPEN', text: expect.stringMatching(/could not finish/) })]);
+  });
+
+  it('a blocked erasure tells the person why, and is not repeated daily', async () => {
+    const { ConflictException } = jest.requireActual('@nestjs/common');
+    const a = build();
+    (a.svc as any).assertAccountCanClose = jest.fn().mockRejectedValue(new ConflictException('You have an upcoming ticket for Fest.'));
+    await a.svc.purgeDueDeletions();
+    expect(a.lines()).toEqual([
+      expect.objectContaining({ status: 'PENDING', text: 'Deletion is on hold: You have an upcoming ticket for Fest.' }),
+    ]);
+
+    const b = build('Deletion is on hold: You have an upcoming ticket for Fest.');
+    (b.svc as any).assertAccountCanClose = jest.fn().mockRejectedValue(new ConflictException('You have an upcoming ticket for Fest.'));
+    await b.svc.purgeDueDeletions();
+    expect(b.lines()).toEqual([]);
+  });
+
+  it('erased with leftovers: closes the case, then reopens it naming what is left', async () => {
+    const { svc, lines } = build();
+    (svc as any).closeAccount = jest.fn().mockResolvedValue({ leftovers: ['Google/Apple sign-in'] });
+    await expect(svc.purgeDueDeletions()).resolves.toEqual({ closed: 1, blocked: 0 });
+    expect(lines().map((l) => l.status)).toEqual(['CLOSED', 'OPEN']);
+    expect(lines()[1].text).toContain('Google/Apple sign-in');
+  });
+});
