@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   WhatsappLogo,
   MagnifyingGlass,
@@ -31,6 +32,7 @@ import {
   getWhatsappConversation,
   replyToWhatsappConversation,
   sendWhatsappMedia,
+  convertWhatsappToCase,
   initiateWhatsappConversation,
   listWhatsappTemplates,
   conversationName,
@@ -122,13 +124,20 @@ function MediaAttachment({ m }: { m: WhatsappMessage }) {
 }
 
 /* ------------------------------- Thread bubble ---------------------------- */
-function MessageBubble({ m }: { m: WhatsappMessage }) {
+function MessageBubble({ m, picked, onPick }: { m: WhatsappMessage; picked?: boolean; onPick?: () => void }) {
   const outbound = m.direction === "OUTBOUND";
   const failed = m.status === "failed";
   return (
     <div className={outbound ? "flex justify-end" : "flex justify-start"}>
       <div
+        role={onPick ? "checkbox" : undefined}
+        aria-checked={onPick ? !!picked : undefined}
+        tabIndex={onPick ? 0 : undefined}
+        onClick={onPick}
+        onKeyDown={onPick ? (e) => (e.key === " " || e.key === "Enter") && (e.preventDefault(), onPick()) : undefined}
         className={
+          (onPick ? "cursor-pointer " : "") +
+          (picked ? "ring-2 ring-primary ring-offset-2 ring-offset-background " : "") +
           "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm " +
           (outbound
             ? failed
@@ -189,6 +198,9 @@ export default function WhatsAppInboxPage() {
   const [search, setSearch] = useState("");
 
   const [selected, setSelected] = useState<WhatsappConversation | null>(null);
+  // D26: messages picked to copy into an Assist case.
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [converting, setConverting] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
@@ -259,9 +271,30 @@ export default function WhatsAppInboxPage() {
       setError(error.message || "Could not open conversation.");
     } else {
       setSelected(data);
+      // Pre-pick what's unanswered: the inbound messages after our last reply.
+      const msgs = data?.messages ?? [];
+      const lastOut = msgs.map((m) => m.direction).lastIndexOf("OUTBOUND");
+      setPicked(new Set(msgs.slice(lastOut + 1).filter((m) => m.direction === "INBOUND").map((m) => m.id)));
     }
     setDetailLoading(false);
   }, []);
+
+  const togglePick = (id: string) =>
+    setPicked((p) => {
+      const next = new Set(p);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  const handleConvert = async () => {
+    if (!selected || !picked.size) return;
+    setConverting(true);
+    setError("");
+    const { data, error } = await convertWhatsappToCase(selected.id, [...picked]);
+    if (error || !data) setError(error?.message || "Could not open the case.");
+    else setSelected((c) => c && { ...c, caseId: data.caseId });
+    setConverting(false);
+  };
 
   // Keep the thread scrolled to the newest message.
   useEffect(() => {
@@ -386,15 +419,27 @@ export default function WhatsAppInboxPage() {
               <CardTitle className="text-lg">
                 {conversationName(selected)}
               </CardTitle>
-              <Badge variant={canReply ? "success" : "outline"}>
-                {canReply ? "Reply window open" : "Window closed"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={canReply ? "success" : "outline"}>
+                  {canReply ? "Reply window open" : "Window closed"}
+                </Badge>
+                {selected.caseId ? (
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/dashboard/assist?case=${selected.caseId}`}>Open case</Link>
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" disabled={!picked.size || converting} onClick={handleConvert}>
+                    {converting ? "Opening…" : `Convert to case (${picked.size})`}
+                  </Button>
+                )}
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">
               +{selected.waId}
               {selected.lastInboundAt
                 ? ` · last messaged ${timeAgo(selected.lastInboundAt)}`
                 : ""}
+              {!selected.caseId && " · click messages to pick what goes into the case"}
             </p>
           </CardHeader>
 
@@ -411,7 +456,14 @@ export default function WhatsAppInboxPage() {
                 No messages in this conversation.
               </p>
             ) : (
-              selected.messages.map((m) => <MessageBubble key={m.id} m={m} />)
+              selected.messages.map((m) => (
+                <MessageBubble
+                  key={m.id}
+                  m={m}
+                  picked={!selected.caseId && picked.has(m.id)}
+                  onPick={selected.caseId ? undefined : () => togglePick(m.id)}
+                />
+              ))
             )}
             <div ref={threadEndRef} />
           </CardContent>

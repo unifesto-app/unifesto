@@ -34,6 +34,8 @@ export interface WhatsappConversation {
   lastInboundAt: string | null;
   lastMessageAt: string;
   unreadCount: number;
+  /** D26: the Assist case this conversation was converted to. */
+  caseId: string | null;
   createdAt: string;
   updatedAt: string;
   /** Whether a free-form reply is allowed right now (24h window open). */
@@ -98,6 +100,16 @@ export async function replyToWhatsappConversation(
 ): Promise<Result<{ id: string; status: string }>> {
   return apiCall<{ id: string; status: string }>(
     backendClient.post(`/admin/whatsapp/conversations/${id}/reply`, { body })
+  );
+}
+
+/** `POST /admin/whatsapp/conversations/:id/case` — D26: copy the picked messages into a Platform Assist case (once per conversation). */
+export async function convertWhatsappToCase(
+  id: string,
+  messageIds: string[]
+): Promise<Result<{ caseId: string }>> {
+  return apiCall<{ caseId: string }>(
+    backendClient.post(`/admin/whatsapp/conversations/${id}/case`, { messageIds })
   );
 }
 

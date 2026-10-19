@@ -207,6 +207,12 @@ export default function AssistInboxPage() {
     setDetailLoading(false);
   }, []);
 
+  // D26: `?case=<id>` (from a converted WhatsApp conversation) opens that case.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("case");
+    if (id) void openCase(id);
+  }, [openCase]);
+
   const refresh = useCallback(
     async (id: string) => {
       await Promise.all([openCase(id), loadList(), loadStats()]);

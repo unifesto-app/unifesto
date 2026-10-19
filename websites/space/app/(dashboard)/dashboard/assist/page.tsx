@@ -152,6 +152,12 @@ export default function AssistInboxPage() {
     setDetailLoading(false);
   }, []);
 
+  // D27: `?case=<id>` (from an escalated help-desk query) opens that case.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("case");
+    if (id) void openTicket(id);
+  }, [openTicket]);
+
   // D15: the latest Assist draft, for the case it was drafted on.
   const [draft, setDraft] = useState<{ text: string; n: number; ticketId: string }>();
 

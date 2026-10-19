@@ -762,6 +762,16 @@ export class HackathonController {
     return this.help.setStatus(user.id, eventId, queryId, dto.status);
   }
 
+  @Post('hackathon/:eventId/help/queries/:queryId/escalate')
+  @ApiOperation({ summary: 'D27: escalate a query to the organisers as a Space-desk Assist case (once per query)' })
+  escalateHelpQuery(
+    @CurrentUser() user: User,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('queryId', ParseUUIDPipe) queryId: string,
+  ) {
+    return this.help.escalate(user.id, eventId, queryId);
+  }
+
   @Get('hackathon/:eventId/statements')
   @ApiOperation({ summary: 'My team’s problem-statement choices: mode, deadline, themes, the list' })
   myStatementOptions(@CurrentUser() user: User, @Param('eventId', ParseUUIDPipe) eventId: string) {

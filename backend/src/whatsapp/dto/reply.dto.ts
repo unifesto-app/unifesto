@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { ArrayMaxSize, ArrayNotEmpty, IsArray, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 /** Body for an admin free-form WhatsApp reply. */
 export class WhatsAppReplyDto {
@@ -11,4 +11,14 @@ export class WhatsAppReplyDto {
   @MinLength(1)
   @MaxLength(4096)
   body: string;
+}
+
+/** D26: the messages to copy into the new Assist case. */
+export class WhatsAppConvertToCaseDto {
+  @ApiProperty({ type: [String], description: 'Message ids from this conversation, in any order.' })
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(50)
+  @IsUUID('all', { each: true })
+  messageIds: string[];
 }

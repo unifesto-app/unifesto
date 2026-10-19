@@ -1027,6 +1027,9 @@ export interface HelpInboxQuery {
   createdAt: string;
   acknowledgedAt: string | null;
   resolvedAt: string | null;
+  /** D27: set once escalated to the organisers as an Assist case. */
+  escalatedAt: string | null;
+  caseId: string | null;
 }
 
 /** Null when the event runs no hackathon. Curators see every query. */
@@ -1046,6 +1049,10 @@ export const raiseHelpQuery = (eventId: string, input: { topicId: string | null;
 export const getHelpInbox = (eventId: string) => call<HelpInbox>(`/hackathon/${eventId}/help/inbox`);
 export const setHelpQueryStatus = (eventId: string, queryId: string, status: HelpQueryStatus) =>
   call<HelpInbox>(`/hackathon/${eventId}/help/queries/${queryId}/status`, { ...json('POST', { status }), retry: true });
+
+/** D27: hand a query to the organisers as a Space Assist case (once per query). */
+export const escalateHelpQuery = (eventId: string, queryId: string) =>
+  call<HelpInbox>(`/hackathon/${eventId}/help/queries/${queryId}/escalate`, { ...json('POST', {}), retry: true });
 
 export const HELP_STATUS_LABEL: Record<HelpQueryStatus, string> = { OPEN: 'Waiting', ACKNOWLEDGED: 'On it', RESOLVED: 'Resolved' };
 export const staffName = (u: { fullName: string | null; username: string | null }) => u.fullName || u.username || 'Team member';

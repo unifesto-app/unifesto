@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { HackPage, useLivePoll, useResult, useEventRunning } from "@/components/hackathon/HackParts";
-import { HELP_STATUS_LABEL, getHelpInbox, setHelpQueryStatus, type HelpInboxQuery, type HelpQueryStatus } from "@/lib/api/hackathon";
+import { HELP_STATUS_LABEL, escalateHelpQuery, getHelpInbox, setHelpQueryStatus, type HelpInboxQuery, type HelpQueryStatus } from "@/lib/api/hackathon";
 import { formatWhen } from "@/lib/hackathon";
 import { cn } from "@/lib/utils/cn";
 
@@ -38,6 +39,16 @@ export default function HelpDeskPage() {
     setData(res.data);
   };
 
+  // D27: the organisers get it as a Space Assist case; the query stays here.
+  const escalate = async (q: HelpInboxQuery) => {
+    if (!window.confirm("Escalate to the organisers? They get this query, with the team and room, as an Assist case.")) return;
+    setBusy(q.id);
+    const res = await escalateHelpQuery(eventId, q.id);
+    setBusy(null);
+    if (!res.ok) return setError(res.message);
+    setData(res.data);
+  };
+
   const queries = inbox?.queries ?? [];
   const active = queries.filter((q) => q.status !== "RESOLVED");
   const resolved = queries.filter((q) => q.status === "RESOLVED");
@@ -59,7 +70,7 @@ export default function HelpDeskPage() {
       <p className="text-xs text-muted-foreground">{[q.team.teamCode, q.team.name, q.roomName].filter(Boolean).join(" · ")}</p>
       <p className="whitespace-pre-line text-sm text-foreground">{q.message}</p>
       <p className="text-xs text-muted-foreground">{[q.raisedByName, timeAgo(q.createdAt)].filter(Boolean).join(" · ")}</p>
-      <div className="flex gap-2 pt-1">
+      <div className="flex flex-wrap gap-2 pt-1">
         {q.status === "OPEN" && (
           <Button size="sm" disabled={busy === q.id} onClick={() => void move(q, "ACKNOWLEDGED")}>
             I&apos;m on it
@@ -73,6 +84,17 @@ export default function HelpDeskPage() {
           <Button size="sm" variant="outline" disabled={busy === q.id} onClick={() => void move(q, "OPEN")}>
             Reopen
           </Button>
+        )}
+        {q.caseId ? (
+          <Button size="sm" variant="ghost" asChild>
+            <Link href={`/dashboard/assist?case=${q.caseId}`}>Escalated · Open case</Link>
+          </Button>
+        ) : (
+          q.status !== "RESOLVED" && (
+            <Button size="sm" variant="ghost" disabled={busy === q.id} onClick={() => void escalate(q)}>
+              Escalate to organiser
+            </Button>
+          )
         )}
       </div>
     </Card>

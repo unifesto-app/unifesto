@@ -1,6 +1,6 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { HackathonHelpQueryStatus, Prisma, RoleCode } from '@prisma/client';
+import { HackathonHelpQueryStatus, Prisma, RoleCode, SupportCaseKind, SupportDesk } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { NotificationEvents } from '../notifications/notifications.constants';
@@ -8,6 +8,7 @@ import type { HackathonHelpDeskEvent } from '../notifications/notifications.even
 import { LeaderboardService } from './leaderboard.service';
 import { HackathonTeamsService } from './hackathon-teams.service';
 import { cleanName } from './hackathon.shared';
+import { SUBJECT_CASE_OPEN, type SubjectCaseOpen } from '../support/subject-cases';
 import type { CreateHelpTopicDto, RaiseHelpQueryDto, UpdateHelpTopicDto } from './dto/hackathon.dto';
 
 const USER_SELECT = { id: true, fullName: true, username: true, avatarUrl: true } as const;
@@ -206,6 +207,8 @@ export class HackathonHelpService {
         createdAt: q.createdAt,
         acknowledgedAt: q.acknowledgedAt,
         resolvedAt: q.resolvedAt,
+        escalatedAt: q.escalatedAt,
+        caseId: q.caseId,
       })),
     };
   }
@@ -356,6 +359,49 @@ export class HackathonHelpService {
         deepLink: `unifesto://hackathon/${eventId}/help`,
       });
     }
+    return this.inbox(userId, eventId);
+  }
+
+  /**
+   * D27: hand a query to the organisers as a Space-desk HELP case, in the
+   * team member's words with team, room and topic attached. The query stays on
+   * the desk (it can still be resolved here). One case per query.
+   */
+  async escalate(userId: string, eventId: string, queryId: string) {
+    const board = await this.teams.getBoardOrThrow(eventId);
+    const query = await this.prisma.hackathonHelpQuery.findFirst({
+      where: { id: queryId, leaderboardId: board.id },
+      include: { entrant: { select: { teamCode: true, name: true } } },
+    });
+    if (!query) throw new NotFoundException('Query not found');
+    const manager = await this.leaderboard.canManage(userId, eventId);
+    if (!manager && !(query.notifiedUserIds.includes(userId) && (await this.isStaff(userId, eventId)))) {
+      throw new ForbiddenException('This query wasn’t sent to you.');
+    }
+    if (query.caseId) return this.inbox(userId, eventId);
+
+    const [event, me] = await Promise.all([
+      this.prisma.event.findUniqueOrThrow({ where: { id: eventId }, select: { spaceId: true } }),
+      this.prisma.user.findUnique({ where: { id: userId }, select: { fullName: true, username: true } }),
+    ]);
+    const team = query.entrant.name ? `${query.entrant.name} (${query.entrant.teamCode})` : query.entrant.teamCode;
+    const open: SubjectCaseOpen = {
+      subjectType: 'HackathonHelpQuery',
+      subjectId: query.id,
+      requesterId: query.raisedBy,
+      kind: SupportCaseKind.HELP,
+      desk: SupportDesk.SPACE,
+      spaceId: event.spaceId,
+      eventId,
+      subject: `Hackathon help: ${query.topicName} · ${team}`,
+      message:
+        `${query.message}\n\nTeam: ${team} · Room: ${query.roomName ?? 'not set'} · Topic: ${query.topicName}` +
+        `\nEscalated from the help desk by ${displayName(me) ?? 'the event team'}.`,
+      notify: true,
+    };
+    const caseId = (await this.events.emitAsync(SUBJECT_CASE_OPEN, open)).find((r): r is string => typeof r === 'string');
+    if (!caseId) throw new ServiceUnavailableException("Couldn't reach the organisers. Try again.");
+    await this.prisma.hackathonHelpQuery.update({ where: { id: queryId }, data: { caseId, escalatedAt: new Date() } });
     return this.inbox(userId, eventId);
   }
 

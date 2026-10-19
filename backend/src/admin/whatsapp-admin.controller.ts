@@ -19,7 +19,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
-import { WhatsAppReplyDto } from '../whatsapp/dto/reply.dto';
+import { WhatsAppConvertToCaseDto, WhatsAppReplyDto } from '../whatsapp/dto/reply.dto';
 import { WhatsAppInitiateDto } from '../whatsapp/dto/initiate.dto';
 import {
   WhatsAppAudienceDto,
@@ -34,6 +34,7 @@ import {
  *   GET  /admin/whatsapp/conversations            -> paginated inbox
  *   GET  /admin/whatsapp/conversations/:id        -> one thread (marks read)
  *   POST /admin/whatsapp/conversations/:id/reply  -> free-form text reply
+ *   POST /admin/whatsapp/conversations/:id/case   -> convert to an Assist case (D26)
  *   POST /admin/whatsapp/conversations/initiate   -> start a convo via template
  *   GET  /admin/whatsapp/stats                     -> headline counters
  */
@@ -143,6 +144,16 @@ export class WhatsAppAdminController {
     @CurrentUser() user: User,
   ) {
     return this.whatsappService.sendReply(id, user.id, dto.body);
+  }
+
+  /** D26: copy the picked messages into a Platform HELP case; idempotent per conversation. */
+  @Post('conversations/:id/case')
+  convertToCase(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: WhatsAppConvertToCaseDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.whatsappService.convertToCase(id, user.id, dto.messageIds);
   }
 
   /**
