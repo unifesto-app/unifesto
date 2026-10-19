@@ -231,7 +231,7 @@ It's a major because it removes the App Clip.
 | O14 | **Test promote, revert and republish on preview channel.** Test promote / revert / republish on the `preview` channel once, with an internal preview build. The Apex mutations are still untested. Use the preview channel to QA risky OTAs before production | planned |
 | O15 | **Publish OTAs regularly after mobile PRs merge.** Publish habit: OTA whenever a batch of mobile PRs has merged and been checked on a device. Don't let JS sit on `main` unshipped | planned |
 | O16 | **Rewrite mobile OTA docs for the new flow.** Rewrite `mobile/docs/OTA.md` for the new flow (drop the `--skip-bundler` section, add the native-window rule, record-from-EAS and the one-rollout rule) | done (#109), live 19 Oct |
-| O17 | **Clear store review risks and land native fixes before the freeze.** Everything native must merge before the Fri 20 Nov freeze (R1); | next |
+| O17 | **Clear store review risks and land native fixes before the freeze.** Everything native must merge before the Fri 20 Nov freeze (R1); | done (mobile; Apple token revoke is the separate backend PR) (#289) |
 
 **Done when:** a phone on the latest store build receives every OTA published from `main`; CI has flagged at least one native PR; and Apex shows update adoption.
 
@@ -826,3 +826,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G5 space web EmptyState rollout across stays, attendees, check-in, transactions, tracking and branding settings (#286)
 - **2026-10-19** · I1–I2: versioned legal docs (LegalDocument/LegalAcceptance, public GET /legal/:slug, pending + accept), web legal pages render from the API, blocking accept sheet in space + mobile, Apex editor; I1 drafts + I4 retention line await lawyer review. Not deployed. (#285)
 - **2026-10-19** · L4 projector view: full-screen read-only Space page for poll results, the Q&A wall and live quizzes, opened by operators or with a revocable display link (no login, no attendee PII). (#287)
+- **2026-10-19** · O17 mobile: Firebase Analytics + fake consent removed, one iOS IAP rule for paid sessions and online events, price-free billing, sticky forced-update gate, /claim app links, sensitive Android permissions blocked, 8 unused deps dropped, masked-view patch via patch-package (#289)
