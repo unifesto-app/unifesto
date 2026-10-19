@@ -13,8 +13,14 @@ import {
   Prisma,
   StayBookingStatus,
   StayPaymentMode,
+  SupportCaseKind,
+  SupportDesk,
+  SupportTicketCategory,
+  SupportTicketStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { NotifyService } from '../notifications/notify.service';
 import type { NotifyKindData, StayNotice } from '../notifications/notify.kinds';
@@ -98,6 +104,7 @@ const BOOKING_INCLUDE = {
   event: {
     select: {
       id: true,
+      spaceId: true,
       title: true,
       slug: true,
       startDateTime: true,
@@ -142,7 +149,32 @@ export class StayBookingsService {
     private readonly notifyService: NotifyService,
     private readonly authz: AuthorizationService,
     private readonly redis: RedisService,
+    private readonly events?: EventEmitter2,
   ) {}
+
+  /**
+   * D23: a paid stay's cancellation is an Assist case on the event's Space
+   * desk, which moves stay money (curator or space admin). One per booking.
+   */
+  private openStayCase(
+    b: { id: string; userId: string; eventId: string; stay: { name: string }; event: { spaceId: string } },
+    message: string,
+    raisedForRequester: boolean,
+  ) {
+    openSubjectCase(this.events, {
+      subjectType: 'StayBooking',
+      subjectId: b.id,
+      requesterId: b.userId,
+      kind: SupportCaseKind.CANCELLATION,
+      desk: SupportDesk.SPACE,
+      spaceId: b.event.spaceId,
+      eventId: b.eventId,
+      subject: `Stay cancellation: ${b.stay.name}`,
+      message,
+      raisedForRequester,
+      category: SupportTicketCategory.PAYMENTS,
+    });
+  }
 
   // ───────────────────────────── helpers ─────────────────────────────
 
@@ -559,9 +591,25 @@ export class StayBookingsService {
       b.paymentMode === StayPaymentMode.ONLINE &&
       b.paymentStatus === PaymentStatus.PAID
     ) {
-      throw new BadRequestException(
-        'You paid for this stay online. Ask the event team to cancel it and refund you.',
-      );
+      // D23: the event team cancels and refunds it from the case (D6 flow).
+      // Asking again reopens the case the guest already has.
+      const ask = `Please cancel my stay and refund me.${reason?.trim() ? ` Reason: ${reason.trim()}` : ''}`;
+      const existing = await this.prisma.supportTicket.findFirst({
+        where: { subjectType: 'StayBooking', subjectId: b.id },
+        select: { id: true },
+      });
+      if (existing) {
+        updateSubjectCase(this.events, {
+          subjectType: 'StayBooking',
+          subjectId: b.id,
+          actorId: userId,
+          text: `The guest asked again. ${ask}`,
+          status: SupportTicketStatus.OPEN,
+        });
+      } else {
+        this.openStayCase(b, ask, false);
+      }
+      return { ...(await this.getMine(userId, bookingId)), cancellationRequested: true };
     }
     const res = await this.prisma.stayBooking.updateMany({
       where: { id: b.id, status: b.status },
@@ -1102,6 +1150,18 @@ export class StayBookingsService {
         },
       });
     }
+
+    // D23: a paid stay's cancellation lives in its case; resolve it with the outcome.
+    if (paidOnline) this.openStayCase(b, 'The event team is cancelling this paid stay.', true); // no-op when the guest asked
+    updateSubjectCase(this.events, {
+      subjectType: 'StayBooking',
+      subjectId: b.id,
+      actorId: userId,
+      text: `The event team cancelled this stay${dto.reason?.trim() ? `: ${dto.reason.trim()}` : ''}.${
+        refunded ? ` ${rupees(refunded)} is being refunded.` : paidOnline ? ' No refund was sent.' : ''
+      }`,
+      status: SupportTicketStatus.RESOLVED,
+    });
 
     this.notify(b, 'stay.cancelled', {
       reason: dto.reason?.trim() || undefined,

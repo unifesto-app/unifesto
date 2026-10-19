@@ -108,3 +108,47 @@ describe('EmailService confirmation .ics', () => {
     expect(ics).not.toContain('acme');
   });
 });
+
+describe('EmailService marketing send (C8)', () => {
+  const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
+
+  it('sends campaign mail as raw MIME with List-Unsubscribe + one-click headers', async () => {
+    const prisma: any = { messageDelivery: { create: jest.fn() } };
+    const service = new EmailService(config, prisma);
+    const send = jest.fn().mockResolvedValue({ MessageId: 'ses-1' });
+    (service as any).sesClient = { send };
+    const res = await service.sendCustomCampaignEmail({
+      to: 'a@x.com',
+      subject: 'Hello\r\nBcc: evil@x.com',
+      html: '<p>Hi</p>',
+      campaignId: 'c1',
+      unsubscribeUrl: 'https://api.test/email/unsubscribe?t=abc',
+    });
+    expect(res.messageId).toBe('ses-1');
+    // Still in the C3 delivery log, like every other SES send.
+    expect(prisma.messageDelivery.create.mock.calls[0][0].data).toMatchObject({
+      provider: 'ses',
+      kind: 'campaign',
+      label: 'Hello\r\nBcc: evil@x.com',
+    });
+    const mime = Buffer.from(send.mock.calls[0][0].input.RawMessage.Data).toString();
+    expect(mime).toContain(
+      'List-Unsubscribe: <https://api.test/email/unsubscribe?t=abc>, <mailto:support@unifesto.app?subject=Unsubscribe>',
+    );
+    expect(mime).toContain('List-Unsubscribe-Post: List-Unsubscribe=One-Click');
+    expect(mime).not.toMatch(/^Bcc:/m); // subject is encoded, never a raw header line
+  });
+
+  it('splits a long non-ASCII header into short encoded-words', () => {
+    const { encodeWords } = require('./email.service');
+    expect(encodeWords('Plain subject')).toBe('Plain subject');
+    const out: string = encodeWords('नमस्ते '.repeat(12));
+    const words = out.split('\r\n ');
+    expect(words.length).toBeGreaterThan(1);
+    for (const w of words) expect(w.length).toBeLessThanOrEqual(75);
+    const decoded = words
+      .map((w) => Buffer.from(w.slice(10, -2), 'base64').toString('utf8'))
+      .join('');
+    expect(decoded).toBe('नमस्ते '.repeat(12));
+  });
+});

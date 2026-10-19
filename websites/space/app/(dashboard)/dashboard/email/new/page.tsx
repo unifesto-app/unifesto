@@ -228,6 +228,9 @@ export default function SpaceComposeCampaignPage() {
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  People who unsubscribed or turned email off are left out. Registrants means confirmed attendees only.
+                </p>
               </div>
 
               {targetDef.needs === "event" && (

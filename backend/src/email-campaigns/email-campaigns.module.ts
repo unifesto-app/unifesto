@@ -7,6 +7,7 @@ import { EmailCampaignQueue } from './email-campaigns.queue';
 import { EmailTemplatesService } from './email-templates.service';
 import { EmailTrackingController } from './email-tracking.controller';
 import { SpaceEmailController } from './space-email.controller';
+import { UnsubscribeController } from './unsubscribe.controller';
 
 /**
  * Shared email campaign engine. Owns the campaign/template services, the public
@@ -19,7 +20,7 @@ import { SpaceEmailController } from './space-email.controller';
  */
 @Module({
   imports: [ConfigModule, EmailModule, AuthModule],
-  controllers: [EmailTrackingController, SpaceEmailController],
+  controllers: [EmailTrackingController, SpaceEmailController, UnsubscribeController],
   providers: [EmailCampaignsService, EmailTemplatesService, EmailCampaignQueue],
   exports: [EmailCampaignsService, EmailTemplatesService],
 })

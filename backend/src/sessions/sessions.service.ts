@@ -21,7 +21,13 @@ import {
   SessionPlatform,
   SessionStatus,
   SessionVisibility,
+  SupportCaseKind,
+  SupportDesk,
+  SupportTicketCategory,
+  SupportTicketStatus,
 } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import slugify from 'slugify';
 import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { canCancel, joinWindow } from './session-policy';
@@ -49,6 +55,7 @@ export class SessionsService {
     private readonly livekit: LivekitService,
     private readonly planConfig: PlanConfigService,
     private readonly authz: AuthorizationService,
+    private readonly events?: EventEmitter2,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -459,6 +466,22 @@ export class SessionsService {
       where: { id: { in: paidRegistrations.map((r) => r.id) }, status: RegistrationStatus.REGISTERED },
       data: { status: RegistrationStatus.CANCELLED, cancelledAt: now, refundDueAt: now },
     });
+    // D23: each paid booking's refund is a CANCELLATION case on the space desk;
+    // refundDue resolves it once the money has gone.
+    for (const reg of paidRegistrations) {
+      openSubjectCase(this.events, {
+        subjectType: 'SessionRegistration',
+        subjectId: reg.id,
+        requesterId: reg.userId,
+        kind: SupportCaseKind.CANCELLATION,
+        desk: SupportDesk.SPACE,
+        spaceId: session.spaceId,
+        subject: `Session cancelled: ${session.title}`,
+        message: `The host cancelled this session${reason?.trim() ? `: ${reason.trim()}` : ''}. Your refund is on its way.`,
+        raisedForRequester: true,
+        category: SupportTicketCategory.PAYMENTS,
+      });
+    }
 
     // B18: refunds and notices run after the response (hundreds of Razorpay
     // calls don't fit in a request); refundDue emails each attendee once their
@@ -508,6 +531,13 @@ export class SessionsService {
         refundDueAt: null,
         ...(amount > 0 && { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: new Prisma.Decimal(amount) }),
       },
+    });
+    // No-op unless a host cancel opened a case for it (D23).
+    updateSubjectCase(this.events, {
+      subjectType: 'SessionRegistration',
+      subjectId: registrationId,
+      text: amount > 0 ? `₹${amount} refunded to the card or account it was paid with.` : 'Nothing was left to refund.',
+      status: SupportTicketStatus.RESOLVED,
     });
     // Tell them now that it's done, whichever path got here (cancel, sold out
     // while paying, or a retry). Free registrants get it too, with no amount.
