@@ -69,7 +69,7 @@ Save this for fest season 🔖 Link in bio.
 ## Short 3: Organiser POV, 2 AM matching UPI screenshots (Spreadsheet vs Space)
 
 **Out:** Tue 20 Oct, 9 PM IST (the Google Forms blog is up from 10:30 AM). **Format:** recurring "Organiser POV" / "Spreadsheet vs Space". **Cover:** `assets/short3-cover.png`.
-**Record:** 25 s of face cam or hands-only at a desk at night (lamp on, laptop open), plus 15 s of screen.
+**Record:** nothing to record: it's animated. `assets/short3.mp4` (1080x1920, 45 s, H.264 + AAC) is drawn with the Bujji kit (`~/Startups/unifesto-video-short3`, `src/short3.py`): Bujji at the desk at night, drawn generic payment screenshots (fake "Student N" names, masked refs, ₹200, blurred), the sheet at row 214, head on the desk, then the real Aurora Fest Space screens in the site's phone frame. Synth music and SFX, no voice-over, captions burned in. The cover is the opening frame (`python3 src/short3.py one 1.2 1 out/short3-cover.png`).
 
 | Time | On screen | On-screen text | Voiceover / sound |
 |---|---|---|---|

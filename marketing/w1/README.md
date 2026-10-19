@@ -28,7 +28,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Tue 20 | 7:30 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | yes | ready |
 | Tue 20 | 8 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2-cover.png` | yes (cut) | needs edit |
 | Tue 20 | 8:30 PM | LinkedIn (company) | 75 s video in the frame | `05-linkedin.md`, `assets/linkedin-frame/` | yes (cut) | needs edit |
-| Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3-cover.png` | no | in production |
+| Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3.mp4`, `assets/short3-cover.png` | no | ready (animated, 45 s) |
 | Tue 20 | 9:30 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | draft, ready |
 | Tue 20 | evening | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
 | Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
