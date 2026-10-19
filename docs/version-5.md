@@ -808,3 +808,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G10 part 1: groups check in per member everywhere, audited undo, soft-deleted points, late offline sync, people-based stats, Space recent card on /recent (#267)
 - **2026-10-19** · G10 part 2: member pass reads own check-ins, offline queues sync on foreground/reconnect and never across accounts, file-backed guest lists, proactive download (#268)
 - **2026-10-19** · H25: custom-domain CORS for notify/inquiry, encoded branded From + fallback, hourly domain re-check, TXT ownership + claim expiry + provider cleanup, no Unifesto chrome on custom domains (#269)
+- **2026-10-19** · G10 mobile check-in Undo (scanner success card, event hub recent rows, search "Checked in" rows) via POST /checkin/undo; online only, roster refreshed after undo (#270)
