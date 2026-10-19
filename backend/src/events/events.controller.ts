@@ -27,6 +27,7 @@ import {
 import { EventStatus } from '@prisma/client';
 import { EventsService } from './events.service';
 import { BannerPaletteService } from '../banner-palette/banner-palette.service';
+import { EventDraftDto, EventDraftService } from './event-draft';
 import {
   AddCoHostDto,
   AddTeamMemberDto,
@@ -65,6 +66,7 @@ export class EventsController {
   constructor(
     private readonly eventsService: EventsService,
     private readonly bannerPalette: BannerPaletteService,
+    private readonly eventDraft: EventDraftService,
   ) {}
 
   @Post()
@@ -337,6 +339,15 @@ export class EventsController {
     @Param('typeId') typeId: string,
   ) {
     return this.eventsService.deleteTicketType(req.user.id, id, typeId);
+  }
+
+  @Post(':id/ai-draft')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'AI draft of description, agenda and FAQs from notes or a link (M1). Saves nothing.' })
+  @ApiResponse({ status: 201 })
+  async aiDraft(@Request() req, @Param('id') id: string, @Body() dto: EventDraftDto) {
+    return this.eventDraft.draft(req.user.id, id, dto);
   }
 
   @Post(':id/agenda')
