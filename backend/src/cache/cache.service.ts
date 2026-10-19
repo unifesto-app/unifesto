@@ -81,56 +81,6 @@ export class CacheService {
   }
 
   // =====================================================
-  // 3. CHECK-IN CACHE
-  // =====================================================
-
-  async getCheckinCache(eventId: string): Promise<any[] | null> {
-    try {
-      const cacheKey = `checkin:cache:${eventId}`;
-      const cached = await this.redis.get(cacheKey);
-      
-      if (cached) {
-        this.logger.debug(`Cache hit: ${cacheKey}`);
-        return JSON.parse(cached);
-      }
-      
-      this.logger.debug(`Cache miss: ${cacheKey}`);
-      return null;
-    } catch (error) {
-      this.logger.error(`Get checkin cache error for event:${eventId}`, error);
-      return null;
-    }
-  }
-
-  async getEventRegistrationsForCheckin(eventId: string): Promise<any[] | null> {
-    return this.getCheckinCache(eventId);
-  }
-
-  async setCheckinCache(eventId: string, registrations: any[]): Promise<void> {
-    try {
-      const cacheKey = `checkin:cache:${eventId}`;
-      await this.redis.set(cacheKey, JSON.stringify(registrations), 3600);
-      this.logger.debug(`Cache set: ${cacheKey} with ${registrations.length} registrations`);
-    } catch (error) {
-      this.logger.error(`Set checkin cache error for event:${eventId}`, error);
-    }
-  }
-
-  async setEventRegistrationsForCheckin(eventId: string, registrations: any[]): Promise<void> {
-    return this.setCheckinCache(eventId, registrations);
-  }
-
-  async invalidateCheckinCache(eventId: string): Promise<void> {
-    try {
-      const cacheKey = `checkin:cache:${eventId}`;
-      await this.redis.del(cacheKey);
-      this.logger.debug(`Cache invalidated: ${cacheKey}`);
-    } catch (error) {
-      this.logger.error(`Invalidate checkin cache error for event:${eventId}`, error);
-    }
-  }
-
-  // =====================================================
   // 5. EVENT DETAILS CACHE
   // =====================================================
 

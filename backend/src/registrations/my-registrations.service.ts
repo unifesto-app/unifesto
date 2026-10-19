@@ -78,10 +78,27 @@ export class MyRegistrationsService {
   }
 
   /** The seat this user claimed on someone else's group registration, if any. */
+  /** When each member was first checked in, by registration id → that member's index. */
+  private async myFirstCheckins(memberIndexByReg: Map<string, number>) {
+    const first = new Map<string, Date>();
+    if (memberIndexByReg.size === 0) return first;
+    const rows = await this.prisma.eventGroupMemberCheckin.findMany({
+      where: { registrationId: { in: [...memberIndexByReg.keys()] } },
+      orderBy: { checkedInAt: 'asc' },
+      select: { registrationId: true, memberIndex: true, checkedInAt: true },
+    });
+    for (const r of rows) {
+      if (r.memberIndex === memberIndexByReg.get(r.registrationId) && !first.has(r.registrationId)) {
+        first.set(r.registrationId, r.checkedInAt);
+      }
+    }
+    return first;
+  }
+
   private claimedSeatOf(userId: string, registrationId: string) {
     return this.prisma.groupSeat.findFirst({
       where: { registrationId, claimedByUserId: userId, status: GroupSeatStatus.CLAIMED },
-      select: { id: true, whatsappJoinedAt: true },
+      select: { id: true, seatIndex: true, whatsappJoinedAt: true },
     });
   }
 
@@ -141,7 +158,7 @@ export class MyRegistrationsService {
         status: GroupSeatStatus.CLAIMED,
         registration: { eventId, userId: { not: userId }, ...live },
       },
-      select: { registrationId: true, claimedAt: true },
+      select: { registrationId: true, claimedAt: true, seatIndex: true },
     });
     const seatByReg = new Map(claimedSeats.map((c) => [c.registrationId, c]));
 
@@ -177,6 +194,9 @@ export class MyRegistrationsService {
     // renders one button without re-implementing the precedence rule. The link
     // is per-registration because it depends on the row's ticket type.
     const myEmails = seatByReg.size ? await this.userEmailSet(userId) : new Set<string>();
+    const myFirstIn = await this.myFirstCheckins(
+      new Map([...seatByReg].map(([regId, s]) => [regId, s.seatIndex - 1])),
+    );
 
     return registrations.map((reg) => {
       const ev = reg.event;
@@ -196,7 +216,11 @@ export class MyRegistrationsService {
       const seat = reg.userId !== userId ? seatByReg.get(reg.id) : undefined;
       if (!seat) return base;
       // A claimed seat: only MY seat ticket (own QR), flagged as a group member.
-      return memberView(base, seatTicketOf(reg.tickets, myEmails, seat.claimedAt));
+      return memberView(
+        base,
+        seatTicketOf(reg.tickets, myEmails, seat.claimedAt),
+        myFirstIn.get(reg.id) ?? null,
+      );
     });
   }
 
@@ -217,34 +241,52 @@ export class MyRegistrationsService {
   async getMyRegistrationCheckins(userId: string, registrationId: string) {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
-      select: { userId: true },
+      select: { userId: true, groupSize: true },
     });
     if (!registration) {
       throw new NotFoundException('Registration not found');
     }
-    // Check-ins are per registration, so a group's history is shared with
-    // every teammate who claimed a seat on it.
-    if (registration.userId !== userId && !(await this.claimedSeatOf(userId, registrationId))) {
+    const seat = await this.claimedSeatOf(userId, registrationId);
+    if (registration.userId !== userId && !seat) {
       throw new ForbiddenException('Not your registration');
     }
 
+    const select = {
+      id: true,
+      checkedInAt: true,
+      checkinTypeId: true,
+      checkinType: { select: { id: true, name: true } },
+      checkedInByUser: { select: { fullName: true, username: true } },
+    } as const;
     const records = await this.prisma.eventCheckinRecord.findMany({
       where: { registrationId },
       orderBy: { checkedInAt: 'desc' },
-      select: {
-        id: true,
-        checkedInAt: true,
-        checkinType: { select: { id: true, name: true } },
-        checkedInByUser: { select: { fullName: true, username: true } },
-      },
+      select,
     });
+    if ((registration.groupSize ?? 0) <= 1) return records.map(toHistory);
 
-    return records.map((r) => ({
-      id: r.id,
-      checkedInAt: r.checkedInAt,
-      checkinType: r.checkinType?.name ?? null,
-      checkedBy: r.checkedInByUser?.fullName || r.checkedInByUser?.username || null,
-    }));
+    // A group pass is one person's: only their own member check-ins, never a
+    // teammate's. The lead without a claimed seat of their own is member 0.
+    const mine = await this.prisma.eventGroupMemberCheckin.findMany({
+      where: { registrationId, memberIndex: seat ? seat.seatIndex - 1 : 0 },
+      orderBy: { checkedInAt: 'desc' },
+      select,
+    });
+    if (registration.userId !== userId) return mine.map(toHistory);
+    // The lead also keeps a whole-group check-in recorded before per-member
+    // records existed (a point with a registration record but no member ones).
+    const memberPoints = new Set(
+      (
+        await this.prisma.eventGroupMemberCheckin.findMany({
+          where: { registrationId },
+          select: { checkinTypeId: true },
+          distinct: ['checkinTypeId'],
+        })
+      ).map((m) => m.checkinTypeId),
+    );
+    return [...mine, ...records.filter((r) => !memberPoints.has(r.checkinTypeId))]
+      .sort((a, b) => +b.checkedInAt - +a.checkedInAt)
+      .map(toHistory);
   }
 
   /**
@@ -515,8 +557,8 @@ export class MyRegistrationsService {
     const matchers = emails.map(
       (e) => Prisma.sql`gs.member_details @> ${JSON.stringify({ email: e })}::jsonb`,
     );
-    const idRows = emails.length === 0 ? [] : await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-      SELECT DISTINCT r.id FROM event_registrations r
+    const idRows = emails.length === 0 ? [] : await this.prisma.$queryRaw<{ id: string; seat_index: number }[]>(Prisma.sql`
+      SELECT DISTINCT r.id, gs.seat_index FROM event_registrations r
       JOIN group_seats gs ON gs.registration_id = r.id
       WHERE r.payment_status IN ('PAID', 'PARTIALLY_REFUNDED')
         AND r.status <> 'CANCELLED'
@@ -536,9 +578,14 @@ export class MyRegistrationsService {
           event: NOT_DELETED,
         },
       },
-      select: { registrationId: true, claimedAt: true },
+      select: { registrationId: true, claimedAt: true, seatIndex: true },
     });
     const seatByReg = new Map(claimedSeats.map((c) => [c.registrationId, c]));
+
+    // My member index on each booking: the seat I claimed, else the seat
+    // filled with my email.
+    const myIndex = new Map(idRows.map((r) => [r.id, r.seat_index - 1]));
+    for (const c of claimedSeats) myIndex.set(c.registrationId, c.seatIndex - 1);
 
     const ids = [...new Set([...idRows.map((r) => r.id), ...seatByReg.keys()])];
     if (ids.length === 0) return { data: [] };
@@ -570,6 +617,7 @@ export class MyRegistrationsService {
       },
     });
 
+    const myFirstIn = await this.myFirstCheckins(myIndex);
     const myEmails = new Set(emails.map((e) => e.trim().toLowerCase()));
     return {
       data: registrations.map((r) => {
@@ -579,7 +627,7 @@ export class MyRegistrationsService {
         // that stays their pass.
         const mine = seatTicketOf(r.tickets, myEmails, seat?.claimedAt ?? null);
         return {
-          ...memberView(r, mine),
+          ...memberView(r, mine, myFirstIn.get(r.id) ?? null),
           ...(!seat && !mine ? { qrCode: r.qrCode } : {}),
           leadName: r.user.fullName || r.user.username || null,
         };
@@ -640,6 +688,21 @@ export class MyRegistrationsService {
   }
 }
 
+/** One row of a pass's check-in history. */
+function toHistory(r: {
+  id: string;
+  checkedInAt: Date;
+  checkinType: { name: string } | null;
+  checkedInByUser: { fullName: string | null; username: string | null } | null;
+}) {
+  return {
+    id: r.id,
+    checkedInAt: r.checkedInAt,
+    checkinType: r.checkinType?.name ?? null,
+    checkedBy: r.checkedInByUser?.fullName || r.checkedInByUser?.username || null,
+  };
+}
+
 /**
  * What a group member sees of the lead's booking (A28): the event, ticket type
  * and group facts, and their own seat ticket. Never the lead's form answers,
@@ -659,16 +722,21 @@ function memberView<
     ticketType: unknown;
   },
   T,
->(r: R, mine: (T & { qrCode: string }) | undefined) {
+>(r: R, mine: (T & { qrCode: string }) | undefined, myCheckedInAt: Date | null) {
   return {
     id: r.id,
     eventId: r.eventId,
     ticketTypeId: r.ticketTypeId,
-    status: r.status,
+    // ATTENDED means someone on the booking is in; this member only once
+    // they were scanned themselves.
+    status:
+      r.status === RegistrationStatus.ATTENDED && !myCheckedInAt
+        ? RegistrationStatus.REGISTERED
+        : r.status,
     paymentStatus: r.paymentStatus,
     groupSize: r.groupSize,
     registeredAt: r.registeredAt,
-    checkedInAt: r.checkedInAt,
+    checkedInAt: myCheckedInAt,
     event: r.event as R['event'],
     ticketType: r.ticketType as R['ticketType'],
     isGroupMember: true as const,

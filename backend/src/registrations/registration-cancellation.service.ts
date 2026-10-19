@@ -283,9 +283,6 @@ export class RegistrationCancellationService {
         );
     }
 
-    // Invalidate cache
-    await this.cache.invalidateCheckinCache(eventId);
-
     this.logger.log(`Cancelled registration ${registration.id}`);
 
     // An unpaid curator add still has a live Payment Link; close it (A19).
@@ -416,8 +413,6 @@ export class RegistrationCancellationService {
         });
       }
     });
-
-    await this.cache.invalidateCheckinCache(eventId);
     this.logger.log(
       `Restored registration ${registration.id} (event ${eventId}) by user ${userId}`,
     );

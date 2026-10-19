@@ -25,6 +25,7 @@ import {
   SetCheckinAccessDto,
   GroupCheckinDto,
   SyncOfflineCheckinsDto,
+  UndoCheckinDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -67,6 +68,18 @@ export class CheckinController {
       dto.registrationId,
       dto.checkinTypeId,
       dto.memberIndex,
+    );
+  }
+
+  @Post('undo')
+  @ApiOperation({ summary: 'Undo a mistaken check-in at a point (audited)' })
+  async undoCheckin(@Request() req, @Body() dto: UndoCheckinDto) {
+    return this.checkinService.undoCheckin(
+      req.user.id,
+      dto.registrationId,
+      dto.checkinTypeId,
+      dto.memberIndex,
+      dto.reason,
     );
   }
 

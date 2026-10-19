@@ -46,6 +46,7 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
       eventRegistration: { findMany },
       eventFormField: { findMany: jest.fn().mockResolvedValue([]) },
       groupSeat: { findMany: jest.fn().mockResolvedValue([]) },
+      eventGroupMemberCheckin: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const planConfig = { getEffectiveLimits: () => ({ hasBulkExport: true }), resolvePlatformFeePercent: () => 0 };
     const svc = buildRegistrationsService(
@@ -101,6 +102,7 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
       memberDetails: { name: `${registrationId}-m${seatIndex}` },
       claimedBy: null,
     });
+    prisma.eventGroupMemberCheckin.findMany.mockResolvedValue([{ registrationId: 'paid', memberIndex: 1 }]);
     const seatFind = prisma.groupSeat.findMany as jest.Mock;
     seatFind.mockImplementation(async ({ where }: any) =>
       ['paid', 'unpaid']
@@ -114,6 +116,10 @@ describe('RegistrationsService.exportRegistrations (streamed CSV)', () => {
     expect(csv).toContain('paid-m2');
     expect(csv).not.toContain('unpaid-m2');
     expect(csv.split('\r\n')).toHaveLength(1 + 2 + 1); // header + 2 seats + 1 lead row
+    // G10: only the member who was scanned reads as checked in.
+    const row = (name: string) => csv.split('\r\n').find((l) => l.includes(name))!;
+    expect(row('paid-m2')).toMatch(/,Yes,/);
+    expect(row('paid-m1')).toMatch(/,No,/);
   });
 
   it('check-in log lists group members instead of the group summary record (B5)', async () => {

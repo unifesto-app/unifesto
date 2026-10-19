@@ -274,7 +274,6 @@ export class RegistrationPaymentsService {
       // the verify/webhook race would otherwise send a duplicate.
       if (converted) await this.confirmations.sendRegistrationConfirmations(registration.id);
       else await this.refundIfDuplicateQuietly(registration.id, dto.razorpayPaymentId);
-      await this.cache.invalidateCheckinCache(eventId);
       await this.cache.incrementEventScore(eventId);
 
 
@@ -391,9 +390,6 @@ export class RegistrationPaymentsService {
 
     // Only the caller that won the PAID claim above gets here, so this sends once.
     await this.sendPaidConfirmations(registration.id, dto.razorpayPaymentId);
-
-    // Invalidate check-in cache
-    await this.cache.invalidateCheckinCache(eventId);
 
     // Increment trending events score
     await this.cache.incrementEventScore(eventId);
@@ -1442,7 +1438,6 @@ export class RegistrationPaymentsService {
     if (client) {
       await client.del(`order:${orderId}`);
     }
-    await this.cache.invalidateCheckinCache(registration.eventId);
 
     this.logger.log(`Webhook processed payment for registration ${registrationId}`);
   }

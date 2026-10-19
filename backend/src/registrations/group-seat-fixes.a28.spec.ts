@@ -145,12 +145,36 @@ describe('A28 a member sees only their own seat', () => {
     user: { fullName: 'Lead', username: null },
   };
 
+  it("G10: a teammate's check-in doesn't mark my pass checked in; my own does", async () => {
+    const leadIn = new Date('2026-10-02T09:00:00Z');
+    const meIn = new Date('2026-10-02T09:05:00Z');
+    const checkins = [{ registrationId: 'r-1', memberIndex: 0, checkedInAt: leadIn }];
+    const prisma: any = {
+      user: { findUnique: jest.fn(async () => ({ identities: [{ email: 'me@x.com' }] })) },
+      $queryRaw: jest.fn(async () => []),
+      groupSeat: { findMany: jest.fn(async () => [{ registrationId: 'r-1', claimedAt, seatIndex: 3 }]) },
+      eventRegistration: {
+        findMany: jest.fn(async () => [{ ...reg, status: RegistrationStatus.ATTENDED, checkedInAt: leadIn }]),
+      },
+      eventGroupMemberCheckin: { findMany: jest.fn(async () => checkins) },
+    };
+    const svc = new MyRegistrationsService(prisma, {} as any, {} as any);
+
+    let { data } = await svc.getMyMemberTickets('me');
+    expect(data[0]).toMatchObject({ status: RegistrationStatus.REGISTERED, checkedInAt: null });
+
+    checkins.push({ registrationId: 'r-1', memberIndex: 2, checkedInAt: meIn }); // seat 3 = me
+    ({ data } = await svc.getMyMemberTickets('me'));
+    expect(data[0]).toMatchObject({ status: RegistrationStatus.ATTENDED, checkedInAt: meIn });
+  });
+
   it('member tickets carry no form answers, payment ids or teammate QRs', async () => {
     const prisma: any = {
       user: { findUnique: jest.fn(async () => ({ identities: [{ email: 'me@x.com' }] })) },
       $queryRaw: jest.fn(async () => []),
-      groupSeat: { findMany: jest.fn(async () => [{ registrationId: 'r-1', claimedAt }]) },
+      groupSeat: { findMany: jest.fn(async () => [{ registrationId: 'r-1', claimedAt, seatIndex: 3 }]) },
       eventRegistration: { findMany: jest.fn(async () => [reg]) },
+      eventGroupMemberCheckin: { findMany: jest.fn(async () => []) },
     };
     const svc = new MyRegistrationsService(prisma, {} as any, {} as any);
     const { data } = await svc.getMyMemberTickets('me');
