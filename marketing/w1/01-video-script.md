@@ -116,7 +116,7 @@ Not a screen tour. One story: **the club that survives its president graduating.
 | 6:36 | B | Silver primary button `REQUEST YOUR SPACE →`, mono `unifesto.app/request-space` | **W1-L37** Request your club's Space with the link below. Free to start. |
 | 6:46 | B | Next-video card on the cosmos: "Next Tuesday · How to sell event tickets online" | **W1-L38** Next Tuesday: tickets, group registrations and coupons. |
 | 6:54 | B | Bujji salutes, jets up; wordmark lockup | **W1-L39** This is Bujji, signing off. See you among the stars! |
-| 7:05 | T | End screen 20 s: "What is Unifesto?" + Subscribe, on the cosmos | (music out) |
+| 7:10 | T | End screen 20 s: "What is Unifesto?" + Subscribe, on the cosmos | (music out) |
 
 **B-roll if a take is short:** content-bank/w1 `01-dashboard.jpg`, `03-iam-roles-matrix.jpg`, `06b-event-team-role-picker.jpg`, inside `panel()` with a slow zoom.
 
@@ -126,7 +126,7 @@ Not a screen tour. One story: **the club that survives its president graduating.
 |---|---|---|---|
 | Short 1 "Should your gate volunteer see your bank details?" | 2:50–4:05, reframed 9:16 on the keycards | 45 s | `04-shorts.md` |
 | Short 2 "Every event gets its own team" | 4:05–5:14 | 40 s | `04-shorts.md` |
-| LinkedIn video (16:9, 75 s) | 0:00–0:22 (hook) + 3:05–3:40 (keycards) + 5:58–6:06 (payoff) | 75 s | `05-linkedin.md` |
+| LinkedIn video (16:9, about 73 s) | 0:00–0:22 (hook) + 2:57–3:40 (spreadsheet split + keycards) + 5:58–6:06 (payoff) | about 73 s | `05-linkedin.md` |
 | How-to carousel | chapters 1–5 | 8 slides | `assets/howto-carousel.json` |
 | Thumbnail | Bujji + payoff line | | `assets/thumbnail-bujji.jpg` (A), `assets/thumbnail.png` (B) |
 
@@ -134,26 +134,28 @@ Not a screen tour. One story: **the club that survives its president graduating.
 
 ## YouTube upload (P19)
 
-**Title** (58 characters, query first):
+**Title** (60 characters, query first):
 How to run a college club: your Space and team in 10 minutes
 
 **Description:**
 
 ```
-How to run a college club so it survives your president graduating: one Space on Unifesto for the whole club, your team added, clear roles for who can do what, a crew for every event, and a clean handover to next year's lead. Free to start, and free RSVP events carry no fee.
+How to run a college club that survives your president graduating: one Space, your team, clear roles and a crew for every event.
+Request a Space for your club (free to start): https://www.unifesto.app/request-space?utm_source=youtube&utm_campaign=v5-w1
 
-Request a Space for your club: https://www.unifesto.app/request-space?utm_source=youtube&utm_campaign=v5-w1
+Then hand the club to next year's lead, with every event and report kept. Free RSVP events carry no fees.
+
 All links: https://www.unifesto.app/links?utm_source=youtube&utm_campaign=v5-w1
 Pricing: https://www.unifesto.app/pricing?utm_source=youtube&utm_campaign=v5-w1
-Read the guide: How to organize a college fest, the 8-week checklist: https://www.unifesto.app/blog/how-to-organize-a-college-fest?utm_source=youtube&utm_campaign=v5-w1
+The 8-week checklist for organizing a college fest: https://www.unifesto.app/blog/how-to-organize-a-college-fest?utm_source=youtube&utm_campaign=v5-w1
 
 Chapters
 0:00 Your club shouldn't graduate with your president
-0:40 The Space
-1:50 Your team
-2:50 Who can do what
+0:40 Set up your club's Space
+1:50 Add your core team
+2:50 Roles: who can do what
 4:05 A crew for every event
-5:20 The handover
+5:20 Hand the club to next year's lead
 6:20 Recap and next step
 
 Everything on screen is a demo Space (Aurora Tech Club) with sample data.
@@ -163,10 +165,12 @@ Unifesto is an event platform built in India for clubs, communities, colleges an
 #collegeclub #collegefest #unifesto
 ```
 
+**Before upload:** re-time every chapter against the final cut (TTS and the edit will shift them). First chapter must stay 0:00 and every chapter at least 10 s, or YouTube drops them all.
+
 **Tags:** how to run a college club, college club management, college club, student club, run a club, club president, club handover, college fest, event team, club roles, unifesto, unifesto space, india college events
 
 **Thumbnail (A/B with YouTube "Test & compare"):** A = `assets/thumbnail-bujji.jpg` (3840x2160, Bujji + "Your club survives graduation." on the club orbit, from `~/Startups/unifesto-video/src/thumbnail_w1.py`). B = `assets/thumbnail.png` (same hook on the Space dashboard phone, `assets/thumbnail.json`).
 **Captions:** upload the SRT from the kit timeline (the "Bujji says" column), not auto-captions.
 **End screen:** "Subscribe" + "What is Unifesto?". **Card** at 0:22: "What is Unifesto?" (Bujji's first video).
-**Pinned comment:** "Which ring does your club struggle with most: Space, team, roles, event crews or the handover? Tell us and we'll answer every one. Start here: https://www.unifesto.app/links?utm_source=youtube&utm_campaign=v5-w1"
+**Pinned comment:** "Which ring does your club struggle with most: Space, team, roles, event crews or the handover? Tell us below and we'll answer every one. Request a Space for your club: https://www.unifesto.app/request-space?utm_source=youtube&utm_campaign=v5-w1"
 **Visibility:** Public, not "Made for kids". Category: Education.

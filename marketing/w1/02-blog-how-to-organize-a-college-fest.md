@@ -5,19 +5,23 @@ Publish **Tue 20 Oct**, 10 AM IST (W1 drop day), from Apex › Blog. Draft only 
 | Apex field | Value |
 |---|---|
 | Title | How to organize a college fest: the 8-week checklist |
-| Slug | `how-to-organize-a-college-fest` |
+| Slug | `how-to-organize-a-college-fest` (after publishing, open https://www.unifesto.app/blog/how-to-organize-a-college-fest and confirm it loads; Apex appends -2 if the slug is already taken, for example by an old draft) |
 | Category | Guides |
 | Author | Abhinavtej Reddy |
 | Read minutes | 8 |
 | Featured | yes (first guide) |
-| Cover image | 4:3. A real fest photo with the organiser's OK, or `assets/thumbnail.png` (16:9, crops fine to 4:3 around the centre) |
-| Excerpt | To organize a college fest, start 8 weeks out: pick a date and a core team in week 8, lock the budget and sponsors by week 6, open registrations by week 4, and spend the last week on check-in and volunteers. This checklist covers every week. |
+| Cover image | 16:9 (Apex crops to 16:9). A real fest photo with the organiser's OK. If there is none, leave it empty and the post uses its branded OG card. Do not use `assets/thumbnail.png`; that is the video's "Your club survives graduation" thumbnail. |
+| Excerpt | To organize a college fest, start 8 weeks out: date and team in week 8, budget in week 7, sponsors by week 6, registrations by week 4, check-in last. |
 
 Paste everything below the line into **Content**. The page shows the title as the H1, so the body starts at `##`.
 
+Production notes (not body text):
+- Internal links in the body carry no utm params, so the visitor's real source (LinkedIn, Instagram, YouTube) is kept.
+- After blog 2 is live at 10:30, edit this post and append " Comparing tools first? Read [Google Forms for event registration vs Unifesto](https://www.unifesto.app/blog/unifesto-vs-google-forms)." to the "Request a free Space" paragraph in "Where Unifesto fits". Do not link it before blog 2 is live.
+
 ---
 
-To organize a college fest, start 8 weeks before the date: fix the date, the core team and the budget first, then sponsors and events, then registrations, then volunteers and event day. This checklist breaks the 8 weeks into one list per week, with who owns each task.
+To organize a college fest, start 8 weeks before the date: fix the date, the core team, the budget and the events list first, then sponsors and venues, then registrations, then volunteers and event day. This checklist breaks the 8 weeks into one list per week, with what done looks like for each week.
 
 It is written for student organisers in India running a cultural, technical or management fest of 300 to 5,000 people. Smaller club events can use the same order and squeeze it into 3 or 4 weeks.
 
@@ -40,8 +44,8 @@ Pick the date before anything else. Check it against the academic calendar, inte
 
 - Get written approval from the principal or dean of student affairs.
 - Name a core team of 6 to 8 leads: overall lead, finance, sponsorship, events, marketing, logistics, hospitality, tech.
-- Give each lead one owner for decisions. Two people owning the same thing means nobody does.
-- Set one place where the team works. A shared drive plus a Unifesto Space works; ten WhatsApp groups does not.
+- Give every area exactly one owner. Two people owning the same thing means nobody does.
+- Set one place where the team works. A shared drive plus a Unifesto Space works. Ten WhatsApp groups do not.
 - Write down who can see the money and the attendee list. Most volunteers need neither.
 
 ## Week 7: budget and the events list
@@ -89,8 +93,8 @@ On Unifesto, each event gets a public page on unifesto.app, and attendees regist
 
 ## Week 4: open registrations
 
-- Publish the registration page and share one link everywhere.
-- Use a tracked link per channel (Instagram, WhatsApp, college notice board) so you know which one works.
+- Publish the event page and point every channel to it.
+- Give each channel its own tracked link (Instagram, WhatsApp, college notice board) so you know which one brings registrations.
 - Post the first announcement with the date, the 3 biggest events and the early bird deadline.
 - Check the numbers every day. If one event is empty after a week, fix its description or price.
 
@@ -139,29 +143,31 @@ You can run this checklist with spreadsheets and forms. Unifesto puts the parts 
 |---|---|
 | Core team and access (week 8) | Space members with Curator, Co-Curator and Crew roles |
 | Tickets and team registration (week 5) | Ticket types, group tickets, custom questions; attendees register and pay in the Unifesto app |
-| Tracked links (week 4) | Tracking links per channel |
+| Tracked links (week 4) | A tracking link per channel, with registrations and revenue per source |
 | Volunteer access (week 2) | Crew role per event, check-in points per crew member |
-| Check-in (week 1) | QR passes, multi-point scanning from a phone |
-| After the fest | Certificates with public verification (Pro), financials, PDF reports, payouts |
+| Check-in (week 1) | QR passes, multi-point scanning from a phone, offline scanning when the signal drops |
+| After the fest | Financials and payouts on every plan; certificates with public verification and PDF reports on Pro |
 
-The Starter plan costs ₹0 a month. Fees:
+The Starter plan costs ₹0 a month and suits a first event. Fests with many events and ticket tiers usually need Pro. Fees:
 
 | Fee (as of 20 Oct 2026) | Who pays | Starter | Pro | Enterprise |
 |---|---|---|---|---|
-| Processing fee | Buyer, added at checkout | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket |
-| Platform fee, today | Organiser | 0% | 0% | 0% |
-| Platform fee, from 2 Nov 2026 | Organiser, on paid tickets sold from that date | 2.5% | 1.5% | 1% |
+| Processing fee, not refundable | Buyer, added at checkout | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket |
+| Platform fee, until 2 Nov 2026 | Organiser | 0% | 0% | 0% |
+| Platform fee, from 2 Nov 2026 | Organiser, on paid tickets sold from that date | Your plan's rate on the [pricing page](https://www.unifesto.app/pricing) | Your plan's rate on the [pricing page](https://www.unifesto.app/pricing) | Your plan's rate on the [pricing page](https://www.unifesto.app/pricing) |
 | Free RSVP events | Nobody | No fees | No fees | No fees |
 
-On a ₹500 ticket on Starter, the buyer pays ₹525. The organiser gets ₹500 for tickets sold before 2 Nov 2026 and ₹487.50 for tickets sold from 2 Nov. Tickets already sold keep the fee they were sold at. Platform fees are launch pricing for Spaces that join before 31 March 2027.
+On a ₹500 ticket, the buyer pays ₹525 and the organiser gets ₹500 for tickets sold before 2 Nov 2026. Tickets already sold keep the fee they were sold at. Platform fees are launch pricing for Spaces that join before 31 March 2027.
 
 Unifesto does not run your sponsor deck, your vendors or your stage. Those stay in your team's hands.
+
+[Request a free Space](https://www.unifesto.app/request-space) for your club or fest, or compare plans on the [pricing page](https://www.unifesto.app/pricing).
 
 ## FAQ
 
 ### How early should we start planning a college fest?
 
-Start 8 weeks before the date for a fest of 300 people or more. Two weeks of that is approvals and budget, so starting at 4 weeks usually means a rushed launch and fewer sponsors.
+Start 8 weeks before the date for a fest of 300 people or more. Approvals and the budget take the first two weeks. Starting at 4 weeks usually means a rushed launch and fewer sponsors.
 
 ### How many people do we need in the core team?
 
@@ -169,7 +175,7 @@ Most fests need 6 to 8 leads: overall, finance, sponsorship, events, marketing, 
 
 ### How do we collect registrations and payments for a college fest?
 
-Use one registration page where people pick a ticket, answer a few questions and pay online in the same step. This avoids matching UPI screenshots to form responses by hand.
+Use one place where people pick a ticket, answer a few questions and pay online in the same step. This avoids matching UPI screenshots to form responses by hand. On Unifesto, attendees do all three in the free Unifesto app, with payment through Razorpay.
 
 ### How do we handle team events at a fest?
 
@@ -181,4 +187,4 @@ Plan for 6 to 8 check-in volunteers per 1,000 attendees, spread across the entry
 
 ### Is Unifesto free for college fests?
 
-The Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket. As of 20 Oct 2026 the organiser pays no platform fee. From 2 Nov 2026, tickets sold carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise. On a ₹500 Starter ticket sold from 2 Nov, the buyer pays ₹525 and the organiser gets ₹487.50.
+The Starter plan costs ₹0 a month and suits a first event. Fests with many events and ticket tiers usually need Pro. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket, on every plan, and it is not refundable. The organiser pays a 0% platform fee until 2 Nov 2026. From 2 Nov 2026, paid tickets sold from that date carry the platform fee for the Space's plan, as listed on the [pricing page](https://www.unifesto.app/pricing). Tickets already sold keep the fee they were sold at. On a ₹500 ticket, the buyer pays ₹525 and the organiser gets ₹500 for tickets sold before 2 Nov 2026.
