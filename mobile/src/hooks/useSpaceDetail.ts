@@ -62,7 +62,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
 
       const parentId = data.parentSpaceId || data.parent_org_id;
       const [eventsRes, parentRes, subsRes] = await Promise.all([
-        getSpaceEvents(data.id, 1, 30).catch(() => null),
+        getSpaceEvents(data.id, 1, 30, true).catch(() => null),
         parentId ? getSpaceById(parentId, token || undefined).catch(() => null) : Promise.resolve(null),
         getSubSpaces(data.id).catch(() => ({ spaces: [] as Space[] })),
       ]);
