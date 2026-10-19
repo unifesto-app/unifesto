@@ -5,7 +5,7 @@ import SpaceSupportScreen from '../../../../src/screens/SpaceSupportScreen';
 export default function Route() {
   return (
     <>
-      <Stack.Screen options={{ title: 'Support', headerShown: true }} />
+      <Stack.Screen options={{ title: 'Assist inbox', headerShown: true }} />
       <SpaceSupportScreen />
     </>
   );

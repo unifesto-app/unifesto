@@ -7,9 +7,14 @@
  */
 
 import { makeAuthenticatedRequest } from './helpers';
+import { call } from './manageEvent';
 import { buildInfo, type BuildInfo } from '../appBuild';
 
-export type SupportTicketStatus = 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
+export type SupportTicketStatus = 'BOT' | 'OPEN' | 'PENDING' | 'RESOLVED' | 'CLOSED';
+export type SupportCaseKind = 'HELP' | 'REFUND' | 'CANCELLATION' | 'REQUEST' | 'REPORT' | 'PRIVACY' | 'GRIEVANCE';
+/** Which inbox works the case: the space in `space`, or Unifesto. */
+export type SupportDesk = 'SPACE' | 'PLATFORM';
+export type SupportMessageSide = 'REQUESTER' | 'DESK' | 'ASSISTANT' | 'SYSTEM';
 export type SupportTicketPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 export type SupportTicketCategory =
   | 'GENERAL'
@@ -31,7 +36,11 @@ export interface SupportMessage {
   id: string;
   ticketId: string;
   authorId: string;
+  /** Legacy; `side` says who wrote it. */
   isStaffReply: boolean;
+  side?: SupportMessageSide;
+  /** Desk-only note; the server never sends these to the requester. */
+  internal?: boolean;
   body: string;
   createdAt: string;
   author?: SupportAuthor;
@@ -45,14 +54,21 @@ export interface SupportTicket {
   priority: SupportTicketPriority;
   status: SupportTicketStatus;
   contactEmail: string | null;
+  kind: SupportCaseKind;
+  desk: SupportDesk;
+  requesterId: string;
+  eventId: string | null;
+  registrationId: string | null;
+  /** Set when the space handed it to Unifesto; the space keeps read. */
+  escalatedAt: string | null;
   lastMessageAt: string;
   createdAt: string;
   updatedAt: string;
   messages?: SupportMessage[];
   _count?: { messages: number };
   /** Included by the list endpoint. */
-  requester?: SupportAuthor;
-  /** Set when raised on behalf of a space (operator support). */
+  requester?: SupportAuthor & { identities?: { email: string | null }[] };
+  /** The space whose desk has or had it, or the space an operator raised it for. */
   space?: { id: string; name: string; slug: string } | null;
   /** List endpoint: a message you haven't opened yet. */
   unread?: boolean;
@@ -68,6 +84,10 @@ export interface CreateTicketInput {
   clientInfo?: BuildInfo;
   /** Raise it on behalf of a space (operator support). */
   spaceId?: string;
+  /** Event context: the backend sends event questions to the organiser's desk. */
+  eventId?: string;
+  /** The requester's own registration; implies its event. */
+  registrationId?: string;
 }
 
 export const CATEGORY_LABEL: Record<SupportTicketCategory, string> = {
@@ -80,10 +100,30 @@ export const CATEGORY_LABEL: Record<SupportTicketCategory, string> = {
   OTHER: 'Other',
 };
 
+export const KIND_LABEL: Record<SupportCaseKind, string> = {
+  HELP: 'Help',
+  REFUND: 'Refund',
+  CANCELLATION: 'Cancellation',
+  REQUEST: 'Request',
+  REPORT: 'Report',
+  PRIVACY: 'Privacy',
+  GRIEVANCE: 'Grievance',
+};
+
 export const STATUS_LABEL: Record<SupportTicketStatus, string> = {
+  BOT: 'With Assist',
   OPEN: 'Open',
   // Requester-side wording: a staff reply sets PENDING, so the ball is with them.
   PENDING: 'Replied',
+  RESOLVED: 'Resolved',
+  CLOSED: 'Closed',
+};
+
+/** The same statuses from the desk's side: OPEN is theirs to answer. */
+export const DESK_STATUS_LABEL: Record<SupportTicketStatus, string> = {
+  BOT: 'With Assist',
+  OPEN: 'Needs reply',
+  PENDING: 'Waiting on them',
   RESOLVED: 'Resolved',
   CLOSED: 'Closed',
 };
@@ -106,10 +146,10 @@ export async function createTicket(
   }
 }
 
-/** List the signed-in user's tickets, newest activity first; `spaceId` narrows to one space's. */
-export async function listMyTickets(spaceId?: string): Promise<SupportTicket[]> {
+/** The signed-in user's cases of every kind, newest activity first. */
+export async function listMyTickets(): Promise<SupportTicket[]> {
   try {
-    const res = await makeAuthenticatedRequest(`/support/tickets?limit=50${spaceId ? `&spaceId=${spaceId}` : ''}`);
+    const res = await makeAuthenticatedRequest('/support/tickets?limit=100');
     if (!res?.ok) return [];
     const data = await res.json();
     return (data.tickets ?? []) as SupportTicket[];
@@ -143,15 +183,16 @@ export async function getTicket(id: string): Promise<SupportTicket | null> {
   }
 }
 
-/** Post a reply to a ticket. Returns the created message or null. */
+/** Post a reply to a ticket, or with `internal` a desk-only note. Returns the created message or null. */
 export async function replyToTicket(
   id: string,
   body: string,
+  internal?: boolean,
 ): Promise<SupportMessage | null> {
   try {
     const res = await makeAuthenticatedRequest(`/support/tickets/${id}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ body }),
+      body: JSON.stringify(internal ? { body, internal } : { body }),
     });
     if (!res?.ok) return null;
     return (await res.json()) as SupportMessage;
@@ -186,3 +227,23 @@ export async function reopenTicket(id: string): Promise<boolean> {
     return false;
   }
 }
+
+// ── Space desk (D9) ──────────────────────────────────────────────────────────
+
+/** GET /support/spaces/:spaceId/desk — the cases this space's desk shows you; 403 if you work none of it. */
+export const listSpaceDesk = (
+  spaceId: string,
+  opts: { status?: SupportTicketStatus; unread?: boolean; search?: string; page?: number },
+) => {
+  const q = new URLSearchParams({ page: String(opts.page ?? 1), limit: '20' });
+  if (opts.status) q.set('status', opts.status);
+  if (opts.unread) q.set('unread', 'true');
+  if (opts.search) q.set('search', opts.search);
+  return call<{ tickets: SupportTicket[]; pagination: { total: number } }>(`/support/spaces/${spaceId}/desk?${q}`);
+};
+
+/** GET /support/spaces/:spaceId/desk/unread — fails (403) for someone who works no part of the desk. */
+export const getSpaceDeskUnread = (spaceId: string) => call<{ unread: number }>(`/support/spaces/${spaceId}/desk/unread`);
+
+/** POST /support/tickets/:id/escalate — hand a space-desk case to Unifesto (requester or the space desk). */
+export const escalateTicket = (id: string) => call<SupportTicket>(`/support/tickets/${id}/escalate`, { method: 'POST' });

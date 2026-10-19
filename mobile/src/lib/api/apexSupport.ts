@@ -1,5 +1,5 @@
 import { call } from './manageEvent';
-import type { SupportMessage, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from './support';
+import type { SupportCaseKind, SupportDesk, SupportMessage, SupportTicketCategory, SupportTicketPriority, SupportTicketStatus } from './support';
 import type { ReportTarget } from './contentReports';
 
 /*
@@ -33,6 +33,14 @@ export interface AdminTicket {
   category: SupportTicketCategory;
   priority: SupportTicketPriority;
   status: SupportTicketStatus;
+  kind: SupportCaseKind;
+  desk: SupportDesk;
+  eventId: string | null;
+  escalatedAt: string | null;
+  /** D13: where AI triage thinks the case belongs. */
+  aiTriage?: { routingHint?: SupportDesk; reason?: string } | null;
+  /** List endpoint: new on the Unifesto desk since it was last opened. */
+  unread?: boolean;
   contactEmail: string | null;
   /** The app build it was raised from (tickets from 4.0.5 on). */
   clientInfo?: Partial<import('../appBuild').BuildInfo> | null;
@@ -53,6 +61,8 @@ export interface TicketStats {
   resolved: number;
   closed: number;
   total: number;
+  /** New on the Unifesto desk. */
+  unread: number;
 }
 
 export const PRIORITY_LABEL: Record<SupportTicketPriority, string> = {
@@ -62,10 +72,28 @@ export const PRIORITY_LABEL: Record<SupportTicketPriority, string> = {
   URGENT: 'Urgent',
 };
 
-/** GET /support/tickets — every ticket for an admin; search matches subject or #number. */
-export const listAllTickets = (opts: { status?: SupportTicketStatus; search?: string; assignedToId?: string; page?: number; limit?: number }) =>
+/** GET /support/tickets — every case for an admin; search matches subject, #number or the requester. */
+export const listAllTickets = (opts: {
+  status?: SupportTicketStatus;
+  kind?: SupportCaseKind;
+  desk?: SupportDesk;
+  unread?: boolean;
+  search?: string;
+  assignedToId?: string;
+  page?: number;
+  limit?: number;
+}) =>
   call<{ tickets: AdminTicket[]; pagination: { total: number } }>(
-    `/support/tickets${qs({ status: opts.status, search: opts.search, assignedToId: opts.assignedToId, page: opts.page, limit: opts.limit ?? 20 })}`,
+    `/support/tickets${qs({
+      status: opts.status,
+      kind: opts.kind,
+      desk: opts.desk,
+      unread: opts.unread ? 'true' : undefined,
+      search: opts.search,
+      assignedToId: opts.assignedToId,
+      page: opts.page,
+      limit: opts.limit ?? 20,
+    })}`,
   );
 
 /** GET /support/tickets/stats — platform-wide counts for an admin. */
@@ -74,9 +102,13 @@ export const getTicketStats = () => call<TicketStats>('/support/tickets/stats');
 /** GET /support/tickets/:id — ticket with its thread and people. */
 export const getAdminTicket = (id: string) => call<AdminTicket>(`/support/tickets/${id}`);
 
-/** POST /support/tickets/:id/messages — an admin reply is marked as staff and moves the ticket to PENDING. */
-export const replyAsStaff = (id: string, body: string) =>
-  call<SupportMessage>(`/support/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify({ body }) });
+/** POST /support/tickets/:id/messages — a desk reply moves the case to PENDING; `internal` is a desk-only note. */
+export const replyAsStaff = (id: string, body: string, internal?: boolean) =>
+  call<SupportMessage>(`/support/tickets/${id}/messages`, { method: 'POST', body: JSON.stringify(internal ? { body, internal } : { body }) });
+
+/** POST /support/tickets/:id/send-to-space — hand a Platform help question to an event's organiser. */
+export const sendToSpace = (id: string, eventId: string) =>
+  call<AdminTicket>(`/support/tickets/${id}/send-to-space`, { method: 'POST', body: JSON.stringify({ eventId }) });
 
 /** PATCH /support/tickets/:id — triage. `assignedToId: null` unassigns. */
 export const triageTicket = (
