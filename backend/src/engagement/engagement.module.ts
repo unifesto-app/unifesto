@@ -3,6 +3,8 @@ import { AuthModule } from '../auth/auth.module';
 import { LeaderboardModule } from '../leaderboard/leaderboard.module';
 import { PollsController } from './polls.controller';
 import { PollsService } from './polls.service';
+import { QuestionsController } from './questions.controller';
+import { QuestionsService } from './questions.service';
 
 /**
  * Track L live engagement. L1 is polls; Q&A (L2), quizzes (L3) and the
@@ -11,7 +13,7 @@ import { PollsService } from './polls.service';
  */
 @Module({
   imports: [AuthModule, LeaderboardModule],
-  controllers: [PollsController],
-  providers: [PollsService],
+  controllers: [PollsController, QuestionsController],
+  providers: [PollsService, QuestionsService],
 })
 export class EngagementModule {}
