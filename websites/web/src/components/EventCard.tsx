@@ -70,8 +70,9 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
   const router = useRouter();
 
   const space = event.space ?? event.organization;
-  const isCompleted =
-    event.status === "completed" || event.status === "cancelled";
+  // The backend sends COMPLETED / CANCELLED; the mock data is lowercase.
+  const status = event.status?.toLowerCase();
+  const isCompleted = status === "completed" || status === "cancelled";
   const isTrending = Boolean(event.is_trending);
   const isFeatured = Boolean(event.is_featured);
 
@@ -226,7 +227,7 @@ export default function EventCard({ event, index = 0 }: EventCardProps) {
           </div>
           {isCompleted ? (
             <span className="rounded-full bg-paper/[0.06] px-3 py-1.5 text-xs font-medium text-paper/60">
-              {event.status === "cancelled" ? "Cancelled" : "Completed"}
+              {status === "cancelled" ? "Cancelled" : "Completed"}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">

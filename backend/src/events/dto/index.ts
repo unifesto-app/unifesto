@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsString,
   IsEnum,
+  IsIn,
   IsDateString,
   IsOptional,
   IsBoolean,
@@ -1164,6 +1165,16 @@ export class EventFilterDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   free?: boolean;
+
+  @ApiPropertyOptional({
+    enum: ['upcoming', 'past'],
+    description:
+      'upcoming (default): live and upcoming events, soonest first. past: ' +
+      'events that have ended, most recent first.',
+  })
+  @IsOptional()
+  @IsIn(['upcoming', 'past'])
+  when?: 'upcoming' | 'past';
 }
 
 export class AddCoHostDto {
