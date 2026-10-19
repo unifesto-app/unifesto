@@ -26,16 +26,16 @@ When the lead graduates, the Space moves to the next lead. Every event and repor
 
 70 Spaces are live on Unifesto today.
 
-This week I'm putting out a short video on setting one up from scratch.
+Tonight I'm putting out a short video on setting one up from scratch.
 
 If you ran a club in college, what did you lose when the old team left?
 ```
 
-**First comment:** `The video goes up this week on YouTube. Everything else: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1`
+**First comment:** `The video goes up tonight on YouTube. Everything else: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1`
 
 ---
 
-## Mon 26 Oct · LinkedIn video (company page, then reshare from founder)
+## Tue 20 Oct, evening · LinkedIn video (company page, then reshare from founder)
 
 **Cut:** 75 s, 16:9, from the long video: 0:00–0:22 (hook) + 3:05–3:40 (keycards) + 5:58–6:06 ("Your president graduates. Your club doesn't."). Put it in the slot of `assets/linkedin-frame/01.png` (overlay; slot 1376x774 at 272, 236). Burned-in captions, because most people watch muted. `assets/linkedin-frame/02.png` is the preview poster.
 
@@ -50,11 +50,11 @@ Nobody sees what they don't need.
 The full guide is on our YouTube (link in the comments).
 ```
 
-**First comment:** `Full video: <YouTube link once live>?utm_source=linkedin&utm_campaign=v5-w1` (paste the real link after Thursday's upload; tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
+**First comment:** `Full video: <YouTube link once live>?utm_source=linkedin&utm_campaign=v5-w1` (paste the real link after the 6 PM upload; tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
 
 ---
 
-## Wed 21 Oct · Company post (Unifesto page)
+## Tue 20 Oct, 12 PM · Company post (Unifesto page)
 
 **Upload:** `assets/howto-carousel.pdf` as a Document. Document title: "How to run a college club from one Space".
 
@@ -76,7 +76,7 @@ Free for RSVP events. Swipe through and save it for your next committee meeting.
 
 ---
 
-## Fri 23 Oct · Founder post (Abhinavtej)
+## Wed 21 Oct, 9 AM · Founder post (Abhinavtej)
 
 **Upload:** `assets/vs-google-forms-carousel.pdf` as a Document. Document title: "Google Forms vs Unifesto, honestly".
 

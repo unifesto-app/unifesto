@@ -1,6 +1,6 @@
 # Blog: How to organize a college fest: the 8-week checklist
 
-Publish **Wed 21 Oct**, 10 AM IST, from Apex › Blog. Draft only until you approve it.
+Publish **Tue 20 Oct**, 10 AM IST (W1 drop day), from Apex › Blog. Draft only until you approve it.
 
 | Apex field | Value |
 |---|---|
@@ -85,7 +85,7 @@ Decide how people will register and pay before you design a single poster.
 - Give team events a group ticket, so the team lead pays once and invites the rest.
 - Test the whole flow yourself on a phone: register, pay, get the pass.
 
-On Unifesto, each event gets a public page on unifesto.app, and attendees register and pay through Razorpay in the free Unifesto app on iOS and Android. Ticket types, group tickets and custom questions are set up by the organiser in the Space. Free RSVP events have no fee, as of 21 Oct 2026.
+On Unifesto, each event gets a public page on unifesto.app, and attendees register and pay through Razorpay in the free Unifesto app on iOS and Android. Ticket types, group tickets and custom questions are set up by the organiser in the Space. Free RSVP events have no fee, as of 20 Oct 2026.
 
 ## Week 4: open registrations
 
@@ -146,7 +146,7 @@ You can run this checklist with spreadsheets and forms. Unifesto puts the parts 
 
 The Starter plan costs ₹0 a month. Fees:
 
-| Fee (as of 21 Oct 2026) | Who pays | Starter | Pro | Enterprise |
+| Fee (as of 20 Oct 2026) | Who pays | Starter | Pro | Enterprise |
 |---|---|---|---|---|
 | Processing fee | Buyer, added at checkout | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket |
 | Platform fee, today | Organiser | 0% | 0% | 0% |
@@ -181,4 +181,4 @@ Plan for 6 to 8 check-in volunteers per 1,000 attendees, spread across the entry
 
 ### Is Unifesto free for college fests?
 
-The Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket. As of 21 Oct 2026 the organiser pays no platform fee. From 2 Nov 2026, tickets sold carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise. On a ₹500 Starter ticket sold from 2 Nov, the buyer pays ₹525 and the organiser gets ₹487.50.
+The Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket. As of 20 Oct 2026 the organiser pays no platform fee. From 2 Nov 2026, tickets sold carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise. On a ₹500 Starter ticket sold from 2 Nov, the buyer pays ₹525 and the organiser gets ₹487.50.

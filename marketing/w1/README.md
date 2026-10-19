@@ -11,24 +11,27 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 
 ## Calendar
 
-Re-timed 19 Oct evening: Monday's slots were missed and the long video needs the screen clips + Bujji render, so it moves to **Thu 22**. Anything that links to the video waits for the upload. If the video slips to Fri, every row marked "needs video" moves one day later and the DMs go out Sat.
+**W1 drop day: Tue 20 Oct** (agreed 19 Oct evening). Everything goes out in one day, staggered so pieces don't compete. Only exception: the second founder LinkedIn post goes Wed 9 AM (two posts from one account in a day cut each other's reach).
+
+**3 PM go/no-go:** the long video, 3 Shorts and the 75 s cut must be final. If not, the "needs video" rows (and the IG how-to carousel, which mentions the video) move to Wed 21 at the same times; blogs, the LinkedIn PDF and the founder post still go Tue.
 
 | Day | Time (IST) | Channel | What | File | Needs video? | Status |
 |---|---|---|---|---|---|---|
-| Mon 19 | tonight | IG story | BTS + poll | `06-instagram.md` | no | ready |
-| Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" | `05-linkedin.md` | no | draft, ready |
-| Wed 21 | 9 AM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | no | ready |
-| Wed 21 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | draft, ready |
-| Thu 22 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail-bujji.jpg` / `assets/thumbnail.png` | is the video | needs render + edit + upload |
-| Thu 22 | 8 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | yes | ready |
-| Fri 23 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
-| Fri 23 | 10 AM | Blog (Apex) | Google Forms for event registration vs Unifesto | `03-blog-unifesto-vs-google-forms.md` | no | draft, check 4 |
-| Fri 23 | all day | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
-| Fri 23 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1-cover.png` | yes (cut) | needs edit |
-| Sat 24 | 7 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2-cover.png` | yes (cut) | needs edit |
-| Sat 24 | 8 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | draft, ready |
-| Sun 25 | 7 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots | `04-shorts.md`, `assets/short3-cover.png` | no | needs recording (40 s) |
-| Mon 26 | 9 AM | LinkedIn (company) | 75 s video in the frame (spills into W2's first morning) | `05-linkedin.md`, `assets/linkedin-frame/` | yes (cut) | needs edit |
+| Mon 19 | tonight | IG story | BTS + poll ("drops tomorrow") | `06-instagram.md` | no | ready |
+| Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" ("Tonight I'm putting out a short video") | `05-linkedin.md` | no | **approved 19 Oct** (then "This week" → "Tonight" for the drop) |
+| Tue 20 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | draft, ready |
+| Tue 20 | 10:30 AM | Blog (Apex) | Google Forms for event registration vs Unifesto (recheck the Google help links first) | `03-blog-unifesto-vs-google-forms.md` | no | draft, check 4 |
+| Tue 20 | 12 PM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | no | step 6 suggestion open |
+| Tue 20 | 3 PM | | Go/no-go on video files | | | |
+| Tue 20 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail-bujji.jpg` / `assets/thumbnail.png` | is the video | needs render + edit + upload |
+| Tue 20 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1-cover.png` | yes (cut) | needs edit |
+| Tue 20 | 7:30 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | yes | ready |
+| Tue 20 | 8 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2-cover.png` | yes (cut) | needs edit |
+| Tue 20 | 8:30 PM | LinkedIn (company) | 75 s video in the frame | `05-linkedin.md`, `assets/linkedin-frame/` | yes (cut) | needs edit |
+| Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3-cover.png` | no | in production |
+| Tue 20 | 9:30 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | draft, ready |
+| Tue 20 | evening | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
+| Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
 | Daily | | IG stories | See the stories table | `06-instagram.md` | | ready |
 
 Video length: the cut runs about 7:30. The title's "in 10 minutes" is setup time; never call it "a 10-minute video" in posts or DMs.
@@ -37,11 +40,11 @@ Email: none in W1 (every 2 weeks, first one in W2).
 
 ## What you need to do
 
-- **Record** the screen clips for the long video by Tue (shot list in `01`, the S rows), and 40 s of extra footage for Short 3. Bujji scenes + voice are rendered in `~/Startups/unifesto-video`.
+- **Record** the screen clips for the long video by Tue noon (shot list in `01`, the S rows), and 40 s of extra footage for Short 3. Bujji scenes + voice are rendered in `~/Startups/unifesto-video`.
 - **Edit** the long video, 3 Shorts (cut points in `01` and `04`) and the 75 s LinkedIn cut.
 - **Approve** each post, then publish it yourself (or tell me which one to prepare next).
 
-## Outreach DM (Fri 23, 10 pages)
+## Outreach DM (Tue 20 evening, after the upload; 10 pages)
 
 ```
 Hi! I'm Abhinav from Unifesto. We made a short video on running a club from one place: your team, roles, and a crew for every event. Thought it might help with your next fest: <YouTube link>?utm_source=instagram&utm_campaign=v5-w1

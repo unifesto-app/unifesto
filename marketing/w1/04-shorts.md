@@ -6,7 +6,7 @@
 
 ## Short 1: Who can do what in your club
 
-**Out:** Fri 23 Oct, 7 PM IST (the day after the long video; slips with it). **Cut from:** long video 2:50–4:05 (Bujji's keycards + IAM grid), reframed to 9:16, Bujji full frame. **Cover:** `assets/short1-cover.png`.
+**Out:** Tue 20 Oct, 7 PM IST, after the 6 PM long video (moves to Wed with it if the video misses the 3 PM go/no-go). **Cut from:** long video 2:50–4:05 (Bujji's keycards + IAM grid), reframed to 9:16, Bujji full frame. **Cover:** `assets/short1-cover.png`.
 
 | Time | On screen | On-screen text | Bujji says |
 |---|---|---|---|
@@ -39,7 +39,7 @@ Full setup video on our YouTube. Link in bio.
 
 ## Short 2: Every event gets its own team
 
-**Out:** Sat 24 Oct, 7 PM IST. **Cut from:** long video 4:05–5:14 (event moons, team roster, role picker open, one avatar as Crew and Curator). **Cover:** `assets/short2-cover.png`.
+**Out:** Tue 20 Oct, 8 PM IST. **Cut from:** long video 4:05–5:14 (event moons, team roster, role picker open, one avatar as Crew and Curator). **Cover:** `assets/short2-cover.png`.
 
 | Time | On screen | On-screen text | Voiceover |
 |---|---|---|---|
@@ -68,7 +68,7 @@ Save this for fest season 🔖 Link in bio.
 
 ## Short 3: Organiser POV, 2 AM matching UPI screenshots (Spreadsheet vs Space)
 
-**Out:** Sun 25 Oct, 7 PM IST (after the Google Forms blog on Fri). **Format:** recurring "Organiser POV" / "Spreadsheet vs Space". **Cover:** `assets/short3-cover.png`.
+**Out:** Tue 20 Oct, 9 PM IST (the Google Forms blog is up from 10:30 AM). **Format:** recurring "Organiser POV" / "Spreadsheet vs Space". **Cover:** `assets/short3-cover.png`.
 **Record:** 25 s of face cam or hands-only at a desk at night (lamp on, laptop open), plus 15 s of screen.
 
 | Time | On screen | On-screen text | Voiceover / sound |

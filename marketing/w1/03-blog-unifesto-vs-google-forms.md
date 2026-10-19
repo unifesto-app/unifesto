@@ -1,9 +1,9 @@
 # Comparison blog: Google Forms for event registration vs Unifesto
 
-Publish **Fri 23 Oct**, 10 AM IST, from Apex › Blog. Draft only until you approve it.
+Publish **Tue 20 Oct**, 10:30 AM IST (W1 drop day), from Apex › Blog. Draft only until you approve it.
 Rules followed: P11 (as-of dates, rival's own pages linked, "where Google Forms is better", our gaps shown, no logos, only live features) and P16 (answer first, one fact per sentence, tables, `## FAQ`).
 
-**Check on publish day:** open each Google help link below and confirm the behaviour still matches. Change "as of 21 Oct 2026" if you publish later and re-check.
+**Check on publish day:** open each Google help link below and confirm the behaviour still matches. Change "as of 20 Oct 2026" if you publish later and re-check.
 
 | Apex field | Value |
 |---|---|
@@ -21,7 +21,7 @@ Paste everything below the line into **Content**.
 
 Google Forms works for event registration when the event is free, small and needs only a list of names. Once you sell tickets, register teams or check people in at a gate, Google Forms needs a spreadsheet, UPI screenshots and a separate check-in list beside it, and Unifesto does those steps in one place.
 
-This comparison is as of 21 Oct 2026. It covers what organisers of college fests, club events and community meetups in India usually need.
+This comparison is as of 20 Oct 2026. It covers what organisers of college fests, club events and community meetups in India usually need.
 
 ## Quick answer
 
@@ -35,7 +35,7 @@ This comparison is as of 21 Oct 2026. It covers what organisers of college fests
 | Payouts and a record of every rupee | Unifesto |
 | A team of organisers with different access | Unifesto |
 
-## Feature comparison (as of 21 Oct 2026)
+## Feature comparison (as of 20 Oct 2026)
 
 | Feature | Google Forms | Unifesto |
 |---|---|---|
@@ -102,9 +102,9 @@ If you already collected registrations in Google Forms, you do not have to start
 
 Imported attendees appear in the same attendee list as everyone who registers in the app, so your counts and check-in list stay in one place.
 
-## Pricing (as of 21 Oct 2026)
+## Pricing (as of 20 Oct 2026)
 
-| Fee (as of 21 Oct 2026) | Who pays | Starter | Pro | Enterprise |
+| Fee (as of 20 Oct 2026) | Who pays | Starter | Pro | Enterprise |
 |---|---|---|---|---|
 | Processing fee | Buyer, added at checkout | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket |
 | Platform fee, today | Organiser | 0% | 0% | 0% |
@@ -138,7 +138,7 @@ Not by default. A Google Form asks people to sign in to a Google account when it
 
 ### Is Unifesto free like Google Forms?
 
-Unifesto's Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket. As of 21 Oct 2026 the organiser pays no platform fee. From 2 Nov 2026, tickets sold carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise. On a ₹500 Starter ticket sold from 2 Nov, the buyer pays ₹525 and the organiser gets ₹487.50.
+Unifesto's Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket. As of 20 Oct 2026 the organiser pays no platform fee. From 2 Nov 2026, tickets sold carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise. On a ₹500 Starter ticket sold from 2 Nov, the buyer pays ₹525 and the organiser gets ₹487.50.
 
 ### Do attendees need the Unifesto app to register?
 
