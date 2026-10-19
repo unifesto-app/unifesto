@@ -205,18 +205,18 @@ export function useTicketDetail(ticketParam: unknown) {
 
   const isGroupMember = !!ticket?.isGroupMember;
   const cancelled = status === 'cancelled';
+  // Over by the clock or marked completed: the pass becomes a keepsake (G11).
+  const ended = !cancelled && (!!eventCompleted || isEventOver({ ...ticket, startDateTime: startIso, endDateTime: endIso }));
   // Leads manage the whole group; teammates open it for their own details.
   const canManageGroup =
-    !!registrationId && !eventCompleted && (isGroupMember ? details?.role === 'member' && !cancelled : !!roster?.editable);
+    !!registrationId && !ended && (isGroupMember ? details?.role === 'member' && !cancelled : !!roster?.editable);
   const canRefund = !!registrationId && !cancelled && !isFree && !isGroupMember;
   const canEditDetails = !!details?.editable && !cancelled;
   const editDetailsUntil = details?.editsUntil ?? null;
-  const canCancelFree = !!registrationId && !cancelled && isFree && !eventCompleted && !isGroupMember;
+  const canCancelFree = !!registrationId && !cancelled && isFree && !ended && !isGroupMember;
   // A finished ticket (event over, or cancelled) can be deleted from my list.
   // Needs the real registration id — `ticket.id` is the event's on list snapshots.
-  const canDelete =
-    !!ticket?.registrationId &&
-    (cancelled || !!eventCompleted || isEventOver({ ...ticket, startDateTime: startIso, endDateTime: endIso }));
+  const canDelete = !!ticket?.registrationId && (cancelled || ended);
 
   // Single registration-level check-in, used only if the history is empty.
   const fallbackCheckin =
@@ -334,6 +334,7 @@ export function useTicketDetail(ticketParam: unknown) {
     brandColor: brandColor || null,
     eventSlug,
     eventCompleted: !!eventCompleted,
+    ended,
     status,
     qrValue,
     code,

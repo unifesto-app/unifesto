@@ -308,7 +308,8 @@ export const unlockTeamStatement = (eventId: string, teamId: string) =>
 
 export interface HackathonHub {
   eventId: string;
-  event: { title: string; startDateTime: string; endDateTime: string; coverImageUrl: string | null };
+  /** `status` is missing from servers before G11; the end time still decides then. */
+  event: { title: string; status?: string; startDateTime: string; endDateTime: string; coverImageUrl: string | null };
   venue: Venue;
   /** Null when the signed-in user isn't on a team. */
   team: {

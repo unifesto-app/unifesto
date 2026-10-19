@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  CertificateStatus,
   FormFieldType,
+  HackathonHelpQueryStatus,
   LeaderboardRoundStatus,
   Prisma,
   TicketKind,
@@ -89,10 +91,20 @@ export class HackathonSetupService {
     ]);
 
     const hackathon = board?.isHackathon ? board : null;
-    let counts = { teams: 0, active: 0, cancelled: 0, unallocated: 0, rooms: 0, psLocked: 0, statements: 0, themes: 0, awards: 0, awardsPublished: 0 };
+    // The last five feed the end-of-event checklist (G11).
+    let counts = {
+      teams: 0, active: 0, cancelled: 0, unallocated: 0, rooms: 0, psLocked: 0, statements: 0, themes: 0, awards: 0, awardsPublished: 0,
+      openRounds: 0, openQueries: 0, judges: 0, judgesNotSignedIn: 0, certificates: 0,
+    };
     if (hackathon) {
       await this.teams.syncCancellations(hackathon.id);
-      const [teams, cancelled, unallocated, rooms, psLocked, statements, themes, awards, awardsPublished] = await Promise.all([
+      const judgeIds = (
+        await this.prisma.hackathonJudgeProfile.findMany({ where: { leaderboardId: hackathon.id }, select: { userId: true } })
+      ).map((j) => j.userId);
+      const [
+        teams, cancelled, unallocated, rooms, psLocked, statements, themes, awards, awardsPublished,
+        openRounds, openQueries, judgesNotSignedIn, certificates,
+      ] = await Promise.all([
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id } }),
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id, cancelledAt: { not: null } } }),
         this.prisma.leaderboardEntrant.count({ where: { leaderboardId: hackathon.id, cancelledAt: null, roomId: null } }),
@@ -104,8 +116,17 @@ export class HackathonSetupService {
         this.prisma.hackathonTheme.count({ where: { leaderboardId: hackathon.id } }),
         this.prisma.leaderboardAward.count({ where: { leaderboardId: hackathon.id } }),
         this.prisma.leaderboardAward.count({ where: { leaderboardId: hackathon.id, published: true } }),
+        this.prisma.leaderboardRound.count({ where: { leaderboardId: hackathon.id, status: LeaderboardRoundStatus.ACTIVE } }),
+        this.prisma.hackathonHelpQuery.count({
+          where: { leaderboardId: hackathon.id, status: { not: HackathonHelpQueryStatus.RESOLVED } },
+        }),
+        this.prisma.user.count({ where: { id: { in: judgeIds }, lastSeenAt: null } }),
+        this.prisma.certificate.count({ where: { eventId, status: CertificateStatus.ISSUED } }),
       ]);
-      counts = { teams, active: teams - cancelled, cancelled, unallocated, rooms, psLocked, statements, themes, awards, awardsPublished };
+      counts = {
+        teams, active: teams - cancelled, cancelled, unallocated, rooms, psLocked, statements, themes, awards, awardsPublished,
+        openRounds, openQueries, judges: judgeIds.length, judgesNotSignedIn, certificates,
+      };
     }
 
     return {

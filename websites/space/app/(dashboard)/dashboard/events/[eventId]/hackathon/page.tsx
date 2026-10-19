@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { HackPage, Notice, StatsRow, hackBase, useResult } from "@/components/hackathon/HackParts";
+import { EndOfEventChecklist } from "@/components/hackathon/EndOfEventChecklist";
 import { disableHackathon, enableHackathon, getHackathonOverview, importTeams } from "@/lib/api/hackathon";
 import { psModeSummary } from "@/lib/hackathon";
 
@@ -154,6 +155,8 @@ export default function HackathonHubPage() {
                   { label: "Cancelled", value: data.counts.cancelled },
                 ]}
               />
+
+              <EndOfEventChecklist eventId={eventId} counts={data.counts} />
 
               {!h?.teamCodePrefix && (
                 <ListGroup title="Start here">

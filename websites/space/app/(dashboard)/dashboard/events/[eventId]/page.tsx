@@ -33,6 +33,7 @@ import {
 import { StatCard } from "@/components/shared/StatCard";
 import { RegistrationSourcesCard } from "@/components/shared/RegistrationSourcesCard";
 import { EventCompleteness } from "@/components/shared/EventCompleteness";
+import { EventEndOfEventChecklist } from "@/components/hackathon/EndOfEventChecklist";
 import { AnnounceDialog } from "./AnnounceDialog";
 
 function formatDateTime(iso: string) {
@@ -200,6 +201,9 @@ export default function EventOverviewPage() {
       {event.status !== "COMPLETED" && event.status !== "CANCELLED" && (
         <EventCompleteness event={event} />
       )}
+
+      {/* Once it has ended: what's left to close out its hackathon (G11). */}
+      <EventEndOfEventChecklist eventId={eventId} />
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
