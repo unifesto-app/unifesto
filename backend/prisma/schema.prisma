@@ -1486,6 +1486,10 @@ model Event {
   // L2 live Q&A: new questions wait for a moderator (true) or go straight up (false).
   qaPremoderated Boolean @default(true) @map("qa_premoderated")
 
+  // L4 projector: random read-only display link secret. Regenerating it
+  // revokes every screen opened with the old link. Null until first asked for.
+  displayToken String? @map("display_token") @db.VarChar(64)
+
   // Private WhatsApp attendee invite group (organiser-pasted link). NEVER
   // returned on an unauthenticated path (stripped from `getEventBySlug`); it is
   // surfaced only through JWT-guarded per-registration endpoints and pushed to

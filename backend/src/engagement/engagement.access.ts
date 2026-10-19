@@ -20,3 +20,18 @@ export async function canJoinEngagement(
   if (await isAttending(prisma, eventId, userId)) return true;
   return authz.can({ id: userId }, Action.EVENT_VIEW, { eventId });
 }
+
+/**
+ * L4 projector: does this display link still open this event? The token is
+ * per event, so a link for one event never opens another, and regenerating it
+ * kills every old link. Read-only by construction: it only reaches the room's
+ * data-free pings and the PII-free projector snapshot.
+ */
+export async function displayTokenMatches(
+  prisma: PrismaService,
+  eventId: string,
+  token: unknown,
+): Promise<boolean> {
+  if (typeof token !== 'string' || token.length < 16) return false;
+  return (await prisma.event.count({ where: { id: eventId, displayToken: token } })) > 0;
+}

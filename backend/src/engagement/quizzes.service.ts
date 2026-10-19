@@ -406,6 +406,71 @@ export class QuizzesService {
     };
   }
 
+  /**
+   * L4 projector: the running quiz (else the last to end), its open question
+   * with the countdown, and the board by display name. Like the attendee feed,
+   * the right option and the per-option spread wait for the question to close.
+   */
+  async display(eventId: string, now = new Date()) {
+    const quiz =
+      (await this.prisma.quiz.findFirst({ where: { eventId, status: 'LIVE' } })) ??
+      (await this.prisma.quiz.findFirst({
+        where: { eventId, status: 'ENDED' },
+        orderBy: { endedAt: 'desc' },
+      }));
+    if (!quiz) return null;
+    const [questionCount, current] = await Promise.all([
+      this.prisma.quizQuestion.count({ where: { quizId: quiz.id } }),
+      quiz.status === 'LIVE' && quiz.currentIndex !== null
+        ? this.prisma.quizQuestion.findFirst({
+            where: { quizId: quiz.id, position: quiz.currentIndex },
+          })
+        : null,
+    ]);
+    const counts = current
+      ? await this.prisma.quizAnswer.groupBy({
+          by: ['optionIndex'],
+          where: { questionId: current.id },
+          _count: { _all: true },
+        })
+      : [];
+    const closed = !!current && isClosed(current, now);
+    const results = (current?.options ?? []).map(
+      (_, i) => counts.find((c) => c.optionIndex === i)?._count._all ?? 0,
+    );
+    const question = current && {
+      position: current.position,
+      prompt: current.prompt,
+      options: current.options,
+      timeLimitSec: current.timeLimitSec,
+      openedAt: current.openedAt,
+      closesAt: current.closesAt,
+      revealAt: revealAt(current),
+      closed,
+      answered: results.reduce((a, b) => a + b, 0),
+      correctIndexes: closed ? current.correctIndexes : null,
+      results: closed ? results : null,
+    };
+    const board = await this.board(
+      quiz.id,
+      this.closedUpTo(quiz, current, now),
+      TOP_N,
+    );
+    return {
+      id: quiz.id,
+      title: quiz.title,
+      status: quiz.status,
+      startedAt: quiz.startedAt,
+      endedAt: quiz.endedAt,
+      questionCount,
+      question,
+      leaderboard: {
+        players: board.players,
+        top: board.top.map(({ rank, name, score }) => ({ rank, name, score })),
+      },
+    };
+  }
+
   async answer(
     eventId: string,
     quizId: string,

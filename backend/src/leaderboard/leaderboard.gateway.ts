@@ -14,7 +14,7 @@ import { corsOriginCallback } from '../common/cors';
 import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationService } from '../auth/authorization';
-import { canJoinEngagement, engagementRoom } from '../engagement/engagement.access';
+import { canJoinEngagement, displayTokenMatches, engagementRoom } from '../engagement/engagement.access';
 import { LeaderboardService } from './leaderboard.service';
 
 interface AuthedSocket extends Socket {
@@ -219,15 +219,33 @@ export class LeaderboardGateway implements OnGatewayInit {
   @SubscribeMessage('engagement:subscribe')
   async onEngagementSubscribe(
     @ConnectedSocket() client: AuthedSocket,
-    @MessageBody() body: { eventId: string },
+    @MessageBody() body: { eventId: string; displayToken?: string },
   ) {
     const eventId = body?.eventId;
     if (!eventId) return { error: 'eventId required' };
-    if (!(await canJoinEngagement(this.prisma, this.authz, eventId, client.userId))) {
+    // L4: a projector's display link joins without a session. Marked, so a
+    // regenerated link can drop it (dropDisplays).
+    if (body.displayToken !== undefined) {
+      if (!(await displayTokenMatches(this.prisma, eventId, body.displayToken))) {
+        return { error: 'not_authorized' };
+      }
+      client.data.displayEventId = eventId;
+    } else if (!(await canJoinEngagement(this.prisma, this.authz, eventId, client.userId))) {
       return { error: 'not_authorized' };
     }
     client.join(engagementRoom(eventId));
     return { ok: true };
+  }
+
+  /** Disconnect every screen that joined this event's room with a display link (it was regenerated). */
+  async dropDisplays(eventId: string) {
+    if (!this.server) return;
+    try {
+      const sockets = await this.server.in(engagementRoom(eventId)).fetchSockets();
+      for (const s of sockets) if (s.data?.displayEventId === eventId) s.disconnect(true);
+    } catch (err) {
+      this.logger.warn(`dropDisplays failed: ${(err as Error).message}`);
+    }
   }
 
   @SubscribeMessage('engagement:unsubscribe')
