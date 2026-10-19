@@ -206,6 +206,8 @@ export default function AssistInboxPage() {
               <p className="text-sm text-muted-foreground">
                 {requesterName(selected)}
                 {email ? ` · ${email}` : ""} · opened {timeAgo(selected.createdAt)}
+                {selected.rating ? ` · rated ${selected.rating} of 5` : ""}
+                {selected.ratingComment ? `: "${selected.ratingComment}"` : ""}
               </p>
               {/* A refund goes to Unifesto by forwarding it, not by escalating the case. */}
               {!withUnifesto && !closed && refunds.length === 0 && stays.length === 0 && (

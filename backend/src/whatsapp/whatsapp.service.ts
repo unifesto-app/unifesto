@@ -15,9 +15,11 @@ import {
   recordMarketingOptOut,
 } from '../common/marketing-opt-out';
 import {
+  applyProviderEvent,
   AttemptResult,
   DeliveryOpts,
   isRetryableAxiosError,
+  ProviderEvent,
   trackedSend,
 } from '../notifications/message-delivery';
 import { OUTBOUND_TIMEOUT_MS } from '../common/http/outbound-timeouts';
@@ -67,6 +69,13 @@ const TEMPLATES = {
   //   {{7}}=revenue (e.g. "₹12,340").
   UNIFESTO_STATS: 'unifesto_stats_update',
 } as const;
+
+/** Meta status callback -> delivery log event (C5). "sent" changes nothing. */
+const WA_STATUS_EVENT = new Map<string, ProviderEvent>([
+  ['delivered', 'delivered'],
+  ['read', 'opened'],
+  ['failed', 'failed'],
+]);
 
 // Header images from S3 bucket
 const HEADER_IMAGES = {
@@ -801,6 +810,10 @@ export class WhatsAppService {
       where: { waMessageId, direction: WhatsappMessageDirection.OUTBOUND },
       data: { status: state, ...(errorText ? { errorText } : {}) },
     });
+
+    // C5: the delivery log row for the same wamid ("sent" is already SENT).
+    const event = WA_STATUS_EVENT.get(state);
+    if (event) await applyProviderEvent(this.prisma, MessageChannel.WHATSAPP, waMessageId, event, errorText);
   }
 
   // =====================================================
