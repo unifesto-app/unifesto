@@ -1,84 +1,93 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
-import { listMyTickets, type SupportTicket } from '../lib/api/support';
-import TicketRow, { isActiveTicket } from '../components/support/TicketRow';
-import CosmosScreen from '../components/ui/CosmosScreen';
-import AuthButton from '../components/auth/AuthButton';
-import Skeleton from '../components/Skeleton';
-import { GUTTER, Section } from '../components/home/Section';
+import {
+  CATEGORY_LABEL,
+  DESK_STATUS_LABEL,
+  KIND_LABEL,
+  listSpaceDesk,
+  type SupportTicket,
+  type SupportTicketStatus,
+} from '../lib/api/support';
+import SearchList from '../components/apex/SearchList';
+import { ApexRow, whenShort } from '../components/apex/ApexRow';
+import ChipPicker from '../components/manage/ChipPicker';
+import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { personName } from '../components/support/CaseThread';
 import { spacing } from '../theme/spacing';
-import { typography } from '../theme/typography';
-import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-/** Support tickets raised for this space, open ones first, and a way to raise a new one. */
+type Filter = SupportTicketStatus | 'unread' | 'all';
+
+// Same filters as the Space web inbox (D9).
+const FILTERS: { value: Filter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'unread', label: 'Unread' },
+  { value: 'OPEN', label: DESK_STATUS_LABEL.OPEN },
+  { value: 'PENDING', label: DESK_STATUS_LABEL.PENDING },
+  { value: 'RESOLVED', label: DESK_STATUS_LABEL.RESOLVED },
+];
+
+/**
+ * The space's Assist desk (D9 on mobile): questions attendees raise about this
+ * space and its events. Space Admins see every case; event support teams see
+ * their events'. A case escalated to Unifesto stays listed, read-only.
+ * Space Admins also get the way to ask Unifesto something about the space.
+ */
 export default function SpaceSupportScreen() {
-  const { spaceId } = useLocalSearchParams<{ spaceId: string }>();
+  const { spaceId, admin } = useLocalSearchParams<{ spaceId: string; admin?: string }>();
   const router = useRouter();
-  const c = useCosmos();
-  const [tickets, setTickets] = useState<SupportTicket[] | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState<Filter>('all');
 
   useAnalyticsScreenTracking('SpaceSupport');
 
-  const load = useCallback(async () => {
-    const list = await listMyTickets(spaceId);
-    setTickets([...list.filter(isActiveTicket), ...list.filter((t) => !isActiveTicket(t))]);
-  }, [spaceId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-    }, [load]),
+  const fetchPage = useCallback(
+    async (search: string, page: number) => {
+      const r = await listSpaceDesk(spaceId, {
+        status: filter === 'all' || filter === 'unread' ? undefined : filter,
+        unread: filter === 'unread',
+        search,
+        page,
+      });
+      return r.ok ? { ok: true as const, data: { items: r.data.tickets, total: r.data.pagination.total } } : r;
+    },
+    [spaceId, filter],
   );
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await load();
-    setRefreshing(false);
-  };
 
   return (
-    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh}>
-      <View style={[styles.card, { backgroundColor: c.raised }]}>
-        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">Need a hand with this space?</Text>
-        <Text style={[styles.body, { color: c.soft }]}>
-          Payouts, plans, events or anything else. The Unifesto team replies right here.
-        </Text>
-        <AuthButton
-          label="New request"
-          arrow
-          onPress={() => router.push({ pathname: '/manage/support/new', params: { spaceId } })}
-          style={{ marginTop: spacing[5] }}
-        />
-      </View>
-
-      <Section title="Requests" subtitle={tickets && tickets.length > 0 ? 'Open ones first' : undefined}>
-        <View style={[styles.pad, styles.list]}>
-          {tickets === null ? (
-            [0, 1].map((i) => <Skeleton key={i} width="100%" height={76} borderRadius={cosmosCardRadius} />)
-          ) : tickets.length === 0 ? (
-            <View style={[styles.empty, { backgroundColor: c.raised }]}>
-              <Text style={[styles.emptyText, { color: c.soft }]}>Nothing raised yet.</Text>
-            </View>
-          ) : (
-            tickets.map((t) => (
-              <TicketRow key={t.id} ticket={t} showSpace={false} onPress={() => router.push(`/manage/support/${t.id}`)} />
-            ))
-          )}
+    <SearchList<SupportTicket>
+      placeholder="Subject, #number or attendee"
+      noun={['case', 'cases']}
+      deniedMessage="You don't answer support for this space."
+      refreshOnFocus
+      fetchPage={fetchPage}
+      keyOf={(t) => t.id}
+      header={
+        <View style={{ marginTop: spacing[4], gap: spacing[4] }}>
+          {admin ? (
+            <SettingsGroup plain style={{ marginTop: 0 }}>
+              <SettingsRow
+                label="Ask Unifesto about this space"
+                onPress={() => router.push({ pathname: '/manage/support/new', params: { spaceId } })}
+              />
+            </SettingsGroup>
+          ) : null}
+          <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
         </View>
-      </Section>
-    </CosmosScreen>
+      }
+      renderItem={(t) => (
+        <ApexRow
+          title={`#${t.ticketNumber} ${t.subject}`}
+          meta={[
+            personName(t.requester),
+            t.kind !== 'HELP' ? KIND_LABEL[t.kind] : CATEGORY_LABEL[t.category],
+            t.desk === 'PLATFORM' ? 'With Unifesto' : DESK_STATUS_LABEL[t.status],
+            whenShort(t.lastMessageAt),
+          ].join('  ·  ')}
+          unread={t.unread}
+          onPress={() => router.push(`/manage/support/${t.id}`)}
+        />
+      )}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  pad: { paddingHorizontal: GUTTER },
-  card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[5] },
-  title: { fontSize: 18, lineHeight: 26, ...cosmosFont.display },
-  body: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  list: { gap: spacing[3] },
-  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
-  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-});

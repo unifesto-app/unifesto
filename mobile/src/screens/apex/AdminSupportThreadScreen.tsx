@@ -1,40 +1,46 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { buildLabel, type BuildInfo } from '../../lib/appBuild';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PaperPlaneRight } from '@unifesto/unicon/react-native';
+import { MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import { getAdminTicket, PRIORITY_LABEL, replyAsStaff, triageTicket, type AdminTicket } from '../../lib/api/apexSupport';
-import { CATEGORY_LABEL, type SupportTicketPriority, type SupportTicketStatus } from '../../lib/api/support';
+import { getAdminTicket, PRIORITY_LABEL, replyAsStaff, sendToSpace, triageTicket, type AdminTicket } from '../../lib/api/apexSupport';
+import { searchEvents, type AdminEventRow } from '../../lib/api/apex';
+import {
+  CATEGORY_LABEL,
+  DESK_STATUS_LABEL,
+  KIND_LABEL,
+  type SupportMessage,
+  type SupportTicketPriority,
+  type SupportTicketStatus,
+} from '../../lib/api/support';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import ChipPicker from '../../components/manage/ChipPicker';
-import { longDate } from '../../components/apex/ApexRow';
-import { personName } from './SupportInboxScreen';
+import { CaseMessages, Composer, GUTTER, personName, sideOf } from '../../components/support/CaseThread';
+import { longDate, shortDate } from '../../components/apex/ApexRow';
+import { DESK_LABEL } from './SupportInboxScreen';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
 
-const GUTTER = spacing[6];
-
-const STATUSES: { value: SupportTicketStatus; label: string }[] = [
-  { value: 'OPEN', label: 'Needs reply' },
-  { value: 'PENDING', label: 'Waiting on them' },
-  { value: 'RESOLVED', label: 'Resolved' },
-  { value: 'CLOSED', label: 'Closed' },
-];
+const STATUSES: { value: SupportTicketStatus; label: string }[] = (['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const).map((s) => ({
+  value: s,
+  label: DESK_STATUS_LABEL[s],
+}));
 
 const PRIORITIES = (Object.keys(PRIORITY_LABEL) as SupportTicketPriority[]).map((p) => ({ value: p, label: PRIORITY_LABEL[p] }));
 
 /**
- * One support ticket from Unifesto's side: triage (status, priority, owner),
- * who raised it, and the conversation with a staff reply box. Staff messages
- * sit on the right here, the reverse of the requester's view.
+ * One Assist case from Unifesto's side: triage (status, priority, owner), who
+ * raised it, the conversation with a reply box and internal notes, and for a
+ * help question on our desk, Send to organiser. Desk messages sit on the
+ * right here, the reverse of the requester's view.
  */
 export default function AdminSupportThreadScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -47,6 +53,7 @@ export default function AdminSupportThreadScreen() {
   const [ticket, setTicket] = useState<AdminTicket | null>(null);
   const [error, setError] = useState('');
   const [reply, setReply] = useState('');
+  const [note, setNote] = useState(false);
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -71,7 +78,7 @@ export default function AdminSupportThreadScreen() {
     const body = reply.trim();
     if (!body || !ticket) return;
     setSending(true);
-    const r = await replyAsStaff(ticket.id, body);
+    const r = await replyAsStaff(ticket.id, body, note);
     setSending(false);
     if (!r.ok) return AppAlert.alert("Couldn't send", r.message);
     setReply('');
@@ -85,7 +92,7 @@ export default function AdminSupportThreadScreen() {
     setSaving(true);
     const r = await triageTicket(ticket.id, patch);
     setSaving(false);
-    if (!r.ok) return AppAlert.alert("Couldn't update the ticket", r.message);
+    if (!r.ok) return AppAlert.alert("Couldn't update the case", r.message);
     setTicket((prev) => (prev ? { ...prev, ...r.data, messages: prev.messages } : r.data));
   };
 
@@ -111,6 +118,7 @@ export default function AdminSupportThreadScreen() {
 
   const closed = ticket.status === 'CLOSED';
   const email = ticket.contactEmail || ticket.requester?.identities?.[0]?.email || undefined;
+  const nameOf = (m: SupportMessage) => (sideOf(m) === 'ASSISTANT' ? 'Assist' : personName(m.author));
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -124,7 +132,7 @@ export default function AdminSupportThreadScreen() {
       >
         <Text style={[styles.subject, { color: tokens.text }]}>{ticket.subject}</Text>
         <Text style={[styles.meta, { color: tokens.textMuted }]}>
-          {CATEGORY_LABEL[ticket.category]} · opened {longDate(ticket.createdAt)}
+          {KIND_LABEL[ticket.kind]} · {CATEGORY_LABEL[ticket.category]} · opened {longDate(ticket.createdAt)}
         </Text>
 
         <SettingsGroup plain>
@@ -141,61 +149,140 @@ export default function AdminSupportThreadScreen() {
               value={`${buildLabel(ticket.clientInfo as BuildInfo)}${ticket.clientInfo.platform ? ` · ${ticket.clientInfo.platform}` : ''}`}
             />
           ) : null}
+          <SettingsRow
+            label="Desk"
+            value={`${DESK_LABEL[ticket.desk]}${ticket.escalatedAt ? ' · escalated by the space' : ''}`}
+          />
           {ticket.space ? (
             <SettingsRow label="Space" value={ticket.space.name} onPress={() => router.push(`/apex/spaces/${ticket.space!.id}`)} />
           ) : null}
+          {ticket.eventId ? <SettingsRow label="Event" onPress={() => router.push(`/apex/events/${ticket.eventId}`)} /> : null}
           <SettingsRow label="Assigned to" value={ticket.assignedTo ? personName(ticket.assignedTo) : 'Nobody'} onPress={pickOwner} />
         </SettingsGroup>
+
+        {ticket.desk === 'PLATFORM' && ticket.kind === 'HELP' && !closed ? (
+          <SendToOrganiser
+            ticketId={ticket.id}
+            suggested={ticket.aiTriage?.routingHint === 'SPACE'}
+            reason={ticket.aiTriage?.reason}
+            onDone={load}
+          />
+        ) : null}
 
         <Text style={[styles.label, { color: tokens.textMuted }]}>Status</Text>
         <ChipPicker options={STATUSES} value={ticket.status} onChange={(v) => v && v !== ticket.status && !saving && void triage({ status: v })} />
         <Text style={[styles.label, { color: tokens.textMuted }]}>Priority</Text>
         <ChipPicker options={PRIORITIES} value={ticket.priority} onChange={(v) => v && v !== ticket.priority && !saving && void triage({ priority: v })} />
 
-        <View style={{ marginTop: spacing[6], gap: spacing[3] }}>
-          {(ticket.messages ?? []).map((m) => {
-            const staff = m.isStaffReply;
-            return (
-              <View key={m.id} style={[styles.bubble, staff ? [styles.right, { backgroundColor: tokens.accent }] : styles.left]}>
-                {staff ? null : <CardBackdrop shape={styles.bubble} />}
-                <Text style={[styles.body, { color: staff ? tokens.accentFg : tokens.text }]}>{m.body}</Text>
-                <Text style={[styles.time, { color: staff ? tokens.accentFg : tokens.textMuted, opacity: staff ? 0.7 : 1 }]}>
-                  {personName(m.author)} · {longDate(m.createdAt)}
-                </Text>
-              </View>
-            );
-          })}
+        <View style={{ marginTop: spacing[6] }}>
+          <CaseMessages messages={ticket.messages ?? []} viewer="DESK" nameOf={nameOf} />
         </View>
 
         {closed ? (
-          <Text style={[styles.hint, { color: tokens.textMuted }]}>This ticket is closed. Set it back to Needs reply to answer.</Text>
+          <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is closed. Set it back to Needs reply to answer.</Text>
         ) : null}
       </ScrollView>
 
       {!closed ? (
-        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), backgroundColor: tokens.bg }]}>
-          <View style={styles.inputWrap}>
-            <CardBackdrop shape={styles.inputWrap} />
-            <TextInput
-              value={reply}
-              onChangeText={setReply}
-              placeholder="Reply as Unifesto"
-              placeholderTextColor={tokens.textMuted}
-              selectionColor={tokens.accent}
-              multiline
-              style={[styles.input, { color: tokens.text }]}
-            />
-          </View>
-          <Pressable onPress={send} disabled={sending || !reply.trim()} hitSlop={8} accessibilityLabel="Send reply">
-            {sending ? (
-              <ActivityIndicator color={tokens.accent} />
-            ) : (
-              <PaperPlaneRight size={28} color={reply.trim() ? tokens.accent : tokens.textMuted} weight="fill" />
-            )}
-          </Pressable>
-        </View>
+        <Composer
+          value={reply}
+          onChangeText={setReply}
+          onSend={send}
+          sending={sending}
+          placeholder="Reply as Unifesto"
+          note={{ on: note, set: setNote }}
+          bottomInset={insets.bottom}
+        />
       ) : null}
     </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * Hand a help question on our desk to an event's organiser (the space desk).
+ * Opens straight to the search when AI triage says the organiser can answer.
+ */
+function SendToOrganiser({
+  ticketId,
+  suggested,
+  reason,
+  onDone,
+}: {
+  ticketId: string;
+  suggested: boolean;
+  reason?: string;
+  onDone: () => void;
+}) {
+  const tokens = useTokens();
+  const [open, setOpen] = useState(suggested);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<AdminEventRow[]>([]);
+
+  // Type, then search: wait for a pause.
+  useEffect(() => {
+    const q = query.trim();
+    if (!open || q.length < 2) return setResults([]);
+    const t = setTimeout(async () => {
+      const r = await searchEvents({ search: q });
+      setResults(r.ok ? r.data.events.slice(0, 6) : []);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [query, open]);
+
+  const pick = (ev: AdminEventRow) =>
+    AppAlert.alert(`Send to ${ev.title}?`, `The ${ev.space?.name ?? 'event'} desk takes it from here and the requester is told.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send',
+        onPress: async () => {
+          const r = await sendToSpace(ticketId, ev.id);
+          if (!r.ok) return AppAlert.alert("Couldn't send the case", r.message);
+          onDone();
+        },
+      },
+    ]);
+
+  return (
+    <View style={{ marginTop: spacing[4] }}>
+      <Text style={[styles.label, { color: tokens.textMuted }]}>Send to organiser</Text>
+      <Text style={[styles.meta, { color: tokens.textMuted, marginTop: 0 }]}>
+        {suggested ? `Assist thinks the organiser can answer this${reason ? `: ${reason}` : '.'}` : "Pass this question to an event's space desk."}
+      </Text>
+      {!open ? (
+        <SettingsGroup plain>
+          <SettingsRow label="Pick an event" onPress={() => setOpen(true)} />
+        </SettingsGroup>
+      ) : (
+        <>
+          <View style={styles.search}>
+            <CardBackdrop shape={styles.search} />
+            <MagnifyingGlass size={18} color={tokens.textMuted} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search events"
+              placeholderTextColor={tokens.textMuted}
+              style={[styles.searchInput, { color: tokens.text }]}
+              autoCorrect={false}
+              autoCapitalize="none"
+              accessibilityLabel="Search events"
+            />
+          </View>
+          {results.length ? (
+            <SettingsGroup plain>
+              {results.map((ev) => (
+                <SettingsRow
+                  key={ev.id}
+                  label={ev.title}
+                  value={[ev.space?.name, shortDate(ev.startDateTime)].filter(Boolean).join(' · ')}
+                  onPress={() => pick(ev)}
+                />
+              ))}
+            </SettingsGroup>
+          ) : null}
+        </>
+      )}
+    </View>
   );
 }
 
@@ -206,12 +293,6 @@ const styles = StyleSheet.create({
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
   label: { marginTop: spacing[4], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...font('medium') },
   hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
-  bubble: { maxWidth: '85%', borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
-  left: { alignSelf: 'flex-start' },
-  right: { alignSelf: 'flex-end' },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...font() },
-  time: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[3], paddingHorizontal: GUTTER, paddingTop: spacing[3] },
-  inputWrap: { flex: 1, borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
-  input: { fontSize: typography.fontSize.base, maxHeight: 120, ...font() },
+  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3], paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, height: 44, overflow: 'hidden' },
+  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...font() },
 });

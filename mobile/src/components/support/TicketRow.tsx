@@ -1,22 +1,23 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CaretRight } from '@unifesto/unicon/react-native';
-import { CATEGORY_LABEL, STATUS_LABEL, type SupportTicket } from '../../lib/api/support';
+import { CATEGORY_LABEL, KIND_LABEL, STATUS_LABEL, type SupportTicket } from '../../lib/api/support';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 
-export const isActiveTicket = (t: SupportTicket) => t.status === 'OPEN' || t.status === 'PENDING';
+export const isActiveTicket = (t: SupportTicket) => t.status === 'BOT' || t.status === 'OPEN' || t.status === 'PENDING';
 
-/** One request: subject, its status, then #number · category · space · last activity. */
+/** One case: subject, its status, then #number · kind (category for help) · space · last activity. */
 export default function TicketRow({ ticket, onPress, showSpace = true }: { ticket: SupportTicket; onPress: () => void; showSpace?: boolean }) {
   const c = useCosmos();
   const active = isActiveTicket(ticket);
   // Waiting on me reads loudest; anything finished steps back.
   const waitingOnMe = ticket.status === 'PENDING';
-  const meta = [`#${ticket.ticketNumber}`, CATEGORY_LABEL[ticket.category], showSpace ? ticket.space?.name : null, day(ticket.lastMessageAt)]
+  const about = ticket.kind && ticket.kind !== 'HELP' ? KIND_LABEL[ticket.kind] : CATEGORY_LABEL[ticket.category];
+  const meta = [`#${ticket.ticketNumber}`, about, showSpace ? ticket.space?.name : null, day(ticket.lastMessageAt)]
     .filter(Boolean)
     .join(' · ');
 
