@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewTicketForm } from "@/components/support/NewTicketForm";
+import { RateCase } from "@/components/support/RateCase";
 import {
   TicketThread,
   statusBadgeVariant,
@@ -175,6 +176,11 @@ export default function SpaceSupportPage() {
                 disabled={closed}
                 disabledHint="This ticket is closed. Reopen it to continue the conversation."
               />
+            )}
+            {(selected.status === "RESOLVED" || closed) && (
+              <div className="mt-5">
+                <RateCase ticket={selected} onRated={() => openTicket(selected.id)} />
+              </div>
             )}
           </CardContent>
         </Card>

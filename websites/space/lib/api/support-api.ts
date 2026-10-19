@@ -66,6 +66,9 @@ export interface SupportTicket {
   assignedToId: string | null;
   assignedTo: SupportUser | null;
   resolvedAt: string | null;
+  /** D20: the requester's 1-5 rating once resolved, and optional comment. */
+  rating?: number | null;
+  ratingComment?: string | null;
   closedAt: string | null;
   lastMessageAt: string;
   createdAt: string;
@@ -185,6 +188,15 @@ export async function escalateTicket(id: string): Promise<Result<SupportTicket>>
 /* -------------------------------------------------------------------------- */
 /* Space desk (D9): cases attendees raise about this space and its events     */
 /* -------------------------------------------------------------------------- */
+
+/** D20: `POST /support/tickets/:id/rating` — rate your resolved case 1-5. */
+export async function rateTicket(
+  id: string,
+  rating: number,
+  comment?: string
+): Promise<Result<{ id: string; rating: number; ratingComment: string | null }>> {
+  return apiCall(backendClient.post(`/support/tickets/${id}/rating`, { rating, comment }));
+}
 
 /** Fired after the desk opens a case, so the sidebar badge recounts. */
 export const ASSIST_READ_EVENT = "assist:read";
