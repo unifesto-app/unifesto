@@ -14,7 +14,7 @@ name: unifesto
 # websites/apex/.env, websites/space/.env, websites/web/.env.local).
 # Build-time NEXT_PUBLIC_* values are inlined into the client bundles, so
 # they're passed as build args interpolated from ./.env (NEXT_PUBLIC_BACKEND_URL,
-# NEXT_PUBLIC_API_URL, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).
+# NEXT_PUBLIC_API_URL, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, SENTRY_DSN_{WEB,SPACE,APEX}).
 #
 # Images: compose runs :latest. deploy.sh also tags every build :<git sha> and
 # the image it replaced :previous; `./deploy.sh rollback` puts :previous back
@@ -159,6 +159,8 @@ services:
       args:
         NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_APEX:-}
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-apex:latest
     restart: unless-stopped
     env_file: ./websites/apex/.env
@@ -180,6 +182,8 @@ services:
         NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_SPACE:-}
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-space:latest
     restart: unless-stopped
     env_file: ./websites/space/.env
@@ -198,6 +202,8 @@ services:
       context: ./websites/web
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_WEB:-}
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-web:latest
     restart: unless-stopped
     env_file: ./websites/web/.env.local

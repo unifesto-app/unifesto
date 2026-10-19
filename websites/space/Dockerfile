@@ -25,11 +25,15 @@ COPY . .
 
 ARG NEXT_PUBLIC_BACKEND_URL
 ARG NEXT_PUBLIC_API_URL
+# Sentry: per-app DSN (no-op when empty) and the release SHA from deploy.sh.
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG SENTRY_RELEASE
 # Browser key for the event form's venue search (Places). Optional: without it
 # the search box is hidden and organisers type the venue by hand.
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL \
     NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY \
     NEXT_TELEMETRY_DISABLED=1
 

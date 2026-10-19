@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   // Emit a self-contained server bundle for lean Docker images.
@@ -31,4 +32,10 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Source maps stay off until a SENTRY_AUTH_TOKEN exists to upload them; the
+// release is the git SHA deploy.sh passes in as SENTRY_RELEASE.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  telemetry: false,
+  sourcemaps: { disable: true },
+});

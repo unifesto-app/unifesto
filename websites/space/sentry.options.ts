@@ -1,0 +1,16 @@
+// Shared by instrumentation.ts (server) and instrumentation-client.ts (browser).
+// Errors only, no PII: emails and Indian phone numbers are masked before an
+// event leaves the process. Without NEXT_PUBLIC_SENTRY_DSN the SDK is a no-op.
+const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+const PHONE = /(?:\+91[\s-]?|\b)[6-9]\d{9}\b/g;
+
+export const sentryOptions = {
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  tracesSampleRate: 0,
+  sendDefaultPii: false,
+  beforeSend<T>(event: T): T {
+    return JSON.parse(
+      JSON.stringify(event).replace(EMAIL, "[email]").replace(PHONE, "[phone]"),
+    );
+  },
+};
