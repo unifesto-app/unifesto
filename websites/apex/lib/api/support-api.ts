@@ -76,6 +76,9 @@ export interface SupportTicket {
   contactEmail: string | null;
   spaceId: string | null;
   space: SupportSpaceRef | null;
+  eventId?: string | null;
+  /** D13 AI triage: a hint for staff, never acted on by itself. */
+  aiTriage?: { routingHint?: SupportDesk; reason?: string } | null;
   assignedToId: string | null;
   assignedTo: SupportUser | null;
   resolvedAt: string | null;
@@ -193,6 +196,13 @@ export async function updateTicket(
 ): Promise<Result<SupportTicket>> {
   return apiCall<SupportTicket>(
     backendClient.patch(`/support/tickets/${id}`, input)
+  );
+}
+
+/** `POST /support/tickets/:id/send-to-space` — hand a help question to an event's organiser. */
+export async function sendToSpace(id: string, eventId: string): Promise<Result<SupportTicket>> {
+  return apiCall<SupportTicket>(
+    backendClient.post(`/support/tickets/${id}/send-to-space`, { eventId })
   );
 }
 
