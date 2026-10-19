@@ -29,6 +29,7 @@ import { StaysModule } from '../stays/stays.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TeamChangesService } from './team-changes.service';
+import { BadgesService } from './badges.service';
 import { RefundsModule } from '../refunds/refunds.module';
 
 @Module({
@@ -49,7 +50,7 @@ import { RefundsModule } from '../refunds/refunds.module';
     RefundsModule,
   ],
   controllers: [RegistrationsController, GroupSeatsController, FormUploadsController, AttendeeDetailsController],
-  providers: [RegistrationsService, MyRegistrationsService, RegistrationCheckoutService, RegistrationPaymentsService, RegistrationCancellationService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService],
+  providers: [RegistrationsService, MyRegistrationsService, RegistrationCheckoutService, RegistrationPaymentsService, RegistrationCancellationService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService, BadgesService],
   exports: [RegistrationsService, WaitlistService, GroupSeatsService, TeamChangesService],
 })
 export class RegistrationsModule {}

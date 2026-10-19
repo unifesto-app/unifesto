@@ -18,7 +18,9 @@ import {
   IsIn,
   MaxLength,
   IsBoolean,
+  ArrayMaxSize,
 } from 'class-validator';
+import { BADGE_LAYOUT_KEYS, type BadgeLayoutKey } from '../badges.util';
 
 /**
  * One captured attendee for a GROUP registration. Name, email and mobile are
@@ -492,4 +494,23 @@ export class CancelMyRegistrationDto {
   @IsString()
   @MaxLength(500)
   reason?: string;
+}
+
+/** Print badges (N1): a layout plus the roster's selection (rows, or its filters). */
+export class PrintBadgesDto {
+  @ApiProperty({ enum: BADGE_LAYOUT_KEYS })
+  @IsIn(BADGE_LAYOUT_KEYS)
+  layout: BadgeLayoutKey;
+
+  @ApiPropertyOptional({ type: [String], description: 'Selected registrations; omit for everyone matching the filters' })
+  @IsOptional()
+  @IsArray()
+  @ArrayNotEmpty()
+  @ArrayMaxSize(5000)
+  @IsUUID('all', { each: true })
+  registrationIds?: string[];
+
+  @ApiPropertyOptional() @IsOptional() @IsUUID() ticketTypeId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsIn(['REGISTERED', 'ATTENDED']) status?: 'REGISTERED' | 'ATTENDED';
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(200) search?: string;
 }

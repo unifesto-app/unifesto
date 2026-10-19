@@ -15,6 +15,15 @@ import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { seatsFor } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 
+/** The organiser roster's list filters (see RegistrationAttendeesService.rosterWhere). */
+export interface RosterFilters {
+  search?: string;
+  status?: 'REGISTERED' | 'ATTENDED' | 'CANCELLED';
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  ticketTypeId?: string;
+  attendingOnly?: boolean;
+}
+
 /**
  * Organiser-side attendee views: lists, detail, stats, registration sources,
  * group seat release/reopen and the WhatsApp group invite blast.
@@ -425,33 +434,16 @@ export class RegistrationAttendeesService {
     };
   }
 
-  async getEventRegistrations(
-    userId: string,
+  /**
+   * The organiser roster's filters as a `where`: the attendee list and badge
+   * printing (N1) select the same rows from the same controls.
+   */
+  async rosterWhere(
     eventId: string,
-    page = 1,
-    limit = 50,
-    search?: string,
-    status?: 'REGISTERED' | 'ATTENDED' | 'CANCELLED',
-    paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED',
-    ticketTypeId?: string,
-    attendingOnly = false,
-  ) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!event) {
-      throw new NotFoundException('Event not found');
-    }
-
-    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
-      throw new ForbiddenException('Unauthorized');
-    }
-
-    const skip = (page - 1) * limit;
-
+    { search, status, paymentStatus, ticketTypeId, attendingOnly = false }: RosterFilters,
+  ): Promise<Prisma.EventRegistrationWhereInput> {
     // Build where clause with filters
-    const where: any = { eventId };
+    const where: Prisma.EventRegistrationWhereInput = { eventId };
 
     if (status) {
       where.status = status;
@@ -519,6 +511,35 @@ export class RegistrationAttendeesService {
 
       where.OR = or;
     }
+
+    return where;
+  }
+
+  async getEventRegistrations(
+    userId: string,
+    eventId: string,
+    page = 1,
+    limit = 50,
+    search?: string,
+    status?: 'REGISTERED' | 'ATTENDED' | 'CANCELLED',
+    paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED',
+    ticketTypeId?: string,
+    attendingOnly = false,
+  ) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException('Event not found');
+    }
+
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId: event.id }))) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    const skip = (page - 1) * limit;
+    const where = await this.rosterWhere(eventId, { search, status, paymentStatus, ticketTypeId, attendingOnly });
 
     const [registrations, total] = await Promise.all([
       this.prisma.eventRegistration.findMany({
