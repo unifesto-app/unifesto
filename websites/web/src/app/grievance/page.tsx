@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { withSocial } from "@/lib/seo";
 import LegalPage, { type LegalSection } from "@/components/site/LegalPage";
 import { LEGAL } from "@/lib/legal";
+import GrievanceForm from "@/components/GrievanceForm";
 
 /* Grievance Redressal Policy. One mechanism serving three laws: IT
    (Intermediary Guidelines) Rules, 2021 (Rule 3(2): 24h ack, 15 days,
@@ -82,7 +83,12 @@ const sections: LegalSection[] = [
     title: "How to raise a grievance",
     body: (
       <>
-        <p>Email {mail(LEGAL.grievance.email)} with:</p>
+        <p>
+          Raise it here and it reaches the Grievance Officer as a case with a number you can follow in the app under
+          My help. Use the email on your Unifesto account; we send it a code to confirm it is yours.
+        </p>
+        <GrievanceForm officerEmail={LEGAL.grievance.email} />
+        <p>Or email {mail(LEGAL.grievance.email)} with:</p>
         <ul>
           <li>your name and the email or phone on your Unifesto account;</li>
           <li>what happened, with links to the event, Space, profile or content involved;</li>

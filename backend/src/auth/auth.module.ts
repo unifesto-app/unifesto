@@ -32,6 +32,7 @@ import { CanGuard } from './authorization/can.guard';
   ],
   exports: [
     AuthService,
+    OtpService,
     CognitoJwtService,
     ThrottleIdentityService,
     JwtAuthGuard,
