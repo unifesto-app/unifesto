@@ -631,7 +631,7 @@ export class StayBookingsService {
           'That payment is for a different booking.',
         );
     }
-    await this.settle(b.id, dto.razorpayPaymentId, dto.razorpayOrderId);
+    await this.settle(b.id, dto.razorpayPaymentId, dto.razorpayOrderId, true);
     return this.getMine(userId, bookingId);
   }
 
@@ -680,7 +680,7 @@ export class StayBookingsService {
    * confirmed only when beds are still free; otherwise — or if it was
    * cancelled/rejected — the money is refunded in full.
    */
-  private async settle(bookingId: string, paymentId: string, orderId: string) {
+  private async settle(bookingId: string, paymentId: string, orderId: string, fromClient = false) {
     const outcome = await this.prisma.$transaction(async (tx) => {
       const b = await tx.stayBooking.findUniqueOrThrow({
         where: { id: bookingId },
@@ -693,7 +693,7 @@ export class StayBookingsService {
         fresh.paymentStatus === PaymentStatus.PAID ||
         fresh.paymentStatus === PaymentStatus.REFUNDED
       ) {
-        return 'already' as const;
+        return fresh.paymentId;
       }
       const paid = {
         paymentStatus: PaymentStatus.PAID,
@@ -712,6 +712,16 @@ export class StayBookingsService {
       });
       return confirm ? ('confirmed' as const) : ('refund' as const);
     });
+    if (outcome !== 'confirmed' && outcome !== 'refund') {
+      // Already settled. Same payment replayed: no-op. Another one: nothing
+      // was delivered for it, so it goes back in full (A22). A failed refund
+      // never fails the payer's verify; the webhook retries it.
+      const dup = this.payments.refundIfDuplicate(outcome, paymentId, `stay booking ${bookingId}`);
+      await (fromClient
+        ? dup.catch((err) => this.logger.error(`Duplicate capture ${paymentId} on stay ${bookingId}: refund failed: ${err}`))
+        : dup);
+      return;
+    }
 
     const b = await this.prisma.stayBooking.findUniqueOrThrow({
       where: { id: bookingId },
