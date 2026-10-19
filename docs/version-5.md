@@ -528,7 +528,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | planned |
+| L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | done (#271) |
 | L2 | Q&A with upvotes + moderation, per session/track | planned |
 | L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | planned |
 | L4 | Projector view on web (results, Q&A wall) | planned |
@@ -809,3 +809,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G10 part 2: member pass reads own check-ins, offline queues sync on foreground/reconnect and never across accounts, file-backed guest lists, proactive download (#268)
 - **2026-10-19** · H25: custom-domain CORS for notify/inquiry, encoded branded From + fallback, hourly domain re-check, TXT ownership + claim expiry + provider cleanup, no Unifesto chrome on custom domains (#269)
 - **2026-10-19** · G10 mobile check-in Undo (scanner success card, event hub recent rows, search "Checked in" rows) via POST /checkin/undo; online only, roster refreshed after undo (#270)
+- **2026-10-19** · L1 live polls: organisers launch polls from Space web and mobile manage-event, attendees vote once from their ticket while the event is live, and results update over a new engagement socket room. (#271)
