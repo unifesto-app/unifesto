@@ -71,6 +71,8 @@ function formatWhen(iso: string, timezone: string) {
   });
 }
 
+const PUBLIC_WEB_URL = process.env.NEXT_PUBLIC_WEB_URL || "https://www.unifesto.app";
+
 export default function ManageSessionPage() {
   const params = useParams();
   const router = useRouter();
@@ -84,6 +86,7 @@ export default function ManageSessionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
@@ -358,6 +361,21 @@ export default function ManageSessionPage() {
           >
             <PencilSimple className="h-4 w-4" />
             Edit
+          </Button>
+        )}
+        {session.status !== "DRAFT" && (
+          // The public page (B18): share it anywhere; it opens the app's
+          // session screen on phones that have the app.
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await navigator.clipboard?.writeText(`${PUBLIC_WEB_URL}/session/${session.slug}`).catch(() => undefined);
+              setLinkCopied(true);
+              setTimeout(() => setLinkCopied(false), 2000);
+            }}
+          >
+            <LinkSimple className="h-4 w-4" />
+            {linkCopied ? "Link copied" : "Copy public link"}
           </Button>
         )}
         <Button variant="outline" onClick={handleDuplicate} disabled={busy}>
