@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Action, Can, CanGuard } from '../auth/authorization';
 import { AttendeeDetailsService } from './attendee-details.service';
@@ -122,6 +123,7 @@ export class AttendeeDetailsController {
   }
 
   @Post('registrations/:id/seats/:seatIndex/replace')
+  @Throttle({ default: { limit: 20, ttl: 3_600_000 } }) // it emails the new invitee (A28)
   @ApiOperation({ summary: 'Replace a member of my team (lead, while the organiser allows it)' })
   leadReplace(
     @Request() req,
