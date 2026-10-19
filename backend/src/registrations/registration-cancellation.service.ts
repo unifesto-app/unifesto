@@ -24,6 +24,7 @@ import type { RegistrationUpdateEvent } from '../notifications/notifications.eve
 import { HOLDS_SEAT_PAYMENT, generateQRCode, generateTicketCode, seatsFor } from './registration.util';
 import { PaymentsService } from '../payments/payments.service';
 import { RegistrationAttendeesService } from './registration-attendees.service';
+import { RefundsService } from '../refunds/refunds.service';
 
 /** Cancelling a registration (attendee or curator) and restoring a cancelled one. */
 @Injectable()
@@ -40,6 +41,7 @@ export class RegistrationCancellationService {
     private readonly coupons: CouponsService,
     private readonly attendees: RegistrationAttendeesService,
     private readonly payments: PaymentsService,
+    private readonly refunds: RefundsService,
   ) {}
 
   /**
@@ -71,7 +73,7 @@ export class RegistrationCancellationService {
     return this.performSelfCancellation(registration, userId, reason);
   }
 
-  /** Attendee cancels their own registration by id (free tickets only). */
+  /** Attendee cancels their own registration by id (a paid one becomes a refund request, D6). */
   async cancelMyRegistration(
     registrationId: string,
     userId: string,
@@ -89,9 +91,10 @@ export class RegistrationCancellationService {
   }
 
   /**
-   * Organiser cancels an attendee's registration (free / unpaid only); the
-   * reason is stored and included in their cancellation email. Same seat, ticket, waitlist and notification
-   * handling as a self-cancel; a paid ticket goes through a refund request.
+   * Organiser cancels an attendee's registration; the reason is stored and
+   * included in their cancellation email. Same seat, ticket, waitlist and
+   * notification handling as a self-cancel; a paid ticket goes straight to
+   * Unifesto as a cancellation refund (D6).
    */
   async organiserCancelRegistration(
     actorId: string,
@@ -110,7 +113,7 @@ export class RegistrationCancellationService {
       registration,
       registration.userId,
       reason,
-      { defaultReason: 'Cancelled by the organiser', byOrganiser: true },
+      { defaultReason: 'Cancelled by the organiser', byOrganiser: true, actorId },
     );
     this.logger.log(
       `Organiser ${actorId} cancelled registration ${registrationId} (event ${eventId})`,
@@ -120,9 +123,10 @@ export class RegistrationCancellationService {
 
   /**
    * Shared cancel (attendee self-cancel and organiser cancel). Only free /
-   * unpaid registrations may cancel directly: a paid ticket must go through
-   * the refund flow (organiser → admin approval, base-only), which this path
-   * would otherwise bypass. `userId` is always the attendee.
+   * unpaid registrations cancel here. A paid ticket becomes one CANCELLATION
+   * flow (D6): a full refund request carrying the reason, reviewed like any
+   * refund (organiser → admin, base-only); settling it cancels the booking.
+   * `userId` is always the attendee; `opts.actorId` is the organiser.
    */
   private async performSelfCancellation(
     registration: Prisma.EventRegistrationGetPayload<{
@@ -130,7 +134,7 @@ export class RegistrationCancellationService {
     }>,
     userId: string,
     reason?: string | null,
-    opts: { defaultReason?: string; byOrganiser?: boolean } = {},
+    opts: { defaultReason?: string; byOrganiser?: boolean; actorId?: string } = {},
   ): Promise<any> {
     const eventId = registration.eventId;
     const defaultReason = opts.defaultReason ?? 'Cancelled by attendee';
@@ -148,9 +152,16 @@ export class RegistrationCancellationService {
       (registration.paymentStatus === PaymentStatus.PAID ||
         registration.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED);
     if (hasPaid) {
-      throw new BadRequestException(
-        'Paid tickets can’t be cancelled directly. Raise a refund request instead.',
+      const refundRequest = await this.refunds.requestCancellation(
+        opts.actorId ?? userId,
+        registration.id,
+        reason?.trim() || defaultReason,
       );
+      return {
+        message: 'Cancellation requested. The booking is cancelled once the refund is approved.',
+        razorpayRefundInitiated: false,
+        refundRequestId: refundRequest.id,
+      };
     }
 
     // Paid registrations are rejected above, so there's never money to return.

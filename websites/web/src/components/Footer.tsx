@@ -63,6 +63,7 @@ const COLUMNS = [
       { label: "Unifesto Huddle", href: "/huddle" },
       { label: "Pricing", href: "/pricing" },
       { label: "Request a Space", href: "/request-space" },
+      { label: "Host one event", href: "/request-event" },
     ],
   },
   {

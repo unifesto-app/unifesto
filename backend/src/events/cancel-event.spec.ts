@@ -32,11 +32,14 @@ function build(opts: { claimed?: number; children?: { id: string }[] } = {}) {
       findMany: jest.fn(async () => (childCalls++ === 0 ? opts.children ?? [] : [])),
     },
     eventRegistration: {
-      findMany: jest.fn(async ({ select }: any) => (select ? [{ id: paidReg.id }] : [paidReg, freeReg])),
+      findMany: jest.fn(async ({ select }: any) => (select ? [{ id: paidReg.id, userId: 'u-asha' }] : [paidReg, freeReg])),
     },
     refundRequest: {
-      updateMany: jest.fn(async () => ({ count: 0 })),
-      createMany: jest.fn(async ({ data }: any) => ({ count: data.length })),
+      findMany: jest.fn(async () => [{ id: 'rr-waiting', supportTicketId: null }]),
+      updateMany: jest.fn(async () => ({ count: 1 })),
+      createManyAndReturn: jest.fn(async ({ data }: any) =>
+        data.map((d: any, i: number) => ({ id: `rr-${i}`, registrationId: d.registrationId, status: d.status, supportTicketId: null })),
+      ),
     },
   };
   const email: any = {
@@ -44,9 +47,10 @@ function build(opts: { claimed?: number; children?: { id: string }[] } = {}) {
     sendEventCancelled: jest.fn(async () => undefined),
   };
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
-  const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, {} as any, {} as any, {} as any);
+  const events = { emit: jest.fn() };
+  const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, {} as any, {} as any);
   jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
-  return { svc, prisma, email };
+  return { svc, prisma, email, events };
 }
 
 describe('cancelEvent (A24)', () => {
@@ -54,20 +58,26 @@ describe('cancelEvent (A24)', () => {
     const { svc, prisma, email } = build({ claimed: 0 });
     await expect(svc.cancelEvent('u-1', 'ev-1', { reason: 'Rain' } as any)).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.event.updateMany.mock.calls[0][0].where.status.in).toEqual([EventStatus.PUBLISHED, EventStatus.ONGOING]);
-    expect(prisma.refundRequest.createMany).not.toHaveBeenCalled();
+    expect(prisma.refundRequest.createManyAndReturn).not.toHaveBeenCalled();
     expect(email.sendEventCancelled).not.toHaveBeenCalled();
   });
 
   it('opens a refund request per paid booking, straight to Unifesto', async () => {
-    const { svc, prisma, email } = build();
+    const { svc, prisma, email, events } = build();
     await svc.cancelEvent('u-1', 'ev-1', { reason: 'Rain' } as any);
-    const { data, skipDuplicates } = prisma.refundRequest.createMany.mock.calls[0][0];
+    const { data, skipDuplicates } = prisma.refundRequest.createManyAndReturn.mock.calls[0][0];
     expect(skipDuplicates).toBe(true);
     expect(data).toEqual([
       expect.objectContaining({ registrationId: 'reg-paid', status: RefundStatus.PENDING_ADMIN, reason: 'Event cancelled: Rain' }),
     ]);
     // Requests still waiting on the curator move to Unifesto too.
     expect(prisma.refundRequest.updateMany.mock.calls[0][0].data.status).toBe(RefundStatus.PENDING_ADMIN);
+    // D6: each new request opens a CANCELLATION case with Unifesto; a moved one takes its case there.
+    const sent = Object.fromEntries(events.emit.mock.calls.map(([name, e]: any) => [name, e]));
+    expect(sent['assist.subject.open']).toMatchObject({
+      subjectId: 'rr-0', kind: 'CANCELLATION', desk: 'PLATFORM', requesterId: 'u-asha', raisedForRequester: true,
+    });
+    expect(sent['assist.subject.update']).toMatchObject({ subjectId: 'rr-waiting', desk: 'PLATFORM' });
     // The desk hears about it.
     expect(email.sendRawEmail).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('1 refunds waiting'), expect.any(String));
   });

@@ -4,3 +4,4 @@ export * from './space-status-request.dto';
 export * from './space-ownership-request.dto';
 export * from './sub-space-request.dto';
 export * from './space-member.dto';
+export * from './event-request.dto';

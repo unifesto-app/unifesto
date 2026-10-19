@@ -34,7 +34,6 @@ export function isMissingTargetUser(err: any): boolean {
 export interface OneSignalSendResult {
   /** OneSignal notification id when accepted, null on failure. */
   id: string | null;
-  recipients?: number;
   error?: string;
   /** Transient failure (network, timeout, 429, 5xx): worth retrying. */
   retryable?: boolean;
@@ -119,6 +118,30 @@ export class OneSignalService {
   }
 
   /**
+   * Delivery stats of one sent notification (GET /notifications/:id). The
+   * create response has no recipient count, so a segment broadcast reads its
+   * numbers back from here. `successful` = handed to Apple/Google; `failed` =
+   * unsubscribed devices. Null when unknown (not configured, network, 404).
+   */
+  async getDeliveryStats(
+    notificationId: string,
+  ): Promise<{ successful: number; failed: number; errored: number } | null> {
+    if (!this.isConfigured()) return null;
+    try {
+      const res = await axios.get(`${this.endpoint}/${encodeURIComponent(notificationId)}`, {
+        params: { app_id: this.appId },
+        headers: this.headers,
+        timeout: 10_000,
+      });
+      const d = res.data ?? {};
+      return { successful: d.successful ?? 0, failed: d.failed ?? 0, errored: d.errored ?? 0 };
+    } catch (err: any) {
+      this.logger.warn(`OneSignal stats ${notificationId} failed: ${err?.response?.status ?? err?.message}`);
+      return null;
+    }
+  }
+
+  /**
    * Send one push to a batch of external ids. Best-effort: returns a result
    * object rather than throwing, so callers (already off the request path) can
    * record SENT/FAILED without special-casing exceptions.
@@ -177,9 +200,9 @@ export class OneSignalService {
             ? 'no_linked_subscription'
             : JSON.stringify(data.errors ?? 'no_notification_id');
         this.logger.warn(`OneSignal accepted no notification: ${reason}`);
-        return { id: null, recipients: 0, error: reason };
+        return { id: null, error: reason };
       }
-      return { id: data.id, recipients: data.recipients };
+      return { id: data.id };
     } catch (err: any) {
       const detail =
         err?.response?.data?.errors?.join?.(', ') ||

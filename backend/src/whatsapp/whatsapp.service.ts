@@ -16,6 +16,7 @@ import {
   trackedSend,
 } from '../notifications/message-delivery';
 import { OUTBOUND_TIMEOUT_MS } from '../common/http/outbound-timeouts';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 
 interface WhatsAppTemplateComponent {
   type: string;
@@ -1162,7 +1163,7 @@ export class WhatsAppService {
    * by their (formatted) phone number so nobody is messaged twice.
    */
   async resolveBroadcastRecipients(params: {
-    audience: 'ALL' | 'SPACE' | 'USER';
+    audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
   }): Promise<Array<{ userId: string; name: string; mobileNumber: string }>> {
@@ -1198,6 +1199,11 @@ export class WhatsAppService {
         distinct: ['userId'],
       });
       users = roles.map((r) => r.user);
+    } else if (params.audience === 'STAFF') {
+      users = await this.prisma.user.findMany({
+        where: { ...PLATFORM_STAFF_WHERE, mobileNumber: { not: '' } },
+        select,
+      });
     } else {
       if (!params.userIds?.length) {
         throw new BadRequestException('At least one userId is required.');
@@ -1278,7 +1284,7 @@ export class WhatsAppService {
    */
   async sendBroadcastTemplate(params: {
     adminUserId: string;
-    audience: 'ALL' | 'SPACE' | 'USER';
+    audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
     templateName: string;

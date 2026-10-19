@@ -19,14 +19,15 @@ import {
 /**
  * Who an admin broadcast targets. `all` enumerates every user (pref-filtered at
  * send); `event` targets attendees of `eventId`; `space` targets members of
- * `spaceId`; `users` targets hand-picked accounts (`userIds`). Pref opt-out
+ * `spaceId`; `users` targets hand-picked accounts (`userIds`); `staff` targets
+ * platform ADMINs only (test sends). Pref opt-out
  * (promotions default off) is always honoured downstream.
  */
 export const MAX_DIRECT_PUSH_USERS = 100;
 
 export class PushTargetDto {
-  @IsIn(['all', 'event', 'space', 'users'])
-  type: 'all' | 'event' | 'space' | 'users';
+  @IsIn(['all', 'event', 'space', 'users', 'staff'])
+  type: 'all' | 'event' | 'space' | 'users' | 'staff';
 
   // `event` targeting requires an eventId; skipped (and thus optional) otherwise.
   @ValidateIf((o) => o.type === 'event')

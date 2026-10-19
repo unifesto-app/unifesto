@@ -25,6 +25,7 @@ import {
   TestCampaignDto,
 } from './dto/campaign.dto';
 import { EmailCampaignQueue } from './email-campaigns.queue';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 
 /** A SENDING campaign with no progress for this long is treated as stranded. */
 export const STALE_SENDING_MS = 15 * 60 * 1000;
@@ -192,6 +193,7 @@ export class EmailCampaignsService {
       case EmailTargetType.ALL_USERS:
       case EmailTargetType.ORGANISERS_ONLY:
       case EmailTargetType.SEGMENT:
+      case EmailTargetType.STAFF:
         return null;
       default:
         throw new BadRequestException('Unsupported target type');
@@ -612,6 +614,11 @@ export class EmailCampaignsService {
             select: RECIPIENT_SELECT,
             distinct: ['id'],
           }),
+        );
+
+      case EmailTargetType.STAFF:
+        return this.usersToRecipients(
+          await this.prisma.user.findMany({ where: PLATFORM_STAFF_WHERE, select: RECIPIENT_SELECT }),
         );
 
       case EmailTargetType.SEGMENT:

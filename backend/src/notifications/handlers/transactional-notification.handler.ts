@@ -326,7 +326,9 @@ export class TransactionalNotificationHandler {
       body: e.body,
       deepLink: e.deepLink,
       data: { type: 'hackathon', kind: 'HELP', eventId: e.eventId },
-      inbox: { type: 'hackathon', eventId: e.eventId },
+      // New queries for event staff get their own type (the inbox's Staff tab);
+      // the reply to the team stays a personal hackathon update.
+      inbox: { type: e.toStaff ? 'help_desk' : 'hackathon', eventId: e.eventId },
     });
   }
 

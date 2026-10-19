@@ -5,7 +5,7 @@
  */
 
 export interface ArrivedNotification {
-  /** `data.type` on the push, e.g. "hackathon" or "competition". */
+  /** `data.type` on the push, e.g. "hackathon" or "competition"; empty when it has none. */
   type: string;
   eventId?: string;
 }

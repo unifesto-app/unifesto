@@ -28,6 +28,7 @@ export function buildRegistrationsService(
   teamChanges: any,
   authz: any,
   sessions: any = { completeFromWebhook: async () => false },
+  refunds: any = { requestCancellation: jest.fn(async () => ({ id: 'rr-cancel' })) },
 ): RegistrationsService {
   const confirmations = new RegistrationConfirmationsService(
     prisma,
@@ -63,6 +64,7 @@ export function buildRegistrationsService(
     coupons,
     attendees,
     payments,
+    refunds,
   );
   const settlement = new RegistrationPaymentsService(
     prisma,

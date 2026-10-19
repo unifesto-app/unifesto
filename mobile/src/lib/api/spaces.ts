@@ -374,3 +374,23 @@ export const getMySpaceRequests = async (): Promise<SpaceRequest[]> => {
   if (!text) return [];
   try { return JSON.parse(text); } catch { return []; }
 };
+
+/** D7: ask to host one event without a space. Followed in My help as a case. */
+export const createEventRequest = async (data: {
+  title: string;
+  description?: string;
+  type: 'IN_PERSON' | 'ONLINE';
+  startDateTime: string;
+  endDateTime: string;
+  city?: string;
+}): Promise<{ id: string }> => {
+  const response = await makeAuthenticatedRequest('/spaces/event-requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response?.ok) {
+    const error = await response?.json().catch(() => null);
+    throw new Error(error?.message || 'Failed to send request');
+  }
+  return response.json();
+};
