@@ -1,0 +1,43 @@
+# Writes docs/version-5.md on main when a PR merges, so feature PRs never touch
+# it. Every PR used to append to the Log and flip its status row, so every open
+# PR conflicted on the same lines and each "merge main" push re-ran CI.
+# The PR body carries the lines:
+#   Log: what landed, one line          -> "- **<IST date>** · <text> (#N)" at the end
+#   Status: A28 done, deployed          -> A28 row's status cell = "done, deployed (#N)"
+# Pushes made with GITHUB_TOKEN don't trigger other workflows, so this costs no CI run.
+name: v5 log
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: v5-log
+  cancel-in-progress: false
+
+jobs:
+  log:
+    if: github.event.pull_request.merged && contains(github.event.pull_request.body, ':')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Write Log and Status lines
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: node .github/workflows/v5-log.js
+      - name: Commit
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          git diff --quiet && exit 0
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -qam "docs(v5): log #$PR"
+          for i in 1 2 3; do git push && exit 0; git pull -q --rebase; done
+          exit 1
