@@ -546,7 +546,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| N1 | Badge/pass printing (PDF sheets + label printers) from the roster | planned |
+| N1 | Badge/pass printing (PDF sheets + label printers) from the roster | done (#272) |
 | N2 | Kiosk self check-in (tablet mode: scan or search your name) | parked (2026-10-18): college fests check in with volunteer scanners; |
 | N3 | **Attendee networking: who's going and connect requests.** Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | parked (2026-10-18): attendee networking is privacy-heavy (needs I2 consent) and has no demand evidence before launch. |
 
@@ -810,3 +810,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · H25: custom-domain CORS for notify/inquiry, encoded branded From + fallback, hourly domain re-check, TXT ownership + claim expiry + provider cleanup, no Unifesto chrome on custom domains (#269)
 - **2026-10-19** · G10 mobile check-in Undo (scanner success card, event hub recent rows, search "Checked in" rows) via POST /checkin/undo; online only, roster refreshed after undo (#270)
 - **2026-10-19** · L1 live polls: organisers launch polls from Space web and mobile manage-event, attendees vote once from their ticket while the event is live, and results update over a new engagement socket room. (#271)
+- **2026-10-19** · N1 badge/pass printing: Space roster "Print badges" (A4 sheet with cut marks or 4x3in / 62mm / DYMO labels), one badge per claimed group seat on the member's own QR, streamed PDF (#272)
