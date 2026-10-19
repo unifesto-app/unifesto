@@ -18,6 +18,7 @@ import {
   Lightning,
   ListBullets,
   ListChecks,
+  Timer,
   Medal,
   PencilSimple,
   QrCode,
@@ -240,6 +241,9 @@ export default function ManageEventScreen() {
           ) : null}
           {h.access.hosts ? (
             <SettingsRow icon={icon(ChatsCircle)} label="Live Q&A" onPress={() => router.push(`/manage/event/${e.id}/questions`)} />
+          ) : null}
+          {h.access.hosts ? (
+            <SettingsRow icon={icon(Timer)} label="Live quizzes" onPress={() => router.push(`/manage/event/${e.id}/quizzes`)} />
           ) : null}
           {h.access.hosts ? (
             <SettingsRow
