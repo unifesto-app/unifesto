@@ -1,16 +1,18 @@
 import {
-  Injectable, Logger, NotFoundException,
+  Injectable, Logger, NotFoundException, Optional,
   BadRequestException, ForbiddenException, ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
 import { EmailService } from '../email/email.service';
 import { AddBankAccountDto, CreatePayoutDto, MarkPayoutPaidDto, UpdateBankAccountStatusDto } from './dto';
-import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, OrgPlan, RefundStatus, Prisma, StayPaymentMode } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, OrgPlan, RefundStatus, Prisma, StayPaymentMode, SupportCaseKind, SupportDesk, SupportTicketStatus } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
 import { OPEN_REFUND_STATUSES } from '../refunds/open-statuses';
+import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 
 /** Round a rupee figure to 2 dp, avoiding binary float drift in comparisons. */
 function round2(n: number): number {
@@ -50,7 +52,28 @@ export class PayoutsService {
     private readonly emailService: EmailService,
     private readonly authz: AuthorizationService,
     private readonly planConfig: PlanConfigService,
+    @Optional() private readonly events?: EventEmitter2,
   ) {}
+
+  /**
+   * D22: a payout account waiting for verification is a REQUEST case on the
+   * Platform desk, so "why was it rejected?" is answered in that thread.
+   * Opening is idempotent: a review of an account added before D22 opens it then.
+   */
+  private openBankAccountCase(a: { id: string; userId: string; bankName: string | null; accountNumber: string | null; upiId: string | null }) {
+    const ref = a.upiId || `${a.bankName ?? 'Bank'} ••••${(a.accountNumber ?? '').slice(-4)}`;
+    openSubjectCase(this.events, {
+      subjectType: 'PayoutBankAccount',
+      subjectId: a.id,
+      requesterId: a.userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'BANK_ACCOUNT',
+      desk: SupportDesk.PLATFORM,
+      subject: `Verify payout account ${ref}`,
+      message: `Please verify my payout account ${ref}.`,
+      notify: true,
+    });
+  }
 
   async addBankAccount(userId: string, dto: AddBankAccountDto) {
     if (dto.isPrimary) {
@@ -62,7 +85,7 @@ export class PayoutsService {
 
     // UPI is no longer an accepted method type; every new method is a BANK
     // account, so the UPI field stays null.
-    return this.prisma.payoutBankAccount.create({
+    const account = await this.prisma.payoutBankAccount.create({
       data: {
         userId,
         methodType: PayoutMethodType.BANK,
@@ -76,6 +99,8 @@ export class PayoutsService {
         isPrimary: dto.isPrimary || false,
       },
     });
+    this.openBankAccountCase(account);
+    return account;
   }
 
   async getMyBankAccounts(userId: string) {
@@ -118,7 +143,15 @@ export class PayoutsService {
     // Belt-and-suspenders: a payout could be created between the count and the
     // delete. Translate the FK violation into the same clean 400 rather than a 500.
     try {
-      return await this.prisma.payoutBankAccount.delete({ where: { id: accountId } });
+      const deleted = await this.prisma.payoutBankAccount.delete({ where: { id: accountId } });
+      updateSubjectCase(this.events, {
+        subjectType: 'PayoutBankAccount',
+        subjectId: accountId,
+        actorId: userId,
+        text: 'They removed this payout account.',
+        status: SupportTicketStatus.CLOSED,
+      });
+      return deleted;
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {
         throw new BadRequestException(
@@ -144,6 +177,18 @@ export class PayoutsService {
         verifiedBy: dto.status === 'VERIFIED' ? adminId : null,
         rejectionReason: dto.rejectionReason || null,
       },
+    });
+    // The emails below tell them, so the case only records it.
+    this.openBankAccountCase(account);
+    updateSubjectCase(this.events, {
+      subjectType: 'PayoutBankAccount',
+      subjectId: accountId,
+      actorId: adminId,
+      text:
+        dto.status === 'VERIFIED'
+          ? 'Unifesto verified this payout account.'
+          : `Unifesto rejected this payout account.${dto.rejectionReason ? ` Reason: ${dto.rejectionReason}` : ''}`,
+      status: SupportTicketStatus.RESOLVED,
     });
 
     // A method may be a bank account or a UPI handle, so build display labels
@@ -1356,11 +1401,26 @@ export class PayoutsService {
   ) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { createdBy: true, spaceId: true },
+      select: { title: true, spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
     await this.assertEventMoney(userId, eventId, event.spaceId, 'request this event’s payout');
-    return this.createEventPayout(eventId, userId, netAmount, bankAccountId);
+    const payout = await this.createEventPayout(eventId, userId, netAmount, bankAccountId);
+    // D22: the request is a Platform case; payouts send no mail, so the case tells both sides.
+    openSubjectCase(this.events, {
+      subjectType: 'Payout',
+      subjectId: payout.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'PAYOUT',
+      desk: SupportDesk.PLATFORM,
+      spaceId: event.spaceId,
+      eventId,
+      subject: `Payout for ${event.title}`,
+      message: `Please pay out ₹${Number(payout.netAmount).toFixed(2)} for ${event.title}.`,
+      notify: true,
+    });
+    return payout;
   }
 
   /**
@@ -1369,7 +1429,7 @@ export class PayoutsService {
    * transfer — so this simply marks the payout COMPLETED and stores the UTR /
    * reference the admin entered for the audit trail.
    */
-  async markPayoutPaid(payoutId: string, dto?: MarkPayoutPaidDto) {
+  async markPayoutPaid(payoutId: string, dto?: MarkPayoutPaidDto, adminId?: string) {
     const payout = await this.prisma.payout.findUnique({ where: { id: payoutId } });
     if (!payout) throw new NotFoundException('Payout not found');
     if (payout.status !== PayoutStatus.PENDING) {
@@ -1391,6 +1451,15 @@ export class PayoutsService {
     });
 
     this.logger.log(`Payout ${payoutId} marked paid manually${dto?.utr ? ` (UTR ${dto.utr})` : ''}`);
+    const ref = updated.utr ? ` UTR ${updated.utr}.` : reference ? ` Reference ${reference}.` : '';
+    updateSubjectCase(this.events, {
+      subjectType: 'Payout',
+      subjectId: payoutId,
+      actorId: adminId,
+      text: `Unifesto paid ₹${Number(updated.netAmount).toFixed(2)}.${ref}`,
+      status: SupportTicketStatus.RESOLVED,
+      notify: true,
+    });
     return updated;
   }
 
@@ -1398,7 +1467,16 @@ export class PayoutsService {
     const payout = await this.prisma.payout.findUnique({ where: { id: payoutId } });
     if (!payout) throw new NotFoundException('Payout not found');
     if (payout.status !== PayoutStatus.PENDING) throw new BadRequestException('Only PENDING payouts can be cancelled');
-    return this.pendingOnly(payoutId, { status: PayoutStatus.CANCELLED, notes: `Cancelled by admin ${adminId}` });
+    const updated = await this.pendingOnly(payoutId, { status: PayoutStatus.CANCELLED, notes: `Cancelled by admin ${adminId}` });
+    updateSubjectCase(this.events, {
+      subjectType: 'Payout',
+      subjectId: payoutId,
+      actorId: adminId,
+      text: 'Unifesto cancelled this payout. The amount is available to request again.',
+      status: SupportTicketStatus.RESOLVED,
+      notify: true,
+    });
+    return updated;
   }
 
   /**
