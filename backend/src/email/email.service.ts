@@ -494,13 +494,18 @@ export class EmailService {
 
   /**
    * Email a recipient a link to their freshly issued certificate (verify page +
-   * PDF in storage, no attachment). Sent via SES, not Resend: certificates go
-   * out a whole batch at a time, which blew Resend's daily quota. Returns
+   * PDF in storage, no attachment). Sent via SES: certificates go out a whole
+   * batch at a time, which blew Resend's daily quota. Except (H14) when the
+   * space has a live theme and a verified sending domain: SES can't send from
+   * that domain, so those go via Resend from the space's own address (the
+   * issuance loop is sequential and `track` retries Resend's 429s). Returns
    * whether the send was accepted, so the caller stamps `emailedAt` only on
    * success (a failed send leaves it null, meaning "needs resend").
    */
   async sendCertificateIssued(data: T.CertificateIssuedData): Promise<boolean> {
-    return this.deliverBranded('ses', data.email, data, T.certificateIssuedEmail);
+    const { brand, sender } = await this.brandFor(data.eventId);
+    const via = sender?.fromAddress ? 'resend' : 'ses';
+    return this.deliver(via, data.email, T.certificateIssuedEmail({ ...data, brand }), { sender });
   }
 
   // =====================================================
