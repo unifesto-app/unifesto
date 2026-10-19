@@ -6,6 +6,7 @@ import { getMyCheckinEvents } from '../lib/api/checkin';
 import { getMyJudgingEvents } from '../lib/api/leaderboard';
 import { getMySponsorships } from '../lib/api/sponsorPortal';
 import { resolveSpaceSections, type SpaceAccessData, type SpaceSection } from '../lib/spaceSections';
+import { useCheckinBackgroundSync } from '../hooks/useOfflineCheckin';
 
 interface SpaceAccessContextType extends SpaceAccessData {
   /** Sections the Space tab shows, in order. Empty ⇒ the tab is hidden. */
@@ -75,6 +76,9 @@ export function SpaceAccessProvider({ children }: { children: React.ReactNode })
     });
     return () => sub.remove();
   }, [refresh]);
+
+  // Offline check-in: push queued scans and save today's guest lists.
+  useCheckinBackgroundSync(data.checkinEvents);
 
   const value = useMemo<SpaceAccessContextType>(
     () => ({ ...data, sections: resolveSpaceSections(data, new Date()), loaded, refresh }),

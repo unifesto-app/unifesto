@@ -156,12 +156,17 @@ export function useTicketDetail(ticketParam: unknown) {
   const raw = cancelledNow
     ? 'CANCELLED'
     : String(liveStatus?.status ?? ticket?.registrationStatus ?? ticket?.status ?? 'REGISTERED').toUpperCase();
+  // A group pass is one person's: in once *they* were scanned (their own
+  // check-in history), not when a teammate was.
+  const isGroupPass = Number(ticket?.groupSize ?? 0) > 1;
   const status: TicketStatus =
     raw === 'CANCELLED'
       ? 'cancelled'
-      : raw === 'ATTENDED' || raw === 'CHECKED_IN' || liveStatus?.checkedInAt || ticket?.checkedInAt
-        ? 'checkedIn'
-        : 'registered';
+      : isGroupPass
+        ? checkins.length > 0 ? 'checkedIn' : 'registered'
+        : raw === 'ATTENDED' || raw === 'CHECKED_IN' || liveStatus?.checkedInAt || ticket?.checkedInAt
+          ? 'checkedIn'
+          : 'registered';
 
   const title: string = ticket?.title || ticket?.event?.title || ticket?.eventTitle || 'Event';
   const startIso: string | undefined = ticket?.startDateTime || ticket?.event?.startDateTime;

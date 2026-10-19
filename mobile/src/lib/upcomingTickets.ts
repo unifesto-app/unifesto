@@ -54,6 +54,8 @@ export async function fetchUpcomingTickets(limit = 5): Promise<UpcomingTicket[]>
             qrCode: reg.qrCode,
             registrationId: reg.id,
             registrationStatus: reg.status,
+            // A group pass reads its own check-ins, not the booking's status.
+            groupSize: reg.groupSize,
             eventStatus: reg.event.status,
             ticketType: reg.ticketType,
             ticketCode: reg.tickets?.[0]?.ticketCode,
