@@ -348,6 +348,35 @@ export class SupportService {
       (!!eventSpaceId ||
         !(await this.authz.can({ id: requesterId }, Action.SPACE_MANAGE_SETTINGS, { spaceId: targetSpaceId })));
 
+    const include = {
+      requester: { select: userSelect },
+      space: { select: spaceSelect },
+      _count: { select: { messages: true } },
+    } as const;
+
+    // D29: a repeat of a case the person already has open (same subject and
+    // kind) joins that case instead of opening another. Retried taps filled the
+    // desk with copies. Bot chats and subject cases (refunds, reports) carry
+    // their own identity, so they skip this.
+    if (!opts.bot && !opts.subjectType) {
+      const open = await this.prisma.supportTicket.findFirst({
+        where: {
+          requesterId,
+          subject: dto.subject,
+          kind,
+          status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.PENDING] },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true } } },
+      });
+      if (open) {
+        if (open.messages[0]?.body !== dto.message) {
+          await this.addMessage(open.id, { body: dto.message }, requesterId);
+        }
+        return this.prisma.supportTicket.findUniqueOrThrow({ where: { id: open.id }, include });
+      }
+    }
+
     const now = new Date();
     const ticket = await this.prisma.supportTicket.create({
       data: {
@@ -377,11 +406,7 @@ export class SupportService {
           },
         },
       },
-      include: {
-        requester: { select: userSelect },
-        space: { select: spaceSelect },
-        _count: { select: { messages: true } },
-      },
+      include,
     });
 
     if (!opts.bot) this.notify({ ticketId: ticket.id, kind: 'CREATED', to: 'DESK', actorId: requesterId });

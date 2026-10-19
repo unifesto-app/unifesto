@@ -8,7 +8,6 @@
  */
 
 import { makeAuthenticatedRequest } from './helpers';
-import { createTicket } from './support';
 
 /**
  * Lifecycle of a refund request, mirroring the backend `RefundStatus` enum.
@@ -47,34 +46,21 @@ export const OPEN_REFUND_STATUSES: RefundStatus[] = ['PENDING_CURATOR', 'PENDING
 
 export interface RequestRefundInput {
   registrationId: string;
-  eventTitle: string;
   reason: string;
 }
 
 export async function requestRefund(
   input: RequestRefundInput,
 ): Promise<{ ok: boolean; error?: string }> {
-  // Open a support ticket first so the attendee has a thread to follow up on.
-  // Non-fatal if it fails — the refund request can still be raised on its own.
-  let supportTicketId: string | undefined;
-  try {
-    const ticket = await createTicket({
-      subject: `Refund request: ${input.eventTitle}`.slice(0, 300),
-      message: input.reason,
-      category: 'PAYMENTS',
-    });
-    supportTicketId = ticket?.id;
-  } catch {
-    // ignore — proceed without a linked ticket
-  }
-
+  // No case is opened here: the backend opens the refund's Assist case once
+  // the request is accepted (D6). Opening one first left a stray case on every
+  // rejected or repeated tap (D29).
   try {
     const res = await makeAuthenticatedRequest('/refunds', {
       method: 'POST',
       body: JSON.stringify({
         registrationId: input.registrationId,
         reason: input.reason,
-        supportTicketId,
       }),
     });
     if (!res) return { ok: false, error: 'You need to be signed in.' };
