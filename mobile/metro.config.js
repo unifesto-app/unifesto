@@ -1,6 +1,8 @@
-const { getDefaultConfig } = require('expo/metro-config');
+// Expo's default config plus Sentry's debug-ID serializer, so uploaded source
+// maps match the bundle (store builds upload automatically; OTA: docs/OTA.md).
+const { getSentryExpoConfig } = require('@sentry/react-native/metro');
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // Fix for fast refresh issues
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
