@@ -10,6 +10,7 @@ import {
   Warning,
 } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,17 @@ import {
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
 const ZERO_RE = /^0(\.0)*$/;
 
+/** -1, 0 or 1; missing segments count as 0 ("2.0" == "2.0.0"). */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return Math.sign(d);
+  }
+  return 0;
+}
+
 /** Empty latest = soft prompt off. Builds up to 4.x skip the minimum then too. */
 function platformError(v: PlatformVersionInfo): string | null {
   if (v.latestVersion && !VERSION_RE.test(v.latestVersion))
@@ -43,6 +55,9 @@ function platformError(v: PlatformVersionInfo): string | null {
     return "Use a dotted version like 2.0.0";
   if (!v.latestVersion && !ZERO_RE.test(v.minimumVersion))
     return "Set a latest version before raising the minimum";
+  // Forcing everyone onto a build that isn't in the store locks them out.
+  if (v.latestVersion && compareVersions(v.minimumVersion, v.latestVersion) > 0)
+    return "Minimum can't be above the latest version";
   if (!v.storeUrl.trim()) return "Store URL is required";
   return null;
 }
@@ -182,6 +197,8 @@ function AppReviewLoginCard() {
 
 export default function AppVersionPage() {
   const [config, setConfig] = useState<AppVersionConfig | null>(null);
+  // What the server has now, for the diff in the confirm step.
+  const [original, setOriginal] = useState<AppVersionConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -192,7 +209,10 @@ export default function AppVersionPage() {
     setError(null);
     const { data, error } = await getAppVersion();
     if (error) setError(error.message || "Failed to load version config");
-    else setConfig(data);
+    else {
+      setConfig(data);
+      setOriginal(data);
+    }
     setLoading(false);
   }, []);
 
@@ -214,7 +234,41 @@ export default function AppVersionPage() {
   };
 
   const save = async () => {
-    if (!config) return;
+    if (!config || !original) return;
+    const FIELDS: [keyof PlatformVersionInfo, string][] = [
+      ["latestVersion", "latest"],
+      ["minimumVersion", "minimum"],
+      ["storeUrl", "store URL"],
+    ];
+    const diff = (["ios", "android"] as Platform[]).flatMap((p) =>
+      FIELDS.filter(([f]) => original[p][f].trim() !== config[p][f].trim()).map(([f, label]) => (
+        <li key={`${p}-${f}`}>
+          {p === "ios" ? "iOS" : "Android"} {label}: {original[p][f] || "empty"} →{" "}
+          <span className="font-medium text-foreground">{config[p][f].trim() || "empty"}</span>
+        </li>
+      ))
+    );
+    if (diff.length === 0) {
+      setError("Nothing changed.");
+      return;
+    }
+    const forced = (["ios", "android"] as Platform[]).some(
+      (p) => compareVersions(config[p].minimumVersion, original[p].minimumVersion) > 0
+    );
+    const ok = await confirmDialog({
+      title: "Update the app version policy?",
+      description: (
+        <>
+          <ul className="list-disc space-y-1 pl-5">{diff}</ul>
+          {forced ? (
+            <p>Anyone below the new minimum is forced to update before they can use the app.</p>
+          ) : null}
+        </>
+      ),
+      confirmLabel: "Save",
+      destructive: forced,
+    });
+    if (!ok) return;
     setSaving(true);
     setError(null);
     setSaved(false);
@@ -222,7 +276,10 @@ export default function AppVersionPage() {
     if (error) {
       setError(error.message || "Failed to save");
     } else {
-      if (data) setConfig(data);
+      if (data) {
+        setConfig(data);
+        setOriginal(data);
+      }
       setSaved(true);
     }
     setSaving(false);

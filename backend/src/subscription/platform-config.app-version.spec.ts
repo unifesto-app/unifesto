@@ -31,4 +31,16 @@ describe('assertAppVersionPolicy', () => {
       }),
     ).toThrow(BadRequestException);
   });
+
+  it('rejects a minimum above the latest (forced-update lockout)', () => {
+    expect(() =>
+      assertAppVersionPolicy({
+        ios: store('5.0.0', '5.0.1'),
+        android: store('5.0.0', '4.9'),
+      }),
+    ).toThrow(/minimum version 5.0.1 is above the latest 5.0.0/);
+    expect(() =>
+      assertAppVersionPolicy({ ios: store('5.0', '5.0.0'), android: store('10.0.0', '9.10.0') }),
+    ).not.toThrow();
+  });
 });

@@ -12,6 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { EmailTargetType } from '@prisma/client';
 
@@ -107,3 +108,13 @@ export class PreviewCampaignDto {
   @MaxLength(500)
   subject?: string;
 }
+
+/** Who a campaign would go to, for the audience count on the confirm step. */
+export class CampaignAudienceDto extends PickType(CreateCampaignDto, [
+  'targetType',
+  'targetId',
+  'segmentFilters',
+] as const) {}
+
+/** A draft to mail to the sender only. */
+export class TestCampaignDto extends PickType(CreateCampaignDto, ['subject', 'body'] as const) {}

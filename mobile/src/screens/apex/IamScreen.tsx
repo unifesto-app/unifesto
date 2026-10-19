@@ -77,7 +77,18 @@ export default function IamScreen() {
 
   const toggle = (code: string, action: string, granted: boolean) => {
     if (!granted) {
-      void apply(code, action, true);
+      // Granting is just as live: every holder of the role gets it at once.
+      const money = action.endsWith(':manage-money');
+      AppAlert.alert(
+        money ? 'Grant money access?' : 'Grant this permission?',
+        `${roleLabel(code)} will be able to ${actionLabel(action).toLowerCase()} in every space.${
+          money ? ' That includes payouts and refunds.' : ''
+        } Anyone holding this role gets it immediately.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Grant', style: money ? 'destructive' : 'default', onPress: () => void apply(code, action, true) },
+        ],
+      );
       return;
     }
     // Removing access is the risky direction.

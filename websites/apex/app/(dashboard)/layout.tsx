@@ -1,5 +1,6 @@
 import { SessionProvider } from "@/lib/context/SessionContext";
 import { AppShell } from "@/components/shell/AppShell";
+import { ConfirmDialogHost } from "@/components/shared/ConfirmDialog";
 
 export default function DashboardLayout({
   children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
   return (
     <SessionProvider>
       <AppShell>{children}</AppShell>
+      <ConfirmDialogHost />
     </SessionProvider>
   );
 }

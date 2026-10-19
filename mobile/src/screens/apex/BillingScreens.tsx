@@ -185,8 +185,27 @@ export function PlanEditScreen() {
   const patch = (body: Record<string, unknown>) =>
     model ? updateBillingModel(key as 'FREE' | 'REVENUE_SHARE', body) : updatePlan(key as OrgPlan, body);
 
-  // Switches save on flip (optimistic), like the web's toggles.
-  const toggle = async (k: FeatureKey, on: boolean) => {
+  const planName = model ? MODEL_LABEL[key as BillingModel] : PLAN_LABEL[key as OrgPlan];
+  const labelOf = (k: string) =>
+    [...PLAN_LIMITS, ...PLAN_FEATURES].find(([f]) => f === k)?.[1] ??
+    { monthlyPrice: 'Monthly price (₹)', annualPrice: 'Annual price (₹)', platformFeePercent: 'Platform fee %', defaultRevenueSharePercent: 'Default share %' }[k] ??
+    k;
+
+  // A switch changes every space on the plan at once, so it confirms first.
+  const toggle = (k: FeatureKey, on: boolean) => {
+    if (!item) return;
+    AppAlert.alert(
+      `${on ? 'Turn on' : 'Turn off'} ${labelOf(k)}?`,
+      `${planName}: ${on ? 'off → on' : 'on → off'}. Every space on this plan ${on ? 'gets' : 'loses'} it straight away.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: on ? 'Turn on' : 'Turn off', style: on ? 'default' : 'destructive', onPress: () => void applyToggle(k, on) },
+      ],
+    );
+  };
+
+  // Saves on confirm (optimistic), like the web's toggles.
+  const applyToggle = async (k: FeatureKey, on: boolean) => {
     if (!item) return;
     setItem({ ...item, [k]: on });
     const res = await patch({ [k]: on });
@@ -207,11 +226,28 @@ export function PlanEditScreen() {
       body[k] = n;
     }
     setError('');
+    const show = (v: unknown) => (v === null || v === undefined || v === '' ? 'unlimited' : String(v));
+    const diff = Object.entries(body)
+      .filter(([k, v]) => parseField(toField((item as unknown as Record<string, number | string | null>)[k])) !== v)
+      .map(([k, v]) => `${labelOf(k)}: ${show((item as unknown as Record<string, unknown>)[k])} → ${show(v)}`);
+    if (!diff.length) {
+      AppAlert.alert('Nothing changed', 'Edit a limit or price first.');
+      return;
+    }
+    AppAlert.alert(`Update ${planName}?`, `${diff.join('\n')}\n\nApplies to every space on this plan.`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Save', onPress: () => void commit(body) },
+    ]);
+  };
+
+  const commit = async (body: Record<string, number | null>) => {
     setSaving(true);
     const res = await patch(body);
     setSaving(false);
-    if (res.ok) AppAlert.alert('Saved', 'Limits and prices updated.');
-    else setError(res.message);
+    if (res.ok) {
+      setItem((cur) => (cur ? ({ ...cur, ...body } as typeof cur) : cur));
+      AppAlert.alert('Saved', 'Limits and prices updated.');
+    } else setError(res.message);
   };
 
   if (!item) return <Centered error={error} />;
@@ -242,7 +278,7 @@ export function PlanEditScreen() {
               trailing={
                 <Switch
                   value={!!item[k]}
-                  onValueChange={(on) => void toggle(k, on)}
+                  onValueChange={(on) => toggle(k, on)}
                   trackColor={{ true: tokens.success }}
                   accessibilityLabel={label}
                 />

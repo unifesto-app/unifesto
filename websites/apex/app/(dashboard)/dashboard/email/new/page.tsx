@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PaperPlaneTilt, Eye, Flask, ArrowLeft } from "@unifesto/unicon/react";
 import {
+  countAudience,
   createCampaign,
   previewBody,
+  sendTestEmail,
   type EmailTargetType,
   type CreateCampaignPayload,
 } from "@/lib/api/email-campaigns-api";
@@ -15,6 +17,7 @@ import { getAllEventsAdmin } from "@/lib/api/admin-events-api";
 import { getAllSpacesAdmin } from "@/lib/api/spaces-api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { audienceLine, confirmDialog } from "@/components/shared/ConfirmDialog";
 import { EntitySearchSelect } from "@/components/shared/EntitySearchSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,8 +126,32 @@ export default function ComposeCampaignPage() {
       setError(`This audience needs a ${targetDef.needsId} id.`);
       return;
     }
+    const payload = buildPayload();
+    const ok = await confirmDialog({
+      title: scheduledAt ? "Schedule this campaign?" : "Send this campaign now?",
+      description: (
+        <>
+          <p>
+            &ldquo;{payload.subject}&rdquo; to {targetDef.label.toLowerCase()}
+            {scheduledAt ? `, on ${new Date(scheduledAt).toLocaleString("en-IN")}` : ""}.
+          </p>
+          <p>Emails can&apos;t be recalled once sent.</p>
+        </>
+      ),
+      load: () => audienceLine(countAudience(payload), scheduledAt ? "Would go to" : "Goes to"),
+      confirmLabel: scheduledAt ? "Schedule" : "Send now",
+      test: {
+        label: "Send a test to me",
+        run: async () => {
+          const { data, error } = await sendTestEmail({ subject: payload.subject, body: payload.body });
+          if (error || !data) throw new Error(error?.message ?? "The test didn't send.");
+          return `Test sent to ${data.sentTo}.`;
+        },
+      },
+    });
+    if (!ok) return;
     setSubmitting(true);
-    const { error } = await createCampaign(buildPayload());
+    const { error } = await createCampaign(payload);
     setSubmitting(false);
     if (error) setError(error.message);
     else router.push("/dashboard/email");

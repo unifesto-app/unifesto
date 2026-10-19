@@ -1,3 +1,4 @@
+import { PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -120,3 +121,9 @@ export class ListPushCampaignsQueryDto {
   @IsString({ each: true })
   status?: string[];
 }
+
+/** Body for the audience count on the confirm step: who, under which category. */
+export class PushAudienceDto extends PickType(CreatePushBroadcastDto, ['target', 'category'] as const) {}
+
+/** Body for a send-to-me test of a draft broadcast. */
+export class PushTestDto extends PickType(CreatePushBroadcastDto, ['title', 'body', 'deepLink'] as const) {}

@@ -88,6 +88,15 @@ export default function OrphanedPaymentsScreen() {
     setTimeout(() => void load(), 1200);
   };
 
+  const confirmAttach = (row: OrphanedPaymentRow) => {
+    const target = row.targetRegistrationId ?? rows[row.paymentId]?.manualTarget?.trim();
+    if (!target) return patchRow(row.paymentId, { err: 'Enter the registration id to attach this payment to.' });
+    AppAlert.alert(`Attach ${inr(row.amount)} and mark paid?`, `Payment ${row.paymentId} settles registration ${target}. This can't be undone.`, [
+      { text: 'Back', style: 'cancel' },
+      { text: 'Attach', onPress: () => void attach(row) },
+    ]);
+  };
+
   const confirmAnyway = (row: OrphanedPaymentRow) =>
     AppAlert.alert(`Attach anyway at ${inr(row.amount)}?`, "The ticket's recorded amount is rewritten to what was actually captured.", [
       { text: 'Back', style: 'cancel' },
@@ -166,7 +175,7 @@ export default function OrphanedPaymentsScreen() {
                     fullWidth
                     loading={st.busy && !st.mismatch}
                     disabled={st.busy}
-                    onPress={() => void attach(row)}
+                    onPress={() => confirmAttach(row)}
                     style={{ marginTop: spacing[3] }}
                   />
                 ) : null}

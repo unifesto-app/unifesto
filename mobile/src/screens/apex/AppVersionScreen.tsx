@@ -10,7 +10,9 @@ import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
+import { AppAlert } from '../../components/ui/AppAlert';
 import { getAppVersionPolicy, updateAppVersionPolicy, type AppVersionPolicy, type StoreVersionPolicy } from '../../lib/api/apex';
+import { compareVersions } from '../../lib/appUpdate';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
@@ -42,6 +44,8 @@ function validate(v: AppVersionPolicy): string {
     if (!VERSION_RE.test(minimumVersion)) return `${title}: minimum version should look like 2.0.0.`;
     // Builds up to 4.x skip the minimum when latest is empty.
     if (!latestVersion && !/^0(\.0)*$/.test(minimumVersion)) return `${title}: set a latest version before raising the minimum.`;
+    if (latestVersion && compareVersions(minimumVersion, latestVersion) > 0)
+      return `${title}: minimum ${minimumVersion} is above the latest ${latestVersion}. Everyone would be forced to a build that doesn't exist.`;
     if (!URL_RE.test(v[key].storeUrl.trim())) return `${title}: store URL must start with https://`;
   }
   return '';
@@ -95,6 +99,29 @@ export default function AppVersionScreen() {
       setError(problem);
       return;
     }
+    const FIELDS: [keyof StoreVersionPolicy, string][] = [
+      ['latestVersion', 'latest'],
+      ['minimumVersion', 'minimum'],
+      ['storeUrl', 'store URL'],
+    ];
+    const diff = STORES.flatMap(({ key, title }) =>
+      FIELDS.filter(([f]) => saved![key][f].trim() !== draft[key][f].trim()).map(
+        ([f, label]) => `${title} ${label}: ${saved![key][f] || 'empty'} → ${draft[key][f].trim() || 'empty'}`,
+      ),
+    );
+    const forced = STORES.some(({ key }) => compareVersions(draft[key].minimumVersion, saved![key].minimumVersion) > 0);
+    AppAlert.alert(
+      'Update the app version policy?',
+      `${diff.join('\n')}${forced ? '\n\nAnyone below the new minimum is forced to update before they can use the app.' : ''}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save', style: forced ? 'destructive' : 'default', onPress: () => void commit() },
+      ],
+    );
+  };
+
+  const commit = async () => {
+    if (!draft) return;
     setSaving(true);
     setError('');
     const res = await updateAppVersionPolicy({

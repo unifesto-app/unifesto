@@ -18,8 +18,10 @@ import { RoleCode } from '@prisma/client';
 import { EmailCampaignsService } from '../email-campaigns/email-campaigns.service';
 import { EmailTemplatesService } from '../email-campaigns/email-templates.service';
 import {
+  CampaignAudienceDto,
   CreateCampaignDto,
   PreviewCampaignDto,
+  TestCampaignDto,
 } from '../email-campaigns/dto/campaign.dto';
 import {
   CreateTemplateDto,
@@ -71,6 +73,18 @@ export class AdminEmailController {
   @Post('campaigns/:id/cancel')
   cancelCampaign(@Param('id') id: string) {
     return this.campaigns.cancelCampaign(this.scope, id);
+  }
+
+  /** How many people a campaign would reach now (for the confirm step). */
+  @Post('audience')
+  audience(@Body() dto: CampaignAudienceDto) {
+    return this.campaigns.countAudience(this.scope, dto);
+  }
+
+  /** Send the draft to the signed-in admin's own email. */
+  @Post('test')
+  sendTest(@CurrentUser() user: User, @Body() dto: TestCampaignDto) {
+    return this.campaigns.sendTest(user.id, dto);
   }
 
   @Post('preview')
