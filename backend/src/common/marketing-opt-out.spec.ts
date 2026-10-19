@@ -69,6 +69,12 @@ describe('settings marketing switches ↔ MarketingOptOut (C4)', () => {
     expect(rows).toHaveLength(0);
   });
 
+  it('no address on a channel: nothing to switch (null)', async () => {
+    const { prisma } = fakeDb();
+    prisma.user.findUnique.mockResolvedValue({ mobileNumber: 'deleted-ab12', identities: [{ email: null }] });
+    expect(await userMarketingPrefs(prisma, 'u1')).toEqual({ email: null, whatsapp: null, spaceIds: [] });
+  });
+
   it('WhatsApp: off records the dial form; on clears a STOP row', async () => {
     const { prisma, rows } = fakeDb();
     await setUserMarketing(prisma, 'u1', MarketingChannel.WHATSAPP, false);

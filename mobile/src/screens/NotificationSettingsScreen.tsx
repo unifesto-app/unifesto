@@ -203,9 +203,12 @@ export default function NotificationSettingsScreen() {
   const resubscribe = useCallback(
     async (spaceId: string) => {
       try {
-        const fresh = await resubscribeToSpace(spaceId);
-        setNotifs((prev) => ({ ...prev, ...fresh }));
-        void persistLocal({ ...notifsRef.current, ...fresh });
+        // Only the opt-out list: the server's pushEnabled doesn't know the OS
+        // permission, which load() already folded in.
+        const { spaceOptOuts } = await resubscribeToSpace(spaceId);
+        const next = { ...notifsRef.current, spaceOptOuts };
+        setNotifs(next);
+        void persistLocal(next);
       } catch {
         AppAlert.alert('Update failed', 'Could not re-subscribe. Please try again.');
       }
@@ -280,6 +283,15 @@ export default function NotificationSettingsScreen() {
   );
 
   const quietOn = notifs.quietHoursStart != null && notifs.quietHoursEnd != null;
+  // The server rejects a window whose ends match; say why instead of a failed save.
+  const setQuiet = (key: 'quietHoursStart' | 'quietHoursEnd', d: Date) => {
+    const other = key === 'quietHoursStart' ? notifs.quietHoursEnd : notifs.quietHoursStart;
+    if (dateToMinutes(d) === other) {
+      AppAlert.alert('Pick another time', 'Quiet hours need to start and end at different times.');
+      return;
+    }
+    void commit({ [key]: dateToMinutes(d) });
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
@@ -334,8 +346,13 @@ export default function NotificationSettingsScreen() {
         >
           <SettingsGroup style={styles.group}>
             {row('tag', 'Offers from Unifesto', notifs.promotions, () => toggle('promotions'))}
-            {row('envelope-simple', 'Marketing email', notifs.marketingEmail, () => toggle('marketingEmail'))}
-            {row('whatsapp-logo', 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))}
+            {/* Hidden without an address on file: there's nothing to opt out of. */}
+            {notifs.marketingEmail != null
+              ? row('envelope-simple', 'Marketing email', notifs.marketingEmail, () => toggle('marketingEmail'))
+              : null}
+            {notifs.marketingWhatsapp != null
+              ? row('whatsapp-logo', 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))
+              : null}
           </SettingsGroup>
           {notifs.spaceOptOuts.length ? (
             <SettingsGroup title="Spaces I unsubscribed from" style={styles.group}>
@@ -364,7 +381,7 @@ export default function NotificationSettingsScreen() {
                 mode="time"
                 label="From"
                 value={minutesToDate(notifs.quietHoursStart!)}
-                onChange={(d) => commit({ quietHoursStart: dateToMinutes(d) })}
+                onChange={(d) => setQuiet('quietHoursStart', d)}
               />
             ) : null}
             {quietOn ? (
@@ -372,7 +389,7 @@ export default function NotificationSettingsScreen() {
                 mode="time"
                 label="Until"
                 value={minutesToDate(notifs.quietHoursEnd!)}
-                onChange={(d) => commit({ quietHoursEnd: dateToMinutes(d) })}
+                onChange={(d) => setQuiet('quietHoursEnd', d)}
               />
             ) : null}
           </SettingsGroup>

@@ -3,15 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { randomUUID } from 'crypto';
-import { MessageChannel } from '@prisma/client';
+import { MessageChannel, MessageDeliveryStatus } from '@prisma/client';
 import { buildEventIcs, IcsEventInput } from '../events/calendar/ics.util';
 import {
   AttemptResult,
   DeliveryOpts,
   isTransientStatus,
+  skipDelivery,
   TrackedResult,
   trackedSend,
 } from '../notifications/message-delivery';
+import { suppressedAmong, SUPPRESSION_EXEMPT_KINDS } from './email-suppression';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import {
@@ -203,26 +205,40 @@ export class EmailService {
     }
   }
 
-  /** One logged, retried, optionally deduped send (C3). Never throws. */
-  private track(
+  /**
+   * One logged, retried, optionally deduped send (C3). Suppressed addresses
+   * (C5) are dropped first; if none is left the row is logged SUPPRESSED and
+   * nothing is sent. Sign-in codes are exempt. Never throws.
+   */
+  private async track(
     via: 'resend' | 'ses',
     to: string | string[],
     label: string,
-    send: (idempotencyKey: string) => Promise<AttemptResult>,
+    send: (idempotencyKey: string, to: string | string[]) => Promise<AttemptResult>,
     delivery?: DeliveryOpts,
-  ) {
+  ): Promise<TrackedResult> {
     const key = randomUUID();
-    return trackedSend(
-      this.prisma,
-      {
-        channel: MessageChannel.EMAIL,
-        provider: via,
-        label,
-        recipient: Array.isArray(to) ? to.join(',') : to,
-        ...delivery,
-      },
-      () => send(key),
-    );
+    const meta = {
+      channel: MessageChannel.EMAIL,
+      provider: via,
+      label,
+      recipient: Array.isArray(to) ? to.join(',') : to,
+      ...delivery,
+    };
+    if (!SUPPRESSION_EXEMPT_KINDS.has(delivery?.kind ?? '')) {
+      const list = Array.isArray(to) ? to : [to];
+      const blocked = await suppressedAmong(this.prisma, list);
+      if (blocked.size) {
+        const left = list.filter((a) => !blocked.has(a.trim().toLowerCase()));
+        if (left.length === 0) {
+          this.logger.warn(`Not sending "${label}" to ${meta.recipient}: suppressed`);
+          return skipDelivery(this.prisma, meta, MessageDeliveryStatus.SUPPRESSED, 'suppressed');
+        }
+        to = left;
+        meta.recipient = left.join(',');
+      }
+    }
+    return trackedSend(this.prisma, meta, () => send(key, to));
   }
 
   /**
@@ -546,13 +562,14 @@ export class EmailService {
         'ses',
         data.to,
         data.subject,
-        () =>
-          data.unsubscribeUrl && typeof data.to === 'string'
-            ? this.sendBulkWithHeaders(data.to, data.subject, data.html, {
+        // `to` is the list minus suppressed addresses (track drops them).
+        (_key, to) =>
+          data.unsubscribeUrl && typeof to === 'string'
+            ? this.sendBulkWithHeaders(to, data.subject, data.html, {
                 'List-Unsubscribe': `<${data.unsubscribeUrl}>, <mailto:${SUPPORT}?subject=Unsubscribe>`,
                 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
               })
-            : this.sendViaSES(data.to, data.subject, data.html),
+            : this.sendViaSES(to, data.subject, data.html),
         { kind: 'campaign' },
       );
       return { messageId: res.id, ...(res.error ? { error: res.error } : {}) };

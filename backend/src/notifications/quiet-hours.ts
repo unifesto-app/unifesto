@@ -21,3 +21,8 @@ export function quietHoursDeferral(
   const wait = (end - minOfDay + DAY_MIN) % DAY_MIN;
   return new Date((nowMin + wait) * 60_000);
 }
+
+/** Quiet hours are either off (both null) or a real window (both set, different). */
+export function validQuietHours(start: number | null | undefined, end: number | null | undefined): boolean {
+  return start == null ? end == null : end != null && start !== end;
+}

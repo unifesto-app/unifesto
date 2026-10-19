@@ -95,12 +95,13 @@ const mine = (userId: string, addresses: string[]): Prisma.MarketingOptOutWhereI
 
 /**
  * What the settings screen shows: marketing allowed per channel (no global
- * opt-out row), and the spaces whose marketing email they unsubscribed from.
+ * opt-out row), null when the account has no address on that channel (nothing
+ * to switch), and the spaces whose marketing email they unsubscribed from.
  */
 export async function userMarketingPrefs(
   prisma: UserDb,
   userId: string,
-): Promise<{ email: boolean; whatsapp: boolean; spaceIds: string[] }> {
+): Promise<{ email: boolean | null; whatsapp: boolean | null; spaceIds: string[] }> {
   const addresses = await userAddresses(prisma, userId);
   const rows = await prisma.marketingOptOut.findMany({
     where: {
@@ -113,8 +114,8 @@ export async function userMarketingPrefs(
   });
   const global = (c: MarketingChannel) => rows.some((r) => r.channel === c && !r.spaceId);
   return {
-    email: !global(MarketingChannel.EMAIL),
-    whatsapp: !global(MarketingChannel.WHATSAPP),
+    email: addresses.EMAIL.length ? !global(MarketingChannel.EMAIL) : null,
+    whatsapp: addresses.WHATSAPP.length ? !global(MarketingChannel.WHATSAPP) : null,
     spaceIds: [...new Set(rows.flatMap((r) => (r.channel === MarketingChannel.EMAIL && r.spaceId ? [r.spaceId] : [])))],
   };
 }

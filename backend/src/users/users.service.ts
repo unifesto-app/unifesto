@@ -24,6 +24,7 @@ import {
   NotificationSettings,
 } from '@prisma/client';
 import { resubscribeUserToSpace, setUserMarketing, userMarketingPrefs } from '../common/marketing-opt-out';
+import { validQuietHours } from '../notifications/quiet-hours';
 import { SUBJECT_CASE_OPEN, SUBJECT_CASE_UPDATE, type SubjectCaseOpen, type SubjectCaseUpdate } from '../support/subject-cases';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
@@ -1187,6 +1188,18 @@ export class UsersService {
   ) {
     // referralUpdates is accepted (old clients) but has no column any more.
     const { referralUpdates: _ignored, marketingEmail, marketingWhatsapp, ...data } = dto;
+    if (data.quietHoursStart !== undefined || data.quietHoursEnd !== undefined) {
+      // A PATCH may carry one end; check the window it leaves behind.
+      const current = await this.prisma.notificationSettings.findUnique({
+        where: { userId },
+        select: { quietHoursStart: true, quietHoursEnd: true },
+      });
+      const start = data.quietHoursStart !== undefined ? data.quietHoursStart : (current?.quietHoursStart ?? null);
+      const end = data.quietHoursEnd !== undefined ? data.quietHoursEnd : (current?.quietHoursEnd ?? null);
+      if (!validQuietHours(start, end)) {
+        throw new BadRequestException('Quiet hours need a start and an end that are different.');
+      }
+    }
     if (marketingEmail !== undefined) {
       await setUserMarketing(this.prisma, userId, MarketingChannel.EMAIL, marketingEmail);
     }

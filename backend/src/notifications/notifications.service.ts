@@ -40,6 +40,11 @@ export interface SendOptions {
   kind?: string;
   /** Critical (notify() critical kinds): never held back by quiet hours. */
   urgent?: boolean;
+  /**
+   * Write the in-app copy only: no device push, no delivery row, dedupKey
+   * ignored. For a notice whose buzz another push already gives.
+   */
+  inboxOnly?: boolean;
 }
 
 export interface SendSummary {
@@ -66,8 +71,14 @@ const STAFF_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlert
 const NO_COLUMN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlerts', 'support']);
 
 // Never held back by quiet hours (C4): tickets and payments someone is waiting
-// on, staff alerts, support replies. Critical notify() kinds pass `urgent`.
-const NEVER_DEFER: ReadonlySet<NotificationCategory> = new Set(['registrationUpdates', 'adminAlerts', 'support']);
+// on, hosts messaging live during an event, staff alerts, support replies.
+// Critical and time-sensitive notify() kinds pass `urgent`.
+const NEVER_DEFER: ReadonlySet<NotificationCategory> = new Set([
+  'registrationUpdates',
+  'organiserAnnouncements',
+  'adminAlerts',
+  'support',
+]);
 
 // Category defaults for users with no NotificationSettings row yet.
 function isCategoryAllowedByDefault(category: NotificationCategory): boolean {
@@ -103,7 +114,7 @@ export class NotificationsService {
       const unique = [...new Set(userIds)].filter(Boolean);
       if (unique.length === 0) return summary;
 
-      if (opts.dedupKey && unique.length === 1) {
+      if (opts.dedupKey && unique.length === 1 && !opts.inboxOnly) {
         const claim = await claimDelivery(this.prisma, this.deliveryMeta(unique[0], opts));
         if (claim === 'skip') {
           summary.sent = 1;
@@ -127,6 +138,10 @@ export class NotificationsService {
       // Staff alerts stay out of the feed; opt-in marketing only reaches those who opted in.
       if (opts.inbox !== false && !STAFF_CATEGORIES.has(opts.category)) {
         await this.writeInbox(OPT_IN_CATEGORIES.has(opts.category) ? allowed : unique, opts);
+      }
+      if (opts.inboxOnly) {
+        summary.skipped = unique.length;
+        return summary;
       }
 
       if (skipped.length) {

@@ -5,7 +5,7 @@ describe('AdminService.reconcileSeatCounts', () => {
     const exec = jest.fn((sql: string) => sql);
     const prisma = { $executeRawUnsafe: exec, $transaction: jest.fn(async (ops) => ops.map(() => 1)) };
     const config = { get: () => 'ap-south-1' };
-    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, {} as any);
+    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, {} as any, {} as any);
 
     await svc.reconcileSeatCounts();
 

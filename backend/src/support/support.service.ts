@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { sniffMime, UPLOAD_EXT } from '../registrations/form-uploads.service';
@@ -20,7 +21,7 @@ import {
   SupportDesk,
   SupportMessageSide,
 } from '@prisma/client';
-import { CreateTicketDto, CreateMessageDto, UpdateTicketDto, CannedReplyDto, UpdateCannedReplyDto } from './dto';
+import { CreateTicketDto, CreateMessageDto, UpdateTicketDto, CannedReplyDto, UpdateCannedReplyDto, RateTicketDto } from './dto';
 import { slaFor, overdueWhere, deskTimes, DESK_TIMES_DAYS } from './support-sla';
 
 /** D3: something happened on a case that the other side should hear about. */
@@ -110,6 +111,9 @@ const PLATFORM_CATEGORIES: SupportTicketCategory[] = [
   SupportTicketCategory.PAYMENTS,
   SupportTicketCategory.TECHNICAL,
 ];
+
+/** D20: a resolved case nobody reopens closes after this long. */
+export const AUTO_CLOSE_DAYS = 7;
 
 /** Attachments (D4): images and PDFs, up to this size, this many per message. */
 export const ATTACHMENT_MAX_MB = 10;
@@ -818,6 +822,47 @@ export class SupportService {
       this.notify({ ticketId: id, kind: 'STATUS', to: 'DESK', actorId: userId });
     }
     return updated;
+  }
+
+  /** D20: the requester rates a resolved case 1-5, with an optional comment. Rating again replaces it. */
+  async rate(id: string, userId: string, dto: RateTicketDto) {
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id },
+      select: { requesterId: true, status: true },
+    });
+    if (!ticket) {
+      throw new NotFoundException('Support ticket not found');
+    }
+    if (ticket.requesterId !== userId) {
+      throw new ForbiddenException('Only the person who raised this case can rate it');
+    }
+    if (ticket.status !== SupportTicketStatus.RESOLVED && ticket.status !== SupportTicketStatus.CLOSED) {
+      throw new BadRequestException('You can rate a case once it is resolved');
+    }
+    return this.prisma.supportTicket.update({
+      where: { id },
+      data: { rating: dto.rating, ratingComment: dto.comment?.trim() || null },
+      select: { id: true, rating: true, ratingComment: true },
+    });
+  }
+
+  /**
+   * D20: close RESOLVED cases nobody reopened in AUTO_CLOSE_DAYS. A plain
+   * conditional update, so replicas running it together do no harm. A case
+   * resolved before resolvedAt was kept falls back to its last update.
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async autoCloseResolved(now = new Date()): Promise<number> {
+    const before = new Date(now.getTime() - AUTO_CLOSE_DAYS * 86400000);
+    const { count } = await this.prisma.supportTicket.updateMany({
+      where: {
+        status: SupportTicketStatus.RESOLVED,
+        OR: [{ resolvedAt: { lt: before } }, { resolvedAt: null, updatedAt: { lt: before } }],
+      },
+      data: { status: SupportTicketStatus.CLOSED, closedAt: now },
+    });
+    if (count) this.logger.log(`Closed ${count} cases resolved ${AUTO_CLOSE_DAYS}+ days ago`);
+    return count;
   }
 
   /**

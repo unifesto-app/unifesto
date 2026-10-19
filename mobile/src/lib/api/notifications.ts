@@ -16,9 +16,9 @@ export interface NotificationSettings {
   /** Email switches for the categories whose email is optional. */
   emailEventReminders: boolean;
   emailNewEvents: boolean;
-  /** All marketing on a channel, from Unifesto and from spaces. */
-  marketingEmail: boolean;
-  marketingWhatsapp: boolean;
+  /** All marketing on a channel, from Unifesto and from spaces. null = no address on file. */
+  marketingEmail: boolean | null;
+  marketingWhatsapp: boolean | null;
   /** Quiet hours in minutes after midnight IST; null = off. */
   quietHoursStart: number | null;
   quietHoursEnd: number | null;

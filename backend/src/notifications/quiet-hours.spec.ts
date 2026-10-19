@@ -1,4 +1,4 @@
-import { quietHoursDeferral } from './quiet-hours';
+import { quietHoursDeferral, validQuietHours } from './quiet-hours';
 
 // IST = UTC+5:30. ist('23:15') is that wall-clock time in IST on 1 Nov 2026.
 const ist = (hhmm: string, day = 1) => new Date(`2026-11-0${day}T${hhmm}:00+05:30`);
@@ -35,5 +35,15 @@ describe('quietHoursDeferral (IST)', () => {
 
   it('a window starting at midnight IST (18:30 UTC the day before)', () => {
     expect(quietHoursDeferral(new Date('2026-11-01T18:45:00Z'), 0, min('06:00'))).toEqual(ist('06:00', 2));
+  });
+});
+
+describe('validQuietHours', () => {
+  it('off, or a window whose ends differ', () => {
+    expect(validQuietHours(null, null)).toBe(true);
+    expect(validQuietHours(1320, 420)).toBe(true);
+    expect(validQuietHours(420, 420)).toBe(false);
+    expect(validQuietHours(1320, null)).toBe(false);
+    expect(validQuietHours(null, 420)).toBe(false);
   });
 });

@@ -3,3 +3,5 @@ export * from './create-message.dto';
 export * from './update-ticket.dto';
 export * from './send-to-space.dto';
 export * from './canned-reply.dto';
+export * from './rate-ticket.dto';
+export * from './create-grievance.dto';

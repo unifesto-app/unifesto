@@ -83,13 +83,15 @@ export class NotifyService {
       });
       result.plan = plan;
 
-      // Push always runs: send() applies the push prefs and writes the inbox copy.
+      // Push always runs: send() applies the push prefs and writes the inbox
+      // copy (only the inbox copy for an inboxOnly kind).
       const push = await this.notifications.send([userId], {
         category: def.category,
         ...def.push(data),
         kind,
         dedupKey: key('push'),
-        urgent: def.criticality === 'critical',
+        urgent: def.urgent || def.criticality === 'critical',
+        inboxOnly: def.inboxOnly,
       });
       result.push = push.sent ? 'sent' : push.failed ? 'failed' : 'skipped';
 

@@ -50,6 +50,17 @@ describe('NotificationsService in-app copy', () => {
     });
   });
 
+  it('inboxOnly: writes the in-app copy, sends no push and claims no dedup row', async () => {
+    const { svc, prisma, oneSignal } = build();
+    prisma.messageDelivery = { create: jest.fn(), createMany: jest.fn(), findUnique: jest.fn() };
+    const res = await svc.send(['u-on'], { ...opts, inboxOnly: true, dedupKey: 'k:push' });
+    expect(res).toEqual({ sent: 0, failed: 0, skipped: 1 });
+    expect(prisma.userNotification.createMany).toHaveBeenCalledTimes(1);
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(prisma.messageDelivery.create).not.toHaveBeenCalled();
+    expect(prisma.pushLog.createMany).not.toHaveBeenCalled();
+  });
+
   it('keeps a copy by default, typed from data', async () => {
     const { svc, prisma } = build();
     const { inbox: _inbox, ...plain } = opts;
@@ -174,8 +185,8 @@ describe('NotificationsService quiet hours (C4)', () => {
       notificationSettings: {
         findMany: jest.fn().mockResolvedValue([
           // 22:00-07:00 IST
-          { userId: 'u-quiet', pushEnabled: true, eventReminders: true, registrationUpdates: true, quietHoursStart: 1320, quietHoursEnd: 420 },
-          { userId: 'u-awake', pushEnabled: true, eventReminders: true, registrationUpdates: true, quietHoursStart: null, quietHoursEnd: null },
+          { userId: 'u-quiet', pushEnabled: true, eventReminders: true, registrationUpdates: true, organiserAnnouncements: true, quietHoursStart: 1320, quietHoursEnd: 420 },
+          { userId: 'u-awake', pushEnabled: true, eventReminders: true, registrationUpdates: true, organiserAnnouncements: true, quietHoursStart: null, quietHoursEnd: null },
         ]),
       },
       pushLog: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
@@ -209,10 +220,11 @@ describe('NotificationsService quiet hours (C4)', () => {
     await svc.send(['u-quiet', 'u-awake'], { ...opts, urgent: true });
     await svc.send(['u-quiet', 'u-awake'], { ...opts, category: 'registrationUpdates' });
     await svc.send(['u-quiet', 'u-awake'], { ...opts, category: 'support' });
+    await svc.send(['u-quiet', 'u-awake'], { ...opts, category: 'organiserAnnouncements' });
     for (const [params] of oneSignal.send.mock.calls) {
       expect(params.externalIds).toEqual(['u-quiet', 'u-awake']);
       expect(params.sendAfter).toBeUndefined();
     }
-    expect(oneSignal.send).toHaveBeenCalledTimes(3);
+    expect(oneSignal.send).toHaveBeenCalledTimes(4);
   });
 });

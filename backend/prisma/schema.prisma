@@ -3024,9 +3024,10 @@ model SupportTicket {
   requesterLastReadAt DateTime? @map("requester_last_read_at") @db.Timestamptz(6)
   deskLastReadAt      DateTime? @map("desk_last_read_at") @db.Timestamptz(6)
 
-  rating    Int?    @db.SmallInt // requester's 1-5 rating once resolved
-  aiTriage  Json?   @map("ai_triage")
-  aiSummary String? @map("ai_summary") @db.Text
+  rating        Int?    @db.SmallInt // requester's 1-5 rating once resolved
+  ratingComment String? @map("rating_comment") @db.VarChar(1000) // D20: optional words with the rating
+  aiTriage      Json?   @map("ai_triage")
+  aiSummary     String? @map("ai_summary") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -4888,6 +4889,29 @@ model MessageDelivery {
   @@index([status, createdAt]) // failure dashboard (C6)
   @@index([createdAt]) // retention sweep (RetentionService)
   @@map("message_deliveries")
+}
+
+enum EmailSuppressionReason {
+  BOUNCE // permanent (hard) bounce
+  COMPLAINT // the recipient marked it as spam
+  MANUAL // added by a platform admin
+
+  @@map("email_suppression_reason")
+}
+
+// C5: addresses we never mail again (except sign-in codes). Written by the SES
+// and Resend webhooks; an admin can remove one from Apex.
+model EmailSuppression {
+  id      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  address String                 @unique @db.VarChar(320) // lowercased
+  reason  EmailSuppressionReason
+  source  String                 @db.VarChar(20) // ses | resend | admin
+  details String?                @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("email_suppressions")
 }
 
 // One row per app install that can receive push. `subscriptionId` is OneSignal's
