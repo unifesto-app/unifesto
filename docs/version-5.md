@@ -832,3 +832,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · O17 backend: Apple sign-in stores an encrypted refresh token, and account deletion revokes it at Apple (5.1.1(v)); failures are reported on the PRIVACY case. Needs migrate + APPLE_TEAM_ID/KEY_ID/PRIVATE_KEY env before submit. (#291)
 - **2026-10-19** · J13 deploy.sh refuses dirty trees, non-main HEADs and non-green CI (FORCE=1 override), guards DROP migrations, tags images by SHA with ./deploy.sh rollback, and checks required env keys (#292)
 - **2026-10-19** · J4 Sentry projects created (unifesto-backend/web/space/apex/mobile); backend DSN set, @sentry/nextjs wired into web, space, apex (errors only, PII masked) (#293)
+- **2026-10-19** · J4 mobile Sentry (@sentry/react-native via Expo plugin, project unifesto-mobile), native: rides the 5.0.0 store build (#294)
