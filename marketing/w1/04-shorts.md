@@ -80,7 +80,7 @@ Save this for fest season 🔖 Link in bio.
 | 18–20 s | Hard cut, light on, upbeat | Meanwhile, with a Space: | none |
 | 20–32 s | Space app: event ticket list (Aurora Fest ticket types) then Squad of 4 detail | Paid at registration. Every seat counted. | none |
 | 32–40 s | Check-in screen, recent check-ins list | QR at the gate. Done. | none |
-| 40–45 s | End card | unifesto.app · link in bio | none |
+| 40–45 s | End card | unifesto.app/request-space (YouTube Shorts has no bio; the IG caption keeps "Link in bio") | none |
 
 Use only fake screenshots. Never show a real person's UPI ID, name or phone.
 
