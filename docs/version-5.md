@@ -425,7 +425,7 @@ One support system for everything a person needs help with. Every item is an **A
 | G9 | **Unify the mobile API client: refresh, errors and deep links.** - A silent refresh that fails with 5xx or 429 signs the user out (mobile/src/lib/api/helpers.ts:129, :190); | done (#263) |
 | G10 | **Fix check-in for group members, undo and offline sync.** Groups: bulk check-in (a B2 regression) and Space web scan check in whole groups at registration level (backend/src/checkin/checkin.service.ts:1036, :1180, team-changes.service.ts:263), and a member's pass shows 'You are checked i | planned |
 | G11 | **Add ended-event states to tickets, hubs and Space.** Visual audit. | planned |
-| G12 | **Fix mobile attendee and organiser screens.** Quick ones first. | planned |
+| G12 | **Fix mobile attendee and organiser screens.** Quick ones first. | done (#265) |
 | G13 | **Polish mobile from the 18 Oct device audit.** Low and medium items from the real-iPhone pass. | planned |
 | G14 | **Fix accessibility: labels, Dynamic Type and contrast.** Mobile: 179 FieldRow inputs and AuthField have no accessible label (mobile/src/components/manage/FormFields.tsx:48); | planned |
 
@@ -803,3 +803,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · Deploy fix: backend build now excludes spec-only `*.testing.ts` helpers (jest broke `nest build`), and deploy.sh no longer shields the deleted `backend/src/aws/examples` from rsync --delete. (#262)
 - **2026-10-19** · G9 mobile API client unified: refresh signs out only on a refused token, one token source, ApiError convention, error states, crash fallback, cold-start push links (#263)
 - **2026-10-19** · M3 AI post-event report summary: code-computed facts, stored on the report, PDF + space page, regenerate, 8-case eval (off by default; no feedback themes yet) (#264)
+- **2026-10-19** · G12 mobile screen fixes: shared email check, iOS alert/crop overlay, Stays desk collect-and-check-in, live ticket pass, faster event page with sold-out/closed states, decimal number answers, favourite sign-in prompt, space role + team by slug (#265)
