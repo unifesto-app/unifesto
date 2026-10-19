@@ -35,6 +35,8 @@ const flatten = (r: any, extra: Record<string, unknown> = {}) =>
         qrCode: r.qrCode,
         registrationId: r.id,
         registrationStatus: r.status,
+        // A group pass reads its own check-ins, not the booking's status.
+        groupSize: r.groupSize,
         eventStatus: r.event.status,
         paymentStatus: r.paymentStatus,
         cancelledAt: r.cancelledAt,

@@ -14,7 +14,7 @@ import {
   type OfflineRosterEntry,
 } from '../api/checkin';
 import { isOnline, onReconnect } from './connectivity';
-import { queueKey, rosterKey } from './checkinStorage';
+import { onCheckinSignOut, queueKey, queuedEventIds, readRoster, writeRoster } from './checkinStorage';
 
 /**
  * Offline check-in for door staff.
@@ -30,6 +30,10 @@ import { queueKey, rosterKey } from './checkinStorage';
  *
  * While online, the list is kept current with small "changes since" pulls,
  * so every crew phone learns about the others' scans within about a minute.
+ *
+ * Queues sync without the check-in screen open too: on sign-in, on app
+ * foreground and on reconnect (syncAllQueues), and only ever under the
+ * account that recorded them — sign-out drops every in-memory store.
  */
 
 /**
@@ -90,18 +94,77 @@ interface EventStore {
   error: string | null;
   snapshot: OfflineCheckinSnapshot;
   listeners: Set<() => void>;
+  /** Its user signed out: stop syncing and never write the roster again. */
+  dropped: boolean;
 }
 
 const stores = new Map<string, EventStore>();
+/** The signed-in account, once syncAllQueues has run for it. */
+let activeUserId: string | null = null;
 
-// Back online: push anything queued (which then pulls), or just catch up on
-// what the rest of the crew did while this phone was cut off.
+const hasPending = (s: EventStore) => s.queue.some((q) => q.state === 'pending');
+
+// Back online: push every queue this account left (which then pulls), or
+// just catch up on what the rest of the crew did while this phone was cut off.
 onReconnect(() => {
+  if (activeUserId) void syncAllQueues(activeUserId);
   stores.forEach((s) => {
-    if (s.queue.some((q) => q.state === 'pending')) void syncNow(s);
-    else if (s.roster) void pullChanges(s);
+    if (!hasPending(s) && s.roster) void pullChanges(s);
   });
 });
+
+// Signed out: the next account must never sync this one's queue under its
+// own token. Queues stay on disk, keyed by user, for this account's return.
+onCheckinSignOut(() => {
+  stores.forEach((s) => {
+    s.dropped = true;
+  });
+  stores.clear();
+  rosterWriteTimers.forEach((t) => clearTimeout(t));
+  rosterWriteTimers.clear();
+  activeUserId = null;
+});
+
+/**
+ * Push every queue this account has on the device, not just the ones whose
+ * check-in screen is open. Runs on sign-in, app foreground and reconnect.
+ */
+export async function syncAllQueues(userId: string): Promise<void> {
+  activeUserId = userId;
+  let eventIds: string[] = [];
+  try {
+    eventIds = await queuedEventIds(userId);
+  } catch {
+    return;
+  }
+  for (const eventId of eventIds) {
+    if (activeUserId !== userId) return; // signed out meanwhile
+    const s = getCheckinStore(userId, eventId);
+    await s.loaded;
+    if (isOnline() && hasPending(s)) void syncNow(s);
+  }
+}
+
+/** Save the guest list ahead of time for events starting within this window. */
+const PREFETCH_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Download (or refresh) the guest list for every event this account checks
+ * people in at that is on now or starts within a day, so the scanner works
+ * even if the venue has no signal from the first scan.
+ */
+export function prefetchRosters(
+  userId: string,
+  events: { id: string; startDateTime: string; endDateTime: string }[],
+): void {
+  if (!isOnline()) return;
+  const now = Date.now();
+  for (const ev of events) {
+    const soon = Date.parse(ev.startDateTime) - now <= PREFETCH_WINDOW_MS;
+    const over = Date.parse(ev.endDateTime) < now;
+    if (soon && !over) void ensureFreshRoster(getCheckinStore(userId, ev.id));
+  }
+}
 
 // ── Store lifecycle ─────────────────────────────────────────────────────────
 
@@ -124,12 +187,13 @@ export function getCheckinStore(userId: string, eventId: string): EventStore {
     error: null,
     snapshot: emptySnapshot(),
     listeners: new Set(),
+    dropped: false,
   };
   const s = store;
   s.loaded = (async () => {
     try {
       const [roster, queue] = await Promise.all([
-        AsyncStorage.getItem(rosterKey(eventId)),
+        readRoster(eventId),
         AsyncStorage.getItem(queueKey(userId, eventId)),
       ]);
       if (roster) setRoster(s, JSON.parse(roster));
@@ -186,10 +250,14 @@ function setRoster(s: EventStore, roster: OfflineRoster) {
   }
 }
 
-const persistRoster = (s: EventStore) =>
-  s.roster
-    ? AsyncStorage.setItem(rosterKey(s.eventId), JSON.stringify(s.roster)).catch(() => {})
-    : Promise.resolve();
+const persistRoster = async (s: EventStore) => {
+  if (!s.roster || s.dropped) return;
+  try {
+    writeRoster(s.eventId, JSON.stringify(s.roster));
+  } catch {
+    // Out of space or unwritable: the list still works from memory.
+  }
+};
 
 /**
  * Live scans arrive every few seconds at a busy door, and the roster is one
@@ -212,8 +280,12 @@ function persistRosterSoon(s: EventStore) {
   );
 }
 
+// An empty queue leaves no key, so syncAllQueues only visits events with work.
 const persistQueue = (s: EventStore) =>
-  AsyncStorage.setItem(queueKey(s.userId, s.eventId), JSON.stringify(s.queue)).catch(() => {});
+  (s.queue.length
+    ? AsyncStorage.setItem(queueKey(s.userId, s.eventId), JSON.stringify(s.queue))
+    : AsyncStorage.removeItem(queueKey(s.userId, s.eventId))
+  ).catch(() => {});
 
 // ── Roster download ─────────────────────────────────────────────────────────
 
@@ -388,19 +460,30 @@ export function judgeOfflineScan(s: EventStore, code: string, pointId: string): 
   return { kind: 'admitted', entry };
 }
 
-/** Headcount at a point from the saved list, matching the live stats shape. */
+/**
+ * Headcount from the saved list, matching the live stats: people, not
+ * bookings — an individual counts once, a group each of its members.
+ */
 export function offlineStats(s: EventStore, pointId?: string): CheckinStats | null {
   if (!s.roster) return null;
   const admissible = s.roster.entries.filter((e) => !e.blockedReason);
   const cancelled = s.roster.entries.length - admissible.length;
-  const checkedIn = admissible.filter((e) => {
-    if (!pointId) {
-      return Object.keys(e.checkins).length > 0 || s.queue.some((q) => q.state === 'pending' && q.registrationId === e.registrationId);
+  let total = 0;
+  let checkedIn = 0;
+  for (const e of admissible) {
+    const members = e.group?.members ?? [];
+    if (members.length === 0) {
+      total += 1;
+      const inAnywhere =
+        Object.keys(e.checkins).length > 0 ||
+        s.queue.some((q) => q.state === 'pending' && q.registrationId === e.registrationId);
+      if (pointId ? checkedInAt(s, e, pointId) : inAnywhere) checkedIn += 1;
+      continue;
     }
-    if (checkedInAt(s, e, pointId)) return true;
-    return !!e.group?.members.some((m) => memberCheckedInAt(s, e, pointId, m.index));
-  }).length;
-  const total = admissible.length;
+    total += members.length;
+    const points = pointId ? [pointId] : pointsOf(s, e);
+    checkedIn += members.filter((m) => points.some((p) => memberCheckedInAt(s, e, p, m.index))).length;
+  }
   return {
     total,
     checkedIn,
@@ -408,6 +491,16 @@ export function offlineStats(s: EventStore, pointId?: string): CheckinStats | nu
     cancelled,
     checkInRate: total ? Math.round((checkedIn / total) * 100) : 0,
   };
+}
+
+/** Every point a group has a check-in at, saved or queued. */
+function pointsOf(s: EventStore, entry: OfflineRosterEntry): string[] {
+  const points = new Set<string>();
+  for (const m of entry.group?.members ?? []) Object.keys(m.checkins).forEach((p) => points.add(p));
+  for (const q of s.queue) {
+    if (q.state === 'pending' && q.registrationId === entry.registrationId) points.add(q.checkinTypeId);
+  }
+  return [...points];
 }
 
 /** Name / ticket-code search over the saved list, for the manual screen. */
@@ -528,6 +621,8 @@ export function syncNow(s: EventStore): Promise<void> {
       await s.loaded;
       let rosterChanged = false;
       for (;;) {
+        // Its user signed out: the next request would carry someone else's token.
+        if (s.dropped) return;
         const batch = s.queue.filter((q) => q.state === 'pending').slice(0, SYNC_BATCH);
         if (batch.length === 0) break;
 

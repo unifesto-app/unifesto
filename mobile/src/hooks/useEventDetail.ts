@@ -244,6 +244,7 @@ export function useEventDetail(eventId: string | undefined) {
                 registrationId: registration.id,
                 ticketType: registration.ticketType,
                 ticketCode: registration.tickets?.[0]?.ticketCode,
+                groupSize: registration.groupSize,
                 // A seat claimed in someone else's group: read-only ticket
                 // (no refund / cancel / manage group — those are the lead's).
                 isGroupMember: !!registration.isGroupMember,

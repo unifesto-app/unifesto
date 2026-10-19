@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
+import { AppState } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { isOnline } from '../lib/offline/connectivity';
 import {
@@ -6,8 +7,10 @@ import {
   downloadRoster,
   ensureFreshRoster,
   getCheckinStore,
+  prefetchRosters,
   pullChanges,
   subscribe,
+  syncAllQueues,
   syncNow,
   type OfflineCheckinSnapshot,
 } from '../lib/offline/checkinQueue';
@@ -59,4 +62,30 @@ export function useOfflineCheckin(eventId: string) {
     sync: useCallback(() => (store ? syncNow(store) : Promise.resolve()), [store]),
     dismiss: useCallback((id: string) => (store ? dismissReviewItem(store, id) : Promise.resolve()), [store]),
   };
+}
+
+/**
+ * App-wide, mounted once: pushes every offline check-in queue this account
+ * left on the device on sign-in and each time the app comes to the
+ * foreground (reconnects are handled in the queue module), and saves the
+ * guest list for check-in events on now or within a day.
+ */
+export function useCheckinBackgroundSync(
+  events: { id: string; startDateTime: string; endDateTime: string }[],
+) {
+  const { user } = useAuth();
+  const userId = user?.id;
+
+  useEffect(() => {
+    if (!userId) return;
+    void syncAllQueues(userId);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void syncAllQueues(userId);
+    });
+    return () => sub.remove();
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId && events.length) prefetchRosters(userId, events);
+  }, [userId, events]);
 }
