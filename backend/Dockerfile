@@ -65,3 +65,8 @@ EXPOSE 8080
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/src/main.js"]
+
+# Sentry release = git SHA, passed by deploy.sh (J13). Last, so a new SHA only
+# adds a metadata layer and never busts the cached build above.
+ARG SENTRY_RELEASE
+ENV SENTRY_RELEASE=${SENTRY_RELEASE}

@@ -158,28 +158,15 @@ jobs:
         # New migrations must be additive. DROP COLUMN / DROP TABLE fails the
         # build unless the file carries a `-- contract-step` comment (the
         # reviewed second half of an expand/contract change). Other destructive
-        # SQL only warns. See remove_chat, 2026-09-25 (S37).
+        # SQL only warns. See remove_chat, 2026-09-25 (S37). deploy.sh runs the
+        # same script on migrations pending on the server (J13).
         if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         run: |
           git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
           added=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}" -- 'backend/prisma/migrations/*/migration.sql' || true)
           [ -z "$added" ] && { echo "No new migrations."; exit 0; }
           echo "New migrations:"; echo "$added"
-          failed=0
-          for f in $added; do
-            if grep -niE '\bDROP\s+(TABLE|COLUMN)\b' "$f"; then
-              if grep -qiE '^\s*--\s*contract-step\b' "$f"; then
-                echo "::warning file=$f::DROP in a marked contract step. Read it before deploying."
-              else
-                echo "::error file=$f::DROP COLUMN/TABLE in a new migration. Make it additive, or mark a reviewed contract step with a '-- contract-step' comment."
-                failed=1
-              fi
-            fi
-            if grep -niE '\bDROP\s+(TYPE|INDEX|CONSTRAINT)|ALTER\s+COLUMN\s+.*\s+TYPE\b|TRUNCATE' "$f"; then
-              echo "::warning file=$f::Destructive SQL in a new migration. Read it before deploying."
-            fi
-          done
-          exit $failed
+          bash scripts/migration-guard.sh $added
       - uses: actions/setup-node@v4
         if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         with:
