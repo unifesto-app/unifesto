@@ -375,7 +375,7 @@ One support system for everything a person needs help with. Every item is an **A
 | D21 | **Ticket issue reports become HELP cases.** `ContentReport` REGISTRATION ("Report an issue" on a ticket) goes to the event's Space desk; moderation keeps event/space reports | done (#229), live 19 Oct |
 | D22 | Payout requests + bank account verification as Platform cases (with S23) | planned |
 | D23 | Stay + session cancellations and refunds through D6 (with S51) | planned |
-| D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | planned |
+| D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | done (#247) |
 | D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | planned |
 | D26 | WhatsApp inbox → "Convert to case", later a full channel | planned |
 | D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | planned |
@@ -785,3 +785,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · C9 confirmations and event mail now reach the right people once (IST times, attending plus claimed group members only, paid/free/waitlist push and QR, stay emails, space review emails, invites marked sent only when Meta accepts); deploy needs a backend rebuild only, no migration. (#246)
 - **2026-10-19** · K9: public event page fits phones (mobile grid), shows times in the event's timezone, hides Register when sold out or closed, and server-renders agenda, speakers and FAQs from one fetch. Fake /docs (now 301 to /help) and the mock registration success page are gone. iOS hands off to the App Store without the invalid-address alert, desktop keeps the page context, and claim links join AASA. Web only; deploy web. (#251)
 - **2026-10-19** · D7 built: event request. Someone without a space files event basics (web /request-event, mobile Profile › Hosting "Host one event"); it opens a REQUEST case (EVENT) on the Platform desk; Apex Assist approves (shared createApprovedSpace: personal space they run + STARTER plan, event as DRAFT, one claimed transaction) or rejects with a note; the requester hears through D3. Migration 20261030100000; rebuild backend + apex + web; mobile rides 5.0.0. (#244)
+- **2026-10-19** · D24 built: account deletion is a PRIVACY case on the Platform desk (subject User). Request posts the erase date (status PENDING), cancel and the daily erase post their lines and close it; a new request reopens it. Mobile My help thread shows "Keep my account" while pending. No migration; rebuild backend; mobile rides 5.0.0. (#247)
