@@ -12,6 +12,8 @@ import { NOT_DELETED } from '../common/soft-delete';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, resolveSpaceBranding } from '../white-label/branding.util';
 import {
@@ -27,6 +29,7 @@ import {
   CreateSubSpaceRequestDto,
   ReviewSubSpaceRequestDto,
   SubSpaceRequestType,
+  SUB_SPACE_LABELS,
 } from './dto/sub-space-request.dto';
 import {
   BillingCycle,
@@ -35,6 +38,8 @@ import {
   Prisma,
   RoleCode,
   SpaceStatus,
+  SupportCaseKind,
+  SupportDesk,
   SpaceVisibility,
   SlugKind,
 } from '@prisma/client';
@@ -54,6 +59,7 @@ export class SpacesService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly planConfig: PlanConfigService,
+    private readonly events?: EventEmitter2,
   ) {}
 
   /**
@@ -1237,6 +1243,16 @@ export class SpacesService {
       },
     });
 
+    openSubjectCase(this.events, {
+      subjectType: 'SpaceRequest',
+      subjectId: request.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'SPACE',
+      desk: SupportDesk.PLATFORM,
+      subject: `Space request: ${request.name}`,
+      message: request.description?.trim() || `I'd like to create ${request.name} on Unifesto.`,
+    });
     return request;
   }
 
@@ -1298,7 +1314,7 @@ export class SpacesService {
       .replace(/(^-|-$)/g, '');
     const slug = `${baseSlug || 'space'}-${Date.now().toString(36)}`;
 
-    return this.prisma.$transaction(async (tx) => {
+    const created = await this.prisma.$transaction(async (tx) => {
       const space = await tx.space.create({
         data: {
           name: req.name,
@@ -1354,6 +1370,14 @@ export class SpacesService {
 
       return space;
     });
+    decideSubjectCase(this.events, {
+      subjectType: 'SpaceRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: true,
+      what: `the space request. ${created.name} is live`,
+    });
+    return created;
   }
 
   /** First day of next month, midnight — the monthly usage reset boundary. */
@@ -1383,10 +1407,19 @@ export class SpacesService {
       throw new BadRequestException('Request has already been reviewed');
     }
 
-    return this.prisma.spaceRequest.update({
+    const rejected = await this.prisma.spaceRequest.update({
       where: { id: requestId },
       data: { status: 'REJECTED', reviewedBy: adminId, reviewNote },
     });
+    decideSubjectCase(this.events, {
+      subjectType: 'SpaceRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: false,
+      what: 'the space request',
+      note: reviewNote,
+    });
+    return rejected;
   }
 
   // =====================================================
@@ -1426,7 +1459,7 @@ export class SpacesService {
       );
     }
 
-    return this.prisma.spaceStatusRequest.create({
+    const statusReq = await this.prisma.spaceStatusRequest.create({
       data: {
         spaceId: dto.spaceId,
         requestedBy: userId,
@@ -1440,6 +1473,18 @@ export class SpacesService {
         user: { select: { id: true, fullName: true, username: true } },
       },
     });
+    openSubjectCase(this.events, {
+      subjectType: 'SpaceStatusRequest',
+      subjectId: statusReq.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'SPACE_STATUS',
+      desk: SupportDesk.PLATFORM,
+      spaceId: dto.spaceId,
+      subject: `Make ${space.name} ${dto.requestedStatus.toLowerCase()}`,
+      message: dto.reason?.trim() || `Please change ${space.name} from ${space.status} to ${dto.requestedStatus}.`,
+    });
+    return statusReq;
   }
 
   async getMySpaceStatusRequests(userId: string, spaceId?: string) {
@@ -1549,6 +1594,14 @@ export class SpacesService {
         .catch(() => {});
     }
 
+    decideSubjectCase(this.events, {
+      subjectType: 'SpaceStatusRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: dto.status === 'APPROVED',
+      what: `the change to ${req.requestedStatus.toLowerCase()}`,
+      note: dto.reviewNote,
+    });
     return updated;
   }
 
@@ -1596,7 +1649,7 @@ export class SpacesService {
 
     await this.assertTransferTargetEligible(dto.spaceId, dto.newOwnerId);
 
-    return this.prisma.spaceOwnershipRequest.create({
+    const handover = await this.prisma.spaceOwnershipRequest.create({
       data: {
         spaceId: dto.spaceId,
         requestedBy: userId,
@@ -1610,6 +1663,18 @@ export class SpacesService {
         newOwner: { select: { id: true, fullName: true, username: true } },
       },
     });
+    openSubjectCase(this.events, {
+      subjectType: 'SpaceOwnershipRequest',
+      subjectId: handover.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'SPACE_OWNERSHIP',
+      desk: SupportDesk.PLATFORM,
+      spaceId: dto.spaceId,
+      subject: `Hand ${space.name} to ${handover.newOwner.fullName || handover.newOwner.username || 'a member'}`,
+      message: dto.reason?.trim() || `Please make ${handover.newOwner.fullName || handover.newOwner.username} the owner of ${space.name}.`,
+    });
+    return handover;
   }
 
   /**
@@ -1756,6 +1821,14 @@ export class SpacesService {
     });
 
     this.notifyOwnershipDecision(req, dto).catch(() => {});
+    decideSubjectCase(this.events, {
+      subjectType: 'SpaceOwnershipRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: dto.status === 'APPROVED',
+      what: 'the handover',
+      note: dto.reviewNote,
+    });
 
     return updated;
   }
@@ -1876,6 +1949,21 @@ export class SpacesService {
    */
   async createSubSpaceRequest(userId: string, dto: CreateSubSpaceRequestDto) {
     const { requestType, subSpaceId, targetSpaceId, reason } = dto;
+
+    // Only someone who runs one of the spaces involved may ask (Unifesto still reviews it).
+    const runsOne =
+      (await isPlatformAdmin(this.prisma, userId)) ||
+      (await this.prisma.userRole.count({
+        where: {
+          userId,
+          eventId: null,
+          spaceId: { in: [targetSpaceId, subSpaceId].filter((id): id is string => !!id) },
+          role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } },
+        },
+      })) > 0;
+    if (!runsOne) {
+      throw new ForbiddenException('Only a Space Admin of one of these spaces can ask for this');
+    }
 
     // Validate target space exists
     const targetSpace = await this.prisma.space.findUnique({
@@ -2009,7 +2097,7 @@ export class SpacesService {
       );
     }
 
-    return this.prisma.subSpaceRequest.create({
+    const subReq = await this.prisma.subSpaceRequest.create({
       data: {
         requestType,
         subSpaceId: subSpaceId ?? null,
@@ -2022,6 +2110,18 @@ export class SpacesService {
         targetSpace: { select: { id: true, name: true, slug: true } },
       },
     });
+    openSubjectCase(this.events, {
+      subjectType: 'SubSpaceRequest',
+      subjectId: subReq.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'SUB_SPACE',
+      desk: SupportDesk.PLATFORM,
+      spaceId: targetSpaceId,
+      subject: `${SUB_SPACE_LABELS[requestType]}: ${subReq.targetSpace.name}`,
+      message: reason?.trim() || `${SUB_SPACE_LABELS[requestType]} for ${subReq.targetSpace.name}${subReq.subSpace ? ` and ${subReq.subSpace.name}` : ''}.`,
+    });
+    return subReq;
   }
 
   /**
@@ -2204,6 +2304,14 @@ export class SpacesService {
         )
         .catch(() => {});
     }
+    decideSubjectCase(this.events, {
+      subjectType: 'SubSpaceRequest',
+      subjectId: id,
+      actorId: reviewerId,
+      approved,
+      what: 'the request',
+      note: dto.reviewNote,
+    });
 
     return updated;
   }

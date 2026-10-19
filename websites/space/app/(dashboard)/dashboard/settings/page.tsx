@@ -18,6 +18,7 @@ import {
   type SpaceVisibility,
 } from "@/lib/api/spaces-api";
 import { ImageUploadCard } from "@/components/shared/ImageUploadCard";
+import { ParentSpaceCard } from "@/components/settings/ParentSpaceCard";
 import { can, type SpaceWithHierarchy } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -599,6 +600,8 @@ export default function SpaceSettingsPage() {
           </Card>
         )}
       </form>
+
+      {canEdit && <ParentSpaceCard space={space} />}
     </div>
   );
 }

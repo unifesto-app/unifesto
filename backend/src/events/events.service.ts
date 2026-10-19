@@ -25,6 +25,7 @@ import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { RecurrenceService } from './recurrence/recurrence.service';
 import { parseRRule, serializeRRule } from './recurrence/rrule.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { NewEventEvent } from '../notifications/notifications.events';
 import {
@@ -49,6 +50,9 @@ import {
   RegistrationStatus,
   Prisma,
   SlugKind,
+  SupportCaseKind,
+  SupportDesk,
+  SupportTicketStatus,
 } from '@prisma/client';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertEventSchedule } from './event-dates';
@@ -665,6 +669,19 @@ export class EventsService {
     this.logger.log(
       `Sub-event attach requested: child ${childId} → parent ${parentId} by ${userId}`,
     );
+    // The child's space decides (D5), so the case sits on its desk.
+    openSubjectCase(this.events, {
+      subjectType: 'SubEventAttachRequest',
+      subjectId: request.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'SUB_EVENT_ATTACH',
+      desk: SupportDesk.SPACE,
+      spaceId: child.spaceId,
+      eventId: childId,
+      subject: `Add ${request.childEvent.title} under ${request.parentEvent.title}`,
+      message: `${request.parentEvent.space?.name ?? 'Our space'} would like to list ${request.childEvent.title} as a sub-event of ${request.parentEvent.title}.${request.reason ? ` ${request.reason}` : ''} Accept or decline it on the event's Sub-events page.`,
+    });
     return request;
   }
 
@@ -780,6 +797,13 @@ export class EventsService {
     ]);
 
     await this.invalidateHierarchyCaches(request.parentEventId, child.slug);
+    updateSubjectCase(this.events, {
+      subjectType: 'SubEventAttachRequest',
+      subjectId: requestId,
+      actorId: userId,
+      text: `The event's space accepted. It is now a sub-event.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`,
+      status: SupportTicketStatus.RESOLVED,
+    });
 
     this.logger.log(
       `Sub-event attach accepted: child ${child.id} → parent ${request.parentEventId} by ${userId}`,
@@ -834,6 +858,13 @@ export class EventsService {
         reviewedAt: new Date(),
         reviewNote: reviewNote?.trim() || null,
       },
+    });
+    updateSubjectCase(this.events, {
+      subjectType: 'SubEventAttachRequest',
+      subjectId: requestId,
+      actorId: userId,
+      text: `${status === 'DECLINED' ? "The event's space declined" : 'The request was withdrawn'}.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`,
+      status: status === 'DECLINED' ? SupportTicketStatus.RESOLVED : SupportTicketStatus.CLOSED,
     });
   }
 
@@ -994,6 +1025,7 @@ export class EventsService {
       where: { id: eventId },
       select: {
         id: true,
+        title: true,
         spaceId: true,
         parentEventId: true,
         _count: { select: { childEvents: true } },
@@ -1050,6 +1082,19 @@ export class EventsService {
     this.logger.log(
       `Ownership transfer of event ${eventId} → space ${toSpaceId} requested by ${userId}`,
     );
+    // A space-level case on the receiving desk: its Space Admins decide, and
+    // an eventId would scope it to the current owner's desk instead.
+    openSubjectCase(this.events, {
+      subjectType: 'EventOwnershipTransfer',
+      subjectId: transfer.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'EVENT_OWNERSHIP',
+      desk: SupportDesk.SPACE,
+      spaceId: toSpaceId,
+      subject: `Take over ${event.title}`,
+      message: `${transfer.fromSpace.name} would like to hand ${event.title} to ${transfer.toSpace.name}.${transfer.reason ? ` ${transfer.reason}` : ''} Accept or decline it on the event's Co-hosts page.`,
+    });
     return transfer;
   }
 
@@ -1097,6 +1142,7 @@ export class EventsService {
           reviewNote: 'Owner changed before acceptance',
         },
       });
+      this.transferCase(transfer.id, userId, 'The event changed hands before this was accepted, so the offer closed.', SupportTicketStatus.CLOSED);
       throw new ConflictException(
         'This event has changed hands since the offer was made. Ask for a fresh transfer.',
       );
@@ -1137,6 +1183,7 @@ export class EventsService {
 
     // The public page shows the owning space, so its cached copy is now stale.
     await this.cache.invalidateEventCache(event.slug);
+    this.transferCase(transfer.id, userId, `Accepted. The event now belongs to this space.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`, SupportTicketStatus.RESOLVED);
 
     this.logger.log(
       `Ownership of event ${eventId} transferred to space ${transfer.toSpaceId} (accepted by ${userId})`,
@@ -1165,7 +1212,13 @@ export class EventsService {
         reviewNote: reviewNote?.trim() || null,
       },
     });
+    this.transferCase(transfer.id, userId, `Declined.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`, SupportTicketStatus.RESOLVED);
     return { success: true };
+  }
+
+  /** Assist (D5): the transfer's case hears how it ended. */
+  private transferCase(transferId: string, userId: string, text: string, status: SupportTicketStatus) {
+    updateSubjectCase(this.events, { subjectType: 'EventOwnershipTransfer', subjectId: transferId, actorId: userId, text, status });
   }
 
   /** Rescind a pending offer. Space Admins of the host (from) space only. */
@@ -1180,6 +1233,7 @@ export class EventsService {
       where: { id: transfer.id },
       data: { status: 'CANCELLED', reviewedBy: userId, reviewedAt: new Date() },
     });
+    this.transferCase(transfer.id, userId, 'The offer was withdrawn.', SupportTicketStatus.CLOSED);
     return { success: true };
   }
 
