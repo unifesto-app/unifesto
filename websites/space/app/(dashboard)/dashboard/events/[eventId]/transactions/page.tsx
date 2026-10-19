@@ -28,6 +28,7 @@ import type {
   ExportFormat,
 } from "@/lib/api/registrations-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { RequestPayoutDialog } from "@/components/finance/PayoutsPanel";
 import { useSession } from "@/lib/context/SessionContext";
 import { can } from "@/lib/types/rbac";
@@ -355,13 +356,16 @@ export default function EventTransactionsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">No transactions found</p>
-            <p className="text-sm text-muted-foreground">
-              {hasFilters
-                ? "Try adjusting your filters"
-                : "Paid registrations will appear here once tickets are sold"}
-            </p>
+          <CardContent className="py-0">
+            <EmptyState
+              icon={Receipt}
+              title={hasFilters ? "No transactions match" : "No transactions yet"}
+              description={
+                hasFilters
+                  ? "Try a different search, or clear the filters."
+                  : "Paid registrations show up here once tickets sell."
+              }
+            />
           </CardContent>
         </Card>
       ) : (

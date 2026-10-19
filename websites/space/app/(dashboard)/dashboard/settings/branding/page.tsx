@@ -4,7 +4,9 @@ import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import Link from "next/link";
 
+import { CalendarBlank } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { DomainCard } from "@/components/white-label/DomainCard";
 import { Badge } from "@/components/ui/badge";
@@ -488,7 +490,12 @@ function EventOverrides({
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <p className="text-sm text-muted-foreground">This space has no events yet.</p>
+          <EmptyState
+            icon={CalendarBlank}
+            title="No events yet"
+            description="Events you create here can each get their own accent colour."
+            className="py-8"
+          />
         ) : (
           <div className="divide-y divide-border">
             {events.map((e) => (

@@ -7,6 +7,7 @@ import { Bed, ClipboardText, House, Plus, QrCode } from "@unifesto/unicon/react"
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { HackPage as Page, StatsRow, useResult } from "@/components/hackathon/HackParts";
 import { dayLabel, getTeamStays, lookupStayPass, PROPERTY_LABELS, staysBase } from "@/lib/api/stays";
@@ -127,7 +128,14 @@ export default function StaysPage() {
         title="Stays"
         description={totals.beds === 0 && stays.length ? "Add room or bed options to a stay, then publish it." : undefined}
       >
-        {stays.length === 0 && <ListRow icon={<House className="h-5 w-5 text-muted-foreground" />} label="No stays yet" />}
+        {stays.length === 0 && (
+          <EmptyState
+            icon={House}
+            tone={canEdit ? "positive" : "neutral"}
+            title="No stays yet"
+            description="Add a hostel, hotel or homestay so attendees can request a bed."
+          />
+        )}
         {stays.map((s) => {
           const beds = s.options.filter((o) => o.isActive).reduce((n, o) => n + o.totalBeds, 0);
           return (
