@@ -100,6 +100,7 @@ export class SessionSchedulerService {
           const optedOut = await emailOptedOutUserIds(
             this.prisma,
             registrations.map((r) => r.userId),
+            'eventReminders',
           );
           sent += registrations.length;
           await inChunks(registrations, async (reg) => {

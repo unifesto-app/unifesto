@@ -24,7 +24,7 @@ export interface ChannelContext {
   pushAllowed: boolean;
   /** At least one opted-in, server-linked UserPushDevice. */
   hasPushDevice: boolean;
-  /** NotificationSettings.emailEnabled = false. Gates optional mail only. */
+  /** emailEnabled = false, or the category's email switch is off (C4). Gates optional mail only. */
   emailOptedOut: boolean;
   hasEmail: boolean;
   hasPhone: boolean;

@@ -11,7 +11,30 @@ export interface NotificationSettings {
   registrationUpdates: boolean;
   /** Messages a host sends to an event's attendees. */
   organiserAnnouncements: boolean;
+  /** Space approvals and changes to spaces I run. */
+  spaceUpdates: boolean;
+  /** Email switches for the categories whose email is optional. */
+  emailEventReminders: boolean;
+  emailNewEvents: boolean;
+  /** All marketing on a channel, from Unifesto and from spaces. */
+  marketingEmail: boolean;
+  marketingWhatsapp: boolean;
+  /** Quiet hours in minutes after midnight IST; null = off. */
+  quietHoursStart: number | null;
+  quietHoursEnd: number | null;
+  /** Spaces whose marketing email I unsubscribed from (read-only). */
+  spaceOptOuts: { spaceId: string; spaceName: string }[];
 }
+
+/** Re-subscribe to one space's marketing email; returns the fresh settings. */
+export const resubscribeToSpace = async (spaceId: string): Promise<NotificationSettings> => {
+  const response = await makeAuthenticatedRequest(
+    `/users/me/notification-settings/space-opt-outs/${encodeURIComponent(spaceId)}`,
+    { method: 'DELETE' },
+  );
+  if (!response?.ok) throw new Error('Failed to re-subscribe');
+  return response.json();
+};
 
 export const getNotificationSettings = async (): Promise<NotificationSettings | null> => {
   const response = await makeAuthenticatedRequest('/users/me/notification-settings');

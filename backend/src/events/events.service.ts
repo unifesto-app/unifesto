@@ -2598,6 +2598,7 @@ export class EventsService {
     const optedOut = await emailOptedOutUserIds(
       this.prisma,
       spaceMembers.map((m) => m.userId),
+      'newEvents',
     );
 
     for (const member of spaceMembers) {

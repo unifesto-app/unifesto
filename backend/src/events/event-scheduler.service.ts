@@ -146,6 +146,7 @@ export class EventSchedulerService {
           const optedOut = await emailOptedOutUserIds(
             this.prisma,
             people.map((r) => r.userId),
+            'eventReminders',
           );
           sent += people.length;
 
@@ -239,6 +240,7 @@ export class EventSchedulerService {
           const optedOut = await emailOptedOutUserIds(
             this.prisma,
             people.map((r) => r.userId),
+            'eventReminders',
           );
           sent += people.length;
 
@@ -372,6 +374,7 @@ export class EventSchedulerService {
           const optedOut = await emailOptedOutUserIds(
             this.prisma,
             attendees.map((r) => r.userId),
+            'eventReminders',
           );
           sent += attendees.length;
 

@@ -11,14 +11,16 @@ interface DateTimeRowProps {
   value: Date;
   onChange: (next: Date) => void;
   minimumDate?: Date;
-  /** 'date' drops the time (e.g. "repeat until"). */
-  mode?: 'datetime' | 'date';
+  /** 'date' drops the time (e.g. "repeat until"); 'time' drops the date (quiet hours). */
+  mode?: 'datetime' | 'date' | 'time';
 }
 
-const display = (d: Date, mode: 'datetime' | 'date') =>
+const display = (d: Date, mode: 'datetime' | 'date' | 'time') =>
   mode === 'date'
     ? d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
-    : d.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
+    : mode === 'time'
+      ? d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
+      : d.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
 
 /**
  * One "Starts ........ Sat 4 Oct, 10:00 am" line inside a `SettingsGroup plain`.
@@ -47,11 +49,11 @@ export default function DateTimeRow({ label, value, onChange, minimumDate, mode 
   const pick = () =>
     DateTimePickerAndroid.open({
       value,
-      mode: 'date',
+      mode: mode === 'time' ? 'time' : 'date',
       minimumDate,
       // onValueChange only fires on a confirmed pick; dismissing does nothing.
       onValueChange: (_, day) => {
-        if (mode === 'date') {
+        if (mode !== 'datetime') {
           onChange(day);
           return;
         }

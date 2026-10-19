@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Max, Min, ValidateIf } from 'class-validator';
 
 export class UpdateNotificationSettingsDto {
   @IsOptional()
@@ -46,4 +46,35 @@ export class UpdateNotificationSettingsDto {
   @IsOptional()
   @IsBoolean()
   organiserAnnouncements?: boolean;
+
+  // C4: email switches for the categories that send optional mail.
+  @IsOptional()
+  @IsBoolean()
+  emailEventReminders?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  emailNewEvents?: boolean;
+
+  // C4: all marketing on a channel (MarketingOptOut global rows, not columns).
+  @IsOptional()
+  @IsBoolean()
+  marketingEmail?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  marketingWhatsapp?: boolean;
+
+  // C4: quiet hours, minutes after midnight IST. null turns them off.
+  @ValidateIf((_, v) => v !== undefined && v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  quietHoursStart?: number | null;
+
+  @ValidateIf((_, v) => v !== undefined && v !== null)
+  @IsInt()
+  @Min(0)
+  @Max(1439)
+  quietHoursEnd?: number | null;
 }

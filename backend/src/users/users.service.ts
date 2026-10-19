@@ -20,7 +20,10 @@ import {
   SupportDesk,
   SupportTicketCategory,
   SupportTicketStatus,
+  MarketingChannel,
+  NotificationSettings,
 } from '@prisma/client';
+import { resubscribeUserToSpace, setUserMarketing, userMarketingPrefs } from '../common/marketing-opt-out';
 import { SUBJECT_CASE_OPEN, SUBJECT_CASE_UPDATE, type SubjectCaseOpen, type SubjectCaseUpdate } from '../support/subject-cases';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
@@ -1175,14 +1178,21 @@ export class UsersService {
   }
 
   /**
-   * Update current user's notification settings (partial).
+   * Update current user's notification settings (partial). The marketing
+   * switches write MarketingOptOut rows, not columns (C4).
    */
   async updateNotificationSettings(
     userId: string,
     dto: UpdateNotificationSettingsDto,
   ) {
     // referralUpdates is accepted (old clients) but has no column any more.
-    const { referralUpdates: _ignored, ...data } = dto;
+    const { referralUpdates: _ignored, marketingEmail, marketingWhatsapp, ...data } = dto;
+    if (marketingEmail !== undefined) {
+      await setUserMarketing(this.prisma, userId, MarketingChannel.EMAIL, marketingEmail);
+    }
+    if (marketingWhatsapp !== undefined) {
+      await setUserMarketing(this.prisma, userId, MarketingChannel.WHATSAPP, marketingWhatsapp);
+    }
     const settings = await this.prisma.notificationSettings.upsert({
       where: { userId },
       update: data,
@@ -1192,17 +1202,20 @@ export class UsersService {
     return this.toNotificationSettingsDto(settings);
   }
 
-  private toNotificationSettingsDto(settings: {
-    pushEnabled: boolean;
-    emailEnabled: boolean;
-    eventReminders: boolean;
-    newEvents: boolean;
-    promotions: boolean;
-    productUpdates: boolean;
-    registrationUpdates: boolean;
-    spaceUpdates: boolean;
-    organiserAnnouncements: boolean;
-  }) {
+  /** Re-subscribe to one space's marketing email (settings › Promotions). */
+  async resubscribeToSpace(userId: string, spaceId: string) {
+    await resubscribeUserToSpace(this.prisma, userId, spaceId);
+    return this.getNotificationSettings(userId);
+  }
+
+  private async toNotificationSettingsDto(settings: NotificationSettings) {
+    const marketing = await userMarketingPrefs(this.prisma, settings.userId);
+    const spaces = marketing.spaceIds.length
+      ? await this.prisma.space.findMany({
+          where: { id: { in: marketing.spaceIds } },
+          select: { id: true, name: true },
+        })
+      : [];
     return {
       pushEnabled: settings.pushEnabled,
       emailEnabled: settings.emailEnabled,
@@ -1213,6 +1226,14 @@ export class UsersService {
       registrationUpdates: settings.registrationUpdates,
       spaceUpdates: settings.spaceUpdates,
       organiserAnnouncements: settings.organiserAnnouncements,
+      emailEventReminders: settings.emailEventReminders,
+      emailNewEvents: settings.emailNewEvents,
+      quietHoursStart: settings.quietHoursStart,
+      quietHoursEnd: settings.quietHoursEnd,
+      marketingEmail: marketing.email,
+      marketingWhatsapp: marketing.whatsapp,
+      /** Spaces whose marketing email I unsubscribed from. */
+      spaceOptOuts: spaces.map((sp) => ({ spaceId: sp.id, spaceName: sp.name })),
     };
   }
 }
