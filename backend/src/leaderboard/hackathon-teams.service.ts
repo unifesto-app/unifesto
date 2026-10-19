@@ -557,6 +557,7 @@ export class HackathonTeamsService {
         event: {
           select: {
             title: true,
+            status: true,
             startDateTime: true,
             endDateTime: true,
             coverImageUrl: true,
@@ -592,6 +593,8 @@ export class HackathonTeamsService {
       eventId,
       event: {
         title: board.event.title,
+        // Lets the app show the ended state as soon as the organiser completes it (G11).
+        status: board.event.status,
         startDateTime: board.event.startDateTime,
         endDateTime: board.event.endDateTime,
         coverImageUrl: board.event.coverImageUrl,

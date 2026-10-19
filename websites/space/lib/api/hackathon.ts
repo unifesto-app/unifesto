@@ -74,6 +74,15 @@ export interface HackathonOverview {
     themes: number;
     awards: number;
     awardsPublished: number;
+    /** End-of-event checklist (G11). Rounds still ACTIVE. */
+    openRounds: number;
+    /** Help-desk queries not resolved yet. */
+    openQueries: number;
+    judges: number;
+    /** Judges whose account has never signed in. */
+    judgesNotSignedIn: number;
+    /** Certificates issued for this event (not revoked). */
+    certificates: number;
   };
   teamNameFields: { id: string; label: string; ticketTypeName: string | null }[];
   groupTicketTypes: { id: string; name: string; isActive: boolean }[];

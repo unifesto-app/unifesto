@@ -27,6 +27,7 @@ import {
 } from '@unifesto/unicon/react-native';
 import AttendingShareModal from '../components/AttendingShareModal';
 import LivePollsPanel from '../components/tickets/LivePollsPanel';
+import { AfterEventGroup, EndedStub, useEventCertificate } from '../components/EventEnded';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
@@ -83,6 +84,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   const [passSize, setPassSize] = useState<{ width: number; height: number } | null>(null);
   const [notchY, setNotchY] = useState<number | null>(null);
   const stay = useEventStays(t.eventId, t.status !== 'cancelled' && !t.isOnline);
+  const cert = useEventCertificate(t.eventId, t.ended);
 
   const cancelled = t.status === 'cancelled';
   const qrSize = Math.min(220, width - GUTTER * 2 - spacing[16]);
@@ -118,7 +120,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
     navigation.setOptions({
       headerRight: () => (
         <HeaderActions>
-          {!cancelled ? (
+          {!cancelled && !t.ended ? (
             <HeaderIconButton onPress={() => setShareOpen(true)} label="Share that I'm going">
               <Export size={24} color={c.text} />
             </HeaderIconButton>
@@ -126,7 +128,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
           <HeaderMenu
             title="Ticket"
             items={[
-              ...(t.eventSlug && t.startIso && !cancelled
+              ...(t.eventSlug && t.startIso && !cancelled && !t.ended
                 ? [{ id: 'calendar', title: 'Add to calendar', icon: MENU_ICONS.calendar }]
                 : []),
               ...(t.eventSlug ? [{ id: 'event', title: 'View event', icon: MENU_ICONS.website }] : []),
@@ -146,7 +148,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, cancelled, t.eventSlug, t.startIso, t.canDelete, t.eventId, t.registrationId, t.title, c.text]);
+  }, [navigation, cancelled, t.ended, t.eventSlug, t.startIso, t.canDelete, t.eventId, t.registrationId, t.title, c.text]);
 
   if (!t.ticket) {
     return (
@@ -162,9 +164,11 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   const badge =
     t.status === 'cancelled'
       ? { text: 'Cancelled', color: c.danger }
-      : t.status === 'checkedIn'
-        ? { text: 'Checked in', color: tokens.success }
-        : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.primary };
+      : t.ended
+        ? { text: t.status === 'checkedIn' ? 'Attended' : 'Ended', color: c.muted }
+        : t.status === 'checkedIn'
+          ? { text: 'Checked in', color: tokens.success }
+          : { text: upcoming ? countdownLabel(t.startIso!) : 'Registered', color: c.primary };
 
   const price = Number.isNaN(t.listPrice) ? null : t.listPrice === 0 ? 'Free' : `₹${t.listPrice.toLocaleString('en-IN')}`;
   const canCalendar = !!t.eventSlug && upcoming && !cancelled;
@@ -212,21 +216,25 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             <View style={[styles.perf, { borderColor: c.outline }]} />
           </View>
 
-          <View style={styles.stub}>
-            <View style={[styles.qr, cancelled && { opacity: 0.12 }]}>
-              <QRCode value={t.qrValue} size={qrSize} color="#000000" backgroundColor="#ffffff" />
-            </View>
-            {cancelled ? (
-              <View style={[StyleSheet.absoluteFill, styles.center]}>
-                <XCircle size={40} color={c.danger} weight="fill" />
-                <Text style={[styles.voidText, { color: c.danger }]}>This ticket was cancelled</Text>
+          {t.ended ? (
+            <EndedStub checkedIn={t.status === 'checkedIn'} />
+          ) : (
+            <View style={styles.stub}>
+              <View style={[styles.qr, cancelled && { opacity: 0.12 }]}>
+                <QRCode value={t.qrValue} size={qrSize} color="#000000" backgroundColor="#ffffff" />
               </View>
-            ) : null}
-            {t.code ? <Text style={[styles.code, { color: c.text }]}>{t.code}</Text> : null}
-            <Text style={[styles.hint, { color: c.muted }]}>
-              {t.status === 'checkedIn' ? 'You are checked in. Enjoy the event.' : 'Show this at the entrance'}
-            </Text>
-          </View>
+              {cancelled ? (
+                <View style={[StyleSheet.absoluteFill, styles.center]}>
+                  <XCircle size={40} color={c.danger} weight="fill" />
+                  <Text style={[styles.voidText, { color: c.danger }]}>This ticket was cancelled</Text>
+                </View>
+              ) : null}
+              {t.code ? <Text style={[styles.code, { color: c.text }]}>{t.code}</Text> : null}
+              <Text style={[styles.hint, { color: c.muted }]}>
+                {t.status === 'checkedIn' ? 'You are checked in. Enjoy the event.' : 'Show this at the entrance'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── Facts: a date stub, then where, then what I hold ── */}
@@ -303,11 +311,13 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         {/* ── Actions ── */}
         {!cancelled ? (
           <SettingsGroup surface={c.raised}>
-            <SettingsRow
-              icon={<ShareNetwork size={24} color={c.text} />}
-              label="Share that I'm going"
-              onPress={() => setShareOpen(true)}
-            />
+            {!t.ended ? (
+              <SettingsRow
+                icon={<ShareNetwork size={24} color={c.text} />}
+                label="Share that I'm going"
+                onPress={() => setShareOpen(true)}
+              />
+            ) : null}
             {t.canManageGroup ? (
               <SettingsRow
                 icon={<UsersThree size={24} color={c.text} />}
@@ -338,7 +348,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
                 onPress={() => router.push(`/hackathon/${t.eventId}` as never)}
               />
             ) : null}
-            {t.competition && t.eventId ? (
+            {t.competition && t.eventId && !t.ended ? (
               <SettingsRow
                 icon={<Trophy size={24} color={c.text} />}
                 label="Competition"
@@ -355,6 +365,22 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
               />
             ) : null}
           </SettingsGroup>
+        ) : null}
+
+        {t.ended ? (
+          <AfterEventGroup
+            cert={cert}
+            surface={c.raised}
+            results={
+              !t.eventId
+                ? null
+                : t.hackathon
+                  ? { onPress: () => router.push(`/hackathon/${t.eventId}/results` as never) }
+                  : t.competition
+                    ? { value: t.competition.status, onPress: () => router.push(`/competition/${t.eventId}` as never) }
+                    : null
+            }
+          />
         ) : null}
 
         {!cancelled && t.waGroup?.inviteUrl ? (

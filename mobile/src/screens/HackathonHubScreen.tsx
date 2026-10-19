@@ -13,6 +13,8 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getMyHackathon, type HackathonHub } from '../lib/api/hackathon';
 import { evalStatusLabel, stageCopy, venueMapsUrl } from '../lib/hackathon';
+import { isEventOver } from '../lib/eventEnded';
+import { AfterEventGroup, useEventCertificate } from '../components/EventEnded';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -63,6 +65,10 @@ export default function HackathonHubScreen() {
     [eventId, load],
   );
 
+  // Once the sprint is over the hub is about results, not what's next (G11).
+  const ended = !!hub?.team && hub.team.stage !== 'CANCELLED' && isEventOver(hub.event);
+  const cert = useEventCertificate(eventId, ended);
+
   const unread = hub?.unreadCount ?? 0;
   const header = (
     <Stack.Screen
@@ -109,7 +115,9 @@ export default function HackathonHubScreen() {
   }
 
   const team = hub.team;
-  const stage = stageCopy(team.stage, team.statementBlock, hub.problemStatements.deadline);
+  const stage = ended
+    ? { title: 'This sprint has ended', body: 'Thanks for taking part. Results and winners are below.' }
+    : stageCopy(team.stage, team.statementBlock, hub.problemStatements.deadline);
   const cancelled = team.stage === 'CANCELLED';
   const maps = venueMapsUrl(hub.venue);
   const venueLines = [hub.venue.name, hub.venue.address].filter(Boolean) as string[];
@@ -119,8 +127,9 @@ export default function HackathonHubScreen() {
   const go = (path: string) => () => router.push(`/hackathon/${eventId}/${path}`);
 
   // The one thing the team should do right now, if any, lives on the pass.
-  const cta =
-    request?.status === 'CALLED'
+  const cta = ended
+    ? null
+    : request?.status === 'CALLED'
       ? { label: 'You’re up! Go to judging', onPress: go('evaluate') }
       : team.stage === 'NEEDS_PS' && team.statementBlock === null && team.isLead
         ? { label: 'Choose problem statement', onPress: go('statement') }
@@ -129,7 +138,7 @@ export default function HackathonHubScreen() {
   const tiles: QuickTile[] = [
     { key: 'team', label: `${joined}/${team.members.length} joined`, icon: icon(UsersThree), onPress: go('team') },
     { key: 'updates', label: unread ? `${unread} new` : 'Updates', icon: icon(unread ? BellRinging : Bell), onPress: go('updates') },
-    ...(!cancelled ? [{ key: 'help', label: 'Get help', icon: icon(Lifebuoy), onPress: go('help') }] : []),
+    ...(!cancelled && !ended ? [{ key: 'help', label: 'Get help', icon: icon(Lifebuoy), onPress: go('help') }] : []),
   ];
 
   return (
@@ -190,7 +199,7 @@ export default function HackathonHubScreen() {
           <QuickTiles tiles={tiles} />
         </View>
 
-        {!cancelled ? (
+        {!cancelled && (!ended || team.statement) ? (
           <SettingsGroup title="Problem statement">
             <SettingsRow
               icon={team.statement?.lockedAt ? icon(LockSimple) : icon(Lightbulb)}
@@ -211,7 +220,9 @@ export default function HackathonHubScreen() {
           </SettingsGroup>
         ) : null}
 
-        {team.evaluation ? (
+        {ended ? <AfterEventGroup cert={cert} results={{ onPress: go('results') }} /> : null}
+
+        {team.evaluation && !ended ? (
           <SettingsGroup title="Judging">
             <SettingsRow
               icon={icon(Gavel)}
@@ -232,7 +243,7 @@ export default function HackathonHubScreen() {
           </SettingsGroup>
         ) : null}
 
-        {!cancelled || venueLines.length ? (
+        {!ended && (!cancelled || venueLines.length) ? (
           <SettingsGroup title="Where to be">
             {!cancelled ? (
               <SettingsRow
@@ -252,7 +263,7 @@ export default function HackathonHubScreen() {
             ) : null}
           </SettingsGroup>
         ) : null}
-        {[!cancelled ? team.room?.notes : null, venueLines[1], hub.venue.notes].filter(Boolean).map((n, i) => (
+        {(ended ? [] : [!cancelled ? team.room?.notes : null, venueLines[1], hub.venue.notes]).filter(Boolean).map((n, i) => (
           <Text key={i} style={[styles.note, { color: tokens.textSecondary }]}>
             {n}
           </Text>
