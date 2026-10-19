@@ -1094,6 +1094,9 @@ export class CheckinService {
           select: { memberIndex: true, checkinTypeId: true, checkedInAt: true },
         },
         groupSeats: {
+          // A released seat is retired: nobody to admit, and not counted in
+          // the people stats the scanner computes from this list.
+          where: { status: { not: GroupSeatStatus.RELEASED } },
           orderBy: { seatIndex: 'asc' },
           select: {
             seatIndex: true,
