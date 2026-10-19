@@ -478,7 +478,7 @@ Drafts need a human lawyer's sign-off before publishing.
 | I2 | **Versioned legal docs with per-user acceptance.** Versioned legal documents with acceptance per user; re-acceptance on next launch on every client | planned |
 | I3 | DPDP erasure on account close (#41): needs backend rebuild | done; follow-up I5 |
 | I4 | **Privacy Policy retention line for erased answers.** Privacy Policy retention line for erased question answers, once I1 + I3 land | planned |
-| I5 | **Finish DPDP erasure and set retention limits.** Quick fix first: account deletion never completes for anyone whose bank account received a payout (FK RESTRICT on bank accounts), and the failure is never reported (backend/src/users/users.service.ts:1020). | planned |
+| I5 | **Finish DPDP erasure and set retention limits.** Quick fix first: account deletion never completes for anyone whose bank account received a payout (FK RESTRICT on bank accounts), and the failure is never reported (backend/src/users/users.service.ts:1020). | done (#283) |
 
 ### J · Scale and reliability (from W1/W2)
 
@@ -820,3 +820,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · H14: certificate emails go via Resend from the space's verified sending domain; otherwise SES unchanged (needs H20 Resend upgrade) (#280)
 - **2026-10-19** · D22 built: payout requests and payout-account verification open Platform REQUEST cases (Payout / PayoutBankAccount); paid, cancelled, verified and rejected post SYSTEM lines and resolve them, so "why was my account rejected?" is answered in the thread; money logic and S23 stay in payouts.service; Apex Assist Payout panel. No migration; rebuild backend + apex. (#281)
 - **2026-10-19** · D26 Apex WhatsApp "Convert to case" (picked messages → Platform HELP case, number matched to account, conversation links to it) and D27 hackathon help desk "Escalate to organiser" (Space web + mobile → Space-desk case with team/room, query keeps escalatedAt + caseId); additive migration 20261105100000_assist_links; rebuild backend + apex + space. (#282)
+- **2026-10-19** · I5 account deletion now completes for paid-out organisers (bank rows scrubbed, not deleted), erasure covers tickets, certificates, support, notifications, WhatsApp, all avatars and Cognito, failures reach the PRIVACY case; personal-data retention limits added to the daily sweep (#283)
