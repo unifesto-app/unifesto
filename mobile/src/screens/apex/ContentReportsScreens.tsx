@@ -20,7 +20,7 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
-import { personName } from './SupportInboxScreen';
+import { personName } from '../../components/support/CaseThread';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';

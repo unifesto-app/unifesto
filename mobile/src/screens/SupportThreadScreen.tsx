@@ -1,36 +1,49 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PaperPlaneRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { closeTicket, getTicket, reopenTicket, replyToTicket, STATUS_LABEL, type SupportTicket } from '../lib/api/support';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import {
+  closeTicket,
+  DESK_STATUS_LABEL,
+  escalateTicket,
+  getTicket,
+  KIND_LABEL,
+  reopenTicket,
+  replyToTicket,
+  STATUS_LABEL,
+  type SupportMessage,
+  type SupportTicket,
+} from '../lib/api/support';
+import { CaseMessages, Composer, GUTTER, personName, sideOf } from '../components/support/CaseThread';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 
-const GUTTER = spacing[6];
-
-const stamp = (iso: string) =>
-  new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
-
-/** One support request: the conversation, a reply box, and close / reopen. */
+/**
+ * One Assist case. The person who raised it gets the conversation, a reply box
+ * and close / reopen. Anyone else here is the space desk (its pushes land on
+ * this route): replies and internal notes, Escalate to Unifesto, and read-only
+ * once the case is with Unifesto.
+ */
 export default function SupportThreadScreen() {
   const { ticketId } = useLocalSearchParams<{ ticketId: string }>();
   const tokens = useTokens();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const scroll = useRef<ScrollView>(null);
   const [ticket, setTicket] = useState<SupportTicket | null>(null);
   const [missing, setMissing] = useState(false);
   const [reply, setReply] = useState('');
+  const [note, setNote] = useState(false);
   const [sending, setSending] = useState(false);
-  const [toggling, setToggling] = useState(false);
+  const [acting, setActing] = useState(false);
 
   useAnalyticsScreenTracking('SupportThread');
 
@@ -49,7 +62,7 @@ export default function SupportThreadScreen() {
     const body = reply.trim();
     if (!body) return;
     setSending(true);
-    const msg = await replyToTicket(ticketId!, body);
+    const msg = await replyToTicket(ticketId!, body, note);
     setSending(false);
     if (!msg) return AppAlert.alert("Couldn't send", 'Check your connection and try again.');
     setReply('');
@@ -58,12 +71,27 @@ export default function SupportThreadScreen() {
   };
 
   const toggle = async () => {
-    setToggling(true);
+    setActing(true);
     const ok = ticket!.status === 'CLOSED' ? await reopenTicket(ticketId!) : await closeTicket(ticketId!);
-    setToggling(false);
+    setActing(false);
     if (!ok) return AppAlert.alert("Couldn't update the request");
     await load();
   };
+
+  const escalate = () =>
+    AppAlert.alert('Escalate to Unifesto?', 'You will still be able to read it, but only Unifesto replies.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Escalate',
+        onPress: async () => {
+          setActing(true);
+          const r = await escalateTicket(ticketId!);
+          setActing(false);
+          if (!r.ok) return AppAlert.alert("Couldn't escalate", r.message);
+          await load();
+        },
+      },
+    ]);
 
   if (!ticket) {
     return (
@@ -74,6 +102,27 @@ export default function SupportThreadScreen() {
   }
 
   const closed = ticket.status === 'CLOSED';
+  const asDesk = !!user && ticket.requesterId !== user.id;
+  const withUnifesto = ticket.desk === 'PLATFORM';
+  const spaceName = ticket.space?.name ?? 'The organiser';
+
+  // Requester view: who answered for the desk then. The organiser while the
+  // case sat on the space desk, Unifesto otherwise.
+  // ponytail: a case Unifesto sent to the organiser labels Unifesto's earlier replies with the space; store the desk per message if that confuses.
+  const onSpaceDesk = (iso: string) => !!ticket.space && (!withUnifesto || (!!ticket.escalatedAt && iso < ticket.escalatedAt));
+  const nameOf = (m: SupportMessage) => {
+    const side = sideOf(m);
+    if (side === 'ASSISTANT') return 'Assist';
+    if (asDesk) return side === 'REQUESTER' ? personName(ticket.requester) : personName(m.author);
+    return side === 'DESK' ? (onSpaceDesk(m.createdAt) ? spaceName : 'Unifesto') : '';
+  };
+
+  const email = ticket.contactEmail || ticket.requester?.identities?.[0]?.email;
+  const meta = asDesk
+    ? [personName(ticket.requester), email, DESK_STATUS_LABEL[ticket.status]]
+    : [KIND_LABEL[ticket.kind], STATUS_LABEL[ticket.status], withUnifesto ? 'With Unifesto' : `With ${spaceName}`];
+  // The desk can write while the case is on it; the requester until it closes.
+  const canWrite = !closed && (!asDesk || !withUnifesto);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -87,55 +136,35 @@ export default function SupportThreadScreen() {
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
       >
         <Text style={[styles.subject, { color: tokens.text }]}>{ticket.subject}</Text>
-        <Text style={[styles.meta, { color: tokens.textMuted }]}>{STATUS_LABEL[ticket.status]}</Text>
+        <Text style={[styles.meta, { color: tokens.textMuted }]}>{meta.filter(Boolean).join(' · ')}</Text>
 
-        <View style={{ marginTop: spacing[5], gap: spacing[3] }}>
-          {(ticket.messages ?? []).map((m) => {
-            const staff = m.isStaffReply;
-            return (
-              <View key={m.id} style={[styles.bubble, staff ? styles.left : [styles.right, { backgroundColor: tokens.accent }]]}>
-                {staff ? <CardBackdrop shape={styles.bubble} /> : null}
-                <Text style={[styles.body, { color: staff ? tokens.text : tokens.accentFg }]}>{m.body}</Text>
-                <Text style={[styles.time, { color: staff ? tokens.textMuted : tokens.accentFg, opacity: staff ? 1 : 0.7 }]}>
-                  {staff ? 'Unifesto · ' : ''}
-                  {stamp(m.createdAt)}
-                </Text>
-              </View>
-            );
-          })}
+        <View style={{ marginTop: spacing[5] }}>
+          <CaseMessages messages={ticket.messages ?? []} viewer={asDesk ? 'DESK' : 'REQUESTER'} nameOf={nameOf} />
         </View>
 
-        <Button
-          label={closed ? 'Reopen request' : 'Mark as solved'}
-          variant="ghost"
-          loading={toggling}
-          onPress={toggle}
-          style={{ marginTop: spacing[6], alignSelf: 'center' }}
-        />
+        {asDesk ? (
+          withUnifesto ? (
+            <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is with Unifesto now. You can read it, but only Unifesto replies.</Text>
+          ) : !closed ? (
+            <Button label="Escalate to Unifesto" variant="ghost" loading={acting} onPress={escalate} style={styles.action} />
+          ) : (
+            <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is closed.</Text>
+          )
+        ) : (
+          <Button label={closed ? 'Reopen request' : 'Mark as solved'} variant="ghost" loading={acting} onPress={toggle} style={styles.action} />
+        )}
       </ScrollView>
 
-      {!closed ? (
-        <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), backgroundColor: tokens.bg }]}>
-          <View style={styles.inputWrap}>
-            <CardBackdrop shape={styles.inputWrap} />
-            <TextInput
-              value={reply}
-              onChangeText={setReply}
-              placeholder="Reply"
-              placeholderTextColor={tokens.textMuted}
-              selectionColor={tokens.accent}
-              multiline
-              style={[styles.input, { color: tokens.text }]}
-            />
-          </View>
-          <Pressable onPress={send} disabled={sending || !reply.trim()} hitSlop={8} accessibilityLabel="Send reply">
-            {sending ? (
-              <ActivityIndicator color={tokens.accent} />
-            ) : (
-              <PaperPlaneRight size={28} color={reply.trim() ? tokens.accent : tokens.textMuted} weight="fill" />
-            )}
-          </Pressable>
-        </View>
+      {canWrite ? (
+        <Composer
+          value={reply}
+          onChangeText={setReply}
+          onSend={send}
+          sending={sending}
+          placeholder="Reply"
+          note={asDesk ? { on: note, set: setNote } : undefined}
+          bottomInset={insets.bottom}
+        />
       ) : null}
     </KeyboardAvoidingView>
   );
@@ -146,12 +175,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   subject: { fontSize: typography.fontSize.xl, ...font('heading') },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
-  bubble: { maxWidth: '85%', borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
-  left: { alignSelf: 'flex-start' },
-  right: { alignSelf: 'flex-end' },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...font() },
-  time: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[3], paddingHorizontal: GUTTER, paddingTop: spacing[3] },
-  inputWrap: { flex: 1, borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
-  input: { fontSize: typography.fontSize.base, maxHeight: 120, ...font() },
+  hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  action: { marginTop: spacing[6], alignSelf: 'center' },
 });
