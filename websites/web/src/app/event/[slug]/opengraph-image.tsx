@@ -44,7 +44,8 @@ export default async function Image({ params }: Props) {
   return new ImageResponse(
     (
       <OgCard
-        wordmark={base.wordmark}
+        // White-labelled: the card carries the space, not Unifesto.
+        wordmark={event?.branding?.name ? false : base.wordmark}
         kind="Event"
         title={event?.title ?? "Event on Unifesto"}
         subtitle={host ? `Hosted by ${host}` : null}

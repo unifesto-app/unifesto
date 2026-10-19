@@ -17,6 +17,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, resolveSpaceBranding } from '../white-label/branding.util';
+import { SPACE_DOMAINS_ORPHANED } from '../white-label/white-label.service';
 import {
   CreateSpaceDto,
   UpdateSpaceDto,
@@ -570,6 +571,13 @@ export class SpacesService {
       );
     }
 
+    // Read before the cascade removes them: their Resend/Cloudflare objects
+    // must go too, or a dangling CNAME is left claimable (H25).
+    const domains = await this.prisma.spaceDomain.findMany({
+      where: { spaceId: id },
+      select: { kind: true, hostname: true, providerId: true },
+    });
+
     // Payments, refunds and payouts under the space are kept: refused while any exist.
     await deleteWithoutMoney(
       this.prisma,
@@ -577,6 +585,7 @@ export class SpacesService {
       'This space has payment, refund or payout records and cannot be deleted.',
       (tx) => tx.space.delete({ where: { id } }),
     );
+    if (domains.length) this.events?.emit(SPACE_DOMAINS_ORPHANED, domains);
 
     return { message: 'Space deleted successfully' };
   }

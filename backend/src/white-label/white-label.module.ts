@@ -5,6 +5,7 @@ import { CacheModule } from '../cache/cache.module';
 import { StorageModule } from '../storage/storage.module';
 import { WhiteLabelController } from './white-label.controller';
 import { WhiteLabelService } from './white-label.service';
+import { WhiteLabelSchedulerService } from './white-label-scheduler.service';
 
 /**
  * White-label (organiser branding) for spaces & events.
@@ -16,7 +17,7 @@ import { WhiteLabelService } from './white-label.service';
 @Module({
   imports: [AuthModule, CacheModule, StorageModule, ConfigModule],
   controllers: [WhiteLabelController],
-  providers: [WhiteLabelService],
+  providers: [WhiteLabelService, WhiteLabelSchedulerService],
   exports: [WhiteLabelService],
 })
 export class WhiteLabelModule {}

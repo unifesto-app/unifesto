@@ -22,6 +22,7 @@ function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'sessi
       delete: jest.fn(async () => ({ id: 'ev-1' })),
     },
     session: { delete: jest.fn(async () => ({})) },
+    spaceDomain: { findMany: jest.fn(async () => []) },
     space: {
       findUnique: jest.fn(async () => ({ id: 'sp-1', _count: { childSpaces: 0 } })),
       delete: jest.fn(async () => ({})),
