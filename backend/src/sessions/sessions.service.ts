@@ -35,7 +35,8 @@ import {
   UpdateSessionDto,
   VerifySessionPaymentDto,
 } from './dto';
-import { h1, p, strong } from '../email/layout';
+import { button, details, esc, greet, h1, p, small, strong } from '../email/layout';
+import { buildEventIcs } from '../events/calendar/ics.util';
 
 @Injectable()
 export class SessionsService {
@@ -71,8 +72,9 @@ export class SessionsService {
     if (!(await this.authz.can({ id: userId }, Action.SPACE_CREATE_EVENT, { spaceId }))) {
       throw new ForbiddenException('You cannot manage sessions for this space');
     }
-
-    await this.assertPlanAllowsSessions(spaceId);
+    // The plan gate is NOT here (B18): a space that downgrades must still be
+    // able to cancel, refund, end and see the sessions it already sold. Only
+    // making new ones (create, publish, duplicate) checks the plan.
   }
 
   /** Rejects when the space owner's plan does not include Sessions. */
@@ -169,6 +171,7 @@ export class SessionsService {
 
   async createSession(userId: string, spaceId: string, dto: CreateSessionDto) {
     await this.assertCanManageSpace(userId, spaceId);
+    await this.assertPlanAllowsSessions(spaceId);
 
     if (dto.platform === 'OTHER' && !dto.platformOther) {
       throw new BadRequestException(
@@ -258,8 +261,17 @@ export class SessionsService {
         `Capacity can't go below the ${session.registeredCount} already registered`,
       );
     }
+    // B18: moving a session into the past would strand everyone who paid.
+    const newStart = dto.startDateTime ? new Date(dto.startDateTime) : null;
+    if (newStart && newStart.getTime() !== session.startDateTime.getTime() && newStart.getTime() < Date.now()) {
+      throw new BadRequestException("The new start time is in the past. Pick a time that hasn't happened yet.");
+    }
+    const moved =
+      session.status === SessionStatus.PUBLISHED &&
+      ((newStart && newStart.getTime() !== session.startDateTime.getTime()) ||
+        (dto.durationMinutes != null && dto.durationMinutes !== session.durationMinutes));
 
-    return this.prisma.session.update({
+    const updated = await this.prisma.session.update({
       where: { id: sessionId },
       data: {
         title: dto.title,
@@ -280,10 +292,13 @@ export class SessionsService {
         visibility: dto.visibility,
       },
     });
+    if (moved) void this.notifyRescheduled(sessionId);
+    return updated;
   }
 
   async publishSession(userId: string, sessionId: string) {
     const session = await this.loadManagedSession(userId, sessionId);
+    await this.assertPlanAllowsSessions(session.spaceId);
     if (session.status !== SessionStatus.DRAFT) {
       throw new BadRequestException('Only a draft session can be published');
     }
@@ -313,9 +328,11 @@ export class SessionsService {
     if (session.platform === SessionPlatform.UNIFESTO_LIVE) {
       await this.livekit.endRoom(this.livekit.roomName(session.id));
     }
+    // recordingEgressId stays: egress_ended arrives after the stop and finds
+    // the session by it to save the file (B18: clearing it here lost it).
     return this.prisma.session.update({
       where: { id: sessionId },
-      data: { status: SessionStatus.COMPLETED, recordingEgressId: null },
+      data: { status: SessionStatus.COMPLETED },
     });
   }
 
@@ -443,21 +460,19 @@ export class SessionsService {
       data: { status: RegistrationStatus.CANCELLED, cancelledAt: now, refundDueAt: now },
     });
 
-    let refunded = 0;
-    for (const reg of paidRegistrations) {
-      const amount = await this.refundDue(reg.id);
-      if (amount == null) continue; // failed: the retry job finishes it
-      refunded += 1;
-      const email = await this.getPrimaryEmail(reg.userId);
-      await this.notifyCancellation(email, session.title, amount).catch((err) =>
-        this.logger.error(`Cancellation notice failed for session registration ${reg.id}`, err),
-      );
-    }
+    // B18: refunds and notices run after the response (hundreds of Razorpay
+    // calls don't fit in a request); refundDue emails each attendee once their
+    // money has gone, and the 15-minute retry finishes any that fail.
+    void (async () => {
+      for (const reg of paidRegistrations) {
+        await this.refundDue(reg.id).catch((err) =>
+          this.logger.error(`Session refund ${reg.id} errored; the retry job picks it up`, err),
+        );
+      }
+    })();
 
-    this.logger.log(
-      `Cancelled session ${sessionId}; refunded ${refunded}/${paidRegistrations.length} paid attendees`,
-    );
-    return { cancelled: true, refunded, totalPaid: paidRegistrations.length };
+    this.logger.log(`Cancelled session ${sessionId}; ${paidRegistrations.length} registrations queued for refund + notice`);
+    return { cancelled: true, refunded: 0, totalPaid: paidRegistrations.length, queued: true };
   }
 
   /**
@@ -494,6 +509,22 @@ export class SessionsService {
         ...(amount > 0 && { paymentStatus: PaymentStatus.REFUNDED, refundedAmount: new Prisma.Decimal(amount) }),
       },
     });
+    // Tell them now that it's done, whichever path got here (cancel, sold out
+    // while paying, or a retry). Free registrants get it too, with no amount.
+    // The money has moved: a failed notice is logged, never a failed refund.
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { id: reg.sessionId },
+        select: { title: true, status: true, cancellationReason: true },
+      });
+      if (session) {
+        const email = await this.getPrimaryEmail(reg.userId);
+        const reason = session.status === SessionStatus.CANCELLED ? session.cancellationReason ?? '' : null;
+        await this.notifyCancellation(email, session.title, amount, reason);
+      }
+    } catch (err) {
+      this.logger.error(`Cancellation notice failed for session registration ${registrationId}`, err);
+    }
     return amount;
   }
 
@@ -508,26 +539,155 @@ export class SessionsService {
     for (const r of due) await this.refundDue(r.id);
   }
 
+  /** Page link, local start time and a calendar-invite attachment for a session. */
+  private sessionInvite(s: {
+    id: string;
+    slug: string;
+    title: string;
+    description: string | null;
+    startDateTime: Date;
+    durationMinutes: number;
+    timezone: string;
+    space: { name: string } | null;
+  }) {
+    const pageUrl = `${(process.env.PUBLIC_WEB_URL ?? 'https://unifesto.app').replace(/\/$/, '')}/session/${s.slug}`;
+    const when = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: s.timezone }).format(
+      s.startDateTime,
+    );
+    // Same UID every time, so a rescheduled invite updates the calendar entry.
+    const ics = buildEventIcs({
+      id: `session-${s.id}`,
+      slug: s.slug,
+      title: s.title,
+      description: s.description,
+      startDateTime: s.startDateTime,
+      endDateTime: new Date(s.startDateTime.getTime() + (s.durationMinutes || 60) * 60_000),
+      timezone: s.timezone,
+      type: 'ONLINE',
+      organiserName: s.space?.name ?? null,
+      pageUrl,
+    });
+    return { pageUrl, when, ics: { filename: 'session.ics', content: Buffer.from(ics, 'utf8') } };
+  }
+
+  /** Tell everyone booked that the time changed, with the updated invite (B18). */
+  private async notifyRescheduled(sessionId: string): Promise<void> {
+    try {
+      const s = await this.prisma.session.findUnique({
+        where: { id: sessionId },
+        select: {
+          id: true, slug: true, title: true, description: true, startDateTime: true,
+          durationMinutes: true, timezone: true, space: { select: { name: true } },
+          registrations: {
+            where: { status: RegistrationStatus.REGISTERED, paymentStatus: PaymentStatus.PAID },
+            select: { userId: true },
+          },
+        },
+      });
+      if (!s) return;
+      const { pageUrl, when, ics } = this.sessionInvite(s);
+      for (const r of s.registrations) {
+        const email = await this.getPrimaryEmail(r.userId);
+        if (!email) continue;
+        await this.email
+          .sendRawEmail(
+            email,
+            `New time: ${s.title}`,
+            h1('Your session has moved') +
+              details([['New time', esc(when)], ['Length', `${s.durationMinutes || 60} minutes`]], esc(s.title)) +
+              button('Open the session', pageUrl) +
+              small("Your place is kept. The calendar invite is updated; if the new time doesn't work, ask the organiser about a refund."),
+            [ics],
+          )
+          .catch((err) => this.logger.warn(`Reschedule notice to ${r.userId} failed: ${err?.message ?? err}`));
+      }
+    } catch (err) {
+      this.logger.error(`Reschedule notices for session ${sessionId} failed`, err);
+    }
+  }
+
+  /**
+   * "You're in" email with a calendar invite (B18), after a free registration
+   * or a settled payment. Links to the session page, never the meeting link:
+   * joining stays gated in the app. Never throws; a lost email isn't a lost seat.
+   */
+  private async sendConfirmation(registrationId: string): Promise<void> {
+    try {
+      const reg = await this.prisma.sessionRegistration.findUnique({
+        where: { id: registrationId },
+        select: {
+          userId: true,
+          razorpayAmount: true,
+          session: {
+            select: {
+              id: true, slug: true, title: true, description: true, startDateTime: true,
+              durationMinutes: true, timezone: true, space: { select: { name: true } },
+            },
+          },
+        },
+      });
+      if (!reg) return;
+      const email = await this.getPrimaryEmail(reg.userId);
+      if (!email) return;
+      const s = reg.session;
+      const name = await this.getDisplayName(reg.userId);
+      const { pageUrl, when, ics } = this.sessionInvite(s);
+      const paid = Number(reg.razorpayAmount ?? 0);
+      await this.email.sendRawEmail(
+        email,
+        `You're in: ${s.title}`,
+        h1("You're in") +
+          greet(name) +
+          details(
+            [
+              ['When', esc(when)],
+              ['Length', `${s.durationMinutes || 60} minutes`],
+              ['Host', s.space ? esc(s.space.name) : null],
+              ['Paid', paid > 0 ? `₹${paid.toFixed(2)}` : null],
+            ],
+            esc(s.title),
+          ) +
+          button('Open the session', pageUrl) +
+          small('Join from the Unifesto app; the Join button unlocks shortly before it starts. The calendar invite is attached.'),
+        [ics],
+      );
+    } catch (err) {
+      this.logger.warn(`Session confirmation for ${registrationId} not sent: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
+  /**
+   * `reason` is the organiser's (string, maybe empty) when the session was
+   * cancelled, or null when this booking was refunded because the session
+   * filled up while they paid.
+   */
   private async notifyCancellation(
     email: string | null,
     title: string,
     amount: number,
+    reason: string | null,
   ) {
     if (!email) return;
     const money =
       amount > 0
         ? ` A refund of ₹${amount.toFixed(2)} has been initiated to your original payment method.`
         : '';
+    const cancelled = reason !== null;
     await this.email.sendRawEmail(
       email,
-      `Cancelled: ${title}`,
-      h1('Session cancelled') + p(`${strong(title)} was cancelled by the organiser.${money}`),
+      cancelled ? `Cancelled: ${title}` : `No place for you: ${title}`,
+      cancelled
+        ? h1('Session cancelled') +
+            p(`${strong(esc(title))} was cancelled by the organiser.${money}`) +
+            (reason.trim() ? p(`Their reason: ${esc(reason.trim())}`) : '')
+        : h1('The session filled up') + p(`${strong(esc(title))} filled up while you were paying, so you don't have a place.${money}`),
     );
   }
 
   /** Duplicate a session as a fresh DRAFT (the v1 stand-in for recurrence). */
   async duplicateSession(userId: string, sessionId: string) {
     const source = await this.loadManagedSession(userId, sessionId);
+    await this.assertPlanAllowsSessions(source.spaceId);
     return this.prisma.session.create({
       data: {
         spaceId: source.spaceId,
@@ -675,10 +835,15 @@ export class SessionsService {
   }
 
   async removeCoHost(userId: string, sessionId: string, coHostUserId: string) {
-    await this.loadManagedSession(userId, sessionId);
+    const session = await this.loadManagedSession(userId, sessionId);
     await this.prisma.sessionCoHost.deleteMany({
       where: { sessionId, userId: coHostUserId },
     });
+    // B18: take them out of a live room now. Host tokens are short-lived (see
+    // join), so one they kept can't bring them back as a host for long.
+    if (session.platform === SessionPlatform.UNIFESTO_LIVE) {
+      await this.livekit.removeParticipant(this.livekit.roomName(session.id), coHostUserId);
+    }
     return this.listCoHosts(userId, sessionId);
   }
 
@@ -686,11 +851,13 @@ export class SessionsService {
   // Attendee: discovery / detail
   // ---------------------------------------------------------------------------
 
-  /** Public discovery — published, public, upcoming sessions. No links. */
-  async listPublicSessions() {
+  /** Public discovery — published, public, upcoming sessions. No links. A
+   * space's own page passes its id (B18). */
+  async listPublicSessions(spaceId?: string) {
     return this.prisma.session.findMany({
       where: {
         ...NOT_DELETED,
+        ...(spaceId ? { spaceId } : {}),
         status: SessionStatus.PUBLISHED,
         visibility: SessionVisibility.PUBLIC,
         startDateTime: { gte: new Date() },
@@ -803,6 +970,7 @@ export class SessionsService {
         await takeSessionSeat(tx, sessionId);
         return reg;
       });
+      void this.sendConfirmation(registration.id);
       return { registrationId: registration.id, needsPayment: false };
     }
 
@@ -918,6 +1086,7 @@ export class SessionsService {
     fromClient: boolean,
   ) {
     let soldOut = false;
+    let settled = false;
     await this.prisma.$transaction(async (tx) => {
       // Atomic claim: verifies and the webhook may overlap; only the one that
       // flips the row counts the seat.
@@ -935,6 +1104,7 @@ export class SessionsService {
         },
       });
       if (claimed.count === 0) return;
+      settled = true;
       try {
         await takeSessionSeat(tx, registration.sessionId);
       } catch (err) {
@@ -954,6 +1124,9 @@ export class SessionsService {
         });
       }
     });
+
+    // Only the call that settled it emails, so verify + webhook send one.
+    if (settled && !soldOut) void this.sendConfirmation(registration.id);
 
     if (soldOut) {
       await this.refundDue(registration.id);
@@ -1100,10 +1273,11 @@ export class SessionsService {
     if (session.platform === SessionPlatform.UNIFESTO_LIVE) {
       const room = this.livekit.roomName(session.id);
       const name = await this.getDisplayName(userId);
-      const ttlSeconds = Math.max(
-        300,
-        Math.ceil((window.closesAt.getTime() - Date.now()) / 1000),
-      );
+      // A host token can run the room, so it lives 15 minutes at most (B18): a
+      // removed co-host can't keep reconnecting with one. LiveKit refreshes the
+      // token for anyone still connected, so a long session isn't cut short.
+      const untilClose = Math.max(300, Math.ceil((window.closesAt.getTime() - Date.now()) / 1000));
+      const ttlSeconds = role === 'host' ? Math.min(untilClose, 15 * 60) : untilClose;
       const token = await this.livekit.mintToken({
         room,
         identity: userId,
@@ -1200,8 +1374,13 @@ export class SessionsService {
       const egressId = event.egressInfo?.egressId;
       const key = event.egressInfo?.fileResults?.[0]?.filename;
       if (!egressId) return;
+      // By egress id, else by room (the session id is in the room name), so a
+      // recording is never dropped because the id was already cleared.
+      const roomSessionId = this.sessionIdFromRoom(event.egressInfo?.roomName);
       const session = await this.prisma.session.findFirst({
-        where: { recordingEgressId: egressId },
+        where: {
+          OR: [{ recordingEgressId: egressId }, ...(roomSessionId ? [{ id: roomSessionId }] : [])],
+        },
         select: { id: true },
       });
       if (!session) return;

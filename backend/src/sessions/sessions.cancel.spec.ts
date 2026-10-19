@@ -3,7 +3,9 @@ import { SessionsService } from './sessions.service';
 
 /** S15/S51: cancelling a session refunds the base only (fee kept), once, through a claimed refundDueAt. */
 describe('SessionsService.cancelSession', () => {
-  const reg = { id: 'sr-1', userId: 'u-1', paymentId: 'pay_1', razorpayAmount: 102, processingFee: 2 };
+  const reg = { id: 'sr-1', userId: 'u-1', sessionId: 's-1', paymentId: 'pay_1', razorpayAmount: 102, processingFee: 2 };
+  // Refunds run after cancelSession returns (B18): let them finish.
+  const settle = () => new Promise((r) => setTimeout(r, 0));
   const build = ({ sessionClaim = 1, refundClaim = 1 } = {}) => {
     const calls: string[] = [];
     const prisma: any = {
@@ -37,7 +39,8 @@ describe('SessionsService.cancelSession', () => {
 
   it('refunds the ticket price, not the processing fee', async () => {
     const { svc, prisma, payments } = build();
-    await expect(svc.cancelSession('host', 's-1')).resolves.toMatchObject({ refunded: 1, totalPaid: 1 });
+    await expect(svc.cancelSession('host', 's-1')).resolves.toMatchObject({ queued: true, totalPaid: 1 });
+    await settle();
     expect(payments.refund).toHaveBeenCalledWith('pay_1', 100, expect.any(String), expect.any(Object));
     expect(prisma.sessionRegistration.updateMany).toHaveBeenCalledWith({
       where: { id: { in: ['sr-1'] }, status: RegistrationStatus.REGISTERED },
@@ -63,14 +66,30 @@ describe('SessionsService.cancelSession', () => {
 
   it('a refund another caller (retry job) already claimed is not sent twice', async () => {
     const { svc, payments } = build({ refundClaim: 0 });
-    await expect(svc.cancelSession('host', 's-1')).resolves.toMatchObject({ refunded: 0 });
+    await svc.cancelSession('host', 's-1');
+    await settle();
     expect(payments.refund).not.toHaveBeenCalled();
   });
 
   it('a failed refund stays due for the retry job', async () => {
     const { svc, prisma, payments } = build();
     payments.refund.mockRejectedValueOnce(new Error('gateway down'));
-    await expect(svc.cancelSession('host', 's-1')).resolves.toMatchObject({ refunded: 0 });
+    await svc.cancelSession('host', 's-1');
+    await settle();
     expect(prisma.sessionRegistration.update).not.toHaveBeenCalled();
+  });
+
+  it("emails each attendee once their refund has gone, with the organiser's reason (B18)", async () => {
+    const { svc, prisma } = build();
+    prisma.session.findUnique.mockImplementation(async (args: any) =>
+      args?.select?.cancellationReason
+        ? { title: 'Talk', status: SessionStatus.CANCELLED, cancellationReason: 'Speaker is ill' }
+        : { id: 's-1', spaceId: 'space-1', title: 'Talk', status: SessionStatus.PUBLISHED, deletedAt: null, startDateTime: new Date(Date.now() + 86_400_000) },
+    );
+    jest.spyOn(svc as any, 'getPrimaryEmail').mockResolvedValue('a@x.com');
+    const notify = jest.spyOn(svc as any, 'notifyCancellation').mockResolvedValue(undefined);
+    await svc.cancelSession('host', 's-1', 'Speaker is ill');
+    await settle();
+    expect(notify).toHaveBeenCalledWith('a@x.com', 'Talk', 100, 'Speaker is ill');
   });
 });
