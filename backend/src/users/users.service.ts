@@ -44,6 +44,7 @@ import {
   ERASED_NAME,
 } from '../common/account-deletion';
 import { UserProfileDto } from '../auth/dto';
+import { AppleSignInService } from '../auth/apple-sign-in.service';
 import { StorageService } from '../storage/storage.service';
 import { normalizeMobile } from '../leaderboard/hackathon.shared';
 
@@ -57,6 +58,7 @@ export class UsersService {
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
     @Optional() private readonly events?: EventEmitter2,
+    @Optional() private readonly appleSignIn?: AppleSignInService,
   ) {}
 
   /**
@@ -995,10 +997,11 @@ export class UsersService {
       }),
       // Read before the identities are deleted below: the organiser lead
       // funnel, tickets and certificates match on the email someone typed,
-      // and Google/Apple sign-ins name the Cognito user to remove.
+      // and Google/Apple sign-ins name the Cognito user to remove and the
+      // Apple token to revoke.
       this.prisma.userIdentity.findMany({
         where: { userId },
-        select: { provider: true, providerUserId: true, email: true, emailVerified: true },
+        select: { provider: true, providerUserId: true, email: true, emailVerified: true, appleRefreshToken: true },
       }),
     ]);
     const cognitoSubs = identities
@@ -1224,7 +1227,7 @@ export class UsersService {
       }),
     ]);
 
-    // Files and the Cognito sign-in go after the commit. Anything that can't
+    // Files, the Cognito sign-in and the Apple token go after the commit. Anything that can't
     // be removed is returned so the PRIVACY case says so and the desk follows up.
     const leftovers: string[] = [];
     const attempt = async (what: string, fn: () => Promise<unknown>) => {
@@ -1259,6 +1262,15 @@ export class UsersService {
       await this.storageService.deleteObject(key);
     }
     for (const sub of cognitoSubs) await attempt('Google/Apple sign-in', () => this.deleteCognitoUser(sub));
+    // App Store 5.1.1(v) (O17). Apple sign-ins from before the token was
+    // stored have none, so there is nothing to revoke for them here.
+    for (const { appleRefreshToken: token } of identities) {
+      if (!token) continue;
+      await attempt('Apple sign-in', async () => {
+        if (!this.appleSignIn) throw new Error('AppleSignInService not provided');
+        await this.appleSignIn.revoke(token);
+      });
+    }
 
     this.logger.log(`User ${userId} account closed`);
     return { leftovers: [...new Set(leftovers)] };

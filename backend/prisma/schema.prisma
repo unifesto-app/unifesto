@@ -668,6 +668,11 @@ model UserIdentity {
   emailVerified Boolean? @default(false) @map("email_verified")
   isPrimary     Boolean  @default(false) @map("is_primary")
 
+  // APPLE only (O17): refresh token from the sign-in code exchange, AES-256-GCM
+  // encrypted, revoked at Apple when the account is deleted. Null for Apple
+  // sign-ins from before it was stored.
+  appleRefreshToken String? @map("apple_refresh_token") @db.Text
+
   // Metadata
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 

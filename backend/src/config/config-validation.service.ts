@@ -49,7 +49,7 @@ export class ConfigValidationService implements OnModuleInit {
 
     // S31: HMAC secrets. Unset = a key derived from JWT_SECRET (see
     // common/secrets.ts), which works but ties them to JWT rotation.
-    for (const key of ['EMAIL_TRACKING_SECRET', 'TRAFFIC_HASH_SECRET']) {
+    for (const key of ['EMAIL_TRACKING_SECRET', 'TRAFFIC_HASH_SECRET', 'APPLE_TOKEN_ENCRYPTION_KEY']) {
       if (!process.env[key]) {
         this.logger.warn(`${key} not set: using a key derived from JWT_SECRET`);
       }
@@ -79,5 +79,14 @@ export class ConfigValidationService implements OnModuleInit {
       process.env.ONESIGNAL_APP_ID && process.env.ONESIGNAL_REST_API_KEY,
     );
     this.logger.log(`OneSignal (push notifications) configured: ${oneSignalConfigured}`);
+
+    // O17: unset = Apple sign-ins store no refresh token and account deletion
+    // can't revoke at Apple (App Store 5.1.1(v)). Required before 5.0.0 submit.
+    const appleMissing = ['APPLE_CLIENT_ID', 'APPLE_TEAM_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY'].filter(
+      (key) => !process.env[key],
+    );
+    if (appleMissing.length) {
+      this.logger.warn(`Sign in with Apple token revoke off, missing: ${appleMissing.join(', ')}`);
+    }
   }
 }

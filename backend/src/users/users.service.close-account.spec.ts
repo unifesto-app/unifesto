@@ -182,7 +182,7 @@ describe('UsersService.closeAccount PII scrub', () => {
   it('scrubs funnel leads matching a verified email exactly (any case) or the verified mobile', () => {
     expect(prisma.userIdentity.findMany).toHaveBeenCalledWith({
       where: { userId: USER },
-      select: { provider: true, providerUserId: true, email: true, emailVerified: true },
+      select: { provider: true, providerUserId: true, email: true, emailVerified: true, appleRefreshToken: true },
     });
     // The SQL narrows phone-only leads on the mobile's last 10 digits.
     expect((prisma.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual(['9876543210']);
@@ -337,6 +337,51 @@ describe('UsersService.closeAccount cleanup failures', () => {
     const { leftovers } = await (service as any).closeAccount(USER);
     expect(leftovers).toEqual(['profile photo', 'WhatsApp media', 'Google/Apple sign-in']);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+});
+
+// O17 (App Store 5.1.1(v)): the stored Apple token is revoked; a failure never
+// blocks the erasure and lands on the PRIVACY case as "Apple sign-in".
+describe('UsersService.closeAccount Apple token revoke', () => {
+  function build(revoke: jest.Mock) {
+    const prisma: any = makePrisma();
+    prisma.userIdentity.findMany = jest.fn(async () => [
+      { provider: 'APPLE', providerUserId: 'sub-apple', email: 'a@b.in', emailVerified: true, appleRefreshToken: 'enc-1' },
+      // Signed in before O17: nothing stored, nothing to revoke.
+      { provider: 'APPLE', providerUserId: 'sub-old', email: null, emailVerified: false, appleRefreshToken: null },
+    ]);
+    prisma.user.findMany = jest.fn(async () => [{ id: USER }]);
+    prisma.supportMessage.findFirst = jest.fn(async () => null);
+    const events = { emitAsync: jest.fn().mockResolvedValue([]) };
+    cognitoSend.mockReset();
+    cognitoSend.mockResolvedValue({ Users: [] });
+    const service = new UsersService(
+      prisma,
+      { get: () => undefined } as any,
+      { deleteObject: jest.fn(), deletePrefix: jest.fn(async () => 0) } as any,
+      events as any,
+      { revoke } as any,
+    );
+    (service as any).assertAccountCanClose = jest.fn();
+    return { service, prisma, events };
+  }
+
+  it('revokes the stored token after the erasure commits', async () => {
+    const revoke = jest.fn().mockResolvedValue(undefined);
+    const { service, prisma } = build(revoke);
+    await expect((service as any).closeAccount(USER)).resolves.toEqual({ leftovers: [] });
+    expect(revoke.mock.calls).toEqual([['enc-1']]);
+    expect(prisma.$transaction.mock.invocationCallOrder[0]).toBeLessThan(revoke.mock.invocationCallOrder[0]);
+  });
+
+  it('a failed revoke still erases and reopens the case naming Apple sign-in', async () => {
+    const revoke = jest.fn().mockRejectedValue(new Error('Apple /auth/revoke 400'));
+    const { service, prisma, events } = build(revoke);
+    await expect(service.purgeDueDeletions()).resolves.toEqual({ closed: 1, blocked: 0 });
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    const lines = events.emitAsync.mock.calls.map(([, l]) => l).filter((l) => l.text);
+    expect(lines.map((l) => l.status)).toEqual(['CLOSED', 'OPEN']);
+    expect(lines[1].text).toContain('Apple sign-in');
   });
 });
 
