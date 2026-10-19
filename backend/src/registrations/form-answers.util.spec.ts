@@ -55,6 +55,16 @@ describe('checkAnswers', () => {
     });
   });
 
+  it('takes decimal and negative numbers (CGPA 8.5)', () => {
+    const fields = [
+      f({ id: 'g', type: 'NUMBER', config: { min: 0, max: 10 } }),
+      f({ id: 't', type: 'NUMBER' }),
+    ];
+    const { answers, errors } = checkAnswers(fields, { g: '8.5', t: -3 }, opts);
+    expect(errors).toEqual([]);
+    expect(answers).toEqual({ g: 8.5, t: -3 });
+  });
+
   it('rejects answers outside the rules', () => {
     const fields = [
       f({ id: 'd', type: 'DATE', config: { minDate: '2026-01-01' } }),

@@ -26,6 +26,7 @@ import {
   FILE_KIND_MIMES,
   INDIAN_STATES_AND_UTS,
   isFileAnswer,
+  numberDraft,
 } from '../utils/formQuestions';
 
 interface CustomFieldInputProps {
@@ -66,12 +67,12 @@ export default function CustomFieldInput({ field, value, onChange, error }: Cust
       placeholder={opts.placeholder ?? field.placeholder ?? field.label}
       placeholderTextColor={k.muted}
       selectionColor={k.primary}
-      value={opts.numeric ? value?.toString() || '' : value || ''}
+      value={opts.numeric ? (value == null ? '' : String(value)) : value || ''}
       onChangeText={
         opts.numeric
           ? (t) => {
-              const n = parseFloat(t);
-              onChange(isNaN(n) ? '' : n);
+              const draft = numberDraft(t);
+              if (draft !== null) onChange(draft);
             }
           : onChange
       }

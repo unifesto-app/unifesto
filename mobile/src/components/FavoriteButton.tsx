@@ -4,6 +4,8 @@ import { Heart } from '@unifesto/unicon/react-native';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useRouter } from 'expo-router';
+import { AppAlert } from './ui/AppAlert';
 
 interface FavoriteButtonProps {
   eventId: string;
@@ -14,8 +16,6 @@ interface FavoriteButtonProps {
    *  colour, or white when `scrim` is set. Use to match a specific header. */
   color?: string;
   style?: StyleProp<ViewStyle>;
-  /** Called after a successful toggle intent (e.g. to require login). */
-  onRequireAuth?: () => void;
 }
 
 /**
@@ -29,8 +29,8 @@ export default function FavoriteButton({
   scrim = false,
   color,
   style,
-  onRequireAuth,
 }: FavoriteButtonProps) {
+  const router = useRouter();
   const { colors } = useTheme();
   const { isAuthenticated } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
@@ -38,7 +38,10 @@ export default function FavoriteButton({
 
   const handlePress = () => {
     if (!isAuthenticated) {
-      onRequireAuth?.();
+      AppAlert.alert('Sign in to save events', 'Your saved events follow you to any device.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push('/login') },
+      ]);
       return;
     }
     toggleFavorite(eventId);

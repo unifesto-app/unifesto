@@ -2,14 +2,11 @@
  * Additional Info API Client for Mobile App
  * Agenda, speakers, prizes, contacts, and FAQ for event details.
  *
- * The backend bundles these into the event payload (`GET /events/:id`). We
- * fetch the event once and map the backend's camelCase rows onto the shapes the
+ * The backend bundles these into the event payload (`GET /events/:id`). The
+ * event page maps that one body's camelCase rows onto the shapes the
  * EventDetailScreen renders. Agenda/speaker items keep both camelCase and
  * snake_case keys because the screen reads either.
  */
-
-import { API_URL } from '../constants';
-import { optionalAuthHeaders } from './helpers';
 
 // ==========================================
 // TYPES
@@ -226,79 +223,18 @@ function mapFaq(row: RawFaq): Faq {
 }
 
 // ==========================================
-// HELPER
+// MAPPING
 // ==========================================
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = 10000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-}
-
-const EMPTY: AdditionalInfo = {
-  agenda: [],
-  speakers: [],
-  prizes: [],
-  contacts: [],
-  faqs: [],
-};
-
-// ==========================================
-// PUBLIC API (No auth required)
-// ==========================================
-
-/**
- * Fetch an event's additional-info sections. `eventIdOrSlug` may be an id or a
- * slug — the backend's `GET /events/:slug` accepts both.
- */
-export async function getEventAdditionalInfo(eventIdOrSlug: string): Promise<AdditionalInfo> {
-  try {
-    const response = await fetchWithTimeout(`${API_URL}/events/${eventIdOrSlug}`, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json', ...(await optionalAuthHeaders()) },
-    });
-    if (!response.ok) return EMPTY;
-
-    const event = (await response.json()) as RawEventSections;
-    const byOrder = <T extends { display_order: number }>(a: T, b: T) =>
-      a.display_order - b.display_order;
-
-    return {
-      agenda: (event.agenda ?? []).map(mapAgenda).sort(byOrder),
-      speakers: (event.speakers ?? []).map(mapSpeaker).sort(byOrder),
-      prizes: (event.prizes ?? []).map(mapPrize).sort(byOrder),
-      contacts: (event.contacts ?? []).map(mapContact).sort(byOrder),
-      faqs: (event.faqs ?? []).map(mapFaq).sort(byOrder),
-    };
-  } catch (error) {
-    if (__DEV__) console.error('Error fetching additional info:', error);
-    return EMPTY;
-  }
-}
-
-export async function getEventAgenda(eventId: string): Promise<AgendaItem[]> {
-  return (await getEventAdditionalInfo(eventId)).agenda;
-}
-
-export async function getEventSpeakers(eventId: string): Promise<Speaker[]> {
-  return (await getEventAdditionalInfo(eventId)).speakers;
-}
-
-export async function getEventPrizes(eventId: string): Promise<Prize[]> {
-  return (await getEventAdditionalInfo(eventId)).prizes;
-}
-
-export async function getEventContacts(eventId: string): Promise<Contact[]> {
-  return (await getEventAdditionalInfo(eventId)).contacts;
-}
-
-export async function getEventFaqs(eventId: string): Promise<Faq[]> {
-  return (await getEventAdditionalInfo(eventId)).faqs;
+/** The page sections from an /events/:id body (the event page already has one). */
+export function eventSections(event: RawEventSections): AdditionalInfo {
+  const byOrder = <T extends { display_order: number }>(a: T, b: T) =>
+    a.display_order - b.display_order;
+  return {
+    agenda: (event.agenda ?? []).map(mapAgenda).sort(byOrder),
+    speakers: (event.speakers ?? []).map(mapSpeaker).sort(byOrder),
+    prizes: (event.prizes ?? []).map(mapPrize).sort(byOrder),
+    contacts: (event.contacts ?? []).map(mapContact).sort(byOrder),
+    faqs: (event.faqs ?? []).map(mapFaq).sort(byOrder),
+  };
 }

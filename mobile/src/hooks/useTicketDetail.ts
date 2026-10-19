@@ -44,8 +44,10 @@ export function describeCancellation(reason?: string | null): { byOrganiser: boo
  * space logo, white-label colour, completion). All hooks run unconditionally.
  */
 export function useTicketDetail(ticketParam: unknown) {
-  // The ticket arrives as a JSON route param (a snapshot from the list).
-  const ticket: any = useMemo(() => {
+  // The ticket arrives as a JSON route param (a snapshot from the list, or a
+  // widget's, which can be days old). Once my registration is fetched, its
+  // fields win so the pass shows what the server has now.
+  const snapshot: any = useMemo(() => {
     if (typeof ticketParam !== 'string') return ticketParam ?? null;
     try {
       return JSON.parse(ticketParam);
@@ -53,6 +55,23 @@ export function useTicketDetail(ticketParam: unknown) {
       return null;
     }
   }, [ticketParam]);
+  const [live, setLive] = useState<any>(null);
+  const ticket: any = useMemo(() => {
+    if (!snapshot || !live) return snapshot;
+    const e = live.event ?? {};
+    return {
+      ...snapshot,
+      registrationStatus: live.status ?? snapshot.registrationStatus,
+      checkedInAt: live.checkedInAt ?? snapshot.checkedInAt,
+      ticketType: live.ticketType ?? snapshot.ticketType,
+      totalAmount: live.totalAmount ?? snapshot.totalAmount,
+      title: e.title ?? snapshot.title,
+      startDateTime: e.startDateTime ?? snapshot.startDateTime,
+      endDateTime: e.endDateTime ?? snapshot.endDateTime,
+      venueName: e.venueName ?? snapshot.venueName,
+      city: e.city ?? snapshot.city,
+    };
+  }, [snapshot, live]);
 
   const registrationId: string | undefined = ticket?.registrationId || ticket?.id;
 
@@ -118,17 +137,18 @@ export function useTicketDetail(ticketParam: unknown) {
       getRegistrationWhatsappGroup(registrationId).then(setWaGroup),
       getMyDetails(registrationId).then((res) => setDetails(res.ok ? res.data : null)),
     ];
-    if (reloadKey > 0 && eventId) {
+    if (eventId) {
       jobs.push(
         getMyRegistrationsForEvent(eventId).then((regs: any[]) => {
           const mine = regs.find((r) => r.id === registrationId);
           if (mine) setLiveStatus({ status: String(mine.status), checkedInAt: mine.checkedInAt ?? null });
+          if (mine) setLive(mine);
         }),
       );
     }
     void Promise.allSettled(jobs).then(() => setRefreshing(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registrationId, reloadKey]);
+  }, [registrationId, reloadKey, eventId]);
 
   const refresh = useCallback(() => {
     setRefreshing(true);
