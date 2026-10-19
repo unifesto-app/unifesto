@@ -10,6 +10,7 @@ import {
   Spinner,
   CheckCircle,
   Warning,
+  ArrowsClockwise,
 } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -27,6 +28,7 @@ import {
   deleteReport,
   generateReport,
   getEventReports,
+  regenerateReport,
 } from "@/lib/api/reports-api";
 
 const ALL_SECTIONS = REPORT_SECTIONS.map((s) => s.key);
@@ -120,6 +122,14 @@ export default function ReportsPage() {
     const { error } = await deleteReport(eventId, report.id);
     if (error) setError(error.message);
     else setReports((prev) => prev.filter((r) => r.id !== report.id));
+  };
+
+  const handleRegenerate = async (report: EventReport) => {
+    setError(null);
+    const { data, error } = await regenerateReport(eventId, report.id);
+    if (error) setError(error.message);
+    else if (data)
+      setReports((prev) => prev.map((r) => (r.id === data.id ? data : r)));
   };
 
   return (
@@ -302,7 +312,12 @@ export default function ReportsPage() {
         ) : (
           <div className="space-y-3">
             {reports.map((r) => (
-              <ReportRow key={r.id} report={r} onDelete={handleDelete} />
+              <ReportRow
+                key={r.id}
+                report={r}
+                onDelete={handleDelete}
+                onRegenerate={handleRegenerate}
+              />
             ))}
           </div>
         )}
@@ -314,13 +329,25 @@ export default function ReportsPage() {
 function ReportRow({
   report,
   onDelete,
+  onRegenerate,
 }: {
   report: EventReport;
   onDelete: (r: EventReport) => void;
+  onRegenerate: (r: EventReport) => void;
 }) {
   const stats = report.stats;
   return (
     <Card>
+      {report.aiSummary && (
+        <div className="border-b border-border px-6 pt-4 pb-3">
+          <p className="text-sm leading-relaxed text-foreground">
+            {report.aiSummary}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Written by AI from this report&apos;s figures. Check it before you share it.
+          </p>
+        </div>
+      )}
       <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
@@ -370,6 +397,16 @@ function ReportRow({
                 <DownloadSimple className="h-4 w-4" /> Download
               </Button>
             </a>
+          )}
+          {report.status !== "PENDING" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onRegenerate(report)}
+              title="Regenerate the report with a fresh summary (ended events only)"
+            >
+              <ArrowsClockwise className="h-4 w-4" /> Regenerate
+            </Button>
           )}
           <Button
             variant="ghost"
