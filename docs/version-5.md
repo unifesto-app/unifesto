@@ -837,3 +837,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · J4 mobile source maps: EAS builds upload to unifesto-mobile (SENTRY_AUTH_TOKEN EAS env), metro on getSentryExpoConfig, OTA upload step in docs/OTA.md; native, must merge before the 20 Nov freeze (#296)
 - **2026-10-19** · Backend loads .env before Sentry and the JSON logger read it (fixes the boot crash with LOG_FORMAT=json; Sentry now actually starts) (#298)
 - **2026-10-19** · JSON request logs redact the internal key, OTA status secret, projector display token and Razorpay signature (#299)
+- **2026-10-19** · O17 follow-up: iOS purchase rule now also covers waitlist-offer payments and paid add-seats on online events; backend returns the event type on the waitlist and team responses. (#300)
