@@ -7,6 +7,7 @@ import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../the
 import type { MyWaitlistEntry } from '../../lib/api/registrations';
 import AuthButton from '../auth/AuthButton';
 import PressableScale from '../ui/PressableScale';
+import { isIosDigitalPurchaseBlocked } from '../../lib/iosPurchasePolicy';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { relativeWhen } from '../../utils/eventFormat';
@@ -40,6 +41,7 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
   const defaults = useDefaultImages();
   const offered = entry.waitlistStatus === 'OFFERED' && !!entry.offer;
   const offer = entry.offer;
+  const iosBlocked = entry.event.type === 'ONLINE' && isIosDigitalPurchaseBlocked(offer?.amountDue);
   const place = entry.event.venueName || entry.event.city;
 
   return (
@@ -89,7 +91,9 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
         {offered && offer ? (
           <>
             <Text style={[styles.body, { color: c.text }]}>
-              {offer.needsPayment
+              {iosBlocked
+                ? "A spot opened up. Paid tickets for online events aren't available in the iOS app."
+                : offer.needsPayment
                 ? `A spot opened up. Pay ₹${offer.amountDue} to confirm it. Your seat is held until you do.`
                 : 'A spot opened up and your ticket is free, so it is already confirmed.'}
             </Text>
@@ -100,7 +104,7 @@ export default function WaitlistCard({ entry, busy, onPay, onLeave }: WaitlistCa
               </View>
             ) : null}
             <View style={styles.actions}>
-              {offer.needsPayment ? (
+              {offer.needsPayment && !iosBlocked ? (
                 <AuthButton label={`Pay ₹${offer.amountDue}`} onPress={onPay} loading={busy} style={{ flex: 1, height: 44 }} />
               ) : null}
               <PressableScale

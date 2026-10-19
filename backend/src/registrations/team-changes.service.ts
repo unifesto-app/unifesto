@@ -76,6 +76,7 @@ const REG_SELECT = {
       id: true,
       title: true,
       slug: true,
+      type: true,
       status: true,
       endDateTime: true,
       absorbProcessingFee: true,
@@ -241,6 +242,8 @@ export class TeamChangesService {
       canAddUpTo: Number.isFinite(maxAdd) ? maxAdd : null,
       addPricePerSeat: perSeat?.base ?? 0,
       addNeedsPayment: (perSeat?.total ?? 0) > 0,
+      // iOS can't sell paid seats on an online event outside IAP (App Store 3.1.1).
+      eventType: reg.event.type,
     };
   }
 

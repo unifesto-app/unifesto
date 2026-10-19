@@ -121,6 +121,7 @@ export interface MyWaitlistEntry {
     id: string;
     title: string;
     slug: string;
+    type?: string;
     coverImageUrl: string | null;
     startDateTime: string;
     venueName: string | null;
