@@ -29,6 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TicketThread, statusBadgeVariant, priorityBadgeVariant } from "@/components/support/TicketThread";
 import { CaseActionPanel } from "@/components/support/CaseActionPanel";
 import { SendToOrganiser } from "@/components/support/SendToOrganiser";
+import { AssistCopilot } from "@/components/support/AssistCopilot";
 import { CannedRepliesDialog } from "@/components/support/CannedRepliesDialog";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -213,9 +214,12 @@ export default function AssistInboxPage() {
     [openCase, loadList, loadStats]
   );
 
-  const handleReply = async (body: string) => {
+  // D15: the latest Assist draft, for the case it was drafted on.
+  const [draft, setDraft] = useState<{ text: string; n: number; ticketId: string }>();
+
+  const handleReply = async (body: string, aiDrafted: boolean) => {
     if (!selected) return false;
-    const { error } = await replyToTicket(selected.id, body);
+    const { error } = await replyToTicket(selected.id, body, aiDrafted);
     if (error) {
       setError(error.message || "Could not send the reply.");
       return false;
@@ -293,8 +297,10 @@ export default function AssistInboxPage() {
                 </div>
               ) : (
                 <TicketThread
+                  key={selected.id}
                   messages={selected.messages}
                   viewerIsStaff
+                  draft={draft?.ticketId === selected.id ? draft : undefined}
                   cannedReplies={canned}
                   onReply={handleReply}
                   disabled={closed}
@@ -305,6 +311,13 @@ export default function AssistInboxPage() {
           </Card>
 
           <div className="space-y-6">
+            <AssistCopilot
+              key={selected.id}
+              ticketId={selected.id}
+              lastMessageAt={selected.lastMessageAt}
+              canDraft={!closed}
+              onDraft={(text) => setDraft((d) => ({ text, n: (d?.n ?? 0) + 1, ticketId: selected.id }))}
+            />
             {selected.desk === "PLATFORM" && selected.kind === "HELP" && !closed && (
               <SendToOrganiser
                 key={selected.id}

@@ -42,6 +42,8 @@ export interface SupportMessage {
   isStaffReply: boolean;
   /** Desk-only note; the requester never sees it. */
   internal?: boolean;
+  /** D15: the desk sent (an edit of) an Assist draft. */
+  aiDrafted?: boolean;
   body: string;
   createdAt: string;
   author?: SupportUser;
@@ -163,11 +165,32 @@ export async function getTicket(id: string): Promise<Result<SupportTicket>> {
 /** `POST /support/tickets/:id/messages` — reply to a ticket. */
 export async function replyToTicket(
   id: string,
-  body: string
+  body: string,
+  aiDrafted = false
 ): Promise<Result<SupportMessage>> {
   return apiCall<SupportMessage>(
-    backendClient.post(`/support/tickets/${id}/messages`, { body })
+    backendClient.post(`/support/tickets/${id}/messages`, { body, ...(aiDrafted ? { aiDrafted } : {}) })
   );
+}
+
+/** D15 copilot: booking facts computed by the backend (refund window, refundable amount). */
+export async function getCaseFacts(id: string): Promise<Result<{ facts: string[] }>> {
+  return apiCall<{ facts: string[] }>(backendClient.get(`/support/tickets/${id}/facts`));
+}
+
+export type DraftResult = { facts: string[] } & (
+  | { ok: true; draft: string }
+  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" }
+);
+
+/** D15 copilot: a reply draft for the desk to edit. Nothing is sent. */
+export async function draftReply(id: string): Promise<Result<DraftResult>> {
+  return apiCall<DraftResult>(backendClient.post(`/support/tickets/${id}/draft`));
+}
+
+/** D15 copilot: the thread summary, refreshed when the thread moved on. */
+export async function summariseCase(id: string): Promise<Result<{ summary: string | null }>> {
+  return apiCall<{ summary: string | null }>(backendClient.post(`/support/tickets/${id}/summary`));
 }
 
 /** `POST /support/tickets/:id/messages` with `internal` — a desk-only note. */

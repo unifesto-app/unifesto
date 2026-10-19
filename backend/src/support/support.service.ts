@@ -203,7 +203,7 @@ export class SupportService {
   }
 
   /** Works the desk the case is on now. Platform sees and works everything. */
-  private async isDeskMember(userId: string, c: CaseAccess): Promise<boolean> {
+  async isDeskMember(userId: string, c: CaseAccess): Promise<boolean> {
     if (await this.isPlatform(userId)) return true;
     return c.desk === SupportDesk.SPACE && this.isSpaceSupport(userId, c);
   }
@@ -520,10 +520,10 @@ export class SupportService {
       await this.prisma.supportTicket.update({ where: { id }, data: { [readField]: new Date() } });
     }
 
-    // Internal desk notes never reach the requester.
+    // Internal desk notes and AI output (D13 triage, D15 summary) never reach the requester.
     if (isRequester) {
-      ticket.messages = ticket.messages.filter((m) => !m.internal);
-      return ticket;
+      const { aiTriage: _t, aiSummary: _s, aiSummaryAt: _a, ...own } = ticket;
+      return { ...own, messages: ticket.messages.filter((m) => !m.internal) };
     }
     const subjects = await this.caseSubjects(ticket);
     const sla = slaFor(ticket);
@@ -624,6 +624,8 @@ export class SupportService {
           authorId: userId,
           isStaffReply: admin,
           side: admin ? SupportMessageSide.DESK : SupportMessageSide.REQUESTER,
+          // D15: the desk sent (an edit of) a copilot draft.
+          aiDrafted: admin && !!dto.aiDrafted,
           body: dto.body,
         },
         include: { author: { select: publicUserSelect } },

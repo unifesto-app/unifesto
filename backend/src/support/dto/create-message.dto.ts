@@ -12,4 +12,9 @@ export class CreateMessageDto {
   @IsOptional()
   @IsBoolean()
   internal?: boolean;
+
+  @ApiPropertyOptional({ description: 'Desk only: the reply started from an Assist copilot draft (D15)' })
+  @IsOptional()
+  @IsBoolean()
+  aiDrafted?: boolean;
 }

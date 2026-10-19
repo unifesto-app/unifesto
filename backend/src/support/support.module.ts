@@ -9,13 +9,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
 import { SupportNotifier } from './support-notifier';
 import { SupportTriage } from './support-triage';
+import { SupportCopilot } from './support-copilot';
 import { AiModule } from '../ai/ai.module';
 import { SubjectCases } from './subject-cases';
 
 @Module({
   imports: [PrismaModule, AuthModule, StorageModule, NotificationsModule, EmailModule, AiModule],
   controllers: [SupportController, GrievanceController],
-  providers: [SupportService, SupportNotifier, SupportTriage, SubjectCases],
+  providers: [SupportService, SupportNotifier, SupportTriage, SupportCopilot, SubjectCases],
   exports: [SupportService],
 })
 export class SupportModule {}

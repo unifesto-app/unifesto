@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PaperPlaneRight } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,12 +33,15 @@ interface TicketThreadProps {
    * right for organisers/attendees.
    */
   viewerIsStaff: boolean;
-  onReply: (body: string) => Promise<void>;
+  /** `aiDrafted`: the reply started from an Assist draft (D15). */
+  onReply: (body: string, aiDrafted: boolean) => Promise<void>;
   /** Desk only: adds an "Internal note" mode to the composer. */
   onNote?: (body: string) => Promise<void>;
   /** Disable the composer (e.g. a closed ticket). */
   disabled?: boolean;
   disabledHint?: string;
+  /** D15: an Assist draft to put in the composer; a new `n` replaces the text. */
+  draft?: { text: string; n: number };
   /** D19: the desk's saved replies, offered above the composer. */
   cannedReplies?: CannedReply[];
 }
@@ -51,9 +54,18 @@ export function TicketThread({
   onNote,
   disabled = false,
   disabledHint,
+  draft,
   cannedReplies,
 }: TicketThreadProps) {
   const [body, setBody] = useState("");
+  // Whether the composer holds (an edit of) an Assist draft.
+  const [fromDraft, setFromDraft] = useState(false);
+
+  useEffect(() => {
+    if (!draft) return;
+    setBody(draft.text);
+    setFromDraft(true);
+  }, [draft]);
   const [sending, setSending] = useState(false);
   const [noting, setNoting] = useState(false);
   const asNote = noting && !!onNote;
@@ -63,8 +75,9 @@ export function TicketThread({
     if (!text || sending) return;
     setSending(true);
     try {
-      await (asNote && onNote ? onNote(text) : onReply(text));
+      await (asNote && onNote ? onNote(text) : onReply(text, fromDraft));
       setBody("");
+      setFromDraft(false);
     } finally {
       setSending(false);
     }
@@ -94,6 +107,7 @@ export function TicketThread({
               </div>
               <span className="px-1 text-xs text-muted-foreground">
                 {authorName(m)}
+                {m.aiDrafted ? " · Drafted with Assist" : ""}
                 {m.internal ? " · Internal note" : m.isStaffReply ? " · Support" : ""} ·{" "}
                 {formatTime(m.createdAt)}
               </span>
@@ -148,7 +162,10 @@ export function TicketThread({
           )}
           <Textarea
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => {
+              setBody(e.target.value);
+              if (!e.target.value.trim()) setFromDraft(false);
+            }}
             placeholder={asNote ? "Write a note for your team…" : "Write a reply…"}
             rows={3}
             aria-label={asNote ? "Internal note" : "Reply to ticket"}
