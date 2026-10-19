@@ -33,9 +33,12 @@ export interface SubjectCaseOpen {
   /** For a SPACE desk, the space that works it. */
   spaceId?: string | null;
   eventId?: string | null;
+  registrationId?: string | null;
   subject: string;
   /** The requester's first message: what they asked for, in words. */
   message: string;
+  /** Someone else raised it for the requester (an organiser, Unifesto): the first line is SYSTEM. */
+  raisedForRequester?: boolean;
   category?: SupportTicketCategory;
   /** Tell the desk through D3 (staff push on Platform). */
   notify?: boolean;
@@ -44,12 +47,16 @@ export interface SubjectCaseOpen {
 export interface SubjectCaseUpdate {
   subjectType: string;
   subjectId: string;
+  /** The case to update when the record was raised from an existing one (RefundRequest.supportTicketId). */
+  caseId?: string | null;
   /** Who acted; falls back to the requester when the system did it. */
   actorId?: string | null;
   /** The SYSTEM line, e.g. "Unifesto approved the space request". */
   text: string;
   /** Move the case too: RESOLVED or CLOSED once decided. */
   status?: SupportTicketStatus;
+  /** Hand the case to this desk. Moving to Platform keeps the space's read access, like an escalation. */
+  desk?: SupportDesk;
   /** Tell the requester through D3 when this resolves or closes the case. */
   notify?: boolean;
 }
@@ -79,6 +86,9 @@ export const decideSubjectCase = (
 export class SubjectCases {
   private readonly logger = new Logger(SubjectCases.name);
 
+  /** Listeners run on setImmediate, so an update emitted right after its open could pass it. */
+  private readonly queues = new Map<string, Promise<unknown>>();
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly events?: EventEmitter2,
@@ -88,8 +98,27 @@ export class SubjectCases {
     this.events?.emit(SUPPORT_CASE_EVENT, e);
   }
 
+  // ponytail: per-process ordering; fine while one backend instance handles events.
+  private inOrder<T>(e: { subjectType: string; subjectId: string }, fn: () => Promise<T>): Promise<T> {
+    const key = `${e.subjectType}:${e.subjectId}`;
+    const run = (this.queues.get(key) ?? Promise.resolve()).then(fn);
+    const tail = run.catch(() => undefined);
+    this.queues.set(key, tail);
+    void tail.then(() => this.queues.get(key) === tail && this.queues.delete(key));
+    return run;
+  }
+
   @OnEvent(SUBJECT_CASE_OPEN, { async: true })
-  async onOpen(e: SubjectCaseOpen): Promise<string | null> {
+  onOpen(e: SubjectCaseOpen): Promise<string | null> {
+    return this.inOrder(e, () => this.open(e));
+  }
+
+  @OnEvent(SUBJECT_CASE_UPDATE, { async: true })
+  onUpdate(e: SubjectCaseUpdate): Promise<void> {
+    return this.inOrder(e, () => this.update(e));
+  }
+
+  private async open(e: SubjectCaseOpen): Promise<string | null> {
     try {
       const existing = await this.prisma.supportTicket.findFirst({
         where: { subjectType: e.subjectType, subjectId: e.subjectId },
@@ -107,12 +136,15 @@ export class SubjectCases {
           desk: e.desk,
           spaceId: e.spaceId ?? null,
           eventId: e.eventId ?? null,
+          registrationId: e.registrationId ?? null,
           subjectType: e.subjectType,
           subjectId: e.subjectId,
           lastMessageAt: now,
           requesterLastReadAt: now,
           messages: {
-            create: { authorId: e.requesterId, side: SupportMessageSide.REQUESTER, body: e.message },
+            create: e.raisedForRequester
+              ? { authorId: e.requesterId, isStaffReply: true, side: SupportMessageSide.SYSTEM, body: e.message }
+              : { authorId: e.requesterId, side: SupportMessageSide.REQUESTER, body: e.message },
           },
         },
         select: { id: true },
@@ -125,13 +157,13 @@ export class SubjectCases {
     }
   }
 
-  @OnEvent(SUBJECT_CASE_UPDATE, { async: true })
-  async onUpdate(e: SubjectCaseUpdate): Promise<void> {
+  private async update(e: SubjectCaseUpdate): Promise<void> {
     try {
       const c = await this.prisma.supportTicket.findFirst({
-        where: { subjectType: e.subjectType, subjectId: e.subjectId },
-        select: { id: true, requesterId: true },
+        where: e.caseId ? { id: e.caseId } : { subjectType: e.subjectType, subjectId: e.subjectId },
+        select: { id: true, requesterId: true, desk: true },
       });
+      const move = e.desk && e.desk !== c?.desk ? e.desk : null;
       if (!c) return; // raised before its kind opened cases
       const now = new Date();
       await this.prisma.$transaction([
@@ -149,6 +181,7 @@ export class SubjectCases {
           where: { id: c.id },
           data: {
             lastMessageAt: now,
+            ...(move ? { desk: move, ...(move === SupportDesk.PLATFORM ? { escalatedAt: now } : {}) } : {}),
             ...(e.status
               ? {
                   status: e.status,
