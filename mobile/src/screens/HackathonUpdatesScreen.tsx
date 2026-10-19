@@ -4,11 +4,18 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
-import { getNotifications, markNotificationsRead, type InAppNotification } from '../lib/api/hackathon';
+import {
+  getNotifications,
+  markNotificationsRead,
+  STAFF_NOTIFICATION_TYPE,
+  type FeedScope,
+  type InAppNotification,
+} from '../lib/api/hackathon';
 import { normalizeDeepLink, routeToDeepLink } from '../services/deepLinkRouter';
 import { onNotificationArrived } from '../lib/notificationBus';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -20,11 +27,19 @@ const GUTTER = spacing[6];
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
+type InboxTab = 'mine' | 'staff';
+const TABS: { key: InboxTab; label: string }[] = [
+  { key: 'mine', label: 'For me' },
+  { key: 'staff', label: 'Staff' },
+];
+
 /**
  * The in-app notification feed, newest first. With an `eventId` it's one
- * hackathon's updates; without, it's the whole inbox (the bell on Home). Each
- * push is also kept here, so it isn't lost if push was off or the notification
- * was swiped away. Opening the screen marks them read.
+ * hackathon's updates, marked read on open. Without, it's the whole inbox (the
+ * bell on Home): help-desk queries sent to event staff sit in their own Staff
+ * tab (shown once there are any), a tap marks one read, and "Mark all as read"
+ * clears the tab on display. Each push is also kept here, so it isn't lost if
+ * push was off or the notification was swiped away.
  */
 export default function HackathonUpdatesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
@@ -36,11 +51,26 @@ export default function HackathonUpdatesScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState<InboxTab>('mine');
+  const [hasStaff, setHasStaff] = useState(false);
 
   useAnalyticsScreenTracking(eventId ? 'HackathonUpdates' : 'Notifications');
 
+  const scope: FeedScope = eventId
+    ? { eventId }
+    : tab === 'staff'
+      ? { type: STAFF_NOTIFICATION_TYPE }
+      : { excludeType: STAFF_NOTIFICATION_TYPE };
+  const scopeKey = JSON.stringify(scope);
+
   const load = useCallback(async () => {
-    const res = await getNotifications({ eventId });
+    const current = JSON.parse(scopeKey) as FeedScope;
+    const [res, staff] = await Promise.all([
+      getNotifications(current),
+      // Inbox only: whether this person gets staff queries at all (shows the tabs).
+      eventId ? null : getNotifications({ type: STAFF_NOTIFICATION_TYPE, limit: 1 }),
+    ]);
+    if (staff?.ok) setHasStaff(staff.data.items.length > 0);
     if (!res.ok) {
       setError(res.message);
       setItems((i) => i ?? []);
@@ -49,8 +79,24 @@ export default function HackathonUpdatesScreen() {
     setItems(res.data.items);
     setNextBefore(res.data.nextBefore);
     setError('');
-    if (res.data.items.some((n) => !n.readAt)) void markNotificationsRead({ eventId });
-  }, [eventId]);
+    if (eventId && res.data.items.some((n) => !n.readAt)) void markNotificationsRead({ eventId });
+  }, [eventId, scopeKey]);
+
+  const markAllRead = async () => {
+    const res = await markNotificationsRead(scope);
+    if (!res.ok) return setError(res.message);
+    const now = new Date().toISOString();
+    setItems((i) => i?.map((n) => (n.readAt ? n : { ...n, readAt: now })) ?? i);
+  };
+
+  const open = (n: InAppNotification, target: string | null) => {
+    if (!n.readAt) {
+      void markNotificationsRead({ ids: [n.id] });
+      const now = new Date().toISOString();
+      setItems((i) => i?.map((x) => (x.id === n.id ? { ...x, readAt: now } : x)) ?? i);
+    }
+    if (target) routeToDeepLink(target, { isAuthenticated });
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -69,14 +115,15 @@ export default function HackathonUpdatesScreen() {
   const more = async () => {
     if (!nextBefore) return;
     setLoadingMore(true);
-    const res = await getNotifications({ eventId, before: nextBefore });
+    const res = await getNotifications({ ...scope, before: nextBefore });
     setLoadingMore(false);
     if (!res.ok) return;
     setItems((i) => [...(i ?? []), ...res.data.items]);
     setNextBefore(res.data.nextBefore);
   };
 
-  if (!items) {
+  const showTabs = !eventId && (hasStaff || tab === 'staff');
+  if (!items && !showTabs) {
     return (
       <View style={[styles.center, { backgroundColor: tokens.bg }]}>
         <ActivityIndicator color={tokens.accent} />
@@ -85,6 +132,7 @@ export default function HackathonUpdatesScreen() {
   }
 
   const hub = eventId ? `/hackathon/${eventId}` : null;
+  const anyUnread = !eventId && !!items?.some((n) => !n.readAt);
 
   return (
     <ScrollView
@@ -105,27 +153,53 @@ export default function HackathonUpdatesScreen() {
         />
       }
     >
-      {items.length === 0 ? (
+      {showTabs ? (
+        <View style={{ marginBottom: spacing[4] }}>
+          <SegmentedTabs
+            tabs={TABS}
+            value={tab}
+            onChange={(t) => {
+              setTab(t);
+              setItems(null);
+              setNextBefore(null);
+            }}
+          />
+        </View>
+      ) : null}
+
+      {anyUnread ? (
+        <Pressable onPress={() => void markAllRead()} style={styles.markAll} accessibilityRole="button" hitSlop={8}>
+          <Text style={[styles.markAllText, { color: tokens.accent }]}>Mark all as read</Text>
+        </Pressable>
+      ) : null}
+
+      {!items ? (
+        <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+      ) : items.length === 0 ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>{eventId ? 'No updates yet' : 'No notifications yet'}</Text>
+          <Text style={[styles.emptyTitle, { color: tokens.text }]}>
+            {eventId ? 'No updates yet' : tab === 'staff' ? 'No staff queries' : 'No notifications yet'}
+          </Text>
           <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
             {eventId
               ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
-              : 'Registrations, reminders and updates from organisers will appear here.'}
+              : tab === 'staff'
+                ? 'Help-desk queries from teams at events you staff will appear here.'
+                : 'Registrations, reminders and updates from organisers will appear here.'}
           </Text>
         </View>
       ) : null}
 
       <View style={{ gap: spacing[3] }}>
-        {items.map((n) => {
+        {(items ?? []).map((n) => {
           const path = normalizeDeepLink(n.deepLink);
           // Updates that point back at the hub have nowhere else to go.
           const target = path && path !== hub ? n.deepLink : null;
           return (
             <Pressable
               key={n.id}
-              disabled={!target}
-              onPress={() => routeToDeepLink(target, { isAuthenticated })}
+              disabled={!target && (!!eventId || !!n.readAt)}
+              onPress={() => open(n, target)}
               style={({ pressed }) => [styles.card, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
               accessibilityRole={target ? 'button' : 'text'}
             >
@@ -159,6 +233,8 @@ const styles = StyleSheet.create({
   card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  markAll: { alignSelf: 'flex-end', marginBottom: spacing[3] },
+  markAllText: { fontSize: typography.fontSize.sm, ...font('semibold') },
   title: { flex: 1, fontSize: typography.fontSize.base, ...font('semibold') },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
   time: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...font() },

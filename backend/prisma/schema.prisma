@@ -2450,6 +2450,7 @@ enum EmailTargetType {
   ORGANISERS_ONLY
   WAITLIST
   SEGMENT
+  STAFF // platform ADMINs only: the test audience
 
   @@map("email_target_type")
 }
@@ -4706,6 +4707,9 @@ model PushCampaign {
 
   sentCount   Int @default(0) @map("sent_count")
   failedCount Int @default(0) @map("failed_count")
+  // Segment broadcasts only: OneSignal's notification id. Its create response
+  // carries no recipient count, so sent/failed are read back from its stats.
+  oneSignalId String? @map("onesignal_id") @db.VarChar(64)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -13,7 +13,9 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventsService } from '../events/events.service';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService, SendSummary } from './notifications.service';
+import { OneSignalService } from './onesignal.service';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 import { NotificationCategory } from './notifications.constants';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
@@ -23,7 +25,7 @@ import {
 } from './dto/push-campaign.dto';
 
 interface TargetSegment {
-  type: 'all' | 'event' | 'space' | 'users';
+  type: 'all' | 'event' | 'space' | 'users' | 'staff';
   eventId?: string;
   spaceId?: string;
   userIds?: string[];
@@ -46,6 +48,7 @@ export class PushCampaignService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly events: EventsService,
+    private readonly oneSignal: OneSignalService,
   ) {}
 
   // ── Admin broadcasts ────────────────────────────────────────────────────────
@@ -170,7 +173,34 @@ export class PushCampaignService {
       }),
       this.prisma.pushCampaign.count({ where }),
     ]);
+    await this.refreshSegmentStats(items);
     return { items, total, page, limit };
+  }
+
+  /**
+   * Segment broadcasts learn their sent/failed counts from OneSignal after the
+   * fact (its create response has none). Re-read while the numbers can still
+   * move (first day) or were never filled; after that the stored count stands.
+   */
+  private async refreshSegmentStats(items: PushCampaign[]): Promise<void> {
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    const stale = items.filter(
+      (c) =>
+        c.oneSignalId &&
+        c.status === PushCampaignStatus.SENT &&
+        ((c.sentAt?.getTime() ?? 0) > dayAgo || (c.sentCount === 0 && c.failedCount === 0)),
+    );
+    await Promise.all(
+      stale.map(async (c) => {
+        const stats = await this.oneSignal.getDeliveryStats(c.oneSignalId!);
+        if (!stats) return;
+        c.sentCount = stats.successful;
+        c.failedCount = stats.failed + stats.errored;
+        await this.prisma.pushCampaign
+          .update({ where: { id: c.id }, data: { sentCount: c.sentCount, failedCount: c.failedCount } })
+          .catch(() => undefined);
+      }),
+    );
   }
 
   async getById(id: string): Promise<PushCampaign> {
@@ -273,7 +303,7 @@ export class PushCampaignService {
         segment.type === 'all' &&
         category !== 'promotions';
 
-      let summary;
+      let summary: SendSummary & { oneSignalId?: string | null };
       if (useSegment) {
         summary = await this.notifications.sendToSegments([BROADCAST_SEGMENT], {
           title: campaign.title,
@@ -300,6 +330,7 @@ export class PushCampaignService {
           sentAt: new Date(),
           sentCount: summary.sent,
           failedCount: summary.failed,
+          oneSignalId: summary.oneSignalId ?? null,
         },
       });
       this.logger.log(
@@ -351,6 +382,11 @@ export class PushCampaignService {
         select: { id: true },
       });
       return users.map((u) => u.id);
+    }
+
+    if (segment.type === 'staff') {
+      const staff = await this.prisma.user.findMany({ where: PLATFORM_STAFF_WHERE, select: { id: true } });
+      return staff.map((u) => u.id);
     }
 
     // type 'all' — every user (pref opt-out enforced in NotificationsService.send).

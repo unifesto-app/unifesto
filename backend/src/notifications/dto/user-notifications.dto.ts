@@ -12,7 +12,7 @@ import {
   Min,
 } from 'class-validator';
 
-/** Which slice of the in-app feed: optionally one event and/or one type. */
+/** Which slice of the in-app feed: optionally one event and/or one type (or all but one). */
 export class NotificationScopeQueryDto {
   @IsOptional()
   @IsUUID()
@@ -22,6 +22,12 @@ export class NotificationScopeQueryDto {
   @IsString()
   @MaxLength(40)
   type?: string;
+
+  /** Everything except this type (ignored when `type` is set). */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  excludeType?: string;
 }
 
 export class ListUserNotificationsQueryDto extends NotificationScopeQueryDto {

@@ -180,4 +180,6 @@ export interface HackathonHelpDeskEvent {
   title: string;
   body: string;
   deepLink: string;
+  /** A new query for event staff (vs an update to the team); filed under the inbox's Staff tab. */
+  toStaff?: boolean;
 }

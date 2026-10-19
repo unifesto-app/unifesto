@@ -47,6 +47,7 @@ const TARGET_LABEL: Record<string, string> = {
   EVENT_REGISTRANTS: "Event registrants",
   WAITLIST: "Waitlist",
   SINGLE_USER: "Single user",
+  STAFF: "Staff only",
 };
 
 function pct(part: number, whole: number): string {
