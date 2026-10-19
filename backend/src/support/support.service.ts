@@ -139,6 +139,7 @@ const SUBJECT_MODELS = {
   SubEventAttachRequest: 'subEventAttachRequest',
   ContentReport: 'contentReport',
   PayoutBankAccount: 'payoutBankAccount',
+  Payout: 'payout',
   StayBooking: 'stayBooking',
 } as const;
 export type CaseSubject = { type: string; data: Record<string, unknown> };

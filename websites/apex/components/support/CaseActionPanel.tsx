@@ -23,7 +23,7 @@ import { reviewWhiteLabelRequest } from "@/lib/api/white-label-api";
 import { reviewFreeAddRequest } from "@/lib/api/free-add-api";
 import { reviewTransferRequest } from "@/lib/api/registrations-api";
 import { updateContentReport } from "@/lib/api/content-reports-api";
-import { updateBankAccountStatus } from "@/lib/api/payouts-api";
+import { cancelPayout, markPayoutPaid, updateBankAccountStatus } from "@/lib/api/payouts-api";
 
 type Run = (id: string, note: string, d: Record<string, any>) => Promise<{ error: ApiError | null }>;
 
@@ -219,6 +219,21 @@ const SUBJECTS: Record<string, SubjectDef> = {
         when: ["PENDING"],
         run: (id, n) => updateBankAccountStatus(id, { status: "REJECTED", rejectionReason: note(n) }),
       },
+    ],
+  },
+  Payout: {
+    title: "Payout request",
+    href: "/dashboard/payouts",
+    fields: (d) => [
+      ["Amount", rupees(d.netAmount)],
+      ["UTR", d.utr],
+      ["Notes", d.notes],
+      ["Failed because", d.failureReason],
+    ],
+    // Pay first through the bank, then record it here with the UTR.
+    actions: [
+      { label: "Mark paid with UTR", needsNote: true, when: ["PENDING"], run: (id, n) => markPayoutPaid(id, { utr: n.trim() }) },
+      { label: "Cancel", destructive: true, when: ["PENDING"], run: (id) => cancelPayout(id) },
     ],
   },
   // Space-to-space requests: the other space decides, Unifesto only watches.

@@ -155,8 +155,8 @@ export class PayoutsController {
   @Post('admin/:id/process')
   @UseGuards(RolesGuard)
   @Roles(RoleCode.ADMIN)
-  async processPayout(@Param('id') id: string, @Body() dto: MarkPayoutPaidDto) {
-    return this.payoutsService.markPayoutPaid(id, dto);
+  async processPayout(@Request() req, @Param('id') id: string, @Body() dto: MarkPayoutPaidDto) {
+    return this.payoutsService.markPayoutPaid(id, dto, req.user.id);
   }
 
   @Patch('admin/:id/cancel')
