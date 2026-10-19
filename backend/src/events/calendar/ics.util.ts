@@ -24,6 +24,8 @@ export interface IcsEventInput {
   organiserName?: string | null; // space.name ?? creator.fullName
   /** The space's live custom web domain, if any; links point there instead. */
   customDomain?: string | null;
+  /** Page the invite links to, when it isn't an event page (a Huddle session). */
+  pageUrl?: string;
 }
 
 /** Absolute URL of the public event page — used in DESCRIPTION and as UID anchor. */
@@ -123,7 +125,7 @@ function quoteParam(value: string): string {
 function buildVeventLines(event: IcsEventInput, now: Date): string[] {
   const lines: string[] = [];
   const tz = event.timezone;
-  const pageUrl = eventPageUrl(event.slug, event.customDomain);
+  const pageUrl = event.pageUrl ?? eventPageUrl(event.slug, event.customDomain);
   const hasVenue = event.type === 'IN_PERSON' || event.type === 'HYBRID';
 
   // UID must be globally unique AND stable across regenerations, so a re-download

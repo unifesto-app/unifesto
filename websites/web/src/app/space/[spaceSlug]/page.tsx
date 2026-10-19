@@ -8,6 +8,7 @@ import { cache } from "react";
 import { getSpaceBySlug as fetchSpace } from "@/lib/api/spaces";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
+import { getSpaceSessions } from "@/lib/api/sessions";
 import SpaceDetailClient from "./SpaceDetailClient";
 
 // One fetch per request, shared by generateMetadata and the page.
@@ -92,7 +93,7 @@ export default async function SpacePage({ params }: Props) {
   return (
     <>
       <JsonLd data={ld} />
-      <SpaceDetailClient params={params} initialSpace={space} />
+      <SpaceDetailClient params={params} initialSpace={space} sessions={await getSpaceSessions(space.id)} />
     </>
   );
 }

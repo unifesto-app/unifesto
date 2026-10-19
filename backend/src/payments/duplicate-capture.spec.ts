@@ -20,7 +20,7 @@ describe('PaymentsService.refundIfDuplicate', () => {
     const rp = {
       payments: {
         fetch: jest.fn(async () => ({ id: 'pay_2', status: 'captured', amount: 105000, amount_refunded: 0, ...payment })),
-        fetchMultipleRefund: jest.fn(async () => ({ items: [] })),
+        fetchMultipleRefund: jest.fn(async (): Promise<any> => ({ items: [] })),
         refund: jest.fn(async () => ({ id: 'rfnd_1' })),
       },
     };
