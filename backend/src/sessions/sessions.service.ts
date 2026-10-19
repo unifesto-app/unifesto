@@ -6,7 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { sessionMoneyRecords } from '../common/money-records';
+import { deleteWithoutMoney } from '../common/money-records';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { LivekitService } from './livekit.service';
@@ -409,14 +409,13 @@ export class SessionsService {
         'Only draft or cancelled sessions can be deleted. Cancel it first.',
       );
     }
-    // Paid registrations (refunded or not) are financial records the cascade would erase.
-    if ((await sessionMoneyRecords(this.prisma, { id: sessionId })) > 0) {
-      throw new BadRequestException(
-        'This session has payment records and cannot be deleted. Hide it instead.',
-      );
-    }
-
-    await this.prisma.session.delete({ where: { id: sessionId } });
+    // Paid registrations (refunded or not) are financial records: kept.
+    await deleteWithoutMoney(
+      this.prisma,
+      { session: { id: sessionId } },
+      'This session has payment records and cannot be deleted. Hide it instead.',
+      (tx) => tx.session.delete({ where: { id: sessionId } }),
+    );
     return { deleted: true };
   }
 

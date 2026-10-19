@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { eventMoneyRecords } from '../common/money-records';
+import { deleteWithoutMoney } from '../common/money-records';
 import { StorageService } from '../storage/storage.service';
 import { SubscriptionService } from '../subscription/subscription.service';
 import {
@@ -2449,18 +2449,14 @@ export class EventsService {
       );
     }
 
-    // Payments, refunds and payouts are financial records. The delete would
-    // cascade over registrations, refund requests and stay bookings (payouts
-    // would hit a raw FK error), so refuse while any exist. Hide it instead.
-    if ((await eventMoneyRecords(this.prisma, { id: eventId })) > 0) {
-      throw new BadRequestException(
-        'This event has payment, refund or payout records and cannot be deleted. Hide it instead.',
-      );
-    }
-
-    const deleted = await this.prisma.event.delete({
-      where: { id: eventId },
-    });
+    // Payments, refunds and payouts are financial records: refused while any
+    // exist (S14, A29). Hide it instead.
+    const deleted = await deleteWithoutMoney(
+      this.prisma,
+      { event: { id: eventId } },
+      'This event has payment, refund or payout records and cannot be deleted. Hide it instead.',
+      (tx) => tx.event.delete({ where: { id: eventId } }),
+    );
 
     // Clear any cached copy of the (previously published/cancelled) event.
     await this.cache.invalidateEventCache(event.slug);

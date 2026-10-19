@@ -139,3 +139,65 @@ describe('RecurrenceService (S22)', () => {
     expect(tx.userRole.createMany.mock.calls[0][0].data).toEqual([{ userId: 'u1', roleId: 'crew', spaceId: 's1', assignedBy: 'u0', eventId: 'o1' }]);
   });
 });
+
+describe('series schedule edits keep booked occurrences (A29)', () => {
+  const now = new Date('2026-11-01T00:00:00Z');
+  const at = (d: string) => new Date(`2026-11-${d}T10:00:00Z`);
+
+  function series(kept: { id: string; startDateTime: Date; live: number }[]) {
+    const parent = {
+      id: 'p1',
+      isRecurring: true,
+      status: 'PUBLISHED',
+      // Now Tuesdays only (was daily).
+      recurringRule: 'FREQ=WEEKLY;BYDAY=TU;COUNT=4',
+      startDateTime: at('03'),
+    };
+    const prisma = {
+      event: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
+        update: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue(parent),
+        findMany: jest.fn().mockResolvedValue(kept.map((k) => ({ ...k, _count: { registrations: k.live } }))),
+        updateMany: jest.fn(async ({ where }: any) => ({ count: where.id.in.length })),
+      },
+    };
+    const svc = new RecurrenceService(prisma as any, { runExclusive: jest.fn() } as any);
+    jest.spyOn(svc, 'generateOccurrences').mockResolvedValue(1);
+    return { svc, prisma };
+  }
+
+  it('only deletes occurrences no registration, stay, refund or payout points at', async () => {
+    const { svc, prisma } = series([]);
+    await svc.regenerateSeries('p1', now);
+    const where = prisma.event.deleteMany.mock.calls[0][0].where;
+    expect(where).toMatchObject({
+      seriesParentId: 'p1',
+      seriesDetached: false,
+      registrations: { none: {} },
+      stayBookings: { none: {} },
+      refundRequests: { none: {} },
+      payouts: { none: {} },
+    });
+    // The old filter was registeredCount: 0, which let refunded/cancelled/waitlisted rows go.
+    expect(where).not.toHaveProperty('registeredCount');
+  });
+
+  it('off-schedule survivors are detached; cancelled too when nobody is still booked', async () => {
+    const { svc, prisma } = series([
+      { id: 'tue', startDateTime: at('10'), live: 0 }, // still a slot: untouched
+      { id: 'wed-refunded', startDateTime: at('11'), live: 0 }, // only cancelled/refunded rows
+      { id: 'thu-booked', startDateTime: at('12'), live: 2 }, // people still coming / waiting
+    ]);
+    const res = await svc.regenerateSeries('p1', now);
+    expect(prisma.event.updateMany).toHaveBeenNthCalledWith(1, {
+      where: { id: { in: ['wed-refunded', 'thu-booked'] } },
+      data: { seriesDetached: true },
+    });
+    expect(prisma.event.updateMany).toHaveBeenNthCalledWith(2, {
+      where: { id: { in: ['wed-refunded'] }, status: 'PUBLISHED' },
+      data: expect.objectContaining({ status: 'CANCELLED' }),
+    });
+    expect(res).toEqual({ removed: 2, created: 1, cancelled: 1 });
+  });
+});

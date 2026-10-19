@@ -19,8 +19,9 @@ import { expandRRule, parseRRule } from './rrule.util';
  *    extended by a daily reconcile cron.
  *  - D3: v1 edit scopes are "whole series" (regenerate/propagate to future
  *    unmodified rows) and "this occurrence" (detach one row).
- *  - D4: never delete/move an occurrence that has registrations; a detached or
- *    registered occurrence is frozen and edited individually.
+ *  - D4: never delete/move an occurrence that has registrations (of any
+ *    status, A29); a detached or registered occurrence is frozen and edited
+ *    individually.
  *  - D5: ticket types are authored on the parent and copied to each occurrence.
  */
 @Injectable()
@@ -494,23 +495,28 @@ export class RecurrenceService {
   }
 
   /**
-   * Regenerate after the parent's RRULE changed: drop future occurrences that
-   * are safe to remove (not started, not detached, no registrations), then
-   * re-materialize from the new rule. Never deletes a registered or detached
-   * occurrence — those survive as individually-managed events.
+   * Regenerate after the parent's schedule changed: drop future occurrences
+   * nothing points at (not started, not detached, no registration row of any
+   * status, no stay booking, refund or payout), then re-materialize from the
+   * new rule. An occurrence anyone ever booked is never deleted (D4, A29): the
+   * refund and payout roll-ups read through it. One the new schedule no longer
+   * has is detached, and cancelled too when nobody is still booked or waiting
+   * on it (its rows are all cancelled), so it stops taking bookings.
    *
-   * Returns { removed, created }.
+   * Returns { removed, created, cancelled }.
    */
   async regenerateSeries(
     parentId: string,
     now: Date = new Date(),
-  ): Promise<{ removed: number; created: number }> {
+  ): Promise<{ removed: number; created: number; cancelled: number }> {
+    const future = { seriesParentId: parentId, seriesDetached: false, startDateTime: { gt: now } };
     const del = await this.prisma.event.deleteMany({
       where: {
-        seriesParentId: parentId,
-        seriesDetached: false,
-        registeredCount: 0,
-        startDateTime: { gt: now },
+        ...future,
+        registrations: { none: {} },
+        stayBookings: { none: {} },
+        refundRequests: { none: {} },
+        payouts: { none: {} },
       },
     });
     // Reset the high-water mark so generation re-fills the whole window.
@@ -519,7 +525,39 @@ export class RecurrenceService {
       data: { seriesGeneratedUntil: null },
     });
     const created = await this.generateOccurrences(parentId, now);
-    return { removed: del.count, created };
+
+    // Survivors the new schedule no longer has.
+    const parent = await this.prisma.event.findUnique({
+      where: { id: parentId },
+      select: { isRecurring: true, recurringRule: true, status: true, startDateTime: true },
+    });
+    const none = { removed: del.count, created, cancelled: 0 };
+    if (!parent?.isRecurring || !parent.recurringRule || parent.status !== 'PUBLISHED') return none;
+    let slots: Set<number>;
+    try {
+      const rule = parseRRule(parent.recurringRule);
+      slots = new Set(
+        expandRRule(parent.startDateTime, rule, { from: now, to: this.horizonFrom(now) }).map((d) => d.getTime()),
+      );
+    } catch {
+      return none; // a bad rule: generateOccurrences already logged it
+    }
+    const kept = await this.prisma.event.findMany({
+      where: future,
+      select: {
+        id: true,
+        startDateTime: true,
+        _count: { select: { registrations: { where: { status: { not: 'CANCELLED' } } } } },
+      },
+    });
+    const off = kept.filter((o) => !slots.has(o.startDateTime.getTime()));
+    if (!off.length) return none;
+    await this.prisma.event.updateMany({ where: { id: { in: off.map((o) => o.id) } }, data: { seriesDetached: true } });
+    const { count: cancelled } = await this.prisma.event.updateMany({
+      where: { id: { in: off.filter((o) => o._count.registrations === 0).map((o) => o.id) }, status: 'PUBLISHED' },
+      data: { status: 'CANCELLED', cancelledAt: now, cancellationReason: 'Removed from the series schedule' },
+    });
+    return { removed: del.count, created, cancelled };
   }
 
   /**
