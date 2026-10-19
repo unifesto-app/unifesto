@@ -47,13 +47,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { inr } from "@/lib/utils/money";
 
-function money(v: number | string): string {
-  return `₹${Number(v || 0).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+const money = inr;
 
 function fmtDateTime(value?: string | null): string {
   if (!value) return "—";
