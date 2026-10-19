@@ -121,6 +121,7 @@ const ATTACHMENT_LINK_SECONDS = 5 * 60;
 const SUBJECT_MODELS = {
   RefundRequest: 'refundRequest',
   SpaceRequest: 'spaceRequest',
+  EventRequest: 'eventRequest',
   SpaceStatusRequest: 'spaceStatusRequest',
   SpaceOwnershipRequest: 'spaceOwnershipRequest',
   SubSpaceRequest: 'subSpaceRequest',
