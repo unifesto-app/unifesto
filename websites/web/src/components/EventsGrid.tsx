@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { MagnifyingGlass, ArrowRight } from "@unifesto/unicon/react";
 import EventCard from "./EventCard";
-import { getEvents, filterEvents, type Event } from "@/lib/api/events";
+import { getListedEvents, filterEvents, type Event } from "@/lib/api/events";
 
 export default function EventsGrid() {
   const [query, setQuery] = useState("");
@@ -12,9 +12,9 @@ export default function EventsGrid() {
 
   useEffect(() => {
     let active = true;
-    getEvents(1, 100)
-      .then((res) => {
-        if (active) setAllEvents(res.events);
+    getListedEvents()
+      .then((events) => {
+        if (active) setAllEvents(events);
       })
       .catch(() => {
         if (active) setAllEvents([]);
@@ -71,7 +71,17 @@ export default function EventsGrid() {
     [allEvents, query]
   );
 
+  // Upcoming come first (see getListedEvents), so past events only fill the
+  // preview when little is coming up; with nothing upcoming, say so honestly.
   const preview = events.slice(0, 6);
+  // True while loading too, so the heading doesn't shift when events arrive.
+  const showNext = useMemo(() => {
+    const now = Date.now();
+    return (
+      allEvents.length === 0 ||
+      allEvents.some((e) => new Date(e.end_date || e.start_date).getTime() >= now)
+    );
+  }, [allEvents]);
 
   return (
     <section id="events" aria-labelledby="events-heading" className="surface-night relative px-5 py-24 sm:px-8 md:py-32">
@@ -81,10 +91,12 @@ export default function EventsGrid() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
             <h2 id="events-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.12] text-paper">
-              What is on next{" "}
-              <span className="mt-2 block font-sans text-lg font-light text-paper/55 md:text-xl">
-                {city ? `in ${city}` : "at Malla Reddy University"}
-              </span>
+              {showNext ? "What is on next" : "Recently on Unifesto"}{" "}
+              {showNext && (
+                <span className="mt-2 block font-sans text-lg font-light text-paper/55 md:text-xl">
+                  {city ? `in ${city}` : "at Malla Reddy University"}
+                </span>
+              )}
             </h2>
           </div>
           <a
@@ -121,7 +133,7 @@ export default function EventsGrid() {
               <EventCard key={event.id} event={event} index={index} />
             ))}
           </div>
-        ) : (
+        ) : query ? (
           <div className="text-center py-16 border border-white/5 rounded-2xl">
             <p className="text-slate-400 text-sm">No events match your search.</p>
             <button
@@ -131,7 +143,7 @@ export default function EventsGrid() {
               Clear filters
             </button>
           </div>
-        )}
+        ) : null}
 
       </div>
     </section>

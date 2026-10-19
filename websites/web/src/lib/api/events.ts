@@ -334,6 +334,8 @@ export async function getEvents(
     is_featured?: boolean;
     is_trending?: boolean;
     organization_id?: string;
+    /** upcoming (default): live + upcoming, soonest first. past: ended, newest first. */
+    when?: 'upcoming' | 'past';
   }
 ): Promise<EventListResponse> {
   try {
@@ -343,6 +345,7 @@ export async function getEvents(
     });
 
     // Map frontend filter names to the backend EventFilterDto (camelCase).
+    if (filters?.when) params.append('when', filters.when);
     if (filters?.search) params.append('search', filters.search);
     if (filters?.category) params.append('category', filters.category);
     if (filters?.event_type) params.append('type', filters.event_type);
@@ -373,6 +376,20 @@ export async function getEvents(
     console.error('[API] Error fetching events:', error);
     return { events: [], total: 0, page: 1, limit: 20 };
   }
+}
+
+/**
+ * Upcoming events (soonest first) followed by past ones (newest first), so
+ * public lists never read empty between events and the Past tab can fill.
+ */
+export async function getListedEvents(
+  filters?: Omit<NonNullable<Parameters<typeof getEvents>[2]>, 'when'>,
+): Promise<Event[]> {
+  const [upcoming, past] = await Promise.all([
+    getEvents(1, 100, { ...filters, when: 'upcoming' }),
+    getEvents(1, 50, { ...filters, when: 'past' }),
+  ]);
+  return [...upcoming.events, ...past.events];
 }
 
 /**
@@ -495,7 +512,19 @@ export function filterEvents(
         eventDate <= weekEnd) ||
       (filters.dateRange === "upcoming" && eventDate >= today);
 
-    return matchesQuery && matchesCategory && matchesPrice && matchesDate;
+    // Status tabs go by the clock, not the backend status, which lags until
+    // the scheduler marks an ended event COMPLETED.
+    const start = eventDate.getTime();
+    const end = new Date(e.end_date || e.start_date).getTime();
+    const now = Date.now();
+    const matchesStatus =
+      !filters.status ||
+      filters.status === "all" ||
+      (filters.status === "upcoming" && start > now) ||
+      (filters.status === "ongoing" && start <= now && end >= now) ||
+      (filters.status === "past" && end < now);
+
+    return matchesQuery && matchesCategory && matchesPrice && matchesDate && matchesStatus;
   });
 }
 
