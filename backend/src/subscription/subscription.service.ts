@@ -134,6 +134,7 @@ export class SubscriptionService {
       spacesCount: 1, // per-space view: this space counts as one
       eventsThisMonth: subscription.eventsThisMonth,
       plan: subscription.plan,
+      billingModel: subscription.billingModel,
       limits: {
         spaces: limits.spaces,
         eventsPerMonth: limits.eventsPerMonth,
