@@ -529,7 +529,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 | # | Item | Status |
 |---|---|---|
 | L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | done (#271) |
-| L2 | Q&A with upvotes + moderation, per session/track | planned |
+| L2 | Q&A with upvotes + moderation, per session/track | done (#277) |
 | L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | planned |
 | L4 | Projector view on web (results, Q&A wall) | planned |
 
@@ -816,3 +816,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · Removed the dead global font patch; LiveSession text sets DM Sans explicitly (G13 follow-up) (#275)
 - **2026-10-19** · G11 ended-event states on mobile ticket + Sprint hub; Space end-of-event checklist (#276)
 - **2026-10-19** · G4 long mobile lists (waitlist, manual check-in, teams, queues, results, leads, coupons, sessions, group) on FlatList (#278)
+- **2026-10-19** · L2 live Q&A: ask, upvote, moderation queue on Space web + mobile (#277)
