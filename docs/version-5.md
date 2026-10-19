@@ -539,7 +539,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 |---|---|---|
 | M1 | **AI: draft event content from a few lines or a link.** Draft event description, agenda and FAQs from a few lines or an imported link | planned |
 | M2 | Email/WhatsApp copy suggestions in campaigns | parked (2026-10-18): low value; revisit after D12 (AI foundation) and C8 (unsubscribe and consent) land. |
-| M3 | Post-event report summary (attendance, revenue, feedback themes) | planned |
+| M3 | Post-event report summary (attendance, revenue, feedback themes) | done (#264) |
 | M4 | **Who to nudge: past attendees likely to register.** "Who to nudge": past attendees likely to register, for a curator-approved campaign | parked (2026-10-18): nudging past attendees needs consent and unsubscribe (C8, I2) first, or it is a DPDP and spam risk. |
 
 ### N · On-site (new)
@@ -802,3 +802,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · D11 built: unifesto.app/help/contact opens a case through Assist. Guests give an email; the account is found or created like a manual attendee add (never renamed), so requesterId stays set. The bot runs with public tools only (help articles, event FAQ). The guest's per-case token reads only their own and the bot's messages; desk replies go by email. "Talk to a person" or no answer opens the case for the desk. FloatingSupport leads with "Ask Assist", and WhatsApp and email stay. No migration; rebuild backend + web. (#261)
 - **2026-10-19** · Deploy fix: backend build now excludes spec-only `*.testing.ts` helpers (jest broke `nest build`), and deploy.sh no longer shields the deleted `backend/src/aws/examples` from rsync --delete. (#262)
 - **2026-10-19** · G9 mobile API client unified: refresh signs out only on a refused token, one token source, ApiError convention, error states, crash fallback, cold-start push links (#263)
+- **2026-10-19** · M3 AI post-event report summary: code-computed facts, stored on the report, PDF + space page, regenerate, 8-case eval (off by default; no feedback themes yet) (#264)
