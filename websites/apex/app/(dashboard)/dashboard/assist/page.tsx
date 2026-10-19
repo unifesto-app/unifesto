@@ -345,6 +345,11 @@ export default function AssistInboxPage() {
                     {slaText(selected.sla)}
                   </p>
                 )}
+                {selected.rating && (
+                  <p className="text-sm text-foreground">
+                    Rated {selected.rating} of 5{selected.ratingComment ? `: "${selected.ratingComment}"` : ""}
+                  </p>
+                )}
                 <div className="space-y-1.5">
                   <Label>Status</Label>
                   <Select value={selected.status} onValueChange={(v) => triage({ status: v as SupportTicketStatus })}>

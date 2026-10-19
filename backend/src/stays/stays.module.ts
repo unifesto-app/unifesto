@@ -3,7 +3,6 @@ import { AuthModule } from '../auth/auth.module';
 import { StorageModule } from '../storage/storage.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { EmailModule } from '../email/email.module';
 import { StaysController } from './stays.controller';
 import { StaysService } from './stays.service';
 import { StayBookingsService } from './stay-bookings.service';
@@ -14,7 +13,7 @@ import { StayBookingsService } from './stay-bookings.service';
  * payments. PrismaModule is @Global.
  */
 @Module({
-  imports: [AuthModule, StorageModule, PaymentsModule, NotificationsModule, EmailModule],
+  imports: [AuthModule, StorageModule, PaymentsModule, NotificationsModule],
   controllers: [StaysController],
   providers: [StaysService, StayBookingsService],
   exports: [StayBookingsService],

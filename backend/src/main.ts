@@ -43,6 +43,9 @@ async function bootstrap() {
   app.useBodyParser('json', {
     type: ['application/json', 'application/webhook+json'],
   });
+  // AWS SNS (SES delivery notifications, POST /webhooks/ses) posts its JSON
+  // as text/plain; parse it as a string so the controller can read it.
+  app.useBodyParser('text', { type: 'text/plain' });
 
   // Remove the X-Powered-By header (avoids advertising the Express stack)
   app.getHttpAdapter().getInstance().disable('x-powered-by');

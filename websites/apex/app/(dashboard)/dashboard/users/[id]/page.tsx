@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatLastSeen, lastSeenTitle } from "@/lib/utils/last-seen";
+import { MessageTable } from "@/components/messages/MessageTable";
 import {
   Card,
   CardContent,
@@ -708,6 +709,16 @@ export default function UserDetailPage() {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Messages (C6): everything sent to this account, by id or address */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Messages</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <MessageTable filters={{ userId: id }} />
             </CardContent>
           </Card>
         </>

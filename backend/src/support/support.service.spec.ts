@@ -48,6 +48,7 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
         ...ticket,
       })),
       update: jest.fn(async (args: any) => args),
+      updateMany: jest.fn(async () => ({ count: 2 })),
       findMany: jest.fn(async () => []),
       count: jest.fn(async () => 0),
       fields: { deskLastReadAt: 'deskLastReadAt', requesterLastReadAt: 'requesterLastReadAt' },
@@ -662,5 +663,34 @@ describe('SupportService (D19 canned replies + SLA)', () => {
     expect(got.sla).toMatchObject({ stage: 'RESPOND', overdue: true });
     const own: any = await setup({ ticket }).service.getTicket('t-1', 'user-1');
     expect(own.sla).toBeUndefined();
+  });
+});
+
+describe('SupportService (D20 auto-close + rating)', () => {
+  it('lets only the requester rate, and only once resolved', async () => {
+    await expect(setup().service.rate('t-1', 'user-1', { rating: 5 })).rejects.toThrow(BadRequestException);
+    await expect(
+      setup({ ticket: { status: SupportTicketStatus.RESOLVED } }).service.rate('t-1', 'someone-else', { rating: 5 }),
+    ).rejects.toThrow(ForbiddenException);
+
+    const { prisma, service } = setup({ ticket: { status: SupportTicketStatus.CLOSED } });
+    await service.rate('t-1', 'user-1', { rating: 4, comment: '  quick fix  ' });
+    expect(prisma.supportTicket.update.mock.calls[0][0].data).toEqual({ rating: 4, ratingComment: 'quick fix' });
+    await service.rate('t-1', 'user-1', { rating: 2, comment: '   ' });
+    expect(prisma.supportTicket.update.mock.calls[1][0].data).toEqual({ rating: 2, ratingComment: null });
+  });
+
+  it('closes cases resolved more than 7 days ago', async () => {
+    const { prisma, service } = setup();
+    const now = new Date('2026-10-20T00:00:00Z');
+    const before = new Date('2026-10-13T00:00:00Z');
+    expect(await service.autoCloseResolved(now)).toBe(2);
+    expect(prisma.supportTicket.updateMany).toHaveBeenCalledWith({
+      where: {
+        status: SupportTicketStatus.RESOLVED,
+        OR: [{ resolvedAt: { lt: before } }, { resolvedAt: null, updatedAt: { lt: before } }],
+      },
+      data: { status: SupportTicketStatus.CLOSED, closedAt: now },
+    });
   });
 });

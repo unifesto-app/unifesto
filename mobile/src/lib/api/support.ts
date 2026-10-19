@@ -74,6 +74,9 @@ export interface SupportTicket {
   space?: { id: string; name: string; slug: string } | null;
   /** List endpoint: a message you haven't opened yet. */
   unread?: boolean;
+  /** D20: the requester's 1-5 rating once resolved. */
+  rating?: number | null;
+  ratingComment?: string | null;
 }
 
 export interface CreateTicketInput {
@@ -226,6 +229,20 @@ export async function reopenTicket(id: string): Promise<boolean> {
     return !!res?.ok;
   } catch (error) {
     if (__DEV__) console.error('[support] reopenTicket failed:', error);
+    return false;
+  }
+}
+
+/** D20: rate your resolved case 1-5, with an optional comment. */
+export async function rateTicket(id: string, rating: number, comment?: string): Promise<boolean> {
+  try {
+    const res = await makeAuthenticatedRequest(`/support/tickets/${id}/rating`, {
+      method: 'POST',
+      body: JSON.stringify({ rating, comment }),
+    });
+    return !!res?.ok;
+  } catch (error) {
+    if (__DEV__) console.error('[support] rateTicket failed:', error);
     return false;
   }
 }

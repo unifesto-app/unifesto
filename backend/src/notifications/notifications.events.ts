@@ -1,3 +1,5 @@
+import type { NotifyKind, NotifyKindData } from './notify.kinds';
+
 /**
  * Payload contracts for the notification event bus. Kept intentionally small —
  * handlers resolve their own recipients/copy from these ids so domain services
@@ -20,15 +22,6 @@ export interface RegistrationUpdateEvent {
   kind: 'CANCELLED' | 'REFUND_APPROVED' | 'REFUND_DECLINED';
   /** Refund amount text, e.g. "₹499". */
   amount?: string;
-}
-
-export interface WaitlistOfferEvent {
-  userId: string;
-  eventId: string;
-  eventTitle: string;
-  eventSlug?: string;
-  /** When the held seat offer expires, for the body copy. */
-  expiresAt?: Date;
 }
 
 export interface NewEventEvent {
@@ -182,4 +175,14 @@ export interface HackathonHelpDeskEvent {
   deepLink: string;
   /** A new query for event staff (vs an update to the team); filed under the inbox's Staff tab. */
   toStaff?: boolean;
+}
+
+/**
+ * notify() for a list of people, from modules NotificationsModule itself
+ * imports (EventsModule) and so can't inject NotifyService. The handler sends
+ * one after another, so a big event never floods the DB pool.
+ */
+export interface NotifyBatchEvent<K extends NotifyKind = NotifyKind> {
+  kind: K;
+  items: Array<{ userId: string; data: NotifyKindData[K]; dedupKey?: string }>;
 }

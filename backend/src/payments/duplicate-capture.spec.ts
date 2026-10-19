@@ -171,7 +171,7 @@ describe('stays refund a duplicate capture (A22)', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refundIfDuplicate: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
     return { svc, prisma, payments };
   };
