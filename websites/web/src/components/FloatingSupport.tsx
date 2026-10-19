@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChatCircleDots, EnvelopeSimple, Lifebuoy, WhatsappLogo, X } from "@unifesto/unicon/react";
+import { ChatCircleDots, EnvelopeSimple, Lifebuoy, Sparkle, WhatsappLogo, X } from "@unifesto/unicon/react";
 import { useLightSurfaceAt } from "@/lib/surface";
 import { SITE } from "@/lib/site";
 import { SupportRow, supportMailto, whatsappHref } from "@/components/support";
 
-/* Help button: same real channels as the mobile Support screen.
-   WhatsApp is the live chat; nothing here is simulated. */
+/* Help button. Asking Assist opens a support request (D11): Assist answers and
+   hands off to a person. WhatsApp and email stay as the other real channels. */
 export default function FloatingSupport() {
   const [open, setOpen] = useState(false);
   const onLight = useLightSurfaceAt(() => [window.innerWidth - 52, window.innerHeight - 52]);
@@ -32,9 +32,15 @@ export default function FloatingSupport() {
           >
             <div className="px-4 pb-2 pt-4">
               <p className="text-base font-semibold text-paper">How can we help?</p>
-              <p className="mt-0.5 text-sm text-paper/55">We reply within 24 hours.</p>
+              <p className="mt-0.5 text-sm text-paper/55">Ask Assist, or reach a person. We reply within 24 hours.</p>
             </div>
             <div className="divide-y divide-white/[0.06]">
+              <SupportRow
+                icon={<Sparkle weight="fill" className="h-7 w-7 text-primary" />}
+                label="Ask Assist"
+                value="Instant answers, or a person"
+                href="/help/contact"
+              />
               <SupportRow
                 icon={<WhatsappLogo weight="fill" className="h-7 w-7 text-[#25D366]" />}
                 label="Chat on WhatsApp"
@@ -50,9 +56,9 @@ export default function FloatingSupport() {
               />
               <SupportRow
                 icon={<Lifebuoy className="h-7 w-7 text-paper/60" />}
-                label="Help center"
+                label="Help articles"
                 value="Common questions"
-                href="/support"
+                href="/help"
               />
             </div>
           </div>
