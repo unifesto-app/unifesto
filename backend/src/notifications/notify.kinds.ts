@@ -45,7 +45,10 @@ export interface NotifyKindData {
   'event.reminder.24h': MailData<T.EventReminderData> & { eventId: string; eventSlug?: string };
   'event.reminder.1h': MailData<T.EventStartingSoonData> & { eventId: string; eventSlug?: string };
   'event.cancelled': MailData<T.EventCancelledData> & { eventId: string };
-  /** Not deduped by default (an event can change twice); pass opts.dedupKey per change. */
+  /**
+   * Critical: a time or venue change must reach everyone by email. Not deduped
+   * by default (an event can change twice); pass opts.dedupKey per change.
+   */
   'event.updated': MailData<T.EventUpdatedData> & { eventId: string; eventSlug?: string };
   'stay.payment_due': StayNotice & { amountText: string; dueText: string };
   'stay.confirmed': StayNotice & { note?: string };
@@ -55,7 +58,8 @@ export interface NotifyKindData {
   'stay.refunded': StayNotice & { amountText: string };
   /** The payment window closed and the bed was released. */
   'stay.expired': StayNotice;
-  'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string };
+  /** approvedAt keys the dedup per approval, so approve, reject, approve tells them again. */
+  'space.approved': MailData<T.SpaceApprovedData> & { spaceId: string; approvedAt: Date };
   /** Not deduped by default (a resubmitted space can be rejected again). */
   'space.rejected': MailData<T.SpaceRejectedData> & { spaceId: string };
 }
@@ -70,7 +74,13 @@ export interface KindDef<D> {
    * `${kind}:${entity}:${userId}:${channel}`. null = no dedup.
    */
   entity: (d: D) => string | null;
+  /** The push copy; also the in-app inbox copy. */
   push: (d: D) => PushCopy;
+  /**
+   * The push copy goes to the in-app inbox only, with no device push: another
+   * notice already buzzes the phone for the same moment.
+   */
+  inboxOnly?: true;
   email?: (svc: EmailService, to: string, d: D, delivery: DeliveryOpts) => Promise<boolean>;
   /**
    * WhatsApp costs money per message. Standing decision: only OTP, ONE
@@ -136,6 +146,9 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   'payment.confirmed': {
     category: 'registrationUpdates',
     criticality: 'critical',
+    // registration.confirmed's "You're in!" push already covers this moment:
+    // the receipt is email + inbox.
+    inboxOnly: true,
     entity: (d) => d.razorpayPaymentId,
     push: (d) => ({
       title: 'Payment received',
@@ -207,7 +220,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   },
   'event.updated': {
     category: 'registrationUpdates',
-    criticality: 'normal',
+    criticality: 'critical',
     entity: () => null,
     push: (d) => ({
       title: `${d.eventTitle} was updated`,
@@ -234,7 +247,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   'space.approved': {
     category: 'spaceUpdates',
     criticality: 'critical',
-    entity: (d) => d.spaceId,
+    entity: (d) => `${d.spaceId}:${d.approvedAt.getTime()}`,
     push: (d) => ({
       title: `${d.spaceName} is approved`,
       body: 'Your space is live. Open the Space app to create your first event.',

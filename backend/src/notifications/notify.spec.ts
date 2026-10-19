@@ -109,6 +109,34 @@ describe('NotifyService.notify', () => {
     );
   });
 
+  it('inboxOnly kind (payment.confirmed): inbox copy, no device push, receipt email always', async () => {
+    const { svc, notifications, email } = build();
+    email.sendPaymentConfirmation = jest.fn().mockResolvedValue(true);
+    notifications.send.mockResolvedValue({ sent: 0, failed: 0, skipped: 1 });
+    const res = await svc.notify('u1', 'payment.confirmed', {
+      ...reminder, amount: 100, processingFee: 5, razorpayPaymentId: 'pay_1',
+    });
+    expect(notifications.send).toHaveBeenCalledWith(['u1'], expect.objectContaining({
+      inboxOnly: true, title: 'Payment received', dedupKey: 'payment.confirmed:pay_1:u1:push',
+    }));
+    expect(res).toMatchObject({ push: 'skipped', email: 'sent', whatsapp: 'skipped' });
+    expect(email.sendPaymentConfirmation.mock.calls[0][1].dedupKey).toBe('payment.confirmed:pay_1:u1:email');
+  });
+
+  it('only payment.confirmed is inbox-only; event.updated is critical (email always)', () => {
+    const inboxOnly = Object.entries(NOTIFY_KINDS).filter(([, d]) => (d as any).inboxOnly).map(([k]) => k);
+    expect(inboxOnly).toEqual(['payment.confirmed']);
+    expect(NOTIFY_KINDS['event.updated'].criticality).toBe('critical');
+  });
+
+  it('space.approved dedups per approval, so a later re-approval is told again', () => {
+    const d = { spaceId: 's1', organizerName: 'A', spaceName: 'S', spaceSlug: 's' };
+    const a = NOTIFY_KINDS['space.approved'].entity({ ...d, approvedAt: new Date(1000) });
+    const b = NOTIFY_KINDS['space.approved'].entity({ ...d, approvedAt: new Date(2000) });
+    expect(a).toBe('s1:1000');
+    expect(b).not.toBe(a);
+  });
+
   it('caller dedupKey replaces the default base', async () => {
     const { svc, notifications } = build();
     await svc.notify('u1', 'event.reminder.24h', reminder, { dedupKey: 'custom' });

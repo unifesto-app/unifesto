@@ -799,6 +799,7 @@ export class AdminService {
     // Push + email to the creator (critical). notify() never throws.
     void this.notify.notify(space.createdBy, 'space.approved', {
       spaceId: space.id,
+      approvedAt: updated.approvedAt!,
       organizerName: space.creator?.fullName || space.creator?.username || 'there',
       spaceName: space.name,
       spaceSlug: space.slug,

@@ -9,7 +9,10 @@ describe('AdminService space review notices', () => {
       creator: { fullName: 'Asha', username: null },
     };
     const prisma = {
-      space: { findUnique: jest.fn(async () => space), update: jest.fn(async () => ({ id: 'sp-1' })) },
+      space: {
+        findUnique: jest.fn(async () => space),
+        update: jest.fn(async () => ({ id: 'sp-1', approvedAt: new Date(1_700_000_000_000) })),
+      },
     };
     const email = {
       sendSpaceApproved: jest.fn(async () => undefined),
@@ -21,11 +24,11 @@ describe('AdminService space review notices', () => {
     return { svc, email, notify };
   };
 
-  it('approving tells the creator (space.approved, deduped per space by the kind)', async () => {
+  it('approving tells the creator (space.approved, deduped per approval by the kind)', async () => {
     const { svc, email, notify } = build();
     await svc.approveSpace('sp-1', 'admin-1');
     expect(notify.notify).toHaveBeenCalledWith('u-asha', 'space.approved', {
-      spaceId: 'sp-1', organizerName: 'Asha', spaceName: 'Robotics Club', spaceSlug: 'robotics',
+      spaceId: 'sp-1', approvedAt: new Date(1_700_000_000_000), organizerName: 'Asha', spaceName: 'Robotics Club', spaceSlug: 'robotics',
     });
     expect(email.sendSpaceApproved).not.toHaveBeenCalled();
   });

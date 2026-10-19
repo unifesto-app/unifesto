@@ -50,6 +50,17 @@ describe('NotificationsService in-app copy', () => {
     });
   });
 
+  it('inboxOnly: writes the in-app copy, sends no push and claims no dedup row', async () => {
+    const { svc, prisma, oneSignal } = build();
+    prisma.messageDelivery = { create: jest.fn(), createMany: jest.fn(), findUnique: jest.fn() };
+    const res = await svc.send(['u-on'], { ...opts, inboxOnly: true, dedupKey: 'k:push' });
+    expect(res).toEqual({ sent: 0, failed: 0, skipped: 1 });
+    expect(prisma.userNotification.createMany).toHaveBeenCalledTimes(1);
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(prisma.messageDelivery.create).not.toHaveBeenCalled();
+    expect(prisma.pushLog.createMany).not.toHaveBeenCalled();
+  });
+
   it('keeps a copy by default, typed from data', async () => {
     const { svc, prisma } = build();
     const { inbox: _inbox, ...plain } = opts;
