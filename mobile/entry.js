@@ -6,6 +6,9 @@
 //
 // `expo-router/entry` is loaded with require() (not import) so it runs AFTER
 // registerGlobals(), rather than being hoisted above it like an ESM import.
+
+// First import, so crashes during startup are reported too.
+import './src/lib/sentry';
 import { registerGlobals } from '@livekit/react-native';
 import { setLogLevel, LogLevel } from 'livekit-client';
 
