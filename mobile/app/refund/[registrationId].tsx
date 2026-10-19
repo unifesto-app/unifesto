@@ -150,7 +150,7 @@ export default function RefundRoute() {
     }
     setError('');
     setSubmitting(true);
-    const res = await requestRefund({ registrationId, eventTitle, reason: reason.trim() });
+    const res = await requestRefund({ registrationId, reason: reason.trim() });
     setSubmitting(false);
     if (res.ok) {
       setReason('');

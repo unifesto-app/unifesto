@@ -33,6 +33,8 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
     eventRegistration: { findUnique: jest.fn(async () => reg) },
     supportTicket: {
       create: jest.fn(async (args: any) => args.data),
+      findFirst: jest.fn(async () => null),
+      findUniqueOrThrow: jest.fn(async (args: any) => ({ id: args.where.id })),
       findUnique: jest.fn(async () => ({
         id: 't-1',
         requesterId: 'user-1',
@@ -117,6 +119,28 @@ describe('SupportService (Assist case)', () => {
     expect(data.requesterLastReadAt).toBeInstanceOf(Date);
     expect(data.messages.create).toMatchObject({ side: 'REQUESTER', isStaffReply: false });
     expect(prisma.event.findUnique.mock.calls[0][0].where).toEqual({ id: 'ev-1' });
+  });
+
+  it('D29: a repeat of an open case joins it instead of opening a copy', async () => {
+    const { prisma, events, service } = setup();
+    prisma.supportTicket.findFirst = jest
+      .fn()
+      .mockResolvedValueOnce({ id: 't-1', messages: [{ body: 'm' }] })
+      .mockResolvedValueOnce({ id: 't-1', messages: [{ body: 'm' }] });
+    const same: any = await service.createTicket({ subject: 's', message: 'm' } as any, 'user-1');
+    expect(same.id).toBe('t-1');
+    expect(prisma.supportMessage.create).not.toHaveBeenCalled();
+    const more: any = await service.createTicket({ subject: 's', message: 'still waiting' } as any, 'user-1');
+    expect(more.id).toBe('t-1');
+    expect(prisma.supportMessage.create).toHaveBeenCalledTimes(1);
+    expect(prisma.supportTicket.create).not.toHaveBeenCalled();
+    expect(prisma.supportTicket.findFirst.mock.calls[0][0].where).toMatchObject({
+      requesterId: 'user-1',
+      subject: 's',
+      kind: 'HELP',
+      status: { in: [SupportTicketStatus.OPEN, SupportTicketStatus.PENDING] },
+    });
+    expect(events.emit).toHaveBeenCalledTimes(1); // the appended reply, not a new case
   });
 
   it("rejects someone else's registration", async () => {
