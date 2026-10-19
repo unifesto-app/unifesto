@@ -4878,6 +4878,29 @@ model MessageDelivery {
   @@map("message_deliveries")
 }
 
+enum EmailSuppressionReason {
+  BOUNCE // permanent (hard) bounce
+  COMPLAINT // the recipient marked it as spam
+  MANUAL // added by a platform admin
+
+  @@map("email_suppression_reason")
+}
+
+// C5: addresses we never mail again (except sign-in codes). Written by the SES
+// and Resend webhooks; an admin can remove one from Apex.
+model EmailSuppression {
+  id      String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  address String                 @unique @db.VarChar(320) // lowercased
+  reason  EmailSuppressionReason
+  source  String                 @db.VarChar(20) // ses | resend | admin
+  details String?                @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("email_suppressions")
+}
+
 // One row per app install that can receive push. `subscriptionId` is OneSignal's
 // push subscription id (the device id); it moves to whichever user last signed
 // in on that device. `linkedAt` = server confirmed OneSignal external_id = userId.

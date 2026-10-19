@@ -19,6 +19,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { withoutSuppressed } from '../email/email-suppression';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
   MARKETABLE_USER,
@@ -229,7 +230,7 @@ export class EmailCampaignsService {
       targetType: dto.targetType,
       targetId,
       segmentFilters: (dto.segmentFilters ?? null) as Prisma.JsonValue,
-    });
+    }).then((r) => withoutSuppressed(this.prisma, r));
     const allowed = await this.withConsent(
       { spaceId: scope.spaceId, targetType: dto.targetType },
       resolved,
@@ -414,7 +415,10 @@ export class EmailCampaignsService {
       });
       if (!campaign || campaign.status !== EmailCampaignStatus.SENDING) return;
 
-      const allowed = await this.withConsent(campaign, await this.getRecipients(campaign));
+      const allowed = await this.withConsent(
+        campaign,
+        await this.getRecipients(campaign).then((r) => withoutSuppressed(this.prisma, r)),
+      );
       // Checkpoint: everyone with a log row has been handled already.
       const done = new Set(
         (

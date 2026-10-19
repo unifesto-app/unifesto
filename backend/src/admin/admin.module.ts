@@ -3,6 +3,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminEmailController } from './admin-email.controller';
 import { WhatsAppAdminController } from './whatsapp-admin.controller';
+import { MessagesAdminController } from './messages-admin.controller';
 import { OtaAdminController, OtaStatusIngestController } from './ota-admin.controller';
 import { OtaAdminService } from './ota-admin.service';
 import { AdminSchedulerService } from './admin-scheduler.service';
@@ -20,7 +21,7 @@ import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 
 @Module({
   imports: [PrismaModule, RedisModule, StorageModule, AuthModule, EmailModule, EmailCampaignsModule, UsersModule, RegistrationsModule, EventsModule, WhatsAppModule],
-  controllers: [AdminController, AdminEmailController, WhatsAppAdminController, OtaAdminController, OtaStatusIngestController],
+  controllers: [AdminController, AdminEmailController, WhatsAppAdminController, MessagesAdminController, OtaAdminController, OtaStatusIngestController],
   providers: [AdminService, OtaAdminService, AdminSchedulerService, StatsMilestoneService],
   exports: [AdminService],
 })

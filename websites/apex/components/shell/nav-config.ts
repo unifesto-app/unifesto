@@ -39,6 +39,7 @@ import {
   CloudArrowUp,
   ImageSquare,
   ChartLineUp,
+  Tray,
 } from "@unifesto/unicon/react";
 
 export interface NavItem {
@@ -113,6 +114,7 @@ export const adminNav: NavGroup[] = [
       { href: "/dashboard/email", label: "Email", icon: EnvelopeSimple, keywords: "campaigns templates" },
       { href: "/dashboard/whatsapp", label: "WhatsApp inbox", icon: WhatsappLogo, exact: true },
       { href: "/dashboard/whatsapp/broadcast", label: "WhatsApp blast", icon: Megaphone },
+      { href: "/dashboard/messages", label: "Messages", icon: Tray, keywords: "delivery log failures bounces suppression history" },
       { href: "/dashboard/blog", label: "Blog", icon: Article },
       { href: "/dashboard/careers", label: "Careers", icon: Briefcase, keywords: "jobs hiring" },
     ],
