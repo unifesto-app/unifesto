@@ -380,7 +380,7 @@ One support system for everything a person needs help with. Every item is an **A
 | D26 | WhatsApp inbox → "Convert to case", later a full channel | done (#282) |
 | D27 | Hackathon help desk: "Escalate to organiser" opens a Space case | done (#282) |
 | D28 | Space verification request (optional) | parked (2026-10-18): marked optional; verification is admin-set (Space.verifiedAt, live since #91) without a request flow. |
-| D29 | **Clear the support and WhatsApp backlog.** Ops task, not code. Apex Support has 217 Open tickets ('Needs a reply'), 0 awaiting, 0 resolved, and the oldest refund requests are 12+ days old with 1 message. | next |
+| D29 | **Clear the support and WhatsApp backlog.** Ops task, not code. Apex Support has 217 Open tickets ('Needs a reply'), 0 awaiting, 0 resolved, and the oldest refund requests are 12+ days old with 1 message. | in progress (#301) |
 
 
 ### E · Sponsors, partners, hackathon (from 4.3.0)
@@ -838,3 +838,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · Backend loads .env before Sentry and the JSON logger read it (fixes the boot crash with LOG_FORMAT=json; Sentry now actually starts) (#298)
 - **2026-10-19** · JSON request logs redact the internal key, OTA status secret, projector display token and Razorpay signature (#299)
 - **2026-10-19** · O17 follow-up: iOS purchase rule now also covers waitlist-offer payments and paid add-seats on online events; backend returns the event type on the waitlist and team responses. (#300)
+- **2026-10-19** · Repeat Assist cases join the open one; mobile no longer pre-opens a case for refunds (#301)
