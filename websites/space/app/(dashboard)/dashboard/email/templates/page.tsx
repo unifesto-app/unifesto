@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { EmailBodyEditor } from "@/components/shared/EmailBodyEditor";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -267,18 +267,11 @@ export default function SpaceEmailTemplatesPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="tbody">Body (HTML)</Label>
-                <span className="text-xs text-muted-foreground">
-                  Merge vars: {"{{firstName}}"}, {"{{name}}"}, {"{{email}}"}
-                </span>
-              </div>
-              <Textarea
+              <Label htmlFor="tbody">Body</Label>
+              <EmailBodyEditor
                 id="tbody"
-                rows={12}
                 value={form.body}
-                onChange={(e) => setForm({ ...form, body: e.target.value })}
-                className="font-mono text-xs"
+                onChange={(body) => setForm((f) => ({ ...f, body }))}
               />
             </div>
           </div>

@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { getEvents } from '@/lib/api/events'
+import { getListedEvents } from '@/lib/api/events'
 import { getSpaces } from '@/lib/api/spaces'
 import { getPosts } from '@/lib/api/blog'
 import { getHelpArticles } from '@/lib/api/help'
@@ -13,32 +13,26 @@ const baseUrl = SITE.url
 export const revalidate = 3600
 
 /**
- * Fetch the public events that appear on the home page and turn the ones that
- * haven't ended yet into `/event/[slug]` sitemap entries. The backend `/events`
- * endpoint already restricts to PUBLISHED + PUBLIC + top-level events (the same
- * feed the home page renders); here we additionally drop anything already over,
- * so search engines only ever see live/upcoming events.
+ * Every public top-level event the /events page lists, upcoming and past, as
+ * `/event/[slug]` entries. Past events stay indexed (their pages are real and
+ * carry the space's history), just at a lower priority than upcoming ones.
  */
 async function getEventRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
-    // Match the home page, which fetches up to 100 events (EventsGrid).
-    const { events } = await getEvents(1, 100)
+    const events = await getListedEvents()
     const now = Date.now()
 
     return events
-      .filter((e) => {
-        // Keep events that are ongoing or upcoming — i.e. their end (falling
-        // back to start) is still in the future. Skip anything with no slug.
-        if (!e.slug) return false
-        const ends = new Date(e.end_date || e.start_date).getTime()
-        return Number.isFinite(ends) && ends >= now
+      .filter((e) => Boolean(e.slug))
+      .map((e) => {
+        const past = new Date(e.end_date || e.start_date).getTime() < now
+        return {
+          url: `${baseUrl}/event/${e.slug}`,
+          lastModified: e.updated_at ? new Date(e.updated_at) : new Date(),
+          changeFrequency: past ? ('monthly' as const) : ('daily' as const),
+          priority: past ? 0.5 : 0.9,
+        }
       })
-      .map((e) => ({
-        url: `${baseUrl}/event/${e.slug}`,
-        lastModified: e.updated_at ? new Date(e.updated_at) : new Date(),
-        changeFrequency: 'daily' as const,
-        priority: 0.9,
-      }))
   } catch {
     // Never let a backend hiccup break the whole sitemap — fall back to the
     // static routes only.

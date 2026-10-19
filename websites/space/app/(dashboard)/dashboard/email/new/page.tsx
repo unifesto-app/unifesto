@@ -25,11 +25,11 @@ import { getSpaceEvents, type Event } from "@/lib/api/events-api";
 import { getSpaceMembers, type SpaceMember } from "@/lib/api/spaces-api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { EmailBodyEditor } from "@/components/shared/EmailBodyEditor";
 import { audienceLine, confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -52,8 +52,6 @@ const TARGETS: { value: EmailTargetType; label: string; needs?: "event" | "membe
   { value: "WAITLIST", label: "Waitlist of an event", needs: "event" },
   { value: "SINGLE_USER", label: "A single member", needs: "member" },
 ];
-
-const MERGE_VARS = ["{{firstName}}", "{{name}}", "{{email}}"];
 
 export default function SpaceComposeCampaignPage() {
   const spaceId = useSpaceId();
@@ -190,8 +188,6 @@ export default function SpaceComposeCampaignPage() {
     body.trim().length > 0 &&
     (!targetDef.needs || Boolean(targetId));
 
-  const insertVar = (token: string) => setBody((b) => `${b}${token}`);
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -313,28 +309,8 @@ export default function SpaceComposeCampaignPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="body">Body (HTML)</Label>
-                <Textarea
-                  id="body"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  rows={14}
-                  placeholder="<p>Hi {{firstName}}, …</p>"
-                  className="font-mono text-xs"
-                />
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-xs text-muted-foreground">Insert:</span>
-                  {MERGE_VARS.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => insertVar(v)}
-                      className="rounded-md border border-border bg-muted px-2 py-0.5 font-mono text-xs text-foreground transition-colors hover:border-border-strong hover:bg-secondary"
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
+                <Label htmlFor="body">Body</Label>
+                <EmailBodyEditor id="body" value={body} onChange={setBody} />
               </div>
 
               <Button variant="outline" onClick={doPreview} disabled={!body.trim()}>
@@ -486,6 +462,7 @@ export default function SpaceComposeCampaignPage() {
           </DialogHeader>
           <iframe
             title="Email preview"
+            sandbox=""
             srcDoc={preview ?? ""}
             className="h-[60vh] w-full rounded-md border border-border bg-white"
           />
