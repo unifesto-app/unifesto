@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Broadcast, Coffee, Gavel, Hourglass, LockOpen, UsersFour, WifiSlash } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { AppAlert } from '../components/ui/AppAlert';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -32,6 +32,9 @@ const GUTTER = spacing[6];
 const ICON = 26;
 
 const teamLabel = (t: QueueTeam | null) => (t ? `${t.teamCode ?? '—'}  ${t.name}` : 'Team');
+
+/** One titled card of rows. Rows are built up front (cheap) and only mounted when scrolled near. */
+type Group = { key: string; title: string; action?: { label: string; onPress: () => void }; data: { key: string; row: React.ReactElement }[] };
 
 /**
  * The curator's live view of every judge's and panel's queue: who's in a slot
@@ -151,36 +154,93 @@ export default function HackathonQueuesScreen() {
     r.roundActive ? r.judgments.filter((j) => j.locked).map((j) => ({ ...j, team: r.team, roundName: r.roundName })) : [],
   );
 
-  const queueGroup = (q: MonitorQueue) => (
-    <SettingsGroup
-      key={`${q.kind}:${q.id}`}
-      title={`${q.name}${q.role === 'MENTOR' ? ' (mentor)' : ''}${q.location ? ` · ${q.location}` : ''}`}
-      action={{ label: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) }}
-    >
-      {!q.isAvailable ? <SettingsRow icon={<Coffee size={ICON} color={tokens.textMuted} />} label="On a break" /> : null}
-      {q.current ? (
-        <SettingsRow
-          icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? tokens.warning : tokens.success} weight="fill" />}
-          label={teamLabel(q.current.team)}
-          value={evalStatusLabel(q.current.status)}
-          trailing={q.current.status === 'IN_PROGRESS' ? <SlotTimer until={q.current.slotEndsAt} label="" doneLabel="Time’s up" /> : undefined}
-          onPress={() => slotActions(q)}
-        />
-      ) : null}
-      {q.waiting.map((w) => (
-        <SettingsRow
-          key={w.requestId}
-          icon={<Hourglass size={ICON} color={tokens.textMuted} />}
-          label={`${w.position}. ${teamLabel(w.team)}`}
-          value={w.roundName ?? undefined}
-          onPress={() => waitingActions(q, w.requestId, w.team)}
-        />
-      ))}
-    </SettingsGroup>
-  );
+  const queueGroup = (q: MonitorQueue): Group => ({
+    key: `${q.kind}:${q.id}`,
+    title: `${q.name}${q.role === 'MENTOR' ? ' (mentor)' : ''}${q.location ? ` · ${q.location}` : ''}`,
+    action: { label: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) },
+    data: [
+      ...(!q.isAvailable
+        ? [{ key: 'break', row: <SettingsRow icon={<Coffee size={ICON} color={tokens.textMuted} />} label="On a break" /> }]
+        : []),
+      ...(q.current
+        ? [
+            {
+              key: 'current',
+              row: (
+                <SettingsRow
+                  icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? tokens.warning : tokens.success} weight="fill" />}
+                  label={teamLabel(q.current.team)}
+                  value={evalStatusLabel(q.current.status)}
+                  trailing={q.current.status === 'IN_PROGRESS' ? <SlotTimer until={q.current.slotEndsAt} label="" doneLabel="Time’s up" /> : undefined}
+                  onPress={() => slotActions(q)}
+                />
+              ),
+            },
+          ]
+        : []),
+      ...q.waiting.map((w) => ({
+        key: w.requestId,
+        row: (
+          <SettingsRow
+            icon={<Hourglass size={ICON} color={tokens.textMuted} />}
+            label={`${w.position}. ${teamLabel(w.team)}`}
+            value={w.roundName ?? undefined}
+            onPress={() => waitingActions(q, w.requestId, w.team)}
+          />
+        ),
+      })),
+    ],
+  });
+
+  const groups: Group[] = active.map(queueGroup);
+  if (reopenable.length) {
+    groups.push({
+      key: 'reopen',
+      title: 'Locked marks you can reopen',
+      data: reopenable.slice(0, 15).map((j) => ({
+        key: j.id,
+        row: (
+          <SettingsRow
+            icon={<LockOpen size={ICON} color={tokens.text} />}
+            label={`${teamLabel(j.team)}`}
+            value={j.judgeName}
+            onPress={() => reopen(j.id, j.judgeName, j.team)}
+          />
+        ),
+      })),
+    });
+  }
+  if (idle.length) {
+    groups.push({
+      key: 'idle',
+      title: 'Free',
+      data: idle.map((q) => ({
+        key: `${q.kind}:${q.id}`,
+        row: (
+          <SettingsRow
+            icon={
+              q.isAvailable ? (
+                q.kind === 'PANEL' ? <UsersFour size={ICON} color={tokens.text} /> : <Gavel size={ICON} color={tokens.text} />
+              ) : (
+                <Coffee size={ICON} color={tokens.textMuted} weight="fill" />
+              )
+            }
+            label={q.name}
+            value={q.isAvailable ? 'Free' : 'On a break'}
+            onPress={() =>
+              AppAlert.alert(q.name, q.isAvailable ? 'Pause them so teams can’t join their queue?' : 'Let teams join their queue again?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) },
+              ])
+            }
+          />
+        ),
+      })),
+    });
+  }
 
   return (
-    <ScrollView
+    <SectionList
       style={{ backgroundColor: tokens.bg }}
       contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
       refreshControl={
@@ -196,62 +256,35 @@ export default function HackathonQueuesScreen() {
           progressViewOffset={topSpacing}
         />
       }
-    >
-      <View style={styles.liveRow}>
-        {live ? <Broadcast size={16} color={tokens.success} weight="fill" /> : <WifiSlash size={16} color={tokens.textMuted} />}
-        <Text style={[styles.note, { color: live ? tokens.success : tokens.textMuted, marginTop: 0 }]}>
-          {live ? 'Live' : 'Refreshing every 10 seconds'}
-          {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
+      sections={groups}
+      keyExtractor={(item) => item.key}
+      stickySectionHeadersEnabled={false}
+      ListHeaderComponent={
+        <>
+          <View style={styles.liveRow}>
+            {live ? <Broadcast size={16} color={tokens.success} weight="fill" /> : <WifiSlash size={16} color={tokens.textMuted} />}
+            <Text style={[styles.note, { color: live ? tokens.success : tokens.textMuted, marginTop: 0 }]}>
+              {live ? 'Live' : 'Refreshing every 10 seconds'}
+              {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
+            </Text>
+          </View>
+          {!active.length ? (
+            <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[5] }]}>Nobody is in a queue right now.</Text>
+          ) : null}
+        </>
+      }
+      renderSectionHeader={({ section }) => <SettingsGroupHeader title={section.title} action={section.action} />}
+      renderItem={({ item, index, section }) => (
+        <GroupCell index={index} count={section.data.length}>
+          {item.row}
+        </GroupCell>
+      )}
+      ListFooterComponent={
+        <Text style={[styles.note, { color: tokens.textMuted }]}>
+          Marks lock 5 minutes after a judge submits. Reopening gives them 5 more minutes; you never change marks yourself.
         </Text>
-      </View>
-
-      {active.map(queueGroup)}
-      {!active.length ? (
-        <Text style={[styles.note, { color: tokens.textMuted, marginTop: spacing[5] }]}>Nobody is in a queue right now.</Text>
-      ) : null}
-
-      {reopenable.length ? (
-        <SettingsGroup title="Locked marks you can reopen">
-          {reopenable.slice(0, 15).map((j) => (
-            <SettingsRow
-              key={j.id}
-              icon={<LockOpen size={ICON} color={tokens.text} />}
-              label={`${teamLabel(j.team)}`}
-              value={j.judgeName}
-              onPress={() => reopen(j.id, j.judgeName, j.team)}
-            />
-          ))}
-        </SettingsGroup>
-      ) : null}
-
-      {idle.length ? (
-        <SettingsGroup title="Free">
-          {idle.map((q) => (
-            <SettingsRow
-              key={`${q.kind}:${q.id}`}
-              icon={
-                q.isAvailable ? (
-                  q.kind === 'PANEL' ? <UsersFour size={ICON} color={tokens.text} /> : <Gavel size={ICON} color={tokens.text} />
-                ) : (
-                  <Coffee size={ICON} color={tokens.textMuted} weight="fill" />
-                )
-              }
-              label={q.name}
-              value={q.isAvailable ? 'Free' : 'On a break'}
-              onPress={() =>
-                AppAlert.alert(q.name, q.isAvailable ? 'Pause them so teams can’t join their queue?' : 'Let teams join their queue again?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  { text: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) },
-                ])
-              }
-            />
-          ))}
-        </SettingsGroup>
-      ) : null}
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
-        Marks lock 5 minutes after a judge submits. Reopening gives them 5 more minutes; you never change marks yourself.
-      </Text>
-    </ScrollView>
+      }
+    />
   );
 }
 

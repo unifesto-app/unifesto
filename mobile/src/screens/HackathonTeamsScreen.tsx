@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { DownloadSimple, MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
@@ -7,7 +7,7 @@ import { CardBackdrop } from '../components/ui/CardSurface';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui';
 import ChipPicker from '../components/manage/ChipPicker';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { runImportTeams } from '../components/hackathon/importTeamsFlow';
 import { useTokens } from '../context/ThemeContext';
@@ -76,6 +76,8 @@ export default function HackathonTeamsScreen() {
     });
   }, [teams, query, filter]);
 
+  const openTeam = useCallback((id: string) => router.push(`/manage/event/${eventId}/hackathon/team/${id}`), [router, eventId]);
+
   const startImport = () => overview && runImportTeams(eventId!, overview, () => void load());
 
   if (!teams) {
@@ -100,7 +102,7 @@ export default function HackathonTeamsScreen() {
             ) : null,
         }}
       />
-      <ScrollView
+      <FlatList
         style={{ backgroundColor: tokens.bg }}
         contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
         keyboardShouldPersistTaps="handled"
@@ -118,58 +120,73 @@ export default function HackathonTeamsScreen() {
             progressViewOffset={topSpacing}
           />
         }
-      >
-        {teams.length === 0 ? (
-          <View style={{ marginTop: spacing[10], alignItems: 'center' }}>
-            <Text style={[styles.empty, { color: tokens.text }]}>No teams yet</Text>
-            <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
-              Import your confirmed group registrations. Each becomes a team with its own Team ID.
-            </Text>
-            <Button label="Import teams" onPress={startImport} disabled={!overview} style={{ marginTop: spacing[5] }} />
-          </View>
-        ) : (
-          <>
-            <View style={styles.search}>
-              <CardBackdrop shape={styles.search} />
-              <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Team ID, team or lead name"
-                placeholderTextColor={tokens.textMuted}
-                selectionColor={tokens.accent}
-                autoCorrect={false}
-                autoCapitalize="none"
-                style={[styles.searchInput, { color: tokens.text }]}
-              />
-            </View>
-            <View style={{ marginTop: spacing[4] }}>
-              <ChipPicker options={FILTERS} value={filter} onChange={(v) => setFilter((v || 'all') as Filter)} />
-            </View>
-
-            <SettingsGroup title={`${shown.length} of ${teams.length}`} plain>
-              {shown.length === 0 ? <SettingsRow label="No teams match" /> : null}
-              {shown.map((t) => (
-                <SettingsRow
-                  key={t.id}
-                  label={`${t.teamCode ?? '—'}  ${t.name}`}
-                  value={
-                    t.stage === 'CANCELLED'
-                      ? undefined
-                      : `${t.statement ? t.statement.code ?? 'Own PS' : 'No PS'} · ${t.room?.name ?? 'No room'} · ${joinedLabel(t.joinedCount, t.groupSize)}`
-                  }
-                  trailing={t.stage === 'CANCELLED' ? <Badge label="Cancelled" tone="danger" /> : undefined}
-                  onPress={() => router.push(`/manage/event/${eventId}/hackathon/team/${t.id}`)}
+        data={shown}
+        keyExtractor={(t) => t.id}
+        ListHeaderComponent={
+          teams.length === 0 ? null : (
+            <>
+              <View style={styles.search}>
+                <CardBackdrop shape={styles.search} />
+                <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
+                <TextInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Team ID, team or lead name"
+                  placeholderTextColor={tokens.textMuted}
+                  selectionColor={tokens.accent}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  style={[styles.searchInput, { color: tokens.text }]}
                 />
-              ))}
-            </SettingsGroup>
-          </>
+              </View>
+              <View style={{ marginTop: spacing[4] }}>
+                <ChipPicker options={FILTERS} value={filter} onChange={(v) => setFilter((v || 'all') as Filter)} />
+              </View>
+
+              <SettingsGroupHeader title={`${shown.length} of ${teams.length}`} />
+            </>
+          )
+        }
+        ListEmptyComponent={
+          teams.length === 0 ? (
+            <View style={{ marginTop: spacing[10], alignItems: 'center' }}>
+              <Text style={[styles.empty, { color: tokens.text }]}>No teams yet</Text>
+              <Text style={[styles.note, { color: tokens.textMuted, textAlign: 'center' }]}>
+                Import your confirmed group registrations. Each becomes a team with its own Team ID.
+              </Text>
+              <Button label="Import teams" onPress={startImport} disabled={!overview} style={{ marginTop: spacing[5] }} />
+            </View>
+          ) : (
+            <GroupCell index={0} count={1} plain>
+              <SettingsRow label="No teams match" />
+            </GroupCell>
+          )
+        }
+        renderItem={({ item, index }) => (
+          <GroupCell index={index} count={shown.length} plain>
+            <TeamItem t={item} onOpen={openTeam} />
+          </GroupCell>
         )}
-        {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
-      </ScrollView>
+        ListFooterComponent={error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+      />
     </>
   );
 }
+
+const TeamItem = React.memo(function TeamItem({ t, onOpen }: { t: TeamRow; onOpen: (id: string) => void }) {
+  return (
+    <SettingsRow
+      label={`${t.teamCode ?? '—'}  ${t.name}`}
+      value={
+        t.stage === 'CANCELLED'
+          ? undefined
+          : `${t.statement ? t.statement.code ?? 'Own PS' : 'No PS'} · ${t.room?.name ?? 'No room'} · ${joinedLabel(t.joinedCount, t.groupSize)}`
+      }
+      trailing={t.stage === 'CANCELLED' ? <Badge label="Cancelled" tone="danger" /> : undefined}
+      onPress={() => onOpen(t.id)}
+    />
+  );
+});
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },

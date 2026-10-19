@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams } from 'expo-router';
 import { useTokens } from '../context/ThemeContext';
@@ -17,7 +17,7 @@ import {
 } from '../lib/api/waitlist';
 import type { Result } from '../lib/api/manageEvent';
 import ChipPicker from '../components/manage/ChipPicker';
-import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -37,6 +37,8 @@ const VIEWS: { value: View_; label: string }[] = [
 
 const since = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
+
+const nameOf = (e: WaitlistEntry) => e.user.fullName || e.user.username || 'They';
 
 /**
  * The waiting list per ticket: let the next few in, let a specific person in,
@@ -75,36 +77,43 @@ export default function WaitlistScreen() {
   }, [load]);
 
   /** Run one write, report the outcome, reload. */
-  const act = async <T,>(key: string, fn: () => Promise<Result<T>>, done: (data: T) => string) => {
-    setBusy(key);
-    const res = await fn();
-    setBusy(null);
-    if (!res.ok) {
-      AppAlert.alert("Couldn't do that", res.message);
-      return;
-    }
-    AppAlert.alert(done(res.data));
-    await load();
-  };
+  const act = useCallback(
+    async <T,>(key: string, fn: () => Promise<Result<T>>, done: (data: T) => string) => {
+      setBusy(key);
+      const res = await fn();
+      setBusy(null);
+      if (!res.ok) {
+        AppAlert.alert("Couldn't do that", res.message);
+        return;
+      }
+      AppAlert.alert(done(res.data));
+      await load();
+    },
+    [load],
+  );
 
-  const nameOf = (e: WaitlistEntry) => e.user.fullName || e.user.username || 'They';
+  const allow = useCallback(
+    (e: WaitlistEntry) =>
+      void act(e.registrationId, () => letIn(eventId!, e.registrationId), (d) =>
+        d.needsPayment
+          ? `${nameOf(e)} is let in. Their seat is held until they pay ₹${d.amountDue ?? ''}. Revoke it if they never do.`
+          : `${nameOf(e)} is confirmed. The ticket is free, so there was nothing to pay.`,
+      ),
+    [act, eventId],
+  );
 
-  const allow = (e: WaitlistEntry) =>
-    void act(e.registrationId, () => letIn(eventId!, e.registrationId), (d) =>
-      d.needsPayment
-        ? `${nameOf(e)} is let in. Their seat is held until they pay ₹${d.amountDue ?? ''}. Revoke it if they never do.`
-        : `${nameOf(e)} is confirmed. The ticket is free, so there was nothing to pay.`,
-    );
-
-  const revoke = (e: WaitlistEntry) =>
-    AppAlert.alert(`Revoke the offer for ${nameOf(e)}?`, 'Their held seat goes back to the pool. This cannot be undone.', [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Revoke',
-        style: 'destructive',
-        onPress: () => void act(e.registrationId, () => revokeOffer(eventId!, e.registrationId), () => 'Offer revoked. The seat is free again.'),
-      },
-    ]);
+  const revoke = useCallback(
+    (e: WaitlistEntry) =>
+      AppAlert.alert(`Revoke the offer for ${nameOf(e)}?`, 'Their held seat goes back to the pool. This cannot be undone.', [
+        { text: 'Keep', style: 'cancel' },
+        {
+          text: 'Revoke',
+          style: 'destructive',
+          onPress: () => void act(e.registrationId, () => revokeOffer(eventId!, e.registrationId), () => 'Offer revoked. The seat is free again.'),
+        },
+      ]),
+    [act, eventId],
+  );
 
   const next = (row: WaitlistSummaryRow) => {
     const options = [1, 5, 10].filter((n) => n <= Math.max(1, row.waiting));
@@ -132,25 +141,8 @@ export default function WaitlistScreen() {
 
   const enabled = summary.filter((s) => s.waitlistEnabled);
 
-  return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
+  const header = (
+    <>
       {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
 
       {enabled.length === 0 ? (
@@ -198,46 +190,85 @@ export default function WaitlistScreen() {
         </View>
       ) : null}
 
-      <SettingsGroup>
-        {entries.length === 0 ? <SettingsRow label="Nobody here" /> : null}
-        {entries.map((e) => {
-          const offered = e.waitlistStatus === 'OFFERED';
-          const waiting = e.waitlistStatus === 'WAITING';
-          return (
-            <View key={e.registrationId} style={styles.entry}>
-              <Text style={[styles.pos, { color: tokens.textMuted }]}>{waiting ? `#${e.position}` : ''}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
-                  {nameOf(e)}
-                </Text>
-                <Text style={[styles.cardSub, { color: offered ? tokens.warning : tokens.textMuted }]} numberOfLines={1}>
-                  {[
-                    e.ticketType?.name,
-                    e.seats > 1 ? `${e.seats} seats` : '',
-                    offered ? `offered ${since(e.offeredAt)}${e.amountDue ? `, owes ₹${e.amountDue}` : ''}` : `joined ${since(e.joinedAt)}`,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </View>
-              {busy === e.registrationId ? (
-                <ActivityIndicator size="small" color={tokens.accent} />
-              ) : waiting ? (
-                <Pressable onPress={() => allow(e)} hitSlop={8}>
-                  <Text style={[styles.link, { color: tokens.accent }]}>Let in</Text>
-                </Pressable>
-              ) : offered ? (
-                <Pressable onPress={() => revoke(e)} hitSlop={8}>
-                  <Text style={[styles.link, { color: tokens.danger }]}>Revoke</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          );
-        })}
-      </SettingsGroup>
-    </ScrollView>
+      <SettingsGroupHeader />
+    </>
+  );
+
+  return (
+    <FlatList
+      style={{ backgroundColor: tokens.bg }}
+      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={async () => {
+            setRefreshing(true);
+            await load();
+            setRefreshing(false);
+          }}
+          tintColor={tokens.accent}
+          colors={[tokens.accent]}
+          progressViewOffset={topSpacing}
+        />
+      }
+      data={entries}
+      keyExtractor={(e) => e.registrationId}
+      ListHeaderComponent={header}
+      ListEmptyComponent={
+        <GroupCell index={0} count={1}>
+          <SettingsRow label="Nobody here" />
+        </GroupCell>
+      }
+      renderItem={({ item, index }) => (
+        <GroupCell index={index} count={entries.length}>
+          <EntryRow e={item} busy={busy === item.registrationId} onAllow={allow} onRevoke={revoke} />
+        </GroupCell>
+      )}
+    />
   );
 }
+
+const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
+  e: WaitlistEntry;
+  busy: boolean;
+  onAllow: (e: WaitlistEntry) => void;
+  onRevoke: (e: WaitlistEntry) => void;
+}) {
+  const tokens = useTokens();
+  const offered = e.waitlistStatus === 'OFFERED';
+  const waiting = e.waitlistStatus === 'WAITING';
+  return (
+    <View style={styles.entry}>
+      <Text style={[styles.pos, { color: tokens.textMuted }]}>{waiting ? `#${e.position}` : ''}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+          {nameOf(e)}
+        </Text>
+        <Text style={[styles.cardSub, { color: offered ? tokens.warning : tokens.textMuted }]} numberOfLines={1}>
+          {[
+            e.ticketType?.name,
+            e.seats > 1 ? `${e.seats} seats` : '',
+            offered ? `offered ${since(e.offeredAt)}${e.amountDue ? `, owes ₹${e.amountDue}` : ''}` : `joined ${since(e.joinedAt)}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </Text>
+      </View>
+      {busy ? (
+        <ActivityIndicator size="small" color={tokens.accent} />
+      ) : waiting ? (
+        <Pressable onPress={() => onAllow(e)} hitSlop={8}>
+          <Text style={[styles.link, { color: tokens.accent }]}>Let in</Text>
+        </Pressable>
+      ) : offered ? (
+        <Pressable onPress={() => onRevoke(e)} hitSlop={8}>
+          <Text style={[styles.link, { color: tokens.danger }]}>Revoke</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
