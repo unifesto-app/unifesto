@@ -5,6 +5,7 @@
  */
 
 import { makeAuthenticatedRequest } from './helpers';
+import { expectOk } from './errors';
 import { isOnline } from '../offline/connectivity';
 
 /**
@@ -192,6 +193,29 @@ export async function manualCheckin(
   return response.json();
 }
 
+/**
+ * Undo a mistaken check-in at a point (audited server-side). `memberIndex` is
+ * the group member (0-based, seat - 1); omit it for an individual ticket.
+ * Same permission as checking in at that point. POST /checkin/undo
+ */
+export async function undoCheckin(
+  registrationId: string,
+  checkinTypeId: string,
+  memberIndex?: number | null,
+  reason?: string,
+): Promise<void> {
+  const response = await makeAuthenticatedRequest('/checkin/undo', {
+    method: 'POST',
+    body: JSON.stringify({
+      registrationId,
+      checkinTypeId,
+      ...(memberIndex != null ? { memberIndex } : {}),
+      ...(reason ? { reason } : {}),
+    }),
+  });
+  await expectOk(response, "Couldn't undo the check-in");
+}
+
 /** Search attendees for manual check-in. GET /checkin/event/:id/search */
 export async function searchAttendees(
   eventId: string,
@@ -258,6 +282,10 @@ export async function getRegistrationCheckins(
 
 export interface RecentCheckin {
   id: string;
+  registrationId: string;
+  /** Group member (0-based) this row is; null for an individual ticket. */
+  memberIndex: number | null;
+  checkinTypeId?: string;
   attendeeName: string;
   checkedInAt: string;
   /** Name of the organiser/staff who performed the check-in (not their id). */
@@ -286,6 +314,9 @@ export async function getRecentCheckins(
   const rows: any[] = await response.json();
   return rows.map((r) => ({
     id: r.id,
+    registrationId: r.registrationId,
+    memberIndex: r.memberIndex ?? null,
+    checkinTypeId: r.checkinType?.id,
     attendeeName: r.name || 'Attendee',
     checkedInAt: r.checkedInAt,
     checkedBy: r.checkedBy || '',

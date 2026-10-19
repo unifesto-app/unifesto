@@ -12,6 +12,8 @@ export type ScanFeedback = {
   title: string;
   name?: string;
   detail?: string;
+  /** Reverses this check-in; the card shows an Undo button while it's up. */
+  undo?: () => void;
 };
 
 // Fixed colours: this card sits on the camera, which stays dark in both themes.
@@ -28,7 +30,15 @@ const TONE = {
  * The scan verdict, slid up over the bottom of the camera. The attendee's
  * name is the largest text: that's what door staff read out loud.
  */
-export default function ScanResultCard({ feedback, onDismiss }: { feedback: ScanFeedback; onDismiss: () => void }) {
+export default function ScanResultCard({
+  feedback,
+  onDismiss,
+  onUndo,
+}: {
+  feedback: ScanFeedback;
+  onDismiss: () => void;
+  onUndo?: () => void;
+}) {
   const { fg, Icon } = TONE[feedback.kind];
   return (
     // Slides, never fades: opacity < 1 on the card breaks Liquid Glass.
@@ -49,6 +59,17 @@ export default function ScanResultCard({ feedback, onDismiss }: { feedback: Scan
             </Text>
           ) : null}
         </View>
+        {onUndo ? (
+          <Pressable
+            onPress={onUndo}
+            accessibilityRole="button"
+            accessibilityLabel="Undo this check-in"
+            hitSlop={8}
+            style={({ pressed }) => [styles.undo, { transform: [{ scale: pressed ? 0.95 : 1 }] }]}
+          >
+            <Text style={styles.undoText}>Undo</Text>
+          </Pressable>
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -64,5 +85,13 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: typography.fontSize.sm, ...font('semibold') },
   name: { fontSize: typography.fontSize.xl, color: '#ffffff', ...font('heading') },
+  undo: {
+    height: 36,
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.full,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+  },
+  undoText: { fontSize: typography.fontSize.sm, color: '#ffffff', ...font('semibold') },
   detail: { fontSize: typography.fontSize.sm, color: 'rgba(255, 255, 255, 0.65)', ...font() },
 });

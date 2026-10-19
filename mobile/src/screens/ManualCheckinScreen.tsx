@@ -3,11 +3,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useLocalSearchParams } from 'expo-router';
 import { MagnifyingGlass, UserFocus, XCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
-import { CheckinNetworkError, manualCheckin, searchAttendees, type AttendeeSearchResult } from '../lib/api/checkin';
+import { CheckinNetworkError, manualCheckin, searchAttendees, undoCheckin, type AttendeeSearchResult } from '../lib/api/checkin';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';
-import { isOnline } from '../lib/offline/connectivity';
-import { enqueueCheckin, findEntry, offlineSearch, recordLiveCheckin } from '../lib/offline/checkinQueue';
+import { isOnline, useIsOffline } from '../lib/offline/connectivity';
+import { enqueueCheckin, findEntry, offlineSearch, pullChanges, recordLiveCheckin } from '../lib/offline/checkinQueue';
 import useTopSpacing from '../hooks/useTopSpacing';
 import PersonRow from '../components/checkin/PersonRow';
 import PointChips from '../components/checkin/PointChips';
@@ -33,6 +33,7 @@ export default function ManualCheckinScreen() {
   const { points, loading: pointsLoading } = useCheckinEvent(eventId);
   const offline = useOfflineCheckin(eventId);
   const store = offline.store;
+  const isOffline = useIsOffline();
 
   const [pointId, setPointId] = useState(checkinTypeId ?? '');
   const [query, setQuery] = useState('');
@@ -135,6 +136,34 @@ export default function ManualCheckinScreen() {
     [busyId, pointId, store],
   );
 
+  const undo = useCallback(
+    (r: AttendeeSearchResult) => {
+      if (busyId || !pointId) return;
+      const name = attendeeName(r.attendee);
+      AppAlert.alert(`Undo ${name}'s check-in?`, 'They can be checked in again afterwards.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Undo check-in',
+          style: 'destructive',
+          onPress: async () => {
+            const key = rowKey(r);
+            setBusyId(key);
+            try {
+              await undoCheckin(r.registrationId, pointId, r.memberIndex);
+              setResults((prev) => prev.map((x) => (rowKey(x) === key ? { ...x, checkedInAtPoint: null } : x)));
+              if (store) void pullChanges(store);
+            } catch (e) {
+              AppAlert.alert("Couldn't undo", e instanceof Error ? e.message : 'Please try again.');
+            } finally {
+              setBusyId(null);
+            }
+          },
+        },
+      ]);
+    },
+    [busyId, pointId, store],
+  );
+
   const q = query.trim();
   const noPoint = !pointsLoading && points.length === 0;
 
@@ -210,6 +239,11 @@ export default function ManualCheckinScreen() {
                   state: item.checkedInAtPoint ? 'done' : busyId === rowKey(item) ? 'busy' : 'idle',
                   onPress: () => void checkIn(item),
                 }}
+                undo={
+                  item.checkedInAtPoint && !isOffline
+                    ? { busy: busyId === rowKey(item), onPress: () => undo(item) }
+                    : undefined
+                }
               />
               {i < results.length - 1 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
             </View>
