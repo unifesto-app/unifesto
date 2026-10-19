@@ -39,6 +39,7 @@
     "@react-native-google-signin/google-signin": "^16.1.5",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-menu/menu": "^2.0.0",
+    "@sentry/react-native": "~7.11.0",
     "@unifesto/unicon": "^2.1.0",
     "expo": "~57.0.28",
     "expo-alternate-app-icons": "^8.0.0",
