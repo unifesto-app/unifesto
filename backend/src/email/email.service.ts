@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { randomUUID } from 'crypto';
 import { MessageChannel } from '@prisma/client';
 import { buildEventIcs, IcsEventInput } from '../events/calendar/ics.util';
@@ -19,7 +19,7 @@ import {
   resolveEmailSender,
   resolveEventBranding,
 } from '../white-label/branding.util';
-import { layout, WEB, type EmailBrand } from './layout';
+import { layout, SUPPORT, WEB, type EmailBrand } from './layout';
 import * as T from './templates';
 import {
   AWS_HTTP_TIMEOUTS,
@@ -31,6 +31,8 @@ interface CustomCampaignData {
   subject: string;
   html: string;
   campaignId: string;
+  /** Marketing mail: sent with List-Unsubscribe + one-click headers. */
+  unsubscribeUrl?: string;
 }
 
 type Attachment = { filename: string; content: Buffer };
@@ -544,7 +546,13 @@ export class EmailService {
         'ses',
         data.to,
         data.subject,
-        () => this.sendViaSES(data.to, data.subject, data.html),
+        () =>
+          data.unsubscribeUrl && typeof data.to === 'string'
+            ? this.sendBulkWithHeaders(data.to, data.subject, data.html, {
+                'List-Unsubscribe': `<${data.unsubscribeUrl}>, <mailto:${SUPPORT}?subject=Unsubscribe>`,
+                'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+              })
+            : this.sendViaSES(data.to, data.subject, data.html),
         { kind: 'campaign' },
       );
       return { messageId: res.id, ...(res.error ? { error: res.error } : {}) };
@@ -554,8 +562,68 @@ export class EmailService {
     }
   }
 
-  /** Wrap an operator-authored campaign body in the branded shell. */
-  wrapCampaignHtml(content: string): string {
-    return layout(content);
+  /**
+   * SES bulk send with extra headers (List-Unsubscribe needs them, and
+   * SendEmail can't carry any), as a raw MIME message. Never throws; callers
+   * log it through `track` like any other SES send.
+   */
+  async sendBulkWithHeaders(
+    to: string,
+    subject: string,
+    html: string,
+    headers: Record<string, string>,
+  ): Promise<AttemptResult> {
+    const line = (v: string) => v.replace(/[\r\n]+/g, ' ');
+    const b64 = (v: string) => Buffer.from(v, 'utf8').toString('base64');
+    const mime = [
+      `From: ${encodeWords(this.fromBulk.replace(/\s*<[^>]*>$/, ''))} <${this.bulkAddress}>`,
+      `To: ${line(to)}`,
+      `Subject: ${encodeWords(line(subject))}`,
+      'MIME-Version: 1.0',
+      ...Object.entries(headers).map(([k, v]) => `${k}: ${line(v)}`),
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      b64(html).replace(/.{76}/g, '$&\r\n'),
+    ].join('\r\n');
+    try {
+      const result = await this.sesClient.send(
+        new SendRawEmailCommand({
+          Source: this.fromBulk,
+          Destinations: [to],
+          RawMessage: { Data: Buffer.from(mime) },
+        }),
+      );
+      return { id: result.MessageId || null, error: result.MessageId ? undefined : 'no_message_id' };
+    } catch (error) {
+      this.logger.error(`SES raw error: ${error.message}`);
+      return { id: null, error: error.message };
+    }
   }
+
+  /** Wrap an operator-authored campaign body in the branded shell. */
+  wrapCampaignHtml(content: string, unsubscribeUrl?: string): string {
+    return layout(content, '', null, unsubscribeUrl);
+  }
+}
+
+/**
+ * A header value as RFC 2047 encoded-words: plain printable ASCII goes as is;
+ * anything else becomes =?UTF-8?B?...?= words of at most 45 input bytes each
+ * (60 base64 chars, under the 75-char word limit), folded onto new lines.
+ * Chunks split on code points, so a character is never cut in half.
+ */
+export function encodeWords(text: string): string {
+  if (/^[\x20-\x7e]*$/.test(text)) return text;
+  const words: string[] = [];
+  let chunk = '';
+  for (const ch of text) {
+    if (Buffer.byteLength(chunk + ch) > 45) {
+      words.push(chunk);
+      chunk = '';
+    }
+    chunk += ch;
+  }
+  if (chunk) words.push(chunk);
+  return words.map((w) => `=?UTF-8?B?${Buffer.from(w).toString('base64')}?=`).join('\r\n ');
 }

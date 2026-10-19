@@ -1,6 +1,7 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { EmailTargetType } from '@prisma/client';
 import { EmailCampaignsService } from './email-campaigns.service';
+import { COUNTS_AS_ATTENDING } from '../common/attendance';
 
 /**
  * Unit tests for the campaign engine's POLICY + pure logic — no real DB or SES.
@@ -216,6 +217,7 @@ describe('EmailCampaignsService', () => {
       },
       user: { findMany: jest.fn().mockResolvedValue(users) },
       notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
+      marketingOptOut: { findMany: jest.fn().mockResolvedValue([]) },
     });
 
     beforeEach(() => {
@@ -295,6 +297,7 @@ describe('EmailCampaignsService', () => {
             .mockResolvedValue([user('u1', 'a@x.com'), user('u2', null), user('u3', 'c@x.com')]),
         },
         notificationSettings: { findMany: jest.fn().mockResolvedValue([{ userId: 'u3' }]) },
+        marketingOptOut: { findMany: jest.fn().mockResolvedValue([]) },
       };
       await expect(
         build(prisma).countAudience(
@@ -304,7 +307,7 @@ describe('EmailCampaignsService', () => {
       ).resolves.toEqual({ recipientCount: 1 });
       expect(prisma.eventRegistration.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ eventId: 'e1', status: { in: ['REGISTERED', 'ATTENDED'] } }),
+          where: { eventId: 'e1', ...COUNTS_AS_ATTENDING },
         }),
       );
     });
@@ -313,6 +316,7 @@ describe('EmailCampaignsService', () => {
       const prisma: any = {
         user: { findMany: jest.fn().mockResolvedValue([user('admin', 'a@x.com')]) },
         notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
+        marketingOptOut: { findMany: jest.fn().mockResolvedValue([]) },
       };
       await expect(build(prisma).countAudience({ spaceId: null }, { targetType: EmailTargetType.STAFF })).resolves.toEqual({
         recipientCount: 1,
@@ -342,6 +346,129 @@ describe('EmailCampaignsService', () => {
       expect(sent.subject).toBe('[Test] Hi User');
       expect(sent.html).toContain('User me');
       expect(sent.html).not.toContain('/email/track/');
+    });
+  });
+  describe('consent (withConsent): who may get marketing mail', () => {
+    const r = (userId: string, email = `${userId}@x.com`) => ({ userId, email, name: userId });
+    const prismaWith = (opts: { emailOff?: string[]; optOuts?: any[]; promotionsOn?: string[] }) => ({
+      notificationSettings: {
+        findMany: jest.fn(({ where }: any) =>
+          Promise.resolve(
+            (where.promotions ? opts.promotionsOn ?? [] : opts.emailOff ?? []).map((userId) => ({ userId })),
+          ),
+        ),
+      },
+      marketingOptOut: { findMany: jest.fn().mockResolvedValue(opts.optOuts ?? []) },
+    });
+    const allowed = async (prisma: any, campaign: any, list: any[]) =>
+      ((await (build(prisma) as any).withConsent(campaign, list)) as any[]).map((x) => x.userId);
+
+    it('drops global opt-outs by address (any case) or by account', async () => {
+      const prisma = prismaWith({
+        optOuts: [{ address: 'a@x.com', userId: null }, { address: 'old@x.com', userId: 'b' }],
+      });
+      const space = { spaceId: 's1', targetType: EmailTargetType.SPACE_MEMBERS };
+      expect(await allowed(prisma, space, [r('a', 'A@X.com'), r('b'), r('c')])).toEqual(['c']);
+    });
+
+    it('asks only for global and this space\'s opt-outs', async () => {
+      const prisma = prismaWith({});
+      await allowed(prisma, { spaceId: 's1', targetType: EmailTargetType.SPACE_MEMBERS }, [r('a')]);
+      expect(prisma.marketingOptOut.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { channel: 'EMAIL', OR: [{ spaceId: null }, { spaceId: 's1' }] },
+        }),
+      );
+    });
+
+    it('space campaigns skip the promotions opt-in; platform bulk mail needs it', async () => {
+      const prisma = prismaWith({ promotionsOn: ['b'], emailOff: ['c'] });
+      const list = [r('a'), r('b'), r('c')];
+      expect(
+        await allowed(prisma, { spaceId: 's1', targetType: EmailTargetType.SPACE_MEMBERS }, list),
+      ).toEqual(['a', 'b']);
+      expect(
+        await allowed(prisma, { spaceId: null, targetType: EmailTargetType.ALL_USERS }, list),
+      ).toEqual(['b']);
+      // A 1:1 platform email isn't bulk marketing.
+      expect(
+        await allowed(prisma, { spaceId: null, targetType: EmailTargetType.SINGLE_USER }, list),
+      ).toEqual(['a', 'b']);
+    });
+  });
+
+  describe('recipient queries', () => {
+    it('never mails closed or closing accounts', async () => {
+      const prisma: any = { user: { findMany: jest.fn().mockResolvedValue([]) } };
+      await (build(prisma) as any).getRecipients({ targetType: EmailTargetType.ALL_USERS });
+      expect(prisma.user.findMany.mock.calls[0][0].where).toEqual({
+        deletedAt: null,
+        deletionRequestedAt: null,
+      });
+    });
+
+    it('rejects a target that needs an id instead of widening to everyone', async () => {
+      const prisma: any = { user: { findMany: jest.fn() } };
+      await expect(
+        (build(prisma) as any).getRecipients({ targetType: EmailTargetType.SINGLE_USER, targetId: null }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.user.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('unsubscribe', () => {
+    it('puts a signed link in the footer and the headers, outside click tracking', async () => {
+      email.sendCustomCampaignEmail.mockReset().mockResolvedValue({ messageId: 'm' });
+      const wrap = jest.spyOn(email, 'wrapCampaignHtml');
+      const prisma: any = { emailCampaignLog: { create: jest.fn() } };
+      await (build(prisma) as any).sendBatch(
+        { id: 'c1', spaceId: 's1', subject: 'Hi', body: 'x', subjectB: null },
+        [{ email: 'a@x.com', userId: 'a' }],
+        ['A'],
+      );
+      const sent = email.sendCustomCampaignEmail.mock.calls[0][0];
+      expect(sent.unsubscribeUrl).toMatch(/^https:\/\/api\.test\/email\/unsubscribe\?t=/);
+      expect(wrap).toHaveBeenLastCalledWith(expect.any(String), sent.unsubscribeUrl);
+    });
+
+    it('a tampered token is rejected and records nothing', async () => {
+      const prisma: any = {
+        userIdentity: { findFirst: jest.fn() },
+        marketingOptOut: { findFirst: jest.fn(), create: jest.fn() },
+      };
+      const svc = build(prisma);
+      const t = new URL(svc.unsubscribeUrl('a@x.com', 's1')).searchParams.get('t')!;
+      const [, sig] = t.split('.');
+      const forged = `${Buffer.from('victim@x.com\ns1').toString('base64url')}.${sig}`;
+      await expect(svc.unsubscribe(forged, { everything: false, source: 'link' })).resolves.toBe(false);
+      await expect(svc.readUnsubscribeToken('garbage')).resolves.toBeNull();
+      expect(prisma.marketingOptOut.create).not.toHaveBeenCalled();
+    });
+
+    it('one-click opts out of the space only; "all" widens to every space', async () => {
+      const prisma: any = {
+        userIdentity: { findFirst: jest.fn().mockResolvedValue({ userId: 'u1' }) },
+        marketingOptOut: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+      };
+      const svc = build(prisma);
+      const t = new URL(svc.unsubscribeUrl('A@X.com', 's1')).searchParams.get('t')!;
+      await expect(svc.unsubscribe(t, { everything: false, source: 'one_click' })).resolves.toBe(true);
+      await svc.unsubscribe(t, { everything: true, source: 'link' });
+      expect(prisma.marketingOptOut.create.mock.calls.map(([a]: any) => a.data)).toEqual([
+        { channel: 'EMAIL', address: 'a@x.com', spaceId: 's1', userId: 'u1', source: 'one_click' },
+        { channel: 'EMAIL', address: 'a@x.com', spaceId: null, userId: 'u1', source: 'link' },
+      ]);
+    });
+
+    it('repeating an opt-out is a no-op', async () => {
+      const prisma: any = {
+        userIdentity: { findFirst: jest.fn().mockResolvedValue(null) },
+        marketingOptOut: { findFirst: jest.fn().mockResolvedValue({ id: 'x' }), create: jest.fn() },
+      };
+      const svc = build(prisma);
+      const t = new URL(svc.unsubscribeUrl('a@x.com', null)).searchParams.get('t')!;
+      await svc.unsubscribe(t, { everything: false, source: 'link' });
+      expect(prisma.marketingOptOut.create).not.toHaveBeenCalled();
     });
   });
 });
