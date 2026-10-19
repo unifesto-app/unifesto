@@ -105,7 +105,6 @@ rsync -az --delete \
   --exclude '/backend/coverage' \
   --exclude '/backend/.env.local' \
   --exclude '/backend/prisma/manual' \
-  --exclude '/backend/src/aws/examples' \
   "${HERE}/" "${SERVER}:${REMOTE_DIR}/"
 
 echo "==> Building images on the server"
