@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { StorageModule } from '../storage/storage.module';
 import { CertificatesModule } from '../certificates/certificates.module';
+import { AiModule } from '../ai/ai.module';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { ReportDataService } from './report-data.service';
@@ -16,7 +17,8 @@ import { ReportRenderService } from './report-render.service';
  */
 @Module({
   // CertificatesModule for its worker queue: report PDFs render in cert-worker.
-  imports: [AuthModule, StorageModule, CertificatesModule],
+  // AiModule for the M3 post-event summary.
+  imports: [AuthModule, StorageModule, CertificatesModule, AiModule],
   controllers: [ReportsController],
   providers: [ReportsService, ReportDataService, ReportRenderService],
   exports: [ReportsService],

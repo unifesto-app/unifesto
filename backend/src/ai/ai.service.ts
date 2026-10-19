@@ -16,6 +16,7 @@ export const AI_FEATURES = {
   bot: { maxTokens: 2048, dailyCapPerUser: 40 }, // D14
   desk: { maxTokens: 2048, dailyCapPerUser: 200 }, // D15
   event_draft: { maxTokens: 4096, dailyCapPerUser: 20 }, // M1
+  report_summary: { maxTokens: 1024, dailyCapPerUser: 20 }, // M3
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 

@@ -14,7 +14,7 @@ import {
   getMyRegistrationForEvent,
   getMyRegistrationsForEvent,
 } from '../lib/api/events';
-import { getEventAdditionalInfo, AgendaItem, Speaker, Prize, Faq, Contact } from '../lib/api/additional-info';
+import { eventSections, AgendaItem, Speaker, Prize, Faq, Contact } from '../lib/api/additional-info';
 import { getMySponsorOptIns, optInToSponsor, withdrawSponsorOptIn } from '../lib/api/sponsors';
 import { registerEventInterest } from '../lib/api/leads';
 import { getProfile } from '../lib/api/profile';
@@ -24,7 +24,7 @@ import { trackPageView } from '../services/pageViews';
 
 export const eventUrl = (e: Pick<Event, 'slug' | 'id'>) => `https://www.unifesto.app/event/${e.slug || e.id}`;
 
-export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'addTicket' | 'choose' | 'free' | 'paid';
+export type RegisterMode = 'umbrella' | 'signIn' | 'registered' | 'addTicket' | 'choose' | 'free' | 'paid' | 'soldOut' | 'notOpen' | 'closed';
 
 /**
  * Everything the event page needs: the event + tickets + additional-info
@@ -97,18 +97,22 @@ export function useEventDetail(eventId: string | undefined) {
             description: tt.description,
             price: parseFloat(tt.price) || 0,
             currency: tt.currency || 'INR',
-            quantity_available: tt.totalQuantity - tt.soldCount,
+            // null totalQuantity = unlimited.
+            quantity_available: tt.totalQuantity == null ? Infinity : tt.totalQuantity - tt.soldCount,
             quantity_sold: tt.soldCount,
             visibility: 'public',
             perUserLimit: tt.perUserLimit,
             // Ids of ticket types whose ownership blocks registering for this one.
             blockedByTicketTypeIds: (tt.blockedBy ?? []).map((b: any) => b.blockerId),
             waitlistEnabled: Boolean(tt.waitlistEnabled),
+            saleStartsAt: tt.saleStartsAt ?? null,
+            saleEndsAt: tt.saleEndsAt ?? null,
           })) as any,
         );
       }
 
-      const info = await getEventAdditionalInfo(eventData.id);
+      // The sections ride on the same /events/:id body; no second fetch.
+      const info = eventSections(eventData as any);
       setAgenda(info.agenda);
       setSpeakers(info.speakers);
       setPrizes(info.prizes);
@@ -116,11 +120,12 @@ export function useEventDetail(eventId: string | undefined) {
       setFaqs(info.faqs);
 
       if (user) {
-        const mine = await getMyRegistrationsForEvent(eventData.id);
+        const [mine, optIns] = await Promise.all([
+          getMyRegistrationsForEvent(eventData.id),
+          eventData.sponsors?.some((s) => s.leadCaptureEnabled) ? getMySponsorOptIns(eventData.id) : null,
+        ]);
         setOwnedTicketTypeIds(new Set(mine.map((r: any) => r.ticketTypeId).filter(Boolean)));
-        if (eventData.sponsors?.some((s) => s.leadCaptureEnabled)) {
-          setSponsorOptIns(new Set(await getMySponsorOptIns(eventData.id)));
-        }
+        if (optIns) setSponsorOptIns(new Set(optIns));
       }
     } catch (error) {
       if (__DEV__) console.error('Error loading event:', error);
@@ -163,7 +168,6 @@ export function useEventDetail(eventId: string | undefined) {
   // ── Derived state ─────────────────────────────────────────────────────────
   const isFree = tickets.length === 0 || tickets.every((t) => t.price === 0);
   const isOver = event?.status === 'COMPLETED' || event?.status === 'CANCELLED';
-  const hasSpots = event?.capacity ? event.capacity > 0 : true;
   const priceDisplay = formatEventPrice(tickets);
 
   // "Big event" mode: a parent with sub-events. With its own tickets it's a
@@ -181,15 +185,36 @@ export function useEventDetail(eventId: string | undefined) {
   );
   const registrationComplete = ownsAnyTicket && !canRegisterMore;
 
+  // Nothing left to buy: every ticket I could still take is sold out (no
+  // waiting list) or outside its sale window.
+  const now = Date.now();
+  const saleState = (t: any) =>
+    t.saleStartsAt && Date.parse(t.saleStartsAt) > now ? 'soon' : t.saleEndsAt && Date.parse(t.saleEndsAt) <= now ? 'ended' : 'open';
+  const takeable = tickets.filter(
+    (t: any) =>
+      !ownedTicketTypeIds.has(t.id) &&
+      !(t.blockedByTicketTypeIds ?? []).some((id: string) => ownedTicketTypeIds.has(id)),
+  );
+  const unavailable: 'soldOut' | 'notOpen' | 'closed' | null =
+    takeable.length === 0 || takeable.some((t: any) => saleState(t) === 'open' && (t.quantity_available > 0 || t.waitlistEnabled))
+      ? null
+      : takeable.some((t: any) => saleState(t) === 'open')
+        ? 'soldOut'
+        : takeable.some((t: any) => saleState(t) === 'soon')
+          ? 'notOpen'
+          : 'closed';
+
   const registerMode: RegisterMode =
     bigEventMode === 'umbrella'
       ? 'umbrella'
-      : !user
+      : unavailable && !ownsAnyTicket
+        ? unavailable
+        : !user
         ? 'signIn'
         : registrationComplete
           ? 'registered'
           : ownsAnyTicket
-            ? 'addTicket'
+            ? unavailable ?? 'addTicket'
             : tickets.length > 1
               ? 'choose'
               : isFree
@@ -231,8 +256,10 @@ export function useEventDetail(eventId: string | undefined) {
       } catch {
         router.push('/tickets');
       }
-    } else if (!hasSpots && !tickets.some((t: any) => t.waitlistEnabled)) {
-      AppAlert.alert('Event full', 'Sorry, this event has reached maximum capacity.');
+    } else if (unavailable === 'soldOut') {
+      AppAlert.alert('Sold out', 'Every ticket for this event is taken.');
+    } else if (unavailable) {
+      AppAlert.alert(unavailable === 'notOpen' ? 'Not open yet' : 'Registration closed', 'Tickets for this event aren’t on sale right now.');
     } else if (tickets.length === 0) {
       AppAlert.alert('Registration not open', "The organiser hasn't set up any tickets or RSVP options for this event yet.");
     } else {

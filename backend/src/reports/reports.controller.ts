@@ -52,6 +52,17 @@ export class ReportsController {
     );
   }
 
+  /** Re-render a report in place with a fresh AI summary (M3; ended events only). */
+  @Post(':reportId/regenerate')
+  @UseGuards(JwtAuthGuard)
+  regenerate(
+    @CurrentUser() user: User,
+    @Param('eventId') eventId: string,
+    @Param('reportId') reportId: string,
+  ) {
+    return this.reports.regenerate(user.id, eventId, reportId);
+  }
+
   /** Delete a report from the history (removes the row; the S3 file is left). */
   @Delete(':reportId')
   @UseGuards(JwtAuthGuard)

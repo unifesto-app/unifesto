@@ -1,4 +1,4 @@
-import { makeAuthenticatedRequest } from './helpers';
+import { errorFrom, makeAuthenticatedRequest } from './helpers';
 
 export interface Profile {
   id: string;
@@ -34,10 +34,7 @@ export const updateProfile = async (data: {
     body: JSON.stringify(data),
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Update failed');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Update failed');
   return response.json();
 };
 
@@ -64,10 +61,7 @@ export const uploadAvatar = async (uri: string): Promise<string | null> => {
       },
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Failed to upload avatar');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Failed to upload avatar');
 
     const data = await response.json();
     return data.avatarUrl || null;
@@ -81,10 +75,7 @@ export const deleteAvatar = async (): Promise<boolean> => {
     method: 'DELETE',
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Failed to delete avatar');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to delete avatar');
 
   return true;
 };
@@ -101,10 +92,7 @@ export const deleteAccount = async (): Promise<
       method: 'DELETE',
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Failed to delete account');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Failed to delete account');
 
     const { deletionScheduledFor } = await response.json();
     return { success: true, deletionScheduledFor };
@@ -122,8 +110,5 @@ export const cancelAccountDeletion = async (): Promise<void> => {
     method: 'POST',
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Failed to cancel account deletion');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to cancel account deletion');
 };

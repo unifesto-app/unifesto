@@ -472,3 +472,13 @@ export class CancelStayBookingDto {
   @IsBoolean()
   refund?: boolean;
 }
+
+export class CheckInStayDto {
+  @ApiPropertyOptional({
+    description:
+      'Pay-at-property and still unpaid: the desk took the money now. Marks it paid and checks in together.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  collected?: boolean;
+}

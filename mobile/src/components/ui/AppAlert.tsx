@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { WarningCircle } from '@unifesto/unicon/react-native';
 import { cosmosFont, cosmosRadius, useCosmos, type Cosmos } from '../../theme/cosmos';
 import { spacing } from '../../theme/spacing';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
+import { TopLayer } from './TopLayer';
 
 /**
  * Themed drop-in for React Native's `Alert.alert`: same arguments, same
@@ -153,7 +154,7 @@ export function AppAlertHost() {
   const isDestructive = current.buttons.some((b) => b.style === 'destructive');
 
   return (
-    <Modal visible transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onBackdrop}>
+    <TopLayer visible transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onBackdrop}>
       <View style={styles.root}>
         <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onBackdrop} accessibilityLabel="Dismiss" />
@@ -187,7 +188,7 @@ export function AppAlertHost() {
           </View>
         </Animated.View>
       </View>
-    </Modal>
+    </TopLayer>
   );
 }
 

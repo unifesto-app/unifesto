@@ -341,8 +341,9 @@ export const cancelStayBooking = (eventId: string, bookingId: string, body: { re
   call<TeamStayBooking>(`/events/${eventId}/stay-bookings/${bookingId}/cancel`, json('POST', body));
 export const markStayPaid = (eventId: string, bookingId: string) =>
   call<TeamStayBooking>(`/events/${eventId}/stay-bookings/${bookingId}/mark-paid`, json('POST'));
-export const checkInStay = (eventId: string, bookingId: string) =>
-  call<TeamStayBooking>(`/events/${eventId}/stay-bookings/${bookingId}/check-in`, json('POST'));
+/** `collected`: pay-at-property money taken at the desk just now; marks it paid with the check-in. */
+export const checkInStay = (eventId: string, bookingId: string, collected?: boolean) =>
+  call<TeamStayBooking>(`/events/${eventId}/stay-bookings/${bookingId}/check-in`, json('POST', collected ? { collected } : undefined));
 export const checkOutStay = (eventId: string, bookingId: string) =>
   call<TeamStayBooking>(`/events/${eventId}/stay-bookings/${bookingId}/check-out`, json('POST'));
 

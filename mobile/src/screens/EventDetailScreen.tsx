@@ -141,7 +141,6 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
                 eventId={event.id}
                 size={24}
                 color={c.text}
-                onRequireAuth={() => AppAlert.alert('Sign in required', 'Please sign in to save events.')}
               />
             </View>
           ) : null}

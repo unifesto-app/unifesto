@@ -42,7 +42,7 @@ export default function MyCirclesScreen() {
   const load = useCallback(async () => {
     if (!token) return setLoading(false);
     try {
-      const rows = await getUserSpaces(token);
+      const rows = await getUserSpaces();
       // One row per role comes back; keep one per space, preferring a real role over plain membership.
       const byId = new Map<string, Space>();
       for (const s of rows || []) {

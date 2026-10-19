@@ -94,7 +94,7 @@ export function useEditProfile() {
       }
       try {
         setLoading(true);
-        applyServer(await AuthAPI.getCurrentUser(token));
+        applyServer(await AuthAPI.getCurrentUser());
       } catch (error) {
         if (__DEV__) console.error('Failed to load profile:', error);
         AppAlert.alert('Error', 'Failed to load profile');
@@ -185,10 +185,10 @@ export function useEditProfile() {
     try {
       setSaveStatus('saving');
       if (avatarUri) {
-        await AuthAPI.uploadAvatar(token, avatarUri);
+        await AuthAPI.uploadAvatar(avatarUri);
         setAvatarUri(null);
       }
-      const updated = await AuthAPI.updateUserProfile(token, {
+      const updated = await AuthAPI.updateUserProfile({
         username: trimmedUsername,
         fullName: fields.fullName.trim() || undefined,
         bio: fields.bio.trim() || undefined,

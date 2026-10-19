@@ -169,7 +169,7 @@ export function useHomeData() {
     }
     try {
       setIsLoadingMySpaces(true);
-      const userSpaces = await getUserSpaces(token);
+      const userSpaces = await getUserSpaces();
       setMySpaces(uniqueSpaces(userSpaces ?? []).slice(0, 10));
     } catch (error) {
       if (__DEV__) console.error('Failed to load user spaces:', error);

@@ -58,6 +58,8 @@ export interface EventReport {
   fileUrl: string | null;
   fileName: string | null;
   error: string | null;
+  /** M3: AI-written summary of an ended event; null when there is none. */
+  aiSummary: string | null;
   createdAt: string;
 }
 
@@ -90,6 +92,16 @@ export async function generateReport(
 export async function getEventReports(eventId: string): Result<EventReport[]> {
   return apiCall<EventReport[]>(
     backendClient.get(`/events/${eventId}/reports`)
+  );
+}
+
+/** `POST /events/:eventId/reports/:reportId/regenerate` — re-render with a fresh summary. */
+export async function regenerateReport(
+  eventId: string,
+  reportId: string
+): Result<EventReport> {
+  return apiCall<EventReport>(
+    backendClient.post(`/events/${eventId}/reports/${reportId}/regenerate`)
   );
 }
 

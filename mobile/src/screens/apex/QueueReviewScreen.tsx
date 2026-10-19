@@ -1,3 +1,4 @@
+import { EMAIL_RE } from '../../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,7 +19,6 @@ import { font } from '../../theme/fontHelpers';
 
 const GUTTER = spacing[6];
 const STATUSES: RequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const MIN_REJECT_NOTE = 10;
 

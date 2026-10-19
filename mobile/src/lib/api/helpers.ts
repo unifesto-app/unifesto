@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { API_URL as BASE_URL } from '../constants';
-import { isOnline, reportNetworkFailure, reportNetworkSuccess } from '../offline/connectivity';
+import { reportNetworkFailure, reportNetworkSuccess } from '../offline/connectivity';
 import {
   cachedResponse,
   clearUserCache,
@@ -10,6 +10,9 @@ import {
 } from '../offline/responseCache';
 import { clearCheckinRosters } from '../offline/checkinStorage';
 import { cachedGet, invalidateApiCache } from './memoryCache';
+import { readJson, refreshEndsSession } from './errors';
+
+export { ApiError, errorFrom, expectOk, readJson } from './errors';
 
 /**
  * Tokens are readable after the first unlock since boot, not only while the
@@ -111,28 +114,46 @@ async function withOfflineCache(
   }
 }
 
+/**
+ * Session events for AuthContext: a forced sign-out (the server refused the
+ * refresh token) must reset the signed-in UI, not just wipe the Keychain.
+ */
+type SessionListener = () => void;
+const sessionEndedListeners = new Set<SessionListener>();
+
+export function onSessionEnded(listener: SessionListener): () => void {
+  sessionEndedListeners.add(listener);
+  return () => sessionEndedListeners.delete(listener);
+}
+
+async function endSession(): Promise<void> {
+  await clearToken();
+  sessionEndedListeners.forEach((l) => l());
+}
+
+/** A new access token, 'ended' when the server refused the refresh, or null when it couldn't say (offline, 5xx, 429). */
+type RefreshResult = string | 'ended' | null;
+
 // Single-flight refresh: if several requests 401 at once, they all await the
 // same /auth/refresh call instead of each firing their own.
-let refreshInFlight: Promise<string | null> | null = null;
+let refreshInFlight: Promise<RefreshResult> | null = null;
 
-export async function refreshAccessToken(): Promise<string | null> {
+async function refreshSession(): Promise<RefreshResult> {
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = (async () => {
+  refreshInFlight = (async (): Promise<RefreshResult> => {
     try {
       const refreshToken = await getRefreshToken();
-      if (!refreshToken) return null;
+      if (!refreshToken) return 'ended';
       const res = await fetch(`${BASE_URL}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
-      if (!res.ok) return null;
-      const data = await res.json();
-      if (data?.accessToken) {
-        await saveTokens(data.accessToken, data.refreshToken);
-        return data.accessToken as string;
-      }
-      return null;
+      if (!res.ok) return refreshEndsSession(res.status) ? 'ended' : null;
+      const data = await readJson<{ accessToken?: string; refreshToken?: string }>(res);
+      if (!data?.accessToken) return null;
+      await saveTokens(data.accessToken, data.refreshToken);
+      return data.accessToken;
     } catch {
       // Couldn't reach the server — not a verdict on the session.
       reportNetworkFailure();
@@ -142,6 +163,16 @@ export async function refreshAccessToken(): Promise<string | null> {
     }
   })();
   return refreshInFlight;
+}
+
+/** Fresh access token, or null (session kept unless the server refused the refresh token). */
+export async function refreshAccessToken(): Promise<string | null> {
+  const result = await refreshSession();
+  if (result === 'ended') {
+    await endSession();
+    return null;
+  }
+  return result;
 }
 
 export async function makeAuthenticatedRequest(
@@ -181,18 +212,12 @@ async function sendAuthenticatedRequest(
   try {
     let response = await doFetch(token);
 
-    // Access token expired → try to silently refresh once, then retry. Only
-    // clear the session (log the user out) if the refresh itself fails.
+    // Access token expired → silently refresh once, then retry. Only a refresh
+    // the server refused ends the session (refreshAccessToken); a 5xx, 429 or
+    // dropped connection keeps it and this request just fails with its 401.
     if (response.status === 401) {
       const newToken = await refreshAccessToken();
-      if (newToken) {
-        response = await doFetch(newToken);
-        if (response.status === 401) await clearToken();
-      } else if (isOnline()) {
-        // Only a refresh the server actually refused ends the session; a
-        // dropped connection mid-refresh must not sign the user out.
-        await clearToken();
-      }
+      if (newToken) response = await doFetch(newToken);
     }
 
     return response;

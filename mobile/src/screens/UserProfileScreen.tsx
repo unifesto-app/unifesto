@@ -70,7 +70,7 @@ export default function UserProfileScreen() {
       router.back();
       return;
     }
-    const profileTask = AuthAPI.getCurrentUser(token)
+    const profileTask = AuthAPI.getCurrentUser()
       .then(setProfile)
       .catch(() => AppAlert.alert('Error', 'Failed to load profile'))
       .finally(() => setLoading(false));
@@ -90,7 +90,7 @@ export default function UserProfileScreen() {
       .finally(() => setLoadingEvents(false));
 
     // A space can come back once per role; one tile each.
-    const circlesTask = getUserSpaces(token)
+    const circlesTask = getUserSpaces()
       .then((s) => setCircles((s || []).filter((x, i, all) => all.findIndex((y) => y.id === x.id) === i)))
       .catch(() => {})
       .finally(() => setLoadingCircles(false));
