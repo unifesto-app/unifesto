@@ -161,6 +161,8 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_APEX:-}
         SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      secrets:
+        - sentry_auth_token
     image: unifesto-apex:latest
     restart: unless-stopped
     env_file: ./websites/apex/.env
@@ -184,6 +186,8 @@ services:
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
         NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_SPACE:-}
         SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      secrets:
+        - sentry_auth_token
     image: unifesto-space:latest
     restart: unless-stopped
     env_file: ./websites/space/.env
@@ -204,6 +208,8 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_DSN_WEB:-}
         SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      secrets:
+        - sentry_auth_token
     image: unifesto-web:latest
     restart: unless-stopped
     env_file: ./websites/web/.env.local
@@ -223,6 +229,12 @@ services:
       resources:
         limits:
           memory: 768M
+
+# Build-only secret for the Sentry source-map upload (apex, space, web). Read from
+# SENTRY_AUTH_TOKEN in ./.env; it never reaches a runtime container or image.
+secrets:
+  sentry_auth_token:
+    environment: SENTRY_AUTH_TOKEN
 
 volumes:
   caddy_data:

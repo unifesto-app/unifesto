@@ -101,10 +101,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-// Source maps stay off until a SENTRY_AUTH_TOKEN exists to upload them; the
+// Source maps upload when SENTRY_AUTH_TOKEN is set (a BuildKit secret in the
+// Dockerfile) and are deleted after upload, so no .map is ever served. The
 // release is the git SHA deploy.sh passes in as SENTRY_RELEASE.
 export default withSentryConfig(nextConfig, {
+  org: "unifesto",
+  project: "unifesto-web",
   silent: true,
   telemetry: false,
-  sourcemaps: { disable: true },
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
 });

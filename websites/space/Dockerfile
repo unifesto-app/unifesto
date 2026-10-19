@@ -37,7 +37,9 @@ ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL \
     NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY \
     NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+# Sentry source-map upload token: a BuildKit secret, so it is never in an image
+# layer or the runner (docker-compose.yml passes it from ./.env; absent = no upload).
+RUN --mount=type=secret,id=sentry_auth_token,env=SENTRY_AUTH_TOKEN npm run build
 
 # ============================================================
 # Runner — minimal image serving the standalone server.
