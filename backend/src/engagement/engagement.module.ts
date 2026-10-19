@@ -5,6 +5,8 @@ import { PollsController } from './polls.controller';
 import { PollsService } from './polls.service';
 import { QuestionsController } from './questions.controller';
 import { QuestionsService } from './questions.service';
+import { QuizzesController } from './quizzes.controller';
+import { QuizzesService } from './quizzes.service';
 
 /**
  * Track L live engagement. L1 is polls; Q&A (L2), quizzes (L3) and the
@@ -13,7 +15,7 @@ import { QuestionsService } from './questions.service';
  */
 @Module({
   imports: [AuthModule, LeaderboardModule],
-  controllers: [PollsController, QuestionsController],
-  providers: [PollsService, QuestionsService],
+  controllers: [PollsController, QuestionsController, QuizzesController],
+  providers: [PollsService, QuestionsService, QuizzesService],
 })
 export class EngagementModule {}
