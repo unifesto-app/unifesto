@@ -110,6 +110,68 @@ export class GroupSeatsService {
     return crypto.randomBytes(16).toString('hex');
   }
 
+  /**
+   * Whether a teammate leaving the group may hold its shared QR. Typed-in
+   * teammates were mailed it before A28: one with no seat ticket of their own
+   * to delete, or one who claimed a seat no invite was sent for (a typed-in
+   * seat claimed later), may still have it in their inbox.
+   */
+  static mayHoldSharedQr(
+    seat: { claimedByUserId: string | null; inviteEmail: string | null },
+    email: string | null,
+    ownTicketsDeleted: number,
+  ): boolean {
+    return !!email && (ownTicketsDeleted === 0 || (!!seat.claimedByUserId && !seat.inviteEmail));
+  }
+
+  /**
+   * Rotate the group's shared QR inside the caller's transaction, so a copy a
+   * leaving teammate holds stops scanning. Each remaining typed-in teammate
+   * still on it (an email, no seat ticket of their own) gets a stamped seat
+   * ticket. Mail the result with `sendRotatedPasses` once it commits.
+   */
+  async rotateSharedQr(tx: Prisma.TransactionClient, registrationId: string) {
+    await tx.eventRegistration.update({ where: { id: registrationId }, data: { qrCode: this.qrCode() } });
+    const [typedIn, stamped] = await Promise.all([
+      tx.groupSeat.findMany({ where: { registrationId, ...TYPED_IN, seatIndex: { gt: 1 } }, select: { memberDetails: true } }),
+      tx.eventTicket.findMany({ where: { registrationId, attendeeEmail: { not: null } }, select: { attendeeEmail: true } }),
+    ]);
+    const ticketed = new Set(stamped.map((t) => t.attendeeEmail!.trim().toLowerCase()));
+    const minted: Array<{ email: string; details: Record<string, unknown>; ticket: { qrCode: string; ticketCode: string } }> = [];
+    for (const seat of typedIn) {
+      const details =
+        seat.memberDetails && typeof seat.memberDetails === 'object' && !Array.isArray(seat.memberDetails)
+          ? (seat.memberDetails as Record<string, unknown>)
+          : {};
+      const email = typeof details.email === 'string' ? details.email.trim().toLowerCase() : '';
+      if (!email || ticketed.has(email)) continue;
+      ticketed.add(email);
+      const ticket = await tx.eventTicket.create({
+        data: {
+          registrationId,
+          ticketCode: this.ticketCode(),
+          qrCode: this.qrCode(),
+          attendeeName: typeof details.name === 'string' && details.name.trim() ? details.name.trim() : null,
+          attendeeEmail: email,
+        },
+        select: { qrCode: true, ticketCode: true },
+      });
+      minted.push({ email, details, ticket });
+    }
+    return minted;
+  }
+
+  /** After `rotateSharedQr` commits: the lead's new pass, then each newly ticketed teammate's. Best-effort. */
+  async sendRotatedPasses(registrationId: string, minted: Awaited<ReturnType<GroupSeatsService['rotateSharedQr']>>) {
+    try {
+      const reg = await this.prisma.eventRegistration.findUnique({ where: { id: registrationId }, select: { userId: true } });
+      if (reg) await this.resendConfirmation(registrationId, reg.userId);
+      for (const m of minted) await this.sendClaimConfirmations(registrationId, null, m.email, m.details, m.ticket);
+    } catch (err) {
+      this.logger.error(`Rotated passes failed for registration ${registrationId}`, err as Error);
+    }
+  }
+
   claimUrl(token: string): string {
     const base = (process.env.WEB_URL || 'https://unifesto.app').replace(/\/$/, '');
     return `${base}/claim/${token}`;
@@ -682,7 +744,7 @@ export class GroupSeatsService {
     }
 
     const newToken = GroupSeatsService.newToken();
-    await this.prisma.$transaction(async (tx) => {
+    const rotated = await this.prisma.$transaction(async (tx) => {
       // Guarded on the seat still being the one we read, so a concurrent change wins cleanly.
       const reset = await tx.groupSeat.updateMany({
         where: { id: seat.id, status: GroupSeatStatus.CLAIMED, claimedByUserId: seat.claimedByUserId },
@@ -700,14 +762,16 @@ export class GroupSeatsService {
       });
       if (reset.count !== 1) throw new BadRequestException('This seat just changed. Refresh and try again.');
       await GroupSeatsService.cancelPendingLeadTransfer(tx, registrationId);
-      if (oldEmail) {
-        await tx.eventTicket.deleteMany({
-          where: { registrationId, attendeeEmail: { equals: oldEmail, mode: 'insensitive' } },
-        });
-      }
+      const gone = oldEmail
+        ? await tx.eventTicket.deleteMany({
+            where: { registrationId, attendeeEmail: { equals: oldEmail, mode: 'insensitive' } },
+          })
+        : { count: 0 };
+      return GroupSeatsService.mayHoldSharedQr(seat, oldEmail, gone.count) ? this.rotateSharedQr(tx, registrationId) : null;
     });
 
     this.logger.log(`Seat ${seatIndex} of registration ${registrationId} replaced by ${opts.by}`);
+    if (rotated) void this.sendRotatedPasses(registrationId, rotated);
 
     // Best-effort notices: the member who lost the seat, and the new invitee.
     if (oldEmail) {
@@ -1111,7 +1175,8 @@ export class GroupSeatsService {
    */
   private async sendClaimConfirmations(
     registrationId: string,
-    claimerUserId: string,
+    // null: a typed-in teammate with no account.
+    claimerUserId: string | null,
     email: string | null,
     memberDetails: Record<string, unknown> | undefined,
     ticket: { qrCode: string; ticketCode?: string },
@@ -1141,10 +1206,12 @@ export class GroupSeatsService {
             },
           },
         }),
-        this.prisma.user.findUnique({
-          where: { id: claimerUserId },
-          select: { fullName: true, mobileNumber: true },
-        }),
+        claimerUserId
+          ? this.prisma.user.findUnique({
+              where: { id: claimerUserId },
+              select: { fullName: true, mobileNumber: true },
+            })
+          : null,
       ]);
       const event = reg?.event;
       if (!event) return sent;

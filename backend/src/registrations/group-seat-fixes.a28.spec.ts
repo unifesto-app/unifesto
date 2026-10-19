@@ -81,13 +81,18 @@ describe('A28 admin transfer of a group moves seat 1', () => {
         updateMany: jest.fn(async () => ({ count: 1 })),
         findUniqueOrThrow: jest.fn(async () => ({ id: 'r-1', eventId: 'e-1', user: { id: 'new', identities: [{ email: 'new@x.com' }] } })),
       },
-      groupSeat: { count: jest.fn(async () => memberSeats), updateMany: jest.fn(async () => ({ count: 1 })) },
+      groupSeat: {
+        count: jest.fn(async () => memberSeats),
+        updateMany: jest.fn(async () => ({ count: 1 })),
+        findMany: jest.fn(async () => []),
+      },
+      eventTicket: { findMany: jest.fn(async () => []), update: jest.fn() },
       groupLeadTransfer: { updateMany: jest.fn(async () => ({ count: 1 })) },
       event: { findUnique: jest.fn(async () => ({ title: 'Hack' })) },
     };
     db.$transaction = jest.fn(async (fn: any) => fn(db));
     const email = { sendRawEmail: jest.fn(async () => undefined) };
-    const svc = new RegistrationTransfersService(db, {} as any, email as any);
+    const svc = new RegistrationTransfersService(db, {} as any, email as any, { resendConfirmation: jest.fn() } as any);
     return { svc, db, email };
   };
 
