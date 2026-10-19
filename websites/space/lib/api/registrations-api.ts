@@ -339,21 +339,58 @@ export async function exportRegistrations(
     );
     return { data: response.data, error: null };
   } catch (error: unknown) {
-    // A blob error response hides the JSON message; read it back out.
-    let message = "Export failed";
-    const responseData = (error as { response?: { data?: unknown } })?.response
-      ?.data;
-    if (responseData instanceof Blob) {
-      try {
-        const parsed = JSON.parse(await responseData.text());
-        if (parsed?.message) message = parsed.message;
-      } catch {
-        /* keep default message */
-      }
-    } else if (error instanceof Error) {
-      message = error.message;
+    return { data: null, error: await blobError(error, "Export failed") };
+  }
+}
+
+/** A blob request's error: the JSON message the blob hides, else `fallback`. */
+async function blobError(error: unknown, fallback: string): Promise<ApiError> {
+  let message = fallback;
+  const responseData = (error as { response?: { data?: unknown } })?.response?.data;
+  if (responseData instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await responseData.text());
+      if (parsed?.message) message = Array.isArray(parsed.message) ? parsed.message.join(", ") : parsed.message;
+    } catch {
+      /* keep default message */
     }
-    return { data: null, error: { status: 500, message, errors: null } };
+  } else if (error instanceof Error) {
+    message = error.message;
+  }
+  return { status: 500, message, errors: null };
+}
+
+// --- Badge printing (N1) ---------------------------------------------------
+
+/** Mirrors the backend's BADGE_LAYOUTS (badges.util.ts); keys must match. */
+export const BADGE_LAYOUTS = [
+  { key: "a4-8", label: "A4 sheet, 8 per page (90 × 60 mm, cut marks)" },
+  { key: "label-4x3in", label: "4 × 3 in label (Zebra, Brother, DYMO XL)" },
+  { key: "label-62x100mm", label: "62 × 100 mm label (Brother QL)" },
+  { key: "label-dymo-30857", label: "2¼ × 4 in name badge (DYMO 30857)" },
+] as const;
+export type BadgeLayout = (typeof BADGE_LAYOUTS)[number]["key"];
+
+/** Badge PDF for confirmed attendees: the selected rows, or everyone matching the filters. */
+export async function printBadges(
+  eventId: string,
+  body: {
+    layout: BadgeLayout;
+    registrationIds?: string[];
+    ticketTypeId?: string;
+    status?: "REGISTERED" | "ATTENDED";
+    search?: string;
+  }
+): Promise<{ data: Blob | null; error: ApiError | null }> {
+  try {
+    const response = await backendClient.post(`/events/${eventId}/registrations/badges`, body, {
+      responseType: "blob",
+      // A big roster takes a while to render.
+      timeout: 300_000,
+    });
+    return { data: response.data, error: null };
+  } catch (error: unknown) {
+    return { data: null, error: await blobError(error, "Could not print badges") };
   }
 }
 

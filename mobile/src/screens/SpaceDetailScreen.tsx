@@ -130,10 +130,13 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
   const logo = logoOr(defaults, space.id, space.branding?.logoUrl || spaceLogo(space));
   const place = [space.city, space.state].filter(Boolean).join(', ');
   const meta = [place || null, space.visibility === 'PRIVATE' ? 'Private space' : 'Public space'].filter(Boolean).join(' · ');
-  const eventCount = s.upcoming.length + s.past.length;
+  // Drafts reach only operators (the API hides them otherwise): badged, never counted.
+  const isDraft = (e: Event) => e.status === 'DRAFT';
+  const upcomingCount = s.upcoming.filter((e) => !isDraft(e)).length;
+  const eventCount = upcomingCount + s.past.filter((e) => !isDraft(e)).length;
   const stats = [
     { label: s.memberCount === 1 ? 'Member' : 'Members', value: s.memberCount },
-    { label: 'Upcoming', value: s.upcoming.length },
+    { label: 'Upcoming', value: upcomingCount },
     { label: eventCount === 1 ? 'Event hosted' : 'Events hosted', value: eventCount },
   ];
   const description = space.description?.trim();
@@ -147,6 +150,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         when={relativeWhen(e.startDateTime)}
         where={e.venueName || e.city || (e.type === 'ONLINE' ? 'Online' : null)}
         price={past ? 'Ended' : shortPrice(e)}
+        tag={isDraft(e) ? 'Draft' : null}
         onPress={() => router.push(`/event/${e.slug || e.id}`)}
       />
     </View>
@@ -231,7 +235,7 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
               ))}
             </View>
             {s.isMember ? (
-              <Row icon={<CheckCircle size={ICON} color={c.text} weight="fill" />} title="You're a member" />
+              <Row icon={<CheckCircle size={ICON} color={c.text} />} title="You're a member" />
             ) : null}
             {websiteLabel ? (
               <Row
@@ -260,12 +264,12 @@ function SpaceDetailView({ s, hue }: { s: SpaceDetail; hue: string | null }) {
         ) : null}
 
         {s.upcoming.length > 0 ? (
-          <Section title="Upcoming" subtitle={`${s.upcoming.length} coming up`}>
+          <Section title="Upcoming" subtitle={upcomingCount ? `${upcomingCount} coming up` : undefined}>
             <Rail>{s.upcoming.map((e) => poster(e))}</Rail>
           </Section>
         ) : null}
 
-        {eventCount === 0 ? (
+        {s.upcoming.length + s.past.length === 0 ? (
           <Section title="Events">
             <View style={[styles.empty, { backgroundColor: c.raised, marginHorizontal: GUTTER }]}>
               <CalendarBlank size={32} color={c.muted} />
@@ -390,7 +394,7 @@ const styles = StyleSheet.create({
   card: { marginTop: spacing[6], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   stats: { flexDirection: 'row', paddingVertical: spacing[5], paddingHorizontal: spacing[2] },
   stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   row: {
     flexDirection: 'row',

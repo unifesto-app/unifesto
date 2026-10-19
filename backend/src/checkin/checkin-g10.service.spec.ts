@@ -264,4 +264,43 @@ describe('CheckinService G10', () => {
       );
     });
   });
+
+  describe("a member's own seat ticket (N1 badges)", () => {
+    const at = new Date('2026-10-01T10:00:00Z');
+    const tickets = [
+      { id: 't-group', attendeeEmail: null, createdAt: at },
+      { id: 't-2', attendeeEmail: 'ravi@x.in', createdAt: at },
+    ];
+    const scanTicket = (ticketId: string) => {
+      const ctx = build(group);
+      ctx.prisma.eventRegistration.findUnique.mockResolvedValue(null);
+      ctx.prisma.eventTicket.findUnique = jest.fn().mockResolvedValue({ id: ticketId, registration: { ...group } });
+      ctx.prisma.eventTicket.findMany = jest.fn().mockResolvedValue(tickets);
+      ctx.prisma.groupSeat.findMany.mockResolvedValue(
+        seats.map((s) => ({
+          ...s,
+          claimedAt: at,
+          memberDetails: s.seatIndex === 2 ? { name: 'Ravi', email: 'ravi@x.in' } : null,
+          claimedBy: null,
+        })),
+      );
+      return ctx;
+    };
+
+    it('checks in only that member', async () => {
+      const { svc, prisma } = scanTicket('t-2');
+      const res: any = await svc.scanQRCode(USER, 'QR-SEAT-2', POINT, true);
+      expect(res.isGroup).toBeUndefined();
+      expect(res).toMatchObject({ success: true, attendee: { fullName: 'Ravi' }, ticketType: 'General' });
+      const data = prisma.eventGroupMemberCheckin.createMany.mock.calls[0][0].data;
+      expect(data.map((d: any) => d.memberIndex)).toEqual([1]);
+    });
+
+    it("leaves the group's own ticket on the member picker", async () => {
+      const { svc, prisma } = scanTicket('t-group');
+      const res: any = await svc.scanQRCode(USER, 'QR-GROUP', POINT, true);
+      expect(res.isGroup).toBe(true);
+      expect(prisma.eventGroupMemberCheckin.createMany).not.toHaveBeenCalled();
+    });
+  });
 });

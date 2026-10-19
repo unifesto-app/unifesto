@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', paddingHorizontal: GUTTER, paddingTop: spacing[6], paddingBottom: spacing[8] },
   // Same corner share as an iOS home-screen icon (~22%).
   icon: { width: ICON, height: ICON, borderRadius: ICON * 0.22, marginBottom: spacing[5] },
-  version: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  version: { marginTop: spacing[4], fontSize: 17, lineHeight: 24, ...cosmosFont.figure },
   build: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   card: { marginHorizontal: GUTTER, borderRadius: cosmosCardRadius, padding: spacing[6] },
   rule: { width: 40, height: 1, marginBottom: spacing[5] },
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   cardBody: { marginTop: spacing[3], fontSize: typography.fontSize.base, lineHeight: 22, ...cosmosFont.body },
   notes: { paddingHorizontal: GUTTER },
   release: { paddingVertical: spacing[5] },
-  releaseId: { fontSize: 15, lineHeight: 22, marginBottom: spacing[3], ...cosmosFont.display },
+  releaseId: { fontSize: 15, lineHeight: 22, marginBottom: spacing[3], ...cosmosFont.figure },
   item: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[2] },
   bullet: { fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },
   itemText: { flex: 1, fontSize: typography.fontSize.sm, lineHeight: 21, ...cosmosFont.body },

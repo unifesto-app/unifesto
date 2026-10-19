@@ -1,4 +1,4 @@
-import { makeAuthenticatedRequest } from './helpers';
+import { expectOk, makeAuthenticatedRequest } from './helpers';
 import type { SpaceAccessData } from '../spaceSections';
 
 /** One event the user operates through an event-scoped role (Curator/Co-Curator/Crew). */
@@ -46,24 +46,18 @@ export async function getMyOperatorSpaces(): Promise<OperatorSpace[]> {
 /**
  * GET /users/me/access — operator spaces, check-in events, judging events and
  * sponsorships in one call. `null` only when the backend predates the route
- * (404), so the caller can fall back to the four separate calls; any other
- * failure reads as "no access", as those calls did.
+ * (404), so the caller can fall back to the four separate calls. Any other
+ * failure throws, so door staff keep the access they had (a blip is not "no access").
  */
 export async function getMyAccess(): Promise<SpaceAccessData | null> {
   const response = await makeAuthenticatedRequest('/users/me/access');
   if (response?.status === 404) return null;
-  const empty: SpaceAccessData = { spaces: [], checkinEvents: [], judgingEvents: [], sponsorships: [] };
-  if (!response?.ok) return empty;
-  try {
-    const d = await response.json();
-    const list = (v: unknown) => (Array.isArray(v) ? v : []);
-    return {
-      spaces: list(d?.spaces),
-      checkinEvents: list(d?.checkinEvents),
-      judgingEvents: list(d?.judgingEvents),
-      sponsorships: list(d?.sponsorships),
-    };
-  } catch {
-    return empty;
-  }
+  const d = await expectOk(response, 'Could not load your access');
+  const list = (v: unknown) => (Array.isArray(v) ? v : []);
+  return {
+    spaces: list(d?.spaces),
+    checkinEvents: list(d?.checkinEvents),
+    judgingEvents: list(d?.judgingEvents),
+    sponsorships: list(d?.sponsorships),
+  };
 }

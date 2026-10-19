@@ -91,7 +91,7 @@ export default function HackathonJudgesScreen() {
         {onlyJudges.map((j) => (
           <SettingsRow
             key={j.id}
-            icon={j.isAvailable ? <Gavel size={ICON} color={tokens.accent} weight="fill" /> : <Coffee size={ICON} color={tokens.textMuted} weight="fill" />}
+            icon={j.isAvailable ? <Gavel size={ICON} color={tokens.text} /> : <Coffee size={ICON} color={tokens.textMuted} />}
             label={j.name || j.contact || 'Judge'}
             value={judgeSummary(j)}
             onPress={() => openJudge(j.id)}
@@ -108,7 +108,7 @@ export default function HackathonJudgesScreen() {
         {mentors.map((j) => (
           <SettingsRow
             key={j.id}
-            icon={j.isAvailable ? <ChatsCircle size={ICON} color={tokens.accent} weight="fill" /> : <Coffee size={ICON} color={tokens.textMuted} weight="fill" />}
+            icon={j.isAvailable ? <ChatsCircle size={ICON} color={tokens.text} /> : <Coffee size={ICON} color={tokens.textMuted} />}
             label={j.name || j.contact || 'Mentor'}
             value={judgeSummary(j)}
             onPress={() => openJudge(j.id)}

@@ -43,7 +43,9 @@ import {
   ManualAddAttendeeDto,
   SetWhatsappJoinedDto,
   CancelMyRegistrationDto,
+  PrintBadgesDto,
 } from './dto';
+import { BadgesService } from './badges.service';
 import { WaitlistService } from './waitlist.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards';
@@ -57,6 +59,7 @@ export class RegistrationsController {
   constructor(
     private readonly registrationsService: RegistrationsService,
     private readonly waitlistService: WaitlistService,
+    private readonly badges: BadgesService,
   ) {}
 
   @Post('events/:id/register/create-order')
@@ -274,6 +277,28 @@ export class RegistrationsController {
   @ApiResponse({ status: 200 })
   async getAttendeeStats(@Request() req, @Param('id') id: string) {
     return this.registrationsService.getAttendeeStats(req.user.id, id);
+  }
+
+  @Post('events/:id/registrations/badges')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.EVENT_MANAGE_ATTENDEES)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({ summary: 'Badge / pass PDF for confirmed attendees: A4 sheet or label printer (N1)' })
+  @ApiResponse({ status: 201 })
+  async printBadges(@Param('id') id: string, @Body() dto: PrintBadgesDto, @Res() res: Response) {
+    const { stream, filename } = await this.badges.render(id, {
+      layout: dto.layout,
+      registrationIds: dto.registrationIds,
+      filters: { ticketTypeId: dto.ticketTypeId, status: dto.status, search: dto.search },
+    });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    stream.on('error', (err) => {
+      new Logger('Badges').error(`Badges ${id} failed mid-stream: ${err.message}`);
+      res.destroy(err);
+    });
+    stream.pipe(res);
   }
 
   @Get('events/:id/registrations/export')

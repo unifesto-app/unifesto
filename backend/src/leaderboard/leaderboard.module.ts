@@ -42,6 +42,6 @@ import { HackathonHelpService } from './hackathon-help.service';
     HackathonHelpService,
     HackathonCertificatesService,
   ],
-  exports: [LeaderboardService],
+  exports: [LeaderboardService, LeaderboardGateway],
 })
 export class LeaderboardModule {}

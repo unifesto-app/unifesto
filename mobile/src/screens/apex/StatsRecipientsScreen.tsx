@@ -136,7 +136,7 @@ export default function StatsRecipientsScreen() {
             draft.map((n) => (
               <SettingsRow
                 key={n}
-                icon={<WhatsappLogo size={ICON} color={tokens.accent} weight="fill" />}
+                icon={<WhatsappLogo size={ICON} color={tokens.text} />}
                 label={display(n)}
                 trailing={
                   <Pressable onPress={() => remove(n)} hitSlop={12} accessibilityRole="button" accessibilityLabel={`Remove ${display(n)}`}>
@@ -150,7 +150,7 @@ export default function StatsRecipientsScreen() {
 
         <SettingsGroup title="Add a number">
           <FormRow
-            icon={<Phone size={ICON} color={tokens.accent} weight="fill" />}
+            icon={<Phone size={ICON} color={tokens.text} />}
             value={input}
             onChangeText={(v) => {
               setInput(v);

@@ -20,6 +20,7 @@ import { Action, AuthorizationService, SPACE_ADMIN_ROLE_CODES } from '../auth/au
 import { assertEventCan } from '../events/event-access';
 import { NOT_DELETED } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import { memberSeatTicket } from '../registrations/registration.util';
 
 /** See CheckinService.newBatch. */
 interface CheckinBatch {
@@ -174,6 +175,12 @@ export class CheckinService {
       });
       if (!ticket) throw new NotFoundException('Invalid QR code');
       registration = ticket.registration;
+      // A member's own seat ticket (their pass or printed badge) is that one
+      // person: check only their seat in, never open the whole group.
+      if (this.isGroupRegistration(registration)) {
+        const member = await this.memberCheckin(userId, registration, ticket.id, checkinTypeId);
+        if (member) return member;
+      }
     }
 
     // A group shares one QR. For group-aware clients, return the member roster
@@ -191,6 +198,70 @@ export class CheckinService {
     }
 
     return this.recordCheckin(userId, registration, checkinTypeId);
+  }
+
+  /**
+   * Check in the one claimed seat whose own ticket was scanned, answering in
+   * the individual-scan shape. Null when the ticket isn't a member seat's (the
+   * group's own ticket), so the caller falls back to the group flow.
+   */
+  private async memberCheckin(
+    userId: string,
+    registration: any,
+    ticketId: string,
+    checkinTypeId: string,
+  ) {
+    const [seats, tickets] = await Promise.all([
+      this.prisma.groupSeat.findMany({
+        where: { registrationId: registration.id, status: GroupSeatStatus.CLAIMED, seatIndex: { gt: 1 } },
+        select: {
+          seatIndex: true,
+          claimedAt: true,
+          memberDetails: true,
+          claimedBy: {
+            select: { id: true, fullName: true, username: true, avatarUrl: true, identities: { select: { email: true } } },
+          },
+        },
+      }),
+      this.prisma.eventTicket.findMany({
+        where: { registrationId: registration.id },
+        select: { id: true, attendeeEmail: true, createdAt: true },
+      }),
+    ]);
+    const seat = seats.find((s) => memberSeatTicket(s, tickets)?.id === ticketId);
+    if (!seat) return null;
+
+    const at = new Date();
+    // A one-item batch: reuses the loaded registration and skips the roster rebuild.
+    const batch = this.newBatch();
+    batch.regs.set(registration.id, registration);
+    const res = await this.checkinGroupMembers(userId, registration.id, checkinTypeId, [seat.seatIndex - 1], at, batch);
+    const { name } = this.seatIdentity(seat);
+    const attendee = {
+      id: seat.claimedBy?.id ?? null,
+      fullName: name,
+      username: seat.claimedBy?.username ?? null,
+      avatarUrl: seat.claimedBy?.avatarUrl ?? null,
+    };
+    const ticketType = registration.ticketType?.name || 'RSVP';
+    const prior = res.alreadyIn[0];
+    return prior
+      ? {
+          alreadyCheckedIn: true as const,
+          checkedInAt: prior.checkedInAt,
+          checkedInById: prior.checkedInById,
+          checkedInByName: prior.checkedInByName,
+          attendee,
+          ticketType,
+          checkinType: res.checkinType,
+        }
+      : {
+          success: true as const,
+          checkedInAt: at,
+          attendee,
+          ticketType,
+          checkinType: res.checkinType,
+        };
   }
 
   /**

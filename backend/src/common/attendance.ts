@@ -57,6 +57,21 @@ export async function attendingUserIds(
   ];
 }
 
+/** Whether this account attends the event: its own confirmed booking, or a claimed seat on one. */
+export async function isAttending(
+  prisma: Pick<PrismaClient, 'eventRegistration' | 'groupSeat'>,
+  eventId: string,
+  userId: string,
+): Promise<boolean> {
+  const [regs, seats] = await Promise.all([
+    prisma.eventRegistration.count({ where: { eventId, userId, ...COUNTS_AS_ATTENDING } }),
+    prisma.groupSeat.count({
+      where: { ...CLAIMED_MEMBER_SEAT, claimedByUserId: userId, registration: { eventId, ...COUNTS_AS_ATTENDING } },
+    }),
+  ]);
+  return regs + seats > 0;
+}
+
 /**
  * Matches registrations booked as a group.
  *

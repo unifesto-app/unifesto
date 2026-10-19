@@ -9,6 +9,7 @@ import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useWorkspaceCards } from '../hooks/useWorkspaceCards';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import StatusBarScrim from '../components/ui/StatusBarScrim';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Rail, Section } from '../components/home/Section';
@@ -69,7 +70,7 @@ export default function SpaceScreen() {
   // Live ones already lead the page; this list is what's still to come.
   const laterCheckins = activeEvents(checkinEvents, now).filter((e) => !live.has(e.id));
   const judging = activeEvents(judgingEvents, now);
-  const summary = summaryLine({ live: w.liveCheckins.length, upcoming: w.upcoming.length, spaces: hosted.length });
+  const summary = summaryLine({ live: w.liveCheckins.length, upcoming: w.upcoming.filter((e) => e.status !== 'DRAFT').length, spaces: hosted.length });
 
   const scan = (e: CheckinEvent) =>
     router.push({
@@ -90,7 +91,7 @@ export default function SpaceScreen() {
   const openWeb = () =>
     Linking.openURL(SPACE_WEB_URL).catch(() => AppAlert.alert('Error', 'Unable to open Unifesto Space'));
 
-  const glyph = { size: 24, color: c.primary, weight: 'fill' as const };
+  const glyph = { size: 24, color: c.primary };
   const hosting = sections.includes('hosting');
 
   // A plain View wraps the ScrollView so the native tab host doesn't add its
@@ -237,6 +238,7 @@ export default function SpaceScreen() {
           </>
         )}
       </ScrollView>
+      <StatusBarScrim />
     </View>
   );
 }
@@ -286,7 +288,7 @@ function SpaceTile({ space, onPress }: { space: OperatorSpace; onPress: () => vo
         )}
         {role ? (
           <View style={[styles.role, { backgroundColor: c.tint }]}>
-            <Text style={[styles.roleText, { color: c.text }]} numberOfLines={1}>{role}</Text>
+            <Text style={[styles.roleText, { color: c.text }]}>{role}</Text>
           </View>
         ) : null}
       </View>
@@ -309,9 +311,10 @@ const styles = StyleSheet.create({
   cardInner: { borderRadius: cosmosCardRadius, padding: spacing[4], gap: spacing[4] },
   empty: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   tile: { width: TILE_W, minHeight: 168, borderRadius: cosmosCardRadius, padding: spacing[4] },
-  tileTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
+  // The role pill wraps under the logo rather than truncating ("Space ad…").
+  tileTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing[2] },
   tileLogo: { width: TILE_LOGO, height: TILE_LOGO, borderRadius: 14, overflow: 'hidden' },
-  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, flexShrink: 1 },
+  role: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   roleText: { fontSize: 11, ...cosmosFont.strong },
   tileName: {
     marginTop: spacing[4],

@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Bed,
-  CalendarBlank,
   CalendarDots,
   ChartBar,
   Eye,
@@ -17,6 +16,7 @@ import {
   Handshake,
   Lightning,
   ListBullets,
+  ListChecks,
   Medal,
   PencilSimple,
   QrCode,
@@ -42,6 +42,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { relativeWhen } from '../utils/eventFormat';
+import { useEventCover } from '../lib/defaultImages';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
@@ -81,6 +82,8 @@ export default function ManageEventScreen() {
   }, [eventId, deskOnly]);
 
   useAnalyticsScreenTracking('ManageEvent');
+  // The admin-set default banner when the event has none: never an icon in a tile.
+  const cover = useEventCover(h.event);
 
   if (h.loading) {
     return (
@@ -110,7 +113,7 @@ export default function ManageEventScreen() {
   const ticketTypes = (e as unknown as { ticketTypes?: { kind: string }[] }).ticketTypes ?? [];
   const rsvpCount = ticketTypes.filter((t) => t.kind === 'RSVP').length;
   const ticketCount = ticketTypes.length - rsvpCount;
-  const icon = (I: typeof QrCode) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof QrCode) => <I size={ICON} color={tokens.text} />;
 
   return (
     <ScrollView
@@ -129,13 +132,7 @@ export default function ManageEventScreen() {
     >
       {/* Identity */}
       <View style={styles.hero}>
-        {e.coverImageUrl ? (
-          <Image source={{ uri: e.coverImageUrl }} style={styles.cover} />
-        ) : (
-          <View style={[styles.cover, styles.coverEmpty, { backgroundColor: tokens.elevated }]}>
-            <CalendarBlank size={28} color={tokens.textMuted} />
-          </View>
-        )}
+        {cover ? <Image source={{ uri: cover }} style={styles.cover} /> : null}
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: tokens.text }]} numberOfLines={3}>
             {e.title}
@@ -235,6 +232,10 @@ export default function ManageEventScreen() {
               label="Scan Stay Pass"
               onPress={() => router.push({ pathname: `/manage/event/${e.id}/stay-scan`, params: { desk: '1' } })}
             />
+          ) : null}
+          {/* Live polls need event:edit, which hosts have; the server re-checks. */}
+          {h.access.hosts ? (
+            <SettingsRow icon={icon(ListChecks)} label="Live polls" onPress={() => router.push(`/manage/event/${e.id}/polls`)} />
           ) : null}
           {h.access.hosts ? (
             <SettingsRow
@@ -374,7 +375,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
   hero: { flexDirection: 'row', gap: spacing[4], alignItems: 'center' },
   cover: { width: COVER_W, height: COVER_H, borderRadius: borderRadius.lg },
-  coverEmpty: { alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...font('heading') },
   state: { marginTop: 6, fontSize: typography.fontSize.sm, ...font('semibold') },
   muted: { fontSize: typography.fontSize.sm, ...font() },

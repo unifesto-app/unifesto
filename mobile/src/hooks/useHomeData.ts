@@ -154,8 +154,8 @@ export function useHomeData() {
       setUpcomingTickets(upcoming);
       void syncUpNextWidget(upcoming);
     } catch {
-      // Leave the widget on its last good snapshot rather than blanking it offline.
-      setUpcomingTickets([]);
+      // Keep the card and the widget on their last good tickets: a failed
+      // refresh is not "no tickets".
     } finally {
       setIsLoadingTickets(false);
     }
@@ -313,7 +313,9 @@ export function useHomeData() {
         longitude: position.coords.longitude,
       });
       const place = places?.[0];
-      const city = place?.city || place?.subregion || place?.region || null;
+      // City only: subregion is a district ("NTR") and region a state, and the
+      // nearby feeds filter by city name, so neither would match anyway.
+      const city = place?.city || null;
       setLocationStatus('granted');
       if (city) {
         setDetectedCity(city);

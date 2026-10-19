@@ -7,6 +7,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { Confetti, Hourglass, Ticket, XCircle, ClockCounterClockwise } from '@unifesto/unicon/react-native';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import StatusBarScrim from '../components/ui/StatusBarScrim';
 import AuthButton from '../components/auth/AuthButton';
 import { GUTTER } from '../components/home/Section';
 import PromptCard from '../components/home/PromptCard';
@@ -147,6 +148,7 @@ export default function TicketsScreen() {
             <AuthButton label="Browse events" variant="secondary" onPress={() => router.navigate('/(tabs)')} style={{ marginTop: spacing[3] }} />
           </View>
         </ScrollView>
+        <StatusBarScrim />
       </View>
     );
   }
@@ -176,7 +178,7 @@ export default function TicketsScreen() {
   const offerNudge = offers.length > 0 ? (
     <View style={{ marginBottom: spacing[6] }}>
       <PromptCard
-        icon={<Confetti size={24} color={c.text} weight="fill" />}
+        icon={<Confetti size={24} color={c.text} />}
         title="A spot opened up"
         body={offers.length === 1 ? `${offers[0].event.title}. Confirm it to keep your seat.` : `${offers.length} waiting lists have a seat for you.`}
         onPress={() => t.setTab('waitlist')}

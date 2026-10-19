@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   stat: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.display },
+  statValue: { fontSize: 20, lineHeight: 26, ...cosmosFont.figure },
   statLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   prompt: { marginHorizontal: GUTTER, marginTop: spacing[12], borderRadius: cosmosCardRadius, padding: spacing[6] },
   rule: { width: 40, height: 1, marginBottom: spacing[5] },

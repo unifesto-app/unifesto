@@ -243,7 +243,7 @@ export default function AttendeeDetailScreen() {
 
   const badge = attendeeBadge(reg, tokens);
   const name = reg.user.fullName || reg.user.username || 'Attendee';
-  const icon = (I: typeof Phone) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof Phone) => <I size={ICON} color={tokens.text} />;
   const seats = reg.groupSeats ?? [];
   const cancelled = reg.status === 'CANCELLED';
   const answers = Object.entries(reg.formResponses ?? {})
@@ -396,12 +396,12 @@ export default function AttendeeDetailScreen() {
       {!cancelled ? (
         <SettingsGroup title="Actions">
           <SettingsRow
-            icon={<PencilSimple size={ICON} color={tokens.accent} weight="fill" />}
+            icon={<PencilSimple size={ICON} color={tokens.text} />}
             label="Edit details"
             onPress={() => router.push({ pathname: '/edit-details', params: { registrationId: registrationId!, eventId: eventId!, title: name } })}
           />
           <SettingsRow
-            icon={<ArrowsLeftRight size={ICON} color={tokens.accent} weight="fill" />}
+            icon={<ArrowsLeftRight size={ICON} color={tokens.text} />}
             label="Transfer to someone else"
             onPress={() => openAction('transfer')}
           />

@@ -44,9 +44,10 @@ export function SpaceAccessProvider({ children }: { children: React.ReactNode })
       return;
     }
     // One combined call; the four separate ones only for a backend without it.
-    const next: SpaceAccessData =
-      (await getMyAccess()) ??
-      (await Promise.all([
+    // A failed refresh keeps what we had: door staff offline must not lose the
+    // Space tab and scanner over a blip (the access list is also saved to disk).
+    const next: SpaceAccessData | null = await getMyAccess()
+      .then((access) => access ?? Promise.all([
         getMyOperatorSpaces(),
         getMyCheckinEvents().catch(() => ({ events: [] })),
         getMyJudgingEvents(),
@@ -56,10 +57,13 @@ export function SpaceAccessProvider({ children }: { children: React.ReactNode })
         checkinEvents: checkin.events ?? [],
         judgingEvents,
         sponsorships,
-      })));
+      })))
+      .catch(() => null);
     if (gen !== generation.current) return;
-    lastLoadAt.current = Date.now();
-    setData(next);
+    if (next) {
+      lastLoadAt.current = Date.now();
+      setData(next);
+    }
     setLoaded(true);
   }, [isAuthenticated]);
 

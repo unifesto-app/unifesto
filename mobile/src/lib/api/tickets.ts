@@ -4,7 +4,6 @@
  */
 
 import { makeAuthenticatedRequest, makePublicRequest } from './helpers';
-import { API_URL } from '../constants';
 import type { FileAnswer, FormFieldConfig } from '../../utils/formQuestions';
 import { postMultipart } from './upload';
 import { Linking } from 'react-native';
@@ -143,26 +142,6 @@ export interface CustomField {
   updated_at: string;
   /** Where a FILE answer uploads; defaults to the event's registration form upload. */
   upload?: (file: { uri: string; name: string; mimeType?: string | null }) => Promise<FileAnswer>;
-}
-
-/**
- * Fetch with timeout for React Native
- */
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeout: number = 10000): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
-    return response;
-  } catch (error) {
-    clearTimeout(timeoutId);
-    throw error;
-  }
 }
 
 /**

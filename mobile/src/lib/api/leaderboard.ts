@@ -13,6 +13,7 @@
 
 import { makeAuthenticatedRequest } from './helpers';
 import { call } from './manageEvent';
+import { OFFLINE_MESSAGE } from './errors';
 
 export type PanelistKind = 'JUDGE' | 'MENTOR';
 export type RoundStatus = 'PENDING' | 'ACTIVE' | 'CLOSED';
@@ -170,7 +171,7 @@ export async function getMyJudgment(
     `/leaderboard/entrants/${entrantId}/judgment/${roundId}`,
   );
   if (!response) {
-    return { ok: false, locked: false, message: 'You need to be signed in.' };
+    return { ok: false, locked: false, message: OFFLINE_MESSAGE };
   }
   if (response.ok) {
     try {
@@ -202,9 +203,10 @@ export async function submitJudgment(
 ): Promise<{ ok: boolean; message?: string; locked?: boolean; submittedAt?: string | null; editableUntil?: string | null }> {
   const response = await makeAuthenticatedRequest(
     `/leaderboard/entrants/${entrantId}/judgment`,
-    { method: 'POST', body: JSON.stringify(payload) },
+    // Upserted server-side, so retrying a dropped submit can't double-score.
+    { method: 'POST', body: JSON.stringify(payload), retry: true },
   );
-  if (!response) return { ok: false, message: 'You need to be signed in.' };
+  if (!response) return { ok: false, message: OFFLINE_MESSAGE };
   if (response.ok) {
     try {
       const body = await response.json();

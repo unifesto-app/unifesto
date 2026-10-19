@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   team: { fontSize: typography.fontSize.lg, marginTop: 2, ...cosmosFont.strong },
   clockCol: { alignItems: 'flex-end' },
-  clock: { fontSize: typography.fontSize.base, lineHeight: 24, fontVariant: ['tabular-nums'], ...cosmosFont.display },
+  clock: { fontSize: typography.fontSize.base, lineHeight: 24, ...cosmosFont.figure },
   clockLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   track: { height: 3, borderRadius: 2, marginTop: spacing[3], overflow: 'hidden', backgroundColor: 'rgba(127,127,127,0.25)' },
   sweep: { position: 'absolute', top: 0, bottom: 0, width: 60 },

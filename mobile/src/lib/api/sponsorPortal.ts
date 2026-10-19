@@ -59,4 +59,5 @@ export const boothScan = (sponsorId: string, eventSponsorId: string, qrCode: str
   call<BoothScanResult>(`/sponsor-portal/sponsors/${sponsorId}/scan`, {
     method: 'POST',
     body: JSON.stringify({ eventSponsorId, qrCode }),
+    retry: true, // upserted server-side, so a repeat scan is safe
   });

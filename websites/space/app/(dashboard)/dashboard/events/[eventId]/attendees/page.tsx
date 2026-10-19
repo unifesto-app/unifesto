@@ -38,6 +38,9 @@ import type {
   ExportFormat,
 } from "@/lib/api/registrations-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { useSession } from "@/lib/context/SessionContext";
+import { can } from "@/lib/types/rbac";
+import { PrintBadgesDialog } from "./PrintBadgesDialog";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +70,7 @@ export default function EventRegistrationsPage() {
   const router = useRouter();
   const eventId = params.eventId as string;
   const searchParams = useSearchParams();
+  const { currentRole } = useSession();
 
   const [event, setEvent] = useState<Event | null>(null);
   // Operator ticket list (incl. hidden tiers) for the filter; the public event
@@ -299,6 +303,20 @@ export default function EventRegistrationsPage() {
             <Plus className="h-4 w-4" />
             Add attendee
           </Button>
+          {can(currentRole, "event:manage-attendees") && (
+            <PrintBadgesDialog
+              eventId={eventId}
+              eventSlug={event?.slug}
+              selectedIds={[...selected]}
+              filters={{
+                ticketTypeId: ticketFilter === "all" ? undefined : ticketFilter,
+                status: statusFilter === "all" ? undefined : statusFilter,
+                search: search.trim() || undefined,
+                filtered:
+                  !!search.trim() || statusFilter !== "all" || paymentFilter !== "all" || ticketFilter !== "all",
+              }}
+            />
+          )}
           <ExportMenu
             onExport={handleExport}
             exporting={exporting}

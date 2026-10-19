@@ -415,7 +415,7 @@ One support system for everything a person needs help with. Every item is an **A
 | # | Item | Status |
 |---|---|---|
 | G1 | **Open-on-web handoffs for desk work on mobile.** "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | planned |
-| G2 | **Make on-site mobile tools survive offline and slow networks.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | planned |
+| G2 | **Make on-site mobile tools survive offline and slow networks.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | done (#273) |
 | G3 | **Cosmos migration of the remaining mobile screens.** Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | planned |
 | G4 | **Move long mobile lists to FlatList.** Long lists → `FlatList`: Waitlist, ManualCheckin results, HackathonTeams, Queues, Results, Leads, Coupons, `sessions.tsx`, `group/[registrationId]` | planned |
 | G5 | **Space web: PageHeader and EmptyState rollout.** Space web page pattern: Stays pages on `PageHeader`/`EmptyState`; `EmptyState` on attendees, checkin, transactions, tracking, IAM, settings | planned |
@@ -528,7 +528,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | planned |
+| L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | done (#271) |
 | L2 | Q&A with upvotes + moderation, per session/track | planned |
 | L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | planned |
 | L4 | Projector view on web (results, Q&A wall) | planned |
@@ -546,7 +546,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 
 | # | Item | Status |
 |---|---|---|
-| N1 | Badge/pass printing (PDF sheets + label printers) from the roster | planned |
+| N1 | Badge/pass printing (PDF sheets + label printers) from the roster | done (#272) |
 | N2 | Kiosk self check-in (tablet mode: scan or search your name) | parked (2026-10-18): college fests check in with volunteer scanners; |
 | N3 | **Attendee networking: who's going and connect requests.** Attendee networking: opt-in "who's going" + connect requests at hackathons and fests | parked (2026-10-18): attendee networking is privacy-heavy (needs I2 consent) and has no demand evidence before launch. |
 
@@ -809,3 +809,6 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G10 part 2: member pass reads own check-ins, offline queues sync on foreground/reconnect and never across accounts, file-backed guest lists, proactive download (#268)
 - **2026-10-19** · H25: custom-domain CORS for notify/inquiry, encoded branded From + fallback, hourly domain re-check, TXT ownership + claim expiry + provider cleanup, no Unifesto chrome on custom domains (#269)
 - **2026-10-19** · G10 mobile check-in Undo (scanner success card, event hub recent rows, search "Checked in" rows) via POST /checkin/undo; online only, roster refreshed after undo (#270)
+- **2026-10-19** · L1 live polls: organisers launch polls from Space web and mobile manage-event, attendees vote once from their ticket while the event is live, and results update over a new engagement socket room. (#271)
+- **2026-10-19** · N1 badge/pass printing: Space roster "Print badges" (A4 sheet with cut marks or 4x3in / 62mm / DYMO labels), one badge per claimed group seat on the member's own QR, streamed PDF (#272)
+- **2026-10-19** · G2 mobile on-site tools survive offline/slow networks: 15s/90s request timeouts, last-good copy instead of wiping on 5xx/timeout/offline, retry for upserted writes only, one offline/saved-data banner (#273)

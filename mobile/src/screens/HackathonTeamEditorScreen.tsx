@@ -177,9 +177,9 @@ export default function HackathonTeamEditorScreen() {
               <SettingsRow
                 icon={
                   team.statement ? (
-                    <LockSimple size={26} color={tokens.accent} weight="fill" />
+                    <LockSimple size={26} color={tokens.text} />
                   ) : (
-                    <Lightbulb size={26} color={tokens.accent} weight="fill" />
+                    <Lightbulb size={26} color={tokens.text} />
                   )
                 }
                 label={team.statement ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ') : 'Not chosen yet'}
@@ -222,7 +222,7 @@ export default function HackathonTeamEditorScreen() {
         {team.registrationId ? (
           <SettingsGroup>
             <SettingsRow
-              icon={<IdentificationCard size={26} color={tokens.accent} weight="fill" />}
+              icon={<IdentificationCard size={26} color={tokens.text} />}
               label="Open the registration"
               onPress={() => router.push(`/manage/event/${eventId}/attendee/${team.registrationId}`)}
             />
