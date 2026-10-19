@@ -378,15 +378,7 @@ export class RegistrationPaymentsService {
     // Get updated registration with tickets
     const updatedRegistration = await this.prisma.eventRegistration.findUnique({
       where: { id: registration.id },
-      include: {
-        tickets: true,
-        event: true,
-        user: {
-          include: {
-            identities: true,
-          },
-        },
-      },
+      include: { tickets: true },
     });
 
     // Clear Redis order cache
@@ -395,107 +387,8 @@ export class RegistrationPaymentsService {
       await client.del(`order:${dto.razorpayOrderId}`);
     }
 
-    // Send notifications (don't let failures break the flow)
-    try {
-      // WhatsApp notification
-      if (registration.user.mobileNumber) {
-        // Format dates for registration confirmation
-        const eventDate = new Date(registration.event.startDateTime).toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        });
-        const startTime = new Date(registration.event.startDateTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
-        const endTime = new Date(registration.event.endDateTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
-
-        await this.whatsappService.sendRegistrationConfirmation(
-          registration.user.mobileNumber,
-          {
-            userName: registration.user.fullName || registration.user.username || 'there',
-            eventTitle: registration.event.title,
-            eventDate,
-            eventTime: `${startTime} - ${endTime} IST`,
-            venueName: registration.event.venueName || undefined,
-            city: registration.event.city || undefined,
-            isOnline: registration.event.type === 'ONLINE',
-            onlineUrl: registration.event.onlineUrl || undefined,
-          },
-        );
-      }
-
-      // Email notifications (non-blocking)
-      const userEmail = updatedRegistration?.user?.identities?.[0]?.email;
-      if (userEmail) {
-        const eventDate = formatEventDate(registration.event.startDateTime);
-        const eventTime = formatEventTime(
-          registration.event.startDateTime,
-          registration.event.endDateTime,
-        );
-
-        // Send payment confirmation
-        this.emailService.sendPaymentConfirmation({
-          email: userEmail,
-          userName: registration.user.fullName || registration.user.username || 'there',
-          eventId: registration.event.id,
-          eventTitle: registration.event.title,
-          eventDate,
-          eventTime,
-          venueName: registration.event.venueName || undefined,
-          city: registration.event.city || undefined,
-          isOnline: registration.event.type === 'ONLINE',
-          onlineUrl: registration.event.onlineUrl || undefined,
-          amount: Number(registration.totalAmount) - Number(registration.processingFee),
-          processingFee: Number(registration.processingFee),
-          razorpayPaymentId: dto.razorpayPaymentId,
-          ticketCode: updatedRegistration!.tickets[0]?.ticketCode || undefined,
-          qrCode: registration.qrCode,
-        }).catch(err => this.logger.error('Failed to send payment confirmation email', err));
-
-        // Send registration confirmation
-        this.emailService.sendRegistrationConfirmation({
-          email: userEmail,
-          userName: registration.user.fullName || registration.user.username || 'there',
-          eventId: registration.event.id,
-          eventTitle: registration.event.title,
-          eventDate,
-          eventTime,
-          venueName: registration.event.venueName || undefined,
-          city: registration.event.city || undefined,
-          isOnline: registration.event.type === 'ONLINE',
-          onlineUrl: registration.event.onlineUrl || undefined,
-          qrCode: registration.qrCode,
-          ticketCode: updatedRegistration!.tickets[0]?.ticketCode || undefined,
-          // Raw fields for the "Add to calendar" .ics attachment.
-          eventSlug: registration.event.slug,
-          eventStartDateTime: registration.event.startDateTime,
-          eventEndDateTime: registration.event.endDateTime,
-          eventTimezone: registration.event.timezone,
-          eventType: registration.event.type,
-          venueAddress: registration.event.venueAddress || undefined,
-          eventDescription: registration.event.description || undefined,
-          organiserName: registration.event.space?.name || undefined,
-        }).catch(err => this.logger.error('Failed to send registration confirmation email', err));
-      }
-
-      // Email the shared ticket to each group member (skips the lead + dupes).
-      await this.confirmations.sendGroupMemberConfirmations(
-        registration.id,
-        registration.event,
-        registration.qrCode,
-        updatedRegistration!.tickets[0]?.ticketCode || undefined,
-        userEmail ?? null,
-      );
-    } catch (error) {
-      this.logger.error('Failed to send notification after payment', error);
-    }
+    // Only the caller that won the PAID claim above gets here, so this sends once.
+    await this.sendPaidConfirmations(registration.id, dto.razorpayPaymentId);
 
     // Invalidate check-in cache
     await this.cache.invalidateCheckinCache(eventId);
@@ -1384,6 +1277,50 @@ export class RegistrationPaymentsService {
   }
 
   /**
+   * What a settled paid registration sends: the shared confirmation (WhatsApp,
+   * ticket email with QR, group invite, push, group member tickets) and the
+   * payment receipt to the user's best email. Callers invoke it only after
+   * winning the PAID claim, so it runs once per payment. Never throws.
+   */
+  private async sendPaidConfirmations(registrationId: string, paymentId: string): Promise<void> {
+    try {
+      await this.confirmations.sendRegistrationConfirmations(registrationId);
+      const reg = await this.prisma.eventRegistration.findUnique({
+        where: { id: registrationId },
+        include: {
+          event: true,
+          user: true,
+          tickets: { where: { attendeeEmail: null }, take: 1, select: { ticketCode: true } },
+        },
+      });
+      if (!reg) return;
+      const email = await this.groupSeats.primaryEmail(reg.userId, null);
+      if (!email) return;
+      this.emailService
+        .sendPaymentConfirmation({
+          email,
+          userName: reg.user.fullName || reg.user.username || 'there',
+          eventId: reg.event.id,
+          eventTitle: reg.event.title,
+          eventDate: formatEventDate(reg.event.startDateTime),
+          eventTime: formatEventTime(reg.event.startDateTime, reg.event.endDateTime),
+          venueName: reg.event.venueName || undefined,
+          city: reg.event.city || undefined,
+          isOnline: reg.event.type === 'ONLINE',
+          onlineUrl: reg.event.onlineUrl || undefined,
+          amount: Number(reg.totalAmount) - Number(reg.processingFee),
+          processingFee: Number(reg.processingFee),
+          razorpayPaymentId: paymentId,
+          ticketCode: reg.tickets[0]?.ticketCode || undefined,
+          qrCode: reg.qrCode,
+        })
+        .catch((err) => this.logger.error('Failed to send payment confirmation email', err));
+    } catch (error) {
+      this.logger.error(`Failed to send confirmations for registration ${registrationId}`, error);
+    }
+  }
+
+  /**
    * Complete payment from webhook
    */
   private async completeWebhookPayment(
@@ -1495,57 +1432,9 @@ export class RegistrationPaymentsService {
       return;
     }
 
-    // Send notifications
-    try {
-      if (registration.user.mobileNumber) {
-        const eventDate = new Date(registration.event.startDateTime).toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        });
-        const startTime = new Date(registration.event.startDateTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
-        const endTime = new Date(registration.event.endDateTime).toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        });
-
-        const tickets = await this.prisma.eventTicket.findMany({
-          where: { registrationId: registration.id },
-        });
-
-        await this.whatsappService.sendRegistrationConfirmation(
-          registration.user.mobileNumber,
-          {
-            userName: registration.user.fullName || registration.user.username || 'there',
-            eventTitle: registration.event.title,
-            eventDate,
-            eventTime: `${startTime} - ${endTime} IST`,
-            venueName: registration.event.venueName || undefined,
-            city: registration.event.city || undefined,
-            isOnline: registration.event.type === 'ONLINE',
-            onlineUrl: registration.event.onlineUrl || undefined,
-          },
-        );
-      }
-    } catch (error) {
-      this.logger.error('Failed to send notification from webhook', error);
-    }
-
-    // Email the shared ticket to each group member. leadEmail is null because
-    // this fallback path sends the lead no dedicated email, so if the lead is
-    // among the members they should still receive their copy here.
-    await this.confirmations.sendGroupMemberConfirmations(
-      registration.id,
-      registration.event,
-      registration.qrCode,
-      undefined,
-      null,
-    );
+    // Same as verifyPayment: only the claim winner sends, so the attendee
+    // hears once whichever path settled the payment.
+    await this.sendPaidConfirmations(registration.id, paymentId);
 
     // Clear cache
     const client = this.cache['redis'].getClient();

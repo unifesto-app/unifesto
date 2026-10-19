@@ -403,6 +403,7 @@ export class ReportRenderService {
 
 function fmtDate(d: Date): string {
   return new Date(d).toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -411,6 +412,7 @@ function fmtDate(d: Date): string {
 
 function fmtDateTime(d: Date): string {
   return new Date(d).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
     day: 'numeric',
     month: 'short',
     year: 'numeric',

@@ -1,4 +1,5 @@
 import { RedisService } from '../redis/redis.service';
+import { EmailService } from '../email/email.service';
 import {
   BadRequestException,
   ConflictException,
@@ -145,6 +146,7 @@ export class StayBookingsService {
     private readonly notifications: NotificationsService,
     private readonly authz: AuthorizationService,
     private readonly redis: RedisService,
+    private readonly email: EmailService,
     private readonly events?: EventEmitter2,
   ) {}
 
@@ -202,21 +204,53 @@ export class StayBookingsService {
     );
   }
 
+  /** Push and email the guest the same notice (payment due, confirmed, declined...). */
   private notify(
     userId: string,
     bookingId: string,
     title: string,
     body: string,
   ) {
+    const fail = (what: string) => (err: unknown) =>
+      this.logger.error(`stay ${what}(${bookingId}) failed: ${err instanceof Error ? err.message : String(err)}`);
     void this.notifications.send([userId], {
       category: 'registrationUpdates',
       title,
       body,
       deepLink: `unifesto://stay/pass/${bookingId}`,
       data: { type: 'stay', bookingId },
-    }).catch((err) =>
-      this.logger.error(`stay push(${bookingId}) failed: ${err instanceof Error ? err.message : String(err)}`),
-    );
+    }).catch(fail('push'));
+    void this.emailNotice(bookingId, title, body).catch(fail('email'));
+  }
+
+  private async emailNotice(bookingId: string, title: string, body: string) {
+    const b = await this.prisma.stayBooking.findUnique({
+      where: { id: bookingId },
+      select: {
+        eventId: true,
+        user: {
+          select: {
+            fullName: true,
+            username: true,
+            identities: {
+              where: { email: { not: null } },
+              orderBy: { isPrimary: 'desc' },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    const email = b?.user.identities[0]?.email;
+    if (!b || !email) return;
+    await this.email.sendStayUpdate({
+      email,
+      eventId: b.eventId,
+      userName: b.user.fullName || b.user.username || 'there',
+      title,
+      body,
+    });
   }
 
   private money(b: FullBooking) {

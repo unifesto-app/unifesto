@@ -1,4 +1,4 @@
-import { PaymentStatus, Prisma, RegistrationStatus } from '@prisma/client';
+import { GroupSeatStatus, PaymentStatus, Prisma, PrismaClient, RegistrationStatus } from '@prisma/client';
 
 /**
  * When a registration counts as a person attending.
@@ -19,6 +19,43 @@ export const COUNTS_AS_ATTENDING = {
     in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED],
   },
 } satisfies Prisma.EventRegistrationWhereInput;
+
+/**
+ * A group member who joined (claimed a seat) on an attending booking. GroupSeat
+ * is the only roster source; the lead's own seat is excluded by callers that
+ * already reach the lead through the registration row.
+ */
+export const CLAIMED_MEMBER_SEAT = {
+  status: GroupSeatStatus.CLAIMED,
+  claimedByUserId: { not: null },
+  registration: COUNTS_AS_ATTENDING,
+} satisfies Prisma.GroupSeatWhereInput;
+
+/**
+ * Every account attending an event: booking holders plus group members who
+ * claimed a seat. Use this for anything sent "to the attendees".
+ */
+export async function attendingUserIds(
+  prisma: Pick<PrismaClient, 'eventRegistration' | 'groupSeat'>,
+  eventId: string,
+): Promise<string[]> {
+  const [regs, seats] = await Promise.all([
+    prisma.eventRegistration.findMany({
+      where: { eventId, ...COUNTS_AS_ATTENDING },
+      select: { userId: true },
+    }),
+    prisma.groupSeat.findMany({
+      where: { ...CLAIMED_MEMBER_SEAT, registration: { eventId, ...COUNTS_AS_ATTENDING } },
+      select: { claimedByUserId: true },
+    }),
+  ]);
+  return [
+    ...new Set([
+      ...regs.map((r) => r.userId),
+      ...seats.map((s) => s.claimedByUserId).filter((id): id is string => !!id),
+    ]),
+  ];
+}
 
 /**
  * Matches registrations booked as a group.
