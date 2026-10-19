@@ -12,32 +12,91 @@ describe('PushCampaignService confirm step', () => {
     expect(prisma.user.findMany.mock.calls[0][0].where).toEqual({
       roles: { some: { role: { code: 'ADMIN' }, spaceId: null, eventId: null } },
     });
-    expect(notifications.countAllowed).toHaveBeenCalledWith(['admin-1'], 'productUpdates');
+    expect(notifications.countAllowed).toHaveBeenCalledWith(['admin-1'], 'adminAlerts');
   });
 
-  it("reads a segment broadcast's sent/failed back from OneSignal when listing", async () => {
-    const old = new Date('2026-09-26T19:06:16Z');
+  it('lists stored counts at once and refreshes segment stats in the background, rate-limited', async () => {
+    const now = Date.now();
+    const ago = (ms: number) => new Date(now - ms);
+    const H = 60 * 60 * 1000;
+    const row = (id: string, extra: object) => ({
+      id, status: 'SENT', oneSignalId: `os-${id}`, sentAt: ago(2 * H), updatedAt: ago(H), sentCount: 0, failedCount: 0, ...extra,
+    });
     const items = [
-      { id: 'c1', status: 'SENT', oneSignalId: 'os-1', sentAt: old, sentCount: 0, failedCount: 0 },
-      { id: 'c2', status: 'SENT', oneSignalId: 'os-2', sentAt: old, sentCount: 900, failedCount: 1 }, // settled
-      { id: 'c3', status: 'SENT', oneSignalId: null, sentAt: new Date(), sentCount: 4, failedCount: 0 }, // enumerated
+      row('fresh', {}), // read: sent today
+      row('same', { sentCount: 10, failedCount: 1 }), // read, numbers unchanged: no UPDATE
+      row('settled', { sentAt: ago(48 * H), sentCount: 900 }), // past the first day with counts: skipped
+      row('recent', { updatedAt: ago(60 * 1000) }), // touched a minute ago: skipped
+      row('old', { sentAt: ago(31 * 24 * H) }), // past 30 days: skipped
+      row('plain', { oneSignalId: null }), // enumerated send: skipped
     ];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const oneSignal = {
+      getDeliveryStats: jest.fn(async (id: string) => {
+        await gate;
+        return id === 'os-same' ? { successful: 10, failed: 1, errored: 0 } : { successful: 1126, failed: 15, errored: 2 };
+      }),
+    };
     const prisma = {
       pushCampaign: {
         findMany: jest.fn().mockResolvedValue(items),
-        count: jest.fn().mockResolvedValue(3),
+        count: jest.fn().mockResolvedValue(items.length),
         update: jest.fn().mockResolvedValue({}),
       },
     };
-    const oneSignal = { getDeliveryStats: jest.fn().mockResolvedValue({ successful: 1126, failed: 15, errored: 2 }) };
-    const res = await build(prisma, {}, oneSignal).list();
-    expect(oneSignal.getDeliveryStats).toHaveBeenCalledTimes(1);
-    expect(oneSignal.getDeliveryStats).toHaveBeenCalledWith('os-1');
-    expect(res.items[0]).toMatchObject({ sentCount: 1126, failedCount: 17 });
+    const svc = build(prisma, {}, oneSignal);
+    // The list doesn't wait on OneSignal.
+    const res = await svc.list();
+    expect(res.items[0].sentCount).toBe(0);
+    release();
+    for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r));
+    expect(oneSignal.getDeliveryStats.mock.calls.map((c) => c[0]).sort()).toEqual(['os-fresh', 'os-same']);
+    expect(prisma.pushCampaign.update).toHaveBeenCalledTimes(1);
     expect(prisma.pushCampaign.update).toHaveBeenCalledWith({
-      where: { id: 'c1' },
+      where: { id: 'fresh' },
       data: { sentCount: 1126, failedCount: 17 },
     });
+    // A second view inside 5 minutes reads nothing again.
+    await svc.refreshSegmentStats(items as any);
+    expect(oneSignal.getDeliveryStats).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks a segment broadcast FAILED when OneSignal accepts nothing (no id)', async () => {
+    const prisma = {
+      pushCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'c1', scope: 'PLATFORM', category: 'productUpdates', title: 'T', body: 'B', data: null, targetSegment: { type: 'all' },
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+    };
+    const notifications = {
+      sendToSegments: jest.fn().mockResolvedValue({ sent: 0, failed: 0, skipped: 0, oneSignalId: null }),
+    };
+    await build(prisma, notifications).dispatch('c1');
+    expect(prisma.pushCampaign.update.mock.calls[0][0].data).toMatchObject({ status: 'FAILED', sentAt: null });
+  });
+
+  it('a staff test run is marked [Test], kept out of the inbox and sent as a staff alert', async () => {
+    const prisma = {
+      pushCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'c2', scope: 'PLATFORM', category: 'promotions', title: 'Launch', body: 'B', data: null, targetSegment: { type: 'staff' },
+        }),
+        update: jest.fn().mockResolvedValue({}),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'admin-1' }]) },
+    };
+    const notifications = { send: jest.fn().mockResolvedValue({ sent: 1, failed: 0, skipped: 0 }) };
+    await build(prisma, notifications).dispatch('c2');
+    expect(notifications.send).toHaveBeenCalledWith(
+      ['admin-1'],
+      expect.objectContaining({ title: '[Test] Launch', category: 'adminAlerts', inbox: false }),
+    );
+    expect(prisma.pushCampaign.update.mock.calls[0][0].data.status).toBe('SENT');
   });
 
   it('counts space members (distinct) through the same pref filter as the send', async () => {

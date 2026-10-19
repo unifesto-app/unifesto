@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { RefreshControl } from '../components/ui/RefreshControl';
@@ -53,6 +53,8 @@ export default function HackathonUpdatesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<InboxTab>('mine');
   const [hasStaff, setHasStaff] = useState(false);
+  // Bumped by every reload and tab switch; a response from an older one is dropped.
+  const gen = useRef(0);
 
   useAnalyticsScreenTracking(eventId ? 'HackathonUpdates' : 'Notifications');
 
@@ -65,12 +67,14 @@ export default function HackathonUpdatesScreen() {
 
   const load = useCallback(async () => {
     const current = JSON.parse(scopeKey) as FeedScope;
+    const mine = ++gen.current;
     const [res, staff] = await Promise.all([
       getNotifications(current),
       // Inbox only: whether this person gets staff queries at all (shows the tabs).
       eventId ? null : getNotifications({ type: STAFF_NOTIFICATION_TYPE, limit: 1 }),
     ]);
     if (staff?.ok) setHasStaff(staff.data.items.length > 0);
+    if (mine !== gen.current) return;
     if (!res.ok) {
       setError(res.message);
       setItems((i) => i ?? []);
@@ -115,9 +119,10 @@ export default function HackathonUpdatesScreen() {
   const more = async () => {
     if (!nextBefore) return;
     setLoadingMore(true);
+    const mine = gen.current;
     const res = await getNotifications({ ...scope, before: nextBefore });
     setLoadingMore(false);
-    if (!res.ok) return;
+    if (!res.ok || mine !== gen.current) return;
     setItems((i) => [...(i ?? []), ...res.data.items]);
     setNextBefore(res.data.nextBefore);
   };
@@ -159,6 +164,7 @@ export default function HackathonUpdatesScreen() {
             tabs={TABS}
             value={tab}
             onChange={(t) => {
+              gen.current += 1;
               setTab(t);
               setItems(null);
               setNextBefore(null);
