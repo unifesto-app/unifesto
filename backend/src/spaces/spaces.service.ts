@@ -37,6 +37,7 @@ import {
   BillingCycle,
   OrgPlan,
   PaymentStatus,
+  EventStatus,
   Prisma,
   RoleCode,
   SpaceStatus,
@@ -341,9 +342,35 @@ export class SpacesService {
         createdAt: ur.createdAt,
       }));
 
+    // Attendee-facing team: the Curators and Co-Curators of the space's
+    // public events, one row per person (Curator wins). Same rule as an
+    // event's "Curated by": Space Admins and Crew are never surfaced.
+    const curatorRoles = await this.prisma.userRole.findMany({
+      where: {
+        role: { code: { in: [RoleCode.CURATOR, RoleCode.CO_CURATOR] } },
+        event: {
+          spaceId: id,
+          ...NOT_DELETED,
+          status: { in: [EventStatus.PUBLISHED, EventStatus.ONGOING, EventStatus.COMPLETED] },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+      select: {
+        user: { select: { id: true, fullName: true, username: true, avatarUrl: true } },
+        role: { select: { code: true } },
+      },
+    });
+    const teamById = new Map<string, { id: string; fullName: string | null; username: string | null; avatarUrl: string | null; roleCode: RoleCode }>();
+    for (const r of curatorRoles) {
+      const seen = teamById.get(r.user.id);
+      if (!seen || (seen.roleCode !== RoleCode.CURATOR && r.role.code === RoleCode.CURATOR))
+        teamById.set(r.user.id, { ...r.user, roleCode: r.role.code });
+    }
+    const team = [...teamById.values()];
+
     // Attendee-facing theme: switched on, plan has the perk, not suspended
-    // (see resolveSpaceBranding). Mirrors getSpaceBySlug so the
-    // mobile app (which fetches by id) recolours to the organiser's accent too.
+    // (see resolveSpaceBranding). getSpaceBySlug returns this same payload.
     const subscription = (space as any).subscription ?? null;
     const hasRemoveBranding = subscription
       ? this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding
@@ -351,7 +378,7 @@ export class SpacesService {
     const branding = resolveSpaceBranding(space as any, hasRemoveBranding);
 
     // Strip internal/sensitive fields and the raw member-role list before returning publicly.
-    // Only the requester's own role (userRole), the organiser team, and aggregate counts are exposed.
+    // Only the requester's own role (userRole), the organiser and curator teams, and aggregate counts are exposed.
     const {
       userRoles,
       approvedBy,
@@ -371,7 +398,7 @@ export class SpacesService {
       ...publicSpace
     } = space as any;
 
-    return { ...publicSpace, userRole, organisers, branding };
+    return { ...publicSpace, userRole, organisers, team, branding };
   }
 
   /**
@@ -382,62 +409,10 @@ export class SpacesService {
     // the new slug in the payload and can redirect to it.
     const live = await this.prisma.space.findUnique({ where: { slug }, select: { id: true } });
     const id = live?.id ?? (await idForOldSlug(this.prisma, SlugKind.SPACE, slug));
-    const space = await this.prisma.space.findUnique({
-      where: id ? { id } : { slug },
-      include: {
-        // Space's own plan (per-space billing), for the white-label gate.
-        // Stripped from the response below.
-        subscription: true,
-        domains: BRANDING_SPACE_SELECT.domains,
-        creator: {
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-          },
-        },
-        _count: {
-          select: {
-            userRoles: true,
-            events: { where: NOT_DELETED },
-          },
-        },
-      },
-    });
-
-    if (!space) {
-      throw new NotFoundException('Space not found');
-    }
-    await assertCanViewSpace(this.prisma, space, viewerId);
-    this.logger.log(`parentSpace: ${JSON.stringify((space as any).parentSpace)}`);
-
-    // Attendee-facing theme (see resolveSpaceBranding).
-    const subscription = (space as any).subscription ?? null;
-    const hasRemoveBranding = subscription
-      ? this.planConfig.getEffectiveLimits(subscription).hasRemoveBranding
-      : false;
-    const branding = resolveSpaceBranding(space as any, hasRemoveBranding);
-
-    const {
-      approvedBy,
-      rejectionReason,
-      requestedParentId,
-      parentRequestPending,
-      plan,
-      planActivatedAt,
-      planExpiresAt,
-      coCuratorLimit,
-      verifiedBy,
-      subscription: _sub, // pulled only for the plan gate; never exposed publicly
-      brandingSuspendedAt, // internal; `branding` already reflects it
-      emailFromName,
-      emailReplyTo,
-      domains, // surfaced as branding.customDomain
-      creator,
-      ...rest
-    } = space as any;
-
-    return { ...rest, creator, branding };
+    if (!id) throw new NotFoundException('Space not found');
+    // Same payload as by id, so a space opened by slug still carries my role
+    // (Join/Leave) and the team (G12).
+    return this.getSpaceById(id, viewerId);
   }
 
   /**

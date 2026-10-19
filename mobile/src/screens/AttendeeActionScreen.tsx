@@ -1,3 +1,4 @@
+import { EMAIL_RE } from '../lib/constants';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,7 +22,6 @@ import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 
 const GUTTER = spacing[6];
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type AttendeeAction = 'cancel' | 'refund' | 'transfer';
 
@@ -78,7 +78,7 @@ export default function AttendeeActionScreen() {
   const pendingTransfer = action === 'transfer' && existing?.status === 'PENDING';
 
   const submit = async () => {
-    if (action === 'transfer' && !EMAIL.test(email.trim())) {
+    if (action === 'transfer' && !EMAIL_RE.test(email.trim())) {
       setError("Enter the new holder's email.");
       return;
     }

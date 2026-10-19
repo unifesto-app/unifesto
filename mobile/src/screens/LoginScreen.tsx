@@ -1,3 +1,4 @@
+import { isEmail } from '../lib/constants';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
@@ -201,7 +202,7 @@ export default function NewLoginScreen() {
       setError('Enter your email address');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    if (!isEmail(trimmed)) {
       setError('That email doesn\'t look right');
       return;
     }

@@ -1,3 +1,4 @@
+import { EMAIL_RE } from '../lib/constants';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -28,7 +29,6 @@ import { typography } from '../theme/typography';
 import { font } from '../theme/fontHelpers';
 
 const GUTTER = spacing[6];
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE = /^[0-9]{10}$/;
 const GENDERS = ATTENDEE_GENDER_OPTIONS.map((g) => ({ value: g, label: g }));
 
@@ -48,7 +48,7 @@ const blank = (): Person => ({ name: '', email: '', mobile: '', gender: '', cust
 function checkPerson(p: Person, who: string, fields: CustomField[]): string {
   const pre = who ? `${who}: ` : '';
   if (!p.name.trim()) return `${pre}name is required.`;
-  if (!EMAIL.test(p.email.trim())) return `${pre}a valid email is required.`;
+  if (!EMAIL_RE.test(p.email.trim())) return `${pre}a valid email is required.`;
   if (!PHONE.test(p.mobile.trim())) return `${pre}a 10-digit phone number is required.`;
   if (!p.gender) return `${pre}gender is required.`;
   // Answer policy: a curator may not know every answer, so required ones

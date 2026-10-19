@@ -10,6 +10,8 @@ import { SubscriptionModule } from '../subscription/subscription.module';
 import { CacheModule } from '../cache/cache.module';
 import { EmailModule } from '../email/email.module';
 import { BannerPaletteModule } from '../banner-palette/banner-palette.module';
+import { AiModule } from '../ai/ai.module';
+import { EventDraftService } from './event-draft';
 
 @Module({
   imports: [
@@ -20,9 +22,10 @@ import { BannerPaletteModule } from '../banner-palette/banner-palette.module';
     CacheModule,
     EmailModule,
     BannerPaletteModule,
+    AiModule,
   ],
   controllers: [EventsController],
-  providers: [EventsService, EventSchedulerService, RecurrenceService],
+  providers: [EventsService, EventSchedulerService, RecurrenceService, EventDraftService],
   exports: [EventsService, RecurrenceService],
 })
 export class EventsModule {}

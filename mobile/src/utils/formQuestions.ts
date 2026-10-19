@@ -4,6 +4,7 @@
  * and re-checks every answer; this mirrors it so people see problems before
  * they pay. Keep the two in step.
  */
+import { EMAIL_RE } from '../lib/constants';
 import type { CustomField } from '../lib/api/tickets';
 
 export const INDIAN_STATES_AND_UTS = [
@@ -96,7 +97,16 @@ const isBlank = (v: unknown) =>
   v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * A number answer as it is typed: kept as text so "8." and "-" survive the
+ * keystroke on the way to "8.5" or "-3" (the backend turns it into a number).
+ * A comma counts as the decimal point. null = ignore the keystroke.
+ */
+export function numberDraft(text: string): string | null {
+  const t = text.replace(',', '.');
+  return /^-?\d*\.?\d*$/.test(t) ? t : null;
+}
 
 /** What's wrong with a non-blank answer, or null. */
 export function answerProblem(f: CustomField, v: unknown): string | null {

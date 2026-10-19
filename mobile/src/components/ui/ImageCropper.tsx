@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, Modal, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Image, PanResponder, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { font } from '../../theme/fontHelpers';
+import { TopLayer } from './TopLayer';
 
 /**
  * Full-screen "move and scale" cropper with a fixed-ratio frame. expo-image-picker's
@@ -62,9 +63,9 @@ export function ImageCropHost() {
   };
 
   return (
-    <Modal visible={!!req} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => finish(null)}>
+    <TopLayer visible={!!req} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => finish(null)}>
       {req ? <Cropper key={req.uri} req={req} onDone={finish} /> : null}
-    </Modal>
+    </TopLayer>
   );
 }
 

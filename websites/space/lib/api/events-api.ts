@@ -799,6 +799,29 @@ export async function deleteFormField(
   );
 }
 
+// --- AI draft (M1) -----------------------------------------------------------
+
+export interface EventDraft {
+  description: string;
+  /** `day` 1 = the event's first day; times are "HH:MM" in IST when known. */
+  agenda: { day: number; start?: string; end?: string; title: string; detail?: string }[];
+  faqs: { question: string; answer: string }[];
+}
+
+export type EventDraftResult =
+  | { ok: true; draft: EventDraft }
+  | { ok: false; reason: "disabled" | "capped" | "refused" | "error" | "empty" };
+
+/** Draft description, agenda and FAQs from notes or a link. Saves nothing. `POST /events/:id/ai-draft`. */
+export async function draftEventContent(
+  eventId: string,
+  payload: { notes?: string; url?: string }
+): Promise<{ data: EventDraftResult | null; error: ApiError | null }> {
+  return apiCall<EventDraftResult>(
+    backendClient.post(`/events/${eventId}/ai-draft`, payload)
+  );
+}
+
 // --- Agenda ----------------------------------------------------------------
 
 export interface AgendaPayload {

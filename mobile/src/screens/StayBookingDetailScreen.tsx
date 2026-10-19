@@ -220,7 +220,23 @@ export default function StayBookingDetailScreen() {
           </View>
         ) : b.status === 'CONFIRMED' ? (
           <View style={styles.actions}>
-            {unpaidAtProperty ? (
+            {unpaidAtProperty && desk ? (
+              // Crew can't mark a stay paid on its own (S30); they record the money with the check-in.
+              <Button
+                label={`Collected ${rupees(b.totalAmount)}, check in`}
+                size="lg"
+                fullWidth
+                loading={busy === 'in'}
+                disabled={!!busy}
+                icon={<SignIn size={18} color={tokens.accentFg} />}
+                onPress={() =>
+                  AppAlert.alert(`Took ${rupees(b.totalAmount)}?`, 'This records the payment and checks the guest in.', [
+                    { text: 'Back', style: 'cancel' },
+                    { text: 'Yes, check in', onPress: () => void run('in', () => checkInStay(eventId!, b.id, true), 'Checked in') },
+                  ])
+                }
+              />
+            ) : unpaidAtProperty ? (
               <Button
                 label={`Mark ${rupees(b.totalAmount)} collected`}
                 variant="secondary"
@@ -232,6 +248,7 @@ export default function StayBookingDetailScreen() {
                 onPress={() => void run('paid', () => markStayPaid(eventId!, b.id))}
               />
             ) : null}
+            {unpaidAtProperty && desk ? null : (
             <Button
               label="Check in"
               size="lg"
@@ -241,7 +258,8 @@ export default function StayBookingDetailScreen() {
               icon={<SignIn size={18} color={tokens.accentFg} />}
               onPress={() => void run('in', () => checkInStay(eventId!, b.id), 'Checked in')}
             />
-            {unpaidAtProperty ? (
+            )}
+            {unpaidAtProperty && !desk ? (
               <Text style={[styles.note, { color: tokens.textMuted }]}>Collect the payment first.</Text>
             ) : null}
           </View>
