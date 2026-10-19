@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowCounterClockwise,
   ChartBar,
@@ -22,6 +22,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { hostingRoleLabel } from '../lib/spaceSections';
 import type { ManagedEvent } from '../lib/api/manageSpace';
+import { getSpaceDeskUnread } from '../lib/api/support';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import Skeleton from '../components/Skeleton';
 import AuthButton from '../components/auth/AuthButton';
@@ -70,6 +71,13 @@ export default function ManageSpaceScreen() {
   const isSpaceAdmin = m.space?.userRole?.code === 'SPACE_ADMIN';
   const go = (path: string) => () => router.push(`/manage/space/${spaceId}/${path}` as never);
   const glyph = { size: ICON, color: c.text, weight: 'fill' as const };
+  // Assist desk: null while loading or for someone who works no part of it (403).
+  const [deskUnread, setDeskUnread] = useState<number | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      void getSpaceDeskUnread(spaceId).then((r) => setDeskUnread(r.ok ? r.data.unread : null));
+    }, [spaceId]),
+  );
 
   // Counts ride in the tab labels once loaded, so an empty tab never needs a tap to find out.
   const tabs = (Object.keys(TAB_LABELS) as ManageTab[]).map((key) => {
@@ -247,7 +255,6 @@ export default function ManageSpaceScreen() {
               {m.space?.type === 'SUPER' ? (
                 <SettingsRow icon={<TreeStructure {...glyph} />} label="Sub-spaces" onPress={go('subspaces')} />
               ) : null}
-              <SettingsRow icon={<Lifebuoy {...glyph} />} label="Support" onPress={go('support')} />
             </SettingsGroup>
           </Section>
         ) : null}
@@ -265,6 +272,15 @@ export default function ManageSpaceScreen() {
                     params: { slug: m.space!.slug ?? '', name: m.space!.name ?? '' },
                   })
                 }
+              />
+            ) : null}
+            {/* Assist desk: Space Admins and the event support teams. */}
+            {deskUnread !== null ? (
+              <SettingsRow
+                icon={<Lifebuoy {...glyph} />}
+                label="Assist inbox"
+                value={deskUnread ? `${deskUnread} new` : undefined}
+                onPress={go(isSpaceAdmin ? 'support?admin=1' : 'support')}
               />
             ) : null}
             <SettingsRow icon={<Globe {...glyph} />} label="Open in Unifesto Space" external onPress={() => openWeb('/dashboard')} />

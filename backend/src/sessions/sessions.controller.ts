@@ -12,6 +12,7 @@ import {
   Req,
   Headers,
   HttpCode,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -39,9 +40,9 @@ export class SessionsController {
   // --- Public discovery -----------------------------------------------------
 
   @Get('sessions')
-  @ApiOperation({ summary: 'List published, public, upcoming sessions' })
-  async list() {
-    return this.sessionsService.listPublicSessions();
+  @ApiOperation({ summary: 'List published, public, upcoming sessions (optionally one space\'s)' })
+  async list(@Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string) {
+    return this.sessionsService.listPublicSessions(spaceId);
   }
 
   @Get('sessions/:slug')
