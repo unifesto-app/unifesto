@@ -4774,6 +4774,62 @@ model PushLog {
   @@map("push_logs")
 }
 
+enum MessageChannel {
+  PUSH
+  EMAIL
+  WHATSAPP
+
+  @@map("message_channel")
+}
+
+enum MessageDeliveryStatus {
+  QUEUED // claimed (dedupKey row written before the send), not finished yet
+  SENT // the provider accepted it
+  DELIVERED // provider webhook confirmed delivery (C5)
+  OPENED // provider webhook: opened / read (C5)
+  FAILED
+  SKIPPED // not sent: the user's preferences said no
+  SUPPRESSED // not sent: bounced/complained address or provider suppression (C5)
+
+  @@map("message_delivery_status")
+}
+
+// One row per outbound message on every channel (C3), written at the transport
+// layer (EmailService.deliver, WhatsAppService.sendTemplateMessage,
+// NotificationsService.send), so every send is logged without touching call
+// sites. Push still writes PushLog too (campaign idempotency lives there).
+model MessageDelivery {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  channel  MessageChannel
+  provider String         @db.VarChar(20) // resend | ses | meta | onesignal
+  kind     String?        @db.VarChar(64) // notify kind or push category
+  label    String         @db.VarChar(255) // email subject / WhatsApp template / push title
+  // Email address, E.164-ish phone, or (push) the user id / segment name.
+  recipient String  @db.VarChar(320)
+  userId    String? @map("user_id") @db.Uuid
+
+  status            MessageDeliveryStatus
+  providerMessageId String?               @map("provider_message_id") @db.VarChar(255)
+  error             String?               @db.Text
+  attempts          Int                   @default(0)
+  // Optional idempotency key: a second send with the same key is skipped once
+  // the first is SENT/DELIVERED/OPENED, retried when it FAILED.
+  dedupKey String? @unique @map("dedup_key") @db.VarChar(255)
+
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deliveredAt DateTime? @map("delivered_at") @db.Timestamptz(6)
+  openedAt    DateTime? @map("opened_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)]) // per-user history (C6)
+  @@index([recipient, createdAt(sort: Desc)])
+  @@index([providerMessageId]) // provider webhooks update by it (C5)
+  @@index([status, createdAt]) // failure dashboard (C6)
+  @@index([createdAt]) // retention sweep (RetentionService)
+  @@map("message_deliveries")
+}
+
 // One row per app install that can receive push. `subscriptionId` is OneSignal's
 // push subscription id (the device id); it moves to whichever user last signed
 // in on that device. `linkedAt` = server confirmed OneSignal external_id = userId.
