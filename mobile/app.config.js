@@ -239,8 +239,8 @@ module.exports = () => {
       ],
       "@livekit/react-native-expo-plugin",
       // Crash + JS error reporting (src/lib/sentry.ts). The plugin also adds the
-      // source-map / dSYM upload build steps; eas.json sets
-      // SENTRY_DISABLE_AUTO_UPLOAD until a SENTRY_AUTH_TOKEN is added to EAS.
+      // source-map / dSYM upload build steps, authed by the SENTRY_AUTH_TOKEN
+      // EAS env var.
       ["@sentry/react-native/expo", { organization: "unifesto", project: "unifesto-mobile", url: "https://sentry.io/" }],
       // Alternate app icons, picked in Profile › Appearance. Art comes from
       // marketing/brand-2026 (build.py ALT_ICONS → render.py alt-icon). iOS's

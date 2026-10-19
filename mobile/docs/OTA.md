@@ -67,6 +67,17 @@ version is raised past it.
      no recorded live build on either platform. That means native code changed:
      it needs a store build, not an OTA.
    - **Staged rollout**: publishes to **20%** of production installs.
+3. Upload the update's source maps to Sentry (store builds do this on EAS; an OTA
+   doesn't), from the same checkout right after publishing:
+
+   ```bash
+   npx sentry-expo-upload-sourcemaps dist
+   ```
+
+   `eas update` leaves the bundles and maps in `dist/`. Org and project come from
+   the Sentry plugin in `app.config.js`; the script needs `SENTRY_AUTH_TOKEN` in
+   your shell (an EAS env var marked secret can't be read locally). Skip it and that
+   update's stack traces stay minified.
 
 Builds from before 5.0.0 (4.0.x) lack `platforms: ["ios", "android"]`, so their
 runtime never matches `main` again; they only move forward via the store.
