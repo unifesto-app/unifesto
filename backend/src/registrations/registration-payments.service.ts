@@ -10,7 +10,17 @@ import { TeamChangesService } from './team-changes.service';
 import { takeSeats, SoldOutError } from './capacity.util';
 import { Cron } from '@nestjs/schedule';
 import { CouponsService } from '../coupons/coupons.service';
-import { PaymentStatus, RefundStatus, RegistrationStatus, Prisma, WaitlistStatus } from '@prisma/client';
+import {
+  PaymentStatus,
+  RefundStatus,
+  RegistrationStatus,
+  Prisma,
+  SupportDesk,
+  SupportTicketStatus,
+  WaitlistStatus,
+} from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { updateRefundCase } from '../refunds/refund-cases';
 import { esc, h1, strong } from '../email/layout';
 import { VerifyPaymentDto, RegistrationResponseDto, AdminResolvePendingDto } from './dto';
 import { WaitlistService } from './waitlist.service';
@@ -50,6 +60,7 @@ export class RegistrationPaymentsService {
     private readonly teamChanges: TeamChangesService,
     private readonly confirmations: RegistrationConfirmationsService,
     private readonly sessions: SessionsService,
+    private readonly events?: EventEmitter2,
   ) {}
 
   /**
@@ -730,6 +741,7 @@ export class RegistrationPaymentsService {
       return;
     }
     let first = false;
+    let failedCase: { id: string; supportTicketId: string | null } | null = null;
     await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.webhookEvent.createMany({
         data: [{ id: `refund-failed:${refund.id}`, source: 'razorpay' }],
@@ -760,9 +772,10 @@ export class RegistrationPaymentsService {
       }
       const req = await tx.refundRequest.findUnique({
         where: { id: n.refundRequestId },
-        select: { adminNote: true, status: true },
+        select: { id: true, supportTicketId: true, adminNote: true, status: true },
       });
       if (req) {
+        failedCase = req;
         // requestedAmount becomes what is still owed: the payout hold and the
         // re-approve default both read it. A second failed slice adds to it.
         const owed =
@@ -788,6 +801,12 @@ export class RegistrationPaymentsService {
     this.logger.error(
       `CRITICAL: refund ${refund.id} (₹${rupees}) for request ${n.refundRequestId} failed at Razorpay; refunded amounts reversed, request REFUND_FAILED`,
     );
+    if (failedCase) {
+      updateRefundCase(this.events, failedCase, null, `Razorpay couldn't send ₹${rupees} back. Unifesto will send it again.`, {
+        status: SupportTicketStatus.OPEN,
+        desk: SupportDesk.PLATFORM,
+      });
+    }
     await this.notifyRefundFailed(refund, rupees, n, true);
   }
 

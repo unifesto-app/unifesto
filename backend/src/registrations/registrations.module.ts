@@ -29,6 +29,7 @@ import { StaysModule } from '../stays/stays.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { TeamChangesService } from './team-changes.service';
+import { RefundsModule } from '../refunds/refunds.module';
 
 @Module({
   imports: [
@@ -44,6 +45,8 @@ import { TeamChangesService } from './team-changes.service';
     StaysModule,
     SessionsModule,
     NotificationsModule,
+    // A paid cancel is a refund request (D6).
+    RefundsModule,
   ],
   controllers: [RegistrationsController, GroupSeatsController, FormUploadsController, AttendeeDetailsController],
   providers: [RegistrationsService, MyRegistrationsService, RegistrationCheckoutService, RegistrationPaymentsService, RegistrationCancellationService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService],

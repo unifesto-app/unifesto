@@ -51,6 +51,36 @@ describe('SubjectCases', () => {
     expect(prisma.supportTicket.update.mock.calls[0][0].data).toMatchObject({ status: 'RESOLVED', closedAt: null });
   });
 
+  it('D6: moves the desk once, keeping the space read like an escalation, and can target a case by id', async () => {
+    const { prisma, cases } = setup({ id: 'c1', requesterId: 'u1', desk: SupportDesk.SPACE } as any);
+    await cases.onUpdate({ subjectType: 'RefundRequest', subjectId: 'r1', caseId: 'help-1', text: 'Forwarded', desk: SupportDesk.PLATFORM });
+    expect(prisma.supportTicket.findFirst.mock.calls[0][0].where).toEqual({ id: 'help-1' });
+    expect(prisma.supportTicket.update.mock.calls[0][0].data).toMatchObject({ desk: 'PLATFORM', escalatedAt: expect.any(Date) });
+
+    const already = setup({ id: 'c1', requesterId: 'u1', desk: SupportDesk.PLATFORM } as any);
+    await already.cases.onUpdate({ subjectType: 'RefundRequest', subjectId: 'r1', text: 'Refunded', desk: SupportDesk.PLATFORM });
+    expect(already.prisma.supportTicket.update.mock.calls[0][0].data).not.toHaveProperty('escalatedAt');
+  });
+
+  it('D6: a case raised for the requester starts with a SYSTEM line', async () => {
+    const { prisma, cases } = setup(null);
+    await cases.onOpen({ ...open, raisedForRequester: true });
+    expect(prisma.supportTicket.create.mock.calls[0][0].data.messages.create).toMatchObject({ side: 'SYSTEM', authorId: 'u1' });
+  });
+
+  it('D6: an update emitted right after its open waits for the case', async () => {
+    const { prisma, cases } = setup(null);
+    let created = false;
+    prisma.supportTicket.create.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      created = true;
+      return { id: 'c-new' };
+    });
+    prisma.supportTicket.findFirst.mockImplementation(async () => (created ? { id: 'c-new', requesterId: 'u1' } : null));
+    await Promise.all([cases.onOpen(open), cases.onUpdate({ subjectType: 'SpaceRequest', subjectId: 'r1', text: 'Approved' })]);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
   it('skips records with no case and swallows errors', async () => {
     const none = setup(null);
     await none.cases.onUpdate({ subjectType: 'SpaceRequest', subjectId: 'r1', text: 'x' });

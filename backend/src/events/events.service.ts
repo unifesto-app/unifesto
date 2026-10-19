@@ -2626,7 +2626,7 @@ export class EventsService {
 
     // Every paid ticket gets its price back: one refund request each, straight
     // to Unifesto. The money is held from payouts until they settle.
-    const opened = await openCancelledEventRefunds(this.prisma, eventId, userId, dto.reason);
+    const opened = await openCancelledEventRefunds(this.prisma, eventId, userId, dto.reason, this.events);
     if (opened > 0) {
       this.emailService
         .sendRawEmail(

@@ -476,9 +476,11 @@ describe('register → pay → cancel (S45 flow)', () => {
     expect(state.paymentStatus).toBe(PaymentStatus.PAID);
     expect(prisma.$executeRaw).toHaveBeenCalledTimes(1);
 
-    // Cancel: a paid ticket must go through refunds, and gives no seat back here.
+    // Cancel: a paid ticket becomes a cancellation refund (D6), and gives no seat back here.
     prisma.event.update.mockClear();
-    await expect(svc.cancelMyRegistration('reg-1', 'user-1')).rejects.toThrow(/refund request/);
+    const refunds = (svc as any).cancellation.refunds;
+    await expect(svc.cancelMyRegistration('reg-1', 'user-1', 'Exams')).resolves.toMatchObject({ refundRequestId: 'rr-cancel' });
+    expect(refunds.requestCancellation).toHaveBeenCalledWith('user-1', 'reg-1', 'Exams');
     expect(prisma.event.update).not.toHaveBeenCalled();
     expect(prisma.eventTicketType.update).not.toHaveBeenCalled();
   });

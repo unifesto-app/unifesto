@@ -23,6 +23,7 @@ function setup(holderDeletedAt: Date | null, status: RefundStatus) {
       update: jest.fn(async ({ data }: any) => data),
     },
     user: { findUnique: jest.fn(async () => ({ deletedAt: holderDeletedAt })) },
+    eventRegistration: { updateMany: jest.fn(async () => ({ count: 1 })) },
   };
   const service = new RefundsService(prisma as any, {} as any, { emit: jest.fn() } as any, {} as any, { eventOverdrawn: jest.fn(async () => 0) } as any, {} as any);
   const s = service as any;
