@@ -49,7 +49,7 @@ function seatsLine(r: FreeAddRequest) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -57,7 +57,7 @@ function formatDate(iso: string) {
 }
 
 function requesterName(r: FreeAddRequest) {
-  return r.requester?.fullName || r.requester?.username || "Unknown organiser";
+  return r.requester?.fullName || r.requester?.username || "Unknown requester";
 }
 
 /**
@@ -139,7 +139,7 @@ export default function FreeAddRequestsPage() {
             <div>
               <CardTitle className="text-base">Review queue</CardTitle>
               <CardDescription>
-                Approving lets the organiser add attendees for free on that event
+                Approving lets the event&apos;s curators add attendees for free on that event
                 (bypassing the payment link) — the platform processing fee is
                 waived for those comped seats.
               </CardDescription>
@@ -187,7 +187,7 @@ export default function FreeAddRequestsPage() {
               title={filter === "PENDING" ? "The queue is clear" : "Nothing here"}
               description={
                 filter === "PENDING"
-                  ? "When an organiser asks to add attendees for free, it will land here for review."
+                  ? "When a curator asks to add attendees for free, it will land here for review."
                   : `No ${filter.toLowerCase()} free-add requests yet.`
               }
             />

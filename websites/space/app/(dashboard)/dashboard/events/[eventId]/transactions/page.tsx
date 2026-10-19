@@ -4,7 +4,6 @@ import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  ArrowLeft,
   MagnifyingGlass,
   CaretLeft,
   CaretRight,
@@ -246,18 +245,6 @@ export default function EventTransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/dashboard/events/${eventId}`)}
-          className="-ml-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <PageHeader
         title="Transactions"
         subtitle="View payment transactions and refunds"

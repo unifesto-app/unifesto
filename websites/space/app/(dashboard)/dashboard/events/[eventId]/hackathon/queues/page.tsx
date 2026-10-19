@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { Coffee, Gavel, Hourglass, LockOpen, Timer, UsersFour } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
-import { HackPage, useLivePoll, useResult } from "@/components/hackathon/HackParts";
+import { HackPage, useLivePoll, useResult, useEventRunning } from "@/components/hackathon/HackParts";
 import {
   forceComplete,
   getQueues,
@@ -56,7 +56,8 @@ export default function HackathonQueuesPage() {
   const eventId = useParams().eventId as string;
   const fetcher = useCallback(() => getQueues(eventId), [eventId]);
   const { data, setData, error, setError, reload } = useResult(fetcher);
-  useLivePoll(() => void reload());
+  const running = useEventRunning();
+  useLivePoll(() => void reload(), running);
 
   const run = async (p: Promise<Result<QueueMonitor>>) => {
     const res = await p;

@@ -159,6 +159,8 @@ export default function SpaceIamPage() {
             <CardTitle>Event roles</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* The grid is wider than a phone; say so (B12). */}
+            <p className="text-xs text-muted-foreground md:hidden">Scroll sideways to see every permission.</p>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
                 <thead>

@@ -9,6 +9,7 @@ import { getEventById } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { EventLayoutContext } from "@/components/events/EventLayoutContext";
 
 /**
  * Event-scoped chrome. The event's SECTION nav lives in the shared left rail
@@ -30,7 +31,6 @@ export default function EventLayout({
   const [loading, setLoading] = useState(true);
 
   const loadEvent = useCallback(async () => {
-    setLoading(true);
     const { data, error } = await getEventById(eventId);
     if (error || !data) {
       router.push(`/dashboard/events`);
@@ -84,7 +84,8 @@ export default function EventLayout({
           </span>
         </nav>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-semibold text-foreground">{event.title}</h1>
+          {/* Not an h1: each page's own PageHeader is the page's one h1 (B12). */}
+          <p className="text-xl font-semibold text-foreground">{event.title}</p>
           <Badge variant={statusColor} className="text-xs">
             {event.status}
           </Badge>
@@ -92,7 +93,9 @@ export default function EventLayout({
       </div>
 
       {/* Section content — full width; section nav lives in the shared rail */}
-      <div>{children}</div>
+      <EventLayoutContext.Provider value={{ event, reload: loadEvent }}>
+        <div>{children}</div>
+      </EventLayoutContext.Provider>
     </div>
   );
 }

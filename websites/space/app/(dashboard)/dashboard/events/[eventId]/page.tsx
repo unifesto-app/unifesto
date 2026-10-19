@@ -13,10 +13,11 @@ import {
   CheckCircle,
   Megaphone,
 } from "@unifesto/unicon/react";
-import { getEventById, publishEvent, deleteEvent } from "@/lib/api/events-api";
+import { publishEvent, deleteEvent } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
 import { getCheckinStats, getAttendeeStats } from "@/lib/api/registrations-api";
 import type { CheckinStats, AttendeeStats } from "@/lib/api/registrations-api";
+import { useLayoutEvent } from "@/components/events/EventLayoutContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -71,25 +72,19 @@ export default function EventOverviewPage() {
   const router = useRouter();
   const eventId = params.eventId as string;
 
-  const [event, setEvent] = useState<Event | null>(null);
+  // The layout already loaded the event (B12: it was fetched twice).
+  const layout = useLayoutEvent();
+  const event: Event | null = layout?.event ?? null;
   const [stats, setStats] = useState<CheckinStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const loading = !event;
+  const [error] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [announceOpen, setAnnounceOpen] = useState(false);
   const [attendeeStats, setAttendeeStats] = useState<AttendeeStats | null>(null);
 
   const loadEvent = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    const { data, error } = await getEventById(eventId);
-    if (error) {
-      setError(error.message);
-    } else if (data) {
-      setEvent(data);
-    }
-    setLoading(false);
-  }, [eventId]);
+    await layout?.reload();
+  }, [layout]);
 
   const loadStats = useCallback(async () => {
     const { data } = await getCheckinStats(eventId);
@@ -102,10 +97,9 @@ export default function EventOverviewPage() {
   }, [eventId]);
 
   useEffect(() => {
-    void loadEvent();
     void loadStats();
     void loadAttendees();
-  }, [loadEvent, loadStats, loadAttendees]);
+  }, [loadStats, loadAttendees]);
 
   const handlePublish = async () => {
     if (!event || !window.confirm("Publish this event? It will be visible to attendees.")) return;

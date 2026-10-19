@@ -465,18 +465,6 @@ export default function EditEventPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/dashboard/events/${eventId}`)}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <PageHeader
         title="Edit event"
         subtitle={event.title}
@@ -589,12 +577,12 @@ export default function EditEventPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label htmlFor="category">Category</Label>
                 <Select
                   value={form.category || "none"}
                   onValueChange={(v) => set("category", v === "none" ? "" : v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="category">
                     <SelectValue placeholder="Choose a category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -660,12 +648,12 @@ export default function EditEventPage() {
           </CardHeader>
           <CardContent className="space-y-4 px-4 py-4">
             <div className="space-y-2">
-              <Label>Event type</Label>
+              <Label htmlFor="event-type">Event type</Label>
               <Select
                 value={form.type}
                 onValueChange={(v) => set("type", v as EventType)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="event-type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -839,14 +827,14 @@ export default function EditEventPage() {
           </CardHeader>
           <CardContent className="space-y-4 px-4 py-4">
             <div className="space-y-2">
-              <Label>Visibility</Label>
+              <Label htmlFor="visibility">Visibility</Label>
               <Select
                 value={form.visibility}
                 onValueChange={(v) =>
                   set("visibility", v as EventVisibility)
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger id="visibility">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

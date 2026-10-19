@@ -71,7 +71,7 @@ function dayColor(status: DayStatus): string {
 }
 
 function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -130,9 +130,9 @@ export default function StatusPage() {
     ? ""
     : summary.stale
       ? summary.lastSampleAt
-        ? `No health check since ${new Date(summary.lastSampleAt).toLocaleString()}. The sampler or its database may be down.`
+        ? `No health check since ${new Date(summary.lastSampleAt).toLocaleString("en-IN")}. The sampler or its database may be down.`
         : "No health checks recorded yet."
-      : `Updated ${new Date(summary.updatedAt).toLocaleTimeString()} · auto-refreshing`;
+      : `Updated ${new Date(summary.updatedAt).toLocaleTimeString("en-IN")} · auto-refreshing`;
   const openCount =
     summary?.incidents.filter((i) => i.status !== "RESOLVED").length ?? 0;
 

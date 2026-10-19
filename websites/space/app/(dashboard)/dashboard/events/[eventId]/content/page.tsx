@@ -186,7 +186,7 @@ export default function EventContentPage() {
               <div>
                 <p className="font-medium">{a.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {new Date(a.startTime).toLocaleString()} –{" "}
+                  {new Date(a.startTime).toLocaleString("en-IN")} –{" "}
                   {new Date(a.endTime).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",

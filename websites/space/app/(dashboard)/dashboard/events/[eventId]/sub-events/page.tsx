@@ -45,7 +45,7 @@ function formatDate(iso?: string): string {
   if (!iso) return "Date TBA";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Date TBA";
-  return d.toLocaleDateString("en-US", {
+  return d.toLocaleDateString("en-IN", {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -126,17 +126,28 @@ export default function EventSubEventsPage() {
   // this plus the depth cap and the co-host link.
   const candidates = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // A sub-event happens during its big event (B12: a 2027 draft was offered
+    // for a finished 2026 event). A day of slack either side for setup days.
+    const DAY = 86_400_000;
+    const from = event ? new Date(event.startDateTime).getTime() - DAY : -Infinity;
+    const to = event ? new Date(event.endDateTime).getTime() + DAY : Infinity;
+    const during = (e: { startDateTime: string }) => {
+      const t = new Date(e.startDateTime).getTime();
+      return t >= from && t <= to;
+    };
     return spaceEvents
       .filter(
         (e) =>
           e.id !== eventId &&
           !e.parentEventId &&
           (e._count?.childEvents ?? 0) === 0 &&
-          !pendingChildIds.has(e.id)
+          !pendingChildIds.has(e.id) &&
+          e.status !== "CANCELLED" &&
+          during(e)
       )
       .filter((e) => (q ? e.title.toLowerCase().includes(q) : true))
       .slice(0, 20);
-  }, [spaceEvents, query, eventId, pendingChildIds]);
+  }, [spaceEvents, query, eventId, pendingChildIds, event]);
 
   const attach = async (childId: string) => {
     setBusyId(childId);
@@ -385,7 +396,7 @@ export default function EventSubEventsPage() {
                   <p className="px-3 py-3 text-sm text-muted-foreground">
                     {query.trim()
                       ? "No matching events available to attach."
-                      : "No eligible events to attach or request. An event that already has its own sub-events can't become a sub-event, one attached elsewhere must be detached first, and requests already pending are hidden."}
+                      : "No eligible events to attach or request. Only events that start during this one are listed. An event that already has its own sub-events can't become a sub-event, one attached elsewhere must be detached first, and requests already pending are hidden."}
                   </p>
                 ) : (
                   <ul className="divide-y divide-border">

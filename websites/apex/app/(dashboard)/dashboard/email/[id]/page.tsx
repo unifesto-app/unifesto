@@ -80,7 +80,7 @@ export default function CampaignDetailPage() {
             {c.subjectB && <Badge variant="brand">A/B test</Badge>}
             <span>
               {c.status} ·{" "}
-              {new Date(c.sentAt ?? c.scheduledAt ?? c.createdAt).toLocaleString()}
+              {new Date(c.sentAt ?? c.scheduledAt ?? c.createdAt).toLocaleString("en-IN")}
             </span>
           </span>
         }
@@ -184,11 +184,11 @@ export default function CampaignDetailPage() {
                       {l.variant ?? "—"}
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">
-                      {l.openedAt ? new Date(l.openedAt).toLocaleString() : "—"}
+                      {l.openedAt ? new Date(l.openedAt).toLocaleString("en-IN") : "—"}
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">
                       {l.firstClickedAt
-                        ? new Date(l.firstClickedAt).toLocaleString()
+                        ? new Date(l.firstClickedAt).toLocaleString("en-IN")
                         : "—"}
                     </td>
                   </tr>

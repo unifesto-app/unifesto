@@ -94,7 +94,7 @@ export function SendToOrganiser({
                     >
                       <span className="block truncate font-medium text-foreground">{ev.title}</span>
                       <span className="block truncate text-xs text-muted-foreground">
-                        {ev.space?.name ?? "No space"} · {new Date(ev.startDateTime).toLocaleDateString()}
+                        {ev.space?.name ?? "No space"} · {new Date(ev.startDateTime).toLocaleDateString("en-IN")}
                       </span>
                     </button>
                   </li>
