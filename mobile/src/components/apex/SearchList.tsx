@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../ui/RefreshControl';
 import { MagnifyingGlass } from '@unifesto/unicon/react-native';
+import { useFocusEffect } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import type { Result } from '../../lib/api/apex';
@@ -26,10 +27,23 @@ interface SearchListProps<T> {
   /** Extra header content under the search box (filters). */
   header?: React.ReactNode;
   noun: [singular: string, plural: string];
+  /** Shown on a 403. */
+  deniedMessage?: string;
+  /** Reload page 1 on returning to the screen, e.g. so read rows lose their dot. */
+  refreshOnFocus?: boolean;
 }
 
 /** Debounced search box + paged, pull-to-refresh list for Apex lookups. */
-export default function SearchList<T>({ placeholder, fetchPage, keyOf, renderItem, header, noun }: SearchListProps<T>) {
+export default function SearchList<T>({
+  placeholder,
+  fetchPage,
+  keyOf,
+  renderItem,
+  header,
+  noun,
+  deniedMessage = 'Only Unifesto platform admins can see this.',
+  refreshOnFocus,
+}: SearchListProps<T>) {
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
   const [search, setSearch] = useState('');
@@ -55,7 +69,7 @@ export default function SearchList<T>({ placeholder, fetchPage, keyOf, renderIte
       const res = await fetchPage(query, next);
       if (gen !== generation.current) return;
       if (!res.ok) {
-        setError(res.denied ? 'Only Unifesto platform admins can see this.' : res.message);
+        setError(res.denied ? deniedMessage : res.message);
         return;
       }
       setError('');
@@ -63,13 +77,25 @@ export default function SearchList<T>({ placeholder, fetchPage, keyOf, renderIte
       setPage(next);
       setRows((prev) => (next === 1 ? res.data.items : [...prev, ...res.data.items]));
     },
-    [fetchPage, query],
+    [fetchPage, query, deniedMessage],
   );
 
   useEffect(() => {
     setLoading(true);
     void load(1).finally(() => setLoading(false));
   }, [load]);
+
+  // The first focus is the mount, which the effect above already loads. Read
+  // `load` through a ref so a filter change doesn't count as a focus.
+  const focused = useRef(false);
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useFocusEffect(
+    useCallback(() => {
+      if (refreshOnFocus && focused.current) void loadRef.current(1);
+      focused.current = true;
+    }, [refreshOnFocus]),
+  );
 
   const loadMore = async () => {
     if (loading || loadingMore || rows.length >= total) return;

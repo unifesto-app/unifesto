@@ -332,8 +332,9 @@ export class AdminService {
       this.prisma.space.count(),
       this.prisma.space.count({ where: { status: 'ACTIVE' } }),
       this.prisma.spaceRequest.count({ where: { status: 'PENDING' } }),
-      this.prisma.event.count(),
-      this.prisma.event.count({ where: { status: 'PUBLISHED' } }),
+      // Hidden events are left out, like the Events page's default list (B14).
+      this.prisma.event.count({ where: { deletedAt: null } }),
+      this.prisma.event.count({ where: { status: 'PUBLISHED', deletedAt: null } }),
       this.prisma.eventRegistration.count(),
       this.prisma.eventRegistration.aggregate({
         _sum: { totalAmount: true },

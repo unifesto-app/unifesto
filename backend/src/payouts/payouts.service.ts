@@ -379,6 +379,30 @@ export class PayoutsService {
     }
   }
 
+  /**
+   * A20: what the space's other events owe after refunds landed past their
+   * payouts (`debt`), and how much of it this event must cover (`shortfall`):
+   * the part their own unpaid balances can't. The space as a whole then never
+   * pays out more than Space Financials says remains. Only an event with a
+   * committed payout can be overdrawn, so the full scan runs only on a debt.
+   */
+  private async spaceShortfall(spaceId: string, exceptEventId: string, db: Db) {
+    const balanceOf = (id: string) => this.computeBalance(id, undefined, db);
+    const paidOut = await db.payout.findMany({
+      where: { eventId: { not: exceptEventId }, event: { spaceId }, status: { in: this.COMMITTING_STATUSES } },
+      select: { eventId: true },
+      distinct: ['eventId'],
+    });
+    let debt = 0;
+    for (const p of paidOut) debt += (await balanceOf(p.eventId)).overdrawn;
+    if (debt <= 0) return { debt: 0, shortfall: 0 };
+    // ponytail: one computeBalance per event in the space, only while a debt exists.
+    const others = await db.event.findMany({ where: { spaceId, id: { not: exceptEventId } }, select: { id: true } });
+    let cover = 0;
+    for (const e of others) cover += (await balanceOf(e.id)).available;
+    return { debt: round2(debt), shortfall: round2(Math.max(0, debt - cover)) };
+  }
+
   /** How far an event's payouts already exceed what it earns (0 if they don't). */
   async eventOverdrawn(eventId: string): Promise<number> {
     return (await this.computeBalance(eventId)).overdrawn;
@@ -1002,24 +1026,25 @@ export class PayoutsService {
   ) {
     const event = await this.prisma.event.findUnique({
       where: { id: dto.eventId },
-      select: { id: true, createdBy: true },
+      select: { id: true, createdBy: true, spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
 
-    const bankAccount = await this.prisma.payoutBankAccount.findFirst({
-      where: { id: dto.bankAccountId, status: BankAccountStatus.VERIFIED },
-    });
-    if (!bankAccount) throw new BadRequestException('Bank account not found or not verified');
     // `!(x > 0)` also rejects NaN, which slips past `x <= 0` (S29).
     if (dto.netAmount != null && !(dto.netAmount > 0)) {
       throw new BadRequestException('Payout amount must be greater than zero');
     }
+    // Only the creator's or a Space Admin's verified account, admin picks too (A20).
+    await this.assertAccountEligibleForEvent(event, dto.bankAccountId);
 
     // Compute-then-insert must not interleave with another payout for the same
     // event, or both read the same `available` and the event is paid twice.
-    // A per-event advisory lock (released at commit) serialises them.
+    // A per-event advisory lock (released at commit) serialises them, and a
+    // per-space one stops two events of a space both paying out past what the
+    // space nets to (A20). Always event, then space, so they can't deadlock.
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout:' + dto.eventId}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout-space:' + event.spaceId}))`;
       const balance = await this.computeBalance(
         dto.eventId,
         dto.platformFeePercent,
@@ -1036,17 +1061,29 @@ export class PayoutsService {
         );
       }
 
+      // Refunds after a payout can leave another event of the space overdrawn:
+      // the space nets that debt, as Space Financials already does (A20).
+      const { debt, shortfall } = await this.spaceShortfall(event.spaceId, dto.eventId, tx);
+      const payable = round2(Math.max(0, balance.available - shortfall));
+      const why = shortfall
+        ? ` Other events in this space are overdrawn by ₹${debt.toFixed(2)} after refunds, ` +
+          `so ₹${shortfall.toFixed(2)} of this event's ₹${balance.available.toFixed(2)} is held to cover it.`
+        : '';
+      if (payable <= 0) {
+        throw new BadRequestException(`No balance available to pay out for this event.${why}`);
+      }
+
       // Custom amount = exactly what to transfer; else the whole remaining balance.
       let netAmount: number;
       if (dto.netAmount != null) {
-        if (round2(dto.netAmount) > balance.available) {
+        if (round2(dto.netAmount) > payable) {
           throw new BadRequestException(
-            `Amount exceeds the available balance of ₹${balance.available.toFixed(2)}`,
+            `Amount exceeds the available balance of ₹${payable.toFixed(2)}.${why}`,
           );
         }
         netAmount = round2(dto.netAmount);
       } else {
-        netAmount = balance.available;
+        netAmount = payable;
       }
 
       // Settlement is manual, so a payout is queued for immediate admin action.

@@ -528,6 +528,10 @@ export class TeamChangesService {
       include: { registration: { select: { event: { select: { title: true } } } } },
     });
     const title = p.registration.event.title;
+    // Already settled by another payment (two tabs): refund this one in full (A22).
+    if (outcome === 'already' && p.paymentStatus === PaymentStatus.PAID) {
+      await this.payments.refundIfDuplicate(p.paymentId, paymentId, `seat purchase ${purchaseId}`);
+    }
     if (outcome === 'added') {
       this.push(p.userId, p.registrationId, 'Seats added', `${p.seats} new seat${p.seats > 1 ? 's are' : ' is'} ready for ${title}. Invite your team.`);
     } else if (outcome === 'refund') {

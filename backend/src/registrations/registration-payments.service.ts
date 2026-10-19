@@ -131,6 +131,28 @@ export class RegistrationPaymentsService {
   }
 
   /**
+   * A22: `paymentId` didn't settle this row because another payment already
+   * paid it (two tabs on one offer, a retried checkout): refund it in full. A
+   * REFUNDED row is left out: it may be a re-registration, so a capture there
+   * goes to the orphaned-payments view as before.
+   */
+  private async refundIfDuplicate(registrationId: string, paymentId: string): Promise<void> {
+    const row = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      select: { paymentId: true, paymentStatus: true },
+    });
+    if (row?.paymentStatus !== PaymentStatus.PAID && row?.paymentStatus !== PaymentStatus.PARTIALLY_REFUNDED) return;
+    await this.payments.refundIfDuplicate(row.paymentId, paymentId, `registration ${registrationId}`);
+  }
+
+  /** The verify path never fails the payer over this; the webhook retries it. */
+  private refundIfDuplicateQuietly(registrationId: string, paymentId: string): Promise<void> {
+    return this.refundIfDuplicate(registrationId, paymentId).catch((err) =>
+      this.logger.error(`Duplicate capture ${paymentId} on ${registrationId}: refund failed, webhook will retry: ${err}`),
+    );
+  }
+
+  /**
    * Verify Razorpay payment and complete registration
    */
   async verifyPayment(
@@ -201,6 +223,7 @@ export class RegistrationPaymentsService {
       );
     }
     if (registration.paymentStatus === PaymentStatus.PAID) {
+      await this.refundIfDuplicateQuietly(registration.id, dto.razorpayPaymentId);
       const tickets = await this.prisma.eventTicket.findMany({
         where: { registrationId: registration.id },
       });
@@ -237,6 +260,7 @@ export class RegistrationPaymentsService {
       // Only the caller that won the conversion confirms; the losing side of
       // the verify/webhook race would otherwise send a duplicate.
       if (converted) await this.confirmations.sendRegistrationConfirmations(registration.id);
+      else await this.refundIfDuplicateQuietly(registration.id, dto.razorpayPaymentId);
       await this.cache.invalidateCheckinCache(eventId);
       await this.cache.incrementEventScore(eventId);
 
@@ -324,6 +348,7 @@ export class RegistrationPaymentsService {
     // Lost the race — the other path (webhook/verify) already completed this
     // registration. Return success idempotently and send nothing.
     if (!claimedWin) {
+      await this.refundIfDuplicateQuietly(registration.id, dto.razorpayPaymentId);
       const tickets = await this.prisma.eventTicket.findMany({
         where: { registrationId: registration.id },
       });
@@ -619,8 +644,12 @@ export class RegistrationPaymentsService {
         );
         return { received: true };
       }
-      if (registration.paymentStatus === PaymentStatus.PAID) {
-        this.logger.log(`Registration ${registrationId} already paid — webhook idempotent`);
+      if (
+        registration.paymentStatus === PaymentStatus.PAID ||
+        registration.paymentStatus === PaymentStatus.PARTIALLY_REFUNDED
+      ) {
+        // Same payment replayed: idempotent. A different one: refunded (A22).
+        await this.refundIfDuplicate(registrationId, paymentId);
         return { received: true };
       }
       // A refunded or cancelled row must never be revived to PAID by a late or
@@ -1361,6 +1390,7 @@ export class RegistrationPaymentsService {
     if (registration.waitlistStatus === WaitlistStatus.OFFERED) {
       const { converted } = await this.waitlist.convert(registrationId, { paymentId, orderId });
       if (converted) await this.confirmations.sendRegistrationConfirmations(registrationId);
+      else await this.refundIfDuplicate(registrationId, paymentId);
       return;
     }
 
@@ -1442,6 +1472,7 @@ export class RegistrationPaymentsService {
         `completeWebhookPayment: registration ${registrationId} completed ` +
           `concurrently by another path — skipping duplicate`,
       );
+      await this.refundIfDuplicate(registrationId, paymentId);
       return;
     }
 

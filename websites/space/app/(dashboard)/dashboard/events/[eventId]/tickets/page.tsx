@@ -232,8 +232,9 @@ export default function EventTicketsPage() {
 
       {tickets.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Sold" value={totals.registrations.toLocaleString("en-IN")} />
-          <Stat label="Checked in" value={totals.checkedIn.toLocaleString("en-IN")} />
+          {/* Bookings, not people: a group of five is one (B14). Overview counts people. */}
+          <Stat label="Bookings sold" value={totals.registrations.toLocaleString("en-IN")} />
+          <Stat label="Bookings checked in" value={totals.checkedIn.toLocaleString("en-IN")} />
           <Stat label="On waiting list" value={totals.waitlist.toLocaleString("en-IN")} />
           {totals.revenue != null && (
             <Stat label="Net ticket revenue" value={formatInr(totals.revenue)} />
