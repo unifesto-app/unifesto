@@ -27,6 +27,7 @@ import {
   Bed,
   ArrowCounterClockwise,
   ListChecks,
+  ChatsCircle,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
@@ -91,6 +92,7 @@ const NAV_GROUPS: EventNavGroup[] = [
     items: [
       { href: "/content", label: "Content", icon: FileText, requires: "event:edit" },
       { href: "/polls", label: "Live polls", icon: ListChecks, requires: "event:edit" },
+      { href: "/questions", label: "Live Q&A", icon: ChatsCircle, requires: "event:edit" },
       { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", feature: "hasCertificates" },
       // Unifesto Sprint (hackathon mode). Plan gating is shown in-page.
       { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-attendees" },

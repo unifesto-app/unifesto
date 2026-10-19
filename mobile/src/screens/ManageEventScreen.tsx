@@ -7,6 +7,7 @@ import {
   Bed,
   CalendarDots,
   ChartBar,
+  ChatsCircle,
   Eye,
   FileCsv,
   HourglassMedium,
@@ -236,6 +237,9 @@ export default function ManageEventScreen() {
           {/* Live polls need event:edit, which hosts have; the server re-checks. */}
           {h.access.hosts ? (
             <SettingsRow icon={icon(ListChecks)} label="Live polls" onPress={() => router.push(`/manage/event/${e.id}/polls`)} />
+          ) : null}
+          {h.access.hosts ? (
+            <SettingsRow icon={icon(ChatsCircle)} label="Live Q&A" onPress={() => router.push(`/manage/event/${e.id}/questions`)} />
           ) : null}
           {h.access.hosts ? (
             <SettingsRow

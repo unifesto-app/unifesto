@@ -28,6 +28,7 @@ import {
 import AttendingShareModal from '../components/AttendingShareModal';
 import LivePollsPanel from '../components/tickets/LivePollsPanel';
 import { AfterEventGroup, EndedStub, useEventCertificate } from '../components/EventEnded';
+import LiveQaPanel from '../components/tickets/LiveQaPanel';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
@@ -287,6 +288,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
         </View>
 
         {eventLive && t.eventId ? <LivePollsPanel eventId={t.eventId} /> : null}
+        {eventLive && t.eventId ? <LiveQaPanel eventId={t.eventId} /> : null}
 
         {/* Why it was cancelled, when there's something worth saying */}
         {cancelled && (t.cancellation.reason || t.cancellation.byOrganiser || t.cancelledAt) ? (
