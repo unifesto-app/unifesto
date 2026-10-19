@@ -19,7 +19,7 @@ import EventCard from "@/components/EventCard";
 import EventCardSkeleton from "@/components/EventCardSkeleton";
 import EmptyState from "@/components/EmptyState";
 import {
-  getEvents,
+  getListedEvents,
   filterEvents,
   ALL_CATEGORIES,
   STATUS_TABS,
@@ -208,8 +208,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
         if (price === "free") filters.is_free = true;
         if (price === "paid") filters.is_free = false;
 
-        const response = await getEvents(1, 100, filters);
-        setAllEvents(response.events);
+        setAllEvents(await getListedEvents(filters));
       } catch (error) {
         console.error("Error loading events:", error);
         setAllEvents([]);

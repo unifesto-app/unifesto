@@ -97,6 +97,7 @@ export class EventsController {
     @Query('limit') limit?: string,
     @Query('status') status?: string,
     @Query('deleted') deleted?: string,
+    @Query('when') when?: string,
   ) {
     return this.eventsService.getSpaceEvents(
       spaceId,
@@ -107,6 +108,8 @@ export class EventsController {
       // a malformed value can never accidentally expose hidden events.
       deleted === 'deleted' || deleted === 'all' ? deleted : 'active',
       req.user?.id,
+      // Outsiders: `all` adds finished events to the live list.
+      when === 'all',
     );
   }
 

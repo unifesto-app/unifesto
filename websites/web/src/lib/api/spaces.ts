@@ -255,6 +255,8 @@ export async function getSpaceEvents(spaceId: string, page: number = 1, limit: n
     const params = new URLSearchParams({
       page: page.toString(),
       limit: limit.toString(),
+      // Past events too: the space page shows them as "Past events".
+      when: 'all',
     });
 
     const response = await fetchWithTimeout(`${API_URL}/events/space/${spaceId}?${params.toString()}`, {
