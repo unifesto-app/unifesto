@@ -1108,6 +1108,7 @@ model Space {
   subSpaceRequests         SubSpaceRequest[]        @relation("SubSpaceRequests")
   targetSpaceRequests      SubSpaceRequest[]        @relation("TargetSpaceRequests")
   supportTickets           SupportTicket[]
+  cannedReplies            CannedReply[]
   coHostedEvents           EventCoHost[]
   eventTransfersFrom       EventOwnershipTransfer[] @relation("EventTransferFromSpace")
   eventTransfersTo         EventOwnershipTransfer[] @relation("EventTransferToSpace")
@@ -2998,6 +2999,21 @@ model SupportTicket {
   @@index([eventId])
   @@index([subjectType, subjectId])
   @@map("support_tickets")
+}
+
+/// D19: a saved reply the desk inserts into the composer. No space = the Unifesto desk's.
+model CannedReply {
+  id      String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  spaceId String? @map("space_id") @db.Uuid
+  space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  title   String  @db.VarChar(100)
+  body    String  @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@map("canned_replies")
 }
 
 model SupportMessage {
