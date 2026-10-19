@@ -13,6 +13,7 @@ import {
   ImageSquare,
   Spinner,
   Check,
+  Sparkle,
 } from "@unifesto/unicon/react";
 import Cropper, { Point, Area } from "react-easy-crop";
 import {
@@ -37,6 +38,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { RecurrenceEditor } from "@/components/events/RecurrenceEditor";
 import { PlaceSearch } from "@/components/events/PlaceSearch";
+import { AiDraftPanel } from "@/components/events/AiDraftPanel";
 import type { PickedPlace } from "@/lib/googlePlaces";
 import {
   buildRRule,
@@ -183,6 +185,7 @@ export default function EditEventPage() {
   const [error, setError] = useState("");
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   
   // Cropper state
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
@@ -468,9 +471,28 @@ export default function EditEventPage() {
       <PageHeader
         title="Edit event"
         subtitle={event.title}
+        actions={
+          !aiOpen && (
+            <Button variant="outline" onClick={() => setAiOpen(true)}>
+              <Sparkle className="h-4 w-4" weight="fill" />
+              Draft with AI
+            </Button>
+          )
+        }
       />
 
       {error && <ErrorNotice message={error} />}
+
+      {aiOpen && (
+        <AiDraftPanel
+          eventId={eventId}
+          eventStart={event.startDateTime}
+          agendaCount={event.agenda?.length ?? 0}
+          faqCount={event.faqs?.length ?? 0}
+          onUseDescription={(text) => set("description", text)}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Banner image */}
