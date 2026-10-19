@@ -15,6 +15,10 @@ export const WEB = 'https://unifesto.app';
 export const SPACE_APP = 'https://space.unifesto.app';
 export const APEX = 'https://apex.unifesto.app';
 export const SUPPORT = 'support@unifesto.app';
+// Registered office, as on the web legal pages (websites/web/src/lib/legal.ts).
+// Marketing mail must carry a postal address (CAN-SPAM, Gmail/Yahoo bulk rules).
+export const POSTAL_ADDRESS =
+  'Unifesto Private Limited, C/O Malla Reddy Education, Sy. No. 640/P and 641/P, Quthbullapur Mandal, Hyderabad, Telangana 500100, India';
 
 // Same roles as websites/web globals.css (night / night-3 / paper / muted).
 const LIGHT = {
@@ -128,8 +132,17 @@ export function contrastText(hex: string): string {
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
 
-/** A full HTML document around `body`. `preheader` is the inbox preview line. */
-export function layout(body: string, preheader = '', brand?: EmailBrand | null): string {
+/**
+ * A full HTML document around `body`. `preheader` is the inbox preview line.
+ * `unsubscribeUrl` marks marketing mail: the footer gains the unsubscribe link
+ * and the postal address.
+ */
+export function layout(
+  body: string,
+  preheader = '',
+  brand?: EmailBrand | null,
+  unsubscribeUrl?: string,
+): string {
   const ground = bg('ground');
   const soft = fg('soft');
   const muted = fg('muted');
@@ -171,6 +184,9 @@ export function layout(body: string, preheader = '', brand?: EmailBrand | null):
       <a href="${WEB}" ${a}>Unifesto</a> &middot;
       <a href="${WEB}/privacy" ${a}>Privacy</a> &middot;
       <a href="${WEB}/terms" ${a}>Terms</a>`;
+  const marketing = unsubscribeUrl
+    ? `<br><a href="${esc(unsubscribeUrl)}" ${a}>Unsubscribe</a> from these emails.<br>${POSTAL_ADDRESS}`
+    : '';
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,7 +210,7 @@ export function layout(body: string, preheader = '', brand?: EmailBrand | null):
       ${body}
     </td></tr>
     <tr><td class="l-line ${muted.cls}" style="padding:24px 0 0;border-top:1px solid ${LIGHT.line};font-family:${FONT};font-size:13px;line-height:1.6;${muted.css}">
-      ${footer}
+      ${footer}${marketing}
     </td></tr>
   </table>
 </td></tr>

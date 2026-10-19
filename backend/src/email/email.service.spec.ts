@@ -89,3 +89,27 @@ describe('EmailService confirmation .ics', () => {
     expect(ics).not.toContain('acme');
   });
 });
+
+describe('EmailService marketing send (C8)', () => {
+  const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
+
+  it('sends campaign mail as raw MIME with List-Unsubscribe + one-click headers', async () => {
+    const service = new EmailService(config);
+    const send = jest.fn().mockResolvedValue({ MessageId: 'ses-1' });
+    (service as any).sesClient = { send };
+    const res = await service.sendCustomCampaignEmail({
+      to: 'a@x.com',
+      subject: 'Hello\r\nBcc: evil@x.com',
+      html: '<p>Hi</p>',
+      campaignId: 'c1',
+      unsubscribeUrl: 'https://api.test/email/unsubscribe?t=abc',
+    });
+    expect(res.messageId).toBe('ses-1');
+    const mime = Buffer.from(send.mock.calls[0][0].input.RawMessage.Data).toString();
+    expect(mime).toContain(
+      'List-Unsubscribe: <https://api.test/email/unsubscribe?t=abc>, <mailto:support@unifesto.app?subject=Unsubscribe>',
+    );
+    expect(mime).toContain('List-Unsubscribe-Post: List-Unsubscribe=One-Click');
+    expect(mime).not.toMatch(/^Bcc:/m); // subject is encoded, never a raw header line
+  });
+});

@@ -32,12 +32,6 @@ interface TargetSegment {
 // N4: cap organiser announcements so an event can't be spammed.
 const ORGANISER_ANNOUNCEMENTS_PER_DAY = 3;
 
-// OneSignal segment used by the all-users broadcast fallback so unlinked devices
-// (no external_id) still receive it. "Total Subscriptions" is the built-in segment
-// on current OneSignal apps (the legacy "Subscribed Users" does not exist on ours,
-// so every broadcast was rejected); overridable for accounts that renamed it.
-const BROADCAST_SEGMENT = process.env.ONESIGNAL_BROADCAST_SEGMENT || 'Total Subscriptions';
-
 @Injectable()
 export class PushCampaignService {
   private readonly logger = new Logger(PushCampaignService.name);
@@ -84,9 +78,7 @@ export class PushCampaignService {
 
   /**
    * How many people a broadcast would reach right now, for the confirm step:
-   * the same recipients and pref filter `dispatch` uses. An all-users,
-   * opt-out broadcast goes to the OneSignal segment, which can also reach
-   * signed-out devices, so for that one this is the floor.
+   * the same recipients and pref filter `dispatch` uses.
    */
   async countAudience(
     target: TargetSegment,
@@ -262,36 +254,19 @@ export class PushCampaignService {
       const deepLink = (campaign.data as any)?.deepLink as string | undefined;
       const data = (campaign.data as Record<string, unknown>) ?? undefined;
 
-      // All-users broadcasts of an opt-OUT category fan out to the whole
-      // subscribed segment — this reaches devices with no external_id linkage,
-      // which enumerated external_id targeting cannot. Opt-IN promotions must
-      // never segment-blast (that would send marketing to non-consenting users),
-      // so they stay on the enumerated + pref-filtered path.
-      const segment = (campaign.targetSegment as unknown as TargetSegment) ?? { type: 'all' };
-      const useSegment =
-        campaign.scope === PushScope.PLATFORM &&
-        segment.type === 'all' &&
-        category !== 'promotions';
-
-      let summary;
-      if (useSegment) {
-        summary = await this.notifications.sendToSegments([BROADCAST_SEGMENT], {
-          title: campaign.title,
-          body: campaign.body,
-          data,
-          deepLink,
-        });
-      } else {
-        const userIds = await this.resolveRecipients(campaign);
-        summary = await this.notifications.send(userIds, {
-          category,
-          title: campaign.title,
-          body: campaign.body,
-          data,
-          deepLink,
-          campaignId: campaign.id,
-        });
-      }
+      // Always an enumerated user list, never a OneSignal segment: `send`
+      // applies each person's category switch (product updates included) and
+      // writes their in-app copy, which a segment blast can do neither of.
+      // Devices never linked to an account (signed out) are not reached.
+      const userIds = await this.resolveRecipients(campaign);
+      const summary = await this.notifications.send(userIds, {
+        category,
+        title: campaign.title,
+        body: campaign.body,
+        data,
+        deepLink,
+        campaignId: campaign.id,
+      });
 
       await this.prisma.pushCampaign.update({
         where: { id: campaignId },
@@ -303,7 +278,7 @@ export class PushCampaignService {
         },
       });
       this.logger.log(
-        `Campaign ${campaignId} sent (${useSegment ? `segment:${BROADCAST_SEGMENT}` : 'external_id'}): ` +
+        `Campaign ${campaignId} sent: ` +
           `${summary.sent} sent, ${summary.failed} failed, ${summary.skipped} skipped`,
       );
     } catch (err: any) {
@@ -353,8 +328,11 @@ export class PushCampaignService {
       return users.map((u) => u.id);
     }
 
-    // type 'all' — every user (pref opt-out enforced in NotificationsService.send).
-    const users = await this.prisma.user.findMany({ select: { id: true } });
+    // type 'all': every open account (pref opt-out enforced in NotificationsService.send).
+    const users = await this.prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+    });
     return users.map((u) => u.id);
   }
 }

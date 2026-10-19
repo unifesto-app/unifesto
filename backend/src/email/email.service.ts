@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
-import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+import { SESClient, SendEmailCommand, SendRawEmailCommand } from '@aws-sdk/client-ses';
 import { buildEventIcs, IcsEventInput } from '../events/calendar/ics.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
@@ -10,7 +10,7 @@ import {
   resolveEmailSender,
   resolveEventBranding,
 } from '../white-label/branding.util';
-import { layout, WEB, type EmailBrand } from './layout';
+import { layout, SUPPORT, WEB, type EmailBrand } from './layout';
 import * as T from './templates';
 import {
   AWS_HTTP_TIMEOUTS,
@@ -22,6 +22,8 @@ interface CustomCampaignData {
   subject: string;
   html: string;
   campaignId: string;
+  /** Marketing mail: sent with List-Unsubscribe + one-click headers. */
+  unsubscribeUrl?: string;
 }
 
 type Attachment = { filename: string; content: Buffer };
@@ -457,7 +459,13 @@ export class EmailService {
   /** Bulk campaign send via SES. Returns the messageId for logging, never throws. */
   async sendCustomCampaignEmail(data: CustomCampaignData): Promise<{ messageId: string | null; error?: string }> {
     try {
-      const messageId = await this.sendViaSES(data.to, data.subject, data.html);
+      const messageId =
+        data.unsubscribeUrl && typeof data.to === 'string'
+          ? await this.sendBulkWithHeaders(data.to, data.subject, data.html, {
+              'List-Unsubscribe': `<${data.unsubscribeUrl}>, <mailto:${SUPPORT}?subject=Unsubscribe>`,
+              'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+            })
+          : await this.sendViaSES(data.to, data.subject, data.html);
       return { messageId };
     } catch (error) {
       this.logger.error(`Error sending custom campaign ${data.campaignId}: ${error.message}`);
@@ -465,8 +473,46 @@ export class EmailService {
     }
   }
 
+  /**
+   * SES bulk send with extra headers (List-Unsubscribe needs them, and
+   * SendEmail can't carry any), as a raw MIME message. Never throws.
+   */
+  async sendBulkWithHeaders(
+    to: string,
+    subject: string,
+    html: string,
+    headers: Record<string, string>,
+  ): Promise<string | null> {
+    const line = (v: string) => v.replace(/[\r\n]+/g, ' ');
+    const b64 = (v: string) => Buffer.from(v, 'utf8').toString('base64');
+    const mime = [
+      `From: ${this.fromBulk}`,
+      `To: ${line(to)}`,
+      `Subject: =?UTF-8?B?${b64(subject)}?=`,
+      'MIME-Version: 1.0',
+      ...Object.entries(headers).map(([k, v]) => `${k}: ${line(v)}`),
+      'Content-Type: text/html; charset=UTF-8',
+      'Content-Transfer-Encoding: base64',
+      '',
+      b64(html).replace(/.{76}/g, '$&\r\n'),
+    ].join('\r\n');
+    try {
+      const result = await this.sesClient.send(
+        new SendRawEmailCommand({
+          Source: this.fromBulk,
+          Destinations: [to],
+          RawMessage: { Data: Buffer.from(mime) },
+        }),
+      );
+      return result.MessageId || null;
+    } catch (error) {
+      this.logger.error(`SES raw error: ${error.message}`);
+      return null;
+    }
+  }
+
   /** Wrap an operator-authored campaign body in the branded shell. */
-  wrapCampaignHtml(content: string): string {
-    return layout(content);
+  wrapCampaignHtml(content: string, unsubscribeUrl?: string): string {
+    return layout(content, '', null, unsubscribeUrl);
   }
 }

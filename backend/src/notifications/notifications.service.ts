@@ -123,44 +123,6 @@ export class NotificationsService {
     return summary;
   }
 
-  /**
-   * Broadcast to OneSignal segment(s) (e.g. "Subscribed Users") — the all-users
-   * fallback that reaches every subscribed device regardless of external_id
-   * linkage, so unlinked devices still get the announcement.
-   *
-   * By nature this CANNOT apply per-user DB opt-out (no user list is enumerated),
-   * so callers MUST restrict it to opt-out categories (never opt-in marketing).
-   * Devices whose owner turned push off in-app are already excluded — that opts
-   * the device out of the segment. No per-user PushLog rows are written; the
-   * returned `sent` is OneSignal's estimated recipient count.
-   */
-  async sendToSegments(
-    segments: string[],
-    opts: { title: string; body: string; data?: Record<string, unknown>; deepLink?: string },
-  ): Promise<SendSummary> {
-    const summary: SendSummary = { sent: 0, failed: 0, skipped: 0 };
-    try {
-      const data = {
-        ...(opts.data ?? {}),
-        ...(opts.deepLink ? { deepLink: opts.deepLink } : {}),
-      };
-      const result = await this.oneSignal.send({
-        includedSegments: segments,
-        title: opts.title,
-        body: opts.body,
-        data,
-      });
-      if (result.id) {
-        summary.sent = result.recipients ?? 0;
-      } else {
-        this.logger.error(`sendToSegments got no notification id: ${result.error ?? 'unknown'}`);
-      }
-    } catch (err: any) {
-      this.logger.error(`notifications.sendToSegments failed: ${err?.message ?? err}`);
-    }
-    return summary;
-  }
-
   /** The in-app copy. Its own try so a failed insert never costs the push. */
   private async writeInbox(userIds: string[], opts: SendOptions): Promise<void> {
     if (!userIds.length) return;

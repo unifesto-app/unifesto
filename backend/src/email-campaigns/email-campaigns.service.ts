@@ -13,11 +13,21 @@ import {
   EmailCampaignStatus,
   EmailLogStatus,
   EmailTargetType,
+  MarketingChannel,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { COUNTS_AS_ATTENDING } from '../common/attendance';
+import {
+  MARKETABLE_USER,
+  marketingOptOuts,
+  promotionsOptedInUserIds,
+  recordMarketingOptOut,
+  signUnsubscribeToken,
+  verifyUnsubscribeToken,
+} from '../common/marketing-opt-out';
 import {
   CampaignAudienceDto,
   CreateCampaignDto,
@@ -70,6 +80,7 @@ export class EmailCampaignsService {
   private readonly baseUrl: string;
   private readonly trackingSecret: string;
   private readonly legacyTrackingSecret: string | null;
+  private readonly unsubscribeSecret: string;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -89,6 +100,7 @@ export class EmailCampaignsService {
     // Links in emails already sent were signed with the raw JWT_SECRET; keep
     // accepting those during the transition (S31). Drop once old mail is stale.
     this.legacyTrackingSecret = get('JWT_SECRET') || null;
+    this.unsubscribeSecret = hmacSecret('EMAIL_UNSUBSCRIBE_SECRET', 'email-unsubscribe', get);
   }
 
   // ==========================================================================
@@ -216,14 +228,11 @@ export class EmailCampaignsService {
       targetId,
       segmentFilters: (dto.segmentFilters ?? null) as Prisma.JsonValue,
     });
-    const optedOut = await emailOptedOutUserIds(
-      this.prisma,
-      resolved.flatMap((r) => (r.userId ? [r.userId] : [])),
+    const allowed = await this.withConsent(
+      { spaceId: scope.spaceId, targetType: dto.targetType },
+      resolved,
     );
-    return {
-      recipientCount: resolved.filter((r) => !r.userId || !optedOut.has(r.userId))
-        .length,
-    };
+    return { recipientCount: allowed.length };
   }
 
   /** Mail the draft to the sender's own address, merge vars filled with theirs. Untracked. */
@@ -240,7 +249,8 @@ export class EmailCampaignsService {
     const result = await this.emailService.sendCustomCampaignEmail({
       to: me.email,
       subject: `[Test] ${this.substituteVars(dto.subject, me)}`,
-      html: this.emailService.wrapCampaignHtml(this.substituteVars(dto.body, me)),
+      // '#' shows the operator the unsubscribe footer without a live link.
+      html: this.emailService.wrapCampaignHtml(this.substituteVars(dto.body, me), '#'),
       campaignId: 'test',
     });
     if (!result.messageId) {
@@ -402,12 +412,7 @@ export class EmailCampaignsService {
       });
       if (!campaign || campaign.status !== EmailCampaignStatus.SENDING) return;
 
-      const resolved = await this.getRecipients(campaign);
-      // Marketing mail: drop users who turned email off.
-      const optedOut = await emailOptedOutUserIds(
-        this.prisma,
-        resolved.flatMap((r) => (r.userId ? [r.userId] : [])),
-      );
+      const allowed = await this.withConsent(campaign, await this.getRecipients(campaign));
       // Checkpoint: everyone with a log row has been handled already.
       const done = new Set(
         (
@@ -417,9 +422,7 @@ export class EmailCampaignsService {
           })
         ).map((l) => l.recipientEmail),
       );
-      const recipients = resolved.filter(
-        (r) => (!r.userId || !optedOut.has(r.userId)) && !done.has(r.email),
-      );
+      const recipients = allowed.filter((r) => !done.has(r.email));
 
       const variants = this.assignVariants(
         recipients.length,
@@ -493,7 +496,8 @@ export class EmailCampaignsService {
         variant === 'B' && campaign.subjectB
           ? campaign.subjectB
           : campaign.subject;
-      const html = this.buildTrackedHtml(campaign, recipient, logId);
+      const unsubscribeUrl = this.unsubscribeUrl(recipient.email, campaign.spaceId);
+      const html = this.buildTrackedHtml(campaign, recipient, logId, unsubscribeUrl);
 
       try {
         const result = await this.emailService.sendCustomCampaignEmail({
@@ -501,6 +505,7 @@ export class EmailCampaignsService {
           subject: this.substituteVars(subject, recipient),
           html,
           campaignId: campaign.id,
+          unsubscribeUrl,
         });
 
         const ok = !!result.messageId;
@@ -542,21 +547,59 @@ export class EmailCampaignsService {
   // RECIPIENTS (space-scoped)
   // ==========================================================================
 
+  /**
+   * Who of `resolved` may get this campaign: email on, not unsubscribed (from
+   * all marketing or from this space), and, for platform bulk mail, opted in to
+   * promotions. Space campaigns go to the space's own members and attendees on
+   * legitimate interest, so they skip the promotions opt-in but always honour
+   * the unsubscribe. The count and the send both run through here.
+   */
+  private async withConsent(
+    campaign: Pick<EmailCampaign, 'spaceId' | 'targetType'>,
+    resolved: Recipient[],
+  ): Promise<Recipient[]> {
+    const ids = resolved.flatMap((r) => (r.userId ? [r.userId] : []));
+    const needsOptIn =
+      !campaign.spaceId && campaign.targetType !== EmailTargetType.SINGLE_USER;
+    const [emailOff, optOuts, promotionsOn] = await Promise.all([
+      emailOptedOutUserIds(this.prisma, ids),
+      marketingOptOuts(this.prisma, MarketingChannel.EMAIL, campaign.spaceId),
+      needsOptIn ? promotionsOptedInUserIds(this.prisma, ids) : null,
+    ]);
+    return resolved.filter(
+      (r) =>
+        !optOuts.addresses.has(r.email.toLowerCase()) &&
+        !(r.userId && (emailOff.has(r.userId) || optOuts.userIds.has(r.userId))) &&
+        (!promotionsOn || (!!r.userId && promotionsOn.has(r.userId))),
+    );
+  }
+
   private async getRecipients(
     campaign: Pick<EmailCampaign, 'targetType' | 'targetId' | 'segmentFilters'>,
   ): Promise<Recipient[]> {
+    // These targets name one space/event/user. A missing id must never widen
+    // into "everyone" (Prisma treats `id: undefined` as no filter).
+    const needsId: EmailTargetType[] = [
+      EmailTargetType.SINGLE_USER,
+      EmailTargetType.SPACE_MEMBERS,
+      EmailTargetType.EVENT_REGISTRANTS,
+      EmailTargetType.WAITLIST,
+    ];
+    if (needsId.includes(campaign.targetType) && !campaign.targetId) {
+      throw new BadRequestException(`${campaign.targetType} needs a targetId`);
+    }
     switch (campaign.targetType) {
       case EmailTargetType.SINGLE_USER:
         return this.usersToRecipients(
           await this.prisma.user.findMany({
-            where: { id: campaign.targetId ?? undefined },
+            where: { id: campaign.targetId!, ...MARKETABLE_USER },
             select: RECIPIENT_SELECT,
           }),
         );
 
       case EmailTargetType.SPACE_MEMBERS: {
         const members = await this.prisma.userRole.findMany({
-          where: { spaceId: campaign.targetId ?? undefined },
+          where: { spaceId: campaign.targetId!, user: MARKETABLE_USER },
           distinct: ['userId'],
           include: {
             user: { select: RECIPIENT_SELECT },
@@ -566,16 +609,14 @@ export class EmailCampaignsService {
       }
 
       case EmailTargetType.EVENT_REGISTRANTS: {
+        // Confirmed attendees only: no unpaid, failed or waiting-list rows.
         const regs = await this.prisma.eventRegistration.findMany({
-          where: {
-            eventId: campaign.targetId ?? undefined,
-            status: { in: ['REGISTERED', 'ATTENDED'] },
-          },
+          where: { eventId: campaign.targetId!, ...COUNTS_AS_ATTENDING },
           select: { userId: true },
         });
         return this.usersToRecipients(
           await this.prisma.user.findMany({
-            where: { id: { in: regs.map((r) => r.userId) } },
+            where: { id: { in: regs.map((r) => r.userId) }, ...MARKETABLE_USER },
             select: RECIPIENT_SELECT,
           }),
         );
@@ -584,7 +625,7 @@ export class EmailCampaignsService {
       case EmailTargetType.WAITLIST: {
         const waiting = await this.prisma.eventRegistration.findMany({
           where: {
-            eventId: campaign.targetId ?? undefined,
+            eventId: campaign.targetId!,
             waitlistStatus: { in: ['WAITING', 'OFFERED'] },
             status: { not: 'CANCELLED' },
           },
@@ -592,7 +633,7 @@ export class EmailCampaignsService {
         });
         return this.usersToRecipients(
           await this.prisma.user.findMany({
-            where: { id: { in: waiting.map((r) => r.userId) } },
+            where: { id: { in: waiting.map((r) => r.userId) }, ...MARKETABLE_USER },
             select: RECIPIENT_SELECT,
           }),
         );
@@ -601,6 +642,7 @@ export class EmailCampaignsService {
       case EmailTargetType.ALL_USERS:
         return this.usersToRecipients(
           await this.prisma.user.findMany({
+            where: MARKETABLE_USER,
             select: RECIPIENT_SELECT,
           }),
         );
@@ -608,7 +650,7 @@ export class EmailCampaignsService {
       case EmailTargetType.ORGANISERS_ONLY:
         return this.usersToRecipients(
           await this.prisma.user.findMany({
-            where: { createdSpaces: { some: {} } },
+            where: { createdSpaces: { some: {} }, ...MARKETABLE_USER },
             select: RECIPIENT_SELECT,
             distinct: ['id'],
           }),
@@ -617,9 +659,12 @@ export class EmailCampaignsService {
       case EmailTargetType.SEGMENT:
         return this.usersToRecipients(
           await this.prisma.user.findMany({
-            where: this.buildSegmentWhere(
-              campaign.segmentFilters as unknown as SegmentFiltersDto | null,
-            ),
+            where: {
+              ...this.buildSegmentWhere(
+                campaign.segmentFilters as unknown as SegmentFiltersDto | null,
+              ),
+              ...MARKETABLE_USER,
+            },
             select: RECIPIENT_SELECT,
           }),
         );
@@ -731,12 +776,15 @@ export class EmailCampaignsService {
     campaign: EmailCampaign,
     recipient: Recipient,
     logId: string,
+    unsubscribeUrl?: string,
   ): string {
     let content = this.substituteVars(campaign.body, recipient);
     content = this.rewriteLinks(content, logId);
     // `wrap` defaults on; only the explicit `false` sentinel skips branding.
     // (Campaigns store body only, so we re-wrap here rather than at compose.)
-    const wrapped = this.emailService.wrapCampaignHtml(content);
+    // The footer's unsubscribe link is added here, after rewriteLinks, so it is
+    // never click-tracked.
+    const wrapped = this.emailService.wrapCampaignHtml(content, unsubscribeUrl);
     return this.injectOpenPixel(wrapped, logId);
   }
 
@@ -870,6 +918,56 @@ export class EmailCampaignsService {
       name: 'Alex Sample',
     };
     const content = this.substituteVars(body, sample);
-    return this.emailService.wrapCampaignHtml(content);
+    return this.emailService.wrapCampaignHtml(content, '#');
+  }
+
+  // ==========================================================================
+  // UNSUBSCRIBE (called by the public UnsubscribeController)
+  // ==========================================================================
+
+  /** The signed per-recipient link for the footer and List-Unsubscribe. */
+  unsubscribeUrl(email: string, spaceId: string | null): string {
+    const t = signUnsubscribeToken(this.unsubscribeSecret, email, spaceId);
+    return `${this.baseUrl}/email/unsubscribe?t=${t}`;
+  }
+
+  /** What a link is for (email + the space's name, when it is a space's), or null if forged. */
+  async readUnsubscribeToken(
+    token: string | undefined,
+  ): Promise<{ email: string; spaceId: string | null; spaceName: string | null } | null> {
+    const claim = verifyUnsubscribeToken(this.unsubscribeSecret, token);
+    if (!claim) return null;
+    const space = claim.spaceId
+      ? await this.prisma.space.findUnique({
+          where: { id: claim.spaceId },
+          select: { name: true },
+        })
+      : null;
+    return { ...claim, spaceName: space?.name ?? null };
+  }
+
+  /**
+   * Opt the token's address out of marketing email: from the token's space, or
+   * from everything when `everything` is set (or the token has no space).
+   * Returns false for a forged token.
+   */
+  async unsubscribe(
+    token: string | undefined,
+    opts: { everything: boolean; source: 'link' | 'one_click' },
+  ): Promise<boolean> {
+    const claim = verifyUnsubscribeToken(this.unsubscribeSecret, token);
+    if (!claim) return false;
+    const identity = await this.prisma.userIdentity.findFirst({
+      where: { email: { equals: claim.email, mode: 'insensitive' } },
+      select: { userId: true },
+    });
+    await recordMarketingOptOut(this.prisma, {
+      channel: MarketingChannel.EMAIL,
+      address: claim.email,
+      spaceId: opts.everything ? null : claim.spaceId,
+      userId: identity?.userId,
+      source: opts.source,
+    });
+    return true;
   }
 }

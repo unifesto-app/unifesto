@@ -417,8 +417,8 @@ export default function WhatsAppBroadcastPage() {
               <Warning className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 This messages <strong>every user in the app</strong> that has a mobile
-                number. It cannot be undone once started. Use a template classified as
-                Marketing and only for opted-in recipients.
+                number. It cannot be undone once started. Marketing templates only reach
+                people who opted in to promotions; anyone who replied STOP is left out.
               </span>
             </div>
           )}

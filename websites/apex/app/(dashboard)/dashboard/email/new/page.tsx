@@ -191,6 +191,9 @@ export default function ComposeCampaignPage() {
                 ))}
               </SelectContent>
             </Select>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              People who unsubscribed or turned email off are left out. Bulk sends only reach people who opted in to promotions.
+            </p>
           </div>
 
           {targetDef.needsId === "user" && (
