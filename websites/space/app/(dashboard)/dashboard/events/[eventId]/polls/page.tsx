@@ -14,6 +14,7 @@ import {
   type PollResultsVisibility,
 } from "@/lib/api/polls-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ProjectorButton } from "@/components/events/ProjectorButton";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,6 +107,7 @@ export default function EventPollsPage() {
         eyebrow="Experience"
         title="Live polls"
         subtitle="Ask the room a question during the event. Attendees vote from their ticket in the Unifesto app, once each, and the results update live."
+        actions={<ProjectorButton eventId={eventId} />}
       />
 
       {error && <ErrorNotice message={error} />}
