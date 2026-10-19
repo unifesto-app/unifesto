@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LogBox } from 'react-native';
+import { LogBox, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import { DarkTheme, DefaultTheme } from 'expo-router/react-navigation';
@@ -7,6 +7,7 @@ import * as Font from 'expo-font';
 import { getApp } from '@react-native-firebase/app';
 import {
   getCrashlytics,
+  log,
   recordError,
   setCrashlyticsCollectionEnabled,
 } from '@react-native-firebase/crashlytics';
@@ -27,6 +28,7 @@ import { showWhatsNewIfNeeded } from '../src/lib/whatsNew';
 import { loadDefaultImages } from '../src/lib/defaultImages';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { applyGlobalFont } from '../src/theme/globalFont';
+import { darkTokens, lightTokens } from '../src/theme/tokens';
 
 // Dev-only noise filter. On the New Architecture every native-driven core
 // Animated animation (TouchableOpacity presses, React Navigation transitions)
@@ -77,6 +79,12 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
+/**
+ * Last-resort catch for a render crash anywhere below: reports it to
+ * Crashlytics as a non-fatal and shows a retry screen instead of a blank app.
+ * Sits outside ThemeProvider (which may be what threw), so it reads the
+ * system scheme directly.
+ */
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   state: ErrorBoundaryState = { hasError: false };
 
@@ -84,14 +92,44 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error) {
-    recordError(getCrashlytics(), error);
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    const crashlytics = getCrashlytics();
+    if (info.componentStack) log(crashlytics, `componentStack: ${info.componentStack.slice(0, 1000)}`);
+    recordError(crashlytics, error, 'RootErrorBoundary');
   }
 
   render() {
-    return this.props.children;
+    if (!this.state.hasError) return this.props.children;
+    return <CrashFallback onRetry={() => this.setState({ hasError: false })} />;
   }
 }
+
+function CrashFallback({ onRetry }: { onRetry: () => void }) {
+  const t = useColorScheme() === 'light' ? lightTokens : darkTokens;
+  return (
+    <View style={[crashStyles.root, { backgroundColor: t.bg }]}>
+      <Text style={[crashStyles.title, { color: t.text }]}>Something went wrong</Text>
+      <Text style={[crashStyles.body, { color: t.textMuted }]}>
+        The app hit a problem showing this screen. It has been reported.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onRetry}
+        style={({ pressed }) => [crashStyles.button, { backgroundColor: t.accent, opacity: pressed ? 0.8 : 1 }]}
+      >
+        <Text style={crashStyles.buttonText}>Try again</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const crashStyles = StyleSheet.create({
+  root: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+  title: { fontSize: 20, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
+  body: { fontSize: 15, lineHeight: 21, textAlign: 'center', marginBottom: 24 },
+  button: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999 },
+  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+});
 
 // Runs the deep-link wiring inside AuthProvider (useDeepLinks needs useAuth).
 function DeepLinkBridge() {

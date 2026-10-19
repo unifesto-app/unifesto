@@ -1,4 +1,4 @@
-import { makeAuthenticatedRequest } from './helpers';
+import { errorFrom, makeAuthenticatedRequest } from './helpers';
 
 export interface NotificationSettings {
   pushEnabled: boolean;
@@ -50,9 +50,6 @@ export const updateNotificationSettings = async (
     body: JSON.stringify(data),
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Failed to update notification settings');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to update notification settings');
   return response.json();
 };

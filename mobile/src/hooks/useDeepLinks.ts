@@ -18,7 +18,8 @@ const IN_APP_TYPES = new Set(['hackathon', 'competition']);
  *
  * - OneSignal push taps → route to the notification's deepLink. OneSignal also
  *   fires this click listener for a tap that cold-starts the app, so this covers
- *   both foreground and cold-start push (no separate getInitialURL needed).
+ *   both foreground and cold-start push (no separate getInitialURL needed); a
+ *   cold-start tap waits for the session restore before it routes.
  * - After the user authenticates, replay any link that was queued behind the
  *   auth gate (see `deepLinkRouter.handleUnauthenticatedLink`).
  *
@@ -32,12 +33,21 @@ export function useDeepLinks(): void {
   // Keep the latest auth state readable inside the once-registered listener.
   const authRef = useRef(isAuthenticated);
   authRef.current = isAuthenticated;
+  const loadingRef = useRef(isLoading);
+  loadingRef.current = isLoading;
+  // A push tap that cold-started the app lands before the stored session is
+  // read; routing it then would treat a signed-in user as signed out and
+  // bounce them through /login. Held here until auth settles.
+  const coldStartLink = useRef<string | null>(null);
 
   useEffect(() => {
     OneSignalService.addNotificationClickListener((event: any) => {
-      routeToDeepLink(extractPushDeepLink(event), {
-        isAuthenticated: authRef.current,
-      });
+      const link = extractPushDeepLink(event);
+      if (loadingRef.current) {
+        coldStartLink.current = link;
+        return;
+      }
+      routeToDeepLink(link, { isAuthenticated: authRef.current });
     });
     // Hackathon/competition pushes that land while the app is open show as an
     // in-app card (and refresh the screen on display) instead of the system
@@ -70,7 +80,11 @@ export function useDeepLinks(): void {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated) return;
+    if (isLoading) return;
+    const held = coldStartLink.current;
+    coldStartLink.current = null;
+    if (held) routeToDeepLink(held, { isAuthenticated });
+    if (!isAuthenticated) return;
     const pending = consumePendingDeepLink();
     if (pending) routeToDeepLink(pending, { isAuthenticated: true });
   }, [isAuthenticated, isLoading]);

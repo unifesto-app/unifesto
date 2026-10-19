@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { AppState } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { getCrashlytics, setUserId as setCrashlyticsUserId } from '@react-native-firebase/crashlytics';
-import { getToken, getRefreshToken, saveToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest } from '../lib/api/helpers';
+import { getToken, getRefreshToken, saveTokens, clearToken, makeAuthenticatedRequest, makePublicRequest, onSessionEnded, readJson, errorFrom } from '../lib/api/helpers';
+import { readCache } from '../lib/offline/responseCache';
 import OneSignalService from '../services/OneSignalService';
 import { maybeReportAppVersion } from '../lib/appVersionReport';
 import { syncPushDevice, unregisterPushDevice } from '../lib/pushDeviceReport';
@@ -28,6 +29,11 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
+  /**
+   * Set while signed in. A marker only: never send it. The API helpers attach
+   * the current token from SecureStore, which a silent refresh may have
+   * replaced since this was set.
+   */
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -57,6 +63,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     loadSession();
+    // The server refused the refresh token mid-session: the tokens are already
+    // wiped, so drop the signed-in UI too instead of leaving a zombie session.
+    return onSessionEnded(() => void resetSignedInState());
   }, []);
 
   // Once a session is active, report the installed app version so staff can see
@@ -132,9 +141,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // silently and, with no network, the last saved /users/me is served —
         // opening the app offline keeps you signed in.
         const response = await makeAuthenticatedRequest('/users/me');
-        if (response?.ok) {
+        let userData: User | null = response?.ok ? await readJson<User>(response) : null;
+        // A 5xx/429 or a failed refresh that didn't end the session: keep the
+        // tokens and restore from the last saved profile; the next request
+        // retries the refresh. A refused refresh already cleared the tokens.
+        if (!userData && (await getToken())) {
+          const saved = await readCache('user', '/users/me');
+          userData = saved ? JSON.parse(saved.body) : null;
+        }
+        if (userData) {
           setToken(await getToken());
-          const userData = await response.json();
           setUser(userData);
           await setCrashlyticsUserId(getCrashlytics(), userData.id);
           // Re-link this device to the user in OneSignal on every startup, not
@@ -148,12 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch {
             // Non-fatal: push is optional and must never block session restore.
           }
-        } else if (response?.status === 401) {
-          // The server rejected the session outright (refresh already failed).
-          await clearToken();
         }
-        // Anything else (no network and no saved profile, 5xx): keep the
-        // tokens so the next launch can still restore the session.
       }
     } catch (error) {
       if (__DEV__) console.warn('[auth] session restore failed:', error);
@@ -190,10 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({ mobileNumber, tempToken }),
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Failed to send OTP');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Failed to send OTP');
   };
 
   const verifyMobileOtp = async (mobileNumber: string, otp: string) => {
@@ -202,10 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({ mobileNumber, otp, tempToken }),
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Invalid OTP');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Invalid OTP');
 
     const data = await response.json();
     setTempToken(null);
@@ -219,10 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({ email }),
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Failed to send OTP');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Failed to send OTP');
   };
 
   const verifyEmailOtp = async (email: string, otp: string) => {
@@ -231,10 +233,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({ email, otp }),
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Invalid OTP');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Invalid OTP');
 
     const data = await response.json();
 
@@ -253,10 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({ idToken }),
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Google login failed');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Google login failed');
 
     const data = await response.json();
     if (data.requiresMobileVerification) {
@@ -273,10 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({ identityToken, authorizationCode }),
     });
 
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Apple login failed');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Apple login failed');
 
     const data = await response.json();
     if (data.requiresMobileVerification) {
@@ -292,10 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       method: 'POST',
       body: JSON.stringify({ idToken }),
     });
-    if (!response?.ok) {
-      const error = await response?.json();
-      throw new Error(error?.message || 'Cognito login failed');
-    }
+    if (!response?.ok) throw await errorFrom(response, 'Cognito login failed');
     const data = await response.json();
     if (data.requiresMobileVerification) {
       // Set tempToken and user - login screen will detect mobileVerified=false and show mobile step
@@ -319,14 +309,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ refreshToken: refresh }),
       });
     }
+    await clearToken();
+    await resetSignedInState();
+  };
+
+  /** Signed-out UI: no user, no token, push detached, widget and crash tags wiped. */
+  const resetSignedInState = async () => {
+    setToken(null);
+    setUser(null);
+    setTempToken(null);
     try {
       OneSignalService.logout();
     } catch (error) {
       // Non-fatal.
     }
-    await clearToken();
-    setToken(null);
-    setUser(null);
     // Wipe tickets off the home-screen widget; the Home tab may never remount to do it.
     await syncUpNextWidget(null);
     await setCrashlyticsUserId(getCrashlytics(), '');

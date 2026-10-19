@@ -50,6 +50,7 @@ const ALLOWED_PREFIXES = new Set([
   'judging', // a judge's console (hackathon queue pushes); screens re-check the panel server-side
   'group', // Manage group (team changes: lead handover requests, seats added)
   'manage', // support case threads (Assist pushes); screens re-check access server-side
+  'stay', // stay booking passes (booking-confirmed pushes: unifesto://stay/pass/:id)
 ]);
 
 /**
@@ -69,6 +70,7 @@ const AUTH_REQUIRED_PREFIXES = new Set([
   'judging',
   'group',
   'manage',
+  'stay',
 ]);
 
 /** First path segment, lowercased (e.g. "/ticket/123" -> "ticket"). */

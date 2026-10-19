@@ -88,8 +88,8 @@ export default function ClaimSeatRoute() {
     try {
       const [data, me, identities] = await Promise.all([
         getClaimInfo(token),
-        getCurrentUser(authToken).catch(() => null),
-        getUserIdentities(authToken).catch(() => []),
+        getCurrentUser().catch(() => null),
+        getUserIdentities().catch(() => []),
       ]);
       setInfo(data);
       const primary = identities.find((i) => i.isPrimary && i.email) ?? identities.find((i) => i.email);
