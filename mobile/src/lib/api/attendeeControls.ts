@@ -130,6 +130,7 @@ export type TeamState =
       canAddUpTo: number | null;
       addPricePerSeat: number;
       addNeedsPayment: boolean;
+      eventType?: string;
     };
 
 export const getTeamState = (registrationId: string) => call<TeamState>(`/registrations/${registrationId}/team`);

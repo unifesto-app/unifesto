@@ -339,10 +339,13 @@ export default function ManageGroupRoute() {
                   <CardBackdrop shape={styles.card} />
                   <Text style={[styles.cardTitle, { color: tokens.text }]}>Add people</Text>
                   <Text style={[styles.small, { color: tokens.textMuted }]}>
-                    {g.team.addNeedsPayment
+                    {g.addIosBlocked
+                      ? "Paid seats for online events aren't available in the iOS app."
+                      : g.team.addNeedsPayment
                       ? `₹${g.team.addPricePerSeat} per person, plus the processing fee. Each new seat gets an invite link.`
                       : 'New seats are free on this ticket. Each one gets an invite link.'}
                   </Text>
+                  {g.addIosBlocked ? null : (
                   <View style={[styles.stepper, { marginTop: spacing[4] }]}>
                     <Pressable
                       onPress={() => g.setAddCount(Math.max(1, g.addCount - 1))}
@@ -368,6 +371,7 @@ export default function ManageGroupRoute() {
                       style={{ flex: 1 }}
                     />
                   </View>
+                  )}
                 </View>
               ) : null}
 

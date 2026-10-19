@@ -259,6 +259,7 @@ export class WaitlistService {
             id: true,
             title: true,
             slug: true,
+            type: true,
             coverImageUrl: true,
             startDateTime: true,
             venueName: true,

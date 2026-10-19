@@ -34,6 +34,7 @@ import {
   type GroupMemberInput,
 } from '../lib/api/registrations';
 import { AppAlert } from '../components/ui/AppAlert';
+import { isIosDigitalPurchaseBlocked } from '../lib/iosPurchasePolicy';
 
 /**
  * One person-slot in the group, whichever model backs it:
@@ -271,6 +272,8 @@ export function useManageGroup(registrationId: string) {
   const lead = team?.isLead ? team : null;
   const teamOpen = !!lead?.open;
   const canShrink = !!lead && lead.groupSize > lead.minGroupSize;
+  // Paid seats on an online event can't be sold in the iOS app (App Store 3.1.1).
+  const addIosBlocked = !!lead?.addNeedsPayment && lead.eventType === 'ONLINE' && isIosDigitalPurchaseBlocked(lead.addPricePerSeat);
   const removeNote = `Your team gets one smaller and the seat goes back on sale.${lead?.addNeedsPayment ? ' Nothing is refunded.' : ''}`;
 
   /** Everything the lead can do to one seat, by its state. */
@@ -657,6 +660,7 @@ export function useManageGroup(registrationId: string) {
     setAddCount,
     adding,
     addSeats,
+    addIosBlocked,
     cancelTransfer,
     answerTransfer,
     // answers block (lead: team answers · teammate: own answers)
