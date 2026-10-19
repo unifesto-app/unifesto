@@ -71,6 +71,7 @@ import { ImageUploadCard } from "@/components/shared/ImageUploadCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { StatCard } from "@/components/shared/StatCard";
+import { confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -641,6 +642,27 @@ function MembersPanel({
 
   async function handleUpdateRole(m: SpaceMember, role: SpaceMemberRoleCode) {
     if (role === m.role.code) return;
+    const label = m.user.fullName || m.user.username || "this member";
+    const promote = role === "SPACE_ADMIN";
+    const ok = await confirmDialog({
+      title: promote ? `Make ${label} a Space Admin?` : `Change ${label}'s role?`,
+      description: (
+        <>
+          <p>
+            {SPACE_ROLE_LABEL[m.role.code as SpaceMemberRoleCode] ?? m.role.name} →{" "}
+            {SPACE_ROLE_LABEL[role]}.
+          </p>
+          <p>
+            {promote
+              ? "They can manage members, settings, payouts and refunds for this space straight away."
+              : "They stop managing this space, its members and its money straight away."}
+          </p>
+        </>
+      ),
+      confirmLabel: promote ? "Make Space Admin" : "Change role",
+      destructive: promote,
+    });
+    if (!ok) return;
     setRowBusy(m.id);
     setActionError("");
     const { error } = await updateSpaceMemberRole(spaceId, m.id, role);
@@ -1345,7 +1367,14 @@ function AdminSpacePanel({
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 disabled={busy}
-                onClick={() => run(() => approveSpace(spaceId))}
+                onClick={async () => {
+                  const ok = await confirmDialog({
+                    title: "Approve this space?",
+                    description: "It goes live: its owner can publish events and sell tickets.",
+                    confirmLabel: "Approve",
+                  });
+                  if (ok) await run(() => approveSpace(spaceId));
+                }}
               >
                 <CheckCircle className="h-4 w-4" />
                 Approve
@@ -1385,6 +1414,25 @@ function AdminSpacePanel({
               disabled={busy || !nextStatus || nextStatus === status}
               onClick={async () => {
                 if (!nextStatus) return;
+                const leaving = nextStatus !== "ACTIVE";
+                const sure = await confirmDialog({
+                  title: `${leaving ? "Move" : "Restore"} this space to ${roleLabel(nextStatus)}?`,
+                  description: (
+                    <>
+                      <p>
+                        {roleLabel(status)} → {roleLabel(nextStatus)}.
+                      </p>
+                      <p>
+                        {leaving
+                          ? "It can't create or run events until it's active again. Its owner can ask to restore it."
+                          : "It can create and run events again."}
+                      </p>
+                    </>
+                  ),
+                  confirmLabel: `Set ${roleLabel(nextStatus)}`,
+                  destructive: leaving,
+                });
+                if (!sure) return;
                 const ok = await run(() =>
                   updateSpaceStatus(spaceId, nextStatus)
                 );
@@ -1413,7 +1461,17 @@ function AdminSpacePanel({
           <Button
             variant={verified ? "outline" : "default"}
             disabled={busy}
-            onClick={() => run(() => setSpaceVerification(spaceId, !verified))}
+            onClick={async () => {
+              const ok = await confirmDialog({
+                title: verified ? "Remove the verified badge?" : "Mark this space verified?",
+                description: verified
+                  ? "Public pages go back to saying it isn't affiliated with the organisation it names."
+                  : "The verified badge shows publicly. Only do this once you've confirmed the team runs, or has permission from, the organisation it's named after.",
+                confirmLabel: verified ? "Remove badge" : "Mark verified",
+                destructive: verified,
+              });
+              if (ok) await run(() => setSpaceVerification(spaceId, !verified));
+            }}
           >
             <SealCheck className="h-4 w-4" />
             {verified ? "Remove verification" : "Mark verified"}

@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { HackPage, useLivePoll, useResult } from "@/components/hackathon/HackParts";
+import { HackPage, useLivePoll, useResult, useEventRunning } from "@/components/hackathon/HackParts";
 import { HELP_STATUS_LABEL, getHelpInbox, setHelpQueryStatus, type HelpInboxQuery, type HelpQueryStatus } from "@/lib/api/hackathon";
 import { formatWhen } from "@/lib/hackathon";
 import { cn } from "@/lib/utils/cn";
@@ -26,7 +26,8 @@ export default function HelpDeskPage() {
   const eventId = useParams().eventId as string;
   const fetcher = useCallback(() => getHelpInbox(eventId), [eventId]);
   const { data: inbox, setData, error, setError, reload, loaded } = useResult(fetcher);
-  useLivePoll(() => void reload());
+  const running = useEventRunning();
+  useLivePoll(() => void reload(), running);
   const [busy, setBusy] = useState<string | null>(null);
 
   const move = async (q: HelpInboxQuery, status: HelpQueryStatus) => {

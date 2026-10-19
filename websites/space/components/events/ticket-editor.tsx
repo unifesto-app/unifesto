@@ -215,7 +215,7 @@ function SalesWindow({
       </div>
       {inverted && (
         <p className="mt-2 text-xs text-destructive">
-          Sales end is on or before sales start — no one would be able to buy.
+          Sales end is on or before sales start, so no one would be able to buy.
         </p>
       )}
     </div>

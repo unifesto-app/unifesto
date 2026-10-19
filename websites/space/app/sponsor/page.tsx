@@ -120,7 +120,7 @@ export default function SponsorPortalPage() {
         <EmptyState
           icon={Handshake}
           title="No sponsor access"
-          description="This account isn't linked to any sponsor. If you expected access, ask the event organiser to invite this email."
+          description="This account isn't linked to any sponsor. If you expected access, ask the event's curator to invite this email."
           action={
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => router.replace("/dashboard")}>
@@ -221,7 +221,7 @@ export default function SponsorPortalPage() {
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{l.eventTitle}</td>
                     <td className="px-3 py-2 text-muted-foreground">
-                      {new Date(l.createdAt).toLocaleDateString()}
+                      {new Date(l.createdAt).toLocaleDateString("en-IN")}
                     </td>
                   </tr>
                 ))}
@@ -251,7 +251,7 @@ function BoothScanPanel({
     return (
       <Card>
         <CardContent className="p-4 text-sm text-muted-foreground">
-          Booth lead capture isn&apos;t enabled for you at any event yet. Ask the organiser to turn
+          Booth lead capture isn&apos;t enabled for you at any event yet. Ask the event&apos;s curator to turn
           it on for {sponsor.name}.
         </CardContent>
       </Card>

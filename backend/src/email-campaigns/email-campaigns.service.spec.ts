@@ -275,4 +275,57 @@ describe('EmailCampaignsService', () => {
       expect(queue.add).toHaveBeenCalledWith('c1');
     });
   });
+
+  describe('confirm step (countAudience / sendTest)', () => {
+    const user = (id: string, email: string | null) => ({
+      id,
+      fullName: `User ${id}`,
+      identities: email ? [{ email, isPrimary: true }] : [],
+    });
+
+    it('counts the same people the send would mail: no email, opted out dropped', async () => {
+      const prisma: any = {
+        event: { findUnique: jest.fn().mockResolvedValue({ id: 'e1', spaceId: 's1' }) },
+        eventRegistration: {
+          findMany: jest.fn().mockResolvedValue([{ userId: 'u1' }, { userId: 'u2' }, { userId: 'u3' }]),
+        },
+        user: {
+          findMany: jest
+            .fn()
+            .mockResolvedValue([user('u1', 'a@x.com'), user('u2', null), user('u3', 'c@x.com')]),
+        },
+        notificationSettings: { findMany: jest.fn().mockResolvedValue([{ userId: 'u3' }]) },
+      };
+      await expect(
+        build(prisma).countAudience(
+          { spaceId: 's1' },
+          { targetType: EmailTargetType.EVENT_REGISTRANTS, targetId: 'e1' },
+        ),
+      ).resolves.toEqual({ recipientCount: 1 });
+      expect(prisma.eventRegistration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ eventId: 'e1', status: { in: ['REGISTERED', 'ATTENDED'] } }),
+        }),
+      );
+    });
+
+    it('applies the same space scoping as a real send', async () => {
+      await expect(
+        build({}).countAudience({ spaceId: 's1' }, { targetType: EmailTargetType.ALL_USERS }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('mails a test to the sender only, merge vars filled, untracked', async () => {
+      email.sendCustomCampaignEmail.mockResolvedValueOnce({ messageId: 'm1' });
+      const prisma: any = { user: { findMany: jest.fn().mockResolvedValue([user('me', 'me@x.com')]) } };
+      await expect(
+        build(prisma).sendTest('me', { subject: 'Hi {{firstName}}', body: '<a href="https://x.y">{{name}}</a>' }),
+      ).resolves.toEqual({ sentTo: 'me@x.com' });
+      const sent = email.sendCustomCampaignEmail.mock.calls.at(-1)[0];
+      expect(sent.to).toBe('me@x.com');
+      expect(sent.subject).toBe('[Test] Hi User');
+      expect(sent.html).toContain('User me');
+      expect(sent.html).not.toContain('/email/track/');
+    });
+  });
 });

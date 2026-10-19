@@ -557,7 +557,7 @@ export default function SpaceSettingsPage() {
                   Created
                 </p>
                 <p className="text-sm">
-                  {new Date(space.created_at).toLocaleDateString()}
+                  {new Date(space.created_at).toLocaleDateString("en-IN")}
                 </p>
               </div>
             </div>

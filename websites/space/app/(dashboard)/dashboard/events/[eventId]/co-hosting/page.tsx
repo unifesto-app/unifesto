@@ -277,7 +277,7 @@ export default function EventCoHostingPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Co-host spaces&apos; organisers get full management access to this
+              Each co-host space&apos;s admins and curators get full management access to this
               event, and it appears in their own event list.
             </p>
             <div className="relative">

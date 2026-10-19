@@ -181,7 +181,7 @@ export default function EmailCampaignsPage() {
                         {pct(c.clickCount, c.totalSent)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(c.sentAt ?? c.scheduledAt ?? c.createdAt).toLocaleString()}
+                        {new Date(c.sentAt ?? c.scheduledAt ?? c.createdAt).toLocaleString("en-IN")}
                       </td>
                     </tr>
                   ))}

@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   MagnifyingGlass,
   CaretLeft,
   CaretRight,
@@ -21,6 +21,8 @@ import {
   sendWhatsappGroupInvite,
   bulkCheckin,
   EXPORT_EXTENSION,
+  REGISTRATION_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
 } from "@/lib/api/registrations-api";
 import { getSpaceUsage } from "@/lib/api/subscriptions-api";
 import { ExportMenu } from "@/components/shared/ExportMenu";
@@ -262,18 +264,6 @@ export default function EventRegistrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(`/dashboard/events/${eventId}`)}
-          className="-ml-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </Button>
-      </div>
-
       <PageHeader
         title="Attendees"
         subtitle={
@@ -340,7 +330,7 @@ export default function EventRegistrationsPage() {
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="REGISTERED">Registered</SelectItem>
-            <SelectItem value="ATTENDED">Attended</SelectItem>
+            <SelectItem value="ATTENDED">Checked in</SelectItem>
             <SelectItem value="CANCELLED">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -424,24 +414,16 @@ export default function EventRegistrationsPage() {
             <CardContent className="p-0">
               <div className="divide-y">
                 {registrations.map((reg) => (
+                  // The name is the link (keyboard + screen readers); clicking
+                  // anywhere else on the row is a mouse shortcut to the same page.
                   <div
                     key={reg.id}
-                    role="button"
-                    tabIndex={0}
                     onClick={() =>
                       router.push(
                         `/dashboard/events/${eventId}/attendees/${reg.id}`
                       )
                     }
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        router.push(
-                          `/dashboard/events/${eventId}/attendees/${reg.id}`
-                        );
-                      }
-                    }}
-                    className="flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:bg-muted/50 focus:bg-muted/50 focus:outline-none sm:flex-row sm:items-center sm:justify-between"
+                    className="flex cursor-pointer flex-col gap-3 p-4 transition-colors hover:bg-muted/50 focus-within:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
                       {checkable.length > 0 && (
@@ -469,7 +451,13 @@ export default function EventRegistrationsPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
-                          {reg.user.fullName || reg.user.username || "Unknown"}
+                          <Link
+                            href={`/dashboard/events/${eventId}/attendees/${reg.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="hover:underline focus-visible:underline focus-visible:outline-none"
+                          >
+                            {reg.user.fullName || reg.user.username || "Unknown"}
+                          </Link>
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {reg.user.email || reg.user.username}
@@ -494,12 +482,13 @@ export default function EventRegistrationsPage() {
 
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                       <Badge variant={statusBadgeVariant(reg.status)}>
-                        {reg.status}
+                        {REGISTRATION_STATUS_LABEL[reg.status] ?? reg.status}
                       </Badge>
                       <Badge variant={paymentBadgeVariant(reg.paymentStatus)}>
-                        {reg.paymentStatus}
+                        {PAYMENT_STATUS_LABEL[reg.paymentStatus] ?? reg.paymentStatus}
                       </Badge>
-                      {reg.checkedInAt && (
+                      {/* The status badge already says "Checked in" for ATTENDED. */}
+                      {reg.checkedInAt && reg.status !== "ATTENDED" && (
                         <div className="flex items-center gap-1 text-xs text-success">
                           <CheckCircle className="h-3 w-3" weight="fill" />
                           Checked in

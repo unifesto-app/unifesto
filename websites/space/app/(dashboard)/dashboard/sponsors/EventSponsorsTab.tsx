@@ -317,7 +317,7 @@ export function EventSponsorsTab({ spaceId }: { spaceId: string }) {
                       <Badge variant="neutral">{SOURCE_LABEL[l.source] ?? l.source}</Badge>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">
-                      {new Date(l.createdAt).toLocaleDateString()}
+                      {new Date(l.createdAt).toLocaleDateString("en-IN")}
                     </td>
                   </tr>
                 ))}

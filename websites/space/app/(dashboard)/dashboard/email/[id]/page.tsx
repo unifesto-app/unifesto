@@ -270,11 +270,11 @@ export default function SpaceCampaignDetailPage() {
                         {l.variant ?? "—"}
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">
-                        {l.openedAt ? new Date(l.openedAt).toLocaleString() : "—"}
+                        {l.openedAt ? new Date(l.openedAt).toLocaleString("en-IN") : "—"}
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground">
                         {l.firstClickedAt
-                          ? new Date(l.firstClickedAt).toLocaleString()
+                          ? new Date(l.firstClickedAt).toLocaleString("en-IN")
                           : "—"}
                       </td>
                     </tr>

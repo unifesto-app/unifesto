@@ -13,8 +13,10 @@ import {
 } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import {
+  countAudience,
   createCampaign,
   previewBody,
+  sendTestEmail,
   type EmailTargetType,
   type CreateCampaignPayload,
 } from "@/lib/api/email-campaigns-api";
@@ -23,6 +25,7 @@ import { getSpaceEvents, type Event } from "@/lib/api/events-api";
 import { getSpaceMembers, type SpaceMember } from "@/lib/api/spaces-api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { audienceLine, confirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,8 +131,40 @@ export default function SpaceComposeCampaignPage() {
       setError(`Please choose ${targetDef.needs === "event" ? "an event" : "a member"}.`);
       return;
     }
+    const payload = buildPayload();
+    const ok = await confirmDialog({
+      title: scheduledAt ? "Schedule this campaign?" : "Send this campaign now?",
+      description: (
+        <>
+          <p>&ldquo;{payload.subject}&rdquo;</p>
+          <p>
+            To: {audienceLabel ?? targetDef.label}
+            {scheduledAt ? ` · ${new Date(scheduledAt).toLocaleString("en-IN")}` : ""}
+          </p>
+          <p>Emails can&apos;t be recalled once sent.</p>
+        </>
+      ),
+      load: () =>
+        audienceLine(
+          countAudience(spaceId, { targetType: payload.targetType, targetId: payload.targetId }),
+          scheduledAt ? "Would go to" : "Goes to"
+        ),
+      confirmLabel: scheduledAt ? "Schedule" : "Send now",
+      test: {
+        label: "Send a test to me",
+        run: async () => {
+          const { data, error } = await sendTestEmail(spaceId, {
+            subject: payload.subject,
+            body: payload.body,
+          });
+          if (error || !data) throw new Error(error?.message ?? "The test didn't send.");
+          return `Test sent to ${data.sentTo}.`;
+        },
+      },
+    });
+    if (!ok) return;
     setSubmitting(true);
-    const { error } = await createCampaign(spaceId, buildPayload());
+    const { error } = await createCampaign(spaceId, payload);
     setSubmitting(false);
     if (error) setError(error.message);
     else router.push("/dashboard/email");

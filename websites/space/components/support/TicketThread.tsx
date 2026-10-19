@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils/cn";
 import type { SupportMessage } from "@/lib/api/support-api";
 
 function formatTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString("en-IN", {
     day: "numeric",
     month: "short",
     hour: "numeric",

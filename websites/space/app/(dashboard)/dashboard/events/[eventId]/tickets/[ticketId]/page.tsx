@@ -410,7 +410,7 @@ export default function TicketDetailPage() {
             <CardDescription>
               Pick the tickets that become unavailable once an attendee holds{" "}
               <span className="font-medium text-foreground">{ticket.name}</span>.
-              This is one-directional — it doesn&apos;t stop someone who already
+              It works one way: it doesn&apos;t stop someone who already
               bought those tickets from also buying this one.
             </CardDescription>
           </CardHeader>

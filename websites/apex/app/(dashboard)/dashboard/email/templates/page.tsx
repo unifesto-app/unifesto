@@ -151,7 +151,7 @@ export default function EmailTemplatesPage() {
                 </div>
                 <p className="text-sm text-muted-foreground">{t.subject}</p>
                 <p className="text-xs text-muted-foreground">
-                  Updated {new Date(t.updatedAt).toLocaleDateString()}
+                  Updated {new Date(t.updatedAt).toLocaleDateString("en-IN")}
                 </p>
               </CardContent>
             </Card>

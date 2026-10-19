@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useRef, useState, type ReactElement, type ReactNode } from "react";
 import { ArrowLeft } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils/cn";
+import { useLayoutEvent } from "@/components/events/EventLayoutContext";
 import type { Result } from "@/lib/api/call";
 
 /*
@@ -207,12 +208,18 @@ export function Toggle({
   );
 }
 
-/** Label + control + hint, stacked. */
+/**
+ * Label + control + hint, stacked. Without `htmlFor`, a single control child
+ * gets a generated id and the label points at it (B12: unlabelled inputs).
+ */
 export function Field({ label, hint, children, htmlFor }: { label: ReactNode; hint?: ReactNode; children: ReactNode; htmlFor?: string }) {
+  const autoId = useId();
+  const own = isValidElement<{ id?: string }>(children) && !children.props.id && !htmlFor;
+  const control = own ? cloneElement(children as ReactElement<{ id?: string }>, { id: autoId }) : children;
   return (
     <div className="space-y-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
+      <Label htmlFor={htmlFor ?? (own ? autoId : undefined)}>{label}</Label>
+      {control}
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
@@ -294,6 +301,20 @@ export function StatementCard({
   ) : (
     <div className={cls}>{body}</div>
   );
+}
+
+/**
+ * False once the event is over (ended, completed or cancelled), so pages that
+ * only matter while it runs stop polling (B12: queues and help desk kept
+ * asking every 10 s days later). True while the event is still loading.
+ */
+export function useEventRunning(): boolean {
+  const layout = useLayoutEvent();
+  const [now] = useState(() => Date.now());
+  const e = layout?.event;
+  if (!e) return true;
+  if (e.status === "COMPLETED" || e.status === "CANCELLED") return false;
+  return new Date(e.endDateTime).getTime() > now;
 }
 
 /**

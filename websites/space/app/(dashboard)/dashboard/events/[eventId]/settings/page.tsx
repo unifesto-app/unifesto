@@ -243,7 +243,7 @@ export default function EventSettingsPage() {
                 <XCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-foreground">
-                    Cancelled on {new Date(event.cancelledAt).toLocaleDateString()}
+                    Cancelled on {new Date(event.cancelledAt).toLocaleDateString("en-IN")}
                   </p>
                   {event.cancellationReason && (
                     <p className="text-sm text-muted-foreground">
@@ -387,7 +387,7 @@ export default function EventSettingsPage() {
                     ? "This cancelled event can be permanently deleted. Everything goes with it, and this cannot be undone."
                     : "Permanently delete this draft. This cannot be undone."
                   : isCompleted
-                    ? "A completed event cannot be deleted — its attendance and payment records have to be kept. Hide it instead."
+                    ? "A completed event cannot be deleted: its attendance and payment records have to be kept. Hide it instead."
                     : "To delete a published event, you must first cancel it."}
               </p>
             </div>
@@ -824,7 +824,7 @@ function EventPayoutAccountCard({ eventId }: { eventId: string }) {
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {accountLabel(a)}
-                  {a.isOwn ? "" : ` — ${a.ownerName} (space admin)`}
+                  {a.isOwn ? "" : ` · ${a.ownerName} (space admin)`}
                 </option>
               ))}
             </select>

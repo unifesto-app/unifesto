@@ -13,6 +13,20 @@ export type PaymentStatus =
   | "PARTIALLY_REFUNDED"
   | "REFUNDED";
 
+/** Sentence-case labels for the status badges (B12: raw enums like "ATTENDED"). */
+export const REGISTRATION_STATUS_LABEL: Record<RegistrationStatus, string> = {
+  REGISTERED: "Registered",
+  ATTENDED: "Checked in",
+  CANCELLED: "Cancelled",
+};
+export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  PENDING: "Payment pending",
+  PAID: "Paid",
+  FAILED: "Payment failed",
+  PARTIALLY_REFUNDED: "Partly refunded",
+  REFUNDED: "Refunded",
+};
+
 /**
  * One captured attendee for a GROUP registration. A group registration is a
  * single row whose `user` is the team lead; the full team (lead included) lives

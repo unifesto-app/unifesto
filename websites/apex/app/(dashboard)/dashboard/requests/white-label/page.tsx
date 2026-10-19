@@ -35,7 +35,7 @@ const FILTERS: { label: string; value: RequestStatus }[] = [
 ];
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+  return new Date(iso).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -43,7 +43,7 @@ function formatDate(iso: string) {
 }
 
 function requesterName(r: WhiteLabelRequest) {
-  return r.requester?.fullName || r.requester?.username || "Unknown organiser";
+  return r.requester?.fullName || r.requester?.username || "Unknown requester";
 }
 
 /**
@@ -104,7 +104,7 @@ export default function WhiteLabelRequestsPage() {
     <div className="space-y-6">
       <PageHeader
         title="White-label requests"
-        subtitle="Approve organiser accent colours for spaces and events"
+        subtitle="Approve accent colours for spaces and events"
       />
 
       <Card>
@@ -162,7 +162,7 @@ export default function WhiteLabelRequestsPage() {
               title={filter === "PENDING" ? "The queue is clear" : "Nothing here"}
               description={
                 filter === "PENDING"
-                  ? "When an organiser requests white-label, it will land here for review."
+                  ? "When a space requests white-label, it will land here for review."
                   : `No ${filter.toLowerCase()} white-label requests yet.`
               }
             />
@@ -259,7 +259,7 @@ export default function WhiteLabelRequestsPage() {
                         rows={2}
                         value={note}
                         onChange={(e) => setNote(e.target.value)}
-                        placeholder="Reason shown to the organiser (optional)"
+                        placeholder="Reason shown to the requester (optional)"
                       />
                       <div className="flex justify-end gap-2">
                         <Button

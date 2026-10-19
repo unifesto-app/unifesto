@@ -202,7 +202,7 @@ export default function SpaceSessionsPage() {
               description={
                 search || status !== "all"
                   ? "Try clearing the search or choosing a different status."
-                  : "Sessions are quick online gatherings — a title, a time, and a meeting link. Perfect for webinars and community calls."
+                  : "Sessions are quick online gatherings: a title, a time, and a video room inside Unifesto, with no link to pass around. Or use your own Meet or Zoom. Perfect for webinars and community calls."
               }
               action={
                 !search && status === "all" ? (

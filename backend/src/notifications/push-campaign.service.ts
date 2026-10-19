@@ -19,6 +19,7 @@ import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
   CreateOrganiserAnnouncementDto,
   CreatePushBroadcastDto,
+  PushTestDto,
 } from './dto/push-campaign.dto';
 
 interface TargetSegment {
@@ -79,6 +80,34 @@ export class PushCampaignService {
       );
     }
     return campaign;
+  }
+
+  /**
+   * How many people a broadcast would reach right now, for the confirm step:
+   * the same recipients and pref filter `dispatch` uses. An all-users,
+   * opt-out broadcast goes to the OneSignal segment, which can also reach
+   * signed-out devices, so for that one this is the floor.
+   */
+  async countAudience(
+    target: TargetSegment,
+    category: NotificationCategory = 'productUpdates',
+  ): Promise<{ recipientCount: number }> {
+    const userIds = await this.resolveSegment(target);
+    return { recipientCount: await this.notifications.countAllowed(userIds, category) };
+  }
+
+  /**
+   * Send a draft to the admin's own devices only. Uses the staff category so
+   * their own marketing prefs can't swallow it, and stays out of the feed.
+   */
+  async sendTest(adminId: string, dto: PushTestDto) {
+    return this.notifications.send([adminId], {
+      category: 'adminAlerts',
+      title: `[Test] ${dto.title}`,
+      body: dto.body,
+      deepLink: dto.deepLink,
+      inbox: false,
+    });
   }
 
   /** Admin re-trigger of a DRAFT/SCHEDULED campaign. */
@@ -287,10 +316,16 @@ export class PushCampaignService {
 
   private async resolveRecipients(campaign: PushCampaign): Promise<string[]> {
     const segment = (campaign.targetSegment as unknown as TargetSegment) ?? { type: 'all' };
-
     // Event-scoped (organiser) or admin broadcast targeting one event.
-    const eventId = campaign.eventId ?? segment.eventId;
     if (campaign.scope === PushScope.EVENT || segment.type === 'event') {
+      return this.resolveSegment({ type: 'event', eventId: campaign.eventId ?? segment.eventId });
+    }
+    return this.resolveSegment(segment);
+  }
+
+  private async resolveSegment(segment: TargetSegment): Promise<string[]> {
+    if (segment.type === 'event') {
+      const eventId = segment.eventId;
       if (!eventId) return [];
       const regs = await this.prisma.eventRegistration.findMany({
         where: { eventId, ...COUNTS_AS_ATTENDING },
