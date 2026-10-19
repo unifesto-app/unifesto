@@ -15,5 +15,7 @@ describe('Assist notification copy (D3)', () => {
   it('names the case number for the desk', () => {
     expect(deskHeadline(e('CREATED'), 1042)).toBe('New request #1042');
     expect(deskHeadline(e('ESCALATED'), 7)).toBe('#7 was escalated to Unifesto');
+    expect(deskHeadline(e('SENT_TO_SPACE'), 227)).toBe('Unifesto passed #227 to you');
+    expect(requesterHeadline(e('SENT_TO_SPACE'), SupportTicketStatus.OPEN)).toBe('The organiser is now helping with your request');
   });
 });
