@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -21,7 +22,14 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagg
 import { uploadLimit } from '../common/upload-limits';
 import { ATTACHMENT_MAX_MB, SupportService } from './support.service';
 import { SupportCopilot } from './support-copilot';
-import { CreateTicketDto, CreateMessageDto, UpdateTicketDto, SendToSpaceDto } from './dto';
+import {
+  CreateTicketDto,
+  CreateMessageDto,
+  UpdateTicketDto,
+  SendToSpaceDto,
+  CannedReplyDto,
+  UpdateCannedReplyDto,
+} from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -70,6 +78,7 @@ export class SupportController {
     @Query('assignedToId') assignedToId?: string,
     @Query('spaceId') spaceId?: string,
     @Query('unread') unread?: string,
+    @Query('overdue') overdue?: string,
     @Query('search') search?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
@@ -83,6 +92,7 @@ export class SupportController {
       assignedToId,
       spaceId,
       unread: unread === 'true',
+      overdue: overdue === 'true',
       search,
       page,
       limit,
@@ -102,6 +112,7 @@ export class SupportController {
     @Query('status', new ParseEnumPipe(SupportTicketStatus, { optional: true })) status?: SupportTicketStatus,
     @Query('kind', new ParseEnumPipe(SupportCaseKind, { optional: true })) kind?: SupportCaseKind,
     @Query('unread') unread?: string,
+    @Query('overdue') overdue?: string,
     @Query('search') search?: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit?: number,
@@ -111,6 +122,7 @@ export class SupportController {
       status,
       kind,
       unread: unread === 'true',
+      overdue: overdue === 'true',
       search,
       page,
       limit,
@@ -122,6 +134,38 @@ export class SupportController {
   @ApiOperation({ summary: 'Unread count for a space desk' })
   spaceDeskUnread(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Req() req: any) {
     return this.supportService.spaceDeskUnread(req.user.id, spaceId);
+  }
+
+  /** D19: a space desk's stats header: open, awaiting, overdue, and median reply and resolution times. */
+  @Get('spaces/:spaceId/desk/stats')
+  @ApiOperation({ summary: 'Stats for a space desk' })
+  spaceDeskStats(@Param('spaceId', ParseUUIDPipe) spaceId: string, @Req() req: any) {
+    return this.supportService.spaceDeskStats(req.user.id, spaceId);
+  }
+
+  /** D19: saved replies for a desk. `spaceId` for a space desk's; none for Unifesto's. */
+  @Get('canned-replies')
+  @ApiOperation({ summary: "List a desk's saved replies" })
+  listCannedReplies(@Req() req: any, @Query('spaceId', new ParseUUIDPipe({ optional: true })) spaceId?: string) {
+    return this.supportService.listCannedReplies(req.user.id, spaceId ?? null);
+  }
+
+  @Post('canned-replies')
+  @ApiOperation({ summary: 'Add a saved reply' })
+  createCannedReply(@Body() dto: CannedReplyDto, @Req() req: any) {
+    return this.supportService.createCannedReply(req.user.id, dto);
+  }
+
+  @Patch('canned-replies/:id')
+  @ApiOperation({ summary: 'Edit a saved reply' })
+  updateCannedReply(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCannedReplyDto, @Req() req: any) {
+    return this.supportService.updateCannedReply(req.user.id, id, dto);
+  }
+
+  @Delete('canned-replies/:id')
+  @ApiOperation({ summary: 'Delete a saved reply' })
+  deleteCannedReply(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.supportService.deleteCannedReply(req.user.id, id);
   }
 
   /** Summary counts for the current viewer (global for admins, own otherwise). */

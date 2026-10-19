@@ -138,4 +138,35 @@ describe('PushCampaignService confirm step', () => {
       expect.objectContaining({ title: '[Test] Big news', body: 'Hello', inbox: false, category: 'adminAlerts' }),
     );
   });
+
+  it('an all-users promotion goes per-user (opt-in, inbox copies, open accounts only), never to the segment', async () => {
+    const prisma = {
+      pushCampaign: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'c1',
+          scope: 'PLATFORM',
+          category: 'promotions',
+          title: 'New',
+          body: 'Hello',
+          data: {},
+          targetSegment: { type: 'all' },
+        }),
+        update: jest.fn(),
+      },
+      user: { findMany: jest.fn().mockResolvedValue([{ id: 'a' }, { id: 'b' }]) },
+    };
+    const notifications = {
+      send: jest.fn().mockResolvedValue({ sent: 2, failed: 0, skipped: 0 }),
+      sendToSegments: jest.fn(),
+    };
+    await build(prisma, notifications).dispatch('c1');
+    expect(notifications.sendToSegments).not.toHaveBeenCalled();
+    expect(prisma.user.findMany).toHaveBeenCalledWith({ where: { deletedAt: null }, select: { id: true } });
+    expect(notifications.send).toHaveBeenCalledWith(
+      ['a', 'b'],
+      expect.objectContaining({ category: 'promotions', campaignId: 'c1' }),
+    );
+    expect(notifications.send.mock.calls[0][1].inbox).toBeUndefined(); // inbox on by default
+  });
 });

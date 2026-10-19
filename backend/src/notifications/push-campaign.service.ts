@@ -314,6 +314,11 @@ export class PushCampaignService {
       // which enumerated external_id targeting cannot. Opt-IN promotions must
       // never segment-blast (that would send marketing to non-consenting users),
       // so they stay on the enumerated + pref-filtered path.
+      // Accepted gap (C8): the segment can't see the per-user productUpdates
+      // switch (only turning push off in the app drops the device) and writes
+      // no inbox copies. We keep it because a per-user send only reaches devices
+      // linked by external_id, and that link was broken until the next store
+      // build: the 27 Sept segment sends reached ~1,120 devices each.
       const segment = (campaign.targetSegment as unknown as TargetSegment) ?? { type: 'all' };
       const useSegment =
         campaign.scope === PushScope.PLATFORM &&
@@ -410,8 +415,11 @@ export class PushCampaignService {
       return staff.map((u) => u.id);
     }
 
-    // type 'all' — every user (pref opt-out enforced in NotificationsService.send).
-    const users = await this.prisma.user.findMany({ select: { id: true } });
+    // type 'all': every open account (pref opt-out enforced in NotificationsService.send).
+    const users = await this.prisma.user.findMany({
+      where: { deletedAt: null },
+      select: { id: true },
+    });
     return users.map((u) => u.id);
   }
 }

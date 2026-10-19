@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { PaperPlaneRight } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils/cn";
-import type { SupportMessage } from "@/lib/api/support-api";
+import type { CannedReply, SupportMessage } from "@/lib/api/support-api";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", {
@@ -41,6 +42,8 @@ interface TicketThreadProps {
   disabledHint?: string;
   /** D15: an Assist draft to put in the composer; a new `n` replaces the text. */
   draft?: { text: string; n: number };
+  /** D19: the desk's saved replies, offered above the composer. */
+  cannedReplies?: CannedReply[];
 }
 
 /** The message thread + reply composer, shared by both Apex support surfaces. */
@@ -51,6 +54,7 @@ export function TicketThread({
   disabled = false,
   disabledHint,
   draft,
+  cannedReplies,
 }: TicketThreadProps) {
   const [body, setBody] = useState("");
   // Whether the composer holds (an edit of) an Assist draft.
@@ -124,6 +128,26 @@ export function TicketThread({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
+          {!!cannedReplies?.length && (
+            <Select
+              value=""
+              onValueChange={(id) => {
+                const reply = cannedReplies.find((r) => r.id === id);
+                if (reply) setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${reply.body}` : reply.body));
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-64" aria-label="Insert a saved reply">
+                <SelectValue placeholder="Insert a saved reply" />
+              </SelectTrigger>
+              <SelectContent>
+                {cannedReplies.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Textarea
             value={body}
             onChange={(e) => {

@@ -11,6 +11,8 @@ import {
   CaretLeft,
   UserCircle,
   UserMinus,
+  Timer,
+  Hourglass,
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -28,6 +30,7 @@ import { TicketThread, statusBadgeVariant, priorityBadgeVariant } from "@/compon
 import { CaseActionPanel } from "@/components/support/CaseActionPanel";
 import { SendToOrganiser } from "@/components/support/SendToOrganiser";
 import { AssistCopilot } from "@/components/support/AssistCopilot";
+import { CannedRepliesDialog } from "@/components/support/CannedRepliesDialog";
 import { cn } from "@/lib/utils/cn";
 import {
   listTickets,
@@ -35,6 +38,9 @@ import {
   getSupportStats,
   replyToTicket,
   updateTicket,
+  listCannedReplies,
+  formatMins,
+  slaText,
   requesterName,
   requesterEmail,
   STATUS_LABEL,
@@ -49,6 +55,7 @@ import {
   type SupportCaseKind,
   type SupportDesk,
   type SupportTicketsResponse,
+  type CannedReply,
   ASSIST_READ_EVENT,
 } from "@/lib/api/support-api";
 
@@ -120,6 +127,7 @@ export default function AssistInboxPage() {
   const [priority, setPriority] = useFilter<SupportTicketPriority | typeof ALL>(ALL, firstPage);
   const [assignee, setAssignee] = useFilter<"ALL" | "me" | "none">(ALL, firstPage);
   const [unreadOnly, setUnreadOnly] = useFilter(false, firstPage);
+  const [overdueOnly, setOverdueOnly] = useFilter(false, firstPage);
   const [search, setSearch] = useFilter("", firstPage);
   const [searchInput, setSearchInput] = useState("");
 
@@ -131,12 +139,23 @@ export default function AssistInboxPage() {
   const [selected, setSelected] = useState<SupportTicket | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [acting, setActing] = useState(false);
+  const [canned, setCanned] = useState<CannedReply[]>([]);
+  const [cannedOpen, setCannedOpen] = useState(false);
 
   // Type, then search: wait for a pause instead of a request per key.
   useEffect(() => {
     const t = setTimeout(() => searchInput.trim() !== search && setSearch(searchInput.trim()), 300);
     return () => clearTimeout(t);
   }, [searchInput]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadCanned = useCallback(async () => {
+    const { data } = await listCannedReplies();
+    if (data) setCanned(data);
+  }, []);
+
+  useEffect(() => {
+    loadCanned();
+  }, [loadCanned]);
 
   const loadStats = useCallback(async () => {
     const { data } = await getSupportStats();
@@ -153,6 +172,7 @@ export default function AssistInboxPage() {
       priority: priority === ALL ? undefined : priority,
       assignedToId: assignee === "me" ? user?.id : assignee === "none" ? "none" : undefined,
       unread: unreadOnly || undefined,
+      overdue: overdueOnly || undefined,
       search: search || undefined,
       page,
       limit: PAGE_SIZE,
@@ -160,7 +180,7 @@ export default function AssistInboxPage() {
     if (error) setError(error.message || "Could not load cases.");
     setList(data);
     setLoading(false);
-  }, [kind, status, desk, priority, assignee, unreadOnly, search, page, user?.id]);
+  }, [kind, status, desk, priority, assignee, unreadOnly, overdueOnly, search, page, user?.id]);
 
   useEffect(() => {
     loadList();
@@ -222,6 +242,19 @@ export default function AssistInboxPage() {
       { title: "Unread", value: stats?.unread ?? 0, hint: "New on the Unifesto desk", icon: EnvelopeSimple },
       { title: "Unassigned", value: stats?.unassigned ?? 0, hint: "Open with no owner", icon: UserMinus },
       { title: "Awaiting reply", value: stats?.pending ?? 0, hint: "With the requester", icon: Clock },
+      { title: "Overdue", value: stats?.overdue ?? 0, hint: "Past the reply or resolution time", icon: Hourglass },
+      {
+        title: "First reply",
+        value: formatMins(stats?.desks?.PLATFORM.firstResponseMins),
+        hint: `Unifesto, median of 30 days · space desks ${formatMins(stats?.desks?.SPACE.firstResponseMins)}`,
+        icon: Timer,
+      },
+      {
+        title: "Resolution",
+        value: formatMins(stats?.desks?.PLATFORM.resolutionMins),
+        hint: `Unifesto, median of 30 days · space desks ${formatMins(stats?.desks?.SPACE.resolutionMins)}`,
+        icon: Timer,
+      },
     ],
     [stats]
   );
@@ -268,6 +301,7 @@ export default function AssistInboxPage() {
                   messages={selected.messages}
                   viewerIsStaff
                   draft={draft?.ticketId === selected.id ? draft : undefined}
+                  cannedReplies={canned}
                   onReply={handleReply}
                   disabled={closed}
                   disabledHint="This case is closed. Set its status to Open to reply."
@@ -306,6 +340,11 @@ export default function AssistInboxPage() {
                   {DESK_LABEL[selected.desk]}
                   {selected.escalatedAt ? " · escalated by the space" : ""}
                 </p>
+                {selected.sla && (
+                  <p className={cn("text-sm font-medium", selected.sla.overdue ? "text-destructive" : "text-foreground")}>
+                    {slaText(selected.sla)}
+                  </p>
+                )}
                 <div className="space-y-1.5">
                   <Label>Status</Label>
                   <Select value={selected.status} onValueChange={(v) => triage({ status: v as SupportTicketStatus })}>
@@ -381,7 +420,16 @@ export default function AssistInboxPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Assist" subtitle="Every support case on the platform: questions, refunds, requests and reports" />
+      <PageHeader
+        title="Assist"
+        subtitle="Every support case on the platform: questions, refunds, requests and reports"
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setCannedOpen(true)}>
+            Saved replies
+          </Button>
+        }
+      />
+      <CannedRepliesDialog open={cannedOpen} onOpenChange={setCannedOpen} replies={canned} onChange={loadCanned} />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {statCards.map((s) => (
@@ -437,6 +485,14 @@ export default function AssistInboxPage() {
             >
               Unread only
             </Button>
+            <Button
+              variant={overdueOnly ? "default" : "outline"}
+              size="sm"
+              aria-pressed={overdueOnly}
+              onClick={() => setOverdueOnly((o) => !o)}
+            >
+              Overdue only
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -482,6 +538,7 @@ export default function AssistInboxPage() {
                         {t.priority !== "NORMAL" && (
                           <Badge variant={priorityBadgeVariant(t.priority)}>{PRIORITY_LABEL[t.priority]}</Badge>
                         )}
+                        {t.sla?.overdue && <Badge variant="destructive">Overdue</Badge>}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span>{requesterName(t)}</span>
@@ -490,6 +547,7 @@ export default function AssistInboxPage() {
                         {t.space && <span>{t.space.name}</span>}
                         {t.assignedTo && <span>→ {t.assignedTo.fullName || t.assignedTo.username}</span>}
                         <span>Updated {timeAgo(t.lastMessageAt)}</span>
+                        {t.sla && !t.sla.overdue && <span>{slaText(t.sla)}</span>}
                         {typeof t._count?.messages === "number" && <span>{t._count.messages} messages</span>}
                       </div>
                     </div>

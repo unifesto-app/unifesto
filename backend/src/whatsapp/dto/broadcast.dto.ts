@@ -1,4 +1,10 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  IntersectionType,
+  PartialType,
+  PickType,
+} from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -14,7 +20,8 @@ import {
 
 /**
  * Who a platform WhatsApp broadcast goes to.
- *   ALL   — every user in the app that has a mobile number.
+ *   ALL   — every user in the app that has a mobile number (marketing
+ *           templates: only those who opted in to promotions).
  *   SPACE — the members of one Space (space-scoped roles, event roles excluded).
  *   USER  — one or more explicitly chosen users.
  *   STAFF — platform ADMINs only (test sends).
@@ -69,7 +76,7 @@ export class WhatsAppBroadcastDto {
     type: [String],
     example: ['{name}', 'Open Source Sprint'],
     description:
-      'Ordered body ({{1}}, {{2}}…) parameters. A value of "{name}" is replaced per-recipient with the user\'s name.',
+      'Ordered body ({{1}}, {{2}}…) parameters. "{name}" anywhere in a value is replaced per-recipient with the user\'s name.',
   })
   @IsOptional()
   @IsArray()
@@ -85,12 +92,15 @@ export class WhatsAppBroadcastDto {
   languageCode?: string;
 }
 
-/** Who a broadcast would reach, for the count on the confirm step. */
-export class WhatsAppAudienceDto extends PickType(WhatsAppBroadcastDto, [
-  'audience',
-  'spaceId',
-  'userIds',
-] as const) {}
+/**
+ * Who a broadcast would reach, for the count on the confirm step. Pass the
+ * template too: a marketing one only reaches people who opted in to promotions
+ * (without it the count assumes marketing, the smaller number).
+ */
+export class WhatsAppAudienceDto extends IntersectionType(
+  PickType(WhatsAppBroadcastDto, ['audience', 'spaceId', 'userIds'] as const),
+  PartialType(PickType(WhatsAppBroadcastDto, ['templateName', 'languageCode'] as const)),
+) {}
 
 /** A template to send to the signed-in admin's own number only. */
 export class WhatsAppBroadcastTestDto extends PickType(WhatsAppBroadcastDto, [

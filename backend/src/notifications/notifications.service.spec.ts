@@ -99,3 +99,71 @@ describe('NotificationsService.countAllowed', () => {
     await expect(svc.countAllowed([], 'promotions')).resolves.toBe(0);
   });
 });
+
+describe('NotificationsService delivery log (C3)', () => {
+  const opts = { category: 'registrationUpdates' as const, title: 'Hi', body: 'There' };
+  const withDeliveries = () => {
+    const prisma: any = {
+      notificationSettings: { findMany: jest.fn().mockResolvedValue([]) },
+      pushLog: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      userNotification: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    };
+    const oneSignal: any = { send: jest.fn().mockResolvedValue({ id: 'n1' }) };
+    const b = { svc: new NotificationsService(prisma, oneSignal), prisma, oneSignal };
+    b.prisma.messageDelivery = {
+      create: jest.fn().mockResolvedValue({}),
+      update: jest.fn().mockResolvedValue({}),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      createMany: jest.fn().mockResolvedValue({ count: 0 }),
+    };
+    return b;
+  };
+
+  it('writes one message_deliveries row per user next to PushLog', async () => {
+    const { svc, prisma } = withDeliveries();
+    prisma.notificationSettings.findMany.mockResolvedValue([
+      { userId: 'u-off', pushEnabled: false, registrationUpdates: true },
+    ]);
+    await svc.send(['u-on', 'u-off'], opts);
+    const rows = prisma.messageDelivery.createMany.mock.calls.flatMap((c: any[]) => c[0].data);
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ channel: 'PUSH', userId: 'u-off', status: 'SKIPPED' }),
+        expect.objectContaining({ channel: 'PUSH', userId: 'u-on', status: 'SENT', providerMessageId: 'n1', attempts: 1 }),
+      ]),
+    );
+  });
+
+  it('a deduped single-user push sends nothing and writes no second inbox copy', async () => {
+    const { svc, prisma, oneSignal } = withDeliveries();
+    const { Prisma } = jest.requireActual('@prisma/client');
+    prisma.messageDelivery.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('dup', { code: 'P2002', clientVersion: '6' }),
+    );
+    const res = await svc.send(['u-on'], { ...opts, dedupKey: 'k:push' });
+    expect(res).toEqual({ sent: 1, failed: 0, skipped: 0 });
+    expect(oneSignal.send).not.toHaveBeenCalled();
+    expect(prisma.userNotification.createMany).not.toHaveBeenCalled();
+  });
+
+  it('a claimed push updates its dedup row instead of inserting', async () => {
+    const { svc, prisma, oneSignal } = withDeliveries();
+    await svc.send(['u-on'], { ...opts, dedupKey: 'k:push' });
+    expect(oneSignal.send.mock.calls[0][0].idempotencyKey).toEqual(expect.any(String));
+    expect(prisma.messageDelivery.update).toHaveBeenCalledWith({
+      where: { dedupKey: 'k:push' },
+      data: expect.objectContaining({ status: 'SENT', providerMessageId: 'n1' }),
+    });
+    expect(prisma.messageDelivery.createMany).not.toHaveBeenCalled();
+  });
+
+  it('a throw after the claim finishes the claimed row as FAILED', async () => {
+    const { svc, prisma } = withDeliveries();
+    prisma.notificationSettings.findMany.mockRejectedValue(new Error('db blip'));
+    await svc.send(['u-on'], { ...opts, dedupKey: 'k:push' });
+    expect(prisma.messageDelivery.update).toHaveBeenCalledWith({
+      where: { dedupKey: 'k:push' },
+      data: expect.objectContaining({ status: 'FAILED', error: 'db blip' }),
+    });
+  });
+});
