@@ -155,6 +155,23 @@ export default function StayPassScreen() {
       },
     ]);
 
+  // D23: a paid stay can't be cancelled here; it becomes a case the event team answers.
+  const askCancel = () =>
+    AppAlert.alert('Ask to cancel?', 'The event team reviews it and refunds the stay price. The processing fee is kept.', [
+      { text: 'Keep it', style: 'cancel' },
+      {
+        text: 'Ask to cancel',
+        style: 'destructive',
+        onPress: async () => {
+          setCancelling(true);
+          const res = await cancelMyStay(b.id);
+          setCancelling(false);
+          if (!res.ok) return AppAlert.alert("Couldn't send", res.message);
+          AppAlert.alert('Request sent', 'The event team will reply in My help.');
+        },
+      },
+    ]);
+
   return (
     <ScrollView
       style={{ backgroundColor: tokens.bg }}
@@ -317,10 +334,15 @@ export default function StayPassScreen() {
             onPress={cancel}
           />
         </SettingsGroup>
-      ) : paidOnline && !closed && b.status !== 'CHECKED_OUT' ? (
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
-          Paid online. To cancel and get a refund, contact the event team.
-        </Text>
+      ) : paidOnline && !closed && b.status !== 'CHECKED_OUT' && b.status !== 'CHECKED_IN' ? (
+        <SettingsGroup>
+          <SettingsRow
+            icon={<XCircle size={24} color={tokens.danger} />}
+            label={cancelling ? 'Sending…' : 'Ask to cancel and refund'}
+            danger
+            onPress={askCancel}
+          />
+        </SettingsGroup>
       ) : null}
     </ScrollView>
   );
@@ -377,5 +399,4 @@ const styles = StyleSheet.create({
   stubMsg: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[4] },
   stubTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...font('heading') },
   body: { padding: spacing[4], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  note: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
 });
