@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpService } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
+import { AppleSignInService } from './apple-sign-in.service';
 import { ThrottleIdentityService } from './throttle-identity.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
@@ -23,6 +24,7 @@ import { CanGuard } from './authorization/can.guard';
     AuthService,
     OtpService,
     CognitoJwtService,
+    AppleSignInService,
     ThrottleIdentityService,
     JwtAuthGuard,
     RolesGuard,
@@ -34,6 +36,7 @@ import { CanGuard } from './authorization/can.guard';
     AuthService,
     OtpService,
     CognitoJwtService,
+    AppleSignInService,
     ThrottleIdentityService,
     JwtAuthGuard,
     CapabilityConfigService,

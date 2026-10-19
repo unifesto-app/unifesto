@@ -1,4 +1,5 @@
 import {
+  Optional,
   Injectable,
   UnauthorizedException,
   BadRequestException,
@@ -18,6 +19,7 @@ import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { OtpService, OtpVerifyResult } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
+import { AppleSignInService } from './apple-sign-in.service';
 import {
   GoogleLoginDto,
   AppleLoginDto,
@@ -159,6 +161,7 @@ export class AuthService {
     private readonly otpService: OtpService,
     private readonly redis: RedisService,
     private readonly cognitoJwtService?: CognitoJwtService, // Optional injection for future Cognito flows
+    @Optional() private readonly appleSignIn?: AppleSignInService,
   ) {
     this.jwtSecret = this.configService.get<string>('JWT_SECRET')!;
     this.jwtExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN', '7d');
@@ -219,6 +222,7 @@ export class AuthService {
     try {
       // Verify Apple identity token
       const decoded = await this.verifyAppleToken(dto.identityToken);
+      await this.storeAppleToken(decoded.sub, dto.authorizationCode);
 
       return await this.handleProviderLogin(
         Provider.APPLE,
@@ -229,6 +233,40 @@ export class AuthService {
     } catch (error) {
       this.logger.error('Apple login failed', error);
       throw new UnauthorizedException('Apple authentication failed');
+    }
+  }
+
+  /**
+   * O17: swap the one-time code for a refresh token so account deletion can
+   * revoke it. Never blocks sign-in. A new Apple ID has no identity row until
+   * the mobile OTP step, so the token waits in Redis for the temp token's 15
+   * minutes and claimAppleToken moves it over when the identity is created.
+   */
+  private async storeAppleToken(sub: string, code: string): Promise<void> {
+    try {
+      const token = await this.appleSignIn?.exchangeCode(code);
+      if (!token) return;
+      const { count } = await this.prisma.userIdentity.updateMany({
+        where: { provider: Provider.APPLE, providerUserId: sub },
+        data: { appleRefreshToken: token },
+      });
+      if (!count) await this.redis.set(`apple-rt:${sub}`, token, 15 * 60);
+    } catch (err) {
+      this.logger.warn(`Apple token exchange failed for ${sub}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+
+  private async claimAppleToken(sub: string): Promise<void> {
+    try {
+      const token = await this.redis.get(`apple-rt:${sub}`);
+      if (!token) return;
+      await this.prisma.userIdentity.updateMany({
+        where: { provider: Provider.APPLE, providerUserId: sub },
+        data: { appleRefreshToken: token },
+      });
+      await this.redis.del(`apple-rt:${sub}`);
+    } catch (err) {
+      this.logger.warn(`Apple token claim failed for ${sub}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -638,6 +676,7 @@ export class AuthService {
     });
 
     this.logger.log(`Created new user ${user.id}`);
+    if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
 
     // Send welcome email (non-blocking)
     if (email) {
@@ -671,6 +710,7 @@ export class AuthService {
       // Identity might already exist
       this.logger.warn('Identity already linked', error);
     }
+    if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
   }
 
   /** Throw the right 401 for a failed OTP check. */
