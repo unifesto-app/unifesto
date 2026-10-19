@@ -15,6 +15,10 @@ name: unifesto
 # Build-time NEXT_PUBLIC_* values are inlined into the client bundles, so
 # they're passed as build args interpolated from ./.env (NEXT_PUBLIC_BACKEND_URL,
 # NEXT_PUBLIC_API_URL, NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).
+#
+# Images: compose runs :latest. deploy.sh also tags every build :<git sha> and
+# the image it replaced :previous; `./deploy.sh rollback` puts :previous back
+# on :latest (J13). The deployed SHA is in DEPLOYED_SHA next to this file.
 
 services:
   caddy:
@@ -38,7 +42,12 @@ services:
   # so the replicas don't race to run `prisma migrate deploy` concurrently on
   # boot. Runs, migrates, exits. `restart: "no"` — it is not a long-lived svc.
   backend-migrate:
-    build: ./backend
+    build: &backend-build
+      context: ./backend
+      # Baked into the image as SENTRY_RELEASE, so a rollback image reports its
+      # own release. deploy.sh passes the git SHA; a manual build leaves it unset.
+      args:
+        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-backend:latest
     restart: "no"
     volumes:
@@ -46,7 +55,7 @@ services:
     entrypoint: ["npx", "prisma", "migrate", "deploy"]
 
   backend:
-    build: ./backend
+    build: *backend-build
     image: unifesto-backend:latest
     restart: unless-stopped
     # NOTE: we mount .env instead of using `env_file:` — the app (NestJS
@@ -195,7 +204,9 @@ services:
     environment:
       # SSR calls the API over the Docker network (skips Cloudflare + Caddy).
       # Only used once INTERNAL_API_KEY is set in websites/web/.env.local and
-      # the same value in backend/.env (see src/lib/api/internal.ts).
+      # the same value in backend/.env (see src/lib/api/internal.ts); without
+      # it every SSR render shares one throttle bucket. deploy.sh refuses to
+      # run until both files carry the same key.
       API_INTERNAL_URL: http://backend:8080
     expose:
       - "3000"
