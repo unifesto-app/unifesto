@@ -270,7 +270,7 @@ export class SupportService {
           scope,
           {
             desk: SupportDesk.SPACE,
-            status: { not: SupportTicketStatus.CLOSED },
+            status: { notIn: [SupportTicketStatus.CLOSED, SupportTicketStatus.BOT] },
             OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }],
           },
         ],
@@ -291,7 +291,13 @@ export class SupportService {
   async createTicket(
     dto: CreateTicketDto,
     requesterId: string,
-    opts: { subjectType?: keyof typeof SUBJECT_MODELS; subjectId?: string; registrationVerified?: boolean } = {},
+    opts: {
+      subjectType?: keyof typeof SUBJECT_MODELS;
+      subjectId?: string;
+      registrationVerified?: boolean;
+      /** D14: open as an Assist bot chat; the desk hears about it on handoff. */
+      bot?: boolean;
+    } = {},
   ) {
     if (dto.spaceId) {
       const space = await this.prisma.space.findUnique({
@@ -347,6 +353,7 @@ export class SupportService {
         subject: dto.subject,
         category,
         priority: dto.priority ?? SupportTicketPriority.NORMAL,
+        ...(opts.bot ? { status: SupportTicketStatus.BOT } : {}),
         requesterId,
         spaceId: toSpace ? targetSpaceId : dto.spaceId ?? null,
         desk: toSpace ? SupportDesk.SPACE : SupportDesk.PLATFORM,
@@ -376,8 +383,29 @@ export class SupportService {
       },
     });
 
-    this.notify({ ticketId: ticket.id, kind: 'CREATED', to: 'DESK', actorId: requesterId });
+    if (!opts.bot) this.notify({ ticketId: ticket.id, kind: 'CREATED', to: 'DESK', actorId: requesterId });
     return ticket;
+  }
+
+  /**
+   * D14: a bot chat goes to a person. The chat stays as the thread; the desk
+   * gets it as a new case (triage + notifications run now), with the reason as
+   * an internal note.
+   */
+  async handoff(id: string, requesterId: string, reason: string) {
+    const now = new Date();
+    const moved = await this.prisma.supportTicket.updateMany({
+      where: { id, requesterId, status: SupportTicketStatus.BOT },
+      data: { status: SupportTicketStatus.OPEN, lastMessageAt: now, deskLastReadAt: null },
+    });
+    if (!moved.count) return;
+    await this.prisma.supportMessage.createMany({
+      data: [
+        { ticketId: id, authorId: requesterId, side: SupportMessageSide.SYSTEM, body: 'Assist passed this to a person', createdAt: now },
+        { ticketId: id, authorId: requesterId, side: SupportMessageSide.SYSTEM, internal: true, body: `Assist handoff: ${reason.slice(0, 300)}`, createdAt: now },
+      ],
+    });
+    this.notify({ ticketId: id, kind: 'CREATED', to: 'DESK', actorId: requesterId });
   }
 
   /* ---------------------------------------------------------------------- */
@@ -409,6 +437,8 @@ export class SupportService {
     }
 
     if (params.status) where.status = params.status;
+    // D14: a bot chat is the requester's until handoff; desks see it only when asking for BOT.
+    else if (viewerDesk) where.status = { not: SupportTicketStatus.BOT };
     if (params.category) where.category = params.category;
     if (params.priority) where.priority = params.priority;
     if (params.kind) where.kind = params.kind;
@@ -991,7 +1021,7 @@ export class SupportService {
       this.prisma.supportTicket.count({
         where: {
           desk: SupportDesk.PLATFORM,
-          status: { not: SupportTicketStatus.CLOSED },
+          status: { notIn: [SupportTicketStatus.CLOSED, SupportTicketStatus.BOT] },
           OR: [{ deskLastReadAt: null }, { lastMessageAt: { gt: fields.deskLastReadAt } }],
         },
       });

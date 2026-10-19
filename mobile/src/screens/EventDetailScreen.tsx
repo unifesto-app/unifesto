@@ -126,7 +126,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const getHelp = () => {
     if (!event) return;
     if (!d.user) return AppAlert.alert('Sign in required', 'Please sign in to ask for help.');
-    router.push({ pathname: '/manage/support/new', params: { eventId: event.id, about: event.title } });
+    router.push({ pathname: '/manage/support/assist', params: { eventId: event.id, about: event.title } });
   };
 
   // Header actions: save + one overflow menu. Plain icons, no backgrounds.

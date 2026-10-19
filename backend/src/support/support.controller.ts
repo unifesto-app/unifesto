@@ -22,6 +22,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagg
 import { uploadLimit } from '../common/upload-limits';
 import { ATTACHMENT_MAX_MB, SupportService } from './support.service';
 import { SupportCopilot } from './support-copilot';
+import { SupportBot } from './support-bot';
 import {
   CreateTicketDto,
   CreateMessageDto,
@@ -29,6 +30,8 @@ import {
   SendToSpaceDto,
   CannedReplyDto,
   UpdateCannedReplyDto,
+  StartAssistDto,
+  AssistMessageDto,
   RateTicketDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -51,7 +54,37 @@ export class SupportController {
   constructor(
     private readonly supportService: SupportService,
     private readonly copilot: SupportCopilot,
+    private readonly bot: SupportBot,
   ) {}
+
+  /**
+   * D14: start an Assist bot chat. Opens a BOT-status case and answers; when
+   * the bot can't (switched off, no answer) the case goes straight to a person.
+   */
+  @Post('assist')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({ summary: 'Start an Assist bot chat' })
+  async startAssist(@Body() dto: StartAssistDto, @Req() req: any) {
+    const id = await this.bot.start(req.user.id, dto);
+    return this.supportService.getTicket(id, req.user.id);
+  }
+
+  /** D14: the next message in my bot chat. */
+  @Post('tickets/:id/assist')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Message the Assist bot' })
+  async assistMessage(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AssistMessageDto, @Req() req: any) {
+    await this.bot.say(id, req.user.id, dto.body);
+    return this.supportService.getTicket(id, req.user.id);
+  }
+
+  /** D14: "Talk to a person": my bot chat becomes a case for the desk. */
+  @Post('tickets/:id/handoff')
+  @ApiOperation({ summary: 'Hand my Assist chat to a person' })
+  async handoffAssist(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    await this.bot.handoff(id, req.user.id);
+    return this.supportService.getTicket(id, req.user.id);
+  }
 
   /**
    * Raise a support ticket. Available to any authenticated user (attendee or

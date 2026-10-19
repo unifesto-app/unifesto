@@ -33,6 +33,8 @@ export interface AiRunInput {
    * `format`, the reply is parsed and returned as `json`; unparseable is an error.
    */
   outputConfig?: Anthropic.OutputConfig;
+  /** Client tools (D14 bot). Part of the cached prefix, so keep them stable. */
+  tools?: Anthropic.Tool[];
 }
 
 /**
@@ -40,7 +42,15 @@ export interface AiRunInput {
  * the user hit their cap, the model refused, or the call failed.
  */
 export type AiResult =
-  | { ok: true; text: string; json?: unknown }
+  | {
+      ok: true;
+      text: string;
+      json?: unknown;
+      /** With `tools`: the reply blocks, to run its tool calls and send back. */
+      content?: Anthropic.ContentBlock[];
+      /** With `tools`: true when the reply asks for tool calls. */
+      toolUse?: boolean;
+    }
   | { ok: false; reason: 'disabled' | 'capped' | 'refused' | 'error' };
 
 /** Claude Haiku 5.5 USD per million tokens, for prompts up to 100K tokens. */
@@ -140,6 +150,7 @@ export class AiService {
           },
         ],
         messages: input.messages,
+        ...(input.tools ? { tools: input.tools } : {}),
         ...(input.outputConfig ? { output_config: input.outputConfig } : {}),
       });
     } catch (err) {
@@ -151,14 +162,16 @@ export class AiService {
         .map((b) => (b.type === 'text' ? b.text : ''))
         .join('')
         .trim() ?? '';
-    // Only a finished, non-empty answer counts. A reply cut off at max_tokens
-    // is an error: half a suggestion is worse than none.
+    // Only a finished, non-empty answer (or a complete tool call) counts. A
+    // reply cut off at max_tokens is an error: half a suggestion is worse than none.
+    const toolUse = !!input.tools && response?.stop_reason === 'tool_use';
     let outcome: AiRunOutcome =
       response?.stop_reason === 'refusal'
         ? AiRunOutcome.REFUSED
-        : (response?.stop_reason === 'end_turn' ||
+        : ((response?.stop_reason === 'end_turn' ||
               response?.stop_reason === 'stop_sequence') &&
-            text
+            text) ||
+            toolUse
           ? AiRunOutcome.OK
           : AiRunOutcome.ERROR;
     let json: unknown;
@@ -178,8 +191,10 @@ export class AiService {
       response?.usage,
     );
 
-    if (outcome === AiRunOutcome.OK)
+    if (outcome === AiRunOutcome.OK) {
+      if (input.tools) return { ok: true, text, content: response!.content, toolUse };
       return input.outputConfig?.format ? { ok: true, text, json } : { ok: true, text };
+    }
     return {
       ok: false,
       reason: outcome === AiRunOutcome.REFUSED ? 'refused' : 'error',

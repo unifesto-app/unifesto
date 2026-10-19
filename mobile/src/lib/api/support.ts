@@ -44,6 +44,15 @@ export interface SupportMessage {
   body: string;
   createdAt: string;
   author?: SupportAuthor;
+  /** D14: action cards on an Assist message; the app confirms, then calls the real endpoint. */
+  actions?: AssistAction[] | null;
+}
+
+export interface AssistAction {
+  type: 'REQUEST_REFUND' | 'CANCEL_BOOKING';
+  registrationId: string;
+  eventTitle: string;
+  label: string;
 }
 
 export interface SupportTicket {
@@ -203,6 +212,38 @@ export async function replyToTicket(
     return (await res.json()) as SupportMessage;
   } catch (error) {
     if (__DEV__) console.error('[support] replyToTicket failed:', error);
+    return null;
+  }
+}
+
+// ── Assist bot (D14) ─────────────────────────────────────────────────────────
+
+/** POST /support/assist: start a bot chat (a BOT case) and get the thread with Assist's answer. */
+export async function startAssist(input: { message: string; eventId?: string; registrationId?: string }): Promise<SupportTicket | null> {
+  try {
+    const res = await makeAuthenticatedRequest('/support/assist', {
+      method: 'POST',
+      body: JSON.stringify({ clientInfo: buildInfo(), ...input }),
+    });
+    if (!res?.ok) return null;
+    return (await res.json()) as SupportTicket;
+  } catch (error) {
+    if (__DEV__) console.error('[support] startAssist failed:', error);
+    return null;
+  }
+}
+
+/** POST /support/tickets/:id/assist (next message) or /handoff ("Talk to a person"); returns the thread. */
+export async function assistStep(id: string, body?: string): Promise<SupportTicket | null> {
+  try {
+    const res = await makeAuthenticatedRequest(`/support/tickets/${id}/${body ? 'assist' : 'handoff'}`, {
+      method: 'POST',
+      ...(body ? { body: JSON.stringify({ body }) } : {}),
+    });
+    if (!res?.ok) return null;
+    return (await res.json()) as SupportTicket;
+  } catch (error) {
+    if (__DEV__) console.error('[support] assistStep failed:', error);
     return null;
   }
 }

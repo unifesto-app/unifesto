@@ -82,6 +82,31 @@ function setup({ admin = false, roles = [] as Role[], ticket = {} as any, reg = 
 }
 
 describe('SupportService (Assist case)', () => {
+  it('D14: a bot chat is quiet until handoff, then reaches the desk once', async () => {
+    const { prisma, events, service } = setup();
+    const data: any = await service.createTicket({ subject: 's', message: 'm' } as any, 'user-1', { bot: true });
+    expect(data.status).toBe(SupportTicketStatus.BOT);
+    expect(events.emit).not.toHaveBeenCalled();
+
+    prisma.supportTicket.updateMany = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    prisma.supportMessage.createMany = jest.fn();
+    await service.handoff('t-1', 'user-1', 'wants a person');
+    await service.handoff('t-1', 'user-1', 'again');
+    expect(prisma.supportTicket.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 't-1', requesterId: 'user-1', status: SupportTicketStatus.BOT } }),
+    );
+    expect(prisma.supportMessage.createMany).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledTimes(1);
+    expect(events.emit).toHaveBeenCalledWith('support.case', expect.objectContaining({ kind: 'CREATED', to: 'DESK' }));
+
+    // Requesters see their bot chats; desks don't, unless they ask for BOT.
+    await service.listTickets('user-1', {});
+    expect(prisma.supportTicket.findMany.mock.calls.at(-1)[0].where.status).toBeUndefined();
+    const desk = setup({ admin: true });
+    await desk.service.listTickets('admin-1', {});
+    expect(desk.prisma.supportTicket.findMany.mock.calls.at(-1)[0].where.status).toEqual({ not: SupportTicketStatus.BOT });
+  });
+
   it('creates a HELP case on the requester side with event context from the registration', async () => {
     const { prisma, service } = setup({ reg: { userId: 'user-1', eventId: 'ev-1' } });
     const data: any = await service.createTicket(
@@ -596,7 +621,7 @@ describe('SupportService (D9 Space Assist inbox)', () => {
       expect(await service.spaceDeskUnread('staff', 'sp-1')).toEqual({ unread: 3 });
       expect(prisma.supportTicket.count.mock.calls[0][0].where.AND[1]).toMatchObject({
         desk: SupportDesk.SPACE,
-        status: { not: SupportTicketStatus.CLOSED },
+        status: { notIn: [SupportTicketStatus.CLOSED, SupportTicketStatus.BOT] },
       });
     });
   });
