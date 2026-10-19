@@ -19,6 +19,7 @@ import {
   Res,
   BadRequestException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
 import type { Response } from 'express';
@@ -129,6 +130,7 @@ export class RegistrationsController {
   }
 
   @Patch('registrations/:id/group-members')
+  @Throttle({ default: { limit: 20, ttl: 3_600_000 } }) // it emails new members their ticket (A28)
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Set / complete my group registration roster (lead only)' })

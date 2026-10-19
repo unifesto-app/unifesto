@@ -22,6 +22,34 @@ export const HOLDS_SEAT_PAYMENT: PaymentStatus[] = [
   PaymentStatus.PARTIALLY_REFUNDED,
 ];
 /**
+ * A live, paid, non-waitlisted row: the only kind whose seats are taken, so the
+ * only kind a team change may move or a group may send tickets from (A28).
+ */
+export const holdsSeats = (r: {
+  status: RegistrationStatus;
+  paymentStatus: PaymentStatus;
+  isWaitlisted: boolean;
+}) =>
+  r.status !== RegistrationStatus.CANCELLED &&
+  HOLDS_SEAT_PAYMENT.includes(r.paymentStatus) &&
+  !r.isWaitlisted;
+/**
+ * A claimed member's own ticket on a group registration: the one stamped with
+ * one of their emails, else (claims from before tickets were stamped) the
+ * unstamped ticket minted within a minute of their claim. Never a teammate's
+ * or the group's own ticket (A28).
+ */
+export function seatTicketOf<T extends { attendeeEmail: string | null; createdAt: Date }>(
+  tickets: T[],
+  emails: Set<string>,
+  claimedAt: Date | null,
+): T | undefined {
+  const stamped = tickets.find((t) => t.attendeeEmail && emails.has(t.attendeeEmail.trim().toLowerCase()));
+  if (stamped || !claimedAt) return stamped;
+  const gap = (t: T) => Math.abs(+t.createdAt - +claimedAt);
+  return tickets.filter((t) => !t.attendeeEmail && gap(t) < 60_000).sort((a, b) => gap(a) - gap(b))[0];
+}
+/**
  * How many tickets a purchase is, for the per-ticket buyer-fee cap (A34): each
  * seat of a per-person group, a flat-priced group as one, else the quantity.
  */

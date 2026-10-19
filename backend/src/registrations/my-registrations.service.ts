@@ -14,6 +14,7 @@ import { GroupSeatsService } from './group-seats.service';
 import { NOT_DELETED } from '../common/soft-delete';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { holdsSeats, seatTicketOf } from './registration.util';
 
 /** The attendee's own tickets: lists, check-ins, group roster edits, WhatsApp group, hiding a ticket. */
 @Injectable()
@@ -194,13 +195,8 @@ export class MyRegistrationsService {
       };
       const seat = reg.userId !== userId ? seatByReg.get(reg.id) : undefined;
       if (!seat) return base;
-      // A claimed seat: show MY seat ticket (own QR), flagged as a group member.
-      const mine = this.pickSeatTicket(reg.tickets, myEmails, seat.claimedAt);
-      return {
-        ...base,
-        isGroupMember: true,
-        ...(mine ? { qrCode: mine.qrCode, tickets: [mine] } : {}),
-      };
+      // A claimed seat: only MY seat ticket (own QR), flagged as a group member.
+      return memberView(base, seatTicketOf(reg.tickets, myEmails, seat.claimedAt));
     });
   }
 
@@ -308,6 +304,10 @@ export class MyRegistrationsService {
     if ((reg.groupSize ?? 0) <= 1) {
       throw new BadRequestException('This is not a group registration');
     }
+    // Only a booked group mails tickets to the people typed in (A28).
+    if (!holdsSeats(reg)) {
+      throw new BadRequestException('This group isn’t booked, so its team can’t change');
+    }
     // Same window as every other attendee detail edit: the organiser's switch
     // and deadline, and closed once the event is over or cancelled.
     const edits = editWindow(reg.event);
@@ -340,11 +340,12 @@ export class MyRegistrationsService {
 
     if (filledMembers.length > 0) {
       await this.confirmations.sendGroupMemberConfirmations(
-        filledMembers,
+        registrationId,
         reg.event,
         reg.qrCode,
         reg.tickets[0]?.ticketCode,
         null, // don't skip anyone — these are all newly added
+        filledMembers,
       );
     }
 
@@ -572,18 +573,16 @@ export class MyRegistrationsService {
     const myEmails = new Set(emails.map((e) => e.trim().toLowerCase()));
     return {
       data: registrations.map((r) => {
-        const base = {
-          ...r,
-          isGroupMember: true,
+        const seat = seatByReg.get(r.id);
+        // My seat's own ticket + QR (what check-in scans). A teammate the lead
+        // typed in before seat tickets existed was mailed the group's QR, so
+        // that stays their pass.
+        const mine = seatTicketOf(r.tickets, myEmails, seat?.claimedAt ?? null);
+        return {
+          ...memberView(r, mine),
+          ...(!seat && !mine ? { qrCode: r.qrCode } : {}),
           leadName: r.user.fullName || r.user.username || null,
         };
-        const seat = seatByReg.get(r.id);
-        if (!seat) return base;
-        // A claimed seat has its own ticket + QR (what check-in scans). Pick it:
-        // stamped with my email on newer claims, else the ticket created at the
-        // moment of my claim (older claims weren't stamped).
-        const mine = this.pickSeatTicket(r.tickets, myEmails, seat.claimedAt);
-        return mine ? { ...base, qrCode: mine.qrCode, tickets: [mine] } : base;
       }),
     };
   }
@@ -639,22 +638,41 @@ export class MyRegistrationsService {
     });
     return { success: true };
   }
+}
 
-  /**
-   * Which of a group registration's tickets belongs to a member who claimed a
-   * seat: the one stamped with their email (newer claims), else the ticket
-   * created at the moment of the claim (older claims weren't stamped).
-   */
-  private pickSeatTicket<T extends { attendeeEmail: string | null; createdAt: Date }>(
-    tickets: T[],
-    myEmails: Set<string>,
-    claimedAt: Date | null,
-  ): T | undefined {
-    return (
-      tickets.find((t) => t.attendeeEmail && myEmails.has(t.attendeeEmail.trim().toLowerCase())) ??
-      (claimedAt
-        ? [...tickets].sort((a, b) => Math.abs(+a.createdAt - +claimedAt) - Math.abs(+b.createdAt - +claimedAt))[0]
-        : undefined)
-    );
-  }
+/**
+ * What a group member sees of the lead's booking (A28): the event, ticket type
+ * and group facts, and their own seat ticket. Never the lead's form answers,
+ * payment ids or the teammates' tickets.
+ */
+function memberView<
+  R extends {
+    id: string;
+    eventId: string;
+    ticketTypeId: string | null;
+    status: RegistrationStatus;
+    paymentStatus: PaymentStatus;
+    groupSize: number | null;
+    registeredAt: Date;
+    checkedInAt: Date | null;
+    event: unknown;
+    ticketType: unknown;
+  },
+  T,
+>(r: R, mine: (T & { qrCode: string }) | undefined) {
+  return {
+    id: r.id,
+    eventId: r.eventId,
+    ticketTypeId: r.ticketTypeId,
+    status: r.status,
+    paymentStatus: r.paymentStatus,
+    groupSize: r.groupSize,
+    registeredAt: r.registeredAt,
+    checkedInAt: r.checkedInAt,
+    event: r.event as R['event'],
+    ticketType: r.ticketType as R['ticketType'],
+    isGroupMember: true as const,
+    qrCode: mine?.qrCode ?? null,
+    tickets: mine ? [mine] : [],
+  };
 }
