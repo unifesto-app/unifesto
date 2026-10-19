@@ -213,9 +213,9 @@ export default function SpaceDashboardPage() {
           href="/dashboard/events"
         />
         <StatCard
-          title="Attendees"
+          title="People attending"
           value={stats.attendees.toLocaleString("en-IN")}
-          hint="Across all events"
+          hint="Across all events; each group member counts"
           icon={UsersThree}
           tone="brand"
         />

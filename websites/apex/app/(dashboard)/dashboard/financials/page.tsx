@@ -41,8 +41,9 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
+import { inr } from "@/lib/utils/money";
 
-const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = inr;
 
 const eventDate = (iso: string) =>
   new Date(iso).toLocaleDateString("en-IN", {
@@ -179,14 +180,14 @@ export default function PlatformFinancialsPage() {
               <StatCard
                 title="Collected (overall)"
                 value={money(totals.collectedOverall)}
-                hint="Everything ever paid, including the app fee"
+                hint="Tickets, extra seats and stays ever paid, incl. buyer fees and later refunds. Wider than Overview's Gross sales (paid tickets only)"
                 icon={Money}
                 tone="success"
               />
               <StatCard
-                title="Ticket revenue"
+                title="Sales excl. buyer fees"
                 value={money(totals.ticketRevenue)}
-                hint="Collected minus the app processing fee"
+                hint="Collected minus the processing fee buyers pay on top"
                 icon={TrendUp}
                 tone="success"
               />

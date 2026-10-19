@@ -25,9 +25,9 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { inr } from "@/lib/utils/money";
 
-const money = (v: number | string | null | undefined) =>
-  v === null || v === undefined ? "—" : `₹${Number(v).toLocaleString("en-IN")}`;
+const money = (v: number | string | null | undefined) => (v === null || v === undefined ? "—" : inr(v));
 const fmtDate = (v?: string | null) =>
   v ? new Date(v).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—";
 const fmtDateTime = (v?: string | null) =>

@@ -34,12 +34,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { inr } from "@/lib/utils/money";
 
 const PAGE_SIZE = 20;
 
-function money(v: number | string): string {
-  return `₹${Number(v || 0).toLocaleString("en-IN")}`;
-}
+const money = inr;
 
 function payer(t: LedgerTransaction): string {
   return t.user.fullName || t.user.username || t.user.email || "Unknown";
@@ -166,9 +165,9 @@ export default function TransactionsPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
-          title="Gross volume"
+          title="Gross sales (GMV)"
           value={money(summary.grossVolume)}
-          hint="All settled payments"
+          hint="Paid ticket bookings incl. buyer fees; matches Overview"
           icon={CurrencyInr}
           tone="success"
           loading={loading}
