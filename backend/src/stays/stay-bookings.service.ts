@@ -1,5 +1,4 @@
 import { RedisService } from '../redis/redis.service';
-import { EmailService } from '../email/email.service';
 import {
   BadRequestException,
   ConflictException,
@@ -17,7 +16,8 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import { NotifyService } from '../notifications/notify.service';
+import type { NotifyKindData, StayNotice } from '../notifications/notify.kinds';
 import { Action, AuthorizationService } from '../auth/authorization';
 import {
   checkAnswers,
@@ -116,6 +116,9 @@ const BOOKING_INCLUDE = {
   },
 } satisfies Prisma.StayBookingInclude;
 
+/** The stay notices notify() knows (notify.kinds.ts). */
+type StayKind = Extract<keyof NotifyKindData, `stay.${string}`>;
+
 type FullBooking = Prisma.StayBookingGetPayload<{
   include: typeof BOOKING_INCLUDE;
 }>;
@@ -136,10 +139,9 @@ export class StayBookingsService {
     private readonly prisma: PrismaService,
     private readonly stays: StaysService,
     private readonly payments: PaymentsService,
-    private readonly notifications: NotificationsService,
+    private readonly notifyService: NotifyService,
     private readonly authz: AuthorizationService,
     private readonly redis: RedisService,
-    private readonly email: EmailService,
   ) {}
 
   // ───────────────────────────── helpers ─────────────────────────────
@@ -172,53 +174,28 @@ export class StayBookingsService {
     );
   }
 
-  /** Push and email the guest the same notice (payment due, confirmed, declined...). */
-  private notify(
-    userId: string,
-    bookingId: string,
-    title: string,
-    body: string,
+  /**
+   * Tell the guest about their booking (payment due, confirmed, declined...):
+   * push + email through notify(), deduped per booking and kind. Never throws.
+   */
+  private notify<K extends StayKind>(
+    b: {
+      id: string;
+      userId: string;
+      eventId: string;
+      stay: { name: string };
+      user: { fullName: string | null; username: string | null };
+    },
+    kind: K,
+    extra: Omit<NotifyKindData[K], keyof StayNotice>,
   ) {
-    const fail = (what: string) => (err: unknown) =>
-      this.logger.error(`stay ${what}(${bookingId}) failed: ${err instanceof Error ? err.message : String(err)}`);
-    void this.notifications.send([userId], {
-      category: 'registrationUpdates',
-      title,
-      body,
-      deepLink: `unifesto://stay/pass/${bookingId}`,
-      data: { type: 'stay', bookingId },
-    }).catch(fail('push'));
-    void this.emailNotice(bookingId, title, body).catch(fail('email'));
-  }
-
-  private async emailNotice(bookingId: string, title: string, body: string) {
-    const b = await this.prisma.stayBooking.findUnique({
-      where: { id: bookingId },
-      select: {
-        eventId: true,
-        user: {
-          select: {
-            fullName: true,
-            username: true,
-            identities: {
-              where: { email: { not: null } },
-              orderBy: { isPrimary: 'desc' },
-              select: { email: true },
-              take: 1,
-            },
-          },
-        },
-      },
-    });
-    const email = b?.user.identities[0]?.email;
-    if (!b || !email) return;
-    await this.email.sendStayUpdate({
-      email,
+    void this.notifyService.notify(b.userId, kind, {
+      ...extra,
+      bookingId: b.id,
       eventId: b.eventId,
       userName: b.user.fullName || b.user.username || 'there',
-      title,
-      body,
-    });
+      stayName: b.stay.name,
+    } as NotifyKindData[K]);
   }
 
   private money(b: FullBooking) {
@@ -762,12 +739,7 @@ export class StayBookingsService {
       include: BOOKING_INCLUDE,
     });
     if (outcome === 'confirmed') {
-      this.notify(
-        b.userId,
-        b.id,
-        'Your stay is confirmed',
-        `Your Stay Pass for ${b.stay.name} is ready.`,
-      );
+      this.notify(b, 'stay.confirmed', {});
     } else if (outcome === 'refund') {
       await this.refundDue(b.id);
     }
@@ -807,12 +779,7 @@ export class StayBookingsService {
         refundDueAt: null,
       },
     });
-    this.notify(
-      b.userId,
-      b.id,
-      'Stay payment refunded',
-      `Your payment for ${b.stay.name} arrived after the booking closed, so ${rupees(total)} is on its way back.`,
-    );
+    this.notify(b, 'stay.refunded', { amountText: rupees(total) });
     return true;
   }
 
@@ -842,7 +809,13 @@ export class StayBookingsService {
         paymentDueAt: { lt: now },
         paymentStatus: { not: PaymentStatus.PAID },
       },
-      select: { id: true, userId: true, stay: { select: { name: true } } },
+      select: {
+        id: true,
+        userId: true,
+        eventId: true,
+        stay: { select: { name: true } },
+        user: { select: { fullName: true, username: true } },
+      },
       take: 500,
     });
     for (const b of due) {
@@ -855,12 +828,7 @@ export class StayBookingsService {
         data: { status: StayBookingStatus.EXPIRED },
       });
       if (res.count) {
-        this.notify(
-          b.userId,
-          b.id,
-          'Stay payment window closed',
-          `Your bed at ${b.stay.name} was released because it wasn't paid in time.`,
-        );
+        this.notify(b, 'stay.expired', {});
       }
     }
     return due.length;
@@ -971,23 +939,17 @@ export class StayBookingsService {
 
     const after = await this.loadForEvent(eventId, bookingId);
     if (next === StayBookingStatus.CONFIRMED) {
-      const due =
-        after.paymentMode === StayPaymentMode.PAY_AT_PROPERTY
-          ? ` Pay ${rupees(num(after.totalAmount))} at check-in.`
-          : '';
-      this.notify(
-        after.userId,
-        after.id,
-        'Your stay is confirmed',
-        `Your Stay Pass for ${after.stay.name} is ready.${due}`,
-      );
+      this.notify(after, 'stay.confirmed', {
+        note:
+          after.paymentMode === StayPaymentMode.PAY_AT_PROPERTY
+            ? `Pay ${rupees(num(after.totalAmount))} at check-in.`
+            : undefined,
+      });
     } else {
-      this.notify(
-        after.userId,
-        after.id,
-        'Stay request approved',
-        `Pay ${rupees(num(after.totalAmount))} by ${istWhen(after.paymentDueAt!)} to confirm your bed at ${after.stay.name}.`,
-      );
+      this.notify(after, 'stay.payment_due', {
+        amountText: rupees(num(after.totalAmount)),
+        dueText: istWhen(after.paymentDueAt!),
+      });
     }
     return this.forTeam(after);
   }
@@ -1025,12 +987,7 @@ export class StayBookingsService {
       throw new ConflictException(
         'This request just changed. Refresh and try again.',
       );
-    this.notify(
-      b.userId,
-      b.id,
-      'Stay request declined',
-      `${b.stay.name}: ${reason?.trim() || "the event team couldn't fit you in this time."}`,
-    );
+    this.notify(b, 'stay.declined', { reason: reason?.trim() || undefined });
     return this.getForEvent(eventId, bookingId);
   }
 
@@ -1146,12 +1103,10 @@ export class StayBookingsService {
       });
     }
 
-    this.notify(
-      b.userId,
-      b.id,
-      'Your stay was cancelled',
-      `${b.stay.name}: ${dto.reason?.trim() || 'cancelled by the event team'}.${refunded ? ` ${rupees(refunded)} is being refunded (5–7 days).` : ''}`,
-    );
+    this.notify(b, 'stay.cancelled', {
+      reason: dto.reason?.trim() || undefined,
+      refundText: refunded ? rupees(refunded) : undefined,
+    });
     return this.getForEvent(eventId, bookingId);
   }
 

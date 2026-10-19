@@ -199,14 +199,14 @@ function build(db: ReturnType<typeof makeDb>) {
     sendWaitlistRevoked: jest.fn().mockResolvedValue(undefined),
   };
   const payments: any = { computeProcessingFee: () => 0, priceSale: (b: number) => ({ base: b, fee: 0, total: b }) };
-  const events: any = { emit: jest.fn() };
+  const notify: any = { notify: jest.fn().mockResolvedValue({}) };
   const whatsapp: any = {
     sendEventWhatsAppGroupInvite: jest.fn().mockResolvedValue(true),
   };
   const groupSeats = new GroupSeatsService(db.prisma, email, whatsapp);
   const confirmations: any = { sendRegistrationConfirmations: jest.fn().mockResolvedValue(undefined) };
-  const svc = new WaitlistService(db.prisma, email, payments, events, groupSeats, { can: jest.fn().mockResolvedValue(true) } as any, confirmations);
-  return { svc, email, events, groupSeats, confirmations };
+  const svc = new WaitlistService(db.prisma, email, payments, notify, groupSeats, { can: jest.fn().mockResolvedValue(true) } as any, confirmations);
+  return { svc, email, notify, groupSeats, confirmations };
 }
 
 /** Seats as join() leaves them (S42): created with the waitlist row. */
@@ -225,7 +225,7 @@ describe('WaitlistService — offer converts to a complete registration', () => 
       ticketType: { price: 0, totalQuantity: 5, soldCount: 4 }, // 1 seat freed up
       reg: { quantity: 1 },
     });
-    const { svc, email, confirmations } = build(db);
+    const { svc, email, confirmations, notify } = build(db);
 
     const res = await svc.offer(ORGANISER, EVENT_ID, 'reg-1');
 
@@ -234,6 +234,7 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     // C9: the usual confirmation with their QR, not an offer email.
     expect(confirmations.sendRegistrationConfirmations).toHaveBeenCalledWith('reg-1');
     expect(email.sendWaitlistPromoted).not.toHaveBeenCalled();
+    expect(notify.notify).not.toHaveBeenCalled();
 
     // The regression: a converted attendee with no ticket. Exactly one is issued.
     expect(db.tickets).toHaveLength(1);
@@ -253,6 +254,28 @@ describe('WaitlistService — offer converts to a complete registration', () => 
     expect(db.ticketType.soldCount).toBe(5);
     expect(db.event.registeredCount).toBe(1);
     expect(db.event.waitlistCount).toBe(0);
+  });
+
+  it('paid offer: holds the seat and sends the offer through notify() (C2)', async () => {
+    const db = makeDb({
+      ticketType: { price: 500, totalQuantity: 5, soldCount: 4 },
+      reg: { quantity: 1 },
+    });
+    db.prisma.user.findUnique = async () => ({ fullName: 'Asha', username: null });
+    const { svc, email, confirmations, notify } = build(db);
+
+    const res = await svc.offer(ORGANISER, EVENT_ID, 'reg-1');
+    await new Promise((r) => setImmediate(r));
+
+    expect(res).toMatchObject({ waitlistStatus: WaitlistStatus.OFFERED, needsPayment: true, amountDue: 500 });
+    expect(confirmations.sendRegistrationConfirmations).not.toHaveBeenCalled();
+    expect(notify.notify).toHaveBeenCalledWith(
+      ATTENDEE,
+      'waitlist.offer',
+      expect.objectContaining({ entryId: 'reg-1', eventId: EVENT_ID, userName: 'Asha', amountDue: 500, expiresInHours: null }),
+    );
+    // One path only: no direct email, no event-bus push.
+    expect(email.sendWaitlistPromoted).not.toHaveBeenCalled();
   });
 
   it('free group offer: auto-converts, one shared ticket, seeds a seat per member', async () => {

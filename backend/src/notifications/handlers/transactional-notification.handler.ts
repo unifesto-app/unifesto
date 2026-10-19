@@ -7,7 +7,6 @@ import { NotificationEvents } from '../notifications.constants';
 import type {
   RegistrationConfirmedEvent,
   RegistrationUpdateEvent,
-  WaitlistOfferEvent,
   NewEventEvent,
   WhatsappInboundEvent,
   StatusIncidentEvent,
@@ -16,7 +15,9 @@ import type {
   HackathonJudgeUpdateEvent,
   HackathonAnnouncementEvent,
   HackathonHelpDeskEvent,
+  NotifyBatchEvent,
 } from '../notifications.events';
+import { NotifyService } from '../notify.service';
 
 /**
  * Push copy for a competition update. Elimination is the sensitive one: it
@@ -175,7 +176,16 @@ export class TransactionalNotificationHandler {
   constructor(
     private readonly notifications: NotificationsService,
     private readonly prisma: PrismaService,
+    private readonly notify: NotifyService,
   ) {}
+
+  /** notify() per person, in turn (see NotifyBatchEvent). notify() never throws. */
+  @OnEvent(NotificationEvents.NotifyBatch, { async: true })
+  async onNotifyBatch(e: NotifyBatchEvent): Promise<void> {
+    for (const i of e.items) {
+      await this.notify.notify(i.userId, e.kind, i.data, { dedupKey: i.dedupKey });
+    }
+  }
 
   @OnEvent(NotificationEvents.RegistrationConfirmed, { async: true })
   async onRegistrationConfirmed(e: RegistrationConfirmedEvent): Promise<void> {
@@ -200,20 +210,6 @@ export class TransactionalNotificationHandler {
       ...copy,
       deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
       data: { type: 'registration_update', eventId: e.eventId },
-    });
-  }
-
-  @OnEvent(NotificationEvents.WaitlistOffer, { async: true })
-  async onWaitlistOffer(e: WaitlistOfferEvent): Promise<void> {
-    const expiryNote = e.expiresAt
-      ? ` Claim it before ${e.expiresAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}.`
-      : ' Claim it before it expires.';
-    await this.notifications.send([e.userId], {
-      category: 'registrationUpdates',
-      title: `A spot opened up for ${e.eventTitle}`,
-      body: `You're off the waitlist.${expiryNote}`,
-      deepLink: `unifesto://event/${e.eventSlug || e.eventId}`,
-      data: { type: 'waitlist_offer', eventId: e.eventId },
     });
   }
 

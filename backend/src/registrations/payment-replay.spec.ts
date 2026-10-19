@@ -300,7 +300,8 @@ describe('RegistrationsService payment replay guards', () => {
 
 /**
  * C9: a settled paid registration confirms once, from whichever path won the
- * PAID claim, with the receipt going to the user's best email in IST.
+ * PAID claim. C2: the receipt goes through notify() (IST times), deduped on
+ * the Razorpay payment id by the kind.
  */
 describe('paid registration confirmations (C9)', () => {
   const build = (claimCount: number) => {
@@ -320,33 +321,40 @@ describe('paid registration confirmations (C9)', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const email = { sendPaymentConfirmation: jest.fn(async () => undefined) };
+    const notify = { notify: jest.fn(async () => ({})) };
     const confirmations = { sendRegistrationConfirmations: jest.fn(async () => undefined) };
     const groupSeats = { createSeatsForRegistration: jest.fn(async () => undefined), primaryEmail: jest.fn(async () => 'asha@x.in') };
     const cache = { redis: { getClient: () => null }, invalidateCheckinCache: jest.fn(async () => undefined) };
     const coupons = { confirmByRegistration: jest.fn(async () => undefined) };
     const svc = new RegistrationPaymentsService(
       prisma, email as any, {} as any, cache as any, {} as any, {} as any, groupSeats as any,
-      coupons as any, {} as any, {} as any, confirmations as any, {} as any,
+      coupons as any, {} as any, {} as any, confirmations as any, {} as any, notify as any,
     );
     jest.spyOn(svc as any, 'takeSeatsOrQueueRefund').mockResolvedValue(true);
     jest.spyOn(svc as any, 'refundIfDuplicate').mockResolvedValue(undefined);
-    return { svc, email, confirmations, groupSeats };
+    return { svc, email, confirmations, notify };
   };
 
-  it('the webhook winner sends the confirmation and an IST receipt to the best email', async () => {
-    const { svc, email, confirmations, groupSeats } = build(1);
+  it('the webhook winner sends the confirmation and an IST receipt through notify()', async () => {
+    const { svc, email, confirmations, notify } = build(1);
     await (svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1');
     expect(confirmations.sendRegistrationConfirmations).toHaveBeenCalledTimes(1);
-    expect(groupSeats.primaryEmail).toHaveBeenCalledWith('u-1', null);
-    expect(email.sendPaymentConfirmation).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'asha@x.in', razorpayPaymentId: 'pay_1', eventTime: '10:00 AM - 1:00 PM IST', ticketCode: 'T-1' }),
+    expect(notify.notify).toHaveBeenCalledTimes(1);
+    expect(notify.notify).toHaveBeenCalledWith(
+      'u-1',
+      'payment.confirmed',
+      expect.objectContaining({
+        eventId: 'ev-1', razorpayPaymentId: 'pay_1', eventTime: '10:00 AM - 1:00 PM IST', ticketCode: 'T-1', amount: 100,
+      }),
     );
+    // The direct email path is gone.
+    expect(email.sendPaymentConfirmation).not.toHaveBeenCalled();
   });
 
   it('the path that lost the claim sends nothing', async () => {
-    const { svc, email, confirmations } = build(0);
+    const { svc, confirmations, notify } = build(0);
     await (svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1');
     expect(confirmations.sendRegistrationConfirmations).not.toHaveBeenCalled();
-    expect(email.sendPaymentConfirmation).not.toHaveBeenCalled();
+    expect(notify.notify).not.toHaveBeenCalled();
   });
 });

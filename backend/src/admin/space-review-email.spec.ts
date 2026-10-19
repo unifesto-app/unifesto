@@ -1,12 +1,12 @@
 import { SpaceStatus } from '@prisma/client';
 import { AdminService } from './admin.service';
 
-/** C9: an Apex approve or reject tells the space's creator by email. */
-describe('AdminService space review emails', () => {
+/** C9 + C2: an Apex approve or reject tells the space's creator through notify(). */
+describe('AdminService space review notices', () => {
   const build = () => {
     const space = {
-      id: 'sp-1', name: 'Robotics Club', slug: 'robotics', status: SpaceStatus.PENDING,
-      creator: { fullName: 'Asha', username: null, identities: [{ email: 'asha@x.in' }] },
+      id: 'sp-1', name: 'Robotics Club', slug: 'robotics', status: SpaceStatus.PENDING, createdBy: 'u-asha',
+      creator: { fullName: 'Asha', username: null },
     };
     const prisma = {
       space: { findUnique: jest.fn(async () => space), update: jest.fn(async () => ({ id: 'sp-1' })) },
@@ -15,24 +15,29 @@ describe('AdminService space review emails', () => {
       sendSpaceApproved: jest.fn(async () => undefined),
       sendSpaceRejected: jest.fn(async () => undefined),
     };
+    const notify = { notify: jest.fn(async () => ({})) };
     const config = { get: () => 'ap-south-1' };
-    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, email as any);
-    return { svc, email };
+    const svc = new AdminService(prisma as any, {} as any, {} as any, config as any, email as any, notify as any);
+    return { svc, email, notify };
   };
 
-  it('approving emails the creator', async () => {
-    const { svc, email } = build();
+  it('approving tells the creator (space.approved, deduped per space by the kind)', async () => {
+    const { svc, email, notify } = build();
     await svc.approveSpace('sp-1', 'admin-1');
-    expect(email.sendSpaceApproved).toHaveBeenCalledWith({
-      email: 'asha@x.in', organizerName: 'Asha', spaceName: 'Robotics Club', spaceSlug: 'robotics',
+    expect(notify.notify).toHaveBeenCalledWith('u-asha', 'space.approved', {
+      spaceId: 'sp-1', organizerName: 'Asha', spaceName: 'Robotics Club', spaceSlug: 'robotics',
     });
+    expect(email.sendSpaceApproved).not.toHaveBeenCalled();
   });
 
-  it('rejecting emails the creator with the reason', async () => {
-    const { svc, email } = build();
+  it('rejecting tells the creator with the reason', async () => {
+    const { svc, email, notify } = build();
     await svc.rejectSpace('sp-1', 'admin-1', ' Add a logo ');
-    expect(email.sendSpaceRejected).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'asha@x.in', rejectionReason: 'Add a logo' }),
+    expect(notify.notify).toHaveBeenCalledWith(
+      'u-asha',
+      'space.rejected',
+      expect.objectContaining({ spaceId: 'sp-1', rejectionReason: 'Add a logo' }),
     );
+    expect(email.sendSpaceRejected).not.toHaveBeenCalled();
   });
 });
