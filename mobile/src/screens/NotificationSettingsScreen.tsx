@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
@@ -8,6 +8,7 @@ import OneSignalService from '../services/OneSignalService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import AuthButton from '../components/auth/AuthButton';
+import DateTimeRow from '../components/manage/DateTimeRow';
 import { GUTTER, Section } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -15,6 +16,7 @@ import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import {
   NotificationSettings,
   getNotificationSettings,
+  resubscribeToSpace,
   updateNotificationSettings,
 } from '../lib/api/notifications';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -32,13 +34,33 @@ const DEFAULT_NOTIFS: NotifState = {
   promotions: false,
   registrationUpdates: true,
   organiserAnnouncements: true,
+  spaceUpdates: true,
+  emailEventReminders: true,
+  emailNewEvents: true,
+  marketingEmail: true,
+  marketingWhatsapp: true,
+  quietHoursStart: null,
+  quietHoursEnd: null,
+  spaceOptOuts: [],
 };
+
+/** Quiet hours when first turned on: 10 pm to 7 am. */
+const QUIET_DEFAULT = { quietHoursStart: 22 * 60, quietHoursEnd: 7 * 60 };
+
+// Minutes after midnight (IST on the server) <-> a Date the picker can show.
+const minutesToDate = (m: number) => {
+  const d = new Date();
+  d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+  return d;
+};
+const dateToMinutes = (d: Date) => d.getHours() * 60 + d.getMinutes();
 
 /**
  * Profile › Notifications. Push is the master switch (the server drops every
- * push category while it's off), so it leads, and the categories below it go
- * quiet when it's off. Categories run from what matters most (my tickets) to
- * what's optional (promotions); email sits last as its own channel.
+ * push category while it's off), so it leads. Below it a category × channel
+ * grid (push, email): transactional email is always on, optional email has its
+ * own switch. Then promotions (consent + per-channel marketing switches),
+ * quiet hours, and the email master switch.
  */
 export default function NotificationSettingsScreen() {
   const topSpacing = useTopSpacing();
@@ -178,30 +200,98 @@ export default function NotificationSettingsScreen() {
     }
   }, [commit]);
 
+  const resubscribe = useCallback(
+    async (spaceId: string) => {
+      try {
+        // Only the opt-out list: the server's pushEnabled doesn't know the OS
+        // permission, which load() already folded in.
+        const { spaceOptOuts } = await resubscribeToSpace(spaceId);
+        const next = { ...notifsRef.current, spaceOptOuts };
+        setNotifs(next);
+        void persistLocal(next);
+      } catch {
+        AppAlert.alert('Update failed', 'Could not re-subscribe. Please try again.');
+      }
+    },
+    [persistLocal],
+  );
+
+  const sw = (label: string, value: boolean, onToggle: () => void, disabled = false) => (
+    <Switch
+      value={value}
+      onValueChange={onToggle}
+      disabled={disabled}
+      trackColor={{ false: c.input, true: c.primary }}
+      thumbColor={value ? c.primaryFg : '#ffffff'}
+      ios_backgroundColor={c.input}
+      accessibilityLabel={label}
+    />
+  );
+
   // One toggle row: bare icon, label, native switch in the cosmos silver.
   const row = (icon: GlyphName, label: string, value: boolean, onToggle: () => void, disabled = false) => (
     <View style={disabled && styles.dim}>
       <SettingsRow
         icon={<UnGlyph name={icon} size={28} color={c.text} />}
         label={label}
-        trailing={
-          <Switch
-            value={value}
-            onValueChange={onToggle}
-            disabled={disabled}
-            trackColor={{ false: c.input, true: c.primary }}
-            thumbColor={value ? c.primaryFg : '#ffffff'}
-            ios_backgroundColor={c.input}
-            accessibilityLabel={label}
-          />
-        }
+        trailing={sw(label, value, onToggle, disabled)}
       />
     </View>
   );
 
   const pushOff = !notifs.pushEnabled;
-  const category = (icon: GlyphName, label: string, key: keyof NotifState) =>
-    row(icon, label, notifs[key] && !pushOff, () => toggle(key), pushOff);
+  const emailOff = !notifs.emailEnabled;
+  const note = (text: string) => <Text style={[styles.cell, styles.note, { color: c.muted }]}>{text}</Text>;
+
+  /**
+   * One grid row: push switch, then email as a switch (optional mail), a fixed
+   * "Always" (transactional mail) or "None" (the category sends no email).
+   */
+  const gridRow = (
+    icon: GlyphName,
+    label: string,
+    push: keyof NotifState,
+    email: keyof NotifState | 'always' | 'none',
+  ) => (
+    <SettingsRow
+      icon={<UnGlyph name={icon} size={28} color={c.text} />}
+      label={label}
+      trailing={
+        <View style={styles.cells}>
+          <View style={[styles.cell, pushOff && styles.dim]}>
+            {sw(`${label} push`, !!notifs[push] && !pushOff, () => toggle(push), pushOff)}
+          </View>
+          {email === 'always' ? (
+            note('Always')
+          ) : email === 'none' ? (
+            note('None')
+          ) : (
+            <View style={[styles.cell, emailOff && styles.dim]}>
+              {sw(`${label} email`, !!notifs[email] && !emailOff, () => toggle(email), emailOff)}
+            </View>
+          )}
+        </View>
+      }
+    />
+  );
+
+  const gridHeader = (
+    <View style={styles.gridHeader}>
+      <Text style={[styles.cell, styles.note, { color: c.muted }]}>Push</Text>
+      <Text style={[styles.cell, styles.note, { color: c.muted }]}>Email</Text>
+    </View>
+  );
+
+  const quietOn = notifs.quietHoursStart != null && notifs.quietHoursEnd != null;
+  // The server rejects a window whose ends match; say why instead of a failed save.
+  const setQuiet = (key: 'quietHoursStart' | 'quietHoursEnd', d: Date) => {
+    const other = key === 'quietHoursStart' ? notifs.quietHoursEnd : notifs.quietHoursStart;
+    if (dateToMinutes(d) === other) {
+      AppAlert.alert('Pick another time', 'Quiet hours need to start and end at different times.');
+      return;
+    }
+    void commit({ [key]: dateToMinutes(d) });
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>
@@ -229,28 +319,83 @@ export default function NotificationSettingsScreen() {
           </View>
         )}
 
-        <Section title="Your events" subtitle="Tickets, reminders and word from hosts">
+        <Section
+          title="Updates about my tickets"
+          subtitle="Tickets, receipts, refunds, support replies and sign-in codes always arrive by email."
+        >
+          {gridHeader}
           <SettingsGroup style={styles.group}>
-            {category('ticket', 'Ticket and waitlist updates', 'registrationUpdates')}
-            {category('calendar-blank', 'Event reminders', 'eventReminders')}
-            {category('megaphone', 'Announcements from hosts', 'organiserAnnouncements')}
+            {gridRow('ticket', 'Tickets and waitlist', 'registrationUpdates', 'always')}
           </SettingsGroup>
         </Section>
 
-        <Section title="Discover" subtitle="New events from the circles you follow">
+        <Section title="Events and spaces">
+          {gridHeader}
           <SettingsGroup style={styles.group}>
-            {category('sparkle', 'New events', 'newEvents')}
+            {gridRow('calendar-blank', 'Reminders', 'eventReminders', 'emailEventReminders')}
+            {gridRow('sparkle', 'New events', 'newEvents', 'emailNewEvents')}
+            {gridRow('megaphone', 'From hosts', 'organiserAnnouncements', 'none')}
+            {gridRow('users-three', 'My spaces', 'spaceUpdates', 'always')}
+            {gridRow('arrows-clockwise', 'Product news', 'productUpdates', 'none')}
           </SettingsGroup>
         </Section>
 
-        <Section title="From Unifesto">
+        <Section
+          title="Promotions"
+          subtitle="Offers from Unifesto need the first switch. Email and WhatsApp cover all marketing, from Unifesto and from spaces I joined."
+        >
           <SettingsGroup style={styles.group}>
-            {category('arrows-clockwise', 'Product updates', 'productUpdates')}
-            {category('tag', 'Offers and promotions', 'promotions')}
+            {row('tag', 'Offers from Unifesto', notifs.promotions, () => toggle('promotions'))}
+            {/* Hidden without an address on file: there's nothing to opt out of. */}
+            {notifs.marketingEmail != null
+              ? row('envelope-simple', 'Marketing email', notifs.marketingEmail, () => toggle('marketingEmail'))
+              : null}
+            {notifs.marketingWhatsapp != null
+              ? row('whatsapp-logo', 'Marketing on WhatsApp', notifs.marketingWhatsapp, () => toggle('marketingWhatsapp'))
+              : null}
+          </SettingsGroup>
+          {notifs.spaceOptOuts.length ? (
+            <SettingsGroup title="Spaces I unsubscribed from" style={styles.group}>
+              {notifs.spaceOptOuts.map((sp) => (
+                <SettingsRow
+                  key={sp.spaceId}
+                  label={sp.spaceName}
+                  trailing={
+                    <Pressable onPress={() => resubscribe(sp.spaceId)} hitSlop={10} accessibilityRole="button">
+                      <Text style={[styles.action, { color: c.primary }]}>Re-subscribe</Text>
+                    </Pressable>
+                  }
+                />
+              ))}
+            </SettingsGroup>
+          ) : null}
+        </Section>
+
+        <Section title="Quiet hours" subtitle="Pushes that can wait arrive when quiet hours end. Tickets and payments still come through. Times are IST.">
+          <SettingsGroup style={styles.group}>
+            {row('moon', 'Quiet hours', quietOn, () =>
+              commit(quietOn ? { quietHoursStart: null, quietHoursEnd: null } : QUIET_DEFAULT),
+            )}
+            {quietOn ? (
+              <DateTimeRow
+                mode="time"
+                label="From"
+                value={minutesToDate(notifs.quietHoursStart!)}
+                onChange={(d) => setQuiet('quietHoursStart', d)}
+              />
+            ) : null}
+            {quietOn ? (
+              <DateTimeRow
+                mode="time"
+                label="Until"
+                value={minutesToDate(notifs.quietHoursEnd!)}
+                onChange={(d) => setQuiet('quietHoursEnd', d)}
+              />
+            ) : null}
           </SettingsGroup>
         </Section>
 
-        <Section title="Email" subtitle="Tickets, receipts and sign-in codes always arrive by email.">
+        <Section title="Email" subtitle="Turns off all optional email. Tickets, receipts and sign-in codes still arrive.">
           <SettingsGroup style={styles.group}>
             {row('envelope-simple', 'Email', notifs.emailEnabled, () => toggle('emailEnabled'))}
           </SettingsGroup>
@@ -266,6 +411,12 @@ const styles = StyleSheet.create({
   group: { marginTop: 0, marginHorizontal: GUTTER },
   firstGroup: { marginTop: spacing[4] },
   dim: { opacity: 0.45 },
+  // Grid: fixed-width channel columns so switches line up under the header.
+  cells: { flexDirection: 'row', alignItems: 'center' },
+  cell: { width: 64, alignItems: 'center', textAlign: 'center' },
+  note: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  gridHeader: { flexDirection: 'row', justifyContent: 'flex-end', marginHorizontal: GUTTER, paddingRight: spacing[4], marginBottom: spacing[2] },
+  action: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   card: { marginHorizontal: GUTTER, marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
   rule: { width: 40, height: 1, marginBottom: spacing[5] },
   cardTitle: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },

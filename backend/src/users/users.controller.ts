@@ -13,6 +13,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Query,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
@@ -181,6 +182,19 @@ export class UsersController {
     @Body() dto: UpdateNotificationSettingsDto,
   ) {
     return this.usersService.updateNotificationSettings(user.id, dto);
+  }
+
+  /**
+   * Re-subscribe to one space's marketing email
+   * DELETE /users/me/notification-settings/space-opt-outs/:spaceId
+   */
+  @Delete('me/notification-settings/space-opt-outs/:spaceId')
+  @UseGuards(JwtAuthGuard)
+  async resubscribeToSpace(
+    @CurrentUser() user: User,
+    @Param('spaceId', ParseUUIDPipe) spaceId: string,
+  ) {
+    return this.usersService.resubscribeToSpace(user.id, spaceId);
   }
 
   /**

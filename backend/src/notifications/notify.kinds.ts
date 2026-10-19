@@ -81,6 +81,11 @@ export interface KindDef<D> {
    * notice already buzzes the phone for the same moment.
    */
   inboxOnly?: true;
+  /**
+   * Time-sensitive: the push is useless later ("starting in 60 minutes"), so
+   * quiet hours never hold it back. Critical kinds are urgent anyway.
+   */
+  urgent?: true;
   email?: (svc: EmailService, to: string, d: D, delivery: DeliveryOpts) => Promise<boolean>;
   /**
    * WhatsApp costs money per message. Standing decision: only OTP, ONE
@@ -197,6 +202,7 @@ export const NOTIFY_KINDS: { [K in NotifyKind]: KindDef<NotifyKindData[K]> } = {
   'event.reminder.1h': {
     category: 'eventReminders',
     criticality: 'normal',
+    urgent: true,
     entity: (d) => d.eventId,
     push: (d) => ({
       title: `Starting soon: ${d.eventTitle}`,

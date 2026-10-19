@@ -13,9 +13,26 @@ describe('emailOptedOutUserIds', () => {
 
     expect([...out]).toEqual(['off']);
     expect(findMany).toHaveBeenCalledWith({
-      where: { userId: { in: ['off', 'on', 'no-row'] }, emailEnabled: false },
+      where: { userId: { in: ['off', 'on', 'no-row'] }, OR: [{ emailEnabled: false }] },
       select: { userId: true },
     });
+  });
+
+  it('with an optional category, also honours that category email switch', async () => {
+    const { findMany, prisma } = prismaWith([{ userId: 'reminders-off' }]);
+
+    await emailOptedOutUserIds(prisma, ['a'], 'eventReminders');
+    expect(findMany.mock.calls[0][0].where.OR).toEqual([{ emailEnabled: false }, { emailEventReminders: false }]);
+
+    await emailOptedOutUserIds(prisma, ['a'], 'newEvents');
+    expect(findMany.mock.calls[1][0].where.OR).toEqual([{ emailEnabled: false }, { emailNewEvents: false }]);
+  });
+
+  it('a transactional category has no email switch: only the master applies', async () => {
+    const { findMany, prisma } = prismaWith([]);
+
+    await emailOptedOutUserIds(prisma, ['a'], 'registrationUpdates');
+    expect(findMany.mock.calls[0][0].where.OR).toEqual([{ emailEnabled: false }]);
   });
 
   it('skips the query for an empty list', async () => {

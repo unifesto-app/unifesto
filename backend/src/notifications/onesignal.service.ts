@@ -23,6 +23,8 @@ export interface OneSignalSendParams {
    * retried timeout can't double-push.
    */
   idempotencyKey?: string;
+  /** Deliver later instead of now (OneSignal `send_after`; quiet hours). */
+  sendAfter?: Date;
 }
 
 /** OneSignal's 404 for a transfer to an external id that has no user yet. */
@@ -172,6 +174,7 @@ export class OneSignalService {
           contents: { en: params.body },
           ...(params.data ? { data: params.data } : {}),
           ...(params.idempotencyKey ? { idempotency_key: params.idempotencyKey } : {}),
+          ...(params.sendAfter ? { send_after: params.sendAfter.toISOString() } : {}),
         },
         {
           headers: {

@@ -137,6 +137,14 @@ describe('NotifyService.notify', () => {
     expect(b).not.toBe(a);
   });
 
+  it('quiet hours (C4): critical and time-sensitive kinds go out as urgent, others may wait', async () => {
+    const { svc, notifications } = build();
+    await svc.notify('u1', 'event.reminder.24h', reminder);
+    await svc.notify('u1', 'event.reminder.1h', { ...reminder, startsInMinutes: 60 });
+    await svc.notify('u1', 'registration.confirmed', confirmed);
+    expect(notifications.send.mock.calls.map((c: any[]) => !!c[1].urgent)).toEqual([false, true, true]);
+  });
+
   it('caller dedupKey replaces the default base', async () => {
     const { svc, notifications } = build();
     await svc.notify('u1', 'event.reminder.24h', reminder, { dedupKey: 'custom' });

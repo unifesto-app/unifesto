@@ -72,7 +72,7 @@ export class NotifyService {
       const [allowedCount, devices, optedOut] = await Promise.all([
         this.notifications.countAllowed([userId], def.category),
         this.prisma.userPushDevice.count({ where: { userId, optedIn: true, linkedAt: { not: null } } }),
-        emailOptedOutUserIds(this.prisma, [userId]),
+        emailOptedOutUserIds(this.prisma, [userId], def.category),
       ]);
       const plan = channelsFor(def, {
         pushAllowed: allowedCount > 0,
@@ -90,6 +90,7 @@ export class NotifyService {
         ...def.push(data),
         kind,
         dedupKey: key('push'),
+        urgent: def.urgent || def.criticality === 'critical',
         inboxOnly: def.inboxOnly,
       });
       result.push = push.sent ? 'sent' : push.failed ? 'failed' : 'skipped';

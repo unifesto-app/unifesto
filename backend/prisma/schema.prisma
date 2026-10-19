@@ -564,6 +564,18 @@ model NotificationSettings {
   // Admin product/app announcements (opt-OUT: on by default, unlike promotions).
   productUpdates Boolean @default(true) @map("product_updates")
 
+  // Email switches for the categories that send OPTIONAL mail (C4). Every
+  // other category's mail is transactional (always sent) or doesn't exist.
+  // emailEnabled stays the master switch over these.
+  emailEventReminders Boolean @default(true) @map("email_event_reminders")
+  emailNewEvents      Boolean @default(true) @map("email_new_events")
+
+  // Quiet hours (C4): minutes after midnight IST (0-1439). Both set and
+  // different = on; a window may cross midnight. Non-critical pushes inside
+  // it are scheduled for the window's end.
+  quietHoursStart Int? @map("quiet_hours_start") @db.SmallInt
+  quietHoursEnd   Int? @map("quiet_hours_end") @db.SmallInt
+
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -4,6 +4,7 @@ import { MessageChannel, MessageDeliveryStatus, Prisma, PushLogStatus } from '@p
 import { PrismaService } from '../prisma/prisma.service';
 import { OneSignalService } from './onesignal.service';
 import { NotificationCategory } from './notifications.constants';
+import { quietHoursDeferral } from './quiet-hours';
 import {
   AttemptResult,
   DeliveryMeta,
@@ -37,6 +38,8 @@ export interface SendOptions {
   dedupKey?: string;
   /** Delivery-log kind; defaults to the category. */
   kind?: string;
+  /** Critical (notify() critical kinds): never held back by quiet hours. */
+  urgent?: boolean;
   /**
    * Write the in-app copy only: no device push, no delivery row, dedupKey
    * ignored. For a notice whose buzz another push already gives.
@@ -66,6 +69,16 @@ const STAFF_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlert
 // No NotificationSettings column: only `pushEnabled` applies. Staff alerts, and
 // support replies the person is waiting on.
 const NO_COLUMN_CATEGORIES: ReadonlySet<NotificationCategory> = new Set(['adminAlerts', 'support']);
+
+// Never held back by quiet hours (C4): tickets and payments someone is waiting
+// on, hosts messaging live during an event, staff alerts, support replies.
+// Critical and time-sensitive notify() kinds pass `urgent`.
+const NEVER_DEFER: ReadonlySet<NotificationCategory> = new Set([
+  'registrationUpdates',
+  'organiserAnnouncements',
+  'adminAlerts',
+  'support',
+]);
 
 // Category defaults for users with no NotificationSettings row yet.
 function isCategoryAllowedByDefault(category: NotificationCategory): boolean {
@@ -143,12 +156,31 @@ export class NotificationsService {
         ...(opts.deepLink ? { deepLink: opts.deepLink } : {}),
       };
 
-      for (let i = 0; i < allowed.length; i += SEND_BATCH_SIZE) {
-        const batch = allowed.slice(i, i + SEND_BATCH_SIZE);
+      // Quiet hours (C4): one OneSignal request per delivery time; the inbox
+      // copy above is already written.
+      const now = new Date();
+      const deferrable = !opts.urgent && !NEVER_DEFER.has(opts.category);
+      const groups = new Map<number, string[]>(); // 0 = now
+      for (const userId of allowed) {
+        const s = byUser.get(userId);
+        const at = deferrable ? quietHoursDeferral(now, s?.quietHoursStart, s?.quietHoursEnd)?.getTime() ?? 0 : 0;
+        const group = groups.get(at);
+        if (group) group.push(userId);
+        else groups.set(at, [userId]);
+      }
+
+      const batches: Array<{ batch: string[]; sendAfter?: Date }> = [];
+      for (const [at, group] of groups) {
+        for (let i = 0; i < group.length; i += SEND_BATCH_SIZE) {
+          batches.push({ batch: group.slice(i, i + SEND_BATCH_SIZE), sendAfter: at ? new Date(at) : undefined });
+        }
+      }
+
+      for (const { batch, sendAfter } of batches) {
         // Same key on every retry: OneSignal drops the duplicate.
         const idempotencyKey = randomUUID();
         const { result, attempts } = await withRetry(() =>
-          this.oneSignal.send({ externalIds: batch, title: opts.title, body: opts.body, data, idempotencyKey }),
+          this.oneSignal.send({ externalIds: batch, title: opts.title, body: opts.body, data, idempotencyKey, sendAfter }),
         );
         const status = result.id ? PushLogStatus.SENT : PushLogStatus.FAILED;
         await this.logMany(batch, opts.category, status, opts.campaignId, result.id, result.error);

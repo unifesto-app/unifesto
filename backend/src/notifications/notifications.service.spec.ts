@@ -178,3 +178,53 @@ describe('NotificationsService delivery log (C3)', () => {
     });
   });
 });
+
+describe('NotificationsService quiet hours (C4)', () => {
+  const build = () => {
+    const prisma: any = {
+      notificationSettings: {
+        findMany: jest.fn().mockResolvedValue([
+          // 22:00-07:00 IST
+          { userId: 'u-quiet', pushEnabled: true, eventReminders: true, registrationUpdates: true, organiserAnnouncements: true, quietHoursStart: 1320, quietHoursEnd: 420 },
+          { userId: 'u-awake', pushEnabled: true, eventReminders: true, registrationUpdates: true, organiserAnnouncements: true, quietHoursStart: null, quietHoursEnd: null },
+        ]),
+      },
+      pushLog: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+      userNotification: { createMany: jest.fn().mockResolvedValue({ count: 0 }) },
+    };
+    const oneSignal: any = { send: jest.fn().mockResolvedValue({ id: 'n1' }) };
+    return { svc: new NotificationsService(prisma, oneSignal), prisma, oneSignal };
+  };
+
+  beforeAll(() => jest.useFakeTimers({ now: new Date('2026-11-01T23:15:00+05:30') }));
+  afterAll(() => jest.useRealTimers());
+
+  const opts = { category: 'eventReminders' as const, title: 'Tomorrow', body: 'See you there' };
+
+  it('holds a normal push to the window end, one request per delivery time; inbox written now', async () => {
+    const { svc, prisma, oneSignal } = build();
+    const summary = await svc.send(['u-quiet', 'u-awake'], opts);
+
+    const calls = oneSignal.send.mock.calls.map((c: any[]) => c[0]);
+    expect(calls).toHaveLength(2);
+    expect(calls.find((c: any) => c.externalIds[0] === 'u-awake').sendAfter).toBeUndefined();
+    expect(calls.find((c: any) => c.externalIds[0] === 'u-quiet').sendAfter).toEqual(
+      new Date('2026-11-02T07:00:00+05:30'),
+    );
+    expect(prisma.userNotification.createMany.mock.calls[0][0].data).toHaveLength(2);
+    expect(summary.sent).toBe(2);
+  });
+
+  it('never holds back urgent (critical) sends or transactional categories', async () => {
+    const { svc, oneSignal } = build();
+    await svc.send(['u-quiet', 'u-awake'], { ...opts, urgent: true });
+    await svc.send(['u-quiet', 'u-awake'], { ...opts, category: 'registrationUpdates' });
+    await svc.send(['u-quiet', 'u-awake'], { ...opts, category: 'support' });
+    await svc.send(['u-quiet', 'u-awake'], { ...opts, category: 'organiserAnnouncements' });
+    for (const [params] of oneSignal.send.mock.calls) {
+      expect(params.externalIds).toEqual(['u-quiet', 'u-awake']);
+      expect(params.sendAfter).toBeUndefined();
+    }
+    expect(oneSignal.send).toHaveBeenCalledTimes(4);
+  });
+});
