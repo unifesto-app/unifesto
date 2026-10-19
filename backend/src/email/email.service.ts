@@ -42,6 +42,31 @@ type Attachment = { filename: string; content: Buffer };
 type Sender = { fromName?: string | null; replyTo?: string | null; fromAddress?: string | null };
 
 /**
+ * `"Name" <address>` for a From header. The name is a space's own text, so
+ * CR/LF and other control characters go (no header injection), ASCII is
+ * quoted with `"` and `\` escaped, and anything else is RFC 2047 base64
+ * encoded-words of at most 45 bytes each (SES requires this; Resend passes it on).
+ */
+export function formatFrom(name: string, address: string): string {
+  // eslint-disable-next-line no-control-regex
+  const clean = name.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!clean) return address;
+  if (/^[\x20-\x7e]+$/.test(clean)) return `"${clean.replace(/["\\]/g, '\\$&')}" <${address}>`;
+  const words: string[] = [];
+  let chunk = '';
+  for (const ch of clean) {
+    if (Buffer.byteLength(chunk + ch) > 45) {
+      words.push(chunk);
+      chunk = '';
+    }
+    chunk += ch;
+  }
+  words.push(chunk);
+  const encoded = words.map((w) => `=?UTF-8?B?${Buffer.from(w).toString('base64')}?=`).join(' ');
+  return `${encoded} <${address}>`;
+}
+
+/**
  * Sends Unifesto's email. What each mail says lives in ./templates (built on
  * the ./layout shell); this class only picks the channel and delivers.
  *
@@ -148,7 +173,7 @@ export class EmailService {
       // White-label: the space's display name, its own verified address when
       // it has one (else ours), and replies routed to the organiser.
       const from = sender?.fromName
-        ? `${sender.fromName} <${sender.fromAddress || this.transactionalAddress}>`
+        ? formatFrom(sender.fromName, sender.fromAddress || this.transactionalAddress)
         : this.fromTransactional;
 
       // The signal aborts the underlying fetch, not just the wait (S54).
@@ -165,10 +190,17 @@ export class EmailService {
       );
 
       if (error) {
-        this.logger.error(`Resend error: ${error.message}`);
+        const retryable = isTransientStatus(error.statusCode);
+        // A space's own sending domain refused (unverified, DNS changed): say
+        // which, then send once more from our address so the mail still lands.
+        if (sender?.fromAddress && !retryable) {
+          this.logger.error(`Resend refused branded sender ${sender.fromAddress}: ${error.message}. Retrying from ${this.transactionalAddress}`);
+          return this.sendViaResend(to, subject, html, attachments, { ...sender, fromAddress: null }, idempotencyKey && `${idempotencyKey}:fallback`);
+        }
+        this.logger.error(`Resend error (from ${from}): ${error.message}`);
         // statusCode null = the fetch itself failed; the SDK hides whether it
         // was a timeout, so it isn't retried. 429/5xx are (idempotency key).
-        return { id: null, error: error.message, retryable: isTransientStatus(error.statusCode) };
+        return { id: null, error: error.message, retryable };
       }
       return { id: data?.id || null, error: data?.id ? undefined : 'no_message_id' };
     } catch (error) {
@@ -189,7 +221,7 @@ export class EmailService {
   ): Promise<AttemptResult> {
     try {
       const command = new SendEmailCommand({
-        Source: sender?.fromName ? `${sender.fromName} <${this.bulkAddress}>` : this.fromBulk,
+        Source: sender?.fromName ? formatFrom(sender.fromName, this.bulkAddress) : this.fromBulk,
         ...(sender?.replyTo ? { ReplyToAddresses: [sender.replyTo] } : {}),
         Destination: { ToAddresses: Array.isArray(to) ? to : [to] },
         Message: {
