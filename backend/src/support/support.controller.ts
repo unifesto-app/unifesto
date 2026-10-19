@@ -20,6 +20,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { uploadLimit } from '../common/upload-limits';
 import { ATTACHMENT_MAX_MB, SupportService } from './support.service';
+import { SupportCopilot } from './support-copilot';
 import { CreateTicketDto, CreateMessageDto, UpdateTicketDto, SendToSpaceDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -38,7 +39,10 @@ import {
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class SupportController {
-  constructor(private readonly supportService: SupportService) {}
+  constructor(
+    private readonly supportService: SupportService,
+    private readonly copilot: SupportCopilot,
+  ) {}
 
   /**
    * Raise a support ticket. Available to any authenticated user (attendee or
@@ -166,6 +170,29 @@ export class SupportController {
   @ApiOperation({ summary: 'Signed link to a ticket attachment' })
   attachmentUrl(@Param('attachmentId', ParseUUIDPipe) attachmentId: string, @Req() req: any) {
     return this.supportService.attachmentUrl(attachmentId, req.user.id);
+  }
+
+  /** D15: booking policy facts computed by code (refund window, refundable amount). Desk only. */
+  @Get('tickets/:id/facts')
+  @ApiOperation({ summary: 'Policy facts for a case (desk)' })
+  caseFacts(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.copilot.getFacts(id, req.user.id);
+  }
+
+  /** D15: an AI reply draft for the desk to edit and send. Nothing is sent. */
+  @Post('tickets/:id/draft')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Draft a desk reply with Assist (desk)' })
+  draftReply(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.copilot.draft(id, req.user.id);
+  }
+
+  /** D15: the staff thread summary, refreshed when a newer message arrived. */
+  @Post('tickets/:id/summary')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiOperation({ summary: 'Summarise a case thread (desk)' })
+  summarise(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.copilot.summary(id, req.user.id);
   }
 
   /** Hand a space-desk case to Unifesto (requester or the space desk). */

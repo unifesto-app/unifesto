@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TicketThread, statusBadgeVariant } from "@/components/support/TicketThread";
+import { AssistCopilot } from "@/components/support/AssistCopilot";
 import {
   listSpaceDesk,
   getTicket,
@@ -118,9 +119,12 @@ export default function AssistInboxPage() {
     setDetailLoading(false);
   }, []);
 
-  const send = async (write: typeof replyToTicket, body: string) => {
+  // D15: the latest Assist draft, for the case it was drafted on.
+  const [draft, setDraft] = useState<{ text: string; n: number; ticketId: string }>();
+
+  const send = async (write: (id: string, body: string, aiDrafted?: boolean) => ReturnType<typeof replyToTicket>, body: string, aiDrafted = false) => {
     if (!selected) return;
-    const { error } = await write(selected.id, body);
+    const { error } = await write(selected.id, body, aiDrafted);
     if (error) {
       setError(error.message || "Could not send.");
       return;
@@ -151,6 +155,14 @@ export default function AssistInboxPage() {
 
         {error && <ErrorNotice message={error} />}
 
+        <AssistCopilot
+          key={selected.id}
+          ticketId={selected.id}
+          lastMessageAt={selected.lastMessageAt}
+          canDraft={!closed && !withUnifesto}
+          onDraft={(text) => setDraft((d) => ({ text, n: (d?.n ?? 0) + 1, ticketId: selected.id }))}
+        />
+
         <Card>
           <CardHeader className="gap-2 border-b border-border">
             <div className="flex flex-wrap items-center gap-2">
@@ -180,9 +192,11 @@ export default function AssistInboxPage() {
               </div>
             ) : (
               <TicketThread
+                key={selected.id}
                 messages={selected.messages}
                 viewerIsStaff
-                onReply={(body) => send(replyToTicket, body)}
+                draft={draft?.ticketId === selected.id ? draft : undefined}
+                onReply={(body, aiDrafted) => send(replyToTicket, body, aiDrafted)}
                 onNote={(body) => send(addInternalNote, body)}
                 disabled={closed || withUnifesto}
                 disabledHint={

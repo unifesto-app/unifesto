@@ -8,12 +8,13 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { EmailModule } from '../email/email.module';
 import { SupportNotifier } from './support-notifier';
 import { SupportTriage } from './support-triage';
+import { SupportCopilot } from './support-copilot';
 import { AiModule } from '../ai/ai.module';
 
 @Module({
   imports: [PrismaModule, AuthModule, StorageModule, NotificationsModule, EmailModule, AiModule],
   controllers: [SupportController],
-  providers: [SupportService, SupportNotifier, SupportTriage],
+  providers: [SupportService, SupportNotifier, SupportTriage, SupportCopilot],
   exports: [SupportService],
 })
 export class SupportModule {}
