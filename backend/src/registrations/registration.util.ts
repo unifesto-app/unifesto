@@ -49,6 +49,30 @@ export function seatTicketOf<T extends { attendeeEmail: string | null; createdAt
   const gap = (t: T) => Math.abs(+t.createdAt - +claimedAt);
   return tickets.filter((t) => !t.attendeeEmail && gap(t) < 60_000).sort((a, b) => gap(a) - gap(b))[0];
 }
+/** A seat's holder as `memberSeatTicket` needs them: typed-in details and/or the claiming account. */
+export interface SeatHolder {
+  seatIndex: number;
+  claimedAt: Date | null;
+  memberDetails: unknown;
+  claimedBy?: { identities: { email: string | null }[] } | null;
+}
+/**
+ * The pass of a member seat (2..N): its own seat ticket, by the holder's
+ * emails. Seat 1 is the lead, whose pass is the group's QR. The by-claim-time
+ * fallback is for account claims only: typed-in seats are claimed at checkout,
+ * the same minute the group's own ticket is minted.
+ */
+export function memberSeatTicket<T extends { attendeeEmail: string | null; createdAt: Date }>(
+  seat: SeatHolder,
+  tickets: T[],
+): T | undefined {
+  if (seat.seatIndex <= 1) return undefined;
+  const md = (seat.memberDetails ?? {}) as { email?: unknown; customFields?: { email?: unknown } };
+  const emails = [md.email, md.customFields?.email, ...(seat.claimedBy?.identities ?? []).map((i) => i.email)]
+    .filter((e): e is string => typeof e === 'string' && !!e.trim())
+    .map((e) => e.trim().toLowerCase());
+  return seatTicketOf(tickets, new Set(emails), seat.claimedBy ? seat.claimedAt : null);
+}
 /**
  * How many tickets a purchase is, for the per-ticket buyer-fee cap (A34): each
  * seat of a per-person group, a flat-priced group as one, else the quantity.
