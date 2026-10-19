@@ -22,6 +22,7 @@ const STATUS: Record<string, { label: string; variant: "success" | "warning" | "
   partially_verified: { label: "Partly verified", variant: "warning" },
   partially_failed: { label: "Partly failed", variant: "destructive" },
   failed: { label: "Failed", variant: "destructive" },
+  temporary_failure: { label: "DNS records changed", variant: "destructive" },
 };
 
 const COPY = {

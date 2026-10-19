@@ -150,8 +150,8 @@ function fitTitle(title: string, width: number): { text: string; size: number } 
 }
 
 export interface OgCardProps {
-  /** Data URL of the silver wordmark SVG, or null for a text fallback. */
-  wordmark: string | null;
+  /** Data URL of the silver wordmark SVG, null for a text fallback, false for none (white-label). */
+  wordmark: string | null | false;
   /** Small chip above the title: "Event", "Space", "Blog"… */
   kind?: string;
   title: string;
@@ -223,7 +223,7 @@ export function OgCard({
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
-          {wordmark ? (
+          {wordmark === false ? null : wordmark ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={wordmark} alt="Unifesto" width={156} height={34} />
           ) : (

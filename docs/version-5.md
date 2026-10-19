@@ -466,7 +466,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | done (#146), live 19 Oct |
 | H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | planned; needs a decision |
 | H24 | **Email calendar attachment links to the custom domain.** `buildIcsAttachment` runs before `brandFor()`; pass the brand's `customDomain` into `IcsEventInput` | done (#146), live 19 Oct |
-| H25 | **Fix white-label custom-domain forms, sender names and takeover.** Quick one first (high, live since #106): the CORS allowlist accepts only *.unifesto.app and localhost (backend/src/common/cors.ts:13-18, main.ts:73-89). | planned |
+| H25 | **Fix white-label custom-domain forms, sender names and takeover.** Quick one first (high, live since #106): the CORS allowlist accepts only *.unifesto.app and localhost (backend/src/common/cors.ts:13-18, main.ts:73-89). | done (#269) |
 
 ### I · Legal (from W6)
 
@@ -807,3 +807,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · M1 AI event draft: notes or a link → editable description/agenda/FAQs on the space edit page, applied per section; `event_draft` feature off by default, SSRF-guarded link import, 10-case eval (#266)
 - **2026-10-19** · G10 part 1: groups check in per member everywhere, audited undo, soft-deleted points, late offline sync, people-based stats, Space recent card on /recent (#267)
 - **2026-10-19** · G10 part 2: member pass reads own check-ins, offline queues sync on foreground/reconnect and never across accounts, file-backed guest lists, proactive download (#268)
+- **2026-10-19** · H25: custom-domain CORS for notify/inquiry, encoded branded From + fallback, hourly domain re-check, TXT ownership + claim expiry + provider cleanup, no Unifesto chrome on custom domains (#269)

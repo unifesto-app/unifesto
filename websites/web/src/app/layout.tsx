@@ -4,8 +4,7 @@ import "./globals.css";
 import FloatingSupport from "@/components/FloatingSupport";
 import UtmCapture from "@/components/UtmCapture";
 import MotionRuntime from "@/components/MotionRuntime";
-import JsonLd from "@/components/site/JsonLd";
-import { SITE, SOCIAL } from "@/lib/site";
+import { SITE } from "@/lib/site";
 
 const michroma = Michroma({
   weight: "400",
@@ -89,33 +88,6 @@ export const viewport: Viewport = {
    calls window.__applyTheme after changing the stored choice. */
 const themeScript = `try{var r=document.documentElement,m=matchMedia("(prefers-color-scheme: light)");window.__applyTheme=function(){var p=localStorage.getItem("theme")||"system";r.dataset.pref=p;r.dataset.theme=p==="system"?(m.matches?"light":"dark"):p};__applyTheme();m.addEventListener("change",__applyTheme)}catch(e){}`;
 
-/* Who we are, for search engines and AI assistants. Rendered on every page. */
-const orgLd = [
-  {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    "@id": `${SITE.url}/#org`,
-    name: SITE.name,
-    legalName: SITE.legalName,
-    url: SITE.url,
-    logo: SITE.logo,
-    email: SITE.email,
-    description: SITE.description,
-    foundingLocation: { "@type": "Place", name: "Hyderabad, Telangana, India" },
-    areaServed: "IN",
-    sameAs: [SITE.appStore, SITE.playStore, ...Object.values(SOCIAL)],
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "@id": `${SITE.url}/#website`,
-    name: SITE.name,
-    url: SITE.url,
-    publisher: { "@id": `${SITE.url}/#org` },
-    inLanguage: "en-IN",
-  },
-];
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -127,7 +99,6 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-screen bg-night antialiased">
-        <JsonLd data={orgLd} />
         <UtmCapture />
         {children}
         <FloatingSupport />

@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { EmailService } from './email.service';
+import { EmailService, formatFrom } from './email.service';
 
 /**
  * Without RESEND_API_KEY the service must still construct (it's in the boot
@@ -150,5 +150,56 @@ describe('EmailService marketing send (C8)', () => {
       .map((w) => Buffer.from(w.slice(10, -2), 'base64').toString('utf8'))
       .join('');
     expect(decoded).toBe('नमस्ते '.repeat(12));
+  });
+});
+
+describe('formatFrom', () => {
+  it('quotes ASCII names and escapes quotes and backslashes', () => {
+    expect(formatFrom('Acme "Fest" \\ Club', 't@a.co')).toBe('"Acme \\"Fest\\" \\\\ Club" <t@a.co>');
+  });
+
+  it('strips CR/LF so a name cannot add headers', () => {
+    expect(formatFrom('Acme\r\nBcc: x@evil.co', 't@a.co')).toBe('"Acme Bcc: x@evil.co" <t@a.co>');
+  });
+
+  it('RFC 2047-encodes non-ASCII names in words a mail client can decode', () => {
+    const name = 'ಉತ್ಸವ ಕ್ಲಬ್ — Hyderabad 🎉 ' + 'é'.repeat(40);
+    const out = formatFrom(name, 't@a.co');
+    expect(out.endsWith(' <t@a.co>')).toBe(true);
+    const words = out.replace(' <t@a.co>', '').split(' ');
+    for (const w of words) expect(w.length).toBeLessThanOrEqual(75);
+    const decoded = words.map((w) => Buffer.from(w.slice(10, -2), 'base64').toString('utf8')).join('');
+    expect(decoded).toBe(name);
+  });
+
+  it('falls back to the bare address for an empty name', () => {
+    expect(formatFrom(' \n ', 't@a.co')).toBe('t@a.co');
+  });
+});
+
+describe('EmailService branded sender fallback', () => {
+  const config = { get: (k: string, fallback?: unknown) => (k === 'RESEND_API_KEY' ? 're_test' : fallback) } as unknown as ConfigService;
+
+  it('resends from our address when Resend refuses the space domain', async () => {
+    const service = new EmailService(config) as any;
+    const send = jest
+      .fn()
+      .mockResolvedValueOnce({ data: null, error: { message: 'domain is not verified', statusCode: 403 } })
+      .mockResolvedValueOnce({ data: { id: 'm-1' }, error: null });
+    service.resend = { emails: { send } };
+    const res = await service.sendViaResend('a@b.co', 'Hi', '<p>Hi</p>', undefined, { fromName: 'Acme', fromAddress: 'tickets@mail.acme.edu' }, 'k1');
+    expect(res).toEqual({ id: 'm-1', error: undefined });
+    expect(send.mock.calls[0][0].from).toBe('"Acme" <tickets@mail.acme.edu>');
+    expect(send.mock.calls[1][0].from).toBe('"Acme" <no-reply@notify.unifesto.app>');
+    expect(send.mock.calls[1][1].idempotencyKey).toBe('k1:fallback');
+  });
+
+  it('does not fall back on a transient error (the tracked retry handles it)', async () => {
+    const service = new EmailService(config) as any;
+    const send = jest.fn().mockResolvedValue({ data: null, error: { message: 'busy', statusCode: 429 } });
+    service.resend = { emails: { send } };
+    const res = await service.sendViaResend('a@b.co', 'Hi', '<p>Hi</p>', undefined, { fromName: 'Acme', fromAddress: 'tickets@mail.acme.edu' }, 'k1');
+    expect(res.retryable).toBe(true);
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });

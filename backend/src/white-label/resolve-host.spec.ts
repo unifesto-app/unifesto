@@ -29,3 +29,37 @@ describe('resolveHost', () => {
     await expect(svc(row, perk as boolean).s.resolveHost('events.acme.edu')).rejects.toThrow('Unknown host');
   });
 });
+
+describe('isCustomDomainOrigin (CORS)', () => {
+  it('allows a live custom domain and caches the answer', async () => {
+    const { s, prisma } = svc({ kind: 'WEB', status: 'verified', space });
+    await expect(s.isCustomDomainOrigin('https://events.acme.edu')).resolves.toBe(true);
+    await expect(s.isCustomDomainOrigin('https://events.acme.edu')).resolves.toBe(true);
+    expect(prisma.spaceDomain.findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['unknown origin', null, 'https://evil.example.com'],
+    ['suspended space', { kind: 'WEB', status: 'verified', space: { ...space, brandingSuspendedAt: new Date() } }, 'https://events.acme.edu'],
+    ['pending domain', { kind: 'WEB', status: 'pending', space }, 'https://events.acme.edu'],
+  ])('refuses %s', async (_name, row, origin) => {
+    await expect(svc(row).s.isCustomDomainOrigin(origin as string)).resolves.toBe(false);
+  });
+
+  it.each(['http://events.acme.edu', 'https://events.acme.edu:8443', 'https://events.acme.edu/x', 'null'])(
+    'refuses a non-exact origin %s without a lookup',
+    async (origin) => {
+      const { s, prisma } = svc({ kind: 'WEB', status: 'verified', space });
+      await expect(s.isCustomDomainOrigin(origin)).resolves.toBe(false);
+      expect(prisma.spaceDomain.findUnique).not.toHaveBeenCalled();
+    },
+  );
+
+  it('does not cache a database error', async () => {
+    const { s, prisma } = svc(null);
+    prisma.spaceDomain.findUnique.mockRejectedValueOnce(new Error('db down'));
+    await expect(s.isCustomDomainOrigin('https://events.acme.edu')).resolves.toBe(false);
+    await s.isCustomDomainOrigin('https://events.acme.edu');
+    expect(prisma.spaceDomain.findUnique).toHaveBeenCalledTimes(2);
+  });
+});

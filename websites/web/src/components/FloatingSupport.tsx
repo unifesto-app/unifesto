@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { isOwnHost } from "@/lib/own-host";
 import { ChatCircleDots, EnvelopeSimple, Lifebuoy, Sparkle, WhatsappLogo, X } from "@unifesto/unicon/react";
 import { useLightSurfaceAt } from "@/lib/surface";
 import { SITE } from "@/lib/site";
@@ -18,6 +19,11 @@ export default function FloatingSupport() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+
+  // None on a space's custom domain (white-label). Server snapshot false, so
+  // the bubble never flashes there before hydration.
+  const ownHost = useSyncExternalStore(noop, () => isOwnHost(location.hostname), () => false);
+  if (!ownHost) return null;
 
   return (
     <>
@@ -94,3 +100,5 @@ export default function FloatingSupport() {
     </>
   );
 }
+
+const noop = () => () => {};
