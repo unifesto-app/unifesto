@@ -234,3 +234,60 @@ function rowBase(meta: DeliveryMeta) {
     userId: meta.userId ?? null,
   };
 }
+
+/**
+ * Log a message we decided not to send (e.g. SUPPRESSED) through the same
+ * dedup claim as a real send, so a keyed row ends in that status. Never throws.
+ */
+export async function skipDelivery(
+  db: Db | undefined,
+  meta: DeliveryMeta,
+  status: MessageDeliveryStatus,
+  error: string,
+): Promise<TrackedResult> {
+  const claim = await claimDelivery(db, meta);
+  if (claim === 'skip') return { ok: true, id: null, deduped: true };
+  await finishDelivery(db, meta, claim === 'claimed', status, { id: null, error });
+  return { ok: false, id: null, error };
+}
+
+/** What a provider webhook (C5) reports about a message we sent. */
+export type ProviderEvent = 'delivered' | 'opened' | 'failed' | 'complained';
+
+const { QUEUED, SENT, DELIVERED } = MessageDeliveryStatus;
+
+/**
+ * Move the row(s) for `providerMessageId` forward on a provider callback.
+ * Only ever forward: a late "delivered" never undoes OPENED, and nothing
+ * overwrites FAILED/SUPPRESSED except a later bounce. A complaint keeps the
+ * status (the mail was delivered) and records why. Returns rows updated.
+ */
+export async function applyProviderEvent(
+  db: Pick<PrismaClient, 'messageDelivery'>,
+  channel: MessageChannel,
+  providerMessageId: string,
+  event: ProviderEvent,
+  detail?: string | null,
+): Promise<number> {
+  const now = new Date();
+  const where = { channel, providerMessageId };
+  const err = clip(detail, 2000) ?? null;
+  const update = (from: MessageDeliveryStatus[], data: Prisma.MessageDeliveryUpdateManyMutationInput) =>
+    db.messageDelivery.updateMany({ where: { ...where, status: { in: from } }, data });
+  let res: { count: number };
+  switch (event) {
+    case 'delivered':
+      res = await update([QUEUED, SENT], { status: DELIVERED, deliveredAt: now });
+      break;
+    case 'opened':
+      res = await update([QUEUED, SENT, DELIVERED], { status: MessageDeliveryStatus.OPENED, openedAt: now });
+      break;
+    case 'failed':
+      res = await update([QUEUED, SENT, DELIVERED], { status: MessageDeliveryStatus.FAILED, error: err ?? 'failed' });
+      break;
+    case 'complained':
+      res = await db.messageDelivery.updateMany({ where, data: { error: err ?? 'Marked as spam' } });
+      break;
+  }
+  return res.count;
+}

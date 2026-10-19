@@ -18,6 +18,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
+import { withoutSuppressed } from '../email/email-suppression';
 import {
   CampaignAudienceDto,
   CreateCampaignDto,
@@ -217,7 +218,7 @@ export class EmailCampaignsService {
       targetType: dto.targetType,
       targetId,
       segmentFilters: (dto.segmentFilters ?? null) as Prisma.JsonValue,
-    });
+    }).then((r) => withoutSuppressed(this.prisma, r));
     const optedOut = await emailOptedOutUserIds(
       this.prisma,
       resolved.flatMap((r) => (r.userId ? [r.userId] : [])),
@@ -404,7 +405,7 @@ export class EmailCampaignsService {
       });
       if (!campaign || campaign.status !== EmailCampaignStatus.SENDING) return;
 
-      const resolved = await this.getRecipients(campaign);
+      const resolved = await this.getRecipients(campaign).then((r) => withoutSuppressed(this.prisma, r));
       // Marketing mail: drop users who turned email off.
       const optedOut = await emailOptedOutUserIds(
         this.prisma,
