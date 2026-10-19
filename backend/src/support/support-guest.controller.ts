@@ -88,7 +88,7 @@ export async function findOrCreateGuest(prisma: PrismaService, email: string, na
  * D11: unifesto.app/help/contact for people who aren't signed in. The guest
  * talks to the Assist bot with public tools only (help articles, event FAQ);
  * "Talk to a person" or no answer opens the case for the desk, and replies go
- * to the email. The token only works while the chat is with the bot, so
+ * to the email. The token reads only the guest's and the bot's messages, so
  * someone who typed another person's email never reads the desk's replies.
  */
 @ApiTags('Support')
@@ -130,7 +130,7 @@ export class SupportGuestController {
     return this.thread(id);
   }
 
-  /** Reload the chat (e.g. after a refresh) while it is with the bot. */
+  /** Reload the chat after a refresh: the guest's and the bot's messages only. */
   @Post('assist/:id/thread')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Read a guest Assist chat' })
