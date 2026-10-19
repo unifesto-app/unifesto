@@ -1,4 +1,4 @@
-import { Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Application from 'expo-application';
 import { getAppVersion, PlatformVersionInfo } from './api/appVersion';
@@ -27,8 +27,12 @@ function openStore(url: string) {
   Linking.openURL(url).catch(() => {});
 }
 
+/** Set once the forced prompt is up. It never closes, so later checks have nothing to add. */
+let forcedShown = false;
+
 /** Forced update: a non-dismissable alert that only lets the user go update. */
 function promptForcedUpdate(info: PlatformVersionInfo) {
+  forcedShown = true;
   AppAlert.alert(
     'Update Required',
     'This version of Unifesto is no longer supported. Please update to the latest version to continue.',
@@ -37,8 +41,9 @@ function promptForcedUpdate(info: PlatformVersionInfo) {
         text: 'Update Now',
         onPress: () => {
           openStore(info.storeUrl);
-          // The store trip backgrounds the app; if the user returns still on the
-          // old build, surface the block again on next launch's check.
+          // Tapping closes the alert, so put it straight back: coming back from
+          // the store still on this build must land on the block, not the app.
+          promptForcedUpdate(info);
         },
       },
     ],
@@ -66,6 +71,23 @@ function promptOptionalUpdate(info: PlatformVersionInfo) {
   );
 }
 
+let watchingForeground = false;
+
+/**
+ * Re-run the automatic check whenever the app comes back from the background,
+ * so a minimum version raised while it sat there still blocks (the app may not
+ * be cold-started for days). Registered once, for the app's lifetime.
+ */
+function watchForeground() {
+  if (watchingForeground) return;
+  watchingForeground = true;
+  let last = AppState.currentState;
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active' && last === 'background') void checkForAppUpdate();
+    last = state;
+  });
+}
+
 export interface CheckForUpdateOptions {
   /**
    * A user-initiated check (e.g. tapping the version in the footer). In manual
@@ -86,6 +108,8 @@ export async function checkForAppUpdate(
   options: CheckForUpdateOptions = {},
 ): Promise<void> {
   const { manual = false } = options;
+  if (!manual) watchForeground();
+  if (forcedShown) return;
 
   const res = await getStoreUpdate();
   if (res === null) return;
@@ -99,8 +123,10 @@ export async function checkForAppUpdate(
     return;
   }
 
-  if (res.kind === 'force') promptForcedUpdate(res.info);
-  else if (res.kind === 'optional') {
+  if (res.kind === 'force') {
+    // An overlapping check may have put the block up while this one was fetching.
+    if (!forcedShown) promptForcedUpdate(res.info);
+  } else if (res.kind === 'optional') {
     // Startup nudges once per store version; a manual check always answers.
     if (!manual) {
       try {
