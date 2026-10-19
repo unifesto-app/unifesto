@@ -407,7 +407,7 @@ One support system for everything a person needs help with. Every item is an **A
 | F4 | **User IAM: suspend, ban and force logout.** User IAM: suspend/ban with reason + expiry, force logout (revoke refresh tokens), per-user capability overrides | planned |
 | F5 | **Audit trail for admin changes in Apex.** Audit trail for permission, role, status, plan and reconcile changes, shown on Apex entity detail | planned |
 | F6 | Apex user detail: their registrations and payments | planned |
-| F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | planned |
+| F7 | **Write the 5.0.0 What's new and show it as a sheet.** In-app "What's new" sheet after an OTA applies | done (#290) |
 | F8 | **Make co-hosting a request the other space accepts.** addCoHost (backend/src/events/events.service.ts:910-935) attaches any space as co-host immediately, with no consent. | planned |
 
 ### G · Mobile scope, design and performance
@@ -827,3 +827,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · I1–I2: versioned legal docs (LegalDocument/LegalAcceptance, public GET /legal/:slug, pending + accept), web legal pages render from the API, blocking accept sheet in space + mobile, Apex editor; I1 drafts + I4 retention line await lawyer review. Not deployed. (#285)
 - **2026-10-19** · L4 projector view: full-screen read-only Space page for poll results, the Q&A wall and live quizzes, opened by operators or with a revocable display link (no login, no attendee PII). (#287)
 - **2026-10-19** · O17 mobile: Firebase Analytics + fake consent removed, one iOS IAP rule for paid sessions and online events, price-free billing, sticky forced-update gate, /claim app links, sensitive Android permissions blocked, 8 unused deps dropped, masked-view patch via patch-package (#289)
+- **2026-10-19** · F7 mobile What's new sheet for 5.0.0: shown once after updating (never on fresh install), organiser section for operators, Profile › What's new reopens it (#290)
