@@ -44,7 +44,7 @@ export function buildRegistrationsService(
     authz,
     confirmations,
   );
-  const transfers = new RegistrationTransfersService(prisma, authz, emailService);
+  const transfers = new RegistrationTransfersService(prisma, authz, emailService, groupSeats);
   const exporter = new RegistrationExportService(prisma, planConfig, authz);
   const importer = new RegistrationImportService(
     prisma,

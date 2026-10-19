@@ -269,7 +269,7 @@ export class TeamChangesService {
           (seat.claimedByUserId ? (await this.seats.primaryEmail(seat.claimedByUserId, null))?.toLowerCase() : null)
         : null;
 
-    await this.prisma.$transaction(async (tx) => {
+    const rotated = await this.prisma.$transaction(async (tx) => {
       await this.lockRegistration(tx, registrationId);
       const fresh = await tx.eventRegistration.findUniqueOrThrow({
         where: { id: registrationId },
@@ -283,18 +283,20 @@ export class TeamChangesService {
         where: { id: seat.id, status: seat.status, claimedByUserId: seat.claimedByUserId },
       });
       if (gone.count !== 1) throw new BadRequestException('This seat just changed. Refresh and try again.');
-      if (memberEmail) {
-        await tx.eventTicket.deleteMany({
-          where: { registrationId, attendeeEmail: { equals: memberEmail, mode: 'insensitive' } },
-        });
-      }
+      const own = memberEmail
+        ? await tx.eventTicket.deleteMany({
+            where: { registrationId, attendeeEmail: { equals: memberEmail, mode: 'insensitive' } },
+          })
+        : { count: 0 };
       await this.closeGap(tx, registrationId, seatIndex);
       await tx.eventRegistration.update({ where: { id: registrationId }, data: { groupSize: { decrement: 1 } } });
       await this.moveCapacity(tx, reg, -1);
       await GroupSeatsService.cancelPendingLeadTransfer(tx, registrationId);
+      return GroupSeatsService.mayHoldSharedQr(seat, memberEmail ?? null, own.count) ? this.seats.rotateSharedQr(tx, registrationId) : null;
     });
 
     this.logger.log(`Seat ${seatIndex} removed from registration ${registrationId} by ${actor.by}`);
+    if (rotated) void this.seats.sendRotatedPasses(registrationId, rotated);
     if (memberEmail) {
       this.email
         .sendRawEmail(

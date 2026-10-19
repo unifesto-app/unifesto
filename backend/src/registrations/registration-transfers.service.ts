@@ -4,6 +4,7 @@ import { GroupSeatStatus, Prisma } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { h1, p, strong } from '../email/layout';
 import { GroupSeatsService } from './group-seats.service';
+import { generateQRCode, generateTicketCode } from './registration.util';
 import { assertEventCan } from '../events/event-access';
 import { Action, AuthorizationService } from '../auth/authorization';
 
@@ -16,6 +17,7 @@ export class RegistrationTransfersService {
     private readonly prisma: PrismaService,
     private readonly authz: AuthorizationService,
     private readonly email: EmailService,
+    private readonly seats: GroupSeatsService,
   ) {}
 
   /** Assert the user may manage the event's attendees. */
@@ -26,9 +28,11 @@ export class RegistrationTransfersService {
   /**
    * Core transfer — reassigns a registration's holder. NO authorisation here;
    * callers gate it (admin-direct, or an approved organiser request). The same
-   * ticket, QR code, payment record and group roster move across; only who
-   * the registration belongs to changes, with a group's seat 1 (the lead's
-   * pass) and any pending lead handover withdrawn.
+   * ticket, payment record and group roster move across; only who the
+   * registration belongs to changes, with a group's seat 1 (the lead's pass)
+   * and any pending lead handover withdrawn. The booking's QR and its own
+   * tickets' codes are rotated, so a copy the old holder saved or was emailed
+   * stops scanning; members' seat tickets are theirs and stay.
    *
    * The target must already have a Unifesto account (an email identity): a
    * ticket can only be handed to someone who can sign in and see it. And they
@@ -91,10 +95,24 @@ export class RegistrationTransfersService {
     // it first makes this one fail instead of silently overwriting it.
     const moved = await db.eventRegistration.updateMany({
       where: { id: registration.id, userId: registration.userId },
-      data: { userId: identity.userId },
+      data: { userId: identity.userId, qrCode: generateQRCode() },
     });
     if (moved.count !== 1) {
       throw new ConflictException('This registration just changed hands. Refresh and try again.');
+    }
+    // The booking's own tickets are unstamped. So are seat tickets from claims
+    // made before tickets were stamped: those were minted at the claim (see
+    // seatTicketOf), so skip any made within a minute of a member's claim.
+    const [own, claims] = await Promise.all([
+      db.eventTicket.findMany({ where: { registrationId: registration.id, attendeeEmail: null }, select: { id: true, createdAt: true } }),
+      db.groupSeat.findMany({
+        where: { registrationId: registration.id, seatIndex: { gt: 1 }, claimedByUserId: { not: null }, claimedAt: { not: null } },
+        select: { claimedAt: true },
+      }),
+    ]);
+    for (const t of own) {
+      if (claims.some((c) => Math.abs(+t.createdAt - +c.claimedAt!) < 60_000)) continue;
+      await db.eventTicket.update({ where: { id: t.id }, data: { qrCode: generateQRCode(), ticketCode: generateTicketCode() } });
     }
     // Seat 1 is the lead's pass: left on the old holder it kept their ticket
     // and QR (A28). The old holder's details go with them.
@@ -138,12 +156,17 @@ export class RegistrationTransfersService {
     });
     if (!registration) throw new NotFoundException('Registration not found');
     const moved = await this.prisma.$transaction((tx) => this.performTransfer(registration, email, tx));
-    void this.notifyTransfer(registration.userId, moved.user.email, moved.eventId);
+    void this.notifyTransfer(registration.userId, moved);
     return moved;
   }
 
-  /** Tell the old and the new holder the ticket moved. Best-effort. */
-  private async notifyTransfer(fromUserId: string, toEmail: string | null, eventId: string) {
+  /**
+   * Tell the old and the new holder the ticket moved, and send the new holder
+   * their pass (the rotated QR). Best-effort.
+   */
+  private async notifyTransfer(fromUserId: string, moved: { id: string; eventId: string; user: { id: string; email: string | null } }) {
+    const { eventId } = moved;
+    const toEmail = moved.user.email;
     try {
       const [from, event] = await Promise.all([
         this.prisma.userIdentity.findFirst({
@@ -172,6 +195,7 @@ export class RegistrationTransfersService {
             p(`The organiser moved a ticket for ${strong(title)} to your account. Open it in the Unifesto app under Tickets.`),
         );
       }
+      await this.seats.resendConfirmation(moved.id, moved.user.id);
     } catch (err) {
       this.logger.error(`Transfer notices failed for event ${eventId}`, err as Error);
     }
@@ -306,13 +330,13 @@ export class RegistrationTransfersService {
           overrideEmail?.trim() || req.targetEmail,
           tx,
         );
-        return moved.user.email;
+        return moved;
       }
       return undefined;
     });
 
     if (movedTo !== undefined) {
-      void this.notifyTransfer(req.registration.userId, movedTo, req.registration.eventId);
+      void this.notifyTransfer(req.registration.userId, movedTo);
     }
 
     return this.prisma.registrationTransferRequest.findUniqueOrThrow({
