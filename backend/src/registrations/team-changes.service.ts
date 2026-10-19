@@ -22,6 +22,7 @@ import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GroupSeatsService } from './group-seats.service';
 import { takeSeats } from './capacity.util';
+import { holdsSeats } from './registration.util';
 import { esc, h1, p, strong } from '../email/layout';
 import { takeFreeAddSeats } from '../free-attendee-add/free-add-quota';
 
@@ -54,6 +55,7 @@ const REG_SELECT = {
   eventId: true,
   status: true,
   paymentStatus: true,
+  isWaitlisted: true,
   groupSize: true,
   checkedInAt: true,
   ticketTypeId: true,
@@ -126,6 +128,11 @@ export class TeamChangesService {
     }
     if (reg.status === RegistrationStatus.CANCELLED) {
       throw new BadRequestException('This registration is cancelled');
+    }
+    // A28: an unpaid or waitlisted group holds no seats, so moving them would
+    // free (or double-take) capacity it never had.
+    if (!holdsSeats(reg)) {
+      throw new BadRequestException('This group isn’t booked yet, so the team can’t change');
     }
     if (
       reg.event.status === EventStatus.COMPLETED ||
@@ -266,8 +273,9 @@ export class TeamChangesService {
       await this.lockRegistration(tx, registrationId);
       const fresh = await tx.eventRegistration.findUniqueOrThrow({
         where: { id: registrationId },
-        select: { groupSize: true },
+        select: { groupSize: true, status: true, paymentStatus: true, isWaitlisted: true },
       });
+      if (!holdsSeats(fresh)) throw new BadRequestException('This group isn’t booked, so the team can’t change');
       if ((fresh.groupSize ?? 0) - 1 < this.minSize(reg)) {
         throw new BadRequestException(`A team needs at least ${this.minSize(reg)} people.`);
       }
@@ -358,9 +366,9 @@ export class TeamChangesService {
     await this.lockRegistration(tx, reg.id);
     const fresh = await tx.eventRegistration.findUniqueOrThrow({
       where: { id: reg.id },
-      select: { groupSize: true, status: true },
+      select: { groupSize: true, status: true, paymentStatus: true, isWaitlisted: true },
     });
-    if (fresh.status === RegistrationStatus.CANCELLED) throw new BadRequestException('This registration is cancelled');
+    if (!holdsSeats(fresh)) throw new BadRequestException('This group isn’t booked, so the team can’t change');
     const size = fresh.groupSize ?? 0;
     const max = reg.ticketType?.maxGroupSize;
     if (max != null && size + seats > max) throw new BadRequestException(`A team can have at most ${max} people.`);
