@@ -23,7 +23,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ARG NEXT_PUBLIC_API_URL
+# Sentry: per-app DSN (no-op when empty) and the release SHA from deploy.sh.
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG SENTRY_RELEASE
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
     NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
