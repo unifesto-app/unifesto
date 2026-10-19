@@ -15,11 +15,14 @@ import { submitSpaceInquiry } from "@/lib/api/leads";
 import { openAppOrStore, useAppHref } from "@/lib/appLinks";
 import { getSpaceBySlug, getSpaceById, getSpaceEvents, getSubSpaces, type Space } from "@/lib/api/spaces";
 import type { Event } from "@/lib/api/events";
+import { sessionPrice, sessionWhen, type PublicSession } from "@/lib/api/sessions";
 
 interface Props {
   params: Promise<{ spaceSlug: string }>;
   /** Fetched by the server page; lets the hero render in the initial HTML. */
   initialSpace?: Space | null;
+  /** Upcoming public Huddle sessions (B18), fetched by the server page. */
+  sessions?: PublicSession[];
 }
 
 /** Past events shown in the rail (as on mobile). */
@@ -58,7 +61,7 @@ function SpaceDetailSkeleton() {
 
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
-export default function SpaceDetailClient({ params, initialSpace = null }: Props) {
+export default function SpaceDetailClient({ params, initialSpace = null, sessions = [] }: Props) {
   const [space, setSpace] = useState<Space | null>(initialSpace);
   const [parentSpace, setParentSpace] = useState<Space | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
@@ -271,6 +274,25 @@ export default function SpaceDetailClient({ params, initialSpace = null }: Props
               </Block>
             )}
           </>
+        )}
+
+        {sessions.length > 0 && (
+          <Block title="Online sessions" subtitle={`${sessions.length} coming up`}>
+            <Rail>
+              {sessions.map((s) => (
+                <Link key={s.id} href={`/session/${s.slug}`} className="group block">
+                  <div
+                    className="aspect-[4/3] w-full rounded-3xl bg-night-2 bg-cover bg-center transition-opacity group-hover:opacity-90"
+                    style={s.coverImageUrl ? { backgroundImage: `url(${optimized(s.coverImageUrl, 640)})` } : undefined}
+                  />
+                  <p className="mt-3 line-clamp-2 text-[15px] font-semibold text-paper">{s.title}</p>
+                  <p className="mt-0.5 text-xs text-paper/60">
+                    {sessionWhen(s)} · {sessionPrice(s)}
+                  </p>
+                </Link>
+              ))}
+            </Rail>
+          </Block>
         )}
 
         {subSpaces.length > 0 && (

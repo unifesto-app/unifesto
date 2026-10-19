@@ -86,9 +86,9 @@ export class EmailService {
    * Send a call-site-built email via Resend. A body fragment is wrapped in the
    * branded layout; a full document (starts with <!DOCTYPE or <html) goes as is.
    */
-  async sendRawEmail(to: string, subject: string, html: string): Promise<string | null> {
+  async sendRawEmail(to: string, subject: string, html: string, attachments?: Attachment[]): Promise<string | null> {
     const isDocument = /^\s*<(!doctype|html)/i.test(html);
-    return this.sendViaResend(to, subject, isDocument ? html : layout(html));
+    return this.sendViaResend(to, subject, isDocument ? html : layout(html), attachments);
   }
 
   /** Send via Resend (transactional). */

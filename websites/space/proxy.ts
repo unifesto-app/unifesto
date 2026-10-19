@@ -28,7 +28,9 @@ const securityHeaders = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), usb=()",
+  // Camera + mic for this origin only: hosts go live from /dashboard/sessions
+  // and the check-in scanner reads QR codes (B18). Still off for any embed.
+  "Permissions-Policy": "camera=(self), microphone=(self), geolocation=(), usb=()",
   "Content-Security-Policy":
     "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'",
 };
