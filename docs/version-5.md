@@ -373,7 +373,7 @@ One support system for everything a person needs help with. Every item is an **A
 | D20 | Auto-close resolved after 7 days + satisfaction rating (old D7) | done (#253) |
 | | **Phase 5 · More case kinds** | |
 | D21 | **Ticket issue reports become HELP cases.** `ContentReport` REGISTRATION ("Report an issue" on a ticket) goes to the event's Space desk; moderation keeps event/space reports | done (#229), live 19 Oct |
-| D22 | Payout requests + bank account verification as Platform cases (with S23) | planned |
+| D22 | Payout requests + bank account verification as Platform cases (with S23) | done (#281) |
 | D23 | Stay + session cancellations and refunds through D6 (with S51) | done (#252) |
 | D24 | Account deletion as a PRIVACY case with a timeline and cancel (I3) | done (#247) |
 | D25 | **Grievance cases.** IT Rules 2021: acknowledge in 24 h, resolve in 15 days, public grievance page (I1) | done (#256) |
@@ -818,3 +818,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · G4 long mobile lists (waitlist, manual check-in, teams, queues, results, leads, coupons, sessions, group) on FlatList (#278)
 - **2026-10-19** · L2 live Q&A: ask, upvote, moderation queue on Space web + mobile (#277)
 - **2026-10-19** · H14: certificate emails go via Resend from the space's verified sending domain; otherwise SES unchanged (needs H20 Resend upgrade) (#280)
+- **2026-10-19** · D22 built: payout requests and payout-account verification open Platform REQUEST cases (Payout / PayoutBankAccount); paid, cancelled, verified and rejected post SYSTEM lines and resolve them, so "why was my account rejected?" is answered in the thread; money logic and S23 stay in payouts.service; Apex Assist Payout panel. No migration; rebuild backend + apex. (#281)
