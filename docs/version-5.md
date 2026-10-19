@@ -829,3 +829,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · O17 mobile: Firebase Analytics + fake consent removed, one iOS IAP rule for paid sessions and online events, price-free billing, sticky forced-update gate, /claim app links, sensitive Android permissions blocked, 8 unused deps dropped, masked-view patch via patch-package (#289)
 - **2026-10-19** · F7 mobile What's new sheet for 5.0.0: shown once after updating (never on fresh install), organiser section for operators, Profile › What's new reopens it (#290)
 - **2026-10-19** · H23 branded registration and stay emails use a neutral "find your ticket in the Unifesto app" line. (#288)
+- **2026-10-19** · O17 backend: Apple sign-in stores an encrypted refresh token, and account deletion revokes it at Apple (5.1.1(v)); failures are reported on the PRIVACY case. Needs migrate + APPLE_TEAM_ID/KEY_ID/PRIVATE_KEY env before submit. (#291)
