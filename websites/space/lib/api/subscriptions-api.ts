@@ -76,6 +76,7 @@ export interface SubscriptionUsage {
   spacesCount: number;
   eventsThisMonth: number;
   plan: OrgPlan;
+  billingModel?: "FREE" | "SUBSCRIPTION" | "REVENUE_SHARE";
   limits: {
     spaces: number | null;
     eventsPerMonth: number | null;
