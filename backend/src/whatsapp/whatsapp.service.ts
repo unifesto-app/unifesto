@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { MarketingChannel, MessageChannel, Prisma, WhatsappMessageDirection } from '@prisma/client';
+import { MarketingChannel, MessageChannel, Prisma, SupportCaseKind, SupportDesk, WhatsappMessageDirection } from '@prisma/client';
+import { SUBJECT_CASE_OPEN, type SubjectCaseOpen } from '../support/subject-cases';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { PrismaService } from '../prisma/prisma.service';
@@ -1661,6 +1662,54 @@ export class WhatsAppService {
       unreadCount: 0,
       replyWindowOpen: this.isReplyWindowOpen(conversation.lastInboundAt),
     };
+  }
+
+  /**
+   * D26: turn picked messages into a HELP case on the Platform desk. The
+   * number's account is the requester when one matches; otherwise the admin
+   * raises it for them. One case per conversation: a second call returns it.
+   * Opened through SubjectCases (emit-only, so this module never imports
+   * SupportModule); emitAsync hands back the case id.
+   */
+  async convertToCase(id: string, adminUserId: string, messageIds: string[]): Promise<{ caseId: string }> {
+    const conv = await this.prisma.whatsappConversation.findUnique({ where: { id } });
+    if (!conv) throw new BadRequestException('Conversation not found');
+    if (conv.caseId) return { caseId: conv.caseId };
+
+    const picked = await this.prisma.whatsappMessage.findMany({
+      where: { conversationId: id, id: { in: messageIds } },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!picked.length) throw new BadRequestException('Pick at least one message from this conversation.');
+
+    const user = conv.userId
+      ? { id: conv.userId }
+      : await this.prisma.user.findFirst({
+          where: { mobileNumber: { in: [`+${conv.waId}`, conv.waId] } },
+          select: { id: true },
+        });
+    const who = `${conv.profileName ? `${conv.profileName} ` : ''}(+${conv.waId})`;
+    const text = picked
+      .map((m) => [m.body || m.mediaNote || `[${m.type}]`, m.mediaUrl].filter(Boolean).join('\n'))
+      .join('\n\n');
+    const open: SubjectCaseOpen = {
+      subjectType: 'WhatsappConversation',
+      subjectId: conv.id,
+      requesterId: user?.id ?? adminUserId,
+      kind: SupportCaseKind.HELP,
+      desk: SupportDesk.PLATFORM,
+      subject: `WhatsApp: ${(picked[0].body || conv.profileName || `+${conv.waId}`).split('\n')[0].slice(0, 120)}`,
+      message: user ? `From WhatsApp ${who}:\n\n${text}` : `From WhatsApp ${who}, no Unifesto account matched:\n\n${text}`,
+      raisedForRequester: !user,
+    };
+    const caseId = (await this.events.emitAsync(SUBJECT_CASE_OPEN, open)).find((r): r is string => typeof r === 'string');
+    if (!caseId) throw new ServiceUnavailableException("Couldn't open the case. Try again.");
+
+    await this.prisma.whatsappConversation.update({
+      where: { id },
+      data: { caseId, ...(user && !conv.userId ? { userId: user.id } : {}) },
+    });
+    return { caseId };
   }
 
   /** Inbox headline counters. */

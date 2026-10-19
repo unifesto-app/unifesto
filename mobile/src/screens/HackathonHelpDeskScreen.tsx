@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
@@ -10,6 +10,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { onNotificationArrived } from '../lib/notificationBus';
 import {
+  escalateHelpQuery,
   getHelpInbox,
   HELP_STATUS_LABEL,
   setHelpQueryStatus,
@@ -74,6 +75,22 @@ export default function HackathonHelpDeskScreen() {
     setInbox(res.data);
   };
 
+  // D27: the organisers get it as a Space Assist case; the query stays here.
+  const escalate = (q: HelpInboxQuery) =>
+    AppAlert.alert('Escalate to the organisers?', 'They get this query, with the team and room, as an Assist case.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Escalate',
+        onPress: async () => {
+          setBusy(q.id);
+          const res = await escalateHelpQuery(eventId!, q.id);
+          setBusy(null);
+          if (!res.ok) return AppAlert.alert("Couldn't escalate", res.message);
+          setInbox(res.data);
+        },
+      },
+    ]);
+
   if (inbox === undefined) {
     return (
       <View style={[styles.center, { backgroundColor: tokens.bg }]}>
@@ -123,6 +140,17 @@ export default function HackathonHelpDeskScreen() {
             <Button label="Reopen" size="sm" variant="secondary" loading={busy === q.id} onPress={() => void move(q, 'OPEN')} style={{ flex: 1 }} />
           )}
         </View>
+        {q.caseId ? (
+          <Button
+            label="Escalated · Open case"
+            size="sm"
+            variant="ghost"
+            onPress={() => router.push(`/manage/support/${q.caseId}`)}
+            style={styles.escalate}
+          />
+        ) : q.status !== 'RESOLVED' ? (
+          <Button label="Escalate to organiser" size="sm" variant="ghost" disabled={busy === q.id} onPress={() => escalate(q)} style={styles.escalate} />
+        ) : null}
       </View>
     );
   };
@@ -180,4 +208,5 @@ const styles = StyleSheet.create({
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
   message: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...font() },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[3] },
+  escalate: { marginTop: spacing[2] },
 });

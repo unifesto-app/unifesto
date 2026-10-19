@@ -5025,6 +5025,9 @@ model WhatsappConversation {
   // Unread inbound count for the inbox badge; reset to 0 when an admin opens it.
   unreadCount Int @default(0) @map("unread_count")
 
+  // D26: the Assist case this conversation was converted to (soft ref → support_tickets).
+  caseId String? @map("case_id") @db.Uuid
+
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -5659,6 +5662,9 @@ model HackathonHelpQuery {
   handledBy       String?   @map("handled_by") @db.Uuid
   acknowledgedAt  DateTime? @map("acknowledged_at") @db.Timestamptz(6)
   resolvedAt      DateTime? @map("resolved_at") @db.Timestamptz(6)
+  // D27: escalated to the organisers as a Space-desk Assist case (soft ref → support_tickets).
+  escalatedAt     DateTime? @map("escalated_at") @db.Timestamptz(6)
+  caseId          String?   @map("case_id") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
