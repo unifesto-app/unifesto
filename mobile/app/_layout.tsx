@@ -13,6 +13,7 @@ import {
 } from '@react-native-firebase/crashlytics';
 import { AuthProvider } from '../src/context/AuthContext';
 import LegalAcceptSheet from '../src/components/LegalAcceptSheet';
+import WhatsNewSheet, { showWhatsNewIfNeeded } from '../src/components/WhatsNewSheet';
 import { FavoritesProvider } from '../src/context/FavoritesContext';
 import { SpaceAccessProvider } from '../src/context/SpaceAccessContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
@@ -25,7 +26,6 @@ import ConsentManager from '../src/services/ConsentManager';
 import { checkForAppUpdate } from '../src/lib/appUpdate';
 import { startOtaUpdateChecks } from '../src/lib/otaUpdate';
 import { tagCrashReports } from '../src/lib/appBuild';
-import { showWhatsNewIfNeeded } from '../src/lib/whatsNew';
 import { loadDefaultImages } from '../src/lib/defaultImages';
 import { useDeepLinks } from '../src/hooks/useDeepLinks';
 import { darkTokens, lightTokens } from '../src/theme/tokens';
@@ -174,6 +174,7 @@ function RootStack() {
           <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
         </Stack>
         </NavigationThemeProvider>
+        <WhatsNewSheet />
         </SpaceAccessProvider>
         <OfflineBanner />
         <InAppNoticeHost />
@@ -250,9 +251,8 @@ export default function RootLayout() {
     tagCrashReports();
     // Stand-in banners/logos for events and spaces without their own.
     void loadDefaultImages();
-    // After the store-update check has had its say, show release notes once.
-    const t = setTimeout(() => void showWhatsNewIfNeeded(), 2500);
-    return () => clearTimeout(t);
+    // Release notes once per version (opens after the store-update check has had its say).
+    void showWhatsNewIfNeeded();
   }, [appIsReady]);
 
   // OTA JS updates: also check when returning to the foreground (see otaUpdate.ts).
