@@ -8,7 +8,8 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import { buildInfo, buildLabel } from '../lib/appBuild';
 import { checkForOtaNow, restartIntoUpdate } from '../lib/otaUpdate';
 import { getStoreUpdate, openStoreListing, type StoreUpdate } from '../lib/appUpdate';
-import { WHATS_NEW } from '../lib/whatsNew';
+import { WHATS_NEW, sectionsFor } from '../lib/whatsNew';
+import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { currentAppIconPreview } from '../lib/appIcon';
 import { openStoreReview } from '../utils/storeReview';
 import BrandWordmark from '../components/BrandWordmark';
@@ -41,6 +42,7 @@ type Status =
  */
 export default function AboutScreen() {
   const c = useCosmos();
+  const operator = useSpaceAccess().sections.length > 0;
   const topSpacing = useTopSpacing();
   const info = useMemo(buildInfo, []);
   // expo-updates' own state: also true when a foreground check downloaded one.
@@ -138,15 +140,17 @@ export default function AboutScreen() {
         </View>
 
         {WHATS_NEW.length ? (
-          <Section title="What’s new" subtitle={`In ${WHATS_NEW[0].id}`}>
+          <Section title="What’s new" subtitle={`In ${WHATS_NEW[0].version}`}>
             <View style={styles.notes}>
               {(showEarlier ? WHATS_NEW : WHATS_NEW.slice(0, 1)).map((entry, i) => (
-                <View key={entry.id} style={[styles.release, i === 0 ? { paddingTop: 0 } : { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
-                  {i > 0 ? <Text style={[styles.releaseId, { color: c.muted }]}>{entry.id}</Text> : null}
-                  {entry.items.map((item) => (
-                    <View key={item} style={styles.item}>
+                <View key={entry.version} style={[styles.release, i === 0 ? { paddingTop: 0 } : { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
+                  {i > 0 ? <Text style={[styles.releaseId, { color: c.muted }]}>{entry.version}</Text> : null}
+                  {sectionsFor(entry, operator).flatMap((s) => s.items).map((item) => (
+                    <View key={item.title} style={styles.item}>
                       <Text style={[styles.bullet, { color: c.muted }]}>•</Text>
-                      <Text style={[styles.itemText, { color: i === 0 ? c.soft : c.muted }]}>{item}</Text>
+                      <Text style={[styles.itemText, { color: i === 0 ? c.soft : c.muted }]}>
+                        {item.body ? `${item.title}. ${item.body}` : item.title}
+                      </Text>
                     </View>
                   ))}
                 </View>
