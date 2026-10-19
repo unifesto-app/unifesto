@@ -21,7 +21,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" ("Tonight I'm putting out a short video") | `05-linkedin.md` | no | **approved 19 Oct** (then "This week" → "Tonight" for the drop) |
 | Tue 20 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | draft, ready |
 | Tue 20 | 10:30 AM | Blog (Apex) | Google Forms for event registration vs Unifesto (recheck the Google help links first) | `03-blog-unifesto-vs-google-forms.md` | no | draft, check 4 |
-| Tue 20 | 12 PM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | no | step 6 suggestion open |
+| Tue 20 | 12 PM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | no | **approved 19 Oct** (6 steps) |
 | Tue 20 | 3 PM | | Go/no-go on video files | | | |
 | Tue 20 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail-bujji.jpg` / `assets/thumbnail.png` | is the video | needs render + edit + upload |
 | Tue 20 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1-cover.png` | yes (cut) | needs edit |

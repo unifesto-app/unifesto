@@ -59,13 +59,14 @@ The full guide is on our YouTube (link in the comments).
 **Upload:** `assets/howto-carousel.pdf` as a Document. Document title: "How to run a college club from one Space".
 
 ```
-How to run a college club from one Space, in 5 steps:
+How to run a college club from one Space, in 6 steps:
 
 1. Set up your Space: name, link, one line about your club
 2. Add your core team with their own accounts
 3. Decide who can do what: Curator, Co-Curator, Crew
 4. Start an event with just a name, publish when the checklist is done
 5. Give each event its own team
+6. Hand the Space to next year's lead when you graduate
 
 Free for RSVP events. Swipe through and save it for your next committee meeting.
 
