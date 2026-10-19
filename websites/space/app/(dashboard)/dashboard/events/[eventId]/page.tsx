@@ -214,7 +214,7 @@ export default function EventOverviewPage() {
             room actually holds. The hint spells out where the people come
             from, and is omitted when there are no groups to disambiguate. */}
         <StatCard
-          title="No. of attendees"
+          title="People attending"
           value={(
             attendeeStats?.attendees ?? event.registeredCount ?? 0
           ).toString()}
@@ -226,12 +226,14 @@ export default function EventOverviewPage() {
                 ? `${attendeeStats.individual.attendees} individual · ${attendeeStats.group.attendees} in ${attendeeStats.group.groups} ${attendeeStats.group.groups === 1 ? "group" : "groups"}`
                 : "All individual bookings"
               : undefined
+            // B14: Tickets and Check-in count bookings (a group once); this
+            // counts people, so the two numbers differ on purpose.
           }
         />
         {/* People, like the card beside it. Falls back to bookings only if
             the backend doesn't send a people count yet. */}
         <StatCard
-          title="Checked In"
+          title={hasPeople ? "People checked in" : "Bookings checked in"}
           value={checkedInPeople.toString()}
           icon={CheckCircle}
           tone="success"
@@ -242,7 +244,7 @@ export default function EventOverviewPage() {
           }
         />
         <StatCard
-          title="Pending Check-in"
+          title={hasPeople ? "People not checked in" : "Bookings not checked in"}
           value={Math.max(0, headcount - checkedInPeople).toString()}
           icon={Clock}
           hint={`${peopleUnit[0].toUpperCase()}${peopleUnit.slice(1)} not yet checked in`}

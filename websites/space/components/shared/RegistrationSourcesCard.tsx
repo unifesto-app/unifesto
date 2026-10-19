@@ -81,7 +81,7 @@ export function RegistrationSourcesCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Where registrations came from</CardTitle>
+        <CardTitle>Where bookings came from</CardTitle>
         <CardDescription>
           Share a tagged link on each channel to see which one brings people in.
         </CardDescription>
@@ -136,7 +136,7 @@ export function RegistrationSourcesCard({
           </ul>
         ) : (
           <p className="text-sm text-muted-foreground">
-            No confirmed registrations yet.
+            No confirmed bookings yet.
           </p>
         )}
       </CardContent>

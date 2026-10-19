@@ -532,10 +532,16 @@ export default function ApexScreen() {
             </View>
 
             {chartCard({
-              title: 'Total revenue collected',
+              // B14: the headline is paid ticket bookings (GMV, same as Apex
+              // web Overview); the line under it is everything collected in the
+              // range, seats, stays and since-refunded payments included, so it
+              // can be larger and says so.
+              title: 'Gross sales (GMV)',
               value: data ? inrShort(data.revenue.totalPaid) : '—',
-              sub: money?.length ? [`${inrShort(sum(moneyVals))} in ${span}`, trend(moneyVals, moneyLabels)].filter(Boolean).join(' · ') : null,
-              a11y: `Total revenue collected, ${data ? inrShort(data.revenue.totalPaid) : 'loading'}. ${span}: ${moneyLabels
+              sub: money?.length
+                ? [`${inrShort(sum(moneyVals))} collected in ${span} (all sales)`, trend(moneyVals, moneyLabels)].filter(Boolean).join(' · ')
+                : null,
+              a11y: `Gross sales, ${data ? inrShort(data.revenue.totalPaid) : 'loading'}. Collected in ${span}: ${moneyLabels
                 .map((l, i) => `${l} ${inrShort(moneyVals[i])}`)
                 .join(', ')}`,
               to: '/apex/money/financials',
@@ -553,10 +559,10 @@ export default function ApexScreen() {
                 children: chartOrSkeleton(!!growth, <BarChart values={userVals} labels={growthLabels} height={40} />, 40),
               })}
               {chartCard({
-                title: 'Total registrations',
+                title: 'Total bookings',
                 value: data ? fmt(data.registrations.total) : '—',
                 sub: growth?.length ? `+${fmt(sum(regVals))} in ${rangeShort}` : null,
-                a11y: `Total registrations, ${data ? fmt(data.registrations.total) : 'loading'}. New: ${growthLabels.map((l, i) => `${l} ${regVals[i]}`).join(', ')}`,
+                a11y: `Total bookings, ${data ? fmt(data.registrations.total) : 'loading'}. New: ${growthLabels.map((l, i) => `${l} ${regVals[i]}`).join(', ')}`,
                 to: '/apex/money/transactions',
                 w: halfW,
                 children: chartOrSkeleton(!!growth, <BarChart values={regVals} labels={growthLabels} height={40} />, 40),

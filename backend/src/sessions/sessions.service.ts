@@ -1059,6 +1059,7 @@ export class SessionsService {
         `verifyPayment: session registration ${registration.id} already PAID ` +
           `(likely completed by the webhook first) — returning success idempotently`,
       );
+      await this.refundIfDuplicate(registration.id, dto.razorpayPaymentId, true);
       return { registrationId: registration.id, paid: true };
     }
     // Never revive a refunded / cancelled row with its original receipt.
@@ -1125,8 +1126,10 @@ export class SessionsService {
       }
     });
 
+    // Lost the race: another payment may have paid it (A22).
+    if (!settled) return this.refundIfDuplicate(registration.id, paymentId, fromClient);
     // Only the call that settled it emails, so verify + webhook send one.
-    if (settled && !soldOut) void this.sendConfirmation(registration.id);
+    if (!soldOut) void this.sendConfirmation(registration.id);
 
     if (soldOut) {
       await this.refundDue(registration.id);
@@ -1135,6 +1138,23 @@ export class SessionsService {
         `This session filled up or closed while you were paying. Your payment of ₹${Number(registration.razorpayAmount)} is being refunded in full.`,
       );
     }
+  }
+
+  /**
+   * A22: `paymentId` lost to another payment that already paid this row (two
+   * tabs): refund it in full. From the client a failed refund is only logged,
+   * since the webhook retries it; from the webhook it throws so Razorpay does.
+   */
+  private async refundIfDuplicate(registrationId: string, paymentId: string, fromClient: boolean) {
+    const row = await this.prisma.sessionRegistration.findUnique({
+      where: { id: registrationId },
+      select: { paymentId: true, paymentStatus: true },
+    });
+    if (row?.paymentStatus !== PaymentStatus.PAID) return;
+    const dup = this.payments.refundIfDuplicate(row.paymentId, paymentId, `session registration ${registrationId}`);
+    await (fromClient
+      ? dup.catch((err) => this.logger.error(`Duplicate capture ${paymentId} on session ${registrationId}: refund failed: ${err}`))
+      : dup);
   }
 
   /**
@@ -1160,11 +1180,8 @@ export class SessionsService {
     }
     if (!reg) return false;
     if (reg.paymentStatus === PaymentStatus.PAID) {
-      if (reg.paymentId !== paymentId) {
-        this.logger.error(
-          `Session registration ${reg.id} already paid by ${reg.paymentId}; second capture ${paymentId} (order ${orderId}) not settled.`,
-        );
-      }
+      // Same payment replayed: idempotent. A different one: refunded (A22).
+      await this.payments.refundIfDuplicate(reg.paymentId, paymentId, `session registration ${reg.id}`);
       return true;
     }
     if (

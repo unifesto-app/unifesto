@@ -22,8 +22,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { inr } from "@/lib/utils/money";
 
-const money = (v: number | string) => `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = inr;
 const fmt = (v?: string | null) =>
   v ? new Date(v).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—";
 

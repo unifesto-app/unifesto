@@ -250,7 +250,11 @@ function MoneyFlow({
   }
 
   const net = Math.max(0, fin.netEntitlement);
-  const netPct = collected > 0 ? Math.round((net / collected) * 100) : 0;
+  // B14: measured against ticket sales, not "collected". Collected includes
+  // the processing fee buyers pay on top, so "95% of collected" read as if
+  // Unifesto took 5% from the organiser.
+  const sales = Math.max(0, fin.ticketRevenue);
+  const netPct = sales > 0 ? Math.round((net / sales) * 100) : 0;
 
   return (
     <div className="flex flex-col items-stretch gap-3 lg:h-56 lg:flex-row lg:gap-0">
@@ -282,7 +286,7 @@ function MoneyFlow({
           <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
             {money(net)}
           </p>
-          <p className="text-eyebrow mt-1">{netPct}% of collected kept</p>
+          <p className="text-eyebrow mt-1">{netPct}% of ticket sales is yours</p>
         </div>
       </FlowNode>
 
