@@ -531,7 +531,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 | L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | done (#271) |
 | L2 | Q&A with upvotes + moderation, per session/track | done (#277) |
 | L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | done (#279) |
-| L4 | Projector view on web (results, Q&A wall) | planned |
+| L4 | Projector view on web (results, Q&A wall) | done (#287) |
 
 ### M · AI assists (new)
 
@@ -825,3 +825,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · D26 mobile, Apex WhatsApp thread gets "Convert to case (n)" (tap to pick messages, unanswered inbound pre-picked) and "Open case" once linked; JS-only, ships with the next mobile build/OTA. (#284)
 - **2026-10-19** · G5 space web EmptyState rollout across stays, attendees, check-in, transactions, tracking and branding settings (#286)
 - **2026-10-19** · I1–I2: versioned legal docs (LegalDocument/LegalAcceptance, public GET /legal/:slug, pending + accept), web legal pages render from the API, blocking accept sheet in space + mobile, Apex editor; I1 drafts + I4 retention line await lawyer review. Not deployed. (#285)
+- **2026-10-19** · L4 projector view: full-screen read-only Space page for poll results, the Q&A wall and live quizzes, opened by operators or with a revocable display link (no login, no attendee PII). (#287)
