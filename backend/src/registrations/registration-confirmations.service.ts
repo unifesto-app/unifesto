@@ -9,7 +9,7 @@ import { NotificationEvents } from '../notifications/notifications.constants';
 import type { RegistrationConfirmedEvent } from '../notifications/notifications.events';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { seatPhone, seatMemberName, type SeatLike } from './group-invite.util';
-import { formatEventDate, formatEventTime } from './registration.util';
+import { formatEventDate, formatEventTime, generateQRCode, generateTicketCode } from './registration.util';
 
 /**
  * Confirmation emails / WhatsApp / push for a settled registration, the
@@ -229,25 +229,26 @@ export class RegistrationConfirmationsService {
   }
 
   /**
-   * Email the group's shared ticket to every member, not just the lead. The
-   * whole group shares one QR/ticket, so each member simply receives their own
-   * copy at the (now-validated) email they registered with. The lead already
-   * receives the standard confirmation, so their address is skipped, as are
-   * duplicate member emails. Non-blocking: a failed send never breaks the flow.
+   * Email each group member their ticket, not just the lead. A member gets a
+   * seat ticket of their own (stamped with their email, so removing them
+   * deletes it), never the group's shared QR (A28). Seat 1 is the lead: only
+   * when they weren't mailed already (`leadEmail` null) do they get the
+   * group's own ticket here. Duplicate emails are skipped. Non-blocking: a
+   * failed send never breaks the flow.
    */
   async sendGroupMemberConfirmations(
-    // A registration id reads the roster from its GroupSeat rows (S42); an
-    // explicit list sends to just those members (a roster edit's new ones).
-    roster: string | Array<{ name?: string | null; email?: string | null; mobile?: string | null }>,
+    registrationId: string,
     event: any,
+    // The group's own ticket, for the lead's entry.
     qrCode: string,
     ticketCode: string | undefined,
     leadEmail: string | null,
+    // Just these members (a roster edit's new ones); default: the whole roster
+    // from its GroupSeat rows (S42), seat 1 first.
+    only?: Array<{ name?: string | null; email?: string | null; mobile?: string | null }>,
   ): Promise<void> {
     const members: Array<{ name?: string | null; email?: string | null; mobile?: string | null }> =
-      typeof roster === 'string'
-        ? ((await this.groupSeats.getRoster(roster)) ?? [])
-        : roster;
+      only ?? ((await this.groupSeats.getRoster(registrationId)) ?? []);
     this.logger.log(
       `[group-email] ${members.length} member(s), lead=${leadEmail ?? 'none'}`,
     );
@@ -258,7 +259,7 @@ export class RegistrationConfirmationsService {
     const lead = (leadEmail ?? '').trim().toLowerCase();
     const seen = new Set<string>();
 
-    for (const m of members) {
+    for (const [i, m] of members.entries()) {
       const email = (m?.email ?? '').trim();
       if (!email) {
         this.logger.warn(`[group-email] skip member "${m?.name}": no email`);
@@ -270,6 +271,14 @@ export class RegistrationConfirmationsService {
         continue; // skip the lead + duplicates
       }
       seen.add(key);
+      const ticket =
+        !only && i === 0
+          ? { qrCode, ticketCode }
+          : await this.memberTicket(registrationId, key, m.name).catch((err) => {
+              this.logger.error(`[group-email] no ticket for ${email}`, err);
+              return null;
+            });
+      if (!ticket) continue;
       this.logger.log(`[group-email] sending ticket to ${email}`);
       this.emailService
         .sendRegistrationConfirmation({
@@ -283,8 +292,8 @@ export class RegistrationConfirmationsService {
           city: event.city || undefined,
           isOnline: event.type === 'ONLINE',
           onlineUrl: event.onlineUrl || undefined,
-          qrCode,
-          ticketCode,
+          qrCode: ticket.qrCode,
+          ticketCode: ticket.ticketCode ?? undefined,
           // Raw fields for the "Add to calendar" .ics attachment. organiserName
           // is optional — it's present only when the caller's event include
           // loaded `space`; the .ics is still valid without ORGANIZER.
@@ -322,6 +331,28 @@ export class RegistrationConfirmationsService {
           );
       }
     }
+  }
+
+  /** A typed-in member's own seat ticket, stamped with their email: found, or made once. */
+  private async memberTicket(registrationId: string, email: string, name?: string | null) {
+    const select = { qrCode: true, ticketCode: true } as const;
+    const found = await this.prisma.eventTicket.findFirst({
+      where: { registrationId, attendeeEmail: { equals: email, mode: 'insensitive' } },
+      select,
+    });
+    return (
+      found ??
+      this.prisma.eventTicket.create({
+        data: {
+          registrationId,
+          ticketCode: generateTicketCode(),
+          qrCode: generateQRCode(),
+          attendeeName: name?.trim() || null,
+          attendeeEmail: email,
+        },
+        select,
+      })
+    );
   }
 
   /**

@@ -91,7 +91,9 @@ export class GroupSeatsController {
     return this.seats.listSeats(id, req.user.id);
   }
 
+  /** Throttled per lead: each call can email every open seat (A28). */
   @Post(':id/seats/invite')
+  @Throttle({ default: { limit: 20, ttl: 3_600_000 } })
   invite(
     @Request() req,
     @Param('id', ParseUUIDPipe) id: string,

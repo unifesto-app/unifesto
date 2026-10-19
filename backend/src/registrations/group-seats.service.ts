@@ -22,6 +22,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { teamChangeWindow } from './attendee-details.service';
 import { button, h1, p, small, strong } from '../email/layout';
+import { holdsSeats, seatTicketOf } from './registration.util';
 
 export interface CreateSeatsParams {
   registrationId: string;
@@ -379,25 +380,37 @@ export class GroupSeatsService {
 
   // ── Lead-managed: invite / revoke ───────────────────────────────────────────
 
-  private async assertLead(registrationId: string, userId: string) {
+  /** `live`: the group must be booked (paid, not cancelled or waitlisted), so it may send mail (A28). */
+  private async assertLead(registrationId: string, userId: string, live = false) {
     const reg = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
-      select: { id: true, userId: true, event: { select: { id: true, title: true, slug: true } } },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        paymentStatus: true,
+        isWaitlisted: true,
+        event: { select: { id: true, title: true, slug: true } },
+      },
     });
     if (!reg) throw new NotFoundException('Registration not found');
     if (reg.userId !== userId) {
       throw new ForbiddenException('Only the group lead can manage these seats');
+    }
+    if (live && !holdsSeats(reg)) {
+      throw new BadRequestException('This group isn’t booked, so you can’t invite anyone to it');
     }
     return reg;
   }
 
   /**
    * Assign invite emails to OPEN seats → INVITED, and email the claim link.
-   * Rate-limited implicitly to the number of OPEN seats (can't over-invite a
-   * group). Each assignment keeps the seat's existing token as the capability.
+   * Only on a booked group, capped at the open seats per call, and throttled
+   * per lead on the route (an invite/revoke loop can't mail without limit).
+   * Each assignment keeps the seat's existing token as the capability.
    */
   async invite(registrationId: string, leadUserId: string, invites: SeatInvite[]) {
-    const reg = await this.assertLead(registrationId, leadUserId);
+    const reg = await this.assertLead(registrationId, leadUserId, true);
     if (invites.length === 0) throw new BadRequestException('No invites provided');
     await this.ensureSeatsForRegistration(registrationId);
 
@@ -600,6 +613,8 @@ export class GroupSeatsService {
         id: true,
         userId: true,
         status: true,
+        paymentStatus: true,
+        isWaitlisted: true,
         eventId: true,
         event: {
           select: {
@@ -625,6 +640,9 @@ export class GroupSeatsService {
     }
     if (reg.status === RegistrationStatus.CANCELLED) {
       throw new BadRequestException('This registration is cancelled');
+    }
+    if (!holdsSeats(reg)) {
+      throw new BadRequestException('This group isn’t booked yet, so the team can’t change');
     }
     if (
       reg.event.status === EventStatus.COMPLETED ||
@@ -738,8 +756,8 @@ export class GroupSeatsService {
   }
 
   /**
-   * The signed-in account must own the invited email (any of its linked
-   * emails, case-insensitive). The link alone is never enough: a forwarded or
+   * The signed-in account must own the invited email (any of its linked,
+   * verified emails, case-insensitive). The link alone is never enough: a forwarded or
    * leaked invite can't be claimed by someone else, and the seat always lands
    * on the person it was sent to.
    */
@@ -748,7 +766,11 @@ export class GroupSeatsService {
       throw new ForbiddenException("This seat hasn't been sent to anyone yet, so it can't be claimed.");
     }
     const identity = await this.prisma.userIdentity.findFirst({
-      where: { userId: claimerUserId, email: { equals: inviteEmail.trim(), mode: 'insensitive' } },
+      where: {
+        userId: claimerUserId,
+        email: { equals: inviteEmail.trim(), mode: 'insensitive' },
+        emailVerified: true,
+      },
       select: { userId: true },
     });
     if (!identity) {
@@ -822,8 +844,9 @@ export class GroupSeatsService {
    * Returns the claim token, which the invite email already gave this person.
    */
   async listMyInvites(userId: string) {
+    // Verified emails only: an unverified identity proves nothing (A28).
     const identities = await this.prisma.userIdentity.findMany({
-      where: { userId, email: { not: null } },
+      where: { userId, email: { not: null }, emailVerified: true },
       select: { email: true },
     });
     const emails = [...new Set(identities.map((i) => (i.email ?? '').trim().toLowerCase()).filter(Boolean))];
@@ -994,37 +1017,49 @@ export class GroupSeatsService {
       ...(claimerEmail ? { email: claimerEmail } : {}),
     };
 
-    const claimed = await this.prisma.groupSeat.updateMany({
-      where: {
-        inviteToken: token,
-        // OPEN/INVITED, or a typed-in teammate's seat no account holds yet.
-        // Either way one claimer wins: the next one finds it taken.
-        OR: [{ status: { in: [GroupSeatStatus.OPEN, GroupSeatStatus.INVITED] } }, { ...TYPED_IN, seatIndex: { gt: 1 } }],
-      },
-      data: {
-        status: GroupSeatStatus.CLAIMED,
-        claimedByUserId: claimerUserId,
-        memberDetails: details as Prisma.InputJsonValue,
-        claimedAt: new Date(),
-      },
-    });
-    if (claimed.count !== 1) {
-      throw new BadRequestException('This seat has just been taken');
-    }
-
-    // The member's own ticket (per-CLAIMED-seat QR), linked to the group's
-    // registration. Stamped with the member's name + email so their ticket can
-    // be told apart from the lead's and shown in the member's Tickets tab.
     const claimerName =
       typeof memberDetails?.name === 'string' && memberDetails.name.trim() ? memberDetails.name.trim() : null;
-    const ticket = await this.prisma.eventTicket.create({
-      data: {
-        registrationId: seat.registrationId,
-        ticketCode: this.ticketCode(),
-        qrCode: this.qrCode(),
-        attendeeName: claimerName,
-        attendeeEmail: claimerEmail,
-      },
+    // The seat and the member's own ticket (per-CLAIMED-seat QR, stamped with
+    // their name + email so it shows in their Tickets tab) land together: a
+    // claimed seat never lacks its ticket (A28).
+    const ticket = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.groupSeat.updateMany({
+        where: {
+          inviteToken: token,
+          // OPEN/INVITED, or a typed-in teammate's seat no account holds yet.
+          // Either way one claimer wins: the next one finds it taken.
+          OR: [{ status: { in: [GroupSeatStatus.OPEN, GroupSeatStatus.INVITED] } }, { ...TYPED_IN, seatIndex: { gt: 1 } }],
+        },
+        data: {
+          status: GroupSeatStatus.CLAIMED,
+          claimedByUserId: claimerUserId,
+          memberDetails: details as Prisma.InputJsonValue,
+          claimedAt: new Date(),
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new BadRequestException('This seat has just been taken');
+      }
+      // A typed-in teammate was emailed a seat ticket of their own: the claim
+      // replaces it, so one person never holds two passes.
+      const prior = [typedDetails.email, claimerEmail].filter((e): e is string => typeof e === 'string' && !!e.trim());
+      if (prior.length > 0) {
+        await tx.eventTicket.deleteMany({
+          where: {
+            registrationId: seat.registrationId,
+            OR: prior.map((e) => ({ attendeeEmail: { equals: e.trim(), mode: 'insensitive' as const } })),
+          },
+        });
+      }
+      return tx.eventTicket.create({
+        data: {
+          registrationId: seat.registrationId,
+          ticketCode: this.ticketCode(),
+          qrCode: this.qrCode(),
+          attendeeName: claimerName,
+          attendeeEmail: claimerEmail,
+        },
+      });
     });
 
     this.logger.log(
@@ -1219,15 +1254,16 @@ export class GroupSeatsService {
     });
     if (!seat) throw new ForbiddenException("You don't have a ticket on this registration");
 
-    // The seat's own ticket: stamped with the member's email on newer claims,
-    // else the one created at the moment of the claim.
-    const mine =
-      reg.tickets.find((t) => email && t.attendeeEmail?.toLowerCase() === email.toLowerCase()) ??
-      (seat.claimedAt
-        ? [...reg.tickets].sort(
-            (a, b) => Math.abs(+a.createdAt - +seat.claimedAt!) - Math.abs(+b.createdAt - +seat.claimedAt!),
-          )[0]
-        : undefined);
+    // The seat's own ticket, never a teammate's (A28).
+    const ids = await this.prisma.userIdentity.findMany({
+      where: { userId, email: { not: null } },
+      select: { email: true },
+    });
+    const mine = seatTicketOf(
+      reg.tickets,
+      new Set(ids.map((i) => (i.email ?? '').trim().toLowerCase()).filter(Boolean)),
+      seat.claimedAt,
+    );
     if (!mine) throw new BadRequestException("We couldn't find your ticket for this seat");
 
     const details =
