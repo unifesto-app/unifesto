@@ -28,7 +28,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Tue 20 | 7:30 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | yes | ready |
 | Tue 20 | 8 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2-cover.png` | yes (cut) | needs edit |
 | Tue 20 | 8:30 PM | LinkedIn (company) | 73 s video in the frame (0:00–0:22 + 2:57–3:40 + 5:58–6:06) | `05-linkedin.md`, `assets/linkedin-frame/` | yes (cut) | needs edit |
-| Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3.mp4`, `assets/short3-cover.png` | no | ready (animated, 45 s) |
+| Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3.mp4`, `assets/short3-cover.png` | no | **approved 20 Oct**, locked: post `short3.mp4` as committed in 2681fd65 (45 s, md5 89980cde), no re-renders |
 | Tue 20 | 9:30 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | draft, ready |
 | Tue 20 | evening | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
 | Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
