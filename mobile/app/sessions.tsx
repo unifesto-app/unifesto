@@ -10,7 +10,8 @@ import { useTokens } from '../src/context/ThemeContext';
 import { CardBackdrop } from '../src/components/ui/CardSurface';
 import useTopSpacing from '../src/hooks/useTopSpacing';
 import Skeleton from '../src/components/Skeleton';
-import { listSessions, PLATFORM_LABELS, type Session } from '../src/lib/api/sessions';
+import { getMySessions, listSessions, PLATFORM_LABELS, type Session } from '../src/lib/api/sessions';
+import { useAuth } from '../src/context/AuthContext';
 import { formatTime } from '../src/utils/eventFormat';
 import { borderRadius, spacing } from '../src/theme/spacing';
 import { typography } from '../src/theme/typography';
@@ -48,12 +49,23 @@ export default function SessionsListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [platform, setPlatform] = useState<string | null>(null);
+  const { user } = useAuth();
+  // Sessions I've booked (B18): before this they were listed nowhere.
+  const [mine, setMine] = useState<Session[]>([]);
 
   const load = useCallback(async () => {
-    setSessions(await listSessions());
+    const [all, regs] = await Promise.all([listSessions(), user ? getMySessions() : Promise.resolve([])]);
+    setSessions(all);
+    const now = Date.now();
+    setMine(
+      regs
+        .filter((r) => r.paymentStatus !== 'PENDING' && r.paymentStatus !== 'FAILED')
+        .map((r) => r.session)
+        .filter((s) => s.status !== 'CANCELLED' && new Date(s.startDateTime).getTime() + (s.durationMinutes || 60) * 60000 > now),
+    );
     setLoading(false);
     setRefreshing(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void load();
@@ -98,6 +110,17 @@ export default function SessionsListScreen() {
       >
         <Text style={[styles.title, { color: tokens.text }]}>Live and upcoming</Text>
         <Text style={[styles.lead, { color: tokens.textSecondary }]}>Online talks and workshops from spaces on Unifesto.</Text>
+
+        {mine.length > 0 ? (
+          <View style={{ marginTop: spacing[8] }}>
+            <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>My sessions</Text>
+            <View style={{ gap: spacing[4] }}>
+              {mine.map((s) => (
+                <SessionRow key={s.id} s={s} now={now} withDay onPress={() => router.push(`/session/${s.slug}`)} />
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         {platforms.length > 1 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsWrap}>
@@ -145,46 +168,51 @@ export default function SessionsListScreen() {
             <View key={g.label} style={{ marginTop: spacing[8] }}>
               <Text style={[styles.groupLabel, { color: tokens.textMuted }]}>{g.label}</Text>
               <View style={{ gap: spacing[4] }}>
-                {g.items.map((s) => {
-                  const live = isLive(s, now);
-                  const price = Number(s.price);
-                  const start = new Date(s.startDateTime);
-                  return (
-                    <Pressable
-                      key={s.id}
-                      onPress={() => router.push(`/session/${s.slug}`)}
-                      accessibilityRole="button"
-                      accessibilityLabel={s.title}
-                      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.75 : 1 }]}
-                    >
-                      <View style={[styles.thumb, { backgroundColor: tokens.elevated }]}>
-                        {s.coverImageUrl ? (
-                          <Image source={{ uri: s.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
-                        ) : (
-                          <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
-                            <VideoCamera size={26} color="#ffffff" weight="fill" />
-                          </LinearGradient>
-                        )}
-                      </View>
-                      <View style={{ flex: 1, gap: 3 }}>
-                        {live ? <LiveChip color={tokens.danger} /> : null}
-                        <Text style={[styles.rowTitle, { color: tokens.text }]} numberOfLines={2}>{s.title}</Text>
-                        <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
-                          {formatTime(start)} · {s.durationMinutes || 60} min · {platformOf(s)}
-                        </Text>
-                        <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
-                          {[s.space?.name, price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'].filter(Boolean).join(' · ')}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                })}
+                {g.items.map((s) => (
+                  <SessionRow key={s.id} s={s} now={now} onPress={() => router.push(`/session/${s.slug}`)} />
+                ))}
               </View>
             </View>
           ))
         )}
       </ScrollView>
     </View>
+  );
+}
+
+/** One session: 4:3 thumb, live marker, title, time, platform, host and price. */
+function SessionRow({ s, now, withDay, onPress }: { s: Session; now: number; withDay?: boolean; onPress: () => void }) {
+  const tokens = useTokens();
+  const live = isLive(s, now);
+  const price = Number(s.price);
+  const start = new Date(s.startDateTime);
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={s.title}
+      style={({ pressed }) => [styles.row, { opacity: pressed ? 0.75 : 1 }]}
+    >
+      <View style={[styles.thumb, { backgroundColor: tokens.elevated }]}>
+        {s.coverImageUrl ? (
+          <Image source={{ uri: s.coverImageUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <LinearGradient colors={tokens.accentGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.center]}>
+            <VideoCamera size={26} color="#ffffff" weight="fill" />
+          </LinearGradient>
+        )}
+      </View>
+      <View style={{ flex: 1, gap: 3 }}>
+        {live ? <LiveChip color={tokens.danger} /> : null}
+        <Text style={[styles.rowTitle, { color: tokens.text }]} numberOfLines={2}>{s.title}</Text>
+        <Text style={[styles.meta, { color: tokens.textSecondary }]} numberOfLines={1}>
+          {withDay ? `${dayLabel(start)}, ` : ''}{formatTime(start)} · {s.durationMinutes || 60} min · {platformOf(s)}
+        </Text>
+        <Text style={[styles.meta, { color: tokens.textMuted }]} numberOfLines={1}>
+          {[s.space?.name, price > 0 ? `₹${price.toLocaleString('en-IN')}` : 'Free'].filter(Boolean).join(' · ')}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 

@@ -120,6 +120,16 @@ module.exports = () => {
             },
             {
               scheme: "https",
+              host: "unifesto.app",
+              pathPrefix: "/session"
+            },
+            {
+              scheme: "https",
+              host: "unifesto.app",
+              pathPrefix: "/huddle"
+            },
+            {
+              scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/event"
             },
@@ -132,6 +142,16 @@ module.exports = () => {
               scheme: "https",
               host: "www.unifesto.app",
               pathPrefix: "/signup"
+            },
+            {
+              scheme: "https",
+              host: "www.unifesto.app",
+              pathPrefix: "/session"
+            },
+            {
+              scheme: "https",
+              host: "www.unifesto.app",
+              pathPrefix: "/huddle"
             }
           ],
           category: [

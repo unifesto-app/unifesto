@@ -216,6 +216,21 @@ export class LivekitService {
     }
   }
 
+  /** Disconnect one participant (a removed co-host). Not in the room is fine. */
+  async removeParticipant(room: string, identity: string): Promise<void> {
+    if (!this.isConfigured) return;
+    try {
+      await new RoomServiceClient(
+        this.httpUrl,
+        this.apiKey,
+        this.apiSecret,
+        LIVEKIT_CLIENT_OPTIONS,
+      ).removeParticipant(room, identity);
+    } catch (err) {
+      this.logger.warn(`removeParticipant(${room}, ${identity}) failed: ${(err as Error).message}`);
+    }
+  }
+
   /** Public URL for an S3 object key in our bucket. */
   s3Url(key: string): string {
     return `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
