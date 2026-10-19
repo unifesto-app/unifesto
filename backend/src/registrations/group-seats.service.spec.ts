@@ -119,14 +119,21 @@ function makeDb(seed: Seat[] = []) {
   const prisma: any = {
     groupSeat,
     eventRegistration: {
-      findUnique: async () => ({ id: REG, userId: LEAD, event: EVENT }),
+      findUnique: async () => ({ id: REG, userId: LEAD, status: 'REGISTERED', paymentStatus: 'PAID', isWaitlisted: false, event: EVENT }),
       findFirst: async () => null,
     },
     // Linked emails per account; claims must come from the invited email.
     userIdentity: {
       findFirst: async ({ where }: any) => {
         const want = String(where?.email?.equals ?? '').toLowerCase();
-        return IDENTITIES.find((i) => i.userId === where?.userId && i.email.toLowerCase() === want) ?? null;
+        return (
+          IDENTITIES.find(
+            (i) =>
+              i.userId === where?.userId &&
+              i.email.toLowerCase() === want &&
+              (where?.emailVerified === undefined || i.emailVerified === where.emailVerified),
+          ) ?? null
+        );
       },
     },
     // No custom questions on this ticket: the answer policy passes through.
@@ -136,6 +143,7 @@ function makeDb(seed: Seat[] = []) {
         ticketCode: data.ticketCode,
         qrCode: data.qrCode,
       }),
+      deleteMany: async () => ({ count: 0 }),
     },
     $transaction: async (fn: any) => fn(prisma),
   };
@@ -154,8 +162,8 @@ const build = (seed?: Seat[]) => {
 };
 
 const IDENTITIES = [
-  { userId: 'user-dinesh', email: 'Dinesh@x.com' },
-  { userId: 'user-bimal', email: 'bimal@x.com' },
+  { userId: 'user-dinesh', email: 'Dinesh@x.com', emailVerified: true },
+  { userId: 'user-bimal', email: 'bimal@x.com', emailVerified: true },
 ];
 
 describe('GroupSeatsService — seats as source of truth', () => {

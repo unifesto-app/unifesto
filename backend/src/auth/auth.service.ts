@@ -519,6 +519,15 @@ export class AuthService {
     });
 
     if (existingIdentity) {
+      // An identity made for someone (an attendee import) is unverified until
+      // they prove the email by signing in with it; seat claims need that (A28).
+      if (emailVerified && email && !existingIdentity.emailVerified) {
+        await this.prisma.userIdentity.update({
+          where: { id: existingIdentity.id },
+          data: { emailVerified: true },
+        });
+      }
+
       // User exists, check if mobile is verified
       const user = existingIdentity.user;
 
