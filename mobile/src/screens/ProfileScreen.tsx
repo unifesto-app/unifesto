@@ -81,10 +81,10 @@ export default function ProfileScreen() {
   const load = useCallback(async () => {
     if (!token) return;
     const [user, partner, regs, spaces, unread] = await Promise.allSettled([
-      AuthAPI.getCurrentUser(token),
+      AuthAPI.getCurrentUser(),
       getMyPartnerLinks(),
       getMyRegisteredEvents(1, 50),
-      getUserSpaces(token),
+      getUserSpaces(),
       getMyUnreadCount(),
     ]);
     if (unread.status === 'fulfilled') setSupportUnread(unread.value);

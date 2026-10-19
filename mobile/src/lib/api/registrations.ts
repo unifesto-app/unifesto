@@ -1,4 +1,4 @@
-import { makeAuthenticatedRequest } from './helpers';
+import { errorFrom, makeAuthenticatedRequest } from './helpers';
 
 export interface AttendeeData {
   name: string;
@@ -36,10 +36,7 @@ export const createPaymentOrder = async (eventId: string, data: {
     body: JSON.stringify(data),
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Failed to create order');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to create order');
   return response.json();
 };
 
@@ -64,10 +61,7 @@ export const validateCoupon = async (
     body: JSON.stringify(data),
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'That discount code is not valid');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'That discount code is not valid');
   return response.json();
 };
 
@@ -92,10 +86,7 @@ export const verifyPayment = async (eventId: string, data: {
     body: JSON.stringify(data),
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Payment verification failed');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Payment verification failed');
   return response.json();
 };
 
@@ -174,10 +165,7 @@ export const createWaitlistOfferOrder = async (registrationId: string) => {
     { method: 'POST' },
   );
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not start payment for this spot');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not start payment for this spot');
   return response.json();
 };
 
@@ -188,10 +176,7 @@ export const leaveWaitlist = async (registrationId: string) => {
     { method: 'DELETE' },
   );
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not leave the waiting list');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not leave the waiting list');
   return response.json();
 };
 
@@ -200,10 +185,7 @@ export const cancelRegistration = async (eventId: string) => {
     method: 'DELETE',
   });
 
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Cancellation failed');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Cancellation failed');
   return response.json();
 };
 
@@ -215,11 +197,7 @@ export const cancelMyRegistration = async (registrationId: string, reason?: stri
     body: JSON.stringify(reason ? { reason } : {}),
   });
 
-  if (!response?.ok) {
-    const error = await response?.json().catch(() => null);
-    const msg = Array.isArray(error?.message) ? error.message[0] : error?.message;
-    throw new Error(msg || 'Could not cancel your ticket');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not cancel your ticket');
   return response.json();
 };
 
@@ -232,11 +210,7 @@ export const deleteMyTicket = async (registrationId: string) => {
     method: 'DELETE',
   });
 
-  if (!response?.ok) {
-    const error = await response?.json().catch(() => null);
-    const msg = Array.isArray(error?.message) ? error.message[0] : error?.message;
-    throw new Error(msg || 'Could not delete this ticket');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not delete this ticket');
   return response.json();
 };
 
@@ -296,10 +270,7 @@ export const updateMyGroupMembers = async (
     `/registrations/${registrationId}/group-members`,
     { method: 'PATCH', body: JSON.stringify({ groupMembers }) }
   );
-  if (!response?.ok) {
-    const error = await response?.json().catch(() => null);
-    throw new Error(error?.message || 'Failed to save group members');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to save group members');
   return response.json();
 };
 
@@ -348,10 +319,7 @@ export const setWhatsappGroupJoined = async (
     `/registrations/${registrationId}/whatsapp-joined`,
     { method: 'PATCH', body: JSON.stringify({ joined }) }
   );
-  if (!response?.ok) {
-    const error = await response?.json().catch(() => null);
-    throw new Error(error?.message || 'Failed to update join status');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to update join status');
   return response.json();
 };
 
@@ -398,10 +366,7 @@ export const getEventRegistrations = async (
   const response = await makeAuthenticatedRequest(
     `/events/${eventId}/registrations?${query.toString()}`
   );
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Failed to fetch registrations');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to fetch registrations');
   return response.json();
 };
 
@@ -414,10 +379,7 @@ export const checkIn = async (eventId: string, qrCode: string) => {
     method: 'POST',
     body: JSON.stringify({ qrCode }),
   });
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Check-in failed');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Check-in failed');
   return response.json();
 };
 
@@ -437,10 +399,7 @@ export interface GroupSeat {
 /** Lead: list the seats of a group registration. */
 export const getRegistrationSeats = async (registrationId: string): Promise<{ seats: GroupSeat[] }> => {
   const response = await makeAuthenticatedRequest(`/registrations/${registrationId}/seats`);
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not load seats');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not load seats');
   return response.json();
 };
 
@@ -453,10 +412,7 @@ export const inviteSeats = async (
     method: 'POST',
     body: JSON.stringify({ invites }),
   });
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not send invites');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not send invites');
   return response.json();
 };
 
@@ -466,10 +422,7 @@ export const revokeSeat = async (registrationId: string, seatIndex: number) => {
     `/registrations/${registrationId}/seats/${seatIndex}/revoke`,
     { method: 'POST' },
   );
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not revoke the seat');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not revoke the seat');
   return response.json();
 };
 
@@ -479,10 +432,7 @@ export const releaseSeat = async (registrationId: string, seatIndex: number) => 
     `/registrations/${registrationId}/seats/${seatIndex}/release`,
     { method: 'POST' },
   );
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not release the seat');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not release the seat');
   return response.json();
 };
 
@@ -492,20 +442,14 @@ export const reopenSeat = async (registrationId: string, seatIndex: number) => {
     `/registrations/${registrationId}/seats/${seatIndex}/reopen`,
     { method: 'POST' },
   );
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not reopen the seat');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not reopen the seat');
   return response.json();
 };
 
 /** Member: claim-screen info for a token (event + seat). */
 export const getClaimInfo = async (token: string) => {
   const response = await makeAuthenticatedRequest(`/registrations/claim/${token}`);
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'This claim link is invalid or expired');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'This claim link is invalid or expired');
   return response.json();
 };
 
@@ -543,10 +487,7 @@ export const claimSeat = async (token: string, memberDetails?: Record<string, an
     method: 'POST',
     body: JSON.stringify({ memberDetails }),
   });
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not claim the seat');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not claim the seat');
   return response.json();
 };
 
@@ -555,9 +496,6 @@ export const declineSeat = async (token: string) => {
   const response = await makeAuthenticatedRequest(`/registrations/claim/${token}/decline`, {
     method: 'POST',
   });
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Could not decline the invite');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Could not decline the invite');
   return response.json();
 };
