@@ -29,6 +29,8 @@ import {
   CreateOrganiserAnnouncementDto,
   CreatePushBroadcastDto,
   ListPushCampaignsQueryDto,
+  PushAudienceDto,
+  PushTestDto,
 } from './dto/push-campaign.dto';
 
 /** Admin push-campaign console (broadcasts). */
@@ -41,6 +43,18 @@ export class AdminPushController {
   @Post()
   create(@CurrentUser() user: User, @Body() dto: CreatePushBroadcastDto) {
     return this.campaigns.createBroadcast(user.id, dto);
+  }
+
+  /** How many people this target would reach now (for the confirm step). */
+  @Post('audience')
+  audience(@Body() dto: PushAudienceDto) {
+    return this.campaigns.countAudience(dto.target, dto.category);
+  }
+
+  /** Send the draft to the signed-in admin's own devices. */
+  @Post('test')
+  test(@CurrentUser() user: User, @Body() dto: PushTestDto) {
+    return this.campaigns.sendTest(user.id, dto);
   }
 
   @Get()

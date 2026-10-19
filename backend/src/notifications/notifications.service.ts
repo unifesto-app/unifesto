@@ -184,6 +184,17 @@ export class NotificationsService {
     }
   }
 
+  /** How many of `userIds` the pref filter in `send` would let through right now. */
+  async countAllowed(userIds: string[], category: NotificationCategory): Promise<number> {
+    const unique = [...new Set(userIds)].filter(Boolean);
+    if (unique.length === 0) return 0;
+    const settings = await this.prisma.notificationSettings.findMany({
+      where: { userId: { in: unique } },
+    });
+    const byUser = new Map(settings.map((s) => [s.userId, s]));
+    return unique.filter((id) => this.isAllowed(byUser.get(id), category)).length;
+  }
+
   private isAllowed(
     settings: { pushEnabled: boolean; [k: string]: any } | undefined,
     category: NotificationCategory,

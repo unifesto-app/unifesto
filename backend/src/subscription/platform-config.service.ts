@@ -63,7 +63,25 @@ export function assertAppVersionPolicy(config: AppVersionConfig): void {
         `${name}: set a latest version before raising the minimum version`,
       );
     }
+    // A minimum above the latest store build forces everyone to update to a
+    // version that doesn't exist yet: a lockout.
+    if (p.latestVersion && compareVersions(p.minimumVersion, p.latestVersion) > 0) {
+      throw new BadRequestException(
+        `${name}: minimum version ${p.minimumVersion} is above the latest ${p.latestVersion}`,
+      );
+    }
   }
+}
+
+/** -1, 0 or 1; missing segments count as 0 ("2.0" == "2.0.0"). */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return Math.sign(d);
+  }
+  return 0;
 }
 
 /**

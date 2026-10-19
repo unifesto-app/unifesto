@@ -18,7 +18,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { emailOptedOutUserIds } from '../email/email-preferences';
-import { CreateCampaignDto, SegmentFiltersDto } from './dto/campaign.dto';
+import {
+  CampaignAudienceDto,
+  CreateCampaignDto,
+  SegmentFiltersDto,
+  TestCampaignDto,
+} from './dto/campaign.dto';
 import { EmailCampaignQueue } from './email-campaigns.queue';
 
 /** A SENDING campaign with no progress for this long is treated as stranded. */
@@ -138,7 +143,7 @@ export class EmailCampaignsService {
    */
   private async resolveTarget(
     scope: CampaignScope,
-    dto: CreateCampaignDto,
+    dto: Pick<CreateCampaignDto, 'targetType' | 'targetId'>,
   ): Promise<string | null> {
     if (scope.spaceId && !SPACE_ALLOWED_TARGETS.has(dto.targetType)) {
       throw new ForbiddenException(
@@ -191,6 +196,57 @@ export class EmailCampaignsService {
       default:
         throw new BadRequestException('Unsupported target type');
     }
+  }
+
+  // ==========================================================================
+  // CONFIRM STEP: audience count + send-to-me test
+  // ==========================================================================
+
+  /**
+   * How many people a campaign would mail right now: the same target checks,
+   * recipient resolution and email opt-out filter as the send itself.
+   */
+  async countAudience(
+    scope: CampaignScope,
+    dto: CampaignAudienceDto,
+  ): Promise<{ recipientCount: number }> {
+    const targetId = await this.resolveTarget(scope, dto);
+    const resolved = await this.getRecipients({
+      targetType: dto.targetType,
+      targetId,
+      segmentFilters: (dto.segmentFilters ?? null) as Prisma.JsonValue,
+    });
+    const optedOut = await emailOptedOutUserIds(
+      this.prisma,
+      resolved.flatMap((r) => (r.userId ? [r.userId] : [])),
+    );
+    return {
+      recipientCount: resolved.filter((r) => !r.userId || !optedOut.has(r.userId))
+        .length,
+    };
+  }
+
+  /** Mail the draft to the sender's own address, merge vars filled with theirs. Untracked. */
+  async sendTest(actorId: string, dto: TestCampaignDto): Promise<{ sentTo: string }> {
+    const [me] = this.usersToRecipients(
+      await this.prisma.user.findMany({
+        where: { id: actorId },
+        select: RECIPIENT_SELECT,
+      }),
+    );
+    if (!me) {
+      throw new BadRequestException('Your account has no email address to send a test to');
+    }
+    const result = await this.emailService.sendCustomCampaignEmail({
+      to: me.email,
+      subject: `[Test] ${this.substituteVars(dto.subject, me)}`,
+      html: this.emailService.wrapCampaignHtml(this.substituteVars(dto.body, me)),
+      campaignId: 'test',
+    });
+    if (!result.messageId) {
+      throw new BadRequestException(result.error ?? 'The test email could not be sent');
+    }
+    return { sentTo: me.email };
   }
 
   // ==========================================================================
@@ -486,7 +542,9 @@ export class EmailCampaignsService {
   // RECIPIENTS (space-scoped)
   // ==========================================================================
 
-  private async getRecipients(campaign: EmailCampaign): Promise<Recipient[]> {
+  private async getRecipients(
+    campaign: Pick<EmailCampaign, 'targetType' | 'targetId' | 'segmentFilters'>,
+  ): Promise<Recipient[]> {
     switch (campaign.targetType) {
       case EmailTargetType.SINGLE_USER:
         return this.usersToRecipients(

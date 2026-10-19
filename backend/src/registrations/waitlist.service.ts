@@ -28,8 +28,8 @@ import { Action, AuthorizationService } from '../auth/authorization';
  * Raised when a spot cannot be offered because the seats are gone.
  *
  * Distinct from every other rejection so batch offering can tell "this one
- * person can't be let in" (skip, keep going) from "the event is full" (stop —
- * everyone behind them will fail identically). Still a 400 to the client.
+ * person can't be let in" from "this many seats don't fit": then only smaller
+ * entries are tried. Still a 400 to the client.
  */
 const OutOfSeatsError = SoldOutError;
 
@@ -598,9 +598,10 @@ export class WaitlistService {
   }
 
   /**
-   * Lets the next `count` people in, in join order. Stops early rather than
-   * failing when the seats run out, so "allow 10" on 3 free seats admits 3 and
-   * reports the shortfall instead of erroring.
+   * Lets the next `count` people in, in join order. A group too big for the
+   * seats left is skipped and the queue walked on, so smaller entries behind it
+   * still get in (A28). Stops early rather than failing when no one else fits,
+   * so "allow 10" on 3 free seats admits 3 and reports the shortfall.
    */
   async offerNext(
     organiserId: string,
@@ -609,7 +610,10 @@ export class WaitlistService {
     count: number,
   ) {
     await this.assertOrganiser(organiserId, eventId);
+    const want = Math.max(1, Math.min(count, 100));
 
+    // ponytail: the first 200 in line; a queue deeper than that with only big
+    // groups at its head admits fewer than asked. Page it if that ever bites.
     const queue = await this.prisma.eventRegistration.findMany({
       where: {
         eventId,
@@ -617,14 +621,22 @@ export class WaitlistService {
         waitlistStatus: WaitlistStatus.WAITING,
       },
       orderBy: { waitlistedAt: 'asc' },
-      take: Math.max(1, Math.min(count, 100)),
-      select: { id: true },
+      take: 200,
+      select: { id: true, groupSize: true, quantity: true },
     });
 
     const offered: string[] = [];
     const skipped: { registrationId: string; reason: string }[] = [];
+    // The smallest entry that didn't fit: anything that size or bigger won't.
+    let tooBig = Infinity;
 
     for (const row of queue) {
+      if (offered.length >= want) break;
+      const seats = this.seatsFor(row);
+      if (seats >= tooBig) {
+        skipped.push({ registrationId: row.id, reason: `Not enough seats free for ${seats}` });
+        continue;
+      }
       try {
         await this.offer(organiserId, eventId, row.id);
         offered.push(row.id);
@@ -633,10 +645,10 @@ export class WaitlistService {
           registrationId: row.id,
           reason: err instanceof Error ? err.message : 'Could not offer a spot',
         });
-        // Only seat exhaustion is terminal — everyone behind them would fail
-        // identically. Any other rejection is specific to this one entry, so
-        // keep working down the queue.
-        if (err instanceof OutOfSeatsError) break;
+        if (err instanceof OutOfSeatsError) {
+          tooBig = seats;
+          if (seats <= 1) break; // not even one seat left
+        }
       }
     }
 

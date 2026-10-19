@@ -131,3 +131,19 @@ export async function previewBody(
     backendClient.post(`${base(spaceId)}/preview`, { body })
   );
 }
+
+/** People this target mails right now (opt-outs dropped), for the confirm step. */
+export async function countAudience(
+  spaceId: string,
+  payload: Pick<CreateCampaignPayload, "targetType" | "targetId">
+): Promise<{ data: { recipientCount: number } | null; error: ApiError | null }> {
+  return apiCall(backendClient.post(`${base(spaceId)}/audience`, payload));
+}
+
+/** The draft to my own email only. */
+export async function sendTestEmail(
+  spaceId: string,
+  payload: { subject: string; body: string }
+): Promise<{ data: { sentTo: string } | null; error: ApiError | null }> {
+  return apiCall(backendClient.post(`${base(spaceId)}/test`, payload));
+}

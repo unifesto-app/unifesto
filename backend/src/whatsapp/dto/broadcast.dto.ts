@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -82,3 +82,17 @@ export class WhatsAppBroadcastDto {
   @MaxLength(10)
   languageCode?: string;
 }
+
+/** Who a broadcast would reach, for the count on the confirm step. */
+export class WhatsAppAudienceDto extends PickType(WhatsAppBroadcastDto, [
+  'audience',
+  'spaceId',
+  'userIds',
+] as const) {}
+
+/** A template to send to the signed-in admin's own number only. */
+export class WhatsAppBroadcastTestDto extends PickType(WhatsAppBroadcastDto, [
+  'templateName',
+  'bodyParams',
+  'languageCode',
+] as const) {}

@@ -65,3 +65,21 @@ describe('NotificationsService in-app copy', () => {
     expect(summary.sent).toBe(1);
   });
 });
+
+describe('NotificationsService.countAllowed', () => {
+  it('counts distinct users the send would reach: opt-out on by default, opt-in off', async () => {
+    const prisma: any = {
+      notificationSettings: {
+        findMany: jest.fn().mockResolvedValue([
+          { userId: 'push-off', pushEnabled: false, productUpdates: true, promotions: true },
+          { userId: 'promo-on', pushEnabled: true, productUpdates: false, promotions: true },
+        ]),
+      },
+    };
+    const svc = new NotificationsService(prisma, {} as any);
+    const ids = ['no-row', 'push-off', 'promo-on', 'no-row'];
+    await expect(svc.countAllowed(ids, 'productUpdates')).resolves.toBe(1);
+    await expect(svc.countAllowed(ids, 'promotions')).resolves.toBe(1);
+    await expect(svc.countAllowed([], 'promotions')).resolves.toBe(0);
+  });
+});

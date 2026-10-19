@@ -82,9 +82,19 @@ export default function SpaceMembersScreen() {
                         }),
                     },
                   ])
-                : void act(() => m.changeRole(member, 'MEMBER')),
+                : AppAlert.alert(`Make ${name} a member?`, 'Space admin → Member. They stop managing this space, its members and its money.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Make member', style: 'destructive', onPress: () => void act(() => m.changeRole(member, 'MEMBER')) },
+                  ]),
           }
-        : { text: 'Make Space admin', onPress: () => void act(() => m.changeRole(member, 'SPACE_ADMIN')) },
+        : {
+            text: 'Make Space admin',
+            onPress: () =>
+              AppAlert.alert(`Make ${name} a Space admin?`, 'Member → Space admin. They can manage members, settings, payouts and refunds straight away.', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Make Space admin', onPress: () => void act(() => m.changeRole(member, 'SPACE_ADMIN')) },
+              ]),
+          },
       {
         text: isMe ? 'Leave space' : 'Remove from space',
         style: 'destructive',
