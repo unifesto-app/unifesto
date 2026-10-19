@@ -124,9 +124,9 @@ export default function EventCheckinPage() {
 
       {/* Stats for the selected point */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Bookings" value={(stats?.total ?? 0).toString()} icon={Users} hint="Confirmed, one per ticket or group" />
+        <StatCard title="Bookings" value={(stats?.total ?? 0).toString()} icon={Users} hint="Confirmed; a group counts once" />
         <StatCard
-          title={`Checked In${activeType ? ` · ${activeType.name}` : ""}`}
+          title={`Bookings checked in${activeType ? ` · ${activeType.name}` : ""}`}
           value={(stats?.checkedIn ?? 0).toString()}
           icon={CheckCircle}
           tone="success"
@@ -136,8 +136,8 @@ export default function EventCheckinPage() {
               : undefined
           }
         />
-        <StatCard title="Pending" value={(stats?.remaining ?? 0).toString()} icon={Clock} />
-        <StatCard title="Cancelled" value={(stats?.cancelled ?? 0).toString()} icon={XCircle} />
+        <StatCard title="Bookings not checked in" value={(stats?.remaining ?? 0).toString()} icon={Clock} />
+        <StatCard title="Bookings cancelled" value={(stats?.cancelled ?? 0).toString()} icon={XCircle} />
       </div>
 
       {/* Setting up points and access is for organisers; Crew just check in. */}

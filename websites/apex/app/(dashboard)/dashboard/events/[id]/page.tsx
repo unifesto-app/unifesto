@@ -48,9 +48,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { inr } from "@/lib/utils/money";
 
-const money = (v: number | string) =>
-  `₹${Number(v || 0).toLocaleString("en-IN")}`;
+const money = inr;
 const fmtDate = (v?: string | null) =>
   v ? new Date(v).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
 const fmtDateTime = (v?: string | null) =>

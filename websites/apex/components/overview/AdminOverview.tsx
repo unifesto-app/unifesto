@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { inr } from "@/lib/utils/money";
 
 const fmt = (n: number | undefined) => (n ?? 0).toLocaleString("en-IN");
 
@@ -120,21 +121,21 @@ export function AdminOverview() {
         <StatCard
           title="Events"
           value={fmt(data?.events.total)}
-          hint={`${fmt(data?.events.published)} published`}
+          hint={`${fmt(data?.events.published)} published · hidden not counted`}
           icon={CalendarBlank}
           loading={loading}
         />
         <StatCard
-          title="Registrations"
+          title="Bookings"
           value={fmt(data?.registrations.total)}
-          hint="All event sign-ups"
+          hint="Every booking, any status; a group counts once"
           icon={TrendUp}
           loading={loading}
         />
         <StatCard
-          title="Revenue"
-          value={loading ? "—" : `₹${fmt(data?.revenue.totalPaid)}`}
-          hint="Paid registrations"
+          title="Gross sales (GMV)"
+          value={loading ? "—" : inr(data?.revenue.totalPaid)}
+          hint="Paid ticket bookings incl. buyer fees. Not Unifesto's revenue: see Financials"
           icon={CurrencyInr}
           tone="success"
           loading={loading}
