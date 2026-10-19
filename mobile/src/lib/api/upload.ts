@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { API_URL } from '../constants';
 import { getToken, refreshAccessToken } from './helpers';
 import type { Result } from './manageEvent';
+import { RequestTimeoutError, UPLOAD_TIMEOUT_MS } from './resilience';
 
 export interface UploadFile {
   field: string;
@@ -18,8 +19,9 @@ export interface UploadFile {
  * Retries once after a silent token refresh, like makeAuthenticatedRequest.
  */
 export async function postMultipart<T>(path: string, file: UploadFile, fields: Record<string, string> = {}): Promise<Result<T>> {
-  const send = (token: string) =>
-    FileSystem.uploadAsync(`${API_URL}${path}`, file.uri, {
+  // A task (not plain uploadAsync) so a stalled upload can be cancelled at UPLOAD_TIMEOUT_MS.
+  const send = async (token: string) => {
+    const task = FileSystem.createUploadTask(`${API_URL}${path}`, file.uri, {
       httpMethod: 'POST',
       uploadType: FileSystem.FileSystemUploadType.MULTIPART,
       fieldName: file.field,
@@ -27,6 +29,21 @@ export async function postMultipart<T>(path: string, file: UploadFile, fields: R
       parameters: fields,
       headers: { Authorization: `Bearer ${token}` },
     });
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      void task.cancelAsync();
+    }, UPLOAD_TIMEOUT_MS);
+    try {
+      const res = await task.uploadAsync();
+      if (!res) throw new RequestTimeoutError(); // only a cancelled task resolves empty
+      return res;
+    } catch (e) {
+      throw timedOut ? new RequestTimeoutError() : e;
+    } finally {
+      clearTimeout(timer);
+    }
+  };
 
   try {
     const token = await getToken();

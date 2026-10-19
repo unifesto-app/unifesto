@@ -154,8 +154,8 @@ export function useHomeData() {
       setUpcomingTickets(upcoming);
       void syncUpNextWidget(upcoming);
     } catch {
-      // Leave the widget on its last good snapshot rather than blanking it offline.
-      setUpcomingTickets([]);
+      // Keep the card and the widget on their last good tickets: a failed
+      // refresh is not "no tickets".
     } finally {
       setIsLoadingTickets(false);
     }

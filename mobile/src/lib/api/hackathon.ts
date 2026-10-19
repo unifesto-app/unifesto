@@ -717,7 +717,7 @@ export interface JudgeConsole {
 const judgeBase = (eventId: string) => `${base(eventId)}/judge`;
 export const getJudgeConsole = (eventId: string) => call<JudgeConsole>(`${judgeBase(eventId)}/console`);
 export const setJudgeAvailability = (eventId: string, isAvailable: boolean) =>
-  call<JudgeConsole>(`${judgeBase(eventId)}/availability`, json('PATCH', { isAvailable }));
+  call<JudgeConsole>(`${judgeBase(eventId)}/availability`, { ...json('PATCH', { isAvailable }), retry: true });
 export const callNextTeam = (eventId: string, panelId?: string) =>
   call<JudgeConsole>(`${judgeBase(eventId)}/call-next`, json('POST', panelId ? { panelId } : {}));
 export const startSlot = (eventId: string, requestId: string) =>
@@ -1044,7 +1044,7 @@ export const raiseHelpQuery = (eventId: string, input: { topicId: string | null;
   call<MyHelp>(`/hackathon/${eventId}/help/queries`, json('POST', input));
 export const getHelpInbox = (eventId: string) => call<HelpInbox>(`/hackathon/${eventId}/help/inbox`);
 export const setHelpQueryStatus = (eventId: string, queryId: string, status: HelpQueryStatus) =>
-  call<HelpInbox>(`/hackathon/${eventId}/help/queries/${queryId}/status`, json('POST', { status }));
+  call<HelpInbox>(`/hackathon/${eventId}/help/queries/${queryId}/status`, { ...json('POST', { status }), retry: true });
 
 export const HELP_STATUS_LABEL: Record<HelpQueryStatus, string> = { OPEN: 'Waiting', ACKNOWLEDGED: 'On it', RESOLVED: 'Resolved' };
 export const staffName = (u: { fullName: string | null; username: string | null }) => u.fullName || u.username || 'Team member';

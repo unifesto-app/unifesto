@@ -7,6 +7,7 @@
 import { makeAuthenticatedRequest } from './helpers';
 import { expectOk } from './errors';
 import { isOnline } from '../offline/connectivity';
+import { isTimeoutResponse } from './resilience';
 
 /**
  * The request never reached the server (no signal, captive Wi-Fi). Scanners
@@ -19,9 +20,9 @@ export class CheckinNetworkError extends Error {
   }
 }
 
-/** Null response + the request just failed at the network → offline, not a verdict. */
+/** No response (or our timeout) + the request just failed at the network → offline, not a verdict. */
 function assertReached(response: Response | null): asserts response is Response {
-  if (!response && !isOnline()) throw new CheckinNetworkError();
+  if ((!response || isTimeoutResponse(response)) && !isOnline()) throw new CheckinNetworkError();
 }
 
 export interface CheckinPoint {

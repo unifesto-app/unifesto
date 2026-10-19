@@ -2,21 +2,23 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CheckCircle, WifiSlash } from '@unifesto/unicon/react-native';
+import { CheckCircle, WarningCircle, WifiSlash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
-import { useIsOffline } from '../../lib/offline/connectivity';
+import { useNetworkNotice } from '../../lib/offline/connectivity';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
 
 const BACK_ONLINE_MS = 2_000;
 
 /**
- * Floating status pill mounted once at the root. Shows while offline (screens
- * are showing saved copies), then briefly confirms when the connection returns.
- * Never blocks touches — the app stays usable underneath.
+ * Floating status pill mounted once at the root, the one network notice for
+ * every screen. Shows while offline or while the server is failing and screens
+ * are showing their last good copy, then briefly confirms when the connection
+ * returns. Never blocks touches — the app stays usable underneath.
  */
 export function OfflineBanner() {
-  const offline = useIsOffline();
+  const notice = useNetworkNotice();
+  const offline = notice === 'offline';
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const [backOnline, setBackOnline] = useState(false);
@@ -35,12 +37,12 @@ export function OfflineBanner() {
     return () => clearTimeout(t);
   }, [offline]);
 
-  if (!offline && !backOnline) return null;
+  if (!notice && !backOnline) return null;
 
   return (
     <View pointerEvents="none" style={[styles.wrap, { top: insets.top + 6 }]}>
       <Animated.View
-        key={offline ? 'offline' : 'online'}
+        key={notice ?? 'online'}
         // Slides, never fades: opacity < 1 on the pill breaks Liquid Glass.
         entering={SlideInUp.duration(220)}
         exiting={SlideOutUp.duration(180)}
@@ -54,10 +56,18 @@ export function OfflineBanner() {
         </CardSurfaceProvider>
         {offline ? (
           <WifiSlash size={18} color={tokens.warning} weight="bold" />
+        ) : notice === 'saved' ? (
+          <WarningCircle size={18} color={tokens.warning} weight="fill" />
         ) : (
           <CheckCircle size={18} color={tokens.success} weight="fill" />
         )}
-        <Text variant="label">{offline ? "You're offline · showing saved info" : 'Back online'}</Text>
+        <Text variant="label">
+          {offline
+            ? "You're offline · showing saved info"
+            : notice === 'saved'
+              ? "Couldn't refresh · showing saved info"
+              : 'Back online'}
+        </Text>
       </Animated.View>
     </View>
   );

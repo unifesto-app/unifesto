@@ -13,9 +13,15 @@ export class ApiError extends Error {
   get offline(): boolean {
     return this.status === 0;
   }
+
+  /** No answer in time (our client-side timeout, or the server's 408). */
+  get timedOut(): boolean {
+    return this.status === 408;
+  }
 }
 
 export const OFFLINE_MESSAGE = "Can't reach Unifesto. Check your connection and try again.";
+export const TIMEOUT_MESSAGE = 'Unifesto is taking too long to answer. Check your connection and try again.';
 
 /** Body as JSON, or null when it is empty or not JSON (proxies answer 502s in HTML). */
 export async function readJson<T = any>(response: Pick<Response, 'text'>): Promise<T | null> {
