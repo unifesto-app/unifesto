@@ -40,6 +40,8 @@ interface SessionContextValue {
    * `null` means "unknown" — gate optimistically (show) until it resolves.
    */
   features: SpaceFeatures | null;
+  /** The current space's plan and billing model, or null while they load. */
+  billing: Pick<SubscriptionUsage, "plan" | "billingModel"> | null;
   loading: boolean;
   /** Force a re-fetch of the session. */
   refresh: () => Promise<void>;
@@ -53,6 +55,7 @@ const SessionContext = createContext<SessionContextValue>({
   setCurrentSpace: () => {},
   currentRole: "none",
   features: null,
+  billing: null,
   loading: true,
   refresh: async () => {},
 });
@@ -65,6 +68,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [currentSpace, setCurrentSpaceState] = useState<SpaceMembership | null>(
     null
   );
+  const [billing, setBilling] = useState<Pick<SubscriptionUsage, "plan" | "billingModel"> | null>(null);
   const [features, setFeatures] = useState<SpaceFeatures | null>(null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<CurrentUser | null>(null);
@@ -119,12 +123,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const spaceId = currentSpace?.id;
     if (!spaceId) {
       setFeatures(null);
+      setBilling(null);
       return;
     }
     let cancelled = false;
     setFeatures(null);
+    setBilling(null);
     void getSpaceUsage(spaceId).then(({ data }) => {
-      if (!cancelled) setFeatures(data?.features ?? null);
+      if (cancelled) return;
+      setFeatures(data?.features ?? null);
+      setBilling(data ? { plan: data.plan, billingModel: data.billingModel } : null);
     });
     return () => {
       cancelled = true;
@@ -145,6 +153,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setCurrentSpace,
         currentRole,
         features,
+        billing,
         loading,
         refresh: load,
       }}

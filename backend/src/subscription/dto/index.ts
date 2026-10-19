@@ -231,6 +231,9 @@ export class SubscriptionUsageDto {
   @ApiProperty()
   plan: OrgPlan;
 
+  @ApiProperty({ enum: BillingModel, description: 'FREE (comped), SUBSCRIPTION (plan fee), REVENUE_SHARE (own rate).' })
+  billingModel: BillingModel;
+
   @ApiProperty()
   limits: {
     spaces: number | null;
