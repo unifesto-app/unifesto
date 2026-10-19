@@ -1,12 +1,26 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { ContentReportStatus, ContentReportTarget, GroupSeatStatus } from '@prisma/client';
+import { ContentReportStatus, ContentReportTarget, GroupSeatStatus, SupportCaseKind, SupportTicketCategory } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { SupportService } from '../support/support.service';
 import { CONTENT_REPORT_REASONS } from './content-report-reasons';
 import { CreateContentReportDto, UpdateContentReportDto } from './dto';
 import { APEX, button, details as detailsCard, esc, h1 } from '../email/layout';
 
 const ACTIVE = [ContentReportStatus.OPEN, ContentReportStatus.REVIEWING];
+
+/**
+ * D21: the Assist category a ticket report opens its case under. Money stays
+ * with Platform (PAYMENTS is a Platform category, decision D2); the rest goes
+ * to the event's space desk.
+ */
+const REGISTRATION_CASE_CATEGORY: Record<string, SupportTicketCategory> = {
+  payment_issue: SupportTicketCategory.PAYMENTS,
+  refund_issue: SupportTicketCategory.PAYMENTS,
+  ticket_not_working: SupportTicketCategory.TICKETING,
+  wrong_details: SupportTicketCategory.TICKETING,
+  event_changed_or_cancelled: SupportTicketCategory.EVENTS,
+};
 
 @Injectable()
 export class ContentReportsService {
@@ -15,6 +29,7 @@ export class ContentReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly support: SupportService,
   ) {}
 
   /**
@@ -50,7 +65,50 @@ export class ContentReportsService {
         this.logger.error(`notifyReviewers(${report.id}) failed: ${err instanceof Error ? err.message : String(err)}`),
       );
 
-    return { id: report.id, alreadyReported: !!existing };
+    const caseId =
+      dto.targetType === ContentReportTarget.REGISTRATION
+        ? await this.openTicketCase(userId, report.id, dto.targetId, label, reason, details)
+        : null;
+
+    return { id: report.id, alreadyReported: !!existing, caseId };
+  }
+
+  /**
+   * D21: a ticket report is a help request, so it also opens an Assist case
+   * linked to the report (once per report). Routed like any case with the
+   * registration as context. Best-effort: the report stands if this fails.
+   */
+  private async openTicketCase(
+    userId: string,
+    reportId: string,
+    registrationId: string,
+    label: string,
+    reason: string,
+    details: string | null,
+  ): Promise<string | null> {
+    try {
+      const linked = await this.prisma.supportTicket.findFirst({
+        where: { subjectType: 'ContentReport', subjectId: reportId },
+        select: { id: true },
+      });
+      if (linked) return linked.id;
+      const reasonText = reason.charAt(0).toUpperCase() + reason.slice(1).replace(/_/g, ' ');
+      const ticket = await this.support.createTicket(
+        {
+          subject: `${reasonText}: ${label}`.slice(0, 300),
+          message: details ?? `Reported from my ticket: ${reasonText.toLowerCase()}.`,
+          kind: SupportCaseKind.HELP,
+          category: REGISTRATION_CASE_CATEGORY[reason] ?? SupportTicketCategory.GENERAL,
+          registrationId,
+        },
+        userId,
+        { subjectType: 'ContentReport', subjectId: reportId, registrationVerified: true },
+      );
+      return ticket.id;
+    } catch (err) {
+      this.logger.error(`openTicketCase(${reportId}) failed: ${err instanceof Error ? err.message : String(err)}`);
+      return null;
+    }
   }
 
   /** Validates the target exists (and, for a ticket, that it's the reporter's) and names it. */
