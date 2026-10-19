@@ -619,6 +619,36 @@ export class WhiteLabelService {
     return { spaceSlug: row!.space.slug };
   }
 
+  // origin -> allowed, kept a minute like web's host lookup (src/proxy.ts).
+  // ponytail: per-process; wiped at 1000 entries so junk Origin headers can't grow it.
+  private readonly corsOrigins = new Map<string, { ok: boolean; until: number }>();
+
+  /**
+   * CORS: true only for `https://<host>` exactly, where the host is a custom
+   * web domain `resolveHost` would serve (verified, branding live, not
+   * suspended). A lookup error is refused but not cached.
+   */
+  async isCustomDomainOrigin(origin: string): Promise<boolean> {
+    const hit = this.corsOrigins.get(origin);
+    if (hit && hit.until > Date.now()) return hit.ok;
+    let ok = false;
+    const url = URL.canParse(origin) ? new URL(origin) : null;
+    try {
+      if (url?.protocol === 'https:' && !url.port && url.origin === origin) {
+        await this.resolveHost(url.hostname);
+        ok = true;
+      }
+    } catch (e) {
+      if (!(e instanceof NotFoundException)) {
+        this.logger.warn(`CORS origin lookup failed for ${origin}: ${(e as Error).message}`);
+        return false;
+      }
+    }
+    if (this.corsOrigins.size >= 1000) this.corsOrigins.clear();
+    this.corsOrigins.set(origin, { ok, until: Date.now() + 60_000 });
+    return ok;
+  }
+
   /** Platform kill switch. The stored theme is untouched, so unsuspending restores it. */
   async setSuspended(spaceId: string, suspended: boolean) {
     const updated = await this.prisma.space.update({
