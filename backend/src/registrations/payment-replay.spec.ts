@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { RegistrationsService } from './registrations.service';
+import { RegistrationPaymentsService } from './registration-payments.service';
 import { buildRegistrationsService } from './registrations.testing';
 import { capturedAmountMatches } from '../payments/payments.service';
 
@@ -294,5 +295,58 @@ describe('RegistrationsService payment replay guards', () => {
       const prisma = await run({ ...base, orderId: null });
       expect(prisma.eventRegistration.delete).toHaveBeenCalledWith({ where: { id: 'stale' } });
     });
+  });
+});
+
+/**
+ * C9: a settled paid registration confirms once, from whichever path won the
+ * PAID claim, with the receipt going to the user's best email in IST.
+ */
+describe('paid registration confirmations (C9)', () => {
+  const build = (claimCount: number) => {
+    const row = {
+      id: 'reg-1', eventId: 'ev-1', userId: 'u-1', status: RegistrationStatus.REGISTERED, quantity: 1,
+      groupSize: null, ticketTypeId: null, waitlistStatus: null, qrCode: 'QR', totalAmount: 105, processingFee: 5,
+      user: { fullName: 'Asha', username: null },
+      event: { id: 'ev-1', title: 'Fest', type: 'IN_PERSON', startDateTime: new Date('2026-12-01T04:30:00Z'), endDateTime: new Date('2026-12-01T07:30:00Z') },
+      tickets: [{ ticketCode: 'T-1' }],
+    };
+    const prisma: any = {
+      eventRegistration: {
+        findUnique: jest.fn(async () => row),
+        updateMany: jest.fn(async () => ({ count: claimCount })),
+      },
+      eventTicket: { create: jest.fn(async () => ({})) },
+    };
+    prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
+    const email = { sendPaymentConfirmation: jest.fn(async () => undefined) };
+    const confirmations = { sendRegistrationConfirmations: jest.fn(async () => undefined) };
+    const groupSeats = { createSeatsForRegistration: jest.fn(async () => undefined), primaryEmail: jest.fn(async () => 'asha@x.in') };
+    const cache = { redis: { getClient: () => null }, invalidateCheckinCache: jest.fn(async () => undefined) };
+    const coupons = { confirmByRegistration: jest.fn(async () => undefined) };
+    const svc = new RegistrationPaymentsService(
+      prisma, email as any, {} as any, cache as any, {} as any, {} as any, groupSeats as any,
+      coupons as any, {} as any, {} as any, confirmations as any, {} as any,
+    );
+    jest.spyOn(svc as any, 'takeSeatsOrQueueRefund').mockResolvedValue(true);
+    jest.spyOn(svc as any, 'refundIfDuplicate').mockResolvedValue(undefined);
+    return { svc, email, confirmations, groupSeats };
+  };
+
+  it('the webhook winner sends the confirmation and an IST receipt to the best email', async () => {
+    const { svc, email, confirmations, groupSeats } = build(1);
+    await (svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1');
+    expect(confirmations.sendRegistrationConfirmations).toHaveBeenCalledTimes(1);
+    expect(groupSeats.primaryEmail).toHaveBeenCalledWith('u-1', null);
+    expect(email.sendPaymentConfirmation).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'asha@x.in', razorpayPaymentId: 'pay_1', eventTime: '10:00 AM - 1:00 PM IST', ticketCode: 'T-1' }),
+    );
+  });
+
+  it('the path that lost the claim sends nothing', async () => {
+    const { svc, email, confirmations } = build(0);
+    await (svc as any).completeWebhookPayment('reg-1', 'pay_1', 'order_1');
+    expect(confirmations.sendRegistrationConfirmations).not.toHaveBeenCalled();
+    expect(email.sendPaymentConfirmation).not.toHaveBeenCalled();
   });
 });

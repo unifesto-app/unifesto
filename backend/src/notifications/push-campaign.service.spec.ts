@@ -51,6 +51,20 @@ describe('PushCampaignService confirm step', () => {
     expect(notifications.countAllowed).toHaveBeenCalledWith(['a', 'b'], 'promotions');
   });
 
+  it('an event audience is the booking holders plus group members who joined (C9)', async () => {
+    const prisma = {
+      eventRegistration: { findMany: jest.fn().mockResolvedValue([{ userId: 'lead' }]) },
+      groupSeat: { findMany: jest.fn().mockResolvedValue([{ claimedByUserId: 'lead' }, { claimedByUserId: 'mem' }]) },
+    };
+    const notifications = { countAllowed: jest.fn().mockResolvedValue(2) };
+    await build(prisma, notifications).countAudience({ type: 'event', eventId: 'ev-1' });
+    expect(notifications.countAllowed).toHaveBeenCalledWith(['lead', 'mem'], 'productUpdates');
+    expect(prisma.groupSeat.findMany.mock.calls[0][0].where).toMatchObject({
+      status: 'CLAIMED',
+      registration: { eventId: 'ev-1', isWaitlisted: false },
+    });
+  });
+
   it('defaults to the product-updates category and counts nothing for a missing id', async () => {
     const notifications = { countAllowed: jest.fn().mockResolvedValue(0) };
     await build({}, notifications).countAudience({ type: 'event' });

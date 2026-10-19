@@ -9,6 +9,16 @@ export enum SubSpaceRequestType {
   REMOVE_PARENT = 'REMOVE_PARENT',
 }
 
+/** How a request reads as an Assist case subject. */
+export const SUB_SPACE_LABELS: Record<SubSpaceRequestType, string> = {
+  JOIN_SUPER: 'Join a parent space',
+  CONVERT_AND_JOIN: 'Make it a parent space and join it',
+  CONVERT_TO_SUPER: 'Make it a parent space',
+  CONVERT_TO_REGULAR: 'Make it a regular space',
+  REMOVE_CHILD: 'Remove a child space',
+  REMOVE_PARENT: 'Leave the parent space',
+};
+
 export class CreateSubSpaceRequestDto {
   @IsEnum(SubSpaceRequestType)
   requestType: SubSpaceRequestType;
