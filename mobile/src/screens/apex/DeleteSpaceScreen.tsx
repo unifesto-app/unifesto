@@ -54,8 +54,8 @@ export default function DeleteSpaceScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: topSpacing }]} keyboardShouldPersistTaps="handled">
         <Text style={[styles.title, { color: tokens.danger }]}>Delete {space.name}?</Text>
         <Text style={[styles.body, { color: tokens.textSecondary }]}>
-          This permanently deletes the space and everything under it: {space._count?.events ?? 0} events and all their registrations, tickets, payments and
-          payouts. It cannot be undone.
+          This permanently deletes the space and everything under it: {space._count?.events ?? 0} events with their free registrations and tickets. It cannot
+          be undone. A space with any payment, refund or payout can't be deleted: those records are kept.
         </Text>
         {children > 0 ? (
           <Text style={[styles.body, { color: tokens.warning }]}>

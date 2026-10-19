@@ -56,7 +56,9 @@ const arg = (name: string) =>
 async function remove() {
   const space = await prisma.space.findUnique({ where: { slug: SLUG }, select: { id: true } });
   if (space) {
-    // Events cascade to registrations, tickets, seats and event roles.
+    // Registrations RESTRICT their event (A29): demo rows go first, then events
+    // cascade to tickets, seats and event roles.
+    await prisma.eventRegistration.deleteMany({ where: { event: { spaceId: space.id } } });
     await prisma.event.deleteMany({ where: { spaceId: space.id } });
     await prisma.space.delete({ where: { id: space.id } });
   }

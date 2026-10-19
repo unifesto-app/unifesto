@@ -244,6 +244,10 @@ export class EventSchedulerService {
       where: {
         endDateTime: { lte: now },
         status: { in: ['PUBLISHED', 'ONGOING'] },
+        // A series parent's dates are only its first slot (A29): completing it
+        // would stop the series extending, and its occurrences complete on
+        // their own.
+        isRecurring: false,
       },
       data: { status: 'COMPLETED' },
     });
