@@ -30,10 +30,13 @@ export function CaseMessages({
   messages,
   viewer,
   nameOf,
+  after,
 }: {
   messages: SupportMessage[];
   viewer: 'REQUESTER' | 'DESK';
   nameOf: (m: SupportMessage) => string;
+  /** Rendered under a message, e.g. Assist's action cards (D14). */
+  after?: (m: SupportMessage) => React.ReactNode;
 }) {
   const tokens = useTokens();
   return (
@@ -51,13 +54,16 @@ export function CaseMessages({
         const right = side === viewer;
         const name = nameOf(m);
         return (
-          <View key={m.id} style={[styles.bubble, right ? styles.right : styles.left, filled && { backgroundColor: tokens.accent }]}>
-            {filled ? null : <CardBackdrop shape={styles.bubble} />}
-            <Text style={[styles.body, { color: filled ? tokens.accentFg : tokens.text }]}>{m.body}</Text>
-            <Text style={[styles.time, { color: filled ? tokens.accentFg : tokens.textMuted, opacity: filled ? 0.7 : 1 }]}>
-              {[m.internal ? 'Internal note' : null, name || null, stamp(m.createdAt)].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
+          <React.Fragment key={m.id}>
+            <View style={[styles.bubble, right ? styles.right : styles.left, filled && { backgroundColor: tokens.accent }]}>
+              {filled ? null : <CardBackdrop shape={styles.bubble} />}
+              <Text style={[styles.body, { color: filled ? tokens.accentFg : tokens.text }]}>{m.body}</Text>
+              <Text style={[styles.time, { color: filled ? tokens.accentFg : tokens.textMuted, opacity: filled ? 0.7 : 1 }]}>
+                {[m.internal ? 'Internal note' : null, name || null, stamp(m.createdAt)].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
+            {after?.(m)}
+          </React.Fragment>
         );
       })}
     </View>

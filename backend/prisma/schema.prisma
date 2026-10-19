@@ -3017,6 +3017,8 @@ model SupportMessage {
   side         SupportMessageSide @default(REQUESTER)
   internal     Boolean            @default(false) // desk-only note, hidden from the requester
   aiDrafted    Boolean            @default(false) @map("ai_drafted")
+  /// D14: action cards on an Assist bot message (request a refund, cancel), confirmed by the person in the app.
+  actions      Json?
 
   body String @db.Text
 

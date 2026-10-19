@@ -99,7 +99,7 @@ export default function SupportScreen() {
     setRefreshing(false);
   };
 
-  const newRequest = () => router.push('/manage/support/new');
+  const newRequest = () => router.push('/manage/support/assist');
 
   return (
     <View style={[styles.container, { backgroundColor: c.bg }]}>

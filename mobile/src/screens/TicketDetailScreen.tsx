@@ -103,7 +103,7 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
   // A group member's ticket is the lead's registration, so it goes as the event.
   const getHelp = () =>
     router.push({
-      pathname: '/manage/support/new',
+      pathname: '/manage/support/assist',
       params: {
         ...(t.ticket?.isGroupMember || !t.registrationId ? { eventId: t.eventId } : { registrationId: t.registrationId }),
         about: t.title,

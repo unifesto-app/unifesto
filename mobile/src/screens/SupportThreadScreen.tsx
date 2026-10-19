@@ -8,6 +8,7 @@ import { cancelAccountDeletion } from '../lib/api/profile';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
+  assistStep,
   closeTicket,
   DESK_STATUS_LABEL,
   escalateTicket,
@@ -20,6 +21,7 @@ import {
   type SupportTicket,
 } from '../lib/api/support';
 import { CaseMessages, Composer, GUTTER, personName, sideOf } from '../components/support/CaseThread';
+import { AssistActions, AssistNotice } from '../components/support/AssistParts';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
@@ -63,12 +65,31 @@ export default function SupportThreadScreen() {
     const body = reply.trim();
     if (!body) return;
     setSending(true);
+    // D14: in a bot chat Assist answers in the same call and returns the thread.
+    if (ticket?.status === 'BOT') {
+      const t = await assistStep(ticketId!, body);
+      setSending(false);
+      if (!t) return AppAlert.alert("Couldn't send", 'Check your connection and try again.');
+      setReply('');
+      setTicket(t);
+      setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+      return;
+    }
     const msg = await replyToTicket(ticketId!, body, note);
     setSending(false);
     if (!msg) return AppAlert.alert("Couldn't send", 'Check your connection and try again.');
     setReply('');
     await load();
     setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50);
+  };
+
+  // D14: "Talk to a person" hands the bot chat to the desk.
+  const talkToPerson = async () => {
+    setActing(true);
+    const t = await assistStep(ticketId!);
+    setActing(false);
+    if (!t) return AppAlert.alert("Couldn't reach the team", 'Check your connection and try again.');
+    setTicket(t);
   };
 
   const toggle = async () => {
@@ -124,6 +145,7 @@ export default function SupportThreadScreen() {
   }
 
   const closed = ticket.status === 'CLOSED';
+  const bot = ticket.status === 'BOT';
   const asDesk = !!user && ticket.requesterId !== user.id;
   const withUnifesto = ticket.desk === 'PLATFORM';
   const spaceName = ticket.space?.name ?? 'The organiser';
@@ -163,7 +185,12 @@ export default function SupportThreadScreen() {
         <Text style={[styles.meta, { color: tokens.textMuted }]}>{meta.filter(Boolean).join(' · ')}</Text>
 
         <View style={{ marginTop: spacing[5] }}>
-          <CaseMessages messages={ticket.messages ?? []} viewer={asDesk ? 'DESK' : 'REQUESTER'} nameOf={nameOf} />
+          <CaseMessages
+            messages={ticket.messages ?? []}
+            viewer={asDesk ? 'DESK' : 'REQUESTER'}
+            nameOf={nameOf}
+            after={(m) => (!asDesk && bot && m.actions?.length ? <AssistActions actions={m.actions} onDone={load} /> : null)}
+          />
         </View>
 
         {asDesk ? (
@@ -174,6 +201,11 @@ export default function SupportThreadScreen() {
           ) : (
             <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is closed.</Text>
           )
+        ) : bot ? (
+          <View style={styles.assist}>
+            <Button label="Talk to a person" variant="ghost" loading={acting} onPress={talkToPerson} />
+            <AssistNotice />
+          </View>
         ) : deletionPending ? (
           <Button label="Keep my account" variant="ghost" loading={acting} onPress={keepAccount} style={styles.action} />
         ) : (
@@ -187,7 +219,7 @@ export default function SupportThreadScreen() {
           onChangeText={setReply}
           onSend={send}
           sending={sending}
-          placeholder="Reply"
+          placeholder={bot ? 'Ask Assist' : 'Reply'}
           note={asDesk ? { on: note, set: setNote } : undefined}
           bottomInset={insets.bottom}
         />
@@ -203,4 +235,5 @@ const styles = StyleSheet.create({
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...font() },
   hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
   action: { marginTop: spacing[6], alignSelf: 'center' },
+  assist: { marginTop: spacing[6], alignItems: 'center', gap: spacing[3] },
 });
