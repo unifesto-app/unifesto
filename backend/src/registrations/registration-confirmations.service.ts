@@ -61,6 +61,8 @@ export class RegistrationConfirmationsService {
         // The attendee's ticket type may carry its own WhatsApp group link,
         // which takes precedence over the event's.
         ticketType: { select: { whatsappGroupUrl: true } },
+        // The holder's own ticket (member seat tickets carry an attendeeEmail).
+        tickets: { where: { attendeeEmail: null }, take: 1, select: { ticketCode: true } },
         // Group member seats, so upfront-filled members are invited alongside the
         // lead at registration time (late claimers get theirs on claim / blast).
         groupSeats: {
@@ -137,7 +139,7 @@ export class RegistrationConfirmationsService {
         });
 
         if (inviteUrl) {
-          await this.whatsappService.sendEventWhatsAppGroupInvite(
+          const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(
             fullRegistration.user.mobileNumber,
             {
               userName:
@@ -150,11 +152,14 @@ export class RegistrationConfirmationsService {
             },
           );
           // Record that this attendee was invited, so a curator's later manual
-          // blast skips them (send-once dedup).
-          await this.prisma.eventRegistration.update({
-            where: { id: fullRegistration.id },
-            data: { whatsappInviteSentAt: new Date() },
-          });
+          // blast skips them (send-once dedup). Only when Meta took it: a
+          // rejected send stays eligible for the blast.
+          if (accepted) {
+            await this.prisma.eventRegistration.update({
+              where: { id: fullRegistration.id },
+              data: { whatsappInviteSentAt: new Date() },
+            });
+          }
         }
 
         // Invite any group members already on the roster at registration time
@@ -171,13 +176,11 @@ export class RegistrationConfirmationsService {
       this.logger.error('Failed to send WhatsApp group invite', error);
     }
 
-    // Send email notification (non-blocking)
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: { userId: fullRegistration.userId, email: { not: null }, isPrimary: true },
-      select: { email: true },
-    });
+    // Send email notification (non-blocking). Primary email, else any: a
+    // phone-first account's email often sits on a non-primary identity.
+    const email = await this.groupSeats.primaryEmail(fullRegistration.userId, null);
 
-    if (identity?.email) {
+    if (email) {
       const eventDate = formatEventDate(fullRegistration.event.startDateTime);
       const eventTime = formatEventTime(
         fullRegistration.event.startDateTime,
@@ -186,7 +189,7 @@ export class RegistrationConfirmationsService {
 
       this.emailService
         .sendRegistrationConfirmation({
-          email: identity.email,
+          email,
           userName: fullRegistration.user.fullName || fullRegistration.user.username || 'there',
           eventId: fullRegistration.event.id,
           eventTitle: fullRegistration.event.title,
@@ -197,7 +200,7 @@ export class RegistrationConfirmationsService {
           isOnline: fullRegistration.event.type === 'ONLINE',
           onlineUrl: fullRegistration.event.onlineUrl || undefined,
           qrCode: fullRegistration.qrCode,
-          ticketCode: undefined,
+          ticketCode: fullRegistration.tickets[0]?.ticketCode || undefined,
           // Raw fields for the "Add to calendar" .ics attachment.
           eventSlug: fullRegistration.event.slug,
           eventStartDateTime: fullRegistration.event.startDateTime,
@@ -216,7 +219,7 @@ export class RegistrationConfirmationsService {
       fullRegistration.event,
       fullRegistration.qrCode,
       undefined,
-      identity?.email ?? null,
+      email,
     );
 
     // Offline push confirmation (best-effort, decoupled via the event bus).
@@ -397,12 +400,16 @@ export class RegistrationConfirmationsService {
         continue;
       }
       try {
-        await this.whatsappService.sendEventWhatsAppGroupInvite(mobile, {
+        const accepted = await this.whatsappService.sendEventWhatsAppGroupInvite(mobile, {
           userName: seatMemberName(seat),
           eventTitle: ctx.eventTitle,
           inviteUrl: ctx.inviteUrl,
           isCommunity: ctx.isCommunity,
         });
+        if (!accepted) {
+          failed++;
+          continue;
+        }
         await this.prisma.groupSeat.update({
           where: { id: seat.id },
           data: { whatsappInviteSentAt: new Date() },

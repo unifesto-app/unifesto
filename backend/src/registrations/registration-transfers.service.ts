@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { GroupSeatStatus, Prisma } from '@prisma/client';
+import { GroupSeatStatus, Prisma, SupportCaseKind, SupportDesk } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
 import { EmailService } from '../email/email.service';
 import { h1, p, strong } from '../email/layout';
 import { GroupSeatsService } from './group-seats.service';
@@ -18,6 +20,7 @@ export class RegistrationTransfersService {
     private readonly authz: AuthorizationService,
     private readonly email: EmailService,
     private readonly seats: GroupSeatsService,
+    private readonly events?: EventEmitter2,
   ) {}
 
   /** Assert the user may manage the event's attendees. */
@@ -234,7 +237,7 @@ export class RegistrationTransfersService {
     // The partial unique index (one PENDING per registration) settles the race
     // the findFirst above can't: the second concurrent request gets a 409.
     try {
-      return await this.prisma.registrationTransferRequest.create({
+      const row = await this.prisma.registrationTransferRequest.create({
         data: {
           registrationId,
           requestedBy: userId,
@@ -244,6 +247,20 @@ export class RegistrationTransfersService {
         },
         include: this.transferRequestInclude(),
       });
+      const holder = row.registration.user;
+      openSubjectCase(this.events, {
+        subjectType: 'RegistrationTransferRequest',
+        subjectId: row.id,
+        requesterId: userId,
+        kind: SupportCaseKind.REQUEST,
+        requestType: 'REGISTRATION_TRANSFER',
+        desk: SupportDesk.PLATFORM,
+        spaceId: row.registration.event.spaceId,
+        eventId,
+        subject: `Move a ticket for ${row.registration.event.title}`,
+        message: `Please move ${holder?.fullName || holder?.username || 'this attendee'}'s ticket to ${row.targetEmail}.${reason ? ` ${reason}` : ''}`,
+      });
+      return row;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException(
@@ -338,6 +355,14 @@ export class RegistrationTransfersService {
     if (movedTo !== undefined) {
       void this.notifyTransfer(req.registration.userId, movedTo);
     }
+    decideSubjectCase(this.events, {
+      subjectType: 'RegistrationTransferRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: status === 'APPROVED',
+      what: 'the ticket transfer',
+      note: reviewNote,
+    });
 
     return this.prisma.registrationTransferRequest.findUniqueOrThrow({
       where: { id: requestId },

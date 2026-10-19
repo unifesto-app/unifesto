@@ -61,6 +61,19 @@ export const openSubjectCase = (events: EventEmitter2 | undefined, e: SubjectCas
 export const updateSubjectCase = (events: EventEmitter2 | undefined, e: SubjectCaseUpdate) =>
   events?.emit(SUBJECT_CASE_UPDATE, e);
 
+/** A reviewed request: "Unifesto approved the space request." plus the reviewer's note; resolves the case. */
+export const decideSubjectCase = (
+  events: EventEmitter2 | undefined,
+  e: Omit<SubjectCaseUpdate, 'text' | 'status'> & { approved: boolean; what: string; note?: string | null; by?: string },
+) =>
+  updateSubjectCase(events, {
+    subjectType: e.subjectType,
+    subjectId: e.subjectId,
+    actorId: e.actorId,
+    text: `${e.by ?? 'Unifesto'} ${e.approved ? 'approved' : 'declined'} ${e.what}.${e.note ? ` Note: ${e.note}` : ''}`,
+    status: SupportTicketStatus.RESOLVED,
+  });
+
 /** Opens and updates the case that wraps a typed record. Failures are logged, never thrown back. */
 @Injectable()
 export class SubjectCases {
