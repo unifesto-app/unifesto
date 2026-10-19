@@ -3,7 +3,7 @@ import { SessionsService } from './sessions.service';
 
 /** B18: Huddle sessions dead-ends. */
 describe('SessionsService (B18)', () => {
-  const base = {
+  const base: any = {
     id: 's-1',
     spaceId: 'space-1',
     title: 'Talk',
