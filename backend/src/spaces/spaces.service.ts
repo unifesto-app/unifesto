@@ -7,7 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { eventMoneyRecords, sessionMoneyRecords } from '../common/money-records';
+import { deleteWithoutMoney } from '../common/money-records';
 import { NOT_DELETED } from '../common/soft-delete';
 import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
@@ -588,10 +588,9 @@ export class SpacesService {
   }
 
   /**
-   * Permanently delete a space (ADMIN only). This cascades: every event under
-   * the space and all their registrations and tickets go with it (see the
-   * `onDelete: Cascade` relations in the schema), so it is refused while any
-   * money was taken. It cannot be undone, so the Apex UI gates it behind a
+   * Permanently delete a space (ADMIN only). Every event and session under it
+   * goes, with their free registrations and tickets; it is refused while any
+   * money was taken (money rows' keys RESTRICT, see deleteWithoutMoney). It cannot be undone, so the Apex UI gates it behind a
    * typed confirmation.
    *
    * A SUPER space with sub-spaces is refused: the self-relation has no cascade,
@@ -614,17 +613,13 @@ export class SpacesService {
       );
     }
 
-    // The cascade would erase every payment, refund and payout under the space.
-    const money =
-      (await eventMoneyRecords(this.prisma, { spaceId: id })) +
-      (await sessionMoneyRecords(this.prisma, { spaceId: id }));
-    if (money > 0) {
-      throw new BadRequestException(
-        'This space has payment, refund or payout records and cannot be deleted.',
-      );
-    }
-
-    await this.prisma.space.delete({ where: { id } });
+    // Payments, refunds and payouts under the space are kept: refused while any exist.
+    await deleteWithoutMoney(
+      this.prisma,
+      { event: { spaceId: id }, session: { spaceId: id } },
+      'This space has payment, refund or payout records and cannot be deleted.',
+      (tx) => tx.space.delete({ where: { id } }),
+    );
 
     return { message: 'Space deleted successfully' };
   }

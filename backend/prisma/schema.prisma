@@ -1851,10 +1851,10 @@ model EventRegistration {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   eventId String @map("event_id") @db.Uuid
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Restrict)
 
   userId String @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   ticketTypeId String?          @map("ticket_type_id") @db.Uuid
   // Deleting a ticket type detaches (does not delete) its registrations, so an
@@ -2242,11 +2242,11 @@ model GroupSeatPurchase {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   registrationId String            @map("registration_id") @db.Uuid
-  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
   eventId        String            @map("event_id") @db.Uuid
   // Who paid (the lead at the time).
   userId         String            @map("user_id") @db.Uuid
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   seats Int
 
@@ -2753,10 +2753,10 @@ model RefundRequest {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   registrationId String            @map("registration_id") @db.Uuid
-  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
 
   eventId String @map("event_id") @db.Uuid
-  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Restrict)
 
   requestedById String              @map("requested_by_id") @db.Uuid
   requestedBy   User                @relation("RefundRequestedBy", fields: [requestedById], references: [id])
@@ -3149,10 +3149,10 @@ model SessionRegistration {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   sessionId String  @map("session_id") @db.Uuid
-  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Restrict)
 
   userId String @map("user_id") @db.Uuid
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   // Payment. Mirrors the money columns on EventRegistration —
   // sessions are Razorpay-only in v1. razorpayAmount == totalAmount for now.
@@ -5258,16 +5258,16 @@ model StayBooking {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   stayId   String     @map("stay_id") @db.Uuid
-  stay     Stay       @relation(fields: [stayId], references: [id], onDelete: Cascade)
+  stay     Stay       @relation(fields: [stayId], references: [id], onDelete: Restrict)
   // An option with bookings can't be deleted (switch it off instead).
   optionId String     @map("option_id") @db.Uuid
   option   StayOption @relation(fields: [optionId], references: [id], onDelete: Restrict)
   // Denormalised from the stay so payouts and lists filter by event directly.
   eventId  String     @map("event_id") @db.Uuid
-  event    Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event    Event      @relation(fields: [eventId], references: [id], onDelete: Restrict)
 
   userId String @map("user_id") @db.Uuid
-  user   User   @relation("StayBooker", fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation("StayBooker", fields: [userId], references: [id], onDelete: Restrict)
 
   // The event registration that made the booker eligible.
   registrationId String?            @map("registration_id") @db.Uuid
