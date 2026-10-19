@@ -475,7 +475,7 @@ Drafts need a human lawyer's sign-off before publishing.
 | # | Item | Status |
 |---|---|---|
 | I1 | **Legal documents: terms, privacy, refund and other policies.** Terms (attendees), Organiser/Space Agreement, Privacy Policy (DPDP 2023), Refund & Cancellation, Acceptable Use, Sponsor & Partner terms, Cookie Policy, Grievance page (IT Rules 2021) | planned |
-| I2 | **Versioned legal docs with per-user acceptance.** Versioned legal documents with acceptance per user; re-acceptance on next launch on every client | planned |
+| I2 | **Versioned legal docs with per-user acceptance.** Versioned legal documents with acceptance per user; re-acceptance on next launch on every client | done (#285) |
 | I3 | DPDP erasure on account close (#41): needs backend rebuild | done; follow-up I5 |
 | I4 | **Privacy Policy retention line for erased answers.** Privacy Policy retention line for erased question answers, once I1 + I3 land | planned |
 | I5 | **Finish DPDP erasure and set retention limits.** Quick fix first: account deletion never completes for anyone whose bank account received a payout (FK RESTRICT on bank accounts), and the failure is never reported (backend/src/users/users.service.ts:1020). | done (#283) |
@@ -824,3 +824,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · L3 live quizzes: server-timed questions, scoring, live leaderboard on Space web + mobile (#279)
 - **2026-10-19** · D26 mobile, Apex WhatsApp thread gets "Convert to case (n)" (tap to pick messages, unanswered inbound pre-picked) and "Open case" once linked; JS-only, ships with the next mobile build/OTA. (#284)
 - **2026-10-19** · G5 space web EmptyState rollout across stays, attendees, check-in, transactions, tracking and branding settings (#286)
+- **2026-10-19** · I1–I2: versioned legal docs (LegalDocument/LegalAcceptance, public GET /legal/:slug, pending + accept), web legal pages render from the API, blocking accept sheet in space + mobile, Apex editor; I1 drafts + I4 retention line await lawyer review. Not deployed. (#285)
