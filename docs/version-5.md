@@ -530,7 +530,7 @@ The biggest product gap versus KonfHub. It keeps attendees in the app *during* t
 |---|---|---|
 | L1 | **Live polls during events.** Live polls (organiser launches from mobile event-day mode, attendees vote on ticket screen) | done (#271) |
 | L2 | Q&A with upvotes + moderation, per session/track | done (#277) |
-| L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | planned |
+| L3 | Quizzes with a live leaderboard (reuse hackathon leaderboard sockets) | done (#279) |
 | L4 | Projector view on web (results, Q&A wall) | planned |
 
 ### M · AI assists (new)
@@ -821,3 +821,4 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 - **2026-10-19** · D22 built: payout requests and payout-account verification open Platform REQUEST cases (Payout / PayoutBankAccount); paid, cancelled, verified and rejected post SYSTEM lines and resolve them, so "why was my account rejected?" is answered in the thread; money logic and S23 stay in payouts.service; Apex Assist Payout panel. No migration; rebuild backend + apex. (#281)
 - **2026-10-19** · D26 Apex WhatsApp "Convert to case" (picked messages → Platform HELP case, number matched to account, conversation links to it) and D27 hackathon help desk "Escalate to organiser" (Space web + mobile → Space-desk case with team/room, query keeps escalatedAt + caseId); additive migration 20261105100000_assist_links; rebuild backend + apex + space. (#282)
 - **2026-10-19** · I5 account deletion now completes for paid-out organisers (bank rows scrubbed, not deleted), erasure covers tickets, certificates, support, notifications, WhatsApp, all avatars and Cognito, failures reach the PRIVACY case; personal-data retention limits added to the daily sweep (#283)
+- **2026-10-19** · L3 live quizzes: server-timed questions, scoring, live leaderboard on Space web + mobile (#279)
