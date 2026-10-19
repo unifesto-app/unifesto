@@ -236,8 +236,16 @@ export class LeaderboardGateway implements OnGatewayInit {
     return { ok: true };
   }
 
-  /** Tell the event's engagement room something changed, at most once per ENGAGEMENT_PING_MS. */
-  engagementChanged(eventId: string) {
+  /**
+   * Tell the event's engagement room something changed, at most once per
+   * ENGAGEMENT_PING_MS. `immediate` skips the wait, for organiser steps on a
+   * clock (a quiz question opening).
+   */
+  engagementChanged(eventId: string, immediate = false) {
+    if (this.server && immediate) {
+      this.server.to(engagementRoom(eventId)).emit('engagement:changed', { eventId });
+      return;
+    }
     if (!this.server || this.engagementPending.has(eventId)) return;
     this.engagementPending.add(eventId);
     const timer = setTimeout(() => {

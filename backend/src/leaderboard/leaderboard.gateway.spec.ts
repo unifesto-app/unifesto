@@ -126,5 +126,13 @@ describe('LeaderboardGateway', () => {
         jest.useRealTimers();
       }
     });
+
+    it('sends an immediate ping at once (L3: a quiz question is on a clock)', () => {
+      const { gw } = build();
+      const emit = jest.fn();
+      gw.server = { to: jest.fn(() => ({ emit })) } as never;
+      gw.engagementChanged('e1', true);
+      expect(emit).toHaveBeenCalledWith('engagement:changed', { eventId: 'e1' });
+    });
   });
 });
