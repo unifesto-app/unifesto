@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  digit: { fontSize: 22, ...cosmosFont.display },
+  digit: { fontSize: 22, ...cosmosFont.figure },
   caret: { width: 2, height: 24, borderRadius: 1 },
   // Kept on screen (not display:none) so autofill and focus still work.
   hiddenInput: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0.011, color: 'transparent' },

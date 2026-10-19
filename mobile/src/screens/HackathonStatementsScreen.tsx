@@ -96,7 +96,7 @@ export default function HackathonStatementsScreen() {
       >
         <SettingsGroup>
           <SettingsRow
-            icon={<GearSix size={26} color={tokens.accent} weight="fill" />}
+            icon={<GearSix size={26} color={tokens.text} />}
             label="How teams get one"
             value={psModeSummary(data.mode, data.deadline)}
             onPress={() => router.push(`/manage/event/${eventId}/hackathon/settings`)}

@@ -157,7 +157,7 @@ export default function HackathonQueuesScreen() {
       title={`${q.name}${q.role === 'MENTOR' ? ' (mentor)' : ''}${q.location ? ` · ${q.location}` : ''}`}
       action={{ label: q.isAvailable ? 'Pause' : 'Resume', onPress: () => void togglePause(q) }}
     >
-      {!q.isAvailable ? <SettingsRow icon={<Coffee size={ICON} color={tokens.textMuted} weight="fill" />} label="On a break" /> : null}
+      {!q.isAvailable ? <SettingsRow icon={<Coffee size={ICON} color={tokens.textMuted} />} label="On a break" /> : null}
       {q.current ? (
         <SettingsRow
           icon={<Gavel size={ICON} color={q.current.status === 'AWAITING_MARKS' ? tokens.warning : tokens.success} weight="fill" />}
@@ -170,7 +170,7 @@ export default function HackathonQueuesScreen() {
       {q.waiting.map((w) => (
         <SettingsRow
           key={w.requestId}
-          icon={<Hourglass size={ICON} color={tokens.textMuted} weight="fill" />}
+          icon={<Hourglass size={ICON} color={tokens.textMuted} />}
           label={`${w.position}. ${teamLabel(w.team)}`}
           value={w.roundName ?? undefined}
           onPress={() => waitingActions(q, w.requestId, w.team)}
@@ -215,7 +215,7 @@ export default function HackathonQueuesScreen() {
           {reopenable.slice(0, 15).map((j) => (
             <SettingsRow
               key={j.id}
-              icon={<LockOpen size={ICON} color={tokens.accent} weight="fill" />}
+              icon={<LockOpen size={ICON} color={tokens.text} />}
               label={`${teamLabel(j.team)}`}
               value={j.judgeName}
               onPress={() => reopen(j.id, j.judgeName, j.team)}
@@ -231,7 +231,7 @@ export default function HackathonQueuesScreen() {
               key={`${q.kind}:${q.id}`}
               icon={
                 q.isAvailable ? (
-                  q.kind === 'PANEL' ? <UsersFour size={ICON} color={tokens.accent} weight="fill" /> : <Gavel size={ICON} color={tokens.accent} weight="fill" />
+                  q.kind === 'PANEL' ? <UsersFour size={ICON} color={tokens.text} /> : <Gavel size={ICON} color={tokens.text} />
                 ) : (
                   <Coffee size={ICON} color={tokens.textMuted} weight="fill" />
                 )

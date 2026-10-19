@@ -143,7 +143,7 @@ export default function ImportAttendeesScreen() {
           onPress={busy ? undefined : getTemplate}
         />
         <SettingsRow
-          icon={<FileCsv size={26} color={tokens.accent} weight="fill" />}
+          icon={<FileCsv size={26} color={tokens.text} />}
           label={file ? file.name : 'Choose a filled-in CSV'}
           value={file ? 'Change' : undefined}
           onPress={pick}

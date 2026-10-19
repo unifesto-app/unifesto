@@ -83,7 +83,7 @@ export default function EventTrackingScreen() {
     );
   }
 
-  const icon = (I: typeof LinkSimple) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof LinkSimple) => <I size={ICON} color={tokens.text} />;
   const total = sources?.total ?? 0;
 
   return (

@@ -133,7 +133,7 @@ export default function EventPartnersScreen() {
     );
   }
 
-  const icon = <Handshake size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = <Handshake size={ICON} color={tokens.text} />;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>

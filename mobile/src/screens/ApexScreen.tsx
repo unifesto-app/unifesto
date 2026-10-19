@@ -47,6 +47,7 @@ import { useTokens } from '../context/ThemeContext';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import StatusBarScrim from '../components/ui/StatusBarScrim';
 import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import PressableScale from '../components/ui/PressableScale';
@@ -748,6 +749,7 @@ export default function ApexScreen() {
           </>
         )}
       </ScrollView>
+      <StatusBarScrim />
     </View>
   );
 }
@@ -788,14 +790,14 @@ const styles = StyleSheet.create({
   bleed: { marginHorizontal: -GUTTER },
   rail: { paddingHorizontal: GUTTER, gap: GAP },
   need: { minWidth: 124, borderRadius: cosmosCardRadius, padding: PAD, gap: spacing[2] },
-  needCount: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.display },
+  needCount: { fontSize: typography.fontSize.lg, lineHeight: 24, ...cosmosFont.figure },
   needLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   clear: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: PAD, borderRadius: cosmosCardRadius },
   clearText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   card: { borderRadius: cosmosCardRadius, padding: PAD, gap: 4, marginBottom: GAP },
   cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[2] },
   cardTitle: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  cardValue: { fontSize: typography.fontSize.lg, lineHeight: 26, ...cosmosFont.display },
+  cardValue: { fontSize: typography.fontSize.lg, lineHeight: 26, ...cosmosFont.figure },
   cardSub: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   cardChart: { marginTop: spacing[3] },
   pair: { flexDirection: 'row', gap: GAP },

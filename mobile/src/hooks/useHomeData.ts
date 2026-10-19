@@ -313,7 +313,9 @@ export function useHomeData() {
         longitude: position.coords.longitude,
       });
       const place = places?.[0];
-      const city = place?.city || place?.subregion || place?.region || null;
+      // City only: subregion is a district ("NTR") and region a state, and the
+      // nearby feeds filter by city name, so neither would match anyway.
+      const city = place?.city || null;
       setLocationStatus('granted');
       if (city) {
         setDetectedCity(city);

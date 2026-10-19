@@ -331,7 +331,7 @@ export default function SponsorEditorScreen() {
               {events.map((es) => (
                 <SettingsRow
                   key={es.id}
-                  icon={<CalendarBlank size={24} color={c.text} weight="fill" />}
+                  icon={<CalendarBlank size={24} color={c.text} />}
                   label={es.event.title}
                   onPress={() =>
                     router.push({ pathname: `/manage/event/${es.event.id}/sponsors`, params: { spaceId: spaceId!, title: es.event.title } })

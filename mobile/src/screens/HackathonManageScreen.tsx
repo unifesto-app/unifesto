@@ -117,7 +117,7 @@ export default function HackathonManageScreen() {
 
   const h = data.hackathon;
   const on = !!h?.enabled;
-  const icon = (I: typeof Power) => <I size={ICON} color={tokens.accent} weight="fill" />;
+  const icon = (I: typeof Power) => <I size={ICON} color={tokens.text} />;
   const venueName = h?.venue.name || data.eventVenue.name || data.eventVenue.address;
 
   return (

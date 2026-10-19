@@ -173,6 +173,6 @@ const styles = StyleSheet.create({
   notchTop: { top: -NOTCH / 2 },
   notchBottom: { bottom: -NOTCH / 2 },
   stub: { width: STUB_W, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing[3] },
-  stubDay: { fontSize: 22, lineHeight: 28, ...cosmosFont.display },
+  stubDay: { fontSize: 22, lineHeight: 28, ...cosmosFont.figure },
   stubMonth: { fontSize: 12, ...cosmosFont.strong },
 });
