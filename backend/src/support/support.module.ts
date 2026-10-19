@@ -11,12 +11,13 @@ import { SupportNotifier } from './support-notifier';
 import { SupportTriage } from './support-triage';
 import { SupportCopilot } from './support-copilot';
 import { SupportBot } from './support-bot';
+import { SupportGuestController } from './support-guest.controller';
 import { AiModule } from '../ai/ai.module';
 import { SubjectCases } from './subject-cases';
 
 @Module({
   imports: [PrismaModule, AuthModule, StorageModule, NotificationsModule, EmailModule, AiModule],
-  controllers: [SupportController, GrievanceController],
+  controllers: [SupportController, GrievanceController, SupportGuestController],
   providers: [SupportService, SupportNotifier, SupportTriage, SupportCopilot, SupportBot, SubjectCases],
   exports: [SupportService],
 })

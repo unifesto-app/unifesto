@@ -30,7 +30,7 @@ export default async function HelpPage() {
         lede={
           <>
             Short answers to common questions. Can&apos;t find yours?{" "}
-            <Link href="/support" className="font-semibold text-primary underline-offset-4 hover:underline">
+            <Link href="/help/contact" className="font-semibold text-primary underline-offset-4 hover:underline">
               Contact support
             </Link>
             .
@@ -43,7 +43,7 @@ export default async function HelpPage() {
           <div className="rounded-3xl bg-night-2 p-12 text-center">
             <h2 className="text-xl font-semibold text-paper">No articles yet</h2>
             <p className="mt-2 text-paper/65">
-              Visit <Link href="/support" className="text-primary hover:underline">support</Link> and we will help you directly.
+              <Link href="/help/contact" className="text-primary hover:underline">Contact support</Link> and we will help you directly.
             </p>
           </div>
         ) : (
