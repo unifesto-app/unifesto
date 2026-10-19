@@ -530,6 +530,7 @@ model User {
   couponRedemptions            CouponRedemption[]
   partnerLinks                 EventPartnerLink[]            @relation("PartnerLinkContact")
   stayBookings                 StayBooking[]                 @relation("StayBooker")
+  pollVotes                    PollVote[]
 
   @@index([deletionRequestedAt])
   @@map("users")
@@ -1572,6 +1573,7 @@ model Event {
   shortLinks                     ShortLink[]
   stays                          Stay[]
   stayBookings                   StayBooking[]
+  polls                          Poll[]
 
   @@index([spaceId])
   @@index([status])
@@ -5787,4 +5789,66 @@ model AiRun {
   @@index([userId, feature, createdAt])
   @@index([createdAt])
   @@map("ai_runs")
+}
+
+// ── Live engagement (Track L) ────────────────────────────────────────────────
+
+enum PollStatus {
+  DRAFT
+  LIVE
+  CLOSED
+
+  @@map("poll_status")
+}
+
+/// Who sees a poll's counts. Organisers always do.
+enum PollResultsVisibility {
+  /// Attendees see results once they've voted (and everyone once it closes).
+  AFTER_VOTE
+  /// Attendees see results only once the poll closes.
+  AFTER_CLOSE
+  /// Never shown to attendees.
+  ORGANISERS_ONLY
+
+  @@map("poll_results_visibility")
+}
+
+/// L1: a live poll an organiser runs during an event. DRAFT -> LIVE -> CLOSED,
+/// never back. Options are fixed once created (votes point at their index).
+model Poll {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  eventId String @map("event_id") @db.Uuid
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  question          String                @db.VarChar(300)
+  options           String[]
+  status            PollStatus            @default(DRAFT)
+  resultsVisibility PollResultsVisibility @default(AFTER_VOTE) @map("results_visibility")
+
+  launchedAt DateTime? @map("launched_at") @db.Timestamptz(6)
+  closedAt   DateTime? @map("closed_at") @db.Timestamptz(6)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  votes PollVote[]
+
+  @@index([eventId, status])
+  @@map("polls")
+}
+
+/// One person's vote. The unique (poll, user) is what makes it one vote each.
+model PollVote {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  pollId String @map("poll_id") @db.Uuid
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  optionIndex Int      @map("option_index")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([pollId, userId])
+  @@map("poll_votes")
 }

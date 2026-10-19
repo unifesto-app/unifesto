@@ -12,6 +12,9 @@ import * as jwt from 'jsonwebtoken';
 import { AuthService } from '../auth/auth.service';
 import { corsOriginCallback } from '../common/cors';
 import { RedisService } from '../redis/redis.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { AuthorizationService } from '../auth/authorization';
+import { canJoinEngagement, engagementRoom } from '../engagement/engagement.access';
 import { LeaderboardService } from './leaderboard.service';
 
 interface AuthedSocket extends Socket {
@@ -24,6 +27,13 @@ const room = (eventId: string) => `board:${eventId}`;
 const SNAPSHOT_CACHE_SECONDS = 2;
 const snapshotKey = (eventId: string) => `lb:snapshot:${eventId}`;
 const MAX_TIMER_MS = 2 ** 31 - 1;
+/**
+ * Engagement pings per event are coalesced into one per window: a vote flood
+ * from a big room otherwise makes every client refetch on every vote.
+ * ponytail: each client still refetches once per window; cache the feed counts
+ * in Redis if rooms grow past a few thousand live voters.
+ */
+export const ENGAGEMENT_PING_MS = 2000;
 
 /**
  * Milliseconds until this JWT expires, or null when it carries no `exp`.
@@ -75,7 +85,11 @@ export class LeaderboardGateway implements OnGatewayInit {
     @Inject(forwardRef(() => LeaderboardService))
     private readonly leaderboard: LeaderboardService,
     private readonly redis: RedisService,
+    private readonly prisma: PrismaService,
+    private readonly authz: AuthorizationService,
   ) {}
+
+  private readonly engagementPending = new Set<string>();
 
   /**
    * Authenticate in namespace middleware, so `userId` is settled before any
@@ -195,6 +209,42 @@ export class LeaderboardGateway implements OnGatewayInit {
     } catch (err) {
       this.logger.warn(`hackathon:changed ping failed: ${(err as Error).message}`);
     }
+  }
+
+  /**
+   * Live engagement room for one event (polls; later Q&A and quizzes). Like
+   * the hackathon rooms it only carries "refetch" pings: what each person sees
+   * is decided by the HTTP feed.
+   */
+  @SubscribeMessage('engagement:subscribe')
+  async onEngagementSubscribe(
+    @ConnectedSocket() client: AuthedSocket,
+    @MessageBody() body: { eventId: string },
+  ) {
+    const eventId = body?.eventId;
+    if (!eventId) return { error: 'eventId required' };
+    if (!(await canJoinEngagement(this.prisma, this.authz, eventId, client.userId))) {
+      return { error: 'not_authorized' };
+    }
+    client.join(engagementRoom(eventId));
+    return { ok: true };
+  }
+
+  @SubscribeMessage('engagement:unsubscribe')
+  onEngagementUnsubscribe(@ConnectedSocket() client: AuthedSocket) {
+    for (const r of client.rooms) if (r.startsWith('eng:')) client.leave(r);
+    return { ok: true };
+  }
+
+  /** Tell the event's engagement room something changed, at most once per ENGAGEMENT_PING_MS. */
+  engagementChanged(eventId: string) {
+    if (!this.server || this.engagementPending.has(eventId)) return;
+    this.engagementPending.add(eventId);
+    const timer = setTimeout(() => {
+      this.engagementPending.delete(eventId);
+      this.server.to(engagementRoom(eventId)).emit('engagement:changed', { eventId });
+    }, ENGAGEMENT_PING_MS);
+    timer.unref?.();
   }
 
   /** Push a fresh ranked snapshot to everyone watching this event's board. */
