@@ -4,8 +4,9 @@ import { useState } from "react";
 import { PaperPlaneRight } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils/cn";
-import type { SupportMessage } from "@/lib/api/support-api";
+import type { CannedReply, SupportMessage } from "@/lib/api/support-api";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString("en-IN", {
@@ -38,6 +39,8 @@ interface TicketThreadProps {
   /** Disable the composer (e.g. a closed ticket). */
   disabled?: boolean;
   disabledHint?: string;
+  /** D19: the desk's saved replies, offered above the composer. */
+  cannedReplies?: CannedReply[];
 }
 
 /** The message thread + reply composer, shared by both Apex support surfaces. */
@@ -48,6 +51,7 @@ export function TicketThread({
   onNote,
   disabled = false,
   disabledHint,
+  cannedReplies,
 }: TicketThreadProps) {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
@@ -104,6 +108,26 @@ export function TicketThread({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
+          {!!cannedReplies?.length && (
+            <Select
+              value=""
+              onValueChange={(id) => {
+                const reply = cannedReplies.find((r) => r.id === id);
+                if (reply) setBody((b) => (b.trim() ? `${b.trimEnd()}\n\n${reply.body}` : reply.body));
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-64" aria-label="Insert a saved reply">
+                <SelectValue placeholder="Insert a saved reply" />
+              </SelectTrigger>
+              <SelectContent>
+                {cannedReplies.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>
+                    {r.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {onNote && (
             <div className="flex gap-1" role="group" aria-label="Message type">
               {[
