@@ -61,3 +61,23 @@ describe('email templates', () => {
     expect(samples.waitlistPaid.html).toContain('Pay and confirm');
   });
 });
+
+describe('H23 app line', () => {
+  const brand = { name: 'GDG Hyd', logoUrl: null, color: '#112233', hidePoweredBy: false, url: 'https://unifesto.app/space/gdg', webBase: 'https://unifesto.app' };
+  const reg = (b?: typeof brand) => T.registrationConfirmationEmail({ ...event, eventSlug: 'demo-day', brand: b }).html;
+
+  it('keeps the current line on unbranded registration mail', () => {
+    expect(reg()).toContain('Your ticket is also in the Unifesto app.');
+  });
+
+  it('uses the neutral line on branded registration mail', () => {
+    expect(reg(brand)).toContain('You can also find your ticket in the Unifesto app.');
+    expect(reg(brand)).not.toContain('Your ticket is also in the Unifesto app.');
+  });
+
+  it('applies the same rule to stay updates', () => {
+    const stay = (b?: typeof brand) => T.stayUpdateEmail({ email: 'a@b.co', userName: 'A', title: 't', body: 'b', brand: b }).html;
+    expect(stay()).toContain('Your Stay Pass and booking details are in the Unifesto app.');
+    expect(stay(brand)).toContain('You can also find your Stay Pass and booking details in the Unifesto app.');
+  });
+});

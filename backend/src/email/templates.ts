@@ -23,6 +23,19 @@ type EventWhere = {
 const moreEvents = (brand?: EmailBrand | null) =>
   brand ? button(`More from ${brand.name}`, brand.url) : button('Find another event', `${WEB}/events`);
 
+/**
+ * "Also in the app" footnotes. On a white-label (branded) mail the line must not
+ * read as Unifesto branding, so it switches to a neutral sentence. Add new
+ * app mentions here, not inline in a template.
+ */
+const APP_LINES = {
+  ticket: ['Your ticket is also in the Unifesto app. See you there.', 'You can also find your ticket in the Unifesto app. See you there.'],
+  stay: ['Your Stay Pass and booking details are in the Unifesto app.', 'You can also find your Stay Pass and booking details in the Unifesto app.'],
+} as const;
+
+export const appLine = (kind: keyof typeof APP_LINES, brand?: EmailBrand | null) =>
+  small(APP_LINES[kind][brand ? 1 : 0]);
+
 /** "Online" with the join link, or "Venue, City". */
 function where(e: EventWhere): string | undefined {
   if (e.isOnline) return e.onlineUrl ? link('Join online', e.onlineUrl) : 'Online';
@@ -114,7 +127,7 @@ export function registrationConfirmationEmail(d: RegistrationConfirmationData): 
       ${eventCard(d)}
       ${qr(d.qrCode, d.ticketCode)}
       ${d.eventSlug ? button('View event', `${d.brand?.webBase ?? WEB}/event/${encodeURIComponent(d.eventSlug)}`) : ''}
-      ${small('Your ticket is also in the Unifesto app. See you there.')}`,
+      ${appLine('ticket', d.brand)}`,
       `${d.eventDate}, ${d.eventTime}. Your ticket is inside.`,
       d.brand,
     ),
@@ -505,7 +518,7 @@ export function stayUpdateEmail(d: StayUpdateData): Email {
       `${h1(esc(d.title))}
       ${greet(d.userName)}
       ${p(esc(d.body))}
-      ${small('Your Stay Pass and booking details are in the Unifesto app.')}`,
+      ${appLine('stay', d.brand)}`,
       '',
       d.brand,
     ),
