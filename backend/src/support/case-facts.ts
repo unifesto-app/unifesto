@@ -6,7 +6,8 @@ import type { PrismaService } from '../prisma/prisma.service';
  * Policy facts about one booking, computed by code so AI never does the maths
  * (D15 desk copilot, D14 bot tools). The rules mirror the gates that enforce
  * them: RefundsService.createRequest (attendee path) and
- * RegistrationCancellationService.performSelfCancellation. Change them together.
+ * RegistrationCancellationService.performSelfCancellation, where a paid cancel
+ * becomes a full refund request (D6). Change them together.
  */
 export interface BookingFacts {
   registrationId: string;
@@ -20,7 +21,8 @@ export interface BookingFacts {
   /** Base (ticket price) still refundable; the processing fee never is. */
   refundable: number;
   refund: { canRequest: boolean; why?: string; open?: { status: RefundStatus; requestedAmount: number | null } };
-  cancel: { canCancel: boolean; why?: string };
+  /** `viaRefund`: a paid booking cancels as a refund request, cancelled once approved (D6). */
+  cancel: { canCancel: boolean; viaRefund?: boolean; why?: string };
 }
 
 export interface BookingInput {
@@ -55,12 +57,12 @@ export function bookingFacts(b: BookingInput, now = new Date()): BookingFacts {
   else if (refundable <= 0) refundWhy = 'it is already fully refunded';
   else if (b.openRefund) refundWhy = 'a refund request is already open';
 
-  // Same order as performSelfCancellation.
+  // Same order as performSelfCancellation; a paid one then passes the refund gate.
+  const viaRefund = Number(b.totalAmount) > 0 && PAID.includes(b.paymentStatus);
   let cancelWhy: string | undefined;
   if (b.status === RegistrationStatus.CANCELLED) cancelWhy = 'it is already cancelled';
   else if (b.event.startDateTime < now) cancelWhy = 'the event has started';
-  else if (Number(b.totalAmount) > 0 && PAID.includes(b.paymentStatus))
-    cancelWhy = 'paid tickets are cancelled through a refund request';
+  else if (viaRefund) cancelWhy = refundWhy;
 
   return {
     registrationId: b.id,
@@ -88,7 +90,7 @@ export function bookingFacts(b: BookingInput, now = new Date()): BookingFacts {
           }
         : {}),
     },
-    cancel: { canCancel: !cancelWhy, ...(cancelWhy ? { why: cancelWhy } : {}) },
+    cancel: { canCancel: !cancelWhy, ...(viaRefund ? { viaRefund } : {}), ...(cancelWhy ? { why: cancelWhy } : {}) },
   };
 }
 
@@ -125,7 +127,13 @@ export function describeBooking(f: BookingFacts): string[] {
     const amt = f.refund.open.requestedAmount;
     lines.push(`Open refund request: ${REFUND_STAGE[f.refund.open.status]}${amt != null ? `, for ${rupees(amt)}` : ''}`);
   }
-  lines.push(f.cancel.canCancel ? 'Cancel directly: allowed' : `Cancel directly: not allowed, ${f.cancel.why}`);
+  lines.push(
+    !f.cancel.canCancel
+      ? `Cancel: not allowed, ${f.cancel.why}`
+      : f.cancel.viaRefund
+        ? `Cancel: allowed, as a refund request for up to ${rupees(f.refundable)}; the booking is cancelled once the refund is approved`
+        : 'Cancel: allowed, right away from the ticket',
+  );
   return lines;
 }
 

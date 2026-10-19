@@ -73,6 +73,8 @@ export interface SupportTicket {
   createdAt: string;
   updatedAt: string;
   messages?: SupportMessage[];
+  /** One case: the refund behind it, when it has one (D6). */
+  subjects?: { type: string; data: Record<string, unknown> }[];
   _count?: { messages: number };
   /** List endpoint: a message your side hasn't opened yet. */
   unread?: boolean;

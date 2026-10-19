@@ -4,11 +4,24 @@ import {
   ConflictException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { UpdateProfileDto, UpdateNotificationSettingsDto } from './dto';
-import { User, Prisma, EventStatus, GroupSeatStatus, RefundStatus } from '@prisma/client';
+import {
+  User,
+  Prisma,
+  EventStatus,
+  GroupSeatStatus,
+  RefundStatus,
+  SupportCaseKind,
+  SupportDesk,
+  SupportTicketCategory,
+  SupportTicketStatus,
+} from '@prisma/client';
+import { SUBJECT_CASE_OPEN, SUBJECT_CASE_UPDATE, type SubjectCaseOpen, type SubjectCaseUpdate } from '../support/subject-cases';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import {
   ACCOUNT_DELETION_GRACE_DAYS,
@@ -28,7 +41,35 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly storageService: StorageService,
+    @Optional() private readonly events?: EventEmitter2,
   ) {}
+
+  /**
+   * D24: an account's deletion is one PRIVACY case (subject = the user), with
+   * each step as a SYSTEM line, so the person follows it in My help. Opened
+   * first (awaited, so the line lands on it) and reopened by a new request.
+   */
+  private async deletionCaseLine(userId: string, text: string, status: SupportTicketStatus) {
+    if (!this.events) return;
+    const open: SubjectCaseOpen = {
+      subjectType: 'User',
+      subjectId: userId,
+      requesterId: userId,
+      kind: SupportCaseKind.PRIVACY,
+      desk: SupportDesk.PLATFORM,
+      category: SupportTicketCategory.ACCOUNT,
+      subject: 'Delete my account',
+      message: 'Please delete my account and my personal data.',
+    };
+    const update: SubjectCaseUpdate = { subjectType: 'User', subjectId: userId, text, status };
+    try {
+      await this.events.emitAsync(SUBJECT_CASE_OPEN, open);
+      await this.events.emitAsync(SUBJECT_CASE_UPDATE, update);
+    } catch (err) {
+      // The case is a record of the deletion, never a reason to fail it.
+      this.logger.warn(`Deletion case for user ${userId}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }
 
   /**
    * Record the app version/platform the current user's client is running.
@@ -801,7 +842,15 @@ export class UsersService {
       data: { deletionRequestedAt: new Date() },
     });
     this.logger.log(`User ${userId} requested account deletion`);
-    return { deletionScheduledFor: deletionDueAt(updated.deletionRequestedAt!).toISOString() };
+    const due = deletionDueAt(updated.deletionRequestedAt!);
+    const day = due.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'long', year: 'numeric' });
+    // PENDING: nothing for the desk to do, the person can still cancel.
+    await this.deletionCaseLine(
+      userId,
+      `Deletion requested. The account and its personal data are erased on ${day} unless you cancel before then.`,
+      SupportTicketStatus.PENDING,
+    );
+    return { deletionScheduledFor: due.toISOString() };
   }
 
   /** Withdraw a pending deletion request during the grace period. */
@@ -816,6 +865,7 @@ export class UsersService {
         data: { deletionRequestedAt: null },
       });
       this.logger.log(`User ${userId} cancelled their account deletion`);
+      await this.deletionCaseLine(userId, 'Deletion cancelled. The account stays.', SupportTicketStatus.CLOSED);
     }
     return { deletionScheduledFor: null };
   }
@@ -839,6 +889,7 @@ export class UsersService {
       try {
         await this.assertAccountCanClose(id);
         await this.closeAccount(id);
+        await this.deletionCaseLine(id, 'Account erased. Personal data is removed; payment records stay without a name, for tax and refunds.', SupportTicketStatus.CLOSED);
         closed++;
       } catch (err) {
         if (err instanceof ConflictException) {

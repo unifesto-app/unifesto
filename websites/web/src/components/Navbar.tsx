@@ -33,6 +33,7 @@ const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
       { label: "Unifesto Stay", href: "/stay", description: "Rooms for your event's guests" },
       { label: "Unifesto Huddle", href: "/huddle", description: "Online sessions for your Space" },
       { label: "Request a Space", href: "/request-space", description: "Get your club or institution set up" },
+      { label: "Host one event", href: "/request-event", description: "No Space yet? We set one up for you" },
     ],
   },
   {
@@ -42,7 +43,6 @@ const MENUS: readonly { label: string; items: readonly NavItem[] }[] = [
       { label: "Careers", href: "/careers", description: "Open roles" },
       { label: "Press", href: "/press", description: "Releases and media kit" },
       { label: "Blog", href: "/blog", description: "Notes from running events" },
-      { label: "Docs", href: "/docs", description: "Developer reference" },
       { label: "Support", href: "/support", description: "Help, FAQs and contact" },
     ],
   },

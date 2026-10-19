@@ -7,6 +7,8 @@ const DEFAULT_PAGE = 30;
 export interface NotificationScope {
   eventId?: string;
   type?: string;
+  /** Everything but this type, e.g. the personal tab without staff help-desk queries. */
+  excludeType?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ export class UserNotificationsService {
     return {
       userId,
       ...(scope.eventId ? { eventId: scope.eventId } : {}),
-      ...(scope.type ? { type: scope.type } : {}),
+      ...(scope.type ? { type: scope.type } : scope.excludeType ? { type: { not: scope.excludeType } } : {}),
     };
   }
 

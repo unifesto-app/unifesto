@@ -121,6 +121,7 @@ const ATTACHMENT_LINK_SECONDS = 5 * 60;
 const SUBJECT_MODELS = {
   RefundRequest: 'refundRequest',
   SpaceRequest: 'spaceRequest',
+  EventRequest: 'eventRequest',
   SpaceStatusRequest: 'spaceStatusRequest',
   SpaceOwnershipRequest: 'spaceOwnershipRequest',
   SubSpaceRequest: 'subSpaceRequest',
@@ -513,14 +514,12 @@ export class SupportService {
       const { aiTriage: _t, aiSummary: _s, aiSummaryAt: _a, ...own } = ticket;
       return { ...own, messages: ticket.messages.filter((m) => !m.internal) };
     }
-    // The space desk gets the requester's email, not their phone number.
-    else if (!platform) {
-      const { mobileNumber: _phone, ...requester } = ticket.requester;
-      return { ...ticket, requester };
-    }
-
-    // ponytail: typed records go to Platform only; the Space inbox (D9) opens its own kinds.
-    return platform ? { ...ticket, subjects: await this.caseSubjects(ticket) } : ticket;
+    const subjects = await this.caseSubjects(ticket);
+    if (platform) return { ...ticket, subjects };
+    // The space desk gets the requester's email, not their phone number, and of
+    // the typed records only refunds: it reviews those first (D6).
+    const { mobileNumber: _phone, ...requester } = ticket.requester;
+    return { ...ticket, requester, subjects: subjects.filter((x) => x.type === 'RefundRequest') };
   }
 
   /** The typed records behind a case: its subject, plus refunds raised from it. */

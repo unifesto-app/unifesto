@@ -26,11 +26,14 @@ const booking = (o: Partial<BookingInput> = {}): BookingInput => ({
 
 /** D15: facts are code, not model output; they mirror the refund and cancel gates. */
 describe('Booking facts', () => {
-  it('refundable is the base left, fee never; paid tickets cancel through a refund', () => {
+  it('refundable is the base left, fee never; a paid cancel is a refund request (D6)', () => {
     const f = bookingFacts(booking({ refundedAmount: '100', addons: [{ totalAmount: '210', processingFee: '10', refundedAmount: '0' }] }), now);
     expect(f).toMatchObject({ paid: 730, processingFee: 30, refunded: 100, refundable: 600 });
     expect(f.refund).toEqual({ canRequest: true });
-    expect(f.cancel).toEqual({ canCancel: false, why: 'paid tickets are cancelled through a refund request' });
+    expect(f.cancel).toEqual({ canCancel: true, viaRefund: true });
+    // A paid cancel fails where the refund would.
+    const open = bookingFacts(booking({ openRefund: { status: RefundStatus.PENDING_ADMIN, requestedAmount: null } }), now);
+    expect(open.cancel).toEqual({ canCancel: false, viaRefund: true, why: 'a refund request is already open' });
   });
 
   it('gives the same first reason as the endpoint would', () => {

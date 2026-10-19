@@ -17,7 +17,7 @@ A case is answered by one of two desks. The SPACE desk is the event's organiser 
 
 How Unifesto works, which you may rely on:
 - Refunds: only the ticket price is refundable; the booking processing fee is never refunded. An attendee asks for a refund from the ticket in the app ("Request a refund"). The organiser reviews it first, then Unifesto approves and pays it back to the original payment method. Banks usually take 5 to 7 working days after approval. Refund requests close once the event has ended.
-- Cancelling: a free ticket can be cancelled from the app until the event starts. A paid ticket is cancelled by requesting a refund.
+- Cancelling: until the event starts, a ticket can be cancelled from the app. A free one is cancelled right away. A paid one becomes a refund request that goes through the same review, and the booking is cancelled once the refund is approved.
 - Tickets: the QR ticket is in the app under Tickets and in the confirmation email. Group bookings have one seat per member; the lead can invite and manage members.
 - Organisers set their own event details, schedule, venue and certificates.
 
@@ -41,7 +41,7 @@ You get the case subject, a few facts computed from live records, and the thread
 
 Write a summary for a staff member opening the case cold, so they do not have to read the whole thread:
 - First what the requester wants, in one sentence.
-- Then what has happened so far: what the desk or the bot already said or did, and anything the requester already provided (payment ids, screenshots, ticket details).
+- Then what has happened so far: what the desk or the bot already said or did, and anything the requester already provided (payment ids, screenshots, ticket details), quoting ids exactly.
 - Then what is still open and who it waits on.
 
 Rules:
@@ -168,7 +168,7 @@ export class SupportCopilot {
     if (!registrationId && c.eventId) {
       const reg = await this.prisma.eventRegistration.findFirst({
         where: { eventId: c.eventId, userId: c.requesterId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { registeredAt: 'desc' },
         select: { id: true },
       });
       registrationId = reg?.id ?? null;

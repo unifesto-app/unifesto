@@ -14,6 +14,7 @@ import {
   MaxFileSizeValidator,
   FileTypeValidator,
   Request,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
@@ -32,6 +33,7 @@ import {
   ReviewSpaceOwnershipRequestDto,
   AddSpaceMemberDto,
   UpdateSpaceMemberRoleDto,
+  CreateEventRequestDto,
 } from './dto';
 import { CreateSpaceRequestDto } from './dto/create-space-request.dto';
 import { SetSpaceVerificationDto } from './dto/set-space-verification.dto';
@@ -149,6 +151,42 @@ export class SpacesController {
     @CurrentUser() user: User,
   ) {
     return this.spacesService.rejectSpaceRequest(id, user.id, body?.reviewNote);
+  }
+
+  /**
+   * Ask to host one event without a space (Assist D7)
+   * POST /spaces/event-requests
+   */
+  @Post('event-requests')
+  @UseGuards(JwtAuthGuard)
+  async createEventRequest(@Body() dto: CreateEventRequestDto, @CurrentUser() user: User) {
+    return this.spacesService.createEventRequest(user.id, dto);
+  }
+
+  /**
+   * Approve an event request (ADMIN only): personal space + draft event
+   * PATCH /spaces/event-requests/:id/approve
+   */
+  @Patch('event-requests/:id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async approveEventRequest(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.spacesService.approveEventRequest(id, user.id);
+  }
+
+  /**
+   * Reject an event request (ADMIN only)
+   * PATCH /spaces/event-requests/:id/reject
+   */
+  @Patch('event-requests/:id/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleCode.ADMIN)
+  async rejectEventRequest(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { reviewNote?: string },
+    @CurrentUser() user: User,
+  ) {
+    return this.spacesService.rejectEventRequest(id, user.id, body?.reviewNote);
   }
 
   /**

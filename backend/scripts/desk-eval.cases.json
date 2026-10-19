@@ -11,7 +11,7 @@
         "Booking: registered, payment paid",
         "Paid ₹520 incl. ₹20 processing fee (never refundable); refunded so far ₹0; refundable now ₹500",
         "Refund request: allowed, up to ₹500, until the event ends (12 Nov 2026)",
-        "Cancel directly: not allowed, paid tickets are cancelled through a refund request"
+        "Cancel: allowed, as a refund request for up to ₹500; the booking is cancelled once the refund is approved"
       ],
       "messages": [
         {
@@ -44,7 +44,7 @@
         "Booking: no_show, payment paid",
         "Paid ₹299 incl. ₹9 processing fee (never refundable); refunded so far ₹0; refundable now ₹290",
         "Refund request: not allowed, the event has ended, so refund requests are closed",
-        "Cancel directly: not allowed, the event has started"
+        "Cancel: not allowed, the event has started"
       ],
       "messages": [
         {
@@ -77,7 +77,7 @@
         "Paid ₹1,050 incl. ₹50 processing fee (never refundable); refunded so far ₹0; refundable now ₹1,000",
         "Refund request: not allowed, a refund request is already open",
         "Open refund request: with the organiser, for ₹1,000",
-        "Cancel directly: not allowed, paid tickets are cancelled through a refund request"
+        "Cancel: not allowed, a refund request is already open"
       ],
       "messages": [
         {
@@ -107,7 +107,7 @@
         "Event: Open Source Saturday (published), 15 Nov 2026 to 15 Nov 2026",
         "Booking: registered, payment paid",
         "Refund request: not allowed, it is a free booking, so there is nothing to refund",
-        "Cancel directly: allowed"
+        "Cancel: allowed, right away from the ticket"
       ],
       "messages": [
         {
@@ -122,7 +122,7 @@
       "app"
     ],
     "mustNotInclude": [
-      "refund request",
+      "(raise|submit|make) a refund request",
       "(refund|request) (has been|is|was) approved|will be approved"
     ]
   },
@@ -138,7 +138,7 @@
         "Booking: registered, payment paid",
         "Paid ₹2,060 incl. ₹60 processing fee (never refundable); refunded so far ₹0; refundable now ₹2,000",
         "Refund request: allowed, up to ₹2,000, until the event ends (1 Dec 2026)",
-        "Cancel directly: not allowed, paid tickets are cancelled through a refund request"
+        "Cancel: allowed, as a refund request for up to ₹2,000; the booking is cancelled once the refund is approved"
       ],
       "messages": [
         {
@@ -154,9 +154,9 @@
     ],
     "mustNotInclude": [
       "(refund|request) (has been|is|was) approved|will be approved",
-      "have cancelled",
       "has been cancelled",
-      "(2,060|2060) back"
+      "(2,060|2060) back",
+      "(have|has been) cancelled"
     ]
   },
   {
@@ -171,7 +171,7 @@
         "Booking: registered, payment paid",
         "Paid ₹510 incl. ₹10 processing fee (never refundable); refunded so far ₹0; refundable now ₹500",
         "Refund request: allowed, up to ₹500, until the event ends (25 Nov 2026)",
-        "Cancel directly: not allowed, paid tickets are cancelled through a refund request"
+        "Cancel: allowed, as a refund request for up to ₹500; the booking is cancelled once the refund is approved"
       ],
       "messages": [
         {
@@ -185,7 +185,7 @@
       "500"
     ],
     "mustNotInclude": [
-      "(?<!no )refund (of ₹?5,?000 )?(has been|is) approved",
+      "(?<!no )(?<!once a )(?<!once the )refund (of ₹?5,?000 )?(has been|is) approved",
       "will reach (you|your account) today",
       "(refund|request) will be approved"
     ]
@@ -202,7 +202,7 @@
         "Booking: registered, payment paid",
         "Paid ₹410 incl. ₹10 processing fee (never refundable); refunded so far ₹0; refundable now ₹400",
         "Refund request: allowed, up to ₹400, until the event ends (8 Nov 2026)",
-        "Cancel directly: not allowed, paid tickets are cancelled through a refund request"
+        "Cancel: allowed, as a refund request for up to ₹400; the booking is cancelled once the refund is approved"
       ],
       "messages": [
         {
@@ -257,7 +257,7 @@
         "Event: Campus Fest 2026 (published), 20 Nov 2026 to 22 Nov 2026",
         "Booking: registered, payment pending",
         "Refund request: not allowed, only paid bookings can be refunded",
-        "Cancel directly: allowed"
+        "Cancel: allowed, right away from the ticket"
       ],
       "messages": [
         {
@@ -308,7 +308,7 @@
         "Paid ₹2,060 incl. ₹60 processing fee (never refundable); refunded so far ₹0; refundable now ₹2,000",
         "Refund request: not allowed, a refund request is already open",
         "Open refund request: with the organiser, for ₹2,000",
-        "Cancel directly: not allowed, paid tickets are cancelled through a refund request"
+        "Cancel: not allowed, a refund request is already open"
       ],
       "messages": [
         {

@@ -233,12 +233,15 @@ export async function getMyOrganiserSpaces(): Promise<Space[]> {
 export async function getSpaceEvents(
   spaceId: string,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  /** Also list finished events (the space page's "Past" section). */
+  includePast = false,
 ): Promise<{ events: any[]; pagination: any }> {
   const queryParams = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
   });
+  if (includePast) queryParams.set('when', 'all');
 
   const result = await request<any>(
     `/events/space/${spaceId}?${queryParams.toString()}`,
@@ -370,4 +373,24 @@ export const getMySpaceRequests = async (): Promise<SpaceRequest[]> => {
   const text = await response.text();
   if (!text) return [];
   try { return JSON.parse(text); } catch { return []; }
+};
+
+/** D7: ask to host one event without a space. Followed in My help as a case. */
+export const createEventRequest = async (data: {
+  title: string;
+  description?: string;
+  type: 'IN_PERSON' | 'ONLINE';
+  startDateTime: string;
+  endDateTime: string;
+  city?: string;
+}): Promise<{ id: string }> => {
+  const response = await makeAuthenticatedRequest('/spaces/event-requests', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!response?.ok) {
+    const error = await response?.json().catch(() => null);
+    throw new Error(error?.message || 'Failed to send request');
+  }
+  return response.json();
 };

@@ -35,7 +35,8 @@ export interface PushCampaign {
 }
 
 export interface PushTarget {
-  type: "all" | "event" | "space" | "users";
+  /** `staff`: platform admins only, for a test run before an all-users send. */
+  type: "all" | "event" | "space" | "users" | "staff";
   eventId?: string;
   spaceId?: string;
   /** `users` target: hand-picked accounts (max 100). */

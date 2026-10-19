@@ -63,6 +63,7 @@ const COLUMNS = [
       { label: "Unifesto Huddle", href: "/huddle" },
       { label: "Pricing", href: "/pricing" },
       { label: "Request a Space", href: "/request-space" },
+      { label: "Host one event", href: "/request-event" },
     ],
   },
   {
@@ -78,7 +79,6 @@ const COLUMNS = [
     title: "Help",
     links: [
       { label: "Support", href: "/support" },
-      { label: "Docs", href: "/docs" },
       { label: "Refunds", href: "/refund" },
       { label: "Grievance redressal", href: "/grievance" },
       { label: "Delete account", href: "/delete-account" },

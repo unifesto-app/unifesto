@@ -155,7 +155,7 @@ const build = (seed?: Seat[]) => {
   const { prisma, seats } = makeDb(seed);
   const email = { sendRawEmail: jest.fn().mockResolvedValue(undefined) };
   const whatsapp = {
-    sendEventWhatsAppGroupInvite: jest.fn().mockResolvedValue(undefined),
+    sendEventWhatsAppGroupInvite: jest.fn().mockResolvedValue(true),
   };
   const svc = new GroupSeatsService(prisma as any, email as any, whatsapp as any);
   return { svc, prisma, seats, email };

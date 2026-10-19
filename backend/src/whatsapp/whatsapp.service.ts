@@ -9,6 +9,7 @@ import { StorageService } from '../storage/storage.service';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { WhatsappInboundEvent } from '../notifications/notifications.events';
+import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
 
 interface WhatsAppTemplateComponent {
   type: string;
@@ -1130,7 +1131,7 @@ export class WhatsAppService {
    * by their (formatted) phone number so nobody is messaged twice.
    */
   async resolveBroadcastRecipients(params: {
-    audience: 'ALL' | 'SPACE' | 'USER';
+    audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
   }): Promise<Array<{ userId: string; name: string; mobileNumber: string }>> {
@@ -1166,6 +1167,11 @@ export class WhatsAppService {
         distinct: ['userId'],
       });
       users = roles.map((r) => r.user);
+    } else if (params.audience === 'STAFF') {
+      users = await this.prisma.user.findMany({
+        where: { ...PLATFORM_STAFF_WHERE, mobileNumber: { not: '' } },
+        select,
+      });
     } else {
       if (!params.userIds?.length) {
         throw new BadRequestException('At least one userId is required.');
@@ -1246,7 +1252,7 @@ export class WhatsAppService {
    */
   async sendBroadcastTemplate(params: {
     adminUserId: string;
-    audience: 'ALL' | 'SPACE' | 'USER';
+    audience: 'ALL' | 'SPACE' | 'USER' | 'STAFF';
     spaceId?: string;
     userIds?: string[];
     templateName: string;
@@ -1588,6 +1594,7 @@ export class WhatsAppService {
    * Sent right after a successful registration when the event (or its parent)
    * has an organiser-supplied invite link. Fail-soft: a missing template or a
    * bad number logs and returns — it must never disturb the registration flow.
+   * Returns whether Meta accepted it, so callers mark an invite sent only then.
    */
   async sendEventWhatsAppGroupInvite(
     mobileNumber: string,
@@ -1597,11 +1604,11 @@ export class WhatsAppService {
       inviteUrl: string;
       isCommunity: boolean;
     },
-  ): Promise<void> {
+  ): Promise<boolean> {
     try {
-      if (!mobileNumber || !data.inviteUrl) return;
+      if (!mobileNumber || !data.inviteUrl) return false;
 
-      await this.sendTemplateMessage(
+      return await this.sendTemplateMessage(
         mobileNumber,
         TEMPLATES.EVENT_WHATSAPP_GROUP,
         [
@@ -1614,6 +1621,7 @@ export class WhatsAppService {
       );
     } catch (error) {
       this.logger.error('Failed to send WhatsApp group invite', error);
+      return false;
     }
   }
 

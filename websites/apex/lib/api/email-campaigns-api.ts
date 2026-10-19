@@ -16,7 +16,8 @@ export type EmailTargetType =
   | "WAITLIST"
   | "ALL_USERS"
   | "ORGANISERS_ONLY"
-  | "SEGMENT";
+  | "SEGMENT"
+  | "STAFF";
 
 export type EmailCampaignStatus =
   | "PENDING"

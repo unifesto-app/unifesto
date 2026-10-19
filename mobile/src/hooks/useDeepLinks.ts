@@ -45,8 +45,9 @@ export function useDeepLinks(): void {
     OneSignalService.addNotificationForegroundListener((event: any) => {
       const notification = event?.getNotification?.() ?? event?.notification;
       const data = (notification?.additionalData ?? {}) as { type?: string; eventId?: string; kind?: string };
+      // Every push may have added to the inbox, so the bell refetches for all of them.
+      notificationArrived({ type: data.type ?? '', eventId: data.eventId });
       if (!data.type || !IN_APP_TYPES.has(data.type)) return;
-      notificationArrived({ type: data.type, eventId: data.eventId });
       const deepLink = extractPushDeepLink({ notification });
       // "You're up" must not be missed: a modal instead of a card that slides away.
       if (data.type === 'hackathon' && data.kind === 'QUEUE_CALLED') {

@@ -25,6 +25,7 @@ import { buildEventIcs, IcsEventInput } from './calendar/ics.util';
 import { RecurrenceService } from './recurrence/recurrence.service';
 import { parseRRule, serializeRRule } from './recurrence/rrule.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { NotificationEvents } from '../notifications/notifications.constants';
 import type { NewEventEvent } from '../notifications/notifications.events';
 import {
@@ -33,6 +34,7 @@ import {
   type DeletedFilter,
 } from '../common/soft-delete';
 import {
+  CLAIMED_MEMBER_SEAT,
   COUNTS_AS_ATTENDING,
   IS_GROUP_BOOKING,
   IS_INDIVIDUAL_BOOKING,
@@ -49,6 +51,9 @@ import {
   RegistrationStatus,
   Prisma,
   SlugKind,
+  SupportCaseKind,
+  SupportDesk,
+  SupportTicketStatus,
 } from '@prisma/client';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertEventSchedule } from './event-dates';
@@ -88,14 +93,21 @@ import {
 } from '../registrations/form-answers.util';
 
 /**
- * Sub-event statuses a public hub lists. Live and finished sub-events stay on
- * their big event's page (a festival's past talks are still part of it); only
- * drafts and cancelled ones drop off.
+ * Statuses a public list shows (a big event's hub, a space page, past events).
+ * Live and finished events stay listed: a festival's past talks are still part
+ * of it, and a space's history is social proof. Only drafts and cancelled
+ * events drop off.
  */
-const HUB_SUB_EVENT_STATUSES: EventStatus[] = [
+const LISTED_EVENT_STATUSES: EventStatus[] = [
   EventStatus.PUBLISHED,
   EventStatus.ONGOING,
   EventStatus.COMPLETED,
+];
+
+/** Live and upcoming: the default public feed. */
+const LIVE_EVENT_STATUSES: EventStatus[] = [
+  EventStatus.PUBLISHED,
+  EventStatus.ONGOING,
 ];
 
 @Injectable()
@@ -525,7 +537,7 @@ export class EventsService {
     const where: Prisma.EventWhereInput = { parentEventId: parentId };
     if (!manage) {
       where.deletedAt = null;
-      where.status = { in: HUB_SUB_EVENT_STATUSES };
+      where.status = { in: LISTED_EVENT_STATUSES };
       where.AND = [
         listableEventsWhere(await memberSpaceIds(this.prisma, viewerId)),
       ];
@@ -665,6 +677,19 @@ export class EventsService {
     this.logger.log(
       `Sub-event attach requested: child ${childId} → parent ${parentId} by ${userId}`,
     );
+    // The child's space decides (D5), so the case sits on its desk.
+    openSubjectCase(this.events, {
+      subjectType: 'SubEventAttachRequest',
+      subjectId: request.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'SUB_EVENT_ATTACH',
+      desk: SupportDesk.SPACE,
+      spaceId: child.spaceId,
+      eventId: childId,
+      subject: `Add ${request.childEvent.title} under ${request.parentEvent.title}`,
+      message: `${request.parentEvent.space?.name ?? 'Our space'} would like to list ${request.childEvent.title} as a sub-event of ${request.parentEvent.title}.${request.reason ? ` ${request.reason}` : ''} Accept or decline it on the event's Sub-events page.`,
+    });
     return request;
   }
 
@@ -780,6 +805,13 @@ export class EventsService {
     ]);
 
     await this.invalidateHierarchyCaches(request.parentEventId, child.slug);
+    updateSubjectCase(this.events, {
+      subjectType: 'SubEventAttachRequest',
+      subjectId: requestId,
+      actorId: userId,
+      text: `The event's space accepted. It is now a sub-event.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`,
+      status: SupportTicketStatus.RESOLVED,
+    });
 
     this.logger.log(
       `Sub-event attach accepted: child ${child.id} → parent ${request.parentEventId} by ${userId}`,
@@ -834,6 +866,13 @@ export class EventsService {
         reviewedAt: new Date(),
         reviewNote: reviewNote?.trim() || null,
       },
+    });
+    updateSubjectCase(this.events, {
+      subjectType: 'SubEventAttachRequest',
+      subjectId: requestId,
+      actorId: userId,
+      text: `${status === 'DECLINED' ? "The event's space declined" : 'The request was withdrawn'}.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`,
+      status: status === 'DECLINED' ? SupportTicketStatus.RESOLVED : SupportTicketStatus.CLOSED,
     });
   }
 
@@ -994,6 +1033,7 @@ export class EventsService {
       where: { id: eventId },
       select: {
         id: true,
+        title: true,
         spaceId: true,
         parentEventId: true,
         _count: { select: { childEvents: true } },
@@ -1050,6 +1090,19 @@ export class EventsService {
     this.logger.log(
       `Ownership transfer of event ${eventId} → space ${toSpaceId} requested by ${userId}`,
     );
+    // A space-level case on the receiving desk: its Space Admins decide, and
+    // an eventId would scope it to the current owner's desk instead.
+    openSubjectCase(this.events, {
+      subjectType: 'EventOwnershipTransfer',
+      subjectId: transfer.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'EVENT_OWNERSHIP',
+      desk: SupportDesk.SPACE,
+      spaceId: toSpaceId,
+      subject: `Take over ${event.title}`,
+      message: `${transfer.fromSpace.name} would like to hand ${event.title} to ${transfer.toSpace.name}.${transfer.reason ? ` ${transfer.reason}` : ''} Accept or decline it on the event's Co-hosts page.`,
+    });
     return transfer;
   }
 
@@ -1097,6 +1150,7 @@ export class EventsService {
           reviewNote: 'Owner changed before acceptance',
         },
       });
+      this.transferCase(transfer.id, userId, 'The event changed hands before this was accepted, so the offer closed.', SupportTicketStatus.CLOSED);
       throw new ConflictException(
         'This event has changed hands since the offer was made. Ask for a fresh transfer.',
       );
@@ -1137,6 +1191,7 @@ export class EventsService {
 
     // The public page shows the owning space, so its cached copy is now stale.
     await this.cache.invalidateEventCache(event.slug);
+    this.transferCase(transfer.id, userId, `Accepted. The event now belongs to this space.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`, SupportTicketStatus.RESOLVED);
 
     this.logger.log(
       `Ownership of event ${eventId} transferred to space ${transfer.toSpaceId} (accepted by ${userId})`,
@@ -1165,7 +1220,13 @@ export class EventsService {
         reviewNote: reviewNote?.trim() || null,
       },
     });
+    this.transferCase(transfer.id, userId, `Declined.${reviewNote?.trim() ? ` Note: ${reviewNote.trim()}` : ''}`, SupportTicketStatus.RESOLVED);
     return { success: true };
+  }
+
+  /** Assist (D5): the transfer's case hears how it ended. */
+  private transferCase(transferId: string, userId: string, text: string, status: SupportTicketStatus) {
+    updateSubjectCase(this.events, { subjectType: 'EventOwnershipTransfer', subjectId: transferId, actorId: userId, text, status });
   }
 
   /** Rescind a pending offer. Space Admins of the host (from) space only. */
@@ -1180,6 +1241,7 @@ export class EventsService {
       where: { id: transfer.id },
       data: { status: 'CANCELLED', reviewedBy: userId, reviewedAt: new Date() },
     });
+    this.transferCase(transfer.id, userId, 'The offer was withdrawn.', SupportTicketStatus.CLOSED);
     return { success: true };
   }
 
@@ -1483,15 +1545,25 @@ export class EventsService {
       featured = false,
       trending = false,
       free = false,
+      when = 'upcoming',
       page = 1,
       limit = 20,
     } = filters;
 
     const skip = (page - 1) * limit;
+    const past = when === 'past';
 
     const where: Prisma.EventWhereInput = {
       ...NOT_DELETED,
-      status: EventStatus.PUBLISHED,
+      // Past = ended by the clock, not only by status: the scheduler that flips
+      // PUBLISHED to COMPLETED runs periodically, so a just-ended event may
+      // still read PUBLISHED.
+      ...(past
+        ? {
+            status: { in: LISTED_EVENT_STATUSES },
+            endDateTime: { lt: new Date() },
+          }
+        : { status: { in: LIVE_EVENT_STATUSES } }),
       visibility: 'PUBLIC',
       // Series-parent templates are non-registerable; only their concrete
       // occurrences (isRecurring=false, seriesParentId set) appear in listings.
@@ -1511,7 +1583,7 @@ export class EventsService {
       ? { registeredCount: 'desc' }
       : trending
         ? { createdAt: 'desc' }
-        : { startDateTime: 'asc' };
+        : { startDateTime: past ? 'desc' : 'asc' };
 
     // Sub-events live under their parent's hub, so keep them out of the main
     // feed unless explicitly asked for. `parentEventId: null` = top-level only.
@@ -1551,7 +1623,11 @@ export class EventsService {
     }
 
     if (endDate) {
-      where.endDateTime = { lte: new Date(endDate) };
+      // Spread keeps the past view's `lt: now`.
+      where.endDateTime = {
+        ...(where.endDateTime as Prisma.DateTimeFilter | undefined),
+        lte: new Date(endDate),
+      };
     }
 
     if (search) {
@@ -1876,7 +1952,7 @@ export class EventsService {
           },
         },
         childEvents: {
-          where: { deletedAt: null, status: { in: HUB_SUB_EVENT_STATUSES } },
+          where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES } },
           orderBy: { startDateTime: 'asc' },
           select: this.subEventSelect,
         },
@@ -1953,7 +2029,7 @@ export class EventsService {
             },
           },
           childEvents: {
-            where: { deletedAt: null, status: { in: HUB_SUB_EVENT_STATUSES } },
+            where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES } },
             orderBy: { startDateTime: 'asc' },
             select: this.subEventSelect,
           },
@@ -2297,25 +2373,13 @@ export class EventsService {
     }
 
     if (significantChanges.length > 0 && event.status === EventStatus.PUBLISHED) {
-      // Notify all registered attendees (non-blocking)
-      const registrations = await this.prisma.eventRegistration.findMany({
-        where: { eventId, status: { not: 'CANCELLED' } },
-        include: {
-          user: {
-            include: {
-              identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
-            },
-          },
-        },
-      });
-
-      for (const reg of registrations) {
-        const attendeeEmail = reg.user.identities[0]?.email;
-        if (attendeeEmail) {
+      // Notify everyone attending, group members included (non-blocking)
+      for (const r of await this.attendeeRecipients(eventId)) {
+        if (r.email) {
           this.emailService
             .sendEventUpdated({
-              email: attendeeEmail,
-              userName: reg.user.fullName || reg.user.username || 'there',
+              email: r.email,
+              userName: r.name,
               eventId: updated.id,
               eventTitle: updated.title,
               changes: significantChanges,
@@ -2574,6 +2638,43 @@ export class EventsService {
     return updated;
   }
 
+  /**
+   * Who to mail about a change to an event: the holder of every attending
+   * booking (with the row, for refund lines) plus group members who claimed a
+   * seat. One entry per person, primary email first.
+   */
+  private async attendeeRecipients(eventId: string) {
+    const person = {
+      id: true,
+      fullName: true,
+      username: true,
+      identities: {
+        where: { email: { not: null } },
+        orderBy: { isPrimary: 'desc' as const },
+        select: { email: true },
+        take: 1,
+      },
+    };
+    const regs = await this.prisma.eventRegistration.findMany({
+      where: { eventId, ...COUNTS_AS_ATTENDING },
+      include: {
+        user: { select: person },
+        groupSeats: { where: CLAIMED_MEMBER_SEAT, select: { claimedBy: { select: person } } },
+      },
+    });
+    const out = new Map<string, { email: string | null; name: string; reg: (typeof regs)[number] | null }>();
+    const add = (
+      u: { id: string; fullName: string | null; username: string | null; identities: { email: string | null }[] } | null,
+      reg: (typeof regs)[number] | null,
+    ) => {
+      if (!u || out.has(u.id)) return;
+      out.set(u.id, { email: u.identities[0]?.email ?? null, name: u.fullName || u.username || 'there', reg });
+    };
+    for (const reg of regs) add(reg.user, reg);
+    for (const reg of regs) for (const seat of reg.groupSeats ?? []) add(seat.claimedBy, null);
+    return [...out.values()];
+  }
+
   async cancelEvent(userId: string, eventId: string, dto: CancelEventDto) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -2605,7 +2706,7 @@ export class EventsService {
 
     // Every paid ticket gets its price back: one refund request each, straight
     // to Unifesto. The money is held from payouts until they settle.
-    const opened = await openCancelledEventRefunds(this.prisma, eventId, userId, dto.reason);
+    const opened = await openCancelledEventRefunds(this.prisma, eventId, userId, dto.reason, this.events);
     if (opened > 0) {
       this.emailService
         .sendRawEmail(
@@ -2619,28 +2720,17 @@ export class EventsService {
     // Invalidate event cache
     await this.cache.invalidateEventCache(event.slug);
 
-    // Send cancellation emails to all registered attendees (non-blocking)
-    const registrations = await this.prisma.eventRegistration.findMany({
-      where: { eventId, status: { not: 'CANCELLED' } },
-      include: {
-        user: {
-          include: {
-            identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
-          },
-        },
-      },
-    });
-
-    for (const reg of registrations) {
-      const attendeeEmail = reg.user.identities[0]?.email;
+    // Cancellation emails to everyone attending, group members included. Only
+    // the booking holder paid, so only they get the refund line (non-blocking).
+    for (const { email: attendeeEmail, name, reg } of await this.attendeeRecipients(eventId)) {
       if (attendeeEmail) {
         const paid =
+          !!reg &&
           Number(reg.razorpayAmount) > 0 &&
           (reg.paymentStatus === 'PAID' || reg.paymentStatus === 'PARTIALLY_REFUNDED');
-        const base = Math.max(
-          0,
-          Number(reg.totalAmount) - Number(reg.processingFee) - Number(reg.refundedAmount),
-        );
+        const base = paid
+          ? Math.max(0, Number(reg.totalAmount) - Number(reg.processingFee) - Number(reg.refundedAmount))
+          : 0;
         const refundInfo = paid
           ? `Your ticket price of ₹${base.toLocaleString('en-IN')} is coming back to the card or account you paid with. ` +
             'It can take 5-7 business days to show once sent. The processing fee is not refunded.'
@@ -2649,7 +2739,7 @@ export class EventsService {
         this.emailService
           .sendEventCancelled({
             email: attendeeEmail,
-            userName: reg.user.fullName || reg.user.username || 'there',
+            userName: name,
             eventId: event.id,
             eventTitle: event.title,
             eventDate: this.formatEventDate(event.startDateTime),
@@ -2746,15 +2836,20 @@ export class EventsService {
     status?: EventStatus,
     deleted: DeletedFilter = 'active',
     viewerId?: string,
+    includePast = false,
   ) {
     const skip = (page - 1) * limit;
 
     // This route is public. Outsiders (anonymous, or signed in without an
-    // operator role here) only ever get the live list, whatever they ask for.
+    // operator role here) only ever get the public list, whatever they ask
+    // for: live events, plus finished ones when `includePast` (opt-in so
+    // clients that treat every row as upcoming keep working).
     let visibilityWhere: Prisma.EventWhereInput = {};
+    let statusIn: EventStatus[] | undefined;
     if (!(await this.isSpaceInsider(viewerId, spaceId))) {
       await assertCanViewSpace(this.prisma, spaceId, viewerId);
-      status = EventStatus.PUBLISHED;
+      status = undefined;
+      statusIn = includePast ? LISTED_EVENT_STATUSES : LIVE_EVENT_STATUSES;
       deleted = 'active';
       visibilityWhere = listableEventsWhere(
         await memberSpaceIds(this.prisma, viewerId),
@@ -2774,6 +2869,8 @@ export class EventsService {
     };
     if (status) {
       where.status = status;
+    } else if (statusIn) {
+      where.status = { in: statusIn };
     }
 
     const [events, total] = await Promise.all([

@@ -164,7 +164,7 @@ export async function initiateWhatsappConversation(
 /* Broadcast (admin → many users)                                             */
 /* -------------------------------------------------------------------------- */
 
-export type BroadcastAudience = "ALL" | "SPACE" | "USER";
+export type BroadcastAudience = "ALL" | "SPACE" | "USER" | "STAFF";
 
 export interface BroadcastSpace {
   id: string;

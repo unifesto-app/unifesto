@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import Link from "next/link";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
@@ -44,10 +45,18 @@ async function call<T>(method: string, path: string, body: unknown, token?: stri
  * the phone (verify-mobile creates the account), then save their name and
  * submit with that token. An email that already has a verified account gets
  * its token straight from the email step, so the phone step is skipped.
+ *
+ * `kind="event"` asks to host one event without a space instead (Assist D7):
+ * same signup, event basics in place of the space, followed in My help.
  */
-export default function RequestSpaceClient() {
+export default function RequestSpaceClient({ kind = "space" }: { kind?: "space" | "event" }) {
+  const isEvent = kind === "event";
   const [form, setForm] = useState({
     spaceName: "",
+    eventTitle: "",
+    eventType: "IN_PERSON" as "IN_PERSON" | "ONLINE",
+    start: "",
+    end: "",
     description: "",
     type: "REGULAR" as "REGULAR" | "SUPER",
     city: "",
@@ -92,6 +101,23 @@ export default function RequestSpaceClient() {
     if (!user?.fullName) {
       await call("PATCH", "/users/me", { fullName: form.fullName.trim() }, accessToken);
     }
+    if (isEvent) {
+      await call(
+        "POST",
+        "/spaces/event-requests",
+        {
+          title: form.eventTitle.trim(),
+          description: form.description.trim() || undefined,
+          type: form.eventType,
+          startDateTime: new Date(form.start).toISOString(),
+          endDateTime: new Date(form.end).toISOString(),
+          city: form.city.trim() || undefined,
+        },
+        accessToken,
+      );
+      goTo("done");
+      return;
+    }
     const website = form.websiteUrl.trim();
     await call(
       "POST",
@@ -112,7 +138,8 @@ export default function RequestSpaceClient() {
 
   const sendEmailCode = run(async () => {
     if (!/^[0-9]{10}$/.test(form.phone)) throw new Error("Enter a 10 digit mobile number.");
-    if (!authorised) throw new Error("Confirm you are authorised to represent this organisation.");
+    if (isEvent && new Date(form.end) <= new Date(form.start)) throw new Error("The event has to end after it starts.");
+    if (!isEvent && !authorised) throw new Error("Confirm you are authorised to represent this organisation.");
     await call("POST", "/auth/email", { email });
     goTo("email-otp");
   });
@@ -147,8 +174,8 @@ export default function RequestSpaceClient() {
       <div className="animate-pop-in text-center">
         <h2 className="text-2xl font-bold">Request sent</h2>
         <p className="mt-2 text-paper/65">
-          We will review <strong className="text-white">{form.spaceName}</strong>. Sign in to the
-          Unifesto app with {email} to track your request.
+          We will review <strong className="text-white">{isEvent ? form.eventTitle : form.spaceName}</strong>. Sign in to
+          the Unifesto app with {email} to {isEvent ? "follow it in My help" : "track your request"}.
         </p>
       </div>
     );
@@ -198,67 +225,151 @@ export default function RequestSpaceClient() {
 
   return (
     <form onSubmit={sendEmailCode} className="space-y-4">
-      <h2 className="pt-2 text-lg font-bold">Your space</h2>
-      <input
-        required
-        maxLength={255}
-        aria-label="Space name"
-        value={form.spaceName}
-        onChange={(e) => set("spaceName", e.target.value)}
-        placeholder="Space name"
-        className={FIELD}
-      />
-      <textarea
-        required
-        rows={4}
-        maxLength={2000}
-        aria-label="What is your space about?"
-        value={form.description}
-        onChange={(e) => set("description", e.target.value)}
-        placeholder="What is your space about?"
-        className={FIELD}
-      />
-      <fieldset className="grid gap-3 sm:grid-cols-2">
-        <legend className="sr-only">Space type</legend>
-        {TYPES.map((t) => (
-          <label
-            key={t.value}
-            className={`cursor-pointer rounded-xl border p-4 transition-colors ${
-              form.type === t.value ? "border-primary bg-primary/10" : "border-white/10 bg-night-2"
-            }`}
-          >
-            <input
-              type="radio"
-              name="type"
-              value={t.value}
-              checked={form.type === t.value}
-              onChange={() => set("type", t.value)}
-              className="sr-only"
-            />
-            <span className="block font-semibold">{t.title}</span>
-            <span className="block text-sm text-paper/65">{t.body}</span>
-          </label>
-        ))}
-      </fieldset>
-      <input
-        maxLength={100}
-        aria-label="City"
-        value={form.city}
-        onChange={(e) => set("city", e.target.value)}
-        placeholder="City (optional)"
-        className={FIELD}
-      />
-      <input
-        aria-label="Website"
-        value={form.websiteUrl}
-        onChange={(e) => set("websiteUrl", e.target.value)}
-        placeholder="Website (optional)"
-        className={FIELD}
-      />
+      {isEvent ? (
+        <>
+          <h2 className="pt-2 text-lg font-bold">Your event</h2>
+          <input
+            required
+            maxLength={500}
+            aria-label="Event name"
+            value={form.eventTitle}
+            onChange={(e) => set("eventTitle", e.target.value)}
+            placeholder="Event name"
+            className={FIELD}
+          />
+          <textarea
+            rows={4}
+            maxLength={2000}
+            aria-label="What is the event about?"
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            placeholder="What is the event about? (optional)"
+            className={FIELD}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="space-y-1 text-sm text-paper/65">
+              <span>Starts</span>
+              <input required type="datetime-local" value={form.start} onChange={(e) => set("start", e.target.value)} className={FIELD} />
+            </label>
+            <label className="space-y-1 text-sm text-paper/65">
+              <span>Ends</span>
+              <input required type="datetime-local" min={form.start} value={form.end} onChange={(e) => set("end", e.target.value)} className={FIELD} />
+            </label>
+          </div>
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="sr-only">Format</legend>
+            {(
+              [
+                { value: "IN_PERSON", title: "In person" },
+                { value: "ONLINE", title: "Online" },
+              ] as const
+            ).map((t) => (
+              <label
+                key={t.value}
+                className={`cursor-pointer rounded-xl border p-4 transition-colors ${
+                  form.eventType === t.value ? "border-primary bg-primary/10" : "border-white/10 bg-night-2"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="eventType"
+                  value={t.value}
+                  checked={form.eventType === t.value}
+                  onChange={() => set("eventType", t.value)}
+                  className="sr-only"
+                />
+                <span className="block font-semibold">{t.title}</span>
+              </label>
+            ))}
+          </fieldset>
+          <input
+            maxLength={100}
+            aria-label="City"
+            value={form.city}
+            onChange={(e) => set("city", e.target.value)}
+            placeholder="City (optional)"
+            className={FIELD}
+          />
+          <p className="text-sm text-paper/65">
+            Running a club or community?{" "}
+            <Link href="/request-space" className="underline hover:text-white">
+              Request a Space
+            </Link>{" "}
+            instead.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="pt-2 text-lg font-bold">Your space</h2>
+          <input
+            required
+            maxLength={255}
+            aria-label="Space name"
+            value={form.spaceName}
+            onChange={(e) => set("spaceName", e.target.value)}
+            placeholder="Space name"
+            className={FIELD}
+          />
+          <textarea
+            required
+            rows={4}
+            maxLength={2000}
+            aria-label="What is your space about?"
+            value={form.description}
+            onChange={(e) => set("description", e.target.value)}
+            placeholder="What is your space about?"
+            className={FIELD}
+          />
+          <fieldset className="grid gap-3 sm:grid-cols-2">
+            <legend className="sr-only">Space type</legend>
+            {TYPES.map((t) => (
+              <label
+                key={t.value}
+                className={`cursor-pointer rounded-xl border p-4 transition-colors ${
+                  form.type === t.value ? "border-primary bg-primary/10" : "border-white/10 bg-night-2"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="type"
+                  value={t.value}
+                  checked={form.type === t.value}
+                  onChange={() => set("type", t.value)}
+                  className="sr-only"
+                />
+                <span className="block font-semibold">{t.title}</span>
+                <span className="block text-sm text-paper/65">{t.body}</span>
+              </label>
+            ))}
+          </fieldset>
+          <input
+            maxLength={100}
+            aria-label="City"
+            value={form.city}
+            onChange={(e) => set("city", e.target.value)}
+            placeholder="City (optional)"
+            className={FIELD}
+          />
+          <input
+            aria-label="Website"
+            value={form.websiteUrl}
+            onChange={(e) => set("websiteUrl", e.target.value)}
+            placeholder="Website (optional)"
+            className={FIELD}
+          />
+          <p className="text-sm text-paper/65">
+            Just one event?{" "}
+            <Link href="/request-event" className="underline hover:text-white">
+              Host it without a Space
+            </Link>
+            .
+          </p>
+        </>
+      )}
 
       <h2 className="pt-4 text-lg font-bold">About you</h2>
       <p className="text-sm text-paper/65">
-        We create your Unifesto account with these details. You will run the space from it.
+        We create your Unifesto account with these details. You will run the {isEvent ? "event" : "space"} from it.
       </p>
       <input
         required
@@ -270,14 +381,16 @@ export default function RequestSpaceClient() {
         placeholder="Full name"
         className={FIELD}
       />
-      <input
-        maxLength={120}
-        aria-label="Your role"
-        value={form.requesterRole}
-        onChange={(e) => set("requesterRole", e.target.value)}
-        placeholder="Your role, e.g. President, Coding Club (optional)"
-        className={FIELD}
-      />
+      {!isEvent && (
+        <input
+          maxLength={120}
+          aria-label="Your role"
+          value={form.requesterRole}
+          onChange={(e) => set("requesterRole", e.target.value)}
+          placeholder="Your role, e.g. President, Coding Club (optional)"
+          className={FIELD}
+        />
+      )}
       <input
         required
         type="email"
@@ -302,23 +415,25 @@ export default function RequestSpaceClient() {
           className="w-full bg-transparent px-3 py-3 text-sm text-white placeholder:text-paper/55 focus:outline-none"
         />
       </div>
-      <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/75">
-        <input
-          type="checkbox"
-          required
-          checked={authorised}
-          onChange={(e) => setAuthorised(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]"
-        />
-        <span>
-          I am authorised to represent this organisation, and I own or have permission to use any name and logo I add.
-          Spaces are marked verified only after we confirm this. See the{" "}
-          <a href="/terms#organisers" target="_blank" className="underline hover:text-white">
-            Terms
-          </a>
-          .
-        </span>
-      </label>
+      {!isEvent && (
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/75">
+          <input
+            type="checkbox"
+            required
+            checked={authorised}
+            onChange={(e) => setAuthorised(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--primary)]"
+          />
+          <span>
+            I am authorised to represent this organisation, and I own or have permission to use any name and logo I add.
+            Spaces are marked verified only after we confirm this. See the{" "}
+            <a href="/terms#organisers" target="_blank" className="underline hover:text-white">
+              Terms
+            </a>
+            .
+          </span>
+        </label>
+      )}
       {error && <p className="text-sm text-red-400">{error}</p>}
       <button type="submit" disabled={busy} className={CTA}>
         {busy ? "Sending code…" : "Verify and continue"}

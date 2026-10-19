@@ -28,6 +28,8 @@ import {
   Prisma,
   StayBookingStatus,
   StayPaymentMode,
+  SupportDesk,
+  SupportTicketStatus,
 } from '@prisma/client';
 import { Action, AuthorizationService } from '../auth/authorization';
 import { isPlatformAdmin } from '../events/event-access';
@@ -36,6 +38,7 @@ import Razorpay from 'razorpay';
 import { PayoutsService } from '../payouts/payouts.service';
 import { OPEN_REFUND_STATUSES } from './open-statuses';
 import { openCancelledEventRefunds } from './cancelled-event-refunds';
+import { openRefundCase, updateRefundCase, withNote } from './refund-cases';
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { RefundAlreadyIssuedError, isRazorpayRejection, refundOnce } from '../payments/payments.service';
 import { esc, h1, small, strong } from '../email/layout';
@@ -217,7 +220,16 @@ export class RefundsService {
 
   // --- Create ---------------------------------------------------------------
 
-  async createRequest(userId: string, dto: CreateRefundRequestDto) {
+  /**
+   * D6: cancelling a paid ticket is one flow: a full refund request that
+   * records why, and cancels the booking once it settles. The attendee's own
+   * goes to the space first; an organiser's goes straight to Unifesto.
+   */
+  async requestCancellation(actorId: string, registrationId: string, reason: string) {
+    return this.createRequest(actorId, { registrationId, reason }, { cancellation: true });
+  }
+
+  async createRequest(userId: string, dto: CreateRefundRequestDto, opts: { cancellation?: boolean } = {}) {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: dto.registrationId },
       include: {
@@ -292,6 +304,14 @@ export class RefundsService {
       }
     }
 
+    // Only the holder's own case can carry their refund.
+    const fromCase = dto.supportTicketId
+      ? await this.prisma.supportTicket.findFirst({
+          where: { id: dto.supportTicketId, requesterId: registration.userId },
+          select: { id: true },
+        })
+      : null;
+
     const created = await this.prisma.refundRequest
       .create({
         data: {
@@ -299,7 +319,7 @@ export class RefundsService {
           eventId: registration.eventId,
           requestedById: userId,
           requesterRole,
-          supportTicketId: dto.supportTicketId ?? null,
+          supportTicketId: fromCase?.id ?? null,
           reason: dto.reason,
           requestedAmount: dto.requestedAmount != null ? money(dto.requestedAmount) : null,
           refundMethod: RefundMethod.BANK,
@@ -310,6 +330,20 @@ export class RefundsService {
         if (isPrismaCode(err, 'P2002')) throw new ConflictException(ALREADY_OPEN);
         throw err;
       });
+
+    if (opts.cancellation) {
+      await this.prisma.eventRegistration.update({
+        where: { id: registration.id },
+        data: { cancellationReason: dto.reason },
+      });
+    }
+    openRefundCase(this.events, {
+      ...created,
+      holderId: registration.userId,
+      raisedByHolder: requesterRole === RefundRequesterRole.ATTENDEE,
+      cancellation: opts.cancellation,
+      event: registration.event,
+    });
 
     const eventTitle = registration.event.title;
     if (requesterRole === RefundRequesterRole.ATTENDEE) {
@@ -375,6 +409,17 @@ export class RefundsService {
       curatorActionAt: new Date(),
     });
 
+    if (dto.action === 'FORWARD') {
+      updateRefundCase(this.events, request, userId, `The organiser checked this refund and sent it to Unifesto to decide.${withNote(dto.note)}`, {
+        desk: SupportDesk.PLATFORM,
+      });
+    } else {
+      await this.keepBooking(request.registrationId);
+      updateRefundCase(this.events, request, userId, `The organiser declined this refund.${withNote(dto.note)}`, {
+        status: SupportTicketStatus.RESOLVED,
+      });
+    }
+
     const eventTitle = request.event.title;
     if (dto.action === 'FORWARD') {
       this.notifyAdmin(
@@ -435,6 +480,10 @@ export class RefundsService {
         adminNote: dto.note?.trim() || null,
         adminActionBy: adminId,
         adminActionAt: new Date(),
+      });
+      await this.keepBooking(request.registrationId);
+      updateRefundCase(this.events, request, adminId, `Unifesto declined this refund.${withNote(dto.note)}`, {
+        status: SupportTicketStatus.RESOLVED,
       });
       const payer = await this.userContact(request.registration.userId);
       this.notifyEmail(
@@ -725,6 +774,15 @@ export class RefundsService {
       `Refund ${requestId} approved: ₹${refundedNow} (cash ₹${cashPortion})${fullyRefunded ? ' — registration cancelled' : ''}`,
     );
     await this.flagPayoutShortfall(requestId, reg.eventId, overdrawnBefore, refundedNow);
+    updateRefundCase(
+      this.events,
+      request,
+      adminId,
+      `Unifesto refunded ₹${refundedNow}${fullyRefunded ? ' and cancelled the booking' : ''}.${
+        shortfall ? ` ₹${money(amount - refundedNow)} could not go back yet.` : ''
+      }`,
+      { status: SupportTicketStatus.RESOLVED, desk: SupportDesk.PLATFORM },
+    );
 
     // The money goes back to the cards it came from. When someone other than
     // today's lead paid (a lead who handed over, or bought extra seats), tell them.
@@ -837,7 +895,7 @@ export class RefundsService {
     if (event.status !== EventStatus.CANCELLED) {
       throw new BadRequestException('Only a cancelled event can be refunded in bulk');
     }
-    await openCancelledEventRefunds(this.prisma, eventId, adminId, event.cancellationReason);
+    await openCancelledEventRefunds(this.prisma, eventId, adminId, event.cancellationReason, this.events);
 
     const requests = await this.prisma.refundRequest.findMany({
       where: { eventId, status: { in: [RefundStatus.PENDING_ADMIN, RefundStatus.REFUND_FAILED] } },
@@ -890,6 +948,8 @@ export class RefundsService {
       where: { id: dto.registrationId },
       select: {
         eventId: true,
+        userId: true,
+        event: { select: { spaceId: true, title: true } },
         paymentStatus: true,
         totalAmount: true,
         processingFee: true,
@@ -947,8 +1007,25 @@ export class RefundsService {
         if (isPrismaCode(err, 'P2002')) throw new ConflictException(ALREADY_OPEN);
         throw err;
       });
+    openRefundCase(this.events, {
+      ...request,
+      holderId: registration.userId,
+      raisedByHolder: false,
+      event: registration.event,
+    });
 
     return this.settleApprovedRefund(request, adminId, dto.approvedAmount, dto.reason);
+  }
+
+  /**
+   * A declined refund leaves the booking live, so a paid cancellation (D6)
+   * drops the reason it would have been cancelled for.
+   */
+  private keepBooking(registrationId: string) {
+    return this.prisma.eventRegistration.updateMany({
+      where: { id: registrationId, status: { not: RegistrationStatus.CANCELLED }, refundDueAt: null },
+      data: { cancellationReason: null },
+    });
   }
 
   /**

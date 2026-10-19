@@ -1,16 +1,11 @@
-import { apiBase, withInternal } from "@/lib/api/internal";
 /**
- * Additional Info API Client (Public Frontend)
  * Agenda, speakers, prizes, contacts, and FAQ for public event pages.
  *
  * The backend bundles these sections into the event payload
- * (`GET /events/:id` → { agenda, speakers, prizes, contacts, faqs }). We fetch
- * the event once and map the backend's camelCase rows onto the snake_case
- * shapes the event page renders.
+ * (`GET /events/:slug` → { agenda, speakers, prizes, contacts, faqs }), so
+ * mapEvent maps them from the same response the page already fetched: the
+ * backend's camelCase rows onto the snake_case shapes the event page renders.
  */
-
-// Call the NestJS backend directly, mirroring src/lib/api/events.ts.
-const API_URL = apiBase(process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000");
 
 // ==========================================
 // TYPES (as consumed by the public event page)
@@ -215,86 +210,15 @@ function mapFaq(row: RawFaq): Faq {
   };
 }
 
-// ==========================================
-// HELPER
-// ==========================================
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit = {},
-  timeout = 10000
-) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const response = await fetch(url, withInternal({ ...options, signal: controller.signal }));
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    throw error;
-  }
-}
-
-const EMPTY: AdditionalInfo = {
-  agenda: [],
-  speakers: [],
-  prizes: [],
-  contacts: [],
-  faqs: [],
-};
-
-// ==========================================
-// PUBLIC API (No auth required)
-// ==========================================
-
-/**
- * Fetch an event's additional-info sections. `eventIdOrSlug` may be an id or a
- * slug — the backend's `GET /events/:slug` accepts both.
- */
-export async function getEventAdditionalInfo(
-  eventIdOrSlug: string
-): Promise<AdditionalInfo> {
-  try {
-    const response = await fetchWithTimeout(
-      `${API_URL}/events/${eventIdOrSlug}`,
-      { method: "GET", headers: { "Content-Type": "application/json" } }
-    );
-    if (!response.ok) return EMPTY;
-
-    const event = (await response.json()) as RawEventSections;
-    const byOrder = <T extends { display_order: number }>(a: T, b: T) =>
-      a.display_order - b.display_order;
-
-    return {
-      agenda: (event.agenda ?? []).map(mapAgenda).sort(byOrder),
-      speakers: (event.speakers ?? []).map(mapSpeaker).sort(byOrder),
-      prizes: (event.prizes ?? []).map(mapPrize).sort(byOrder),
-      contacts: (event.contacts ?? []).map(mapContact).sort(byOrder),
-      faqs: (event.faqs ?? []).map(mapFaq).sort(byOrder),
-    };
-  } catch (error) {
-    console.error("Error fetching additional info:", error);
-    return EMPTY;
-  }
-}
-
-export async function getEventAgenda(eventId: string): Promise<AgendaItem[]> {
-  return (await getEventAdditionalInfo(eventId)).agenda;
-}
-
-export async function getEventSpeakers(eventId: string): Promise<Speaker[]> {
-  return (await getEventAdditionalInfo(eventId)).speakers;
-}
-
-export async function getEventPrizes(eventId: string): Promise<Prize[]> {
-  return (await getEventAdditionalInfo(eventId)).prizes;
-}
-
-export async function getEventContacts(eventId: string): Promise<Contact[]> {
-  return (await getEventAdditionalInfo(eventId)).contacts;
-}
-
-export async function getEventFaqs(eventId: string): Promise<Faq[]> {
-  return (await getEventAdditionalInfo(eventId)).faqs;
+export function mapAdditionalInfo(raw: Record<string, unknown>): AdditionalInfo {
+  const event = raw as RawEventSections;
+  const byOrder = <T extends { display_order: number }>(a: T, b: T) =>
+    a.display_order - b.display_order;
+  return {
+    agenda: (event.agenda ?? []).map(mapAgenda).sort(byOrder),
+    speakers: (event.speakers ?? []).map(mapSpeaker).sort(byOrder),
+    prizes: (event.prizes ?? []).map(mapPrize).sort(byOrder),
+    contacts: (event.contacts ?? []).map(mapContact).sort(byOrder),
+    faqs: (event.faqs ?? []).map(mapFaq).sort(byOrder),
+  };
 }

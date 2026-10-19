@@ -131,14 +131,16 @@ export class NotificationsService {
    * By nature this CANNOT apply per-user DB opt-out (no user list is enumerated),
    * so callers MUST restrict it to opt-out categories (never opt-in marketing).
    * Devices whose owner turned push off in-app are already excluded — that opts
-   * the device out of the segment. No per-user PushLog rows are written; the
-   * returned `sent` is OneSignal's estimated recipient count.
+   * the device out of the segment. No per-user PushLog rows are written, and
+   * OneSignal's create response has no recipient count: `sent` stays 0 and the
+   * caller keeps `oneSignalId` to read the real numbers back later
+   * (OneSignalService.getDeliveryStats).
    */
   async sendToSegments(
     segments: string[],
     opts: { title: string; body: string; data?: Record<string, unknown>; deepLink?: string },
-  ): Promise<SendSummary> {
-    const summary: SendSummary = { sent: 0, failed: 0, skipped: 0 };
+  ): Promise<SendSummary & { oneSignalId: string | null }> {
+    const summary = { sent: 0, failed: 0, skipped: 0, oneSignalId: null as string | null };
     try {
       const data = {
         ...(opts.data ?? {}),
@@ -151,7 +153,7 @@ export class NotificationsService {
         data,
       });
       if (result.id) {
-        summary.sent = result.recipients ?? 0;
+        summary.oneSignalId = result.id;
       } else {
         this.logger.error(`sendToSegments got no notification id: ${result.error ?? 'unknown'}`);
       }
@@ -173,7 +175,7 @@ export class NotificationsService {
           userId,
           eventId: inbox?.eventId ?? dataEventId,
           type: type.slice(0, 40),
-          title: opts.title,
+          title: opts.title.slice(0, 200), // VarChar(200); a longer title failed the whole insert
           body: opts.body,
           deepLink: opts.deepLink ?? null,
           data: (opts.data ?? undefined) as Prisma.InputJsonValue | undefined,

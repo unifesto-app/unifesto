@@ -234,7 +234,7 @@ export class StatsMilestoneService {
     // A milestone is a one-line celebration, so the per-period counters are 0.
     await this.whatsapp.broadcastStatsUpdate({
       label: milestone.label,
-      periodText: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      periodText: new Date().toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', year: 'numeric' }),
       newUsers: 0,
       newSpaces: 0,
       newEvents: 0,
