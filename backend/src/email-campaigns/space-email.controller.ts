@@ -18,7 +18,12 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { EmailCampaignsService } from './email-campaigns.service';
 import { EmailTemplatesService } from './email-templates.service';
-import { CreateCampaignDto, PreviewCampaignDto } from './dto/campaign.dto';
+import {
+  CampaignAudienceDto,
+  CreateCampaignDto,
+  PreviewCampaignDto,
+  TestCampaignDto,
+} from './dto/campaign.dto';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/template.dto';
 
 /**
@@ -83,6 +88,20 @@ export class SpaceEmailController {
     @Param('id') id: string,
   ) {
     return this.campaigns.cancelCampaign({ spaceId }, id);
+  }
+
+  @Post('audience')
+  @Can(Action.SPACE_MANAGE_EMAIL)
+  @ApiOperation({ summary: 'How many people a campaign would reach now' })
+  audience(@Param('spaceId') spaceId: string, @Body() dto: CampaignAudienceDto) {
+    return this.campaigns.countAudience({ spaceId }, dto);
+  }
+
+  @Post('test')
+  @Can(Action.SPACE_MANAGE_EMAIL)
+  @ApiOperation({ summary: 'Send the draft to my own email' })
+  sendTest(@CurrentUser() user: User, @Body() dto: TestCampaignDto) {
+    return this.campaigns.sendTest(user.id, dto);
   }
 
   @Post('preview')

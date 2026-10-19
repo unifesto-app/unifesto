@@ -104,3 +104,25 @@ export async function cancelPushCampaign(
     backendClient.post(`/admin/push/campaigns/${id}/cancel`)
   );
 }
+
+/** `POST /admin/push/campaigns/audience`: people this target reaches right now. */
+export async function countPushAudience(
+  target: PushTarget,
+  category?: PushBroadcastCategory
+): Promise<{ data: { recipientCount: number } | null; error: ApiError | null }> {
+  return apiCall(
+    backendClient.post("/admin/push/campaigns/audience", { target, category })
+  );
+}
+
+/** `POST /admin/push/campaigns/test`: the draft to my own devices only. */
+export async function sendPushTest(payload: {
+  title: string;
+  body: string;
+  deepLink?: string;
+}): Promise<{
+  data: { sent: number; failed: number; skipped: number } | null;
+  error: ApiError | null;
+}> {
+  return apiCall(backendClient.post("/admin/push/campaigns/test", payload));
+}

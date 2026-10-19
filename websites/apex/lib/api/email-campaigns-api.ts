@@ -142,3 +142,18 @@ export async function previewBody(
     backendClient.post("/admin/email/preview", { body })
   );
 }
+
+/** `POST /admin/email/audience`: people this target mails right now (opt-outs dropped). */
+export async function countAudience(
+  payload: Pick<CreateCampaignPayload, "targetType" | "targetId" | "segmentFilters">
+): Promise<{ data: { recipientCount: number } | null; error: ApiError | null }> {
+  return apiCall(backendClient.post("/admin/email/audience", payload));
+}
+
+/** `POST /admin/email/test`: the draft to my own email only. */
+export async function sendTestEmail(payload: {
+  subject: string;
+  body: string;
+}): Promise<{ data: { sentTo: string } | null; error: ApiError | null }> {
+  return apiCall(backendClient.post("/admin/email/test", payload));
+}

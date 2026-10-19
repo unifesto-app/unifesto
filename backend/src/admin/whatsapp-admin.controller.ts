@@ -21,7 +21,11 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { WhatsAppReplyDto } from '../whatsapp/dto/reply.dto';
 import { WhatsAppInitiateDto } from '../whatsapp/dto/initiate.dto';
-import { WhatsAppBroadcastDto } from '../whatsapp/dto/broadcast.dto';
+import {
+  WhatsAppAudienceDto,
+  WhatsAppBroadcastDto,
+  WhatsAppBroadcastTestDto,
+} from '../whatsapp/dto/broadcast.dto';
 
 /**
  * Admin-only WhatsApp inbox: read the messages the Business number received and
@@ -64,6 +68,24 @@ export class WhatsAppAdminController {
       search ?? '',
       limit ? parseInt(limit, 10) : undefined,
     );
+  }
+
+  /** How many distinct numbers a broadcast would reach now (for the confirm step). */
+  @Post('broadcast/audience')
+  async broadcastAudience(@Body() dto: WhatsAppAudienceDto) {
+    const recipients = await this.whatsappService.resolveBroadcastRecipients(dto);
+    return { recipientCount: recipients.length };
+  }
+
+  /** Send the template to the signed-in admin's own number only. */
+  @Post('broadcast/test')
+  broadcastTest(@Body() dto: WhatsAppBroadcastTestDto, @CurrentUser() user: User) {
+    return this.whatsappService.sendBroadcastTemplate({
+      ...dto,
+      adminUserId: user.id,
+      audience: 'USER',
+      userIds: [user.id],
+    });
   }
 
   /**

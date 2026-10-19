@@ -211,3 +211,9 @@ export const listBroadcastSpaces = () => call<BroadcastSpace[]>('/admin/whatsapp
 export const searchBroadcastUsers = (search: string) => call<BroadcastUser[]>(`/admin/whatsapp/broadcast/users${qs({ search })}`);
 export const sendWhatsappBroadcast = (body: WhatsappBroadcastParams) =>
   call<{ audience: WhatsappAudience; recipientCount: number; status: 'started' }>('/admin/whatsapp/broadcast', post(body));
+/** POST /admin/whatsapp/broadcast/audience: distinct numbers the blast would reach now. */
+export const countWhatsappAudience = (body: Pick<WhatsappBroadcastParams, 'audience' | 'spaceId' | 'userIds'>) =>
+  call<{ recipientCount: number }>('/admin/whatsapp/broadcast/audience', post(body));
+/** POST /admin/whatsapp/broadcast/test: the template to my own number only. */
+export const sendWhatsappTest = (body: Pick<WhatsappBroadcastParams, 'templateName' | 'languageCode' | 'bodyParams'>) =>
+  call<{ recipientCount: number; status: 'started' }>('/admin/whatsapp/broadcast/test', post(body));
