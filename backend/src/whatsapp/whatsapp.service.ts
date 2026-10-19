@@ -1256,7 +1256,9 @@ export class WhatsAppService {
    */
   private async templateCategory(name?: string, languageCode?: string): Promise<string> {
     if (!name?.trim()) return 'UNKNOWN';
-    const templates = await this.listMessageTemplates().catch(() => []);
+    const templates = await this.listMessageTemplates().catch(
+      () => [] as Awaited<ReturnType<WhatsAppService['listMessageTemplates']>>,
+    );
     const named = templates.filter((t) => t.name === name.trim());
     const hit = named.find((t) => t.language === (languageCode || 'en')) ?? named[0];
     return hit?.category.toUpperCase() || 'UNKNOWN';
