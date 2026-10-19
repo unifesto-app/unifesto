@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
+import slugify from 'slugify';
 import { PrismaService } from '../prisma/prisma.service';
 import { deleteWithoutMoney } from '../common/money-records';
 import { NOT_DELETED } from '../common/soft-delete';
@@ -24,6 +25,7 @@ import {
   ReviewSpaceStatusRequestDto,
   CreateSpaceOwnershipRequestDto,
   ReviewSpaceOwnershipRequestDto,
+  CreateEventRequestDto,
 } from './dto';
 import {
   CreateSubSpaceRequestDto,
@@ -43,6 +45,7 @@ import {
   SpaceVisibility,
   SlugKind,
 } from '@prisma/client';
+import { assertEventSchedule } from '../events/event-dates';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace, visibleSpacesWhere } from './space-access';
 import { isPlatformAdmin } from '../events/event-access';
@@ -1308,18 +1311,11 @@ export class SpacesService {
       throw new BadRequestException('Request has already been reviewed');
     }
 
-    // Build a unique slug from the request name
-    const baseSlug = req.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
-    const slug = `${baseSlug || 'space'}-${Date.now().toString(36)}`;
-
     const created = await this.prisma.$transaction(async (tx) => {
-      const space = await tx.space.create({
-        data: {
+      const space = await this.createApprovedSpace(
+        tx,
+        {
           name: req.name,
-          slug,
           description: req.description,
           type: req.type,
           visibility: req.visibility,
@@ -1328,47 +1324,15 @@ export class SpacesService {
           country: req.country,
           tags: req.tags ?? [],
           websiteUrl: req.websiteUrl,
-          status: SpaceStatus.ACTIVE,
           submittedAt: req.createdAt,
-          approvedAt: new Date(),
-          approvedBy: adminId,
-          createdBy: req.userId,
         },
-      });
-
-      // Grant SPACE_ADMIN role (space-scoped) to the requester — they now run
-      // the approved space.
-      const spaceAdminRole = await tx.role.findUnique({
-        where: { code: RoleCode.SPACE_ADMIN },
-      });
-      if (spaceAdminRole) {
-        await tx.userRole.create({
-          data: {
-            userId: req.userId,
-            roleId: spaceAdminRole.id,
-            spaceId: space.id,
-            assignedBy: adminId,
-          },
-        });
-      }
-
+        req.userId,
+        adminId,
+      );
       await tx.spaceRequest.update({
         where: { id: requestId },
         data: { status: 'APPROVED', reviewedBy: adminId },
       });
-
-      // P0.2: every space owns its billing. Mint a STARTER subscription in the
-      // same transaction so an approved (ACTIVE) space always has a plan row.
-      await tx.orgSubscription.create({
-        data: {
-          spaceId: space.id,
-          plan: OrgPlan.STARTER,
-          billingCycle: BillingCycle.MONTHLY,
-          isActive: true,
-          usageResetAt: SpacesService.nextMonthStart(),
-        },
-      });
-
       return space;
     });
     decideSubjectCase(this.events, {
@@ -1379,6 +1343,65 @@ export class SpacesService {
       what: `the space request. ${created.name} is live`,
     });
     return created;
+  }
+
+  /**
+   * An ACTIVE space run by `ownerId`, inside the caller's transaction: the
+   * space, the owner's SPACE_ADMIN role on it and a STARTER plan. Space and
+   * event requests both approve through this.
+   */
+  private async createApprovedSpace(
+    tx: Prisma.TransactionClient,
+    data: Omit<Prisma.SpaceUncheckedCreateInput, 'slug' | 'status' | 'approvedAt' | 'approvedBy' | 'createdBy'>,
+    ownerId: string,
+    adminId: string,
+  ) {
+    // Build a unique slug from the name
+    const baseSlug = data.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+    const slug = `${baseSlug || 'space'}-${Date.now().toString(36)}`;
+
+    const space = await tx.space.create({
+      data: {
+        ...data,
+        slug,
+        status: SpaceStatus.ACTIVE,
+        approvedAt: new Date(),
+        approvedBy: adminId,
+        createdBy: ownerId,
+      },
+    });
+
+    // Grant SPACE_ADMIN role (space-scoped) to the owner: they now run it.
+    const spaceAdminRole = await tx.role.findUnique({
+      where: { code: RoleCode.SPACE_ADMIN },
+    });
+    if (spaceAdminRole) {
+      await tx.userRole.create({
+        data: {
+          userId: ownerId,
+          roleId: spaceAdminRole.id,
+          spaceId: space.id,
+          assignedBy: adminId,
+        },
+      });
+    }
+
+    // P0.2: every space owns its billing. Mint a STARTER subscription in the
+    // same transaction so an approved (ACTIVE) space always has a plan row.
+    await tx.orgSubscription.create({
+      data: {
+        spaceId: space.id,
+        plan: OrgPlan.STARTER,
+        billingCycle: BillingCycle.MONTHLY,
+        isActive: true,
+        usageResetAt: SpacesService.nextMonthStart(),
+      },
+    });
+
+    return space;
   }
 
   /** First day of next month, midnight — the monthly usage reset boundary. */
@@ -1421,6 +1444,158 @@ export class SpacesService {
       note: reviewNote,
     });
     return rejected;
+  }
+
+  // =====================================================
+  // EVENT REQUESTS (Assist D7)
+  // Someone without a space asks to host one event. Each
+  // request is a REQUEST case on the Platform desk; approval
+  // makes them a personal space and the event as a DRAFT.
+  // =====================================================
+
+  async createEventRequest(userId: string, dto: CreateEventRequestDto) {
+    const [runsSpace, pending] = await Promise.all([
+      this.prisma.userRole.findFirst({
+        where: { userId, eventId: null, spaceId: { not: null }, role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } } },
+        select: { id: true },
+      }),
+      this.prisma.eventRequest.findFirst({ where: { userId, status: 'PENDING' }, select: { id: true } }),
+    ]);
+    if (runsSpace) {
+      throw new BadRequestException('You already run a space. Create the event from it.');
+    }
+    if (pending) {
+      throw new BadRequestException('You already have an event request under review');
+    }
+
+    const start = new Date(dto.startDateTime);
+    const end = new Date(dto.endDateTime);
+    assertEventSchedule(start, end, 'Asia/Kolkata');
+    if (start.getTime() < Date.now()) {
+      throw new BadRequestException('The event has to start in the future.');
+    }
+
+    const req = await this.prisma.eventRequest.create({
+      data: {
+        userId,
+        title: dto.title.trim(),
+        description: dto.description?.trim() || null,
+        type: dto.type,
+        startDateTime: start,
+        endDateTime: end,
+        city: dto.city?.trim() || null,
+      },
+    });
+
+    const when = (d: Date) =>
+      d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+    openSubjectCase(this.events, {
+      subjectType: 'EventRequest',
+      subjectId: req.id,
+      requesterId: userId,
+      kind: SupportCaseKind.REQUEST,
+      requestType: 'EVENT',
+      desk: SupportDesk.PLATFORM,
+      subject: `Event request: ${req.title}`,
+      message: [
+        `I'd like to host "${req.title}" on Unifesto.`,
+        `When: ${when(start)} to ${when(end)}`,
+        req.city ? `Where: ${req.city}` : null,
+        req.description,
+      ]
+        .filter(Boolean)
+        .join('\n'),
+      notify: true,
+    });
+    return req;
+  }
+
+  /**
+   * Approve an event request (ADMIN): a personal space run by the requester
+   * (same as an approved space request) and the event in it as a DRAFT, in
+   * one transaction.
+   */
+  async approveEventRequest(requestId: string, adminId: string) {
+    const req = await this.prisma.eventRequest.findUnique({
+      where: { id: requestId },
+      include: { user: { select: { fullName: true, username: true } } },
+    });
+    if (!req) {
+      throw new NotFoundException('Event request not found');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Claim it first so two reviewers can't make two spaces.
+      const claimed = await tx.eventRequest.updateMany({
+        where: { id: requestId, status: 'PENDING' },
+        data: { status: 'APPROVED', reviewedBy: adminId },
+      });
+      if (!claimed.count) {
+        throw new BadRequestException('Request has already been reviewed');
+      }
+      const space = await this.createApprovedSpace(
+        tx,
+        {
+          name: req.user.fullName?.trim() || req.user.username || 'My space',
+          city: req.city,
+          submittedAt: req.createdAt,
+        },
+        req.userId,
+        adminId,
+      );
+      const event = await tx.event.create({
+        data: {
+          title: req.title,
+          slug: `${slugify(req.title, { lower: true, strict: true })}-${Math.random().toString(36).substring(2, 8)}`,
+          description: req.description,
+          type: req.type,
+          startDateTime: req.startDateTime,
+          endDateTime: req.endDateTime,
+          city: req.city,
+          spaceId: space.id,
+          createdBy: req.userId,
+        },
+      });
+      return tx.eventRequest.update({
+        where: { id: requestId },
+        data: { spaceId: space.id, eventId: event.id },
+      });
+    });
+
+    decideSubjectCase(this.events, {
+      subjectType: 'EventRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: true,
+      what: `the event request. Your space and a draft of "${req.title}" are ready to set up in the Space app`,
+      notify: true,
+    });
+    return result;
+  }
+
+  /** Reject an event request (ADMIN), with the reason the requester sees. */
+  async rejectEventRequest(requestId: string, adminId: string, reviewNote?: string) {
+    const note = reviewNote?.trim() || null;
+    const { count } = await this.prisma.eventRequest.updateMany({
+      where: { id: requestId, status: 'PENDING' },
+      data: { status: 'REJECTED', reviewedBy: adminId, reviewNote: note },
+    });
+    if (!count) {
+      const exists = await this.prisma.eventRequest.findUnique({ where: { id: requestId }, select: { id: true } });
+      throw exists
+        ? new BadRequestException('Request has already been reviewed')
+        : new NotFoundException('Event request not found');
+    }
+    decideSubjectCase(this.events, {
+      subjectType: 'EventRequest',
+      subjectId: requestId,
+      actorId: adminId,
+      approved: false,
+      what: 'the event request',
+      note,
+      notify: true,
+    });
+    return this.prisma.eventRequest.findUnique({ where: { id: requestId } });
   }
 
   // =====================================================

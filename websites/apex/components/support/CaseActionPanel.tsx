@@ -11,7 +11,9 @@ import type { ApiError } from "@/lib/api/backend-client";
 import type { CaseSubject } from "@/lib/api/support-api";
 import { adminDecideRefund } from "@/lib/api/refunds-api";
 import {
+  approveEventRequest,
   approveSpaceRequest,
+  rejectEventRequest,
   rejectSpaceRequest,
   reviewStatusRequest,
   reviewSubSpaceRequest,
@@ -37,14 +39,16 @@ interface Action {
 
 interface SubjectDef {
   title: string;
-  /** The old queue page, until the inbox replaces it. */
-  href: string;
+  /** The old queue page, until the inbox replaces it. None for kinds born in the inbox. */
+  href?: string;
   fields: (d: Record<string, any>) => [string, ReactNode][];
   actions: Action[];
 }
 
 const rupees = (v: unknown) => (v == null ? null : `₹${Number(v).toLocaleString("en-IN")}`);
 const note = (n: string) => n.trim() || undefined;
+const when = (v: unknown) =>
+  new Date(String(v)).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
 
 /** The usual approve / reject pair on a `PATCH …/review` endpoint. */
 function review(fn: (id: string, status: "APPROVED" | "REJECTED", note?: string) => Promise<{ error: ApiError | null }>): Action[] {
@@ -98,6 +102,22 @@ const SUBJECTS: Record<string, SubjectDef> = {
     actions: [
       { label: "Approve", when: ["PENDING"], run: (id) => approveSpaceRequest(id) },
       { label: "Reject", destructive: true, needsNote: true, when: ["PENDING"], run: (id, n) => rejectSpaceRequest(id, note(n)) },
+    ],
+  },
+  EventRequest: {
+    title: "Event request",
+    fields: (d) => [
+      ["Event", d.title],
+      ["When", `${when(d.startDateTime)} to ${when(d.endDateTime)}`],
+      ["Format", String(d.type ?? "").replace(/_/g, " ").toLowerCase()],
+      ["City", d.city],
+      ["About", d.description],
+      ["Turned down because", d.reviewNote],
+    ],
+    // Approve makes a personal space they run and the event in it as a draft.
+    actions: [
+      { label: "Approve", when: ["PENDING"], run: (id) => approveEventRequest(id) },
+      { label: "Reject", destructive: true, needsNote: true, when: ["PENDING"], run: (id, n) => rejectEventRequest(id, note(n)) },
     ],
   },
   SpaceStatusRequest: {
@@ -274,9 +294,11 @@ export function CaseActionPanel({ subject, onDone }: { subject: CaseSubject; onD
             </div>
           </div>
         )}
-        <Link href={def.href} className="block text-xs text-muted-foreground underline-offset-4 hover:underline">
-          Open the full queue
-        </Link>
+        {def.href && (
+          <Link href={def.href} className="block text-xs text-muted-foreground underline-offset-4 hover:underline">
+            Open the full queue
+          </Link>
+        )}
       </CardContent>
     </Card>
   );

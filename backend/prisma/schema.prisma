@@ -483,6 +483,7 @@ model User {
   // Relations
   identities                   UserIdentity[]
   spaceRequests                SpaceRequest[]
+  eventRequests                EventRequest[]
   roles                        UserRole[]                    @relation("UserRoles")
   assignedRoles                UserRole[]                    @relation("AssignedBy")
   createdSpaces                Space[]                       @relation("SpaceCreator")
@@ -738,6 +739,32 @@ model SpaceRequest {
   @@index([userId])
   @@index([status])
   @@map("space_requests")
+}
+
+/// Host one event without a Space (Assist D7). Platform approves: that
+/// creates a personal Space run by the requester and the event as a DRAFT.
+model EventRequest {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String    @db.VarChar(500)
+  description   String?   @db.Text
+  type          EventType @default(IN_PERSON)
+  startDateTime DateTime  @map("start_date_time") @db.Timestamptz(6)
+  endDateTime   DateTime  @map("end_date_time") @db.Timestamptz(6)
+  city          String?   @db.VarChar(100)
+  status        String    @default("PENDING") @db.VarChar(20)
+  reviewNote    String?   @map("review_note") @db.Text
+  reviewedBy    String?   @map("reviewed_by") @db.Uuid
+  /// Set on approval: the personal space and the draft event it made.
+  spaceId       String?   @map("space_id") @db.Uuid
+  eventId       String?   @map("event_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([status])
+  @@map("event_requests")
 }
 
 model SpaceStatusRequest {

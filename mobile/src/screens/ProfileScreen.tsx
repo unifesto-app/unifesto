@@ -283,6 +283,10 @@ export default function ProfileScreen() {
               label={hosts ? 'Request another space' : 'Request a space'}
               onPress={() => router.push('/space-request')}
             />
+            {/* D7: no space yet? One event is enough to start. */}
+            {!hosts ? (
+              <SettingsRow icon={icon('calendar-plus')} label="Host one event" onPress={() => router.push('/event-request')} />
+            ) : null}
             {isPartner ? <SettingsRow icon={icon('megaphone')} label="Partner stats" onPress={() => router.push('/partner')} /> : null}
           </SettingsGroup>
         </Section>
