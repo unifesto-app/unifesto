@@ -55,15 +55,15 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     }
     try {
       const data = UUID.test(idOrSlug)
-        ? await getSpaceById(idOrSlug, token || undefined)
-        : await getSpaceBySlug(idOrSlug, token || undefined);
+        ? await getSpaceById(idOrSlug)
+        : await getSpaceBySlug(idOrSlug);
       setSpace(data);
       if (!data) return;
 
       const parentId = data.parentSpaceId || data.parent_org_id;
       const [eventsRes, parentRes, subsRes] = await Promise.all([
         getSpaceEvents(data.id, 1, 30, true).catch(() => null),
-        parentId ? getSpaceById(parentId, token || undefined).catch(() => null) : Promise.resolve(null),
+        parentId ? getSpaceById(parentId).catch(() => null) : Promise.resolve(null),
         getSubSpaces(data.id).catch(() => ({ spaces: [] as Space[] })),
       ]);
       // Top-level events only: sub-events live inside their big event.
@@ -135,7 +135,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     try {
       setMembershipBusy(true);
       try {
-        await joinSpace(token, space.id);
+        await joinSpace(space.id);
       } catch (e: any) {
         if (!e?.message?.includes('already a member')) throw e;
       }
@@ -157,7 +157,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
         onPress: async () => {
           try {
             setMembershipBusy(true);
-            await leaveSpace(token, space.id);
+            await leaveSpace(space.id);
             await load();
           } catch (e: any) {
             AppAlert.alert('Could not leave', e?.message || 'Please try again.');

@@ -4323,6 +4323,12 @@ model EventReport {
   // Why a FAILED generation failed (surfaced to the organiser, never silent).
   error String? @db.Text
 
+  // M3: AI-written summary of an ended event, from the same snapshot as the
+  // PDF (which prints it on top). Null when the event hadn't ended, the
+  // feature is off, or the model refused or failed.
+  aiSummary   String?   @map("ai_summary") @db.Text
+  aiSummaryAt DateTime? @map("ai_summary_at") @db.Timestamptz(6)
+
   generatedBy String @map("generated_by") @db.Uuid
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

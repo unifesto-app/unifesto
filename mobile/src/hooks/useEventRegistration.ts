@@ -154,7 +154,7 @@ export function useEventRegistration() {
   const [primaryEmail, setPrimaryEmail] = useState('');
   useEffect(() => {
     if (!token) return;
-    getUserIdentities(token)
+    getUserIdentities()
       .then((ids) => {
         const primary = ids.find((i) => i.isPrimary && i.email) ?? ids.find((i) => i.email);
         if (primary?.email) setPrimaryEmail(primary.email);
@@ -189,7 +189,7 @@ export function useEventRegistration() {
   // Re-checked on focus so completing the profile elsewhere clears the gate.
   const loadProfile = useCallback(() => {
     if (!token) return;
-    getCurrentUser(token)
+    getCurrentUser()
       .then((p) => {
         setProfile(p);
         setProfileGender(p.gender || '');
@@ -278,7 +278,7 @@ export function useEventRegistration() {
     }
     try {
       setGateSaving(true);
-      await updateUserProfile(token, { username: uname, fullName: name, gender: gateGender });
+      await updateUserProfile({ username: uname, fullName: name, gender: gateGender });
       loadProfile(); // flips the gate and prefills attendee[0]
     } catch (e: any) {
       setGateError(e?.message || 'Could not save. Check your connection and try again.');
@@ -466,7 +466,7 @@ export function useEventRegistration() {
       // Opt-in, best-effort: persist the edited identity to the profile.
       if (alsoUpdateProfile && token) {
         const self = attendees[0];
-        updateUserProfile(token, { fullName: self.name, gender: attendeeGenderToProfileValue(self.gender) }).catch(() => {});
+        updateUserProfile({ fullName: self.name, gender: attendeeGenderToProfileValue(self.gender) }).catch(() => {});
       }
       setStep('review');
     } else if (step === 'review') {

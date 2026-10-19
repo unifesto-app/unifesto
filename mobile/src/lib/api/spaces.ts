@@ -4,34 +4,21 @@
  */
 
 import { Branding, Event, PaletteColor } from './events';
-import { makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
+import { errorFrom, expectOk, makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
 
 /**
- * Runs a request through the shared helpers (so it gets the offline cache and
- * connectivity tracking) while keeping this module's contract: resolve with
- * the parsed body, or throw with the server's message.
- *
- * Auth: an explicit `token` is sent as-is (callers pass the one they hold);
- * otherwise the stored token is attached when signed in.
+ * Runs a request through the shared helpers (offline cache, connectivity,
+ * token refresh) and resolves with the parsed body or throws ApiError.
+ * `auth: true` for signed-in-only routes; otherwise the stored token is
+ * attached when there is one.
  */
 async function request<T>(
   path: string,
   failureMessage: string,
-  { token, ...init }: RequestInit & { token?: string } = {},
+  { auth, ...init }: RequestInit & { auth?: boolean } = {},
 ): Promise<T> {
-  const response = token
-    ? await makePublicRequest(path, {
-        ...init,
-        headers: { Authorization: `Bearer ${token}`, ...(init.headers as Record<string, string>) },
-      })
-    : await makeOptionalAuthRequest(path, init);
-
-  if (!response) throw new Error("Can't reach Unifesto. Check your connection and try again.");
-  if (!response.ok) {
-    const error: ApiError | null = await response.json().catch(() => null);
-    throw new Error(error?.message || failureMessage);
-  }
-  return response.json();
+  const response = auth ? await makeAuthenticatedRequest(path, init) : await makeOptionalAuthRequest(path, init);
+  return expectOk<T>(response, failureMessage);
 }
 
 // ============================================================================
@@ -124,12 +111,6 @@ export interface SpaceListResponse {
   };
 }
 
-export interface ApiError {
-  statusCode: number;
-  message: string;
-  error?: string;
-}
-
 // ============================================================================
 // Public Space APIs (No authentication required)
 // ============================================================================
@@ -163,8 +144,8 @@ export async function getAllSpaces(params: {
 /**
  * Get space by ID
  */
-export async function getSpaceById(spaceId: string, accessToken?: string): Promise<Space> {
-  return request(`/spaces/${spaceId}`, 'Failed to fetch space', { token: accessToken });
+export async function getSpaceById(spaceId: string): Promise<Space> {
+  return request(`/spaces/${spaceId}`, 'Failed to fetch space');
 }
 
 /**
@@ -178,9 +159,9 @@ export async function getSpacePalette(spaceId: string): Promise<PaletteColor[]> 
   return Array.isArray(body?.colors) ? body.colors : [];
 }
 
-export async function getSpaceBySlug(slug: string, accessToken?: string): Promise<Space> {
+export async function getSpaceBySlug(slug: string): Promise<Space> {
   const cleanSlug = slug.replace(/^@/, '');
-  return request(`/spaces/slug/${cleanSlug}`, 'Space not found', { token: accessToken });
+  return request(`/spaces/slug/${cleanSlug}`, 'Space not found');
 }
 
 /**
@@ -195,14 +176,14 @@ export async function searchSpaces(
 }
 
 // ============================================================================
-// Authenticated Space APIs (Require access token)
+// Authenticated Space APIs (signed-in only)
 // ============================================================================
 
 /**
  * Get user's space memberships (authenticated)
  */
-export async function getUserSpaces(accessToken: string): Promise<Space[]> {
-  return request('/users/me/spaces', 'Failed to fetch user spaces', { token: accessToken });
+export async function getUserSpaces(): Promise<Space[]> {
+  return request('/users/me/spaces', 'Failed to fetch user spaces', { auth: true });
 }
 
 /**
@@ -253,21 +234,15 @@ export async function getSubSpaces(parentId: string): Promise<{ spaces: Space[] 
 /**
  * Join a space (authenticated)
  */
-export async function joinSpace(
-  accessToken: string,
-  spaceId: string
-): Promise<{ message: string; membership: any }> {
-  return request(`/spaces/${spaceId}/join`, 'Failed to join space', { token: accessToken, method: 'POST' });
+export async function joinSpace(spaceId: string): Promise<{ message: string; membership: any }> {
+  return request(`/spaces/${spaceId}/join`, 'Failed to join space', { auth: true, method: 'POST' });
 }
 
 /**
  * Leave a space (authenticated)
  */
-export async function leaveSpace(
-  accessToken: string,
-  spaceId: string
-): Promise<{ message: string }> {
-  return request(`/spaces/${spaceId}/leave`, 'Failed to leave space', { token: accessToken, method: 'POST' });
+export async function leaveSpace(spaceId: string): Promise<{ message: string }> {
+  return request(`/spaces/${spaceId}/leave`, 'Failed to leave space', { auth: true, method: 'POST' });
 }
 
 // ============================================================================
@@ -352,10 +327,7 @@ export const createSpaceRequest = async (data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (!response?.ok) {
-    const error = await response?.json();
-    throw new Error(error?.message || 'Failed to submit request');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to submit request');
   return response.json();
 };
 
@@ -380,9 +352,6 @@ export const createEventRequest = async (data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (!response?.ok) {
-    const error = await response?.json().catch(() => null);
-    throw new Error(error?.message || 'Failed to send request');
-  }
+  if (!response?.ok) throw await errorFrom(response, 'Failed to send request');
   return response.json();
 };
