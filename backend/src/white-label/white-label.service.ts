@@ -7,7 +7,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DomainKind, Prisma } from '@prisma/client';
+import { OnEvent } from '@nestjs/event-emitter';
+import { DomainKind, Prisma, SpaceDomain } from '@prisma/client';
+import { randomBytes } from 'crypto';
+import { Resolver } from 'dns/promises';
 import { Resend } from 'resend';
 import { CacheService } from '../cache/cache.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -39,6 +42,21 @@ interface CfCustomHostname {
   ssl?: { status?: string; validation_records?: { txt_name?: string; txt_value?: string }[] };
   ownership_verification?: { type: string; name: string; value: string };
 }
+
+/** Emitted by SpacesService.deleteSpace with the space's SpaceDomain rows. */
+export const SPACE_DOMAINS_ORPHANED = 'white-label.domains.orphaned';
+
+/** A domain never verified within this long is dropped, freeing the hostname. */
+export const PENDING_CLAIM_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Our own ownership proof for a web domain. A CNAME to us is not proof: one
+ * left dangling after removal would let any space claim the host (H25).
+ */
+export const ownershipTxt = (hostname: string, token: string) => ({
+  name: `_unifesto.${hostname}`,
+  value: `unifesto-verify=${token}`,
+});
 
 /** Lower-case FQDN with at least one dot; no unifesto.app hosts. */
 export function normaliseHostname(raw: string): string {
@@ -73,6 +91,8 @@ export class WhiteLabelService {
   private readonly resend: Resend | null;
   // Cloudflare for SaaS (custom web hostnames). Unset → web domains unavailable.
   private readonly cf: { zoneId: string; token: string; target: string } | null;
+  // Short timeouts: a slow nameserver only delays "Check now", never a page.
+  private readonly dns = new Resolver({ timeout: 3000, tries: 2 });
 
   constructor(
     private readonly prisma: PrismaService,
@@ -459,11 +479,63 @@ export class WhiteLabelService {
 
   async removeEmailDomain(spaceId: string) {
     const row = await this.domainRow(spaceId, DomainKind.EMAIL);
-    // Best effort upstream: the row must go even if Resend already forgot it.
-    const { error } = await this.emailDomainProvider().remove(row.providerId!);
-    if (error) this.logger.warn(`Resend remove ${row.hostname}: ${error.message}`);
+    await this.releaseProvider(row);
     await this.prisma.spaceDomain.delete({ where: { id: row.id } });
     return { removed: true };
+  }
+
+  /**
+   * Best effort: delete the Resend domain / Cloudflare custom hostname behind
+   * a row. The row must go even if the provider already forgot it, so this
+   * only logs. Never throws.
+   */
+  private async releaseProvider(d: Pick<SpaceDomain, 'kind' | 'hostname' | 'providerId'>) {
+    if (!d.providerId) return;
+    try {
+      if (d.kind === DomainKind.EMAIL) {
+        if (!this.resend) throw new Error('RESEND_API_KEY not set');
+        const { error } = await this.resend.domains.remove(d.providerId);
+        if (error) throw new Error(error.message);
+      } else {
+        await this.cfApi('DELETE', `/${d.providerId}`);
+      }
+    } catch (e) {
+      this.logger.warn(`Could not remove ${d.kind} domain ${d.hostname} upstream: ${(e as Error).message}`);
+    }
+  }
+
+  /** A deleted space's rows are gone by cascade; clean their provider objects. */
+  @OnEvent(SPACE_DOMAINS_ORPHANED, { async: true })
+  async onDomainsOrphaned(domains: Pick<SpaceDomain, 'kind' | 'hostname' | 'providerId'>[]) {
+    for (const d of domains) await this.releaseProvider(d);
+  }
+
+  /**
+   * Cron (WhiteLabelSchedulerService). A claim never verified within
+   * PENDING_CLAIM_TTL_MS is dropped so it can't squat the hostname. A verified
+   * domain is re-read from its provider, so one whose DNS changed stops being
+   * `verified` and mail falls back to Unifesto's sender, pages to 404.
+   */
+  async sweepDomains() {
+    const rows = await this.prisma.spaceDomain.findMany();
+    let expired = 0;
+    let lapsed = 0;
+    for (const d of rows) {
+      if (!d.verifiedAt && d.status !== 'verified' && Date.now() - d.createdAt.getTime() > PENDING_CLAIM_TTL_MS) {
+        await this.releaseProvider(d);
+        await this.prisma.spaceDomain.delete({ where: { id: d.id } }).catch(() => undefined);
+        expired++;
+        continue;
+      }
+      if (d.status !== 'verified' || !d.providerId) continue;
+      if (d.kind === DomainKind.EMAIL ? !this.resend : !this.cf) continue;
+      const fresh = d.kind === DomainKind.EMAIL ? await this.refreshEmailDomain(d.id) : await this.refreshWebDomain(d.id);
+      if (fresh.status !== 'verified') {
+        lapsed++;
+        this.logger.warn(`${d.kind} domain ${d.hostname} (space ${d.spaceId}) is no longer verified: ${fresh.status}`);
+      }
+    }
+    return { checked: rows.length, expired, lapsed };
   }
 
   private async domainRow(spaceId: string, kind: DomainKind) {
@@ -486,7 +558,9 @@ export class WhiteLabelService {
         status: data.status,
         records: data.records as unknown as Prisma.InputJsonValue,
         lastCheckedAt: new Date(),
-        verifiedAt: verified ? (row.verifiedAt ?? new Date()) : null,
+        // First verification, kept if it lapses: tells a lost domain from a
+        // never-proven claim (only the latter expires).
+        ...(verified && !row.verifiedAt ? { verifiedAt: new Date() } : {}),
       },
     });
   }
@@ -519,14 +593,19 @@ export class WhiteLabelService {
     return json.result as T;
   }
 
-  /** Our DB shape from a Cloudflare custom hostname. */
-  private webDomainState(h: CfCustomHostname) {
-    const verified = h.status === 'active' && h.ssl?.status === 'active';
+  /**
+   * Our DB shape from a Cloudflare custom hostname. `owned` is our TXT check;
+   * `token` null only for a domain verified before the TXT existed.
+   */
+  private webDomainState(h: CfCustomHostname, token: string | null, owned: boolean) {
+    const routed = h.status === 'active' && h.ssl?.status === 'active';
+    const verified = routed && owned;
     const ok = (done: boolean) => (done ? 'verified' : 'pending');
     const records = [
-      { record: 'Route', type: 'CNAME', name: h.hostname, value: this.cf!.target, status: ok(verified) },
+      ...(token ? [{ record: 'Ownership', type: 'TXT', ...ownershipTxt(h.hostname, token), status: ok(owned) }] : []),
+      { record: 'Route', type: 'CNAME', name: h.hostname, value: this.cf!.target, status: ok(routed) },
       ...(h.ownership_verification && h.status !== 'active'
-        ? [{ record: 'Ownership', type: 'TXT', name: h.ownership_verification.name, value: h.ownership_verification.value, status: 'pending' }]
+        ? [{ record: 'Cloudflare', type: 'TXT', name: h.ownership_verification.name, value: h.ownership_verification.value, status: 'pending' }]
         : []),
       ...(h.ssl?.validation_records ?? [])
         .filter((r) => r.txt_name && r.txt_value)
@@ -536,7 +615,19 @@ export class WhiteLabelService {
       status: verified ? 'verified' : h.status === 'blocked' || h.status === 'moved' ? 'failed' : 'pending',
       records: records as unknown as Prisma.InputJsonValue,
       lastCheckedAt: new Date(),
+      verifyToken: token,
     };
+  }
+
+  /** True when `_unifesto.<host>` carries this token. Any DNS error is "not yet". */
+  private async ownsHost(hostname: string, token: string): Promise<boolean> {
+    const want = ownershipTxt(hostname, token);
+    try {
+      const rows = await this.dns.resolveTxt(want.name);
+      return rows.some((parts) => parts.join('') === want.value);
+    } catch {
+      return false;
+    }
   }
 
   async addWebDomain(spaceId: string, rawHost: string) {
@@ -552,8 +643,9 @@ export class WhiteLabelService {
       hostname,
       ssl: { method: 'http', type: 'dv' },
     });
+    const token = randomBytes(16).toString('hex');
     return this.prisma.spaceDomain.create({
-      data: { spaceId, kind: DomainKind.WEB, hostname, providerId: h.id, ...this.webDomainState(h) },
+      data: { spaceId, kind: DomainKind.WEB, hostname, providerId: h.id, ...this.webDomainState(h, token, false) },
     });
   }
 
@@ -566,11 +658,7 @@ export class WhiteLabelService {
 
   async removeWebDomain(spaceId: string) {
     const row = await this.domainRow(spaceId, DomainKind.WEB);
-    try {
-      await this.cfApi('DELETE', `/${row.providerId}`);
-    } catch (e) {
-      this.logger.warn(`Cloudflare delete ${row.hostname}: ${(e as Error).message}`);
-    }
+    await this.releaseProvider(row);
     await this.prisma.spaceDomain.delete({ where: { id: row.id } });
     await this.invalidateBrandingCaches({ spaceId });
     return { removed: true };
@@ -580,10 +668,14 @@ export class WhiteLabelService {
     const row = await this.prisma.spaceDomain.findUniqueOrThrow({ where: { id } });
     try {
       const h = await this.cfApi<CfCustomHostname>('GET', `/${row.providerId}`);
-      const state = this.webDomainState(h);
+      // Proven once stays proven while verified; a domain from before the TXT
+      // existed (no token) is grandfathered until it stops being verified.
+      const token = row.verifyToken ?? (row.status === 'verified' ? null : randomBytes(16).toString('hex'));
+      const owned = row.status === 'verified' || !token || (await this.ownsHost(row.hostname, token));
+      const state = this.webDomainState(h, token, owned);
       const updated = await this.prisma.spaceDomain.update({
         where: { id },
-        data: { ...state, verifiedAt: state.status === 'verified' ? (row.verifiedAt ?? new Date()) : null },
+        data: { ...state, ...(state.status === 'verified' && !row.verifiedAt ? { verifiedAt: new Date() } : {}) },
       });
       // Cached space/event payloads carry branding.customDomain.
       if (state.status !== row.status) await this.invalidateBrandingCaches({ spaceId: row.spaceId });

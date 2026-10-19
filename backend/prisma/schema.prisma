@@ -902,6 +902,10 @@ model SpaceDomain {
   status  String @default("pending") @db.VarChar(30)
   /// DNS records the space must add, as the provider returned them.
   records Json   @default("[]")
+  /// WEB only: our ownership TXT token (`_unifesto.<hostname>` = `unifesto-verify=<token>`).
+  /// Null only on domains verified before H25.
+  verifyToken String? @map("verify_token") @db.VarChar(64)
+  /// First time it verified; kept if it later lapses (only never-verified claims expire).
   verifiedAt    DateTime? @map("verified_at") @db.Timestamptz(6)
   lastCheckedAt DateTime? @map("last_checked_at") @db.Timestamptz(6)
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
