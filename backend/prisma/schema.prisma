@@ -534,6 +534,7 @@ model User {
   stayBookings                 StayBooking[]                 @relation("StayBooker")
   pollVotes                    PollVote[]
   quizAnswers                  QuizAnswer[]
+  legalAcceptances             LegalAcceptance[]
 
   @@index([deletionRequestedAt])
   @@map("users")
@@ -6008,4 +6009,50 @@ model QuizAnswer {
   @@unique([questionId, userId])
   @@index([quizId])
   @@map("quiz_answers")
+}
+
+/// I2: one row per version of a legal document (Terms, Privacy, ...). A row
+/// with publishedAt null is a draft; published rows are never edited, a change
+/// is a new version. requiresAcceptance makes clients ask everyone (operators
+/// only for the organiser agreement) to accept it on next launch.
+model LegalDocument {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  slug    String  @db.VarChar(64)
+  version Int
+  title   String  @db.VarChar(160)
+  /// Markdown.
+  body    String  @db.Text
+  /// What changed, shown on the accept sheet.
+  summary String? @db.Text
+
+  requiresAcceptance Boolean   @default(false) @map("requires_acceptance")
+  publishedAt        DateTime? @map("published_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  acceptances LegalAcceptance[]
+
+  @@unique([slug, version])
+  @@map("legal_documents")
+}
+
+/// I2: a user accepted one version of a legal document, from which client.
+model LegalAcceptance {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  documentId String        @map("document_id") @db.Uuid
+  document   LegalDocument @relation(fields: [documentId], references: [id], onDelete: Restrict)
+
+  version    Int
+  /// web, space, mobile.
+  client     String   @db.VarChar(16)
+  acceptedAt DateTime @default(now()) @map("accepted_at") @db.Timestamptz(6)
+
+  @@unique([userId, documentId])
+  @@map("legal_acceptances")
 }

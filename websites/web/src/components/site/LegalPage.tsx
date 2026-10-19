@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
+import { notFound } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageHero from "@/components/site/PageHero";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { LEGAL } from "@/lib/legal";
+import { getLegalDoc } from "@/lib/api/legal";
 
 /* The shared reading layout for every legal page: a sticky table of
    contents (anchors double as deep links for support replies), a
@@ -11,6 +15,55 @@ import { LEGAL } from "@/lib/legal";
    grievance details required on every page. Server-rendered, no script. */
 
 export type LegalSection = { id: string; title: string; body: ReactNode };
+
+const md = (text: string) => (
+  <ReactMarkdown remarkPlugins={[remarkGfm]} skipHtml>
+    {text}
+  </ReactMarkdown>
+);
+
+/** Splits a document into sections on its `## Title {#anchor}` headings. A
+ *  `<!-- slot:name -->` line inside a section is replaced by `slots[name]`. */
+function markdownSections(body: string, slots: Record<string, ReactNode>): LegalSection[] {
+  return body
+    .split(/^## /m)
+    .slice(1)
+    .map((chunk) => {
+      const nl = chunk.indexOf("\n");
+      const [, title, anchor] = chunk.slice(0, nl).match(/^(.*?)(?:\s*\{#([\w-]+)\})?\s*$/)!;
+      const parts = chunk.slice(nl + 1).split(/^<!-- slot:([\w-]+) -->$/m);
+      return {
+        id: anchor ?? title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        title,
+        // split() with a capture group alternates text, slot name, text, ...
+        body: parts.map((part, i) => <div key={i}>{i % 2 ? slots[part] : md(part)}</div>),
+      };
+    });
+}
+
+/** A legal page whose text is the latest published version from the API (I2). */
+export async function LegalDocPage({
+  slug,
+  slots = {},
+  ...page
+}: {
+  slug: string;
+  title: string;
+  path: string;
+  lines: string[];
+  lede: ReactNode;
+  slots?: Record<string, ReactNode>;
+}) {
+  const doc = await getLegalDoc(slug);
+  if (!doc) notFound();
+  const effective = new Date(doc.publishedAt).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
+  return <LegalPage {...page} sections={markdownSections(doc.body, slots)} effective={effective} />;
+}
 
 export default function LegalPage({
   title,

@@ -12,6 +12,7 @@ import {
   setCrashlyticsCollectionEnabled,
 } from '@react-native-firebase/crashlytics';
 import { AuthProvider } from '../src/context/AuthContext';
+import LegalAcceptSheet from '../src/components/LegalAcceptSheet';
 import { FavoritesProvider } from '../src/context/FavoritesContext';
 import { SpaceAccessProvider } from '../src/context/SpaceAccessContext';
 import { ThemeProvider, useTheme } from '../src/context/ThemeContext';
@@ -178,6 +179,7 @@ function RootStack() {
         <InAppNoticeHost />
         <AppAlertHost />
         <ImageCropHost />
+        <LegalAcceptSheet />
       </FavoritesProvider>
     </AuthProvider>
   );
