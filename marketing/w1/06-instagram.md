@@ -4,7 +4,7 @@ Reels captions are in `04-shorts.md`. Post feed items 7–9 PM IST. Bio link: `h
 
 ---
 
-## Wed 21 Oct · How-to carousel
+## Thu 22 Oct · How-to carousel (8 PM, after the 6 PM video upload)
 
 **Files:** `assets/howto-carousel/01.png` … `08.png` (1080x1350).
 **Alt text, slide 1:** "Black slide with the text: Your club survives graduation. One Space, your team, clear roles and a crew for every event. A phone shows the Aurora Tech Club dashboard."
@@ -26,14 +26,14 @@ Free for RSVP events. Every event, count and report stays with the club.
 🔖 Save this for your next committee meeting
 📤 Send it to your club president
 
-Full 10-minute video on our YouTube. Link in bio.
+Full video guide on our YouTube. Link in bio.
 
 #collegeclub #studentclub #collegefest #techclub #clublife #eventplanning #unifesto #hyderabad #studentlife
 ```
 
 ---
 
-## Fri 23 Oct · Unifesto vs Google Forms carousel
+## Sat 24 Oct · Unifesto vs Google Forms carousel
 
 **Files:** `assets/vs-google-forms-carousel/01.png` … `07.png`.
 **Alt text, slide 1:** "Black slide with the text: Google Forms is great. Until the fest. A phone shows a Unifesto Space dashboard."
@@ -62,9 +62,9 @@ One to three frames a day. Use the countdown template only from W5. Never reshar
 | Day | Story idea | Sticker |
 |---|---|---|
 | Mon 19 | Behind the scenes: desk + laptop recording the video, text "Recording something for club leads 🎬" | Poll: "Does your club have more than 3 WhatsApp groups?" Yes / Way more |
-| Tue 20 | Video is live: thumbnail `assets/thumbnail.png` | Link sticker → YouTube video (`?utm_source=instagram&utm_campaign=v5-w1` on the links page) |
-| Wed 21 | Slide 1 of the how-to carousel, "New post" | Link sticker → blog `how-to-organize-a-college-fest` |
-| Thu 22 | Quiz: "Who should see the fest's money?" Everyone / Curator only ✅ / The treasurer's cousin | Quiz |
-| Fri 23 | Short 3 cover + "POV: 2 AM" | Question box: "What's the worst tool your fest ever ran on?" |
-| Sat 24 | Reshare the best answers from Friday's question box (no names unless they agree) | Emoji slider 😩 |
-| Sun 25 | Teaser for W2: "Next week: tickets that sell themselves 🎟️" | None |
+| Tue 20 | Poll results + "Video drops Thursday 🎬" | None |
+| Wed 21 | New blog: 8-week fest checklist | Link sticker → blog `how-to-organize-a-college-fest?utm_source=instagram&utm_campaign=v5-w1` |
+| Thu 22 | Video is live: thumbnail `assets/thumbnail-bujji.jpg`, then slide 1 of the how-to carousel at 8 PM | Link sticker → YouTube video (`?utm_source=instagram&utm_campaign=v5-w1`) |
+| Fri 23 | Quiz: "Who should see the fest's money?" Everyone / Curator only ✅ / The treasurer's cousin | Quiz |
+| Sat 24 | Slide 1 of the vs Google Forms carousel, "New post" | Question box: "What's the worst tool your fest ever ran on?" |
+| Sun 25 | Short 3 cover + "POV: 2 AM", then best answers from Saturday's box (no names unless they agree), then W2 teaser "Next week: tickets that sell themselves 🎟️" | Emoji slider 😩 |

@@ -4,7 +4,7 @@ Rules: links go in the first comment, not the body. Post 8–10 AM IST. Reply to
 
 ---
 
-## Mon 19 Oct · Founder post (Abhinavtej, personal profile)
+## Tue 20 Oct · Founder post (Abhinavtej, personal profile)
 
 **Image:** `assets/shots/03-iam-roles-matrix.jpg` (or no image).
 
@@ -26,16 +26,16 @@ When the lead graduates, the Space moves to the next lead. Every event and repor
 
 70 Spaces are live on Unifesto today.
 
-Tomorrow I'm putting out a 10-minute video on setting one up from scratch.
+This week I'm putting out a short video on setting one up from scratch.
 
 If you ran a club in college, what did you lose when the old team left?
 ```
 
-**First comment:** `The video goes up tomorrow on YouTube. Everything else: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1`
+**First comment:** `The video goes up this week on YouTube. Everything else: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1`
 
 ---
 
-## Tue 20 Oct · LinkedIn video (company page, then reshare from founder)
+## Mon 26 Oct · LinkedIn video (company page, then reshare from founder)
 
 **Cut:** 75 s, 16:9, from the long video: 0:00–0:22 (hook) + 3:05–3:40 (keycards) + 5:58–6:06 ("Your president graduates. Your club doesn't."). Put it in the slot of `assets/linkedin-frame/01.png` (overlay; slot 1376x774 at 272, 236). Burned-in captions, because most people watch muted. `assets/linkedin-frame/02.png` is the preview poster.
 
@@ -50,11 +50,11 @@ Nobody sees what they don't need.
 The full guide is on our YouTube (link in the comments).
 ```
 
-**First comment:** `Full video: <YouTube link once live>?utm_source=linkedin&utm_campaign=v5-w1` (paste the real link after Tuesday's upload; tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
+**First comment:** `Full video: <YouTube link once live>?utm_source=linkedin&utm_campaign=v5-w1` (paste the real link after Thursday's upload; tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
 
 ---
 
-## Thu 22 Oct · Company post (Unifesto page)
+## Wed 21 Oct · Company post (Unifesto page)
 
 **Upload:** `assets/howto-carousel.pdf` as a Document. Document title: "How to run a college club from one Space".
 

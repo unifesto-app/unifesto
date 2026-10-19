@@ -11,37 +11,40 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 
 ## Calendar
 
-| Day | Time (IST) | Channel | What | File | Status |
-|---|---|---|---|---|---|
-| Mon 19 | morning | YouTube (record) | Record the long video | `01-video-script.md` | to record |
-| Mon 19 | 9 AM | LinkedIn (founder) | "One person knows everything" | `05-linkedin.md` | draft, ready |
-| Mon 19 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1-cover.png` | needs edit from the recording |
-| Mon 19 | evening | IG story | BTS + poll | `06-instagram.md` | ready |
-| Tue 20 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail.png` | needs edit + upload |
-| Tue 20 | 9 AM (after upload is fine too) | LinkedIn (company) | 75 s video in the frame | `05-linkedin.md`, `assets/linkedin-frame/` | needs edit |
-| Wed 21 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist | `02-blog-how-to-organize-a-college-fest.md` | draft, ready |
-| Wed 21 | 8 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | ready |
-| Wed 21 | 7 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2-cover.png` | needs edit |
-| Thu 22 | 9 AM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | ready |
-| Thu 22 | all day | Outreach DMs (10) | Send Tuesday's video to fest and club pages | see below | to do |
-| Fri 23 | 10 AM | Blog (Apex) | Google Forms for event registration vs Unifesto | `03-blog-unifesto-vs-google-forms.md` | draft, check 4 |
-| Fri 23 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | draft, ready |
-| Fri 23 | 8 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | draft, ready |
-| Fri 23 | 7 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots | `04-shorts.md`, `assets/short3-cover.png` | needs recording (40 s) |
-| Sat 24–Sun 25 | | IG stories | Stories only; batch W2 edits | `06-instagram.md` | ready |
+Re-timed 19 Oct evening: Monday's slots were missed and the long video needs the screen clips + Bujji render, so it moves to **Thu 22**. Anything that links to the video waits for the upload. If the video slips to Fri, every row marked "needs video" moves one day later and the DMs go out Sat.
+
+| Day | Time (IST) | Channel | What | File | Needs video? | Status |
+|---|---|---|---|---|---|---|
+| Mon 19 | tonight | IG story | BTS + poll | `06-instagram.md` | no | ready |
+| Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" | `05-linkedin.md` | no | draft, ready |
+| Wed 21 | 9 AM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, `assets/howto-carousel.pdf` | no | ready |
+| Wed 21 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | draft, ready |
+| Thu 22 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail-bujji.jpg` / `assets/thumbnail.png` | is the video | needs render + edit + upload |
+| Thu 22 | 8 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | yes | ready |
+| Fri 23 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
+| Fri 23 | 10 AM | Blog (Apex) | Google Forms for event registration vs Unifesto | `03-blog-unifesto-vs-google-forms.md` | no | draft, check 4 |
+| Fri 23 | all day | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
+| Fri 23 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1-cover.png` | yes (cut) | needs edit |
+| Sat 24 | 7 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2-cover.png` | yes (cut) | needs edit |
+| Sat 24 | 8 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | draft, ready |
+| Sun 25 | 7 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots | `04-shorts.md`, `assets/short3-cover.png` | no | needs recording (40 s) |
+| Mon 26 | 9 AM | LinkedIn (company) | 75 s video in the frame (spills into W2's first morning) | `05-linkedin.md`, `assets/linkedin-frame/` | yes (cut) | needs edit |
+| Daily | | IG stories | See the stories table | `06-instagram.md` | | ready |
+
+Video length: the cut runs about 7:30. The title's "in 10 minutes" is setup time; never call it "a 10-minute video" in posts or DMs.
 
 Email: none in W1 (every 2 weeks, first one in W2).
 
 ## What you need to do
 
-- **Record** the screen clips for the long video Mon (shot list in `01`, the S rows), and 40 s of extra footage for Short 3. Bujji scenes + voice are rendered in `~/Startups/unifesto-video`.
+- **Record** the screen clips for the long video by Tue (shot list in `01`, the S rows), and 40 s of extra footage for Short 3. Bujji scenes + voice are rendered in `~/Startups/unifesto-video`.
 - **Edit** the long video, 3 Shorts (cut points in `01` and `04`) and the 75 s LinkedIn cut.
 - **Approve** each post, then publish it yourself (or tell me which one to prepare next).
 
-## Outreach DM (Thu, 10 pages)
+## Outreach DM (Fri 23, 10 pages)
 
 ```
-Hi! I'm Abhinav from Unifesto. We made a 10-minute video on running a club from one place: your team, roles, and a crew for every event. Thought it might help with your next fest: <YouTube link>?utm_source=instagram&utm_campaign=v5-w1
+Hi! I'm Abhinav from Unifesto. We made a short video on running a club from one place: your team, roles, and a crew for every event. Thought it might help with your next fest: <YouTube link>?utm_source=instagram&utm_campaign=v5-w1
 
 If you'd like a Space for your club, it's free for RSVP events. Happy to set it up with you.
 ```

@@ -6,7 +6,7 @@
 
 ## Short 1: Who can do what in your club
 
-**Out:** Mon 19 Oct, 7 PM IST (slips to Tue with the long video if the render isn't ready). **Cut from:** long video 2:50–4:05 (Bujji's keycards + IAM grid), reframed to 9:16, Bujji full frame. **Cover:** `assets/short1-cover.png`.
+**Out:** Fri 23 Oct, 7 PM IST (the day after the long video; slips with it). **Cut from:** long video 2:50–4:05 (Bujji's keycards + IAM grid), reframed to 9:16, Bujji full frame. **Cover:** `assets/short1-cover.png`.
 
 | Time | On screen | On-screen text | Bujji says |
 |---|---|---|---|
@@ -30,7 +30,7 @@ Co-Curator helps.
 Crew scans at the gate.
 You decide what each role can touch.
 
-Full 10-minute setup on our YouTube. Link in bio.
+Full setup video on our YouTube. Link in bio.
 
 #collegeclub #collegefest #studentclub #eventmanagement #unifesto #clublife #hyderabad
 ```
@@ -39,7 +39,7 @@ Full 10-minute setup on our YouTube. Link in bio.
 
 ## Short 2: Every event gets its own team
 
-**Out:** Wed 21 Oct, 7 PM IST. **Cut from:** long video 4:05–5:14 (event moons, team roster, role picker open, one avatar as Crew and Curator). **Cover:** `assets/short2-cover.png`.
+**Out:** Sat 24 Oct, 7 PM IST. **Cut from:** long video 4:05–5:14 (event moons, team roster, role picker open, one avatar as Crew and Curator). **Cover:** `assets/short2-cover.png`.
 
 | Time | On screen | On-screen text | Voiceover |
 |---|---|---|---|
@@ -68,7 +68,7 @@ Save this for fest season 🔖 Link in bio.
 
 ## Short 3: Organiser POV, 2 AM matching UPI screenshots (Spreadsheet vs Space)
 
-**Out:** Fri 23 Oct, 7 PM IST (same day as the Google Forms blog). **Format:** recurring "Organiser POV" / "Spreadsheet vs Space". **Cover:** `assets/short3-cover.png`.
+**Out:** Sun 25 Oct, 7 PM IST (after the Google Forms blog on Fri). **Format:** recurring "Organiser POV" / "Spreadsheet vs Space". **Cover:** `assets/short3-cover.png`.
 **Record:** 25 s of face cam or hands-only at a desk at night (lamp on, laptop open), plus 15 s of screen.
 
 | Time | On screen | On-screen text | Voiceover / sound |
