@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -11,13 +11,28 @@ import ChipPicker from '../components/manage/ChipPicker';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { font } from '../theme/fontHelpers';
 
 const GUTTER = spacing[6];
 const CATEGORIES = (Object.keys(CATEGORY_LABEL) as SupportTicketCategory[]).map((c) => ({ value: c, label: CATEGORY_LABEL[c] }));
+/** Unifesto answers these even about an event (decision D2, mirrors the backend). */
+const PLATFORM_CATEGORIES: SupportTicketCategory[] = ['ACCOUNT', 'PAYMENTS', 'TECHNICAL'];
 
-/** Raise a support request, tagged to the space it's about. */
+/**
+ * Raise a case. From an event or ticket ("Get help") it carries eventId or
+ * registrationId and `about` (the event's title), and the backend routes it to
+ * that event's organiser unless it's an account, payment or app question.
+ * From a space (operator support) it carries spaceId and goes to Unifesto.
+ */
 export default function NewSupportTicketScreen() {
-  const { spaceId } = useLocalSearchParams<{ spaceId?: string }>();
+  const { spaceId, eventId, registrationId, about } = useLocalSearchParams<{
+    spaceId?: string;
+    eventId?: string;
+    registrationId?: string;
+    about?: string;
+  }>();
+  const aboutEvent = !!(eventId || registrationId);
   const router = useRouter();
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
@@ -34,7 +49,13 @@ export default function NewSupportTicketScreen() {
     if (subject.trim().length < 3) return setError('Add a short subject.');
     if (message.trim().length < 10) return setError('Tell us a bit more (10 characters or more).');
     setBusy(true);
-    const t = await createTicket({ subject: subject.trim(), message: message.trim(), category, ...(spaceId ? { spaceId } : {}) });
+    const t = await createTicket({
+      subject: subject.trim(),
+      message: message.trim(),
+      category,
+      ...(spaceId ? { spaceId } : {}),
+      ...(registrationId ? { registrationId } : eventId ? { eventId } : {}),
+    });
     setBusy(false);
     if (!t) return setError("Couldn't send. Check your connection and try again.");
     router.replace(`/manage/support/${t.id}`);
@@ -42,13 +63,22 @@ export default function NewSupportTicketScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {aboutEvent ? <Stack.Screen options={{ title: 'Get help' }} /> : null}
       <ScrollView
         contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {about ? <Text style={[styles.about, { color: tokens.text }]}>{about}</Text> : null}
         <BlockTitle>About</BlockTitle>
         <ChipPicker options={CATEGORIES} value={category} onChange={(v) => v && setCategory(v)} />
+        {aboutEvent ? (
+          <Text style={[styles.hint, { color: tokens.textMuted }]}>
+            {PLATFORM_CATEGORIES.includes(category)
+              ? 'Unifesto answers account, payment and app questions.'
+              : 'The organiser answers this, and can pass it to Unifesto.'}
+          </Text>
+        ) : null}
         <SettingsGroup plain>
           <FieldRow
             stacked
@@ -69,7 +99,7 @@ export default function NewSupportTicketScreen() {
               setError('');
               setMessage(v);
             }}
-            placeholder="Which event, what you tried, what happened"
+            placeholder={aboutEvent ? 'What you tried, what happened' : 'Which event, what you tried, what happened'}
           />
         </SettingsGroup>
       </ScrollView>
@@ -80,4 +110,6 @@ export default function NewSupportTicketScreen() {
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
+  about: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], ...font('heading') },
+  hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font() },
 });

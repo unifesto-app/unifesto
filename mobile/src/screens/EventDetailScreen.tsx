@@ -122,6 +122,13 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
   const bannerW = width - GUTTER * 2;
   const bannerH = Math.round((bannerW * 3) / 4); // event banners are 4:3
 
+  // A case about this event; the backend sends it to the organiser's desk (D2).
+  const getHelp = () => {
+    if (!event) return;
+    if (!d.user) return AppAlert.alert('Sign in required', 'Please sign in to ask for help.');
+    router.push({ pathname: '/manage/support/new', params: { eventId: event.id, about: event.title } });
+  };
+
   // Header actions: save + one overflow menu. Plain icons, no backgrounds.
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -145,6 +152,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
               { id: 'copy', title: 'Copy link', icon: MENU_ICONS.copyLink },
               { id: 'calendar', title: 'Add to calendar', icon: MENU_ICONS.calendar },
               { id: 'notify', title: 'Notify me', icon: MENU_ICONS.notify },
+              { id: 'help', title: 'Get help', icon: MENU_ICONS.help },
               { id: 'report', title: 'Report event', icon: MENU_ICONS.report, destructive: true },
             ]}
             onSelect={(action) => {
@@ -152,6 +160,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
               else if (action === 'copy') d.copyLink();
               else if (action === 'calendar') d.addToCalendar();
               else if (action === 'notify') d.notify.openSheet();
+              else if (action === 'help') getHelp();
               else if (action === 'report') setReportOpen(true);
             }}
           />
@@ -159,7 +168,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, event, c.text, d.share, d.copyLink, d.addToCalendar, d.notify.openSheet]);
+  }, [navigation, event, d.user, c.text, d.share, d.copyLink, d.addToCalendar, d.notify.openSheet]);
 
   // ── Loading / missing ─────────────────────────────────────────────────────
   if (d.loading) {
