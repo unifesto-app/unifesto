@@ -22,7 +22,15 @@ import {
   SupportTicketStatus,
   MarketingChannel,
   NotificationSettings,
+  Provider,
+  SupportMessageSide,
 } from '@prisma/client';
+import {
+  AdminDeleteUserCommand,
+  CognitoIdentityProviderClient,
+  ListUsersCommand,
+} from '@aws-sdk/client-cognito-identity-provider';
+import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
 import { resubscribeUserToSpace, setUserMarketing, userMarketingPrefs } from '../common/marketing-opt-out';
 import { validQuietHours } from '../notifications/quiet-hours';
 import { SUBJECT_CASE_OPEN, SUBJECT_CASE_UPDATE, type SubjectCaseOpen, type SubjectCaseUpdate } from '../support/subject-cases';
@@ -32,6 +40,8 @@ import {
   DAY_MS,
   deletionDueAt,
   REDACTED_REFUND_REASON,
+  REDACTED_SUPPORT_MESSAGE,
+  ERASED_NAME,
 } from '../common/account-deletion';
 import { UserProfileDto } from '../auth/dto';
 import { StorageService } from '../storage/storage.service';
@@ -40,6 +50,7 @@ import { normalizeMobile } from '../leaderboard/hackathon.shared';
 @Injectable()
 export class UsersService {
   private readonly logger = new Logger(UsersService.name);
+  private cognito?: CognitoIdentityProviderClient;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -892,19 +903,40 @@ export class UsersService {
     for (const { id } of due) {
       try {
         await this.assertAccountCanClose(id);
-        await this.closeAccount(id);
+        const { leftovers } = await this.closeAccount(id);
         await this.deletionCaseLine(id, 'Account erased. Personal data is removed; payment records stay without a name, for tax and refunds.', SupportTicketStatus.CLOSED);
+        if (leftovers.length) {
+          // Reopens the case for the desk to finish by hand.
+          await this.deletionCaseLine(id, `Some data could not be removed yet: ${leftovers.join(', ')}. The team will finish this.`, SupportTicketStatus.OPEN);
+        }
         closed++;
       } catch (err) {
         if (err instanceof ConflictException) {
           blocked++;
           this.logger.warn(`Deletion of user ${id} is due but blocked: ${err.message}`);
+          await this.deletionProblemLine(id, `Deletion is on hold: ${err.message}`, SupportTicketStatus.PENDING);
         } else {
           this.logger.error(`Deletion of user ${id} failed`, err as Error);
+          await this.deletionProblemLine(id, 'Deletion could not finish. It is retried daily and the team has been told.', SupportTicketStatus.OPEN);
         }
       }
     }
     return { closed, blocked };
+  }
+
+  /**
+   * A purge problem on the deletion case, once: the job retries daily, so the
+   * same line isn't posted again while it's still the latest one.
+   */
+  private async deletionProblemLine(userId: string, text: string, status: SupportTicketStatus) {
+    const last = await this.prisma.supportMessage
+      .findFirst({
+        where: { ticket: { subjectType: 'User', subjectId: userId, kind: SupportCaseKind.PRIVACY } },
+        orderBy: { createdAt: 'desc' },
+        select: { body: true },
+      })
+      .catch(() => null);
+    if (last?.body !== text) await this.deletionCaseLine(userId, text, status);
   }
 
   /** Everything that must be resolved before an account can close. */
@@ -938,7 +970,7 @@ export class UsersService {
    */
   private async closeAccount(userId: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || user.deletedAt) return;
+    if (!user || user.deletedAt) return { leftovers: [] };
 
     // Personal data on related records (DPDP erasure). Money fields — amounts,
     // payment ids, status, refundedAmount — are never touched, so financials
@@ -962,18 +994,24 @@ export class UsersService {
         select: { answers: true, guests: { select: { idProof: true } } },
       }),
       // Read before the identities are deleted below: the organiser lead
-      // funnel has no user link, only the email someone typed.
+      // funnel, tickets and certificates match on the email someone typed,
+      // and Google/Apple sign-ins name the Cognito user to remove.
       this.prisma.userIdentity.findMany({
-        where: { userId, emailVerified: true, email: { not: null } },
-        select: { email: true },
+        where: { userId },
+        select: { provider: true, providerUserId: true, email: true, emailVerified: true },
       }),
     ]);
+    const cognitoSubs = identities
+      .filter((i) => i.provider === Provider.GOOGLE || i.provider === Provider.APPLE)
+      .map((i) => i.providerUserId);
     // Organiser lead funnel ("Notify me", space inquiries, manual/imported
     // leads) has no user link, only the email someone typed. Match on the
     // account's VERIFIED emails only, so we never erase someone else who typed
     // an address we can't vouch for. The DB match is case-insensitive (ILIKE,
     // where `_` is a wildcard), so confirm each hit is an exact lowercase match.
-    const verifiedEmails = new Set(identities.map((i) => (i.email as string).toLowerCase()));
+    const verifiedEmails = new Set(
+      identities.filter((i) => i.emailVerified && i.email).map((i) => (i.email as string).toLowerCase()),
+    );
     const emailLeadIds = verifiedEmails.size
       ? (
           await this.prisma.lead.findMany({
@@ -1004,6 +1042,37 @@ export class UsersService {
           .map((l) => l.id)
       : [];
     const funnelLeadIds = [...emailLeadIds, ...phoneLeadIds];
+
+    // Tickets and certificates name their holder by the email typed at
+    // booking/issue (a member's seat lives on the lead's registration), so the
+    // same exact-match rule as leads applies. The user's own lead ticket may
+    // carry no email at all.
+    const byVerifiedEmail = (field: 'attendeeEmail' | 'recipientEmail') =>
+      [...verifiedEmails].map((email) => ({ [field]: { equals: email, mode: 'insensitive' as const } }));
+    const isMine = (email: string | null) => email === null || verifiedEmails.has(email.toLowerCase());
+    const waId = mobile?.slice(1); // WhatsApp ids are E.164 without the +
+    const [tickets, certificates, waConversations, supportFiles] = await Promise.all([
+      this.prisma.eventTicket.findMany({
+        where: {
+          OR: [{ registration: { userId }, attendeeEmail: null }, ...byVerifiedEmail('attendeeEmail')],
+        },
+        select: { id: true, attendeeEmail: true },
+      }),
+      this.prisma.certificate.findMany({
+        where: { OR: [{ userId }, ...byVerifiedEmail('recipientEmail')] },
+        select: { id: true, userId: true, recipientEmail: true, verificationCode: true },
+      }),
+      this.prisma.whatsappConversation.findMany({
+        where: { OR: [{ userId }, ...(waId ? [{ waId }] : [])] },
+        select: { id: true, waId: true },
+      }),
+      this.prisma.supportAttachment.findMany({
+        where: { message: { authorId: userId, side: SupportMessageSide.REQUESTER } },
+        select: { key: true },
+      }),
+    ]);
+    const ticketIds = tickets.filter((t) => isMine(t.attendeeEmail)).map((t) => t.id);
+    const mineCerts = certificates.filter((c) => c.userId === userId || isMine(c.recipientEmail));
 
     const privateKeys = privateFileKeys([
       ...regs.map((r) => r.formResponses),
@@ -1059,7 +1128,7 @@ export class UsersService {
       this.prisma.stayGuest.updateMany({
         where: { booking: { userId } },
         data: {
-          name: 'Deleted guest',
+          name: ERASED_NAME,
           phone: null,
           email: null,
           idProof: Prisma.DbNull,
@@ -1072,7 +1141,60 @@ export class UsersService {
       this.prisma.favoriteEvent.deleteMany({ where: { userId } }),
       this.prisma.userRole.deleteMany({ where: { userId } }),
       this.prisma.sponsorUser.deleteMany({ where: { userId } }),
-      this.prisma.payoutBankAccount.deleteMany({ where: { userId } }),
+      // Payouts keep their bank account (FK RESTRICT): an account that was
+      // paid out to is scrubbed down to what the payout record needs (bank,
+      // IFSC, last 4 digits); one never paid out to goes. Events stop routing
+      // future payouts to any of them.
+      this.prisma.event.updateMany({
+        where: { payoutBankAccount: { userId } },
+        data: { payoutBankAccountId: null },
+      }),
+      this.prisma.payoutBankAccount.deleteMany({ where: { userId, payouts: { none: {} } } }),
+      this.prisma.$executeRaw`
+        UPDATE organiser_bank_accounts SET
+          account_holder_name = ${ERASED_NAME},
+          mobile_number = NULL,
+          account_number = CASE WHEN account_number IS NULL THEN NULL ELSE 'XXXX' || right(account_number, 4) END,
+          upi_id = CASE WHEN upi_id IS NULL THEN NULL ELSE 'XXXX@' || split_part(upi_id, '@', 2) END,
+          rejection_reason = NULL,
+          is_primary = false,
+          updated_at = now()
+        WHERE user_id = ${userId}::uuid`,
+      this.prisma.eventTicket.updateMany({
+        where: { id: { in: ticketIds } },
+        data: { attendeeName: ERASED_NAME, attendeeEmail: null },
+      }),
+      // The public verify page reads the name from here; the rendered PDF/PNG
+      // (which print it) are deleted after the transaction.
+      this.prisma.certificate.updateMany({
+        where: { id: { in: mineCerts.map((c) => c.id) } },
+        data: { recipientName: ERASED_NAME, recipientEmail: null, pdfUrl: null, imageUrl: null },
+      }),
+      // Support threads stay for the desk's record, minus what the person
+      // wrote or sent. Desk replies and system lines stay.
+      this.prisma.supportTicket.updateMany({
+        where: { requesterId: userId },
+        data: {
+          contactEmail: null,
+          clientInfo: Prisma.DbNull,
+          ratingComment: null,
+          aiTriage: Prisma.DbNull,
+          aiSummary: null,
+        },
+      }),
+      this.prisma.supportAttachment.deleteMany({
+        where: { message: { authorId: userId, side: SupportMessageSide.REQUESTER } },
+      }),
+      this.prisma.supportMessage.updateMany({
+        where: { authorId: userId, side: SupportMessageSide.REQUESTER },
+        data: { body: REDACTED_SUPPORT_MESSAGE },
+      }),
+      this.prisma.userNotification.deleteMany({ where: { userId } }),
+      this.prisma.messageDelivery.deleteMany({ where: { userId } }),
+      // Admin inbox threads with the user's number (messages cascade).
+      this.prisma.whatsappConversation.deleteMany({
+        where: { id: { in: waConversations.map((c) => c.id) } },
+      }),
       this.prisma.eventCheckinAccess.deleteMany({ where: { userId } }),
       this.prisma.sessionCoHost.deleteMany({ where: { userId } }),
       this.prisma.user.update({
@@ -1102,16 +1224,62 @@ export class UsersService {
       }),
     ]);
 
-    await this.deleteHostedAvatar(user.avatarUrl).catch((err) =>
-      this.logger.warn(`Avatar cleanup failed for deleted user ${userId}: ${err}`),
-    );
+    // Files and the Cognito sign-in go after the commit. Anything that can't
+    // be removed is returned so the PRIVACY case says so and the desk follows up.
+    const leftovers: string[] = [];
+    const attempt = async (what: string, fn: () => Promise<unknown>) => {
+      try {
+        await fn();
+      } catch (err) {
+        leftovers.push(what);
+        this.logger.error(`Erasure of user ${userId}: ${what} failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+
+    await attempt('profile photo', async () => {
+      await this.deleteHostedAvatar(user.avatarUrl);
+      // Every photo ever uploaded, not just the current one (keys are avatars/<userId>-<ts>.<ext>).
+      await this.storageService.deletePrefix(`avatars/${userId}-`);
+    });
+    await attempt('WhatsApp media', async () => {
+      for (const { waId: id } of waConversations) {
+        await this.storageService.deletePrefix(`whatsapp-inbox/${id}/`);
+        await this.storageService.deletePrefix(`whatsapp-outbound/${id}/`);
+      }
+    });
     // Best-effort: deleteObject logs and swallows its own failures. Uploads
     // from abandoned checkouts aren't referenced anywhere, so they're left to
     // the 180-day post-event purge (FormUploadsService.purgeExpired).
     // ponytail: one DELETE per key; batch DeleteObjects if a user ever has hundreds.
-    for (const key of privateKeys) await this.storageService.deleteObject(key);
+    for (const key of [
+      ...privateKeys,
+      ...supportFiles.map((f) => f.key),
+      ...mineCerts.flatMap((c) => [`certificates/${c.verificationCode}.pdf`, `certificates/${c.verificationCode}.png`]),
+    ]) {
+      await this.storageService.deleteObject(key);
+    }
+    for (const sub of cognitoSubs) await attempt('Google/Apple sign-in', () => this.deleteCognitoUser(sub));
 
     this.logger.log(`User ${userId} account closed`);
+    return { leftovers: [...new Set(leftovers)] };
+  }
+
+  /**
+   * Remove the user's Google/Apple sign-in from the Cognito pool. Federated
+   * usernames look like `google_<id>`, not the sub we store, so look it up.
+   * Needs cognito-idp:ListUsers and cognito-idp:AdminDeleteUser on the role.
+   */
+  private async deleteCognitoUser(sub: string): Promise<void> {
+    const UserPoolId = this.configService.get<string>('COGNITO_USER_POOL_ID');
+    const region = this.configService.get<string>('AWS_REGION');
+    if (!UserPoolId || !region) return; // no pool configured (local dev)
+    if (!/^[\w-]+$/.test(sub)) throw new Error('unexpected Cognito sub');
+    this.cognito ??= new CognitoIdentityProviderClient({ region, ...AWS_HTTP_TIMEOUTS });
+    const { Users } = await this.cognito.send(
+      new ListUsersCommand({ UserPoolId, Filter: `sub = "${sub}"`, Limit: 1 }),
+    );
+    const Username = Users?.[0]?.Username;
+    if (Username) await this.cognito.send(new AdminDeleteUserCommand({ UserPoolId, Username }));
   }
 
   /**

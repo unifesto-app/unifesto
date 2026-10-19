@@ -1,6 +1,13 @@
 import { Prisma, RefundStatus } from '@prisma/client';
 import { UsersService, privateFileKeys } from './users.service';
-import { REDACTED_REFUND_REASON } from '../common/account-deletion';
+import { ERASED_NAME, REDACTED_REFUND_REASON, REDACTED_SUPPORT_MESSAGE } from '../common/account-deletion';
+
+const cognitoSend = jest.fn();
+jest.mock('@aws-sdk/client-cognito-identity-provider', () => ({
+  CognitoIdentityProviderClient: jest.fn(() => ({ send: cognitoSend })),
+  ListUsersCommand: jest.fn((input) => ({ cmd: 'ListUsers', input })),
+  AdminDeleteUserCommand: jest.fn((input) => ({ cmd: 'AdminDeleteUser', input })),
+}));
 
 /**
  * closeAccount's DPDP scrub: personal data on the user's registrations, group
@@ -22,7 +29,7 @@ function makePrisma() {
       findUnique: jest.fn(async () => ({
         id: USER,
         deletedAt: null,
-        avatarUrl: null,
+        avatarUrl: 'https://bucket.s3.ap-south-1.amazonaws.com/avatars/user-1-2.jpg' as string | null,
         mobileNumber: '+919876543210',
         mobileVerified: true,
       })),
@@ -58,9 +65,12 @@ function makePrisma() {
     sponsorLead: { updateMany: op('sponsorLead.updateMany') },
     refundRequest: { updateMany: op('refundRequest.updateMany') },
     userIdentity: {
-      // The query asks for verified emails only; the mock returns what such a
-      // query would (the unverified one is filtered by the where clause).
-      findMany: jest.fn(async () => [{ email: 'Me@Example.com' }, { email: 'me_work@work.in' }]),
+      findMany: jest.fn(async () => [
+        { provider: 'EMAIL', providerUserId: 'me@example.com', email: 'Me@Example.com', emailVerified: true },
+        { provider: 'GOOGLE', providerUserId: 'sub-google', email: 'me_work@work.in', emailVerified: true },
+        // Unverified: never used to match anyone's data.
+        { provider: 'APPLE', providerUserId: 'sub-apple', email: 'other@x.in', emailVerified: false },
+      ]),
       deleteMany: op('d'),
     },
     lead: {
@@ -79,7 +89,41 @@ function makePrisma() {
     favoriteEvent: { deleteMany: op('d') },
     userRole: { deleteMany: op('d') },
     sponsorUser: { deleteMany: op('d') },
-    payoutBankAccount: { deleteMany: op('d') },
+    payoutBankAccount: { deleteMany: op('payoutBankAccount.deleteMany') },
+    event: { updateMany: op('event.updateMany') },
+    eventTicket: {
+      findMany: jest.fn(async () => [
+        { id: 't-mine', attendeeEmail: null },
+        { id: 't-member', attendeeEmail: 'ME@example.com' },
+        // An ILIKE `_` false positive: someone else.
+        { id: 't-other', attendeeEmail: 'meXwork@work.in' },
+      ]),
+      updateMany: op('eventTicket.updateMany'),
+    },
+    certificate: {
+      findMany: jest.fn(async () => [
+        { id: 'c-1', userId: USER, recipientEmail: null, verificationCode: 'v1' },
+        { id: 'c-2', userId: null, recipientEmail: 'me@example.com', verificationCode: 'v2' },
+        { id: 'c-x', userId: null, recipientEmail: 'meXwork@work.in', verificationCode: 'vx' },
+      ]),
+      updateMany: op('certificate.updateMany'),
+    },
+    whatsappConversation: {
+      findMany: jest.fn(async () => [{ id: 'wa-1', waId: '919876543210' }]),
+      deleteMany: op('whatsappConversation.deleteMany'),
+    },
+    supportAttachment: {
+      findMany: jest.fn(async () => [{ key: 'private/support/t1/m1/a.png' }]),
+      deleteMany: op('supportAttachment.deleteMany'),
+    },
+    supportTicket: { updateMany: op('supportTicket.updateMany') },
+    supportMessage: { updateMany: op('supportMessage.updateMany') },
+    userNotification: { deleteMany: op('userNotification.deleteMany') },
+    messageDelivery: { deleteMany: op('messageDelivery.deleteMany') },
+    $executeRaw: jest.fn((strings: TemplateStringsArray, ...values: unknown[]) => ({
+      name: '$executeRaw',
+      args: { sql: strings.join('?'), values },
+    })),
     eventCheckinAccess: { deleteMany: op('d') },
     sessionCoHost: { deleteMany: op('d') },
     // Phone-only leads whose last 10 digits match, as the SQL narrows them.
@@ -102,14 +146,25 @@ function makePrisma() {
 
 describe('UsersService.closeAccount PII scrub', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let storage: { deleteObject: jest.Mock };
+  let storage: { deleteObject: jest.Mock; deletePrefix: jest.Mock };
   let tx: Array<{ name: string; args: any }>;
+  let result: { leftovers: string[] };
+
+  const config: Record<string, string> = {
+    COGNITO_USER_POOL_ID: 'pool-1',
+    AWS_REGION: 'ap-south-1',
+    S3_BUCKET_NAME: 'bucket',
+  };
 
   beforeEach(async () => {
     prisma = makePrisma();
-    storage = { deleteObject: jest.fn(async () => undefined) };
-    const service = new UsersService(prisma as any, { get: () => undefined } as any, storage as any);
-    await (service as any).closeAccount(USER);
+    storage = { deleteObject: jest.fn(async () => undefined), deletePrefix: jest.fn(async () => 0) };
+    cognitoSend.mockReset();
+    cognitoSend.mockImplementation(async (c: { cmd: string; input: { Filter?: string } }) =>
+      c.cmd === 'ListUsers' ? { Users: [{ Username: `google_${c.input.Filter}` }] } : {},
+    );
+    const service = new UsersService(prisma as any, { get: (k: string) => config[k] } as any, storage as any);
+    result = await (service as any).closeAccount(USER);
     tx = prisma.$transaction.mock.calls[0][0] as any;
   });
 
@@ -126,8 +181,8 @@ describe('UsersService.closeAccount PII scrub', () => {
 
   it('scrubs funnel leads matching a verified email exactly (any case) or the verified mobile', () => {
     expect(prisma.userIdentity.findMany).toHaveBeenCalledWith({
-      where: { userId: USER, emailVerified: true, email: { not: null } },
-      select: { email: true },
+      where: { userId: USER },
+      select: { provider: true, providerUserId: true, email: true, emailVerified: true },
     });
     // The SQL narrows phone-only leads on the mobile's last 10 digits.
     expect((prisma.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual(['9876543210']);
@@ -175,13 +230,113 @@ describe('UsersService.closeAccount PII scrub', () => {
     });
     expect(writes('stayGuest.updateMany')[0]).toEqual({
       where: { booking: { userId: USER } },
-      data: { name: 'Deleted guest', phone: null, email: null, idProof: Prisma.DbNull },
+      data: { name: ERASED_NAME, phone: null, email: null, idProof: Prisma.DbNull },
     });
   });
 
-  it('deletes the user’s private files but not a fellow member’s', () => {
+  it('deletes the user’s private files, support uploads and certificate files, nobody else’s', () => {
     const deleted = storage.deleteObject.mock.calls.map((c) => c[0]).sort();
-    expect(deleted).toEqual([MY_FORM, MY_MEMBER_FILE, MY_ID].sort());
+    expect(deleted).toEqual(
+      [
+        MY_FORM,
+        MY_MEMBER_FILE,
+        MY_ID,
+        'private/support/t1/m1/a.png',
+        'certificates/v1.pdf',
+        'certificates/v1.png',
+        'certificates/v2.pdf',
+        'certificates/v2.png',
+        'avatars/user-1-2.jpg',
+      ].sort(),
+    );
+  });
+
+  it('keeps a paid-out bank account for the payout record, scrubbed; deletes the rest', () => {
+    // Only accounts never paid out to are deleted (Payout.bankAccount is RESTRICT).
+    expect(writes('payoutBankAccount.deleteMany')).toEqual([{ where: { userId: USER, payouts: { none: {} } } }]);
+    expect(writes('event.updateMany')).toEqual([
+      { where: { payoutBankAccount: { userId: USER } }, data: { payoutBankAccountId: null } },
+    ]);
+    const [raw] = writes('$executeRaw');
+    expect(raw.sql).toContain('UPDATE organiser_bank_accounts');
+    expect(raw.sql).toMatch(/account_number = CASE .* right\(account_number, 4\)/);
+    expect(raw.sql).toContain('mobile_number = NULL');
+    expect(raw.sql).not.toContain('ifsc_code');
+    expect(raw.values).toEqual([ERASED_NAME, USER]);
+    // The scrub runs after the delete, inside the same transaction.
+    const names = tx.map((w) => w.name);
+    expect(names.indexOf('$executeRaw')).toBeGreaterThan(names.indexOf('payoutBankAccount.deleteMany'));
+  });
+
+  it('erases the name on the user’s tickets and certificates, matched exactly', () => {
+    expect(writes('eventTicket.updateMany')).toEqual([
+      { where: { id: { in: ['t-mine', 't-member'] } }, data: { attendeeName: ERASED_NAME, attendeeEmail: null } },
+    ]);
+    expect(writes('certificate.updateMany')).toEqual([
+      {
+        where: { id: { in: ['c-1', 'c-2'] } },
+        data: { recipientName: ERASED_NAME, recipientEmail: null, pdfUrl: null, imageUrl: null },
+      },
+    ]);
+    // The unverified address is never a match key.
+    const certWhere = JSON.stringify(prisma.certificate.findMany.mock.calls[0]);
+    expect(certWhere).not.toContain('other@x.in');
+  });
+
+  it('scrubs the user’s side of support threads, keeping desk and system lines', () => {
+    expect(writes('supportTicket.updateMany')).toEqual([
+      {
+        where: { requesterId: USER },
+        data: { contactEmail: null, clientInfo: Prisma.DbNull, ratingComment: null, aiTriage: Prisma.DbNull, aiSummary: null },
+      },
+    ]);
+    expect(writes('supportMessage.updateMany')).toEqual([
+      { where: { authorId: USER, side: 'REQUESTER' }, data: { body: REDACTED_SUPPORT_MESSAGE } },
+    ]);
+    expect(writes('supportAttachment.deleteMany')).toEqual([
+      { where: { message: { authorId: USER, side: 'REQUESTER' } } },
+    ]);
+  });
+
+  it('deletes notifications, delivery logs and WhatsApp threads with their media', () => {
+    expect(writes('userNotification.deleteMany')).toEqual([{ where: { userId: USER } }]);
+    expect(writes('messageDelivery.deleteMany')).toEqual([{ where: { userId: USER } }]);
+    expect(prisma.whatsappConversation.findMany).toHaveBeenCalledWith({
+      where: { OR: [{ userId: USER }, { waId: '919876543210' }] },
+      select: { id: true, waId: true },
+    });
+    expect(writes('whatsappConversation.deleteMany')).toEqual([{ where: { id: { in: ['wa-1'] } } }]);
+    expect(storage.deletePrefix.mock.calls.map((c) => c[0])).toEqual([
+      'avatars/user-1-',
+      'whatsapp-inbox/919876543210/',
+      'whatsapp-outbound/919876543210/',
+    ]);
+  });
+
+  it('deletes the Google and Apple users from the Cognito pool', () => {
+    const deletes = cognitoSend.mock.calls.map((c) => c[0]).filter((c) => c.cmd === 'AdminDeleteUser');
+    expect(deletes.map((c) => c.input)).toEqual([
+      { UserPoolId: 'pool-1', Username: 'google_sub = "sub-google"' },
+      { UserPoolId: 'pool-1', Username: 'google_sub = "sub-apple"' },
+    ]);
+    expect(result).toEqual({ leftovers: [] });
+  });
+});
+
+describe('UsersService.closeAccount cleanup failures', () => {
+  it('returns what could not be removed instead of failing the close', async () => {
+    const prisma = makePrisma();
+    cognitoSend.mockReset();
+    cognitoSend.mockRejectedValue(new Error('AccessDenied'));
+    const storage = { deleteObject: jest.fn(), deletePrefix: jest.fn().mockRejectedValue(new Error('s3 down')) };
+    const service = new UsersService(
+      prisma as any,
+      { get: (k: string) => ({ COGNITO_USER_POOL_ID: 'p', AWS_REGION: 'r' })[k] } as any,
+      storage as any,
+    );
+    const { leftovers } = await (service as any).closeAccount(USER);
+    expect(leftovers).toEqual(['profile photo', 'WhatsApp media', 'Google/Apple sign-in']);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -199,7 +354,7 @@ describe('UsersService.closeAccount with no verified email or mobile', () => {
     const service = new UsersService(
       prisma as any,
       { get: () => undefined } as any,
-      { deleteObject: jest.fn() } as any,
+      { deleteObject: jest.fn(), deletePrefix: jest.fn() } as any,
     );
     await (service as any).closeAccount(USER);
     expect(prisma.lead.findMany).not.toHaveBeenCalled();

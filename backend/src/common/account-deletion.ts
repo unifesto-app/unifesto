@@ -13,3 +13,12 @@ export function deletionDueAt(requestedAt: Date): Date {
  * decided refund, or when one still in review is decided.
  */
 export const REDACTED_REFUND_REASON = 'Removed when the account was closed';
+
+/**
+ * I5: the one placeholder for an erased person's name, wherever a name column
+ * can't be null (certificates, stay guests, bank-account holders, tickets).
+ */
+export const ERASED_NAME = 'Erased user';
+
+/** What a closed account's own support messages read as afterwards. */
+export const REDACTED_SUPPORT_MESSAGE = 'Removed when the account was closed';
