@@ -269,6 +269,58 @@ describe('SupportService (Assist access, routing, escalation)', () => {
     });
   });
 
+  describe('send to space', () => {
+    const fest = { title: 'Fest 2026', spaceId: 'sp-1', deletedAt: null };
+
+    it('Platform moves a no-event case to the event organiser, says so, and tells the space desk', async () => {
+      const { prisma, events, service } = setup({ admin: true, ticket: { kind: 'HELP', assignedToId: 'admin-1' } });
+      prisma.event.findUnique.mockResolvedValueOnce(fest);
+      await service.sendToSpace('t-1', 'ev-1', 'admin-1');
+      expect(prisma.supportTicket.update.mock.calls[0][0].data).toMatchObject({
+        desk: SupportDesk.SPACE,
+        eventId: 'ev-1',
+        spaceId: 'sp-1',
+        escalatedAt: null,
+        assignedToId: null,
+        deskLastReadAt: null,
+        status: SupportTicketStatus.OPEN,
+      });
+      expect(prisma.supportMessage.create.mock.calls[0][0].data).toMatchObject({
+        side: SupportMessageSide.SYSTEM,
+        body: 'Unifesto passed this to the organiser of Fest 2026',
+      });
+      expect(events.emit.mock.calls.map((c: any[]) => c[1])).toEqual([
+        { ticketId: 't-1', kind: 'SENT_TO_SPACE', to: 'DESK', actorId: 'admin-1' },
+        { ticketId: 't-1', kind: 'SENT_TO_SPACE', to: 'REQUESTER', actorId: 'admin-1' },
+      ]);
+    });
+
+    it('the space desk can then see and work it', async () => {
+      const moved = { ...spaceCase, eventId: 'ev-1', desk: SupportDesk.SPACE, escalatedAt: null };
+      expect(await setup({ roles: [curator] }).service.canSeeCase('staff', moved)).toBe(true);
+    });
+
+    it('only Platform may, and only for open help questions on a live event', async () => {
+      for (const roles of [[spaceAdmin], [curator], []]) {
+        const { prisma, service } = setup({ roles, ticket: { kind: 'HELP' } });
+        await expect(service.sendToSpace('t-1', 'ev-1', 'staff')).rejects.toBeInstanceOf(ForbiddenException);
+        expect(prisma.supportTicket.update).not.toHaveBeenCalled();
+      }
+      await expect(
+        setup({ admin: true, ticket: { kind: 'REFUND' } }).service.sendToSpace('t-1', 'ev-1', 'admin-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        setup({ admin: true, ticket: { kind: 'HELP', status: SupportTicketStatus.CLOSED } }).service.sendToSpace('t-1', 'ev-1', 'admin-1'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      for (const ev of [null, { ...fest, deletedAt: new Date() }]) {
+        const { prisma, events, service } = setup({ admin: true, ticket: { kind: 'HELP' } });
+        prisma.event.findUnique.mockResolvedValueOnce(ev);
+        await expect(service.sendToSpace('t-1', 'ev-1', 'admin-1')).rejects.toBeInstanceOf(NotFoundException);
+        expect(events.emit).not.toHaveBeenCalled();
+      }
+    });
+  });
+
   describe('attachments (D4)', () => {
     const PNG = Buffer.from('\x89PNG\r\n\x1a\nrest', 'latin1');
     const file = (buffer: Buffer, size = buffer.length) => ({ buffer, size, originalname: 'shot.png' }) as any;
