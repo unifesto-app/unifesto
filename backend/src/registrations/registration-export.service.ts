@@ -248,6 +248,19 @@ export class RegistrationExportService {
               },
             })
           : [];
+        // Who in each group is checked in (anywhere): per member, never the
+        // registration's own flag, which is set once any one member is in.
+        const memberIn = new Set(
+          (groupRegIds.length
+            ? await prisma.eventGroupMemberCheckin.findMany({
+                where: { registrationId: { in: groupRegIds } },
+                select: { registrationId: true, memberIndex: true },
+                distinct: ['registrationId', 'memberIndex'],
+              })
+            : []
+          ).map((m) => `${m.registrationId}:${m.memberIndex}`),
+        );
+        const groupHasMemberCheckins = new Set([...memberIn].map((k) => k.split(':')[0]));
         const seatsByReg = new Map<string, typeof allSeats>();
         for (const s of allSeats) {
           const list = seatsByReg.get(s.registrationId) ?? [];
@@ -295,7 +308,11 @@ export class RegistrationExportService {
                 reg.paymentStatus,
                 isLead ? Number(reg.totalAmount).toString() : '0',
                 reg.registeredAt.toISOString(),
-                reg.checkedInAt ? 'Yes' : 'No',
+                memberIn.has(`${reg.id}:${seat.seatIndex - 1}`) ||
+                // A whole-group check-in from before per-member records: the lead.
+                (isLead && reg.checkedInAt && !groupHasMemberCheckins.has(reg.id))
+                  ? 'Yes'
+                  : 'No',
                 `Group of ${reg.groupSize} · Seat ${seat.seatIndex} · ${label}`,
                 ...formFields.map((f) =>
                   formatResponse(custom[f.id] ?? (isLead ? responses[f.id] : undefined)),

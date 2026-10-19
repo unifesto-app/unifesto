@@ -767,12 +767,82 @@ interface ScanResult {
   message?: string;
 }
 
-/** Scan a QR code to check an attendee in at a point. `POST /checkin/scan`. */
+/** A group's shared QR: its members, to pick who is here (nobody is checked in yet). */
+export interface GroupScanResult {
+  isGroup: true;
+  registrationId: string;
+  ticketType: string;
+  groupSize: number;
+  leadName: string | null;
+  members: Array<{
+    index: number;
+    name: string | null;
+    email: string | null;
+    /** False for a seat nobody has claimed yet. */
+    claimable: boolean;
+    checkedInAtPoint: string | null;
+  }>;
+}
+
+/**
+ * Scan a QR code at a point. An individual is checked in; a group returns its
+ * members to pick from (then `checkinGroupMembers`). `POST /checkin/scan`.
+ */
 export async function scanQRCode(
   qrCode: string,
   checkinTypeId: string
-): Promise<{ data: ScanResult | null; error: ApiError | null }> {
-  return apiCall(backendClient.post("/checkin/scan", { qrCode, checkinTypeId }));
+): Promise<{ data: ScanResult | GroupScanResult | null; error: ApiError | null }> {
+  return apiCall(
+    backendClient.post("/checkin/scan", { qrCode, checkinTypeId, groupAware: true })
+  );
+}
+
+/** Check the picked members of a group in at a point. `POST /checkin/group`. */
+export async function checkinGroupMembers(
+  registrationId: string,
+  checkinTypeId: string,
+  memberIndexes: number[]
+): Promise<{ data: { checkedInCount: number; total: number } | null; error: ApiError | null }> {
+  return apiCall(
+    backendClient.post("/checkin/group", { registrationId, checkinTypeId, memberIndexes })
+  );
+}
+
+/** Undo a mistaken check-in (one group member, or an individual). `POST /checkin/undo`. */
+export async function undoCheckin(
+  registrationId: string,
+  checkinTypeId: string,
+  memberIndex?: number | null
+): Promise<{ data: { success: boolean } | null; error: ApiError | null }> {
+  return apiCall(
+    backendClient.post("/checkin/undo", {
+      registrationId,
+      checkinTypeId,
+      ...(memberIndex != null ? { memberIndex } : {}),
+    })
+  );
+}
+
+export interface RecentCheckin {
+  id: string;
+  registrationId: string;
+  /** Group member (seat - 1), or null for an individual. */
+  memberIndex: number | null;
+  name: string;
+  avatarUrl: string | null;
+  ticketType: string | null;
+  checkinType: { id: string; name: string };
+  checkedInAt: string;
+  checkedBy: string | null;
+  groupLeadName: string | null;
+}
+
+/** Latest check-ins, people and group members, newest first. `GET /checkin/event/:id/recent`. */
+export async function getRecentCheckins(
+  eventId: string,
+  limit = 10
+): Promise<{ data: RecentCheckin[] | null; error: ApiError | null }> {
+  return apiCall(backendClient.get(`/checkin/event/${eventId}/recent`, { params: { limit } }));
 }
 
 // --- Check-in points (types) -----------------------------------------------
@@ -806,20 +876,6 @@ export async function deleteCheckinType(
   return apiCall(
     backendClient.delete(`/checkin/event/${eventId}/types/${typeId}`)
   );
-}
-
-/**
- * Get all registrations for offline caching (organizers only).
- * Backed by `GET /checkin/event/:id`.
- */
-export async function getOfflineRegistrations(
-  eventId: string
-): Promise<{ data: Registration[] | null; error: ApiError | null }> {
-  const { data, error } = await apiCall<{ registrations: Registration[] }>(
-    backendClient.get(`/checkin/event/${eventId}`)
-  );
-  if (error) return { data: null, error };
-  return { data: data?.registrations || [], error: null };
 }
 
 /**
@@ -892,14 +948,19 @@ export async function setCheckinAccess(
 
 export interface AttendeeSearchResult {
   registrationId: string;
+  /** Group member (seat - 1); null for an individual. */
+  memberIndex: number | null;
   attendee: {
-    id: string;
+    id: string | null;
     fullName: string | null;
     username: string | null;
     avatarUrl: string | null;
   };
   ticketType: string;
   checkedInAtPoint: string | null;
+  groupLeadName?: string | null;
+  /** False for a group seat nobody has claimed yet. */
+  claimable?: boolean;
 }
 
 /** Search attendees for manual check-in. `GET /checkin/event/:id/search`. */
@@ -910,7 +971,8 @@ export async function searchAttendees(
 ): Promise<{ data: { results: AttendeeSearchResult[] } | null; error: ApiError | null }> {
   return apiCall(
     backendClient.get(`/checkin/event/${eventId}/search`, {
-      params: { q, ...(checkinTypeId ? { checkinTypeId } : {}) },
+      // members=1: one row per group member, so each is checked in on their own.
+      params: { q, members: 1, ...(checkinTypeId ? { checkinTypeId } : {}) },
     })
   );
 }
@@ -918,9 +980,14 @@ export async function searchAttendees(
 /** Manually check a registration in at a point. `POST /checkin/manual`. */
 export async function manualCheckin(
   registrationId: string,
-  checkinTypeId: string
+  checkinTypeId: string,
+  memberIndex?: number | null
 ): Promise<{ data: ScanResult | null; error: ApiError | null }> {
   return apiCall(
-    backendClient.post(`/checkin/manual`, { registrationId, checkinTypeId })
+    backendClient.post(`/checkin/manual`, {
+      registrationId,
+      checkinTypeId,
+      ...(memberIndex != null ? { memberIndex } : {}),
+    })
   );
 }

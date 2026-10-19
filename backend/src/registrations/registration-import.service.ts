@@ -506,8 +506,6 @@ export class RegistrationImportService {
       }
     }
 
-    await this.cache.invalidateCheckinCache(eventId).catch(() => undefined);
-
     return {
       ticketTypeName: ticketType.name,
       total: report.length,

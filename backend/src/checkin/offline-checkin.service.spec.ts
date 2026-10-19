@@ -52,7 +52,7 @@ describe('CheckinService offline check-in', () => {
       $transaction: async (fn: any) => fn(prisma),
     };
     const authz = { can: jest.fn().mockResolvedValue(overrides.organiser !== false) };
-    const svc = new CheckinService(prisma as any, {} as any, { invalidateCheckinCache: jest.fn() } as any, authz as any);
+    const svc = new CheckinService(prisma as any, {} as any, authz as any);
     return { svc, prisma, recordCreate, authz };
   };
 
@@ -117,7 +117,6 @@ describe('CheckinService offline check-in', () => {
     prisma.eventCheckinAccess.findFirst.mockResolvedValue({ id: 'grant' });
     const regs = ['reg-1', 'reg-2', 'reg-3'].map((id) => ({ ...baseReg, id }));
     prisma.eventRegistration.findMany.mockResolvedValue(regs);
-    const invalidate = (svc as any).cache.invalidateCheckinCache as jest.Mock;
 
     const { results } = await svc.syncOfflineCheckins(
       USER,
@@ -131,7 +130,6 @@ describe('CheckinService offline check-in', () => {
     expect(prisma.eventCheckinType.findFirst).toHaveBeenCalledTimes(1);
     expect(authz.can).toHaveBeenCalledTimes(1);
     expect(prisma.eventCheckinAccess.findFirst).toHaveBeenCalledTimes(1);
-    expect(invalidate).toHaveBeenCalledTimes(1);
   });
 
   it('S34: two items for one registration only flip it to ATTENDED once', async () => {

@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
-import { CacheService } from '../cache/cache.service';
 import {
   EventStatus,
   GroupSeatStatus,
@@ -27,6 +26,12 @@ interface CheckinBatch {
   points: Map<string, Promise<{ id: string; name: string } | null>>;
   allowed: Map<string, Promise<boolean>>;
   regs: Map<string, any>;
+  /**
+   * Replaying offline scans: a scan made before the event ended still counts
+   * after it flips to COMPLETED, and a point deleted since the scan still
+   * takes it.
+   */
+  offline?: boolean;
 }
 
 @Injectable()
@@ -36,7 +41,6 @@ export class CheckinService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    private readonly cache: CacheService,
     private readonly authz: AuthorizationService,
   ) {}
 
@@ -86,34 +90,39 @@ export class CheckinService {
    * This blocks scanning in someone who hasn't paid (PENDING) or is still on the
    * waiting list, which would otherwise flip them to ATTENDED.
    */
-  private assertCheckinable(registration: {
-    status: RegistrationStatus;
-    isWaitlisted: boolean;
-    paymentStatus: PaymentStatus;
-    event?: { status: EventStatus } | null;
-  }) {
-    const reason = this.checkinBlockReason(registration);
+  private assertCheckinable(
+    registration: Parameters<CheckinService['checkinBlockReason']>[0],
+    offlineScanAt?: Date,
+  ) {
+    const reason = this.checkinBlockReason(registration, offlineScanAt);
     if (reason) throw new BadRequestException(reason);
   }
 
   /**
    * Why a registration can't be checked in, or null when it can. Pure, so the
    * offline roster computes the exact same verdict the live scan would.
+   * `offlineScanAt` is when a synced offline scan happened: one made before the
+   * event's end still counts after the event flipped to COMPLETED.
    */
-  private checkinBlockReason(registration: {
-    status: RegistrationStatus;
-    isWaitlisted: boolean;
-    paymentStatus: PaymentStatus;
-    event?: { status: EventStatus } | null;
-  }): string | null {
+  private checkinBlockReason(
+    registration: {
+      status: RegistrationStatus;
+      isWaitlisted: boolean;
+      paymentStatus: PaymentStatus;
+      event?: { status: EventStatus; endDateTime?: Date } | null;
+    },
+    offlineScanAt?: Date,
+  ): string | null {
     // Check-in closes when the event is over. This backstops the list filter in
     // getMyCheckinEvents: even if a scanner was left open when the event flipped
     // to COMPLETED (or CANCELLED), the scan/manual/group endpoints all funnel
     // through here, so a finished event can't take any more check-ins.
-    const eventStatus = registration.event?.status;
+    const event = registration.event;
+    const scannedInTime =
+      !!offlineScanAt && !!event?.endDateTime && offlineScanAt <= event.endDateTime;
     if (
-      eventStatus === EventStatus.COMPLETED ||
-      eventStatus === EventStatus.CANCELLED
+      event?.status === EventStatus.CANCELLED ||
+      (event?.status === EventStatus.COMPLETED && !scannedInTime)
     ) {
       return 'This event has ended and is no longer accepting check-ins';
     }
@@ -134,7 +143,9 @@ export class CheckinService {
 
   /** Include a registration's context needed to record a check-in. */
   private readonly regInclude = {
-    event: { select: { id: true, title: true, spaceId: true, status: true } },
+    event: {
+      select: { id: true, title: true, spaceId: true, status: true, endDateTime: true },
+    },
     user: {
       select: { id: true, fullName: true, username: true, avatarUrl: true },
     },
@@ -295,7 +306,7 @@ export class CheckinService {
   /**
    * Per-request memo for a batch (offline sync, bulk) — one user, one event —
    * so the point lookup and the permission check run once per point instead
-   * of once per item, and the check-in cache is invalidated once at the end.
+   * of once per item.
    */
   private newBatch(): CheckinBatch {
     return { points: new Map(), allowed: new Map(), regs: new Map() };
@@ -326,8 +337,22 @@ export class CheckinService {
     for (const r of rows) batch.regs.set(r.id, r);
   }
 
-  /** Shared guard: the point belongs to the event and the user may work it. */
+  /** Shared guard: the point belongs to the event, the user may work it, and the registration may be let in. */
   private async assertCanCheckin(
+    userId: string,
+    registration: any,
+    checkinTypeId: string,
+    batch?: CheckinBatch,
+    /** When the check-in happened (offline sync). */
+    at?: Date,
+  ) {
+    const checkinType = await this.assertPointAccess(userId, registration, checkinTypeId, batch);
+    this.assertCheckinable(registration, batch?.offline ? at : undefined);
+    return checkinType;
+  }
+
+  /** The point belongs to the event (and is live, outside offline replay) and the user may work it. */
+  private async assertPointAccess(
     userId: string,
     registration: any,
     checkinTypeId: string,
@@ -335,7 +360,11 @@ export class CheckinService {
   ) {
     const checkinType = await this.once(batch?.points, checkinTypeId, () =>
       this.prisma.eventCheckinType.findFirst({
-        where: { id: checkinTypeId, eventId: registration.event.id },
+        where: {
+          id: checkinTypeId,
+          eventId: registration.event.id,
+          ...(batch?.offline ? {} : { deletedAt: null }),
+        },
         select: { id: true, name: true },
       }),
     );
@@ -356,7 +385,6 @@ export class CheckinService {
         'You are not authorized to check in at this point',
       );
     }
-    this.assertCheckinable(registration);
     return checkinType;
   }
 
@@ -391,6 +419,7 @@ export class CheckinService {
       registration,
       checkinTypeId,
       batch,
+      at,
     );
 
     // Seats are the roster; only CLAIMED seats may be checked in (OPEN/INVITED
@@ -481,8 +510,8 @@ export class CheckinService {
     if (isFirstEver) this.markAttended(registration, userId, at);
 
     if (batch) {
-      // The batch invalidates once at the end, and its caller only reads
-      // `alreadyIn`, so skip rebuilding the roster per item.
+      // The batch caller only reads `alreadyIn`, so skip rebuilding the
+      // roster per item.
       return {
         success: true,
         registrationId,
@@ -493,8 +522,6 @@ export class CheckinService {
         alreadyIn,
       };
     }
-    await this.cache.invalidateCheckinCache(registration.event.id);
-
     // Return the refreshed roster for this point (seat-aware, matching the
     // shape of buildGroupCheckinView).
     const refreshed = await this.buildGroupCheckinView(
@@ -530,6 +557,11 @@ export class CheckinService {
    * Record a check-in of a registration at a check-in point. Idempotent per
    * (registration, point). The first-ever check-in also flips the registration
    * to ATTENDED.
+   *
+   * A group is never checked in at registration level alone: callers that
+   * don't pick members (bulk, Space web, older scanners) check in every
+   * claimed member, stored per member like a door pick, so each member's pass,
+   * the export, the stats and seat removal all see who is actually in.
    */
   private async recordCheckin(
     userId: string,
@@ -539,15 +571,60 @@ export class CheckinService {
     at: Date = new Date(),
     batch?: CheckinBatch,
   ) {
+    const attendee = registration.user;
+    const ticketType = registration.ticketType?.name || 'RSVP';
+
+    if (this.isGroupRegistration(registration)) {
+      const seats = await this.prisma.groupSeat.findMany({
+        where: { registrationId: registration.id },
+        select: { seatIndex: true, status: true },
+      });
+      // A seatless group (never expected after the S42 backfills) falls
+      // through to the single registration-level record.
+      if (seats.length > 0) {
+        const claimed = seats
+          .filter((s) => s.status === GroupSeatStatus.CLAIMED)
+          .map((s) => s.seatIndex - 1);
+        if (claimed.length === 0) {
+          throw new BadRequestException('No one in this group has claimed a seat yet');
+        }
+        const res = await this.checkinGroupMembers(
+          userId,
+          registration.id,
+          checkinTypeId,
+          claimed,
+          at,
+          batch,
+        );
+        const first = [...res.alreadyIn].sort((a, b) => +a.checkedInAt - +b.checkedInAt)[0];
+        return first && res.alreadyIn.length === claimed.length
+          ? {
+              alreadyCheckedIn: true as const,
+              checkedInAt: first.checkedInAt,
+              checkedInById: first.checkedInById,
+              checkedInByName: first.checkedInByName,
+              attendee,
+              ticketType,
+              checkinType: res.checkinType,
+            }
+          : {
+              success: true as const,
+              checkedInAt: at,
+              attendee,
+              ticketType,
+              checkinType: res.checkinType,
+              checkedInCount: claimed.length - res.alreadyIn.length,
+            };
+      }
+    }
+
     const checkinType = await this.assertCanCheckin(
       userId,
       registration,
       checkinTypeId,
       batch,
+      at,
     );
-
-    const attendee = registration.user;
-    const ticketType = registration.ticketType?.name || 'RSVP';
 
     const existing = await this.prisma.eventCheckinRecord.findUnique({
       where: {
@@ -620,7 +697,6 @@ export class CheckinService {
       throw e;
     }
     if (isFirstEver) this.markAttended(registration, userId, at);
-    if (!batch) await this.cache.invalidateCheckinCache(registration.event.id);
 
     this.logger.log(
       `Checked in registration ${registration.id} at point ${checkinType.name}`,
@@ -698,6 +774,113 @@ export class CheckinService {
     return this.recordCheckin(userId, registration, checkinTypeId);
   }
 
+  /**
+   * Undo a mistaken check-in at a point: one group member's (memberIndex), or
+   * an individual's. Same authority as checking in at that point, but not the
+   * attending rule, so a check-in can still be corrected after the event or a
+   * cancellation. Every undo is written to EventCheckinUndo.
+   *
+   * The registration follows what is left: its first check-in moves to the
+   * earliest remaining record, and with none left it goes back to REGISTERED
+   * and its tickets to ACTIVE. The registration row is always touched, so
+   * offline scanners pick the change up on their next roster pull.
+   */
+  async undoCheckin(
+    userId: string,
+    registrationId: string,
+    checkinTypeId: string,
+    memberIndex?: number,
+    reason?: string,
+  ) {
+    const registration = await this.prisma.eventRegistration.findUnique({
+      where: { id: registrationId },
+      include: this.regInclude,
+    });
+    if (!registration) throw new NotFoundException('Registration not found');
+    const checkinType = await this.assertPointAccess(userId, registration, checkinTypeId);
+    const isGroup = this.isGroupRegistration(registration);
+    if (memberIndex !== undefined && !isGroup) {
+      throw new BadRequestException('Not a group registration');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      let undone: { checkedInAt: Date; checkedInBy: string };
+      if (memberIndex !== undefined) {
+        const member = await tx.eventGroupMemberCheckin.findUnique({
+          where: {
+            registrationId_memberIndex_checkinTypeId: { registrationId, memberIndex, checkinTypeId },
+          },
+        });
+        if (!member) throw new NotFoundException('That member is not checked in at this point');
+        await tx.eventGroupMemberCheckin.delete({ where: { id: member.id } });
+        undone = member;
+        // The group's registration-level record at this point stands only
+        // while some member is still in there.
+        const stillIn = await tx.eventGroupMemberCheckin.count({
+          where: { registrationId, checkinTypeId },
+        });
+        if (stillIn === 0) {
+          await tx.eventCheckinRecord.deleteMany({ where: { registrationId, checkinTypeId } });
+        }
+      } else {
+        if (
+          isGroup &&
+          (await tx.eventGroupMemberCheckin.count({ where: { registrationId, checkinTypeId } })) > 0
+        ) {
+          throw new BadRequestException('Choose which group member to undo');
+        }
+        const record = await tx.eventCheckinRecord.findUnique({
+          where: { registrationId_checkinTypeId: { registrationId, checkinTypeId } },
+        });
+        if (!record) throw new NotFoundException('Not checked in at this point');
+        await tx.eventCheckinRecord.delete({ where: { id: record.id } });
+        undone = record;
+      }
+
+      await tx.eventCheckinUndo.create({
+        data: {
+          registrationId,
+          checkinTypeId,
+          memberIndex: memberIndex ?? null,
+          checkedInAt: undone.checkedInAt,
+          checkedInBy: undone.checkedInBy,
+          undoneBy: userId,
+          reason: reason?.trim() || null,
+        },
+      });
+
+      const first = await tx.eventCheckinRecord.findFirst({
+        where: { registrationId },
+        orderBy: { checkedInAt: 'asc' },
+        select: { checkedInAt: true, checkedInBy: true },
+      });
+      await tx.eventRegistration.update({
+        where: { id: registrationId },
+        data: first
+          ? { checkedInAt: first.checkedInAt, checkedInBy: first.checkedInBy }
+          : {
+              checkedInAt: null,
+              checkedInBy: null,
+              ...(registration.status === RegistrationStatus.ATTENDED
+                ? { status: RegistrationStatus.REGISTERED }
+                : {}),
+            },
+      });
+      if (!first) {
+        await tx.eventTicket.updateMany({
+          where: { registrationId, status: TicketStatus.USED },
+          data: { status: TicketStatus.ACTIVE, checkedInAt: null },
+        });
+      }
+    });
+
+    this.logger.log(
+      `Undid check-in of registration ${registrationId}` +
+        `${memberIndex !== undefined ? ` member ${memberIndex}` : ''} at ${checkinType.name} by ${userId}`,
+    );
+    return { success: true, registrationId, memberIndex: memberIndex ?? null, checkinType: checkinType.name };
+  }
+
   async getEventRegistrationsForOffline(userId: string, eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -713,20 +896,8 @@ export class CheckinService {
       throw new BadRequestException('Unauthorized');
     }
 
-    // Try to get from cache first
-    const cachedData = await this.cache.getEventRegistrationsForCheckin(eventId);
-    if (cachedData) {
-      return {
-        eventId,
-        eventTitle: event.title,
-        registrations: cachedData,
-        totalCount: cachedData.length,
-        checkedInCount: cachedData.filter((r: any) => r.checkedInAt).length,
-        fromCache: true,
-      };
-    }
-
-    // Fetch from DB and cache
+    // Always read fresh: an hour-long Redis copy went stale on every claim,
+    // team change, transfer, waitlist conversion and manual add.
     const registrations = await this.prisma.eventRegistration.findMany({
       where: {
         eventId,
@@ -782,16 +953,12 @@ export class CheckinService {
       },
     });
 
-    // Set cache for next time
-    await this.cache.setEventRegistrationsForCheckin(eventId, registrations);
-
     return {
       eventId,
       eventTitle: event.title,
       registrations,
       totalCount: registrations.length,
       checkedInCount: registrations.filter((r) => r.checkedInAt).length,
-      fromCache: false,
     };
   }
 
@@ -1027,7 +1194,7 @@ export class CheckinService {
       };
     }[] = [];
 
-    const batch = this.newBatch();
+    const batch: CheckinBatch = { ...this.newBatch(), offline: true };
     await this.preloadRegistrations(
       batch,
       items.map((i) => i.registrationId),
@@ -1097,10 +1264,6 @@ export class CheckinService {
         }
       }
     }
-    if (results.some((r) => r.status === 'ok')) {
-      await this.cache.invalidateCheckinCache(eventId);
-    }
-
     const counts = results.reduce<Record<string, number>>((acc, r) => {
       acc[r.status] = (acc[r.status] ?? 0) + 1;
       return acc;
@@ -1139,34 +1302,41 @@ export class CheckinService {
       throw new BadRequestException('Unauthorized');
     }
 
-    // `total` = confirmed attendees, the same COUNTS_AS_ATTENDING bar that now
-    // gates check-in — so the denominator can't include unpaid/waitlisted rows
-    // that can never be checked in (which would understate the check-in rate).
-    const [total, cancelled] = await Promise.all([
-      this.prisma.eventRegistration.count({
-        where: { eventId, ...COUNTS_AS_ATTENDING },
+    // People, not bookings: an individual counts once, a group counts each
+    // seat (bar released ones). Only confirmed attendees (COUNTS_AS_ATTENDING,
+    // the bar that gates check-in) are counted, so refunded or unpaid rows
+    // never inflate either side. Individuals are checked in at registration
+    // level, group members per member; filtering both through this event's
+    // registrations also scopes a passed point to the event.
+    const attending = { eventId, ...COUNTS_AS_ATTENDING };
+    const individuals = { ...attending, OR: [{ groupSize: null }, { groupSize: { lte: 1 } }] };
+    const groups = { ...attending, groupSize: { gt: 1 } };
+    const [single, seats, cancelled, singleIn, membersIn] = await Promise.all([
+      this.prisma.eventRegistration.count({ where: individuals }),
+      this.prisma.groupSeat.count({
+        where: { status: { not: GroupSeatStatus.RELEASED }, registration: groups },
       }),
       this.prisma.eventRegistration.count({
         where: { eventId, status: RegistrationStatus.CANCELLED },
       }),
+      // Without a point: checked in at least once.
+      checkinTypeId
+        ? this.prisma.eventCheckinRecord.count({
+            where: { checkinTypeId, registration: individuals },
+          })
+        : this.prisma.eventRegistration.count({
+            where: { ...individuals, checkedInAt: { not: null } },
+          }),
+      checkinTypeId
+        ? this.prisma.eventGroupMemberCheckin.count({
+            where: { checkinTypeId, registration: groups },
+          })
+        : this.prisma.eventGroupMemberCheckin
+            .groupBy({ by: ['registrationId', 'memberIndex'], where: { registration: groups } })
+            .then((rows) => rows.length),
     ]);
-
-    // "Checked in" is counted for the selected point; without a point, it's the
-    // number of attendees checked in at least once (registration.checkedInAt).
-    const checkedIn = checkinTypeId
-      ? await this.prisma.eventCheckinRecord.count({
-          where: {
-            checkinTypeId,
-            registration: {
-              status: {
-                in: [RegistrationStatus.REGISTERED, RegistrationStatus.ATTENDED],
-              },
-            },
-          },
-        })
-      : await this.prisma.eventRegistration.count({
-          where: { eventId, status: RegistrationStatus.ATTENDED },
-        });
+    const total = single + seats;
+    const checkedIn = singleIn + membersIn;
 
     return {
       total,
@@ -1190,7 +1360,7 @@ export class CheckinService {
     // per-point stats and multi-point history stay consistent with scanning.
     await this.ensureDefaultCheckinType(eventId);
     const point = await this.prisma.eventCheckinType.findFirst({
-      where: { eventId },
+      where: { eventId, deletedAt: null },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
       select: { id: true },
     });
@@ -1227,8 +1397,8 @@ export class CheckinService {
           continue;
         }
 
-        // Route through the same path as a scan: writes an EventCheckinRecord,
-        // and enforces attendee eligibility (idempotently).
+        // Route through the same path as a scan: enforces attendee
+        // eligibility, and checks a group in member by member (idempotently).
         const res = await this.recordCheckin(userId, registration, point.id, undefined, batch);
         const name = registration.user.fullName;
         if ('alreadyCheckedIn' in res && res.alreadyCheckedIn) {
@@ -1240,8 +1410,6 @@ export class CheckinService {
         results.failed.push({ id: regId, reason: error.message });
       }
     }
-
-    if (results.success.length) await this.cache.invalidateCheckinCache(eventId);
 
     this.logger.log(
       `Bulk check-in for event ${eventId}: ${results.success.length} success, ${results.alreadyCheckedIn.length} already, ${results.failed.length} failed`,
@@ -1274,7 +1442,7 @@ export class CheckinService {
 
   /** Every event has at least one point; seed a default "Entry" if none. */
   private async ensureDefaultCheckinType(eventId: string) {
-    const count = await this.prisma.eventCheckinType.count({ where: { eventId } });
+    const count = await this.prisma.eventCheckinType.count({ where: { eventId, deletedAt: null } });
     if (count === 0) {
       await this.prisma.eventCheckinType.create({
         data: { eventId, name: 'Entry', order: 0 },
@@ -1302,6 +1470,7 @@ export class CheckinService {
     const types = await this.prisma.eventCheckinType.findMany({
       where: {
         eventId,
+        deletedAt: null,
         ...(everyPoint ? {} : { id: { in: grants.map((g) => g.checkinTypeId!) } }),
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
@@ -1325,11 +1494,16 @@ export class CheckinService {
     });
   }
 
-  /** Remove a check-in point (and its records/grants via cascade). Organiser-only. */
+  /**
+   * Remove a check-in point. Organiser-only. A soft delete: the point stops
+   * being listed or scannable live, but its check-in history stays (stats,
+   * exports, passes) and offline scans queued against it still sync.
+   */
   async deleteCheckinType(userId: string, eventId: string, typeId: string) {
     await this.assertEventOrganiser(userId, eventId);
-    await this.prisma.eventCheckinType.deleteMany({
-      where: { id: typeId, eventId },
+    await this.prisma.eventCheckinType.updateMany({
+      where: { id: typeId, eventId, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
     return { success: true };
   }
@@ -1358,7 +1532,7 @@ export class CheckinService {
       }),
       this.prisma.eventCheckinAccess.findMany({ where: { eventId } }),
       this.prisma.eventCheckinType.findMany({
-        where: { eventId },
+        where: { eventId, deletedAt: null },
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
         select: { id: true, name: true },
       }),
@@ -1419,7 +1593,7 @@ export class CheckinService {
       } else if (checkinTypeIds.length > 0) {
         // Only accept points that belong to this event.
         const valid = await tx.eventCheckinType.findMany({
-          where: { eventId, id: { in: checkinTypeIds } },
+          where: { eventId, deletedAt: null, id: { in: checkinTypeIds } },
           select: { id: true },
         });
         await tx.eventCheckinAccess.createMany({
@@ -1811,6 +1985,7 @@ export class CheckinService {
         city: true,
         space: { select: { id: true, name: true } },
         checkinTypes: {
+          where: { deletedAt: null },
           orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
           select: { id: true, name: true },
         },
@@ -1827,7 +2002,7 @@ export class CheckinService {
       if (ev.checkinTypes.length === 0 && spaceIds.includes(ev.spaceId)) {
         await this.ensureDefaultCheckinType(ev.id);
         ev.checkinTypes = await this.prisma.eventCheckinType.findMany({
-          where: { eventId: ev.id },
+          where: { eventId: ev.id, deletedAt: null },
           orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
           select: { id: true, name: true },
         });

@@ -29,8 +29,8 @@ export class ScanQRCodeDto {
     description:
       'Client understands the group-roster response. When true, scanning a ' +
       'group QR returns its members to check in individually instead of ' +
-      'checking the whole group in. Older clients omit it and keep the legacy ' +
-      'whole-group behaviour.',
+      'checking the whole group in. Older clients omit it and every claimed ' +
+      'member is checked in.',
   })
   @IsOptional()
   @IsBoolean()
@@ -55,6 +55,30 @@ export class ManualCheckinDto {
   @IsInt()
   @Min(0)
   memberIndex?: number;
+}
+
+export class UndoCheckinDto {
+  @ApiProperty({ example: 'registration-uuid' })
+  @IsUUID()
+  registrationId: string;
+
+  @ApiProperty({ example: 'checkin-type-uuid' })
+  @IsUUID()
+  checkinTypeId: string;
+
+  @ApiPropertyOptional({
+    description: 'Group registrations: the member (0-based, seat - 1) whose check-in to undo.',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  memberIndex?: number;
+
+  @ApiPropertyOptional({ description: 'Why it was undone, kept on the audit trail.' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string;
 }
 
 export class BulkCheckinDto {

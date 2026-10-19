@@ -2037,6 +2037,7 @@ model EventRegistration {
   tickets             EventTicket[]
   checkinRecords      EventCheckinRecord[]
   groupMemberCheckins EventGroupMemberCheckin[]
+  checkinUndos        EventCheckinUndo[]
   groupSeats          GroupSeat[]
   leadTransfers       GroupLeadTransfer[]
   seatPurchases       GroupSeatPurchase[]
@@ -2144,11 +2145,15 @@ model EventCheckinType {
   name  String @db.VarChar(100)
   order Int    @default(0)
 
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Deleting a point hides it but keeps its check-in history, and lets
+  /// offline scans queued against it still sync.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   records             EventCheckinRecord[]
   accessGrants        EventCheckinAccess[]
   groupMemberCheckins EventGroupMemberCheckin[]
+  undos               EventCheckinUndo[]
 
   @@index([eventId])
   @@map("event_checkin_types")
@@ -2156,6 +2161,30 @@ model EventCheckinType {
 
 /// One check-in of a registration at a specific check-in point. Uniqueness
 /// ensures an attendee is only checked in once per point.
+/// Audit trail of undone check-ins: the check-in that was removed (who, when,
+/// which point and group member) and who undid it.
+model EventCheckinUndo {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  registrationId String            @map("registration_id") @db.Uuid
+  registration   EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  checkinTypeId String           @map("checkin_type_id") @db.Uuid
+  checkinType   EventCheckinType @relation(fields: [checkinTypeId], references: [id], onDelete: Cascade)
+
+  /// Null for an individual (registration-level) check-in.
+  memberIndex Int?     @map("member_index")
+  checkedInAt DateTime @map("checked_in_at") @db.Timestamptz(6)
+  checkedInBy String   @map("checked_in_by") @db.Uuid
+  undoneBy    String   @map("undone_by") @db.Uuid
+  undoneAt    DateTime @default(now()) @map("undone_at") @db.Timestamptz(6)
+  reason      String?  @db.VarChar(500)
+
+  @@index([registrationId])
+  @@index([checkinTypeId])
+  @@map("event_checkin_undos")
+}
+
 model EventCheckinRecord {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 

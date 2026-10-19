@@ -24,14 +24,17 @@ import {
   deleteCheckinType,
   searchAttendees,
   manualCheckin,
-  getOfflineRegistrations,
+  checkinGroupMembers,
+  getRecentCheckins,
+  undoCheckin,
 } from "@/lib/api/registrations-api";
 import type {
   CheckinStats,
   CheckinAccessMember,
   CheckinType,
   AttendeeSearchResult,
-  Registration,
+  GroupScanResult,
+  RecentCheckin,
 } from "@/lib/api/registrations-api";
 import { EventExportMenu } from "@/components/shared/EventExportMenu";
 import { useSession } from "@/lib/context/SessionContext";
@@ -124,9 +127,9 @@ export default function EventCheckinPage() {
 
       {/* Stats for the selected point */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Bookings" value={(stats?.total ?? 0).toString()} icon={Users} hint="Confirmed; a group counts once" />
+        <StatCard title="Attendees" value={(stats?.total ?? 0).toString()} icon={Users} hint="Confirmed; each group member counts" />
         <StatCard
-          title={`Bookings checked in${activeType ? ` · ${activeType.name}` : ""}`}
+          title={`Checked in${activeType ? ` · ${activeType.name}` : ""}`}
           value={(stats?.checkedIn ?? 0).toString()}
           icon={CheckCircle}
           tone="success"
@@ -136,7 +139,7 @@ export default function EventCheckinPage() {
               : undefined
           }
         />
-        <StatCard title="Bookings not checked in" value={(stats?.remaining ?? 0).toString()} icon={Clock} />
+        <StatCard title="Not checked in" value={(stats?.remaining ?? 0).toString()} icon={Clock} />
         <StatCard title="Bookings cancelled" value={(stats?.cancelled ?? 0).toString()} icon={XCircle} />
       </div>
 
@@ -158,7 +161,11 @@ export default function EventCheckinPage() {
         }}
       />
 
-      <RecentCheckinsCard eventId={eventId} reloadKey={recentKey} />
+      <RecentCheckinsCard
+        eventId={eventId}
+        reloadKey={recentKey}
+        onUndone={loadStats}
+      />
     </div>
   );
 }
@@ -174,27 +181,24 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/** A live feed of the most recent attendees checked in for this event. */
+/** A live feed of the most recent check-ins, each one undoable. */
 function RecentCheckinsCard({
   eventId,
   reloadKey,
+  onUndone,
 }: {
   eventId: string;
   reloadKey: number;
+  onUndone: () => Promise<void>;
 }) {
-  const [items, setItems] = useState<Registration[]>([]);
+  const [items, setItems] = useState<RecentCheckin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
-    const { data } = await getOfflineRegistrations(eventId);
-    const recent = (data ?? [])
-      .filter((r) => r.checkedInAt)
-      .sort(
-        (a, b) =>
-          new Date(b.checkedInAt!).getTime() - new Date(a.checkedInAt!).getTime()
-      )
-      .slice(0, 10);
-    setItems(recent);
+    const { data } = await getRecentCheckins(eventId, 10);
+    if (data) setItems(data);
     setLoading(false);
   }, [eventId]);
 
@@ -207,6 +211,19 @@ function RecentCheckinsCard({
     return () => clearInterval(t);
   }, [load]);
 
+  const undo = async (r: RecentCheckin) => {
+    if (!confirm(`Undo ${r.name}'s check-in at ${r.checkinType.name}?`)) return;
+    setBusyId(r.id);
+    setErr("");
+    const { error } = await undoCheckin(r.registrationId, r.checkinType.id, r.memberIndex);
+    setBusyId(null);
+    if (error) {
+      setErr(error.message);
+      return;
+    }
+    await Promise.all([load(), onUndone()]);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -215,67 +232,46 @@ function RecentCheckinsCard({
           Recent check-ins
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-4 py-4">
+      <CardContent className="space-y-3 px-4 py-4">
+        {err && <ErrorNotice message={err} />}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No check-ins yet.</p>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
-            {items.map((r) => {
-              // Get the most recent check-in record
-              const latestCheckin = r.checkinRecords && r.checkinRecords.length > 0
-                ? r.checkinRecords.sort((a, b) => 
-                    new Date(b.checkedInAt).getTime() - new Date(a.checkedInAt).getTime()
-                  )[0]
-                : null;
-              
-              const checkedByName = latestCheckin?.checkedInByUser?.fullName 
-                || latestCheckin?.checkedInByUser?.username
-                || r.checkedInByUser?.fullName
-                || r.checkedInByUser?.username
-                || null;
-              
-              const checkinTypeName = latestCheckin?.checkinType?.name || null;
-
-              return (
-                <li
-                  key={r.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-                      {initials(r.user.fullName, r.user.username)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {r.user.fullName || r.user.username || "Attendee"}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                        {r.ticketType?.name && (
-                          <span className="truncate">{r.ticketType.name}</span>
-                        )}
-                        {checkedByName && (
-                          <>
-                            {r.ticketType?.name && <span>•</span>}
-                            <span className="truncate">by {checkedByName}</span>
-                          </>
-                        )}
-                        {checkinTypeName && (
-                          <>
-                            {(r.ticketType?.name || checkedByName) && <span>•</span>}
-                            <span className="truncate">{checkinTypeName}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+            {items.map((r) => (
+              <li key={r.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                    {initials(r.name)}
                   </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {timeAgo(r.checkedInAt!)}
-                  </span>
-                </li>
-              );
-            })}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{r.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {[
+                        r.groupLeadName ? `${r.groupLeadName}'s group` : r.ticketType,
+                        r.checkedBy && `by ${r.checkedBy}`,
+                        r.checkinType.name,
+                      ]
+                        .filter(Boolean)
+                        .join(" • ")}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{timeAgo(r.checkedInAt)}</span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => undo(r)}
+                    disabled={busyId === r.id}
+                  >
+                    Undo
+                  </Button>
+                </div>
+              </li>
+            ))}
           </ul>
         )}
       </CardContent>
@@ -312,7 +308,7 @@ function CheckinPointsCard({
   };
 
   const remove = async (id: string, label: string) => {
-    if (!confirm(`Delete the "${label}" point? Its check-in records are removed.`))
+    if (!confirm(`Delete the "${label}" point? Its check-in history is kept.`))
       return;
     const { error } = await deleteCheckinType(eventId, id);
     if (error) setErr(error.message);
@@ -536,6 +532,9 @@ function ScanAndSearchCard({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<AttendeeSearchResult[]>([]);
   const seq = useRef(0);
+  // A scanned group: pick who is here, then check just them in.
+  const [group, setGroup] = useState<GroupScanResult | null>(null);
+  const [picked, setPicked] = useState<Set<number>>(new Set());
 
   const flash = (ok: boolean, msg: string) => {
     setResult({ ok, msg });
@@ -551,6 +550,11 @@ function ScanAndSearchCard({
     setQrInput("");
     if (error) {
       flash(false, error.message);
+    } else if (data && "isGroup" in data) {
+      setGroup(data);
+      setPicked(
+        new Set(data.members.filter((m) => m.claimable && !m.checkedInAtPoint).map((m) => m.index))
+      );
     } else if (data) {
       const name =
         data.attendee?.fullName || data.attendee?.username || "Attendee";
@@ -560,6 +564,24 @@ function ScanAndSearchCard({
       );
       void onChecked();
     }
+  };
+
+  const checkInGroup = async () => {
+    if (!group || picked.size === 0) return;
+    setBusy(true);
+    const { data, error } = await checkinGroupMembers(
+      group.registrationId,
+      activeTypeId,
+      [...picked]
+    );
+    setBusy(false);
+    if (error) {
+      flash(false, error.message);
+      return;
+    }
+    setGroup(null);
+    flash(true, `Checked in ${picked.size} of ${data?.total ?? group.groupSize} from ${group.leadName ?? "the"} group`);
+    void onChecked();
   };
 
   // Debounced manual search.
@@ -582,7 +604,7 @@ function ScanAndSearchCard({
   const checkInManual = async (r: AttendeeSearchResult) => {
     if (!activeTypeId) return;
     setBusy(true);
-    const { data, error } = await manualCheckin(r.registrationId, activeTypeId);
+    const { data, error } = await manualCheckin(r.registrationId, activeTypeId, r.memberIndex);
     setBusy(false);
     if (error) {
       flash(false, error.message);
@@ -595,7 +617,7 @@ function ScanAndSearchCard({
       // reflect locally
       setResults((prev) =>
         prev.map((x) =>
-          x.registrationId === r.registrationId
+          x.registrationId === r.registrationId && x.memberIndex === r.memberIndex
             ? { ...x, checkedInAtPoint: new Date().toISOString() }
             : x
         )
@@ -647,6 +669,48 @@ function ScanAndSearchCard({
           </div>
         )}
 
+        {group && (
+          <div className="space-y-2 rounded-md border border-border p-3">
+            <p className="text-sm font-medium">
+              {group.leadName ? `${group.leadName}'s group` : "Group"} · {group.ticketType}
+            </p>
+            <p className="text-xs text-muted-foreground">Tick who is here.</p>
+            <ul className="space-y-1">
+              {group.members.map((m) => (
+                <li key={m.index}>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={picked.has(m.index)}
+                      disabled={!m.claimable || !!m.checkedInAtPoint}
+                      onChange={(e) =>
+                        setPicked((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) next.add(m.index);
+                          else next.delete(m.index);
+                          return next;
+                        })
+                      }
+                    />
+                    <span className="truncate">{m.name || `Member ${m.index + 1}`}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {m.checkedInAtPoint ? "Checked in" : m.claimable ? "" : "Seat not claimed"}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={checkInGroup} disabled={busy || picked.size === 0}>
+                Check in {picked.size}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setGroup(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
         {mode === "qr" ? (
           <div className="flex gap-2">
             <Input
@@ -676,16 +740,20 @@ function ScanAndSearchCard({
               <ul className="divide-y divide-border rounded-md border border-border">
                 {results.map((r) => (
                   <li
-                    key={r.registrationId}
+                    key={`${r.registrationId}:${r.memberIndex ?? ""}`}
                     className="flex items-center justify-between gap-3 px-3 py-2"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
                         {r.attendee.fullName || r.attendee.username || "Attendee"}
                       </p>
-                      <p className="text-xs text-muted-foreground">{r.ticketType}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {r.groupLeadName ? `${r.ticketType} · ${r.groupLeadName}'s group` : r.ticketType}
+                      </p>
                     </div>
-                    {r.checkedInAtPoint ? (
+                    {r.claimable === false ? (
+                      <span className="text-xs text-muted-foreground">Seat not claimed</span>
+                    ) : r.checkedInAtPoint ? (
                       <Badge variant="success">
                         <CheckCircle className="mr-1 h-3 w-3" weight="fill" />
                         Checked in
