@@ -233,12 +233,15 @@ export async function getMyOrganiserSpaces(): Promise<Space[]> {
 export async function getSpaceEvents(
   spaceId: string,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  /** Also list finished events (the space page's "Past" section). */
+  includePast = false,
 ): Promise<{ events: any[]; pagination: any }> {
   const queryParams = new URLSearchParams({
     page: page.toString(),
     limit: limit.toString(),
   });
+  if (includePast) queryParams.set('when', 'all');
 
   const result = await request<any>(
     `/events/space/${spaceId}?${queryParams.toString()}`,
