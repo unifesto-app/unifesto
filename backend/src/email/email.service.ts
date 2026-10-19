@@ -359,6 +359,10 @@ export class EmailService {
     await this.deliverBranded('resend', data.email, data, T.waitlistRevokedEmail);
   }
 
+  async sendStayUpdate(data: T.StayUpdateData): Promise<void> {
+    await this.deliverBranded('resend', data.email, data, T.stayUpdateEmail);
+  }
+
   /**
    * Email a recipient a link to their freshly issued certificate (verify page +
    * PDF in storage, no attachment). Sent via SES, not Resend: certificates go

@@ -1392,7 +1392,7 @@ export class GroupSeatsService {
         (typeof details.mobile === 'string' ? details.mobile : null);
       if (!mobile) return;
 
-      await this.whatsapp.sendEventWhatsAppGroupInvite(mobile, {
+      const accepted = await this.whatsapp.sendEventWhatsAppGroupInvite(mobile, {
         userName:
           claimer?.fullName ||
           claimer?.username ||
@@ -1401,6 +1401,8 @@ export class GroupSeatsService {
         inviteUrl,
         isCommunity,
       });
+      // Only a send Meta took counts; a rejected one stays open for the blast.
+      if (!accepted) return;
       await this.prisma.groupSeat.update({
         where: { id: seatId },
         data: { whatsappInviteSentAt: new Date() },

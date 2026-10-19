@@ -126,14 +126,15 @@ export class SpacesService {
         organizerName: space.creator.fullName || space.creator.username || 'Unknown',
         organizerMobile: space.creator.mobileNumber,
         spaceDescription: space.description || undefined,
-        submittedAt: space.submittedAt?.toLocaleString('en-US', {
+        submittedAt: (space.submittedAt ?? new Date()).toLocaleString('en-US', {
+          timeZone: 'Asia/Kolkata',
           month: 'long',
           day: 'numeric',
           year: 'numeric',
           hour: 'numeric',
           minute: '2-digit',
           hour12: true,
-        }) || new Date().toLocaleString(),
+        }),
       }).catch(err => this.logger.error('Failed to send new space notification email', err));
     }
 

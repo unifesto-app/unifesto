@@ -315,7 +315,7 @@ describe('A28 waitlist "Allow next N" skips a group that does not fit', () => {
       { id: 'solo-3', groupSize: null, quantity: 1 },
     ];
     const prisma: any = { eventRegistration: { findMany: jest.fn(async () => queue) } };
-    const svc = new WaitlistService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new WaitlistService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'assertOrganiser').mockResolvedValue({});
     const offer = jest.spyOn(svc, 'offer').mockImplementation(async (_o, _e, id) => {
       if (id.startsWith('big')) throw new SoldOutError('Not enough seats free');

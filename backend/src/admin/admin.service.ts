@@ -301,6 +301,7 @@ export class AdminService {
 
   private formatDate(date: Date): string {
     return new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Kolkata',
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -770,7 +771,23 @@ export class AdminService {
    * queue and makes it live.
    */
   async approveSpace(id: string, adminId: string) {
-    const space = await this.prisma.space.findUnique({ where: { id } });
+    const space = await this.prisma.space.findUnique({
+      where: { id },
+      include: {
+        creator: {
+          select: {
+            fullName: true,
+            username: true,
+            identities: {
+              where: { email: { not: null } },
+              orderBy: { isPrimary: 'desc' },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
     if (!space) {
       throw new NotFoundException('Space not found');
     }
@@ -790,6 +807,17 @@ export class AdminService {
       select: { id: true, name: true, status: true, approvedAt: true, approvedBy: true },
     });
     this.logger.log(`Space ${id} approved by admin ${adminId}`);
+    const email = space.creator?.identities[0]?.email;
+    if (email) {
+      this.emailService
+        .sendSpaceApproved({
+          email,
+          organizerName: space.creator.fullName || space.creator.username || 'there',
+          spaceName: space.name,
+          spaceSlug: space.slug,
+        })
+        .catch((err) => this.logger.error('Failed to send space approved email', err));
+    }
     return updated;
   }
 
@@ -798,7 +826,23 @@ export class AdminService {
    * organiser.
    */
   async rejectSpace(id: string, adminId: string, reason?: string) {
-    const space = await this.prisma.space.findUnique({ where: { id } });
+    const space = await this.prisma.space.findUnique({
+      where: { id },
+      include: {
+        creator: {
+          select: {
+            fullName: true,
+            username: true,
+            identities: {
+              where: { email: { not: null } },
+              orderBy: { isPrimary: 'desc' },
+              select: { email: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
     if (!space) {
       throw new NotFoundException('Space not found');
     }
@@ -820,6 +864,17 @@ export class AdminService {
       },
     });
     this.logger.log(`Space ${id} rejected by admin ${adminId}`);
+    const email = space.creator?.identities[0]?.email;
+    if (email) {
+      this.emailService
+        .sendSpaceRejected({
+          email,
+          organizerName: space.creator.fullName || space.creator.username || 'there',
+          spaceName: space.name,
+          rejectionReason: reason?.trim() || 'Not given',
+        })
+        .catch((err) => this.logger.error('Failed to send space rejected email', err));
+    }
     return updated;
   }
 

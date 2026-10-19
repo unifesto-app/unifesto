@@ -206,7 +206,7 @@ export class TransactionalNotificationHandler {
   @OnEvent(NotificationEvents.WaitlistOffer, { async: true })
   async onWaitlistOffer(e: WaitlistOfferEvent): Promise<void> {
     const expiryNote = e.expiresAt
-      ? ` Claim it before ${e.expiresAt.toLocaleString('en-IN')}.`
+      ? ` Claim it before ${e.expiresAt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })}.`
       : ' Claim it before it expires.';
     await this.notifications.send([e.userId], {
       category: 'registrationUpdates',

@@ -316,6 +316,7 @@ export class ReportsService {
 
   private defaultTitle(eventTitle: string): string {
     const date = new Date().toLocaleDateString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       day: 'numeric',
       month: 'short',
       year: 'numeric',
