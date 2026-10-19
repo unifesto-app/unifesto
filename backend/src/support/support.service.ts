@@ -274,7 +274,16 @@ export class SupportService {
   /* Create                                                                */
   /* ---------------------------------------------------------------------- */
 
-  async createTicket(dto: CreateTicketDto, requesterId: string) {
+  /**
+   * `opts` is for server callers only: link a typed subject record (D21: a
+   * ticket report), and skip the registration owner check when the caller has
+   * already verified the holder (a claimed group seat counts there).
+   */
+  async createTicket(
+    dto: CreateTicketDto,
+    requesterId: string,
+    opts: { subjectType?: keyof typeof SUBJECT_MODELS; subjectId?: string; registrationVerified?: boolean } = {},
+  ) {
     if (dto.spaceId) {
       const space = await this.prisma.space.findUnique({
         where: { id: dto.spaceId },
@@ -292,7 +301,7 @@ export class SupportService {
         where: { id: dto.registrationId },
         select: { userId: true, eventId: true },
       });
-      if (!reg || reg.userId !== requesterId) {
+      if (!reg || (reg.userId !== requesterId && !opts.registrationVerified)) {
         throw new NotFoundException('Registration not found');
       }
       eventId = reg.eventId;
@@ -336,6 +345,8 @@ export class SupportService {
         kind,
         eventId,
         registrationId: dto.registrationId ?? null,
+        subjectType: opts.subjectType ?? null,
+        subjectId: opts.subjectId ?? null,
         // Same instant for both, so the requester's own first message isn't unread.
         lastMessageAt: now,
         requesterLastReadAt: now,
