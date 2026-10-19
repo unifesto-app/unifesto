@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, Handshake } from "@unifesto/unicon/react";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +101,12 @@ export function PartnersPanel({ eventId }: { eventId: string }) {
         <>
           {adding && form}
           {partners.length === 0 && !adding && (
-            <ListRow label="No partners yet" sublabel="Each partner gets a tracking link; registrations through it are credited to them." />
+            <EmptyState
+              icon={Handshake}
+              title="No partners yet"
+              description="Each partner gets a tracking link, and registrations through it are credited to them."
+              className="py-8"
+            />
           )}
           {partners.map((p) => (
             <div key={p.id} className="flex items-center gap-2 pr-3">

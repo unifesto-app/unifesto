@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { FileCsv, MagnifyingGlass } from "@unifesto/unicon/react";
+import { ClipboardText, FileCsv, MagnifyingGlass } from "@unifesto/unicon/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Chips, HackPage as Page } from "@/components/hackathon/HackParts";
 import {
@@ -124,7 +125,11 @@ export default function StayBookingsPage() {
       </div>
       <ListGroup>
         {shown.length === 0 && (
-          <ListRow label={tab === "requests" ? "No new requests." : tab === "pay" ? "Nobody is waiting to pay." : "Nothing here yet."} />
+          <EmptyState
+            icon={ClipboardText}
+            title={search.trim() ? "No matches" : tab === "requests" ? "No new requests" : tab === "pay" ? "Nobody is waiting to pay" : "Nothing here yet"}
+            description={search.trim() ? "Try a different name, phone, pass or room." : "Bed requests from registered attendees show up here."}
+          />
         )}
         {shown.map((b) => {
           const booker = b.guests.find((g) => g.isBooker) ?? b.guests[0];

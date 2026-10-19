@@ -40,6 +40,7 @@ import { EventExportMenu } from "@/components/shared/EventExportMenu";
 import { useSession } from "@/lib/context/SessionContext";
 import { can } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -237,7 +238,12 @@ function RecentCheckinsCard({
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No check-ins yet.</p>
+          <EmptyState
+            icon={CheckCircle}
+            title="No check-ins yet"
+            description="Each scan or manual check-in lands here, newest first."
+            className="py-8"
+          />
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {items.map((r) => (
@@ -444,9 +450,12 @@ function CheckinAccessCard({ eventId }: { eventId: string }) {
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading team…</p>
         ) : members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No team members yet. Add volunteers or staff on the Team tab.
-          </p>
+          <EmptyState
+            icon={Users}
+            title="No team members yet"
+            description="Add volunteers or staff on the Team tab, then choose which points they can check people in at."
+            className="py-8"
+          />
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
             {members.map((m) => (

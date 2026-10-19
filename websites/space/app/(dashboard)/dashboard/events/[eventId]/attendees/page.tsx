@@ -11,6 +11,7 @@ import {
   CaretRight as CaretRightIcon,
   CheckCircle,
   Plus,
+  Users,
   UploadSimple,
   WhatsappLogo,
 } from "@unifesto/unicon/react";
@@ -38,6 +39,7 @@ import type {
   ExportFormat,
 } from "@/lib/api/registrations-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { useSession } from "@/lib/context/SessionContext";
 import { can } from "@/lib/types/rbac";
 import { PrintBadgesDialog } from "./PrintBadgesDialog";
@@ -414,16 +416,24 @@ export default function EventRegistrationsPage() {
         </div>
       ) : registrations.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">No registrations found</p>
-            <p className="text-sm text-muted-foreground">
-              {search ||
-              statusFilter !== "all" ||
-              paymentFilter !== "all" ||
-              ticketFilter !== "all"
-                ? "Try adjusting your filters"
-                : "Registrations will appear here once people sign up"}
-            </p>
+          <CardContent className="py-0">
+            {search ||
+            statusFilter !== "all" ||
+            paymentFilter !== "all" ||
+            ticketFilter !== "all" ? (
+              <EmptyState
+                icon={Users}
+                title="No registrations match"
+                description="Try a different search, or clear the filters."
+              />
+            ) : (
+              <EmptyState
+                icon={Users}
+                tone="positive"
+                title="No registrations yet"
+                description="People show up here as soon as they register. Share the event link to get started."
+              />
+            )}
           </CardContent>
         </Card>
       ) : (

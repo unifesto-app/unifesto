@@ -15,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import {
@@ -247,7 +248,12 @@ export function ShortLinksPanel({ scope, canEdit, destination }: { scope: Traffi
         </div>
       )}
       {links.length === 0 && !adding ? (
-        <ListRow label="No short links yet" />
+        <EmptyState
+          icon={LinkSimple}
+          title="No short links yet"
+          description="Make a short link for each poster, post or channel to see which one brings people in."
+          className="py-8"
+        />
       ) : (
         links.map((l) => (
           <div key={l.id}>

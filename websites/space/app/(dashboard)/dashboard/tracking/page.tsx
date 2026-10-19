@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { CaretDown, CaretRight } from "@unifesto/unicon/react";
+import { CaretDown, CaretRight, Ticket } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/components/tracking/TrackingParts";
@@ -80,7 +81,12 @@ export default function SpaceTrackingPage() {
               description={`${total ? Math.round((data.tagged / total) * 100) : 0}% of ${fmt(total)} confirmed registrations came through a tracking link.`}
             >
               {data.sources.length === 0 ? (
-                <ListRow label="No confirmed registrations yet" />
+                <EmptyState
+                  icon={Ticket}
+                  title="No confirmed registrations yet"
+                  description="Once people register for your events, you'll see which links and channels brought them in."
+                  className="py-8"
+                />
               ) : (
                 data.sources.map((s) => {
                   const k = keyOf(s);

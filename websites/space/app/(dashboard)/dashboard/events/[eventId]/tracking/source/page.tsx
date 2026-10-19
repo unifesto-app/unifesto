@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { Users } from "@unifesto/unicon/react";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from "@/lib/api/tracking";
@@ -40,7 +42,12 @@ export default function SourceAttendeesPage() {
         rows && (
           <ListGroup title={`${rows.length} registration${rows.length === 1 ? "" : "s"}`}>
             {rows.length === 0 ? (
-              <ListRow label="Nobody yet" />
+              <EmptyState
+                icon={Users}
+                title="Nobody yet"
+                description="Confirmed registrations from this source will be listed here."
+                className="py-8"
+              />
             ) : (
               rows.map((r) => (
                 <ListRow

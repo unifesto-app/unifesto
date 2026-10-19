@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
+import { Ticket } from "@unifesto/unicon/react";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PartnersPanel } from "@/components/tracking/PartnersPanel";
@@ -82,7 +84,12 @@ export default function EventTrackingPage() {
             }
           >
             {total === 0 ? (
-              <ListRow label="No confirmed bookings yet" />
+              <EmptyState
+                icon={Ticket}
+                title="No confirmed bookings yet"
+                description="Once people register, you'll see which links and channels brought them in."
+                className="py-8"
+              />
             ) : (
               sources!.sources.map((s) => (
                 <ListRow
