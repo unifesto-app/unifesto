@@ -87,12 +87,13 @@ function targetLabel(c: PushCampaign): string {
     const n = t.userIds?.length ?? 0;
     return `${n} user${n === 1 ? "" : "s"}`;
   }
+  if (t.type === "staff") return "Staff only";
   return "All users";
 }
 
 const CANCELLABLE: PushCampaignStatus[] = ["DRAFT", "SCHEDULED"];
 
-type TargetType = "all" | "event" | "space" | "users";
+type TargetType = PushTarget["type"];
 type PickedUser = { id: string; name: string };
 const MAX_USERS = 100;
 
@@ -340,7 +341,9 @@ function ComposeDialog({
           ? `attendees of ${targetName}`
           : targetType === "space"
             ? `members of ${targetName}`
-            : users.map((u) => u.name).join(", ");
+            : targetType === "staff"
+              ? "platform staff only"
+              : users.map((u) => u.name).join(", ");
     const ok = await confirmDialog({
       title: scheduledAt ? "Schedule this push?" : "Send this push now?",
       description: (
@@ -421,6 +424,7 @@ function ComposeDialog({
                 <SelectItem value="event">Event attendees</SelectItem>
                 <SelectItem value="space">Space members</SelectItem>
                 <SelectItem value="users">Specific users</SelectItem>
+                <SelectItem value="staff">Staff only (test run)</SelectItem>
               </SelectContent>
             </Select>
             {targetType === "event" && (

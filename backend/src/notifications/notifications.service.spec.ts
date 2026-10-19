@@ -34,6 +34,22 @@ describe('NotificationsService in-app copy', () => {
     expect(oneSignal.send.mock.calls[0][0].externalIds).toEqual(['u-on']);
   });
 
+  it('cuts an over-long title to the column size instead of losing the in-app copy', async () => {
+    const { svc, prisma } = build();
+    await svc.send(['u-on'], { ...opts, title: 'x'.repeat(250) });
+    expect(prisma.userNotification.createMany.mock.calls[0][0].data[0].title).toHaveLength(200);
+  });
+
+  it('a segment broadcast returns the OneSignal id (its response has no recipient count)', async () => {
+    const { svc } = build();
+    await expect(svc.sendToSegments(['Total Subscriptions'], { title: 'T', body: 'B' })).resolves.toEqual({
+      sent: 0,
+      failed: 0,
+      skipped: 0,
+      oneSignalId: 'n1',
+    });
+  });
+
   it('keeps a copy by default, typed from data', async () => {
     const { svc, prisma } = build();
     const { inbox: _inbox, ...plain } = opts;

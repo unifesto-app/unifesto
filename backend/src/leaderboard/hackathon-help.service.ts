@@ -262,6 +262,7 @@ export class HackathonHelpService {
       title: `${query.topicName} query · ${who}`,
       body: message.slice(0, 180),
       deepLink: `unifesto://hackathon/${eventId}/help-desk`,
+      toStaff: true,
     });
     return this.getMyHelp(userId, eventId);
   }

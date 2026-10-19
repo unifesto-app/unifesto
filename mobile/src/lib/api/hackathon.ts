@@ -387,19 +387,31 @@ export interface InAppNotification {
   createdAt: string;
 }
 
-const feedQuery = (scope: { eventId?: string; type?: string; before?: string }) => {
+/** A slice of the feed: one event and/or one type, or everything but `excludeType`. */
+export interface FeedScope {
+  eventId?: string;
+  type?: string;
+  excludeType?: string;
+}
+
+/** Help-desk queries sent to event staff: the inbox's Staff tab. */
+export const STAFF_NOTIFICATION_TYPE = 'help_desk';
+
+const feedQuery = (scope: FeedScope & { before?: string; limit?: number }) => {
   const q = new URLSearchParams();
   if (scope.eventId) q.set('eventId', scope.eventId);
   if (scope.type) q.set('type', scope.type);
+  if (scope.excludeType) q.set('excludeType', scope.excludeType);
+  if (scope.limit) q.set('limit', String(scope.limit));
   if (scope.before) q.set('before', scope.before);
   const s = q.toString();
   return s ? `?${s}` : '';
 };
 
-export const getNotifications = (scope: { eventId?: string; type?: string; before?: string }) =>
+export const getNotifications = (scope: FeedScope & { before?: string; limit?: number }) =>
   call<{ items: InAppNotification[]; nextBefore: string | null }>(`/users/me/notifications${feedQuery(scope)}`);
 export const getUnreadNotificationCount = () => call<{ count: number }>('/users/me/notifications/unread-count');
-export const markNotificationsRead = (scope: { eventId?: string; type?: string; ids?: string[] }): Promise<Result<{ updated: number }>> =>
+export const markNotificationsRead = (scope: FeedScope & { ids?: string[] }): Promise<Result<{ updated: number }>> =>
   call<{ updated: number }>('/users/me/notifications/read', json('POST', scope));
 
 // ── Judging: rounds, criteria, judges, panels, queues (Phase 3) ──────────────
