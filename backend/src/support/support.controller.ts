@@ -20,7 +20,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { uploadLimit } from '../common/upload-limits';
 import { ATTACHMENT_MAX_MB, SupportService } from './support.service';
-import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
+import { CreateTicketDto, CreateMessageDto, UpdateTicketDto, SendToSpaceDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -173,6 +173,13 @@ export class SupportController {
   @ApiOperation({ summary: 'Escalate a ticket to Unifesto' })
   escalate(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.supportService.escalate(id, req.user.id);
+  }
+
+  /** Platform hands a help question to an event's organiser (the space desk). */
+  @Post('tickets/:id/send-to-space')
+  @ApiOperation({ summary: "Send a ticket to an event's organiser (Platform)" })
+  sendToSpace(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SendToSpaceDto, @Req() req: any) {
+    return this.supportService.sendToSpace(id, dto.eventId, req.user.id);
   }
 
   /** Requester closes their own ticket. */

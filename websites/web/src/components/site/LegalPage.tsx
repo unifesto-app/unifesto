@@ -18,12 +18,15 @@ export default function LegalPage({
   lines,
   lede,
   sections,
+  effective = LEGAL.effective,
 }: {
   title: string;
   path: string;
   lines: string[];
   lede: ReactNode;
   sections: LegalSection[];
+  /** This page's own effective date, when it changed after the shared one. */
+  effective?: string;
 }) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
@@ -35,7 +38,7 @@ export default function LegalPage({
         lede={
           <>
             {lede}
-            <span className="mt-4 block text-sm text-paper/50">Effective {LEGAL.effective}</span>
+            <span className="mt-4 block text-sm text-paper/50">Effective {effective}</span>
           </>
         }
       />

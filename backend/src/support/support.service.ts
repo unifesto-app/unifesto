@@ -26,7 +26,7 @@ import { CreateTicketDto, CreateMessageDto, UpdateTicketDto } from './dto';
 export const SUPPORT_CASE_EVENT = 'support.case';
 export interface SupportCaseEvent {
   ticketId: string;
-  kind: 'CREATED' | 'REPLIED' | 'STATUS' | 'ESCALATED';
+  kind: 'CREATED' | 'REPLIED' | 'STATUS' | 'ESCALATED' | 'SENT_TO_SPACE';
   /** The side to tell. */
   to: 'REQUESTER' | 'DESK';
   /** Who did it; never told about their own action. */
@@ -845,6 +845,69 @@ export class SupportService {
     // Platform hears about it; so does the requester when the space escalated.
     this.notify({ ticketId: id, kind: 'ESCALATED', to: 'DESK', actorId: userId });
     this.notify({ ticketId: id, kind: 'ESCALATED', to: 'REQUESTER', actorId: userId });
+    return updated;
+  }
+
+  /**
+   * The other way round from escalate: Platform hands a help question to the
+   * organiser of an event (a case raised with no event context lands on
+   * Platform even when it is the organiser's to answer). Platform only.
+   */
+  async sendToSpace(id: string, eventId: string, userId: string) {
+    if (!(await this.isPlatform(userId))) {
+      throw new ForbiddenException('Only Unifesto can pass a case to an organiser');
+    }
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id },
+      select: { id: true, kind: true, status: true },
+    });
+    if (!ticket) {
+      throw new NotFoundException('Support ticket not found');
+    }
+    if (ticket.kind !== SupportCaseKind.HELP) {
+      throw new BadRequestException('Only help questions can go to an organiser');
+    }
+    if (ticket.status === SupportTicketStatus.CLOSED) {
+      throw new BadRequestException('This ticket is closed. Open a new ticket to continue.');
+    }
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { title: true, spaceId: true, deletedAt: true },
+    });
+    if (!event || event.deletedAt) {
+      throw new NotFoundException('Event not found');
+    }
+
+    const now = new Date();
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.supportTicket.update({
+        where: { id },
+        data: {
+          desk: SupportDesk.SPACE,
+          eventId,
+          spaceId: event.spaceId,
+          escalatedAt: null,
+          // Assignees are Platform staff; the space desk starts it unread.
+          assignedToId: null,
+          deskLastReadAt: null,
+          status: SupportTicketStatus.OPEN,
+          resolvedAt: null,
+          lastMessageAt: now,
+        },
+      }),
+      this.prisma.supportMessage.create({
+        data: {
+          ticketId: id,
+          authorId: userId,
+          isStaffReply: true,
+          side: SupportMessageSide.SYSTEM,
+          body: `Unifesto passed this to the organiser of ${event.title}`,
+          createdAt: now,
+        },
+      }),
+    ]);
+    this.notify({ ticketId: id, kind: 'SENT_TO_SPACE', to: 'DESK', actorId: userId });
+    this.notify({ ticketId: id, kind: 'SENT_TO_SPACE', to: 'REQUESTER', actorId: userId });
     return updated;
   }
 

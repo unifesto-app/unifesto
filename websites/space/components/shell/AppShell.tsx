@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SpaceSwitcher } from "./SpaceSwitcher";
 import { CommandPalette } from "./CommandPalette";
 import { ThemeToggle } from "./ThemeToggle";
+import { FeeNoticeBanner } from "./FeeNoticeBanner";
 
 /**
  * Authenticated shell. Waits for the session, sends accounts with no operator
@@ -89,7 +90,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Full-width below the fixed header. The dashboard layout adds the
             space sidebar and its own centered content column; other authed
             screens render children directly. */}
-        <main className="min-h-screen pt-16">{children}</main>
+        <main className="min-h-screen pt-16">
+          <FeeNoticeBanner />
+          {children}
+        </main>
       </div>
       </CommandPaletteProvider>
     </MobileNavProvider>

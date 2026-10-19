@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TicketThread, statusBadgeVariant, priorityBadgeVariant } from "@/components/support/TicketThread";
 import { CaseActionPanel } from "@/components/support/CaseActionPanel";
+import { SendToOrganiser } from "@/components/support/SendToOrganiser";
 import { cn } from "@/lib/utils/cn";
 import {
   listTickets,
@@ -270,6 +271,15 @@ export default function AssistInboxPage() {
           </Card>
 
           <div className="space-y-6">
+            {selected.desk === "PLATFORM" && selected.kind === "HELP" && !closed && (
+              <SendToOrganiser
+                key={selected.id}
+                ticketId={selected.id}
+                suggested={selected.aiTriage?.routingHint === "SPACE"}
+                reason={selected.aiTriage?.reason}
+                onDone={() => refresh(selected.id)}
+              />
+            )}
             {selected.subjects?.map((s) => (
               <CaseActionPanel key={`${s.type}:${s.data.id}`} subject={s} onDone={() => refresh(selected.id)} />
             ))}
