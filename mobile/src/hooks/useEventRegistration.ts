@@ -1,3 +1,4 @@
+import { isEmail } from '../lib/constants';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import RazorpayCheckout from 'react-native-razorpay';
@@ -376,7 +377,7 @@ export function useEventRegistration() {
       const a = attendees[index];
       const basicValid =
         a.name.trim() !== '' &&
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email.trim()) &&
+        isEmail(a.email.trim()) &&
         /^[0-9]{10}$/.test(a.mobile) &&
         a.gender !== '';
       if (!basicValid) return null;
@@ -391,7 +392,7 @@ export function useEventRegistration() {
       if (invitedIndices.has(index)) return true;
       return (
         a.name.trim() !== '' &&
-        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a.email.trim()) &&
+        isEmail(a.email.trim()) &&
         /^[0-9]{10}$/.test(a.mobile) &&
         a.gender !== ''
       );

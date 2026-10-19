@@ -1,3 +1,4 @@
+import { isEmail } from '../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
@@ -179,7 +180,7 @@ export default function AttendeeDetailScreen() {
 
   const doReplace = async (email?: string) => {
     if (!replacing) return;
-    if (email && !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
+    if (email && !isEmail(email)) {
       AppAlert.alert('Check the email', 'That doesn’t look like an email address.');
       return;
     }

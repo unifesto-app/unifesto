@@ -1,3 +1,4 @@
+import { EMAIL_RE } from '../lib/constants';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -31,7 +32,6 @@ import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
 const ICON = 24;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Draft {
   name: string;

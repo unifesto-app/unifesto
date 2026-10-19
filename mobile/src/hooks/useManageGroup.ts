@@ -1,3 +1,4 @@
+import { EMAIL_RE, isEmail } from '../lib/constants';
 import { useCallback, useEffect, useState } from 'react';
 import {} from 'react-native';
 import { profileGenderToAttendeeOption } from '../utils/profile';
@@ -66,7 +67,6 @@ export type GroupRow =
   | { key: string; kind: 'open'; isLead: boolean; label: string; onOpen: () => void; actions: SeatAction[] }
   | { key: string; kind: 'released'; isLead: boolean; label: string; onOpen: () => void; actions: SeatAction[] };
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isComplete = (m?: { name?: string; email?: string; mobile?: string } | null) =>
   !!m && !!m.name?.trim() && EMAIL_RE.test(m.email?.trim() ?? '') && /^[0-9]{10}$/.test(m.mobile?.trim() ?? '');
 
@@ -483,7 +483,7 @@ export function useManageGroup(registrationId: string) {
     const toCheck = editIndex === null ? draft.map((_, i) => i) : [editIndex];
     for (const i of toCheck) {
       const m = draft[i];
-      const ok = m.name.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.email.trim()) && /^[0-9]{10}$/.test(m.mobile.trim());
+      const ok = m.name.trim() && isEmail(m.email.trim()) && /^[0-9]{10}$/.test(m.mobile.trim());
       if (!ok) {
         setRosterError(`Please complete member ${i + 1}: name, a valid email and a 10-digit mobile.`);
         return;
