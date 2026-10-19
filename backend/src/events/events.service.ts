@@ -89,14 +89,21 @@ import {
 } from '../registrations/form-answers.util';
 
 /**
- * Sub-event statuses a public hub lists. Live and finished sub-events stay on
- * their big event's page (a festival's past talks are still part of it); only
- * drafts and cancelled ones drop off.
+ * Statuses a public list shows (a big event's hub, a space page, past events).
+ * Live and finished events stay listed: a festival's past talks are still part
+ * of it, and a space's history is social proof. Only drafts and cancelled
+ * events drop off.
  */
-const HUB_SUB_EVENT_STATUSES: EventStatus[] = [
+const LISTED_EVENT_STATUSES: EventStatus[] = [
   EventStatus.PUBLISHED,
   EventStatus.ONGOING,
   EventStatus.COMPLETED,
+];
+
+/** Live and upcoming: the default public feed. */
+const LIVE_EVENT_STATUSES: EventStatus[] = [
+  EventStatus.PUBLISHED,
+  EventStatus.ONGOING,
 ];
 
 @Injectable()
@@ -526,7 +533,7 @@ export class EventsService {
     const where: Prisma.EventWhereInput = { parentEventId: parentId };
     if (!manage) {
       where.deletedAt = null;
-      where.status = { in: HUB_SUB_EVENT_STATUSES };
+      where.status = { in: LISTED_EVENT_STATUSES };
       where.AND = [
         listableEventsWhere(await memberSpaceIds(this.prisma, viewerId)),
       ];
@@ -1484,15 +1491,25 @@ export class EventsService {
       featured = false,
       trending = false,
       free = false,
+      when = 'upcoming',
       page = 1,
       limit = 20,
     } = filters;
 
     const skip = (page - 1) * limit;
+    const past = when === 'past';
 
     const where: Prisma.EventWhereInput = {
       ...NOT_DELETED,
-      status: EventStatus.PUBLISHED,
+      // Past = ended by the clock, not only by status: the scheduler that flips
+      // PUBLISHED to COMPLETED runs periodically, so a just-ended event may
+      // still read PUBLISHED.
+      ...(past
+        ? {
+            status: { in: LISTED_EVENT_STATUSES },
+            endDateTime: { lt: new Date() },
+          }
+        : { status: { in: LIVE_EVENT_STATUSES } }),
       visibility: 'PUBLIC',
       // Series-parent templates are non-registerable; only their concrete
       // occurrences (isRecurring=false, seriesParentId set) appear in listings.
@@ -1512,7 +1529,7 @@ export class EventsService {
       ? { registeredCount: 'desc' }
       : trending
         ? { createdAt: 'desc' }
-        : { startDateTime: 'asc' };
+        : { startDateTime: past ? 'desc' : 'asc' };
 
     // Sub-events live under their parent's hub, so keep them out of the main
     // feed unless explicitly asked for. `parentEventId: null` = top-level only.
@@ -1552,7 +1569,11 @@ export class EventsService {
     }
 
     if (endDate) {
-      where.endDateTime = { lte: new Date(endDate) };
+      // Spread keeps the past view's `lt: now`.
+      where.endDateTime = {
+        ...(where.endDateTime as Prisma.DateTimeFilter | undefined),
+        lte: new Date(endDate),
+      };
     }
 
     if (search) {
@@ -1877,7 +1898,7 @@ export class EventsService {
           },
         },
         childEvents: {
-          where: { deletedAt: null, status: { in: HUB_SUB_EVENT_STATUSES } },
+          where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES } },
           orderBy: { startDateTime: 'asc' },
           select: this.subEventSelect,
         },
@@ -1954,7 +1975,7 @@ export class EventsService {
             },
           },
           childEvents: {
-            where: { deletedAt: null, status: { in: HUB_SUB_EVENT_STATUSES } },
+            where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES } },
             orderBy: { startDateTime: 'asc' },
             select: this.subEventSelect,
           },
@@ -2761,15 +2782,20 @@ export class EventsService {
     status?: EventStatus,
     deleted: DeletedFilter = 'active',
     viewerId?: string,
+    includePast = false,
   ) {
     const skip = (page - 1) * limit;
 
     // This route is public. Outsiders (anonymous, or signed in without an
-    // operator role here) only ever get the live list, whatever they ask for.
+    // operator role here) only ever get the public list, whatever they ask
+    // for: live events, plus finished ones when `includePast` (opt-in so
+    // clients that treat every row as upcoming keep working).
     let visibilityWhere: Prisma.EventWhereInput = {};
+    let statusIn: EventStatus[] | undefined;
     if (!(await this.isSpaceInsider(viewerId, spaceId))) {
       await assertCanViewSpace(this.prisma, spaceId, viewerId);
-      status = EventStatus.PUBLISHED;
+      status = undefined;
+      statusIn = includePast ? LISTED_EVENT_STATUSES : LIVE_EVENT_STATUSES;
       deleted = 'active';
       visibilityWhere = listableEventsWhere(
         await memberSpaceIds(this.prisma, viewerId),
@@ -2789,6 +2815,8 @@ export class EventsService {
     };
     if (status) {
       where.status = status;
+    } else if (statusIn) {
+      where.status = { in: statusIn };
     }
 
     const [events, total] = await Promise.all([

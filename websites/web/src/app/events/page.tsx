@@ -1,5 +1,5 @@
 import { preload } from "react-dom";
-import { getEvents, filterEvents } from "@/lib/api/events";
+import { getListedEvents, filterEvents } from "@/lib/api/events";
 import { optimized } from "@/lib/img";
 import EventsClient from "./EventsClient";
 
@@ -10,7 +10,7 @@ export const revalidate = 600;
 export default async function EventsPage() {
   // getEvents returns [] on API errors, so treat empty as "no seed" and let
   // the client fetch rather than caching an empty page for 10 minutes.
-  const { events } = await getEvents(1, 100);
+  const events = await getListedEvents();
 
   // The grid renders client-side (useSearchParams), so its first image isn't
   // in the HTML. Preload the first one on screen: featured strip, else grid.
