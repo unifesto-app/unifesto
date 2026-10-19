@@ -6,7 +6,6 @@ import * as Sharing from 'expo-sharing';
 import { DownloadSimple, FileCsv } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { downloadImportTemplate, previewImport, runImport, type ImportPreview, type ImportReport } from '../lib/api/attendeeAdd';
 import { BlockTitle, SwitchRow } from '../components/manage/FormFields';
@@ -41,8 +40,6 @@ export default function ImportAttendeesScreen() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [busy, setBusy] = useState<'template' | 'preview' | 'import' | null>(null);
-
-  useAnalyticsScreenTracking('ImportAttendees');
 
   useEffect(() => {
     if (!eventId) return;

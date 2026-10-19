@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Trash } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { createTier, deleteTier, getTiers, HEX_RE, updateTier, type TierInput } from '../lib/api/spaceSponsors';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
@@ -47,8 +46,6 @@ export default function SponsorTierEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('SponsorTierEditor');
 
   useEffect(() => {
     if (!spaceId) return;

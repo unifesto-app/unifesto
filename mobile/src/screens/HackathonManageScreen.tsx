@@ -5,7 +5,6 @@ import { Lifebuoy, Tray, Broadcast, Buildings, Certificate, ChartBar, DoorOpen, 
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
@@ -46,8 +45,6 @@ export default function HackathonManageScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [switching, setSwitching] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonManage');
 
   const load = useCallback(async () => {
     if (!eventId) return;

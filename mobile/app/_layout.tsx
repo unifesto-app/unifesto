@@ -21,7 +21,7 @@ import { AppAlertHost } from '../src/components/ui/AppAlert';
 import { InAppNoticeHost } from '../src/components/ui/InAppNotice';
 import { ImageCropHost } from '../src/components/ui/ImageCropper';
 import { OfflineBanner } from '../src/components/ui/OfflineBanner';
-import ConsentManager from '../src/services/ConsentManager';
+import OneSignalService from '../src/services/OneSignalService';
 import { checkForAppUpdate } from '../src/lib/appUpdate';
 import { startOtaUpdateChecks } from '../src/lib/otaUpdate';
 import { tagCrashReports } from '../src/lib/appBuild';
@@ -187,33 +187,16 @@ function RootStack() {
 
 export default function RootLayout() {
   const [appIsReady, setAppIsReady] = useState(false);
-  const [consentReady, setConsentReady] = useState(false);
 
   useEffect(() => {
     // Enable crash reporting (separate from analytics, ATT-safe).
     setCrashlyticsCollectionEnabled(getCrashlytics(), true).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    async function initializeConsent() {
-      try {
-        await ConsentManager.initialize();
-        setConsentReady(true);
-      } catch (error) {
-        console.error('[RootLayout] Consent initialization error:', error);
-        setConsentReady(true);
-      }
-    }
-
-    initializeConsent();
+    // Push is a core feature (tickets, updates), not tracking: start it at launch.
+    OneSignalService.initialize();
   }, []);
 
   useEffect(() => {
     async function prepare() {
-      if (!consentReady) {
-        return;
-      }
-
       try {
         await Font.loadAsync({
           // Two families only — DM Sans (body, 400/500) + Plus Jakarta Sans
@@ -238,7 +221,7 @@ export default function RootLayout() {
     }
 
     prepare();
-  }, [consentReady]);
+  }, []);
 
   // Once the UI is up, check the store for a newer version and prompt if needed.
   // Fire-and-forget: checkForAppUpdate swallows its own failures so a bad

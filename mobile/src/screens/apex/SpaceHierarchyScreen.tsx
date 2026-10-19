@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Check } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';
@@ -24,7 +23,6 @@ export default function SpaceHierarchyScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexSpaceHierarchy');
 
   const [space, setSpace] = useState<AdminSpaceDetail | null>(null);
   const [all, setAll] = useState<AdminSpaceRow[] | null>(null);

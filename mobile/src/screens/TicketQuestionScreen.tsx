@@ -7,7 +7,6 @@ import { Check, Trash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventTicketTypes } from '../hooks/useEventTicketTypes';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createFormField,
   deleteFormField,
@@ -183,8 +182,6 @@ export default function TicketQuestionScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('TicketQuestion');
 
   useEffect(() => {
     if (!isNew && original && !draft) setDraft(draftFrom(original));

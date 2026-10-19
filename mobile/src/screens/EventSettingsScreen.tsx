@@ -6,7 +6,6 @@ import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketL
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   cancelEvent,
   deleteEvent,
@@ -62,8 +61,6 @@ export default function EventSettingsScreen() {
   const [accounts, setAccounts] = useState<EligibleAccount[] | null>(null);
   const [selected, setSelected] = useState<string>(''); // '' = creator's primary
   const [savedAccount, setSavedAccount] = useState('');
-
-  useAnalyticsScreenTracking('EventSettings');
 
   const load = useCallback(async () => {
     if (!eventId) return;

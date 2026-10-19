@@ -10,7 +10,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { createAward, deleteAward, getAwards, unpublishAward, updateAward, type Award, type AwardsList } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -41,8 +40,6 @@ export default function HackathonAwardEditorScreen() {
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonAwardEditor');
 
   useEffect(() => {
     if (!eventId) return;

@@ -31,7 +31,6 @@ import {
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -140,7 +139,6 @@ const confirmDelete = (what: string, run: () => Promise<{ ok: boolean; message?:
 export function BlogListScreen() {
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexBlog');
   const [posts, setPosts] = useState<BlogPost[] | null>(null);
   const [error, setError] = useState('');
 
@@ -193,7 +191,6 @@ export function BlogEditScreen() {
   const isNew = id === 'new';
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking(isNew ? 'ApexBlogNew' : 'ApexBlogEdit');
 
   const [loaded, setLoaded] = useState(isNew);
   const [loadError, setLoadError] = useState('');
@@ -324,7 +321,6 @@ export function BlogEditScreen() {
 export function CareersListScreen() {
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexCareers');
   const [jobs, setJobs] = useState<Career[] | null>(null);
   const [error, setError] = useState('');
 
@@ -387,7 +383,6 @@ export function CareerEditScreen() {
   const isNew = id === 'new';
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking(isNew ? 'ApexCareerNew' : 'ApexCareerEdit');
 
   const [loaded, setLoaded] = useState(isNew);
   const [loadError, setLoadError] = useState('');
@@ -523,7 +518,6 @@ const APP_STATUS: { value: ApplicationStatus; label: string }[] = [
 export function CareerApplicationsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexCareerApplications');
   const [apps, setApps] = useState<CareerApplication[] | null>(null);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);

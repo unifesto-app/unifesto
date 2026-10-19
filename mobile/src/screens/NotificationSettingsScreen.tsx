@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
 import OneSignalService from '../services/OneSignalService';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -68,8 +67,6 @@ export default function NotificationSettingsScreen() {
   const [notifs, setNotifs] = useState<NotifState>(DEFAULT_NOTIFS);
   const notifsRef = useRef<NotifState>(notifs);
   notifsRef.current = notifs;
-
-  useAnalyticsScreenTracking('NotificationSettings');
 
   const persistLocal = useCallback(async (next: NotifState) => {
     try {

@@ -35,8 +35,8 @@ class OneSignalService {
   private isInitialized = false;
   private isAvailable = false;
   // Last external id requested via login(). Retained so that a login() call
-  // that arrives BEFORE initialize() (consent-gated init can lag the session
-  // restore that knows the user id) is not lost — it's replayed in initialize().
+  // that arrives BEFORE initialize() (init can lag the session restore that
+  // knows the user id) is not lost — it's replayed in initialize().
   private pendingExternalId: string | null = null;
   private subscriptionListeners = new Set<() => void>();
 

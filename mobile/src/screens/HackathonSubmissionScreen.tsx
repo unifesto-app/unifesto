@@ -10,7 +10,6 @@ import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getMySubmissions, saveMySubmission, type MySubmissions } from '../lib/api/hackathon';
 import { formatWhen } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -41,8 +40,6 @@ export default function HackathonSubmissionScreen() {
   const [initial, setInitial] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonSubmission');
 
   const pick = useCallback((d: MySubmissions, id: string) => {
     const r = d.rounds.find((x) => x.roundId === id);

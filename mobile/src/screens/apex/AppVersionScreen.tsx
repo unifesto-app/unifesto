@@ -6,7 +6,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AndroidLogo, AppleLogo, ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
@@ -55,7 +54,6 @@ export default function AppVersionScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexAppVersion');
 
   const [saved, setSaved] = useState<AppVersionPolicy | null>(null);
   const [draft, setDraft] = useState<AppVersionPolicy | null>(null);

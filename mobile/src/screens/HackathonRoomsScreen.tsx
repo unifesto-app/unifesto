@@ -9,7 +9,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { autoAllocateRooms, getRooms, type Room } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -32,8 +31,6 @@ export default function HackathonRoomsScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [allocating, setAllocating] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonRooms');
 
   const load = useCallback(async () => {
     if (!eventId) return;

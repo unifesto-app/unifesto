@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   listContentReports,
@@ -73,7 +72,6 @@ export function ContentReportsScreen() {
   const [counts, setCounts] = useState<Record<ReportStatus, number> | null>(null);
   // Bumped on focus so a decision made on the detail screen shows on return.
   const [version, setVersion] = useState(0);
-  useAnalyticsScreenTracking('ApexContentReports');
 
   useFocusEffect(
     useCallback(() => {
@@ -150,7 +148,6 @@ export function ContentReportDetailScreen() {
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<ReportStatus | null>(null);
-  useAnalyticsScreenTracking('ApexContentReport');
 
   useEffect(() => {
     if (report || !id) return;

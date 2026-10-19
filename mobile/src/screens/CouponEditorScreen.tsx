@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { createCoupon, deleteCoupon, getCoupons, updateCoupon, type Coupon, type CouponInput, type DiscountType } from '../lib/api/coupons';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
@@ -86,8 +85,6 @@ export default function CouponEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('CouponEditor');
 
   useEffect(() => {
     if (!eventId) return;

@@ -19,7 +19,6 @@ import {
 } from '@unifesto/unicon/react-native';
 import { useManageSpace, type ManageTab } from '../hooks/useManageSpace';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { hostingRoleLabel } from '../lib/spaceSections';
 import type { ManagedEvent } from '../lib/api/manageSpace';
 import { getSpaceDeskUnread } from '../lib/api/support';
@@ -63,8 +62,6 @@ export default function ManageSpaceScreen() {
   const c = useCosmos();
   const topSpacing = useTopSpacing();
   const m = useManageSpace(spaceId);
-
-  useAnalyticsScreenTracking('ManageSpace');
 
   const now = new Date();
   const list = m.buckets[m.tab];

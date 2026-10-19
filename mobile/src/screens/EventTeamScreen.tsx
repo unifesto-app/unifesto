@@ -6,7 +6,6 @@ import { useLocalSearchParams } from 'expo-router';
 import { MagnifyingGlass, User } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   addTeamMember,
   getEventTeam,
@@ -52,8 +51,6 @@ export default function EventTeamScreen() {
   const [results, setResults] = useState<TeamUser[]>([]);
   const [searching, setSearching] = useState(false);
   const seq = useRef(0);
-
-  useAnalyticsScreenTracking('EventTeam');
 
   const load = useCallback(async () => {
     if (!eventId) return;

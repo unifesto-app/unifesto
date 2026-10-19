@@ -10,7 +10,6 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { cropToAspect, pickImageAtAspect } from '../utils/pickImage';
 import { ImageSquare, MapPin } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createEvent,
   getCategories,
@@ -195,8 +194,6 @@ export default function EventFormScreen() {
   /** Set once the event exists, so autosave stops for good. */
   const created = useRef(false);
   const storeKey = draftKey(spaceId, parentId);
-
-  useAnalyticsScreenTracking(creating ? 'CreateEvent' : 'EditEvent');
 
   useEffect(() => {
     void getCategories().then((r) => r.ok && setCategories(r.data));

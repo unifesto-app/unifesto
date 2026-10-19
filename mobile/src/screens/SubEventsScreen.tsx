@@ -5,7 +5,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { MagnifyingGlass, Plus } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { getManagedSpaceEvents, type ManagedEvent } from '../lib/api/manageSpace';
 import {
@@ -53,8 +52,6 @@ export default function SubEventsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [query, setQuery] = useState('');
-
-  useAnalyticsScreenTracking('SubEvents');
 
   const load = useCallback(async () => {
     if (!eventId) return;

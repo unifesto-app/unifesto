@@ -7,7 +7,6 @@ import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import {
   approveSpace,
   getAdminEvent,
@@ -132,7 +131,6 @@ export function UserDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexUserDetail');
   const load = useCallback(() => getAdminUser(id!), [id]);
   const { data, error, refreshing, refresh } = useRecord(load);
   const u = data?.user;
@@ -334,7 +332,6 @@ export function SpaceDetailAdminScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexSpaceDetail');
   const load = useCallback(() => getSpaceDetail(id!), [id]);
   const { data: s, error, refreshing, refresh } = useRecord(load);
   const [events, setEvents] = useState<ManagedEvent[] | null>(null);
@@ -546,7 +543,6 @@ export function EventDetailAdminScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexEventDetail');
   const load = useCallback(() => getAdminEvent(id!), [id]);
   const { data: e, error, refreshing, refresh } = useRecord(load);
 

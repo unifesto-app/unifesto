@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlaneRight, Phone } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import {
   conversationName,
   convertWhatsappToCase,
@@ -56,8 +55,6 @@ export default function WhatsappThreadScreen() {
   const [picked, setPicked] = useState<Set<string> | null>(null);
   const [converting, setConverting] = useState(false);
   const inFlight = useRef(false);
-
-  useAnalyticsScreenTracking('ApexWhatsappThread');
 
   const load = useCallback(async () => {
     if (!id || inFlight.current) return;

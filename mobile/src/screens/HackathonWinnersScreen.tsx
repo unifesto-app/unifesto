@@ -8,7 +8,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getAwards, publishAwards, type AwardsList } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -31,8 +30,6 @@ export default function HackathonWinnersScreen() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonWinners');
 
   const load = useCallback(async () => {
     if (!eventId) return;

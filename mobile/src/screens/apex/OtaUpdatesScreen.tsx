@@ -3,7 +3,6 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-nat
 import { useFocusEffect } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
@@ -78,8 +77,6 @@ export default function OtaUpdatesScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [stale, setStale] = useState<OtaStaleness | null>(null);
   const [adoption, setAdoption] = useState<OtaAdoption | null>(null);
-
-  useAnalyticsScreenTracking('ApexOtaUpdates');
 
   const load = useCallback(async (ch: OtaChannel) => {
     const res = await getOtaGroups(ch);

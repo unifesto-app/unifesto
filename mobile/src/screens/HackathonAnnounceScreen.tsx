@@ -11,7 +11,6 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getAnnouncements, sendAnnouncement, type AnnouncementAudience, type Announcements } from '../lib/api/hackathon';
 import { formatWhen } from '../lib/hackathon';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -47,8 +46,6 @@ export default function HackathonAnnounceScreen() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonAnnounce');
 
   const load = useCallback(async () => {
     if (!eventId) return;

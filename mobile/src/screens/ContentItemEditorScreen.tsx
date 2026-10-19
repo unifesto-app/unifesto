@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import {
   createContentItem,
@@ -65,8 +64,6 @@ export default function ContentItemEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('ContentItemEditor');
 
   useEffect(() => {
     if (!eventId) return;

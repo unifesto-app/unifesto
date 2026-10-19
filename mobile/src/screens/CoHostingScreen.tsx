@@ -7,7 +7,6 @@ import { ArrowsLeftRight, Crown, MagnifyingGlass } from '@unifesto/unicon/react-
 import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   acceptOwnership,
   addCoHost,
@@ -62,8 +61,6 @@ export default function CoHostingScreen() {
   const [results, setResults] = useState<CoHostSpace[]>([]);
   const [searching, setSearching] = useState(false);
   const seq = useRef(0);
-
-  useAnalyticsScreenTracking('CoHosting');
 
   const load = useCallback(async () => {
     if (!eventId) return;

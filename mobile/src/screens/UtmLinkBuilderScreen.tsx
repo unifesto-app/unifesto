@@ -4,7 +4,6 @@ import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { FieldRow } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
@@ -68,8 +67,6 @@ export default function UtmLinkBuilderScreen() {
   const [source, setSource] = useState('');
   const [medium, setMedium] = useState('');
   const [campaign, setCampaign] = useState(defaultCampaign ?? '');
-
-  useAnalyticsScreenTracking('UtmLinkBuilder');
 
   const s = tag(source);
   const link = s && url ? withUtm(url, { source: s, medium: tag(medium) || undefined, campaign: tag(campaign) || undefined }) : '';

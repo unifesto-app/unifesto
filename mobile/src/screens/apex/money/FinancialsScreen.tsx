@@ -5,7 +5,6 @@ import { useFocusEffect } from 'expo-router';
 import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import {
   getPlatformFinancials,
   getPlatformFinancialsBreakdown,
@@ -60,8 +59,6 @@ export default function FinancialsScreen() {
   const [sort, setSort] = useState<SortKey>('available');
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('ApexFinancials');
 
   const load = useCallback(async () => {
     // Prefer the breakdown; the flat totals keep the tiles alive if it fails.

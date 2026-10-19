@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretRight, Export, Plus } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getLeads,
   leadName,
@@ -43,8 +42,6 @@ export default function LeadsScreen() {
   const [source, setSource] = useState<LeadSource | ''>('');
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('Leads');
 
   // One fetch, filtered here, so the counts always cover the whole funnel.
   const load = useCallback(async () => {

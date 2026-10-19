@@ -9,7 +9,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createHelpTopic,
   deleteHelpTopic,
@@ -43,8 +42,6 @@ export default function HackathonHelpTopicsScreen() {
   const [pocs, setPocs] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonHelpTopics');
 
   const load = useCallback(async () => {
     if (!eventId) return;

@@ -5,7 +5,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useTokens } from '../../../context/ThemeContext';
 import useTopSpacing from '../../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../../hooks/useAnalyticsScreenTracking';
 import {
   adminRefund,
   getTransaction,
@@ -57,8 +56,6 @@ export default function TransactionDetailScreen() {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [resolveAs, setResolveAs] = useState<'CANCELLED' | 'FAILED'>('CANCELLED');
-
-  useAnalyticsScreenTracking('ApexTransactionDetail');
 
   const load = useCallback(async () => {
     if (!id) return;

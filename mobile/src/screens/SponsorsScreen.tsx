@@ -2,7 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getSponsors, getTiers, type Sponsor, type SponsorTier } from '../lib/api/spaceSponsors';
 import { getUsage } from '../lib/api/billing';
 import SponsorMark from '../components/manage/SponsorMark';
@@ -34,8 +33,6 @@ export default function SponsorsScreen() {
   const [onPlan, setOnPlan] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('Sponsors');
 
   const load = useCallback(async () => {
     if (!spaceId) return;

@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow, SwitchRow } from '../../components/manage/FormFields';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -63,7 +62,6 @@ export default function EmailComposeScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
-  useAnalyticsScreenTracking('ApexEmailCompose');
 
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [templateName, setTemplateName] = useState('');

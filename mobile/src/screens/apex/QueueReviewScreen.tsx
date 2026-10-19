@@ -4,7 +4,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView,
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import type { Decision, RequestStatus } from '../../lib/api/apex';
 import { queueDef, recallQueueItem, titleCase, type QueueItem } from '../../lib/apexQueues';
 import { longDate } from '../../components/apex/ApexRow';
@@ -47,8 +46,6 @@ export default function QueueReviewScreen() {
   const [note, setNote] = useState('');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState<Decision | null>(null);
-
-  useAnalyticsScreenTracking('ApexQueueReview');
 
   // Cold open (push, deep link): no GET-by-id exists, so scan the three lists.
   const lookup = useCallback(async () => {

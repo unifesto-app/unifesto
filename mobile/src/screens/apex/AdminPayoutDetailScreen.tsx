@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { cancelPayout, markPayoutPaid } from '../../lib/api/apex';
 import { recallPayout, organiserName } from '../../lib/apexRequests';
 import { longDate } from '../../components/apex/ApexRow';
@@ -33,8 +32,6 @@ export default function AdminPayoutDetailScreen() {
   const payout = payoutId ? recallPayout(payoutId) : undefined;
   const [utr, setUtr] = useState('');
   const [busy, setBusy] = useState<'PAY' | 'CANCEL' | null>(null);
-
-  useAnalyticsScreenTracking('ApexPayoutDetail');
 
   if (!payout) {
     return (

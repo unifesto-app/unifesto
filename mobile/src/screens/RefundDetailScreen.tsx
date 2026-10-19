@@ -3,7 +3,6 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleShe
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRefund, reviewRefund, type RefundRequest } from '../lib/api/finance';
 import { refundStatus } from '../components/manage/FinanceRows';
 import { FieldRow } from '../components/manage/FormFields';
@@ -44,8 +43,6 @@ export default function RefundDetailScreen() {
 
   // Platform admins make the final call on refunds forwarded to Unifesto.
   const isPlatformAdmin = usePlatformAdmin();
-
-  useAnalyticsScreenTracking('RefundDetail');
 
   const load = useCallback(async () => {
     if (!refundId) return;

@@ -2,7 +2,6 @@ import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowCounterClockwise, Bank, Warning } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getMyBankAccounts,
   getRefundQueue,
@@ -44,8 +43,6 @@ export default function FinanceScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('Finance');
 
   const load = useCallback(async () => {
     if (!spaceId) return;

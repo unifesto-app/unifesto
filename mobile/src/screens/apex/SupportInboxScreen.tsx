@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import { getTicketStats, listAllTickets, PRIORITY_LABEL, type AdminTicket, type TicketStats } from '../../lib/api/apexSupport';
 import {
   CATEGORY_LABEL,
@@ -49,7 +48,6 @@ export default function SupportInboxScreen() {
   const [kind, setKind] = useState<SupportCaseKind | ''>('');
   const [desk, setDesk] = useState<SupportDesk | ''>('');
   const [stats, setStats] = useState<TicketStats | null>(null);
-  useAnalyticsScreenTracking('ApexSupport');
 
   // Counts move as cases are answered; refresh when coming back from a thread.
   useFocusEffect(

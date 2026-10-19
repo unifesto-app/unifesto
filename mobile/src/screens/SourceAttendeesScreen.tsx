@@ -5,7 +5,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { UserCircle } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
@@ -29,8 +28,6 @@ export default function SourceAttendeesScreen() {
   const topSpacing = useTopSpacing();
   const [rows, setRows] = useState<SourceAttendee[] | null>(null);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('SourceAttendees');
 
   const tags = { source: orNull(params.source), medium: orNull(params.medium), campaign: orNull(params.campaign) };
 

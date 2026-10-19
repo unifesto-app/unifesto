@@ -6,7 +6,6 @@ import { Plus } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventTicketTypes } from '../hooks/useEventTicketTypes';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import TicketTypeRow from '../components/manage/TicketTypeRow';
 import { Button } from '../components/ui';
 import { spacing } from '../theme/spacing';
@@ -38,8 +37,6 @@ export default function TicketTypesScreen({ mode }: { mode: 'tickets' | 'rsvps' 
   const copy = COPY[mode];
   const list = mode === 'tickets' ? t.tickets : t.rsvps;
   const [reordering, setReordering] = useState(false);
-
-  useAnalyticsScreenTracking(mode === 'tickets' ? 'ManageTickets' : 'ManageRsvps');
 
   const open = (ticketId: string) =>
     router.push({

@@ -6,7 +6,6 @@ import { useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { conversion, getShortLinkStats, scopeFromParams, type ShortLinkStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../components/traffic/TrafficSummary';
@@ -39,8 +38,6 @@ export default function ShortLinkStatsScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('ShortLinkStats');
 
   const load = useCallback(async () => {
     if (!scope || !params.linkId) return;

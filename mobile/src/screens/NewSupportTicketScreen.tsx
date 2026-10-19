@@ -4,7 +4,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { CATEGORY_LABEL, createTicket, type SupportTicketCategory } from '../lib/api/support';
 import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
@@ -42,8 +41,6 @@ export default function NewSupportTicketScreen() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('NewSupportTicket');
 
   const send = async () => {
     if (subject.trim().length < 3) return setError('Add a short subject.');

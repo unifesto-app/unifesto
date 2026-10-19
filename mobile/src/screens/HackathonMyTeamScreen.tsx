@@ -7,7 +7,6 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getMyHackathon, renameMyTeam, type HackathonHub } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -28,8 +27,6 @@ export default function HackathonMyTeamScreen() {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonMyTeam');
 
   const load = useCallback(async () => {
     if (!eventId) return;

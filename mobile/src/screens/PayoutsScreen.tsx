@@ -1,7 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getSpacePayouts, type Payout } from '../lib/api/finance';
 import { getManagedSpaceEvents, type ManagedEvent } from '../lib/api/manageSpace';
 import { PayoutRow } from '../components/manage/FinanceRows';
@@ -32,8 +31,6 @@ export default function PayoutsScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('Payouts');
 
   const load = useCallback(async () => {
     if (!spaceId) return;

@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useTokens } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { getAdminTicket, PRIORITY_LABEL, replyAsStaff, sendToSpace, triageTicket, type AdminTicket } from '../../lib/api/apexSupport';
 import { searchEvents, type AdminEventRow } from '../../lib/api/apex';
@@ -56,8 +55,6 @@ export default function AdminSupportThreadScreen() {
   const [note, setNote] = useState(false);
   const [sending, setSending] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  useAnalyticsScreenTracking('ApexSupportThread');
 
   const load = useCallback(async () => {
     if (!id) return;

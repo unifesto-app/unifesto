@@ -12,7 +12,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getMyHackathon,
   getMyStatementOptions,
@@ -52,8 +51,6 @@ export default function HackathonStatementScreen() {
   const [description, setDescription] = useState('');
   const [themeId, setThemeId] = useState('');
   const [themeText, setThemeText] = useState('');
-
-  useAnalyticsScreenTracking('HackathonStatement');
 
   const load = useCallback(async () => {
     if (!eventId) return;

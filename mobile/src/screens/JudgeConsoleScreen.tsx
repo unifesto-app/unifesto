@@ -11,7 +11,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import SlotTimer from '../components/hackathon/SlotTimer';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useHackathonSocket, { useNow } from '../hooks/useHackathonSocket';
 import {
   callNextTeam,
@@ -47,8 +46,6 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   const [refreshing, setRefreshing] = useState(false);
   const [acting, setActing] = useState(false);
   const now = useNow(!!data);
-
-  useAnalyticsScreenTracking('JudgeConsole');
 
   const load = useCallback(async () => {
     const res = await getJudgeConsole(eventId);

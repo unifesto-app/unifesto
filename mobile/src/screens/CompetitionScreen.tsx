@@ -6,7 +6,6 @@ import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getParticipantView, type EntrantRoundStatus, type ParticipantView } from '../lib/api/leaderboard';
 import { defaultBracketRound, journeyFor, sortBracket, standingOf, type Standing } from '../lib/competition';
 import ChipPicker from '../components/manage/ChipPicker';
@@ -54,8 +53,6 @@ export default function CompetitionScreen() {
   const [error, setError] = useState('');
   const [round, setRound] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('Competition');
 
   const load = useCallback(async () => {
     if (!eventId) return;

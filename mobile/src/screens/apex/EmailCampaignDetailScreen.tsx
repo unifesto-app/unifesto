@@ -4,7 +4,6 @@ import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import ManageStats from '../../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { ApexRow, longDate, shortDate } from '../../components/apex/ApexRow';
@@ -28,7 +27,6 @@ export default function EmailCampaignDetailScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
-  useAnalyticsScreenTracking('ApexEmailCampaignDetail');
 
   const load = useCallback(async () => {
     const res = await getEmailCampaign(id!);

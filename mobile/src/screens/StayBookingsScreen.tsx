@@ -8,7 +8,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { shareCsv } from '../lib/csvShare';
 import {
   dayLabel,
@@ -54,8 +53,6 @@ export default function StayBookingsScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('StayBookings');
 
   const load = useCallback(async () => {
     if (!eventId) return;

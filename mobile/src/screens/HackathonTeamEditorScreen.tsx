@@ -10,7 +10,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Badge } from '../components/ui/Badge';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -47,8 +46,6 @@ export default function HackathonTeamEditorScreen() {
   const initial = useRef('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonTeamEditor');
 
   const apply = useCallback((t: TeamDetail) => {
     const d = { teamCode: t.teamCode ?? '', name: t.name, roomName: t.room?.name ?? '' };

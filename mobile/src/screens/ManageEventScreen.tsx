@@ -38,7 +38,6 @@ import { useTokens } from '../context/ThemeContext';
 import { useManageEvent } from '../hooks/useManageEvent';
 import { getTeamStays } from '../lib/api/stays';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
@@ -83,7 +82,6 @@ export default function ManageEventScreen() {
     void getTeamStays(eventId).then((r) => setHasStays(r.ok && r.data.stays.some((s) => s.isPublished)));
   }, [eventId, deskOnly]);
 
-  useAnalyticsScreenTracking('ManageEvent');
   // The admin-set default banner when the event has none: never an icon in a tile.
   const cover = useEventCover(h.event);
 

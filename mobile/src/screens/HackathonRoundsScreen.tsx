@@ -7,7 +7,6 @@ import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getRounds, type RoundRow } from '../lib/api/hackathon';
 import { JUDGING_MODE_OPTIONS, roundStatusLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
@@ -35,8 +34,6 @@ export default function HackathonRoundsScreen() {
   const [rounds, setRounds] = useState<RoundRow[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonRounds');
 
   const load = useCallback(async () => {
     if (!eventId) return;

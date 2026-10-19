@@ -7,7 +7,6 @@ import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Camera, Flashlight, UsersThree } from '@unifesto/unicon/react-native';
 import { boothScan, getPortalLeads } from '../lib/api/sponsorPortal';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticle';
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -47,8 +46,6 @@ export default function BoothScanScreen({ sponsorId, eventSponsorId }: { sponsor
   const lastScanRef = useRef<{ code: string; at: number } | null>(null);
   const known = useRef<Set<string>>(new Set());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useAnalyticsScreenTracking('BoothScan');
 
   // Seed the leads we already have here, so re-scanning an old one says so.
   useEffect(() => {

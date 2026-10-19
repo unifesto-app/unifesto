@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   getAttendeeDetails,
   getMyDetails,
@@ -67,8 +66,6 @@ export default function EditDetailsScreen() {
   const [draft, setDraft] = useState<Record<string, Section>>({});
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-
-  useAnalyticsScreenTracking(curator ? 'CuratorEditDetails' : 'EditMyDetails');
 
   const load = useCallback(async () => {
     if (!registrationId) return;

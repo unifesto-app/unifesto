@@ -7,7 +7,6 @@ import { useTokens } from '../context/ThemeContext';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { useEventAttendees } from '../hooks/useEventAttendees';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import AttendeeRow from '../components/manage/AttendeeRow';
 import type { AttendeeRow as AttendeeRowData } from '../lib/api/manageEvent';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
@@ -38,8 +37,6 @@ export default function EventAttendeesScreen() {
   useEffect(() => {
     list.current?.scrollToOffset({ offset: 0, animated: false });
   }, [a.page]);
-
-  useAnalyticsScreenTracking('EventAttendees');
 
   const header = (
     <View style={{ paddingTop: topSpacing }}>

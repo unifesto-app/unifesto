@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CaretDown, CaretRight, Link as LinkIcon, Scissors } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from '../lib/api/tracking';
 import { conversion, getTraffic, scopeParams, type SpaceTrafficStats } from '../lib/api/traffic';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
@@ -33,8 +32,6 @@ export default function SpaceTrackingScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [traffic, setTraffic] = useState<SpaceTrafficStats | null>(null);
-
-  useAnalyticsScreenTracking('SpaceTracking');
 
   const load = useCallback(async () => {
     if (!spaceId) return;

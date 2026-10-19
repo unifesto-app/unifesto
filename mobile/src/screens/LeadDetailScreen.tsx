@@ -4,7 +4,6 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EnvelopeSimple, Phone, Trash, WhatsappLogo } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createLead,
   deleteLead,
@@ -66,8 +65,6 @@ export default function LeadDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('LeadDetail');
 
   // No GET-by-id route: find it in the space's list.
   useEffect(() => {

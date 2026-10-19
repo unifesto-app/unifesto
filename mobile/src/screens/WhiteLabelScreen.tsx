@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getWhiteLabel, latestRequestFor, type WhiteLabelOverview } from '../lib/api/whiteLabel';
 import BrandColorCard from '../components/manage/BrandColorCard';
 import CosmosScreen from '../components/ui/CosmosScreen';
@@ -25,8 +24,6 @@ export default function WhiteLabelScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
-
-  useAnalyticsScreenTracking('WhiteLabel');
 
   const load = useCallback(async () => {
     if (!spaceId) return;

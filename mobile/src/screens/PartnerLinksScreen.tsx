@@ -5,7 +5,6 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getMyPartnerLinks, type MyPartnerLink } from '../lib/api/tracking';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -28,8 +27,6 @@ export default function PartnerLinksScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('PartnerLinks');
 
   const load = useCallback(async () => {
     const res = await getMyPartnerLinks();

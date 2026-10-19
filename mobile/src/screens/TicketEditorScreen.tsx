@@ -8,7 +8,6 @@ import { Plus, Trash } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import { useEventTicketTypes } from '../hooks/useEventTicketTypes';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createTicketType,
   deleteTicketType,
@@ -73,8 +72,6 @@ export default function TicketEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('TicketEditor');
 
   // Seed the form once the saved ticket arrives (edit mode only).
   useEffect(() => {

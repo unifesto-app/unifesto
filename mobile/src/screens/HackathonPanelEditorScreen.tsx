@@ -12,7 +12,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createPanel,
   deletePanel,
@@ -57,8 +56,6 @@ export default function HackathonPanelEditorScreen() {
   const initial = useRef(JSON.stringify(EMPTY));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonPanelEditor');
 
   useEffect(() => {
     if (!eventId) return;

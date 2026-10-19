@@ -3,7 +3,6 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { CheckCircle } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import MemberRow from '../components/manage/MemberRow';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SPACE_ROLE_LABEL, addSpaceMember, searchAddableUsers, type MemberUser, type SpaceMemberRole } from '../lib/api/spaceMembers';
@@ -32,8 +31,6 @@ export default function AddSpaceMemberScreen() {
   const [addingId, setAddingId] = useState<string | null>(null);
   const [added, setAdded] = useState<{ id: string; name: string; role: SpaceMemberRole }[]>([]);
   const generation = useRef(0);
-
-  useAnalyticsScreenTracking('AddSpaceMember');
 
   useEffect(() => {
     const term = query.trim();

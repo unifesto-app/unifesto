@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Bed, Camera, Flashlight } from '@unifesto/unicon/react-native';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import ScanReticle, { type ReticleState } from '../components/checkin/ScanReticle';
 import ScanResultCard, { type ScanFeedback } from '../components/checkin/ScanResultCard';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
@@ -42,8 +41,6 @@ export default function StayScanScreen() {
   const processingRef = useRef(false);
   const lastScanRef = useRef<{ code: string; at: number } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useAnalyticsScreenTracking('StayScan');
 
   // Pause the camera while a booking is open on top, resume on return.
   useFocusEffect(

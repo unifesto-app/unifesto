@@ -5,7 +5,6 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { CalendarBlank, PaperPlaneTilt, Trash } from '@unifesto/unicon/react-native';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import {
   createSponsor,
   deleteSponsor,
@@ -82,8 +81,6 @@ export default function SponsorEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('SponsorEditor');
 
   const loadUsers = useCallback(async () => {
     if (isNew || !spaceId) return;

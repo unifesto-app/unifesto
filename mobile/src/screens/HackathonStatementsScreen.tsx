@@ -8,7 +8,6 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { getStatements, type StatementList } from '../lib/api/hackathon';
 import { psModeSummary } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
@@ -30,8 +29,6 @@ export default function HackathonStatementsScreen() {
   const [data, setData] = useState<StatementList | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-
-  useAnalyticsScreenTracking('HackathonStatements');
 
   const load = useCallback(async () => {
     if (!eventId) return;

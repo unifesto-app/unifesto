@@ -7,7 +7,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { onNotificationArrived } from '../lib/notificationBus';
 import {
   escalateHelpQuery,
@@ -38,8 +37,6 @@ export default function HackathonHelpDeskScreen() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-
-  useAnalyticsScreenTracking('HackathonHelpDesk');
 
   const load = useCallback(async () => {
     if (!eventId) return;

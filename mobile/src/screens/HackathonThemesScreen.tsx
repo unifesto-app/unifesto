@@ -8,7 +8,6 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import { createTheme, deleteTheme, getThemes, updateTheme, type Theme } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -41,8 +40,6 @@ export default function HackathonThemesScreen() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useAnalyticsScreenTracking('HackathonThemes');
 
   const load = useCallback(async () => {
     if (!eventId) return;

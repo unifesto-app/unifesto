@@ -3,7 +3,6 @@ import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { searchEvents, searchSpaces, searchUsers, type AdminEventRow, type AdminSpaceRow, type AdminUserRow } from '../../lib/api/apex';
 import { titleCase } from '../../lib/apexQueues';
-import useAnalyticsScreenTracking from '../../hooks/useAnalyticsScreenTracking';
 import SearchList from '../../components/apex/SearchList';
 import { ApexRow, shortDate } from '../../components/apex/ApexRow';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -20,7 +19,6 @@ const userName = (u: { fullName: string | null; username: string | null }) => u.
 
 export function UsersLookupScreen() {
   const router = useRouter();
-  useAnalyticsScreenTracking('ApexUsers');
   const fetchPage = useCallback(async (search: string, page: number) => {
     const r = await searchUsers(search, page);
     return r.ok ? { ok: true as const, data: { items: r.data.users, total: r.data.pagination.total } } : r;
@@ -47,7 +45,6 @@ export function UsersLookupScreen() {
 export function SpacesLookupScreen() {
   const router = useRouter();
   const tokens = useTokens();
-  useAnalyticsScreenTracking('ApexSpaces');
   const fetchPage = useCallback(async (search: string, page: number) => {
     const r = await searchSpaces(search, page);
     return r.ok ? { ok: true as const, data: { items: r.data.spaces, total: r.data.pagination.total } } : r;
@@ -84,7 +81,6 @@ export function EventsLookupScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const [status, setStatus] = useState('');
-  useAnalyticsScreenTracking('ApexEvents');
   // New identity per filter → SearchList reloads from page 1.
   const fetchPage = useCallback(
     async (search: string, page: number) => {
