@@ -49,6 +49,7 @@ import { EmailCampaignsModule } from './email-campaigns/email-campaigns.module';
 import { SponsorsModule } from './sponsors/sponsors.module';
 import { MeAccessModule } from './me-access/me-access.module';
 import { CouponsModule } from './coupons/coupons.module';
+import { EngagementModule } from './engagement/engagement.module';
 import { PartnerLinksModule } from './partner-links/partner-links.module';
 import { TrafficModule } from './traffic/traffic.module';
 import { DefaultImagesModule } from './default-images/default-images.module';
@@ -193,6 +194,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     SponsorsModule,
     MeAccessModule,
     CouponsModule,
+    EngagementModule,
     PartnerLinksModule,
     TrafficModule,
     DefaultImagesModule,

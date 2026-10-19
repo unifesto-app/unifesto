@@ -26,6 +26,7 @@ import {
   PencilSimple,
 } from '@unifesto/unicon/react-native';
 import AttendingShareModal from '../components/AttendingShareModal';
+import LivePollsPanel from '../components/tickets/LivePollsPanel';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton, HeaderMenu, MENU_ICONS } from '../navigation/HeaderActions';
 import { useTicketDetail } from '../hooks/useTicketDetail';
@@ -88,6 +89,9 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
 
   const start = t.startIso ? new Date(t.startIso) : null;
   const upcoming = !!start && start.getTime() > Date.now();
+  // Live engagement (polls) shows only while the event is on.
+  const endIso: string | undefined = t.ticket?.endDateTime || t.ticket?.event?.endDateTime;
+  const eventLive = !cancelled && !!start && !upcoming && !!endIso && Date.now() <= new Date(endIso).getTime();
   const when = start
     ? {
         month: start.toLocaleDateString('en-IN', { month: 'short' }),
@@ -273,6 +277,8 @@ function TicketDetailView({ t, hue }: { t: TicketDetail; hue: string | null }) {
             </>
           ) : null}
         </View>
+
+        {eventLive && t.eventId ? <LivePollsPanel eventId={t.eventId} /> : null}
 
         {/* Why it was cancelled, when there's something worth saying */}
         {cancelled && (t.cancellation.reason || t.cancellation.byOrganiser || t.cancelledAt) ? (

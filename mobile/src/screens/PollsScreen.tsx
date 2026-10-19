@@ -1,0 +1,226 @@
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl } from '../components/ui/RefreshControl';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Plus } from '@unifesto/unicon/react-native';
+import { useTokens } from '../context/ThemeContext';
+import useTopSpacing from '../hooks/useTopSpacing';
+import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
+import { useEngagementSocket } from '../hooks/useHackathonSocket';
+import {
+  closePoll,
+  createPoll,
+  deletePoll,
+  getManagedPolls,
+  launchPoll,
+  type Poll,
+  type PollResultsVisibility,
+} from '../lib/api/polls';
+import { FieldRow } from '../components/manage/FormFields';
+import SegmentedTabs from '../components/ui/SegmentedTabs';
+import { SettingsGroup } from '../components/profile/SettingsGroup';
+import { Button } from '../components/ui';
+import { AppAlert } from '../components/ui/AppAlert';
+import { borderRadius, spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { font } from '../theme/fontHelpers';
+
+const GUTTER = spacing[6];
+const VISIBILITY: { key: PollResultsVisibility; label: string }[] = [
+  { key: 'AFTER_VOTE', label: 'After voting' },
+  { key: 'AFTER_CLOSE', label: 'At close' },
+  { key: 'ORGANISERS_ONLY', label: 'Only us' },
+];
+const STATUS_LABEL = { DRAFT: 'Draft', LIVE: 'Live', CLOSED: 'Closed' } as const;
+
+/** Live polls for one event (event:edit): draft, launch, watch votes, close. */
+export default function PollsScreen() {
+  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const tokens = useTokens();
+  const topSpacing = useTopSpacing();
+  const [polls, setPolls] = useState<Poll[] | null>(null);
+  const [error, setError] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
+  const [options, setOptions] = useState(['', '']);
+  const [visibility, setVisibility] = useState<PollResultsVisibility>('AFTER_VOTE');
+
+  useAnalyticsScreenTracking('Polls');
+
+  const load = useCallback(async () => {
+    if (!eventId) return;
+    const res = await getManagedPolls(eventId);
+    if (res.ok) {
+      setPolls(res.data);
+      setError('');
+    } else {
+      setError(res.denied ? "You can't run polls for this event." : res.message);
+      setPolls((p) => p ?? []);
+    }
+  }, [eventId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+  useEngagementSocket(eventId, load);
+
+  const run = async (key: string, fn: () => Promise<{ ok: boolean; message?: string }>) => {
+    setBusy(key);
+    const res = await fn();
+    setBusy(null);
+    if (!res.ok) AppAlert.alert("Couldn't do that", res.message);
+    await load();
+    return res.ok;
+  };
+
+  const filled = options.map((o) => o.trim()).filter(Boolean);
+  const canCreate = !!question.trim() && filled.length >= 2;
+
+  const create = async () => {
+    const ok = await run('create', () =>
+      createPoll(eventId!, { question: question.trim(), options: filled, resultsVisibility: visibility }),
+    );
+    if (ok) {
+      setQuestion('');
+      setOptions(['', '']);
+    }
+  };
+
+  const remove = (p: Poll) =>
+    AppAlert.alert('Delete this poll?', 'Its votes go with it.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void run(p.id, () => deletePoll(eventId!, p.id)) },
+    ]);
+
+  if (!polls) {
+    return (
+      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+        <ActivityIndicator color={tokens.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await load();
+              setRefreshing(false);
+            }}
+            tintColor={tokens.accent}
+            colors={[tokens.accent]}
+            progressViewOffset={topSpacing}
+          />
+        }
+      >
+        <Text style={[styles.intro, { color: tokens.textSecondary }]}>
+          Attendees vote from their ticket while the event is on, once each. Results update live.
+        </Text>
+        {error ? <Text style={[styles.intro, { color: tokens.danger }]}>{error}</Text> : null}
+
+        {polls.map((p) => {
+          const total = p.totalVotes ?? 0;
+          return (
+            <SettingsGroup key={p.id} title={`${STATUS_LABEL[p.status]} · ${total} vote${total === 1 ? '' : 's'}`}>
+              <View style={styles.poll}>
+                <Text style={[styles.question, { color: tokens.text }]}>{p.question}</Text>
+                {p.options.map((o, i) => {
+                  const n = p.results?.[i] ?? 0;
+                  const pct = total ? Math.round((n / total) * 100) : 0;
+                  return (
+                    <View key={i} style={styles.result}>
+                      <View style={styles.resultRow}>
+                        <Text style={[styles.option, { color: tokens.text }]}>{o}</Text>
+                        <Text style={[styles.count, { color: tokens.textMuted }]}>
+                          {n} · {pct}%
+                        </Text>
+                      </View>
+                      <View style={[styles.track, { backgroundColor: tokens.elevated }]}>
+                        <View style={[styles.fill, { width: `${pct}%`, backgroundColor: tokens.accent }]} />
+                      </View>
+                    </View>
+                  );
+                })}
+                <View style={styles.actions}>
+                  {p.status === 'DRAFT' ? (
+                    <Button label="Launch" size="sm" loading={busy === p.id} onPress={() => void run(p.id, () => launchPoll(eventId!, p.id))} />
+                  ) : null}
+                  {p.status === 'LIVE' ? (
+                    <Button
+                      label="Close poll"
+                      size="sm"
+                      variant="secondary"
+                      loading={busy === p.id}
+                      onPress={() => void run(p.id, () => closePoll(eventId!, p.id))}
+                    />
+                  ) : null}
+                  {p.status !== 'LIVE' ? <Button label="Delete" size="sm" variant="ghost" onPress={() => remove(p)} /> : null}
+                </View>
+              </View>
+            </SettingsGroup>
+          );
+        })}
+
+        <SettingsGroup title="New poll" plain>
+          <FieldRow stacked label="Question" value={question} onChangeText={setQuestion} maxLength={300} placeholder="Which session should we repeat?" />
+          {options.map((o, i) => (
+            <FieldRow
+              key={i}
+              stacked
+              label={`Option ${i + 1}`}
+              value={o}
+              maxLength={120}
+              onChangeText={(v) => setOptions((all) => all.map((x, j) => (j === i ? v : x)))}
+            />
+          ))}
+        </SettingsGroup>
+        {options.length < 10 ? (
+          <Button
+            label="Add option"
+            variant="ghost"
+            size="sm"
+            icon={<Plus size={16} color={tokens.text} weight="bold" />}
+            onPress={() => setOptions((all) => [...all, ''])}
+            style={{ alignSelf: 'flex-start' }}
+          />
+        ) : null}
+        <Text style={[styles.label, { color: tokens.textSecondary }]}>Attendees see results</Text>
+        <SegmentedTabs tabs={VISIBILITY} value={visibility} onChange={setVisibility} />
+        <Button
+          label="Save as draft"
+          fullWidth
+          disabled={!canCreate}
+          loading={busy === 'create'}
+          onPress={() => void create()}
+          style={{ marginTop: spacing[5] }}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: GUTTER, paddingBottom: 140, gap: spacing[4] },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  label: { marginLeft: spacing[1], marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('medium') },
+  poll: { padding: spacing[4], gap: spacing[3] },
+  question: { fontSize: typography.fontSize.base, ...font('medium') },
+  result: { gap: spacing[1] },
+  resultRow: { flexDirection: 'row', justifyContent: 'space-between', gap: spacing[3] },
+  option: { flexShrink: 1, fontSize: typography.fontSize.sm, ...font() },
+  count: { fontSize: typography.fontSize.sm, fontVariant: ['tabular-nums'], ...font() },
+  track: { height: 6, borderRadius: borderRadius.full, overflow: 'hidden' },
+  fill: { height: 6, borderRadius: borderRadius.full },
+  actions: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[1] },
+});
