@@ -18,9 +18,10 @@ import { UsersModule } from '../users/users.module';
 import { RegistrationsModule } from '../registrations/registrations.module';
 import { EventsModule } from '../events/events.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PrismaModule, RedisModule, StorageModule, AuthModule, EmailModule, EmailCampaignsModule, UsersModule, RegistrationsModule, EventsModule, WhatsAppModule],
+  imports: [PrismaModule, RedisModule, StorageModule, AuthModule, EmailModule, EmailCampaignsModule, UsersModule, RegistrationsModule, EventsModule, WhatsAppModule, NotificationsModule],
   controllers: [AdminController, AdminEmailController, WhatsAppAdminController, MessagesAdminController, OtaAdminController, OtaStatusIngestController],
   providers: [AdminService, OtaAdminService, AdminSchedulerService, StatsMilestoneService],
   exports: [AdminService],

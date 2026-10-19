@@ -27,7 +27,7 @@ import { parseRRule, serializeRRule } from './recurrence/rrule.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { NotificationEvents } from '../notifications/notifications.constants';
-import type { NewEventEvent } from '../notifications/notifications.events';
+import type { NewEventEvent, NotifyBatchEvent } from '../notifications/notifications.events';
 import {
   NOT_DELETED,
   deletedWhere,
@@ -2373,23 +2373,26 @@ export class EventsService {
     }
 
     if (significantChanges.length > 0 && event.status === EventStatus.PUBLISHED) {
-      // Notify everyone attending, group members included (non-blocking)
-      for (const r of await this.attendeeRecipients(eventId)) {
-        if (r.email) {
-          this.emailService
-            .sendEventUpdated({
-              email: r.email,
-              userName: r.name,
-              eventId: updated.id,
-              eventTitle: updated.title,
-              changes: significantChanges,
-              newDate: this.formatEventDate(updated.startDateTime),
-              newTime: this.formatEventTime(updated.startDateTime, updated.endDateTime),
-              newVenue: updated.venueName || undefined,
-            })
-            .catch((err) => this.logger.error('Failed to send event updated email', err));
-        }
-      }
+      // Tell everyone attending, group members included, through notify() (in
+      // the background). Keyed per edit so a later change is told again.
+      const edit = updated.updatedAt.getTime();
+      this.events.emit(NotificationEvents.NotifyBatch, {
+        kind: 'event.updated',
+        items: (await this.attendeeRecipients(eventId)).map((r) => ({
+          userId: r.userId,
+          dedupKey: `event.updated:${updated.id}:${edit}:${r.userId}`,
+          data: {
+            userName: r.name,
+            eventId: updated.id,
+            eventSlug: updated.slug,
+            eventTitle: updated.title,
+            changes: significantChanges,
+            newDate: this.formatEventDate(updated.startDateTime),
+            newTime: this.formatEventTime(updated.startDateTime, updated.endDateTime),
+            newVenue: updated.venueName || undefined,
+          },
+        })),
+      } satisfies NotifyBatchEvent<'event.updated'>);
     }
 
     return updated;
@@ -2639,22 +2642,12 @@ export class EventsService {
   }
 
   /**
-   * Who to mail about a change to an event: the holder of every attending
+   * Who to tell about a change to an event: the holder of every attending
    * booking (with the row, for refund lines) plus group members who claimed a
-   * seat. One entry per person, primary email first.
+   * seat. One entry per person.
    */
   private async attendeeRecipients(eventId: string) {
-    const person = {
-      id: true,
-      fullName: true,
-      username: true,
-      identities: {
-        where: { email: { not: null } },
-        orderBy: { isPrimary: 'desc' as const },
-        select: { email: true },
-        take: 1,
-      },
-    };
+    const person = { id: true, fullName: true, username: true };
     const regs = await this.prisma.eventRegistration.findMany({
       where: { eventId, ...COUNTS_AS_ATTENDING },
       include: {
@@ -2662,13 +2655,13 @@ export class EventsService {
         groupSeats: { where: CLAIMED_MEMBER_SEAT, select: { claimedBy: { select: person } } },
       },
     });
-    const out = new Map<string, { email: string | null; name: string; reg: (typeof regs)[number] | null }>();
+    const out = new Map<string, { userId: string; name: string; reg: (typeof regs)[number] | null }>();
     const add = (
-      u: { id: string; fullName: string | null; username: string | null; identities: { email: string | null }[] } | null,
+      u: { id: string; fullName: string | null; username: string | null } | null,
       reg: (typeof regs)[number] | null,
     ) => {
       if (!u || out.has(u.id)) return;
-      out.set(u.id, { email: u.identities[0]?.email ?? null, name: u.fullName || u.username || 'there', reg });
+      out.set(u.id, { userId: u.id, name: u.fullName || u.username || 'there', reg });
     };
     for (const reg of regs) add(reg.user, reg);
     for (const reg of regs) for (const seat of reg.groupSeats ?? []) add(seat.claimedBy, null);
@@ -2720,10 +2713,12 @@ export class EventsService {
     // Invalidate event cache
     await this.cache.invalidateEventCache(event.slug);
 
-    // Cancellation emails to everyone attending, group members included. Only
-    // the booking holder paid, so only they get the refund line (non-blocking).
-    for (const { email: attendeeEmail, name, reg } of await this.attendeeRecipients(eventId)) {
-      if (attendeeEmail) {
+    // Tell everyone attending, group members included, through notify() (in
+    // the background). Only the booking holder paid, so only they get the
+    // refund line.
+    this.events.emit(NotificationEvents.NotifyBatch, {
+      kind: 'event.cancelled',
+      items: (await this.attendeeRecipients(eventId)).map(({ userId, name, reg }) => {
         const paid =
           !!reg &&
           Number(reg.razorpayAmount) > 0 &&
@@ -2735,20 +2730,19 @@ export class EventsService {
           ? `Your ticket price of ₹${base.toLocaleString('en-IN')} is coming back to the card or account you paid with. ` +
             'It can take 5-7 business days to show once sent. The processing fee is not refunded.'
           : undefined;
-
-        this.emailService
-          .sendEventCancelled({
-            email: attendeeEmail,
+        return {
+          userId,
+          data: {
             userName: name,
             eventId: event.id,
             eventTitle: event.title,
             eventDate: this.formatEventDate(event.startDateTime),
             cancellationReason: dto.reason || undefined,
             refundInfo,
-          })
-          .catch((err) => this.logger.error('Failed to send event cancelled email', err));
-      }
-    }
+          },
+        };
+      }),
+    } satisfies NotifyBatchEvent<'event.cancelled'>);
 
     // Sub-events can't run without their parent: cancel the live ones too.
     const children = await this.prisma.event.findMany({

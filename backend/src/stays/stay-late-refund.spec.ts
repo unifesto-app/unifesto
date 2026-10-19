@@ -28,7 +28,7 @@ describe('StayBookingsService late-payment refund', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
     jest.spyOn(svc as any, 'fits').mockResolvedValue('No beds left'); // truthy = doesn't fit
     return { svc, prisma, payments };
@@ -80,7 +80,7 @@ describe('StayBookingsService.cancel claim', () => {
     };
     const prisma: any = { stayBooking: { updateMany: jest.fn(async () => ({ count: 0 })) } };
     const payments = { refund: jest.fn() };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
     jest.spyOn(svc as any, 'loadForEvent').mockResolvedValue(b);
     await expect(svc.cancel('ev-1', 'b-1', 'u-1', { refund: true } as any)).rejects.toThrow(/just changed/);
     expect(prisma.stayBooking.updateMany).toHaveBeenCalledWith(
@@ -92,28 +92,44 @@ describe('StayBookingsService.cancel claim', () => {
   });
 });
 
-describe('stay notices also go by email (C9)', () => {
-  it('emails the guest the same notice as the push, branded by the event', async () => {
+describe('stay notices go through notify() (C2)', () => {
+  const build = () => {
+    const notify = { notify: jest.fn(async () => ({})) };
+    const svc = new StayBookingsService({} as any, {} as any, {} as any, notify as any, {} as any, {} as any);
+    const b = {
+      id: 'b-1', userId: 'u-1', eventId: 'ev-1',
+      stay: { name: 'Hostel' }, user: { fullName: null, username: 'asha' },
+    };
+    return { svc, notify, b };
+  };
+
+  it('one notify() call per notice, with the booking, the guest and the stay', () => {
+    const { svc, notify, b } = build();
+    (svc as any).notify(b, 'stay.payment_due', { amountText: '₹500', dueText: '2 Dec, 6 PM' });
+    expect(notify.notify).toHaveBeenCalledWith('u-1', 'stay.payment_due', {
+      bookingId: 'b-1', eventId: 'ev-1', userName: 'asha', stayName: 'Hostel', amountText: '₹500', dueText: '2 Dec, 6 PM',
+    });
+  });
+
+  it('a late-payment refund tells the guest once it went through', async () => {
     const prisma: any = {
       stayBooking: {
-        findUnique: jest.fn(async () => ({
-          eventId: 'ev-1',
-          user: { fullName: 'Asha', username: null, identities: [{ email: 'asha@x.in' }] },
+        updateMany: jest.fn(async () => ({ count: 1 })),
+        findUniqueOrThrow: jest.fn(async () => ({
+          id: 'b-1', userId: 'u-1', eventId: 'ev-1', paymentId: 'pay_1', totalAmount: 1020,
+          stay: { name: 'Hostel' }, user: { fullName: 'Asha', username: null },
         })),
+        update: jest.fn(async () => ({})),
       },
     };
-    const notifications = { send: jest.fn(async () => undefined) };
-    const email = { sendStayUpdate: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, {} as any, notifications as any, {} as any, {} as any, email as any);
-    (svc as any).notify('u-1', 'b-1', 'Stay request approved', 'Pay ₹500 by 2 Dec to confirm your bed at Hostel.');
-    await new Promise((r) => setImmediate(r));
-    expect(notifications.send).toHaveBeenCalledWith(['u-1'], expect.objectContaining({ title: 'Stay request approved' }));
-    expect(email.sendStayUpdate).toHaveBeenCalledWith({
-      email: 'asha@x.in',
-      eventId: 'ev-1',
-      userName: 'Asha',
-      title: 'Stay request approved',
-      body: 'Pay ₹500 by 2 Dec to confirm your bed at Hostel.',
-    });
+    const notify = { notify: jest.fn(async () => ({})) };
+    const payments = { refund: jest.fn(async () => undefined) };
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, notify as any, {} as any, {} as any);
+    await svc.refundDue('b-1');
+    expect(notify.notify).toHaveBeenCalledWith(
+      'u-1',
+      'stay.refunded',
+      expect.objectContaining({ bookingId: 'b-1', userName: 'Asha', stayName: 'Hostel', amountText: expect.stringContaining('1,020') }),
+    );
   });
 });

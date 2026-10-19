@@ -53,13 +53,21 @@ function build(opts: { claimed?: number; children?: { id: string }[] } = {}) {
   return { svc, prisma, email, events };
 }
 
+/** The people told through the NotifyBatch bus event (event.cancelled). */
+function told(events: { emit: jest.Mock }) {
+  return events.emit.mock.calls
+    .filter(([name, e]: any) => name === 'notif.notify.batch' && e.kind === 'event.cancelled')
+    .flatMap(([, e]: any) => e.items);
+}
+
 describe('cancelEvent (A24)', () => {
   it('refuses an event that is not published or ongoing (repeat cancel, completed)', async () => {
-    const { svc, prisma, email } = build({ claimed: 0 });
+    const { svc, prisma, email, events } = build({ claimed: 0 });
     await expect(svc.cancelEvent('u-1', 'ev-1', { reason: 'Rain' } as any)).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.event.updateMany.mock.calls[0][0].where.status.in).toEqual([EventStatus.PUBLISHED, EventStatus.ONGOING]);
     expect(prisma.refundRequest.createManyAndReturn).not.toHaveBeenCalled();
     expect(email.sendEventCancelled).not.toHaveBeenCalled();
+    expect(told(events)).toEqual([]);
   });
 
   it('opens a refund request per paid booking, straight to Unifesto', async () => {
@@ -83,26 +91,74 @@ describe('cancelEvent (A24)', () => {
   });
 
   it('tells paid attendees the ticket price comes back and the fee does not; free ones get no refund line', async () => {
-    const { svc, email } = build();
+    const { svc, email, events } = build();
     await svc.cancelEvent('u-1', 'ev-1', {} as any);
-    const byEmail = Object.fromEntries(email.sendEventCancelled.mock.calls.map(([a]: any) => [a.email, a.refundInfo]));
-    expect(byEmail['asha@x.in']).toMatch(/₹100 .*processing fee is not refunded/);
-    expect(byEmail['ravi@x.in']).toBeUndefined();
+    const byUser = Object.fromEntries(told(events).map((i: any) => [i.userId, i.data.refundInfo]));
+    expect(byUser['u-asha']).toMatch(/₹100 .*processing fee is not refunded/);
+    expect(byUser['u-ravi']).toBeUndefined();
+    // C2: one notify() per person (push + email by policy); no direct mail.
+    expect(email.sendEventCancelled).not.toHaveBeenCalled();
   });
 
-  it('mails only attending bookings, plus each joined group member once, without a refund line', async () => {
-    const { svc, prisma, email } = build();
-    await svc.cancelEvent('u-1', 'ev-1', {} as any);
+  it('tells only attending bookings, plus each joined group member once, without a refund line', async () => {
+    const { svc, prisma, events } = build();
+    await svc.cancelEvent('u-1', 'ev-1', { reason: 'Rain' } as any);
     const query = prisma.eventRegistration.findMany.mock.calls.find(([a]: any) => a.include)[0];
     expect(query.where).toMatchObject({ isWaitlisted: false, paymentStatus: { in: ['PAID', 'PARTIALLY_REFUNDED'] } });
-    const sent = email.sendEventCancelled.mock.calls.map(([a]: any) => [a.email, a.refundInfo]);
-    expect(sent.map(([e]: any) => e).sort()).toEqual(['asha@x.in', 'kiran@x.in', 'ravi@x.in']);
-    expect(Object.fromEntries(sent)['kiran@x.in']).toBeUndefined();
+    const items = told(events);
+    expect(items.map((i: any) => i.userId).sort()).toEqual(['u-asha', 'u-kiran', 'u-ravi']);
+    const kiran = items.find((i: any) => i.userId === 'u-kiran');
+    expect(kiran.data).toMatchObject({ userName: 'Kiran', eventId: 'ev-1', eventTitle: 'Fest', cancellationReason: 'Rain' });
+    expect(kiran.data.refundInfo).toBeUndefined();
+    // event.cancelled dedups per event + person by default: no caller key.
+    expect(kiran.dedupKey).toBeUndefined();
   });
 
   it('cancels live sub-events with the parent', async () => {
     const { svc, prisma } = build({ children: [{ id: 'ev-child' }] });
     await svc.cancelEvent('u-1', 'ev-1', {} as any);
     expect(prisma.event.updateMany.mock.calls.map((c: any) => c[0].where.id)).toEqual(['ev-1', 'ev-child']);
+  });
+});
+
+/** C2: a venue/date change on a live event tells attendees through notify(). */
+describe('updateEvent notice (C2)', () => {
+  it('one notify() per attendee, keyed per edit so a later change is told again', async () => {
+    const before = {
+      id: 'ev-1', spaceId: 'sp-1', slug: 'fest', title: 'Fest', status: EventStatus.PUBLISHED, venueName: 'Hall A',
+      startDateTime: new Date('2026-12-01T04:30:00Z'), endDateTime: new Date('2026-12-01T07:30:00Z'),
+      categories: [], isRecurring: false, parentEventId: null, seriesParentId: null,
+    };
+    const after = { ...before, venueName: 'Hall B', updatedAt: new Date(1_700_000_000_000) };
+    const prisma: any = {
+      event: { findUnique: jest.fn(async () => before), update: jest.fn(async () => after) },
+      eventRegistration: {
+        findMany: jest.fn(async () => [
+          { user: { id: 'u-asha', fullName: 'Asha', username: null }, groupSeats: [] },
+        ]),
+      },
+    };
+    const email: any = { sendEventUpdated: jest.fn() };
+    const events = { emit: jest.fn() };
+    const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
+    const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, {} as any, {} as any);
+    jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
+
+    await svc.updateEvent('u-1', 'ev-1', { venueName: 'Hall B' } as any);
+
+    const [name, batch] = events.emit.mock.calls.find(([n]: any) => n === 'notif.notify.batch')!;
+    expect(name).toBe('notif.notify.batch');
+    expect(batch.kind).toBe('event.updated');
+    expect(batch.items).toEqual([
+      {
+        userId: 'u-asha',
+        dedupKey: 'event.updated:ev-1:1700000000000:u-asha',
+        data: expect.objectContaining({
+          userName: 'Asha', eventId: 'ev-1', eventSlug: 'fest', newVenue: 'Hall B',
+          changes: [{ field: 'Venue', oldValue: 'Hall A', newValue: 'Hall B' }],
+        }),
+      },
+    ]);
+    expect(email.sendEventUpdated).not.toHaveBeenCalled();
   });
 });

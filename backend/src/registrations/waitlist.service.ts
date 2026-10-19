@@ -6,7 +6,6 @@ import {
   Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -14,8 +13,7 @@ import { GroupSeatsService } from './group-seats.service';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { SoldOutError, takeTicketSeats } from './capacity.util';
 import { ticketsIn } from './registration.util';
-import { NotificationEvents } from '../notifications/notifications.constants';
-import type { WaitlistOfferEvent } from '../notifications/notifications.events';
+import { NotifyService } from '../notifications/notify.service';
 import {
   PaymentStatus,
   Prisma,
@@ -62,7 +60,7 @@ export class WaitlistService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly payments: PaymentsService,
-    private readonly events: EventEmitter2,
+    private readonly notify: NotifyService,
     private readonly groupSeats: GroupSeatsService,
     private readonly authz: AuthorizationService,
     private readonly confirmations: RegistrationConfirmationsService,
@@ -588,8 +586,8 @@ export class WaitlistService {
       };
     }
 
-    void this.notifyOffered(result.reg.userId, event, result).catch(
-      (err) => this.logger.error('Failed to send waitlist offer email', err),
+    void this.notifyOffered(registrationId, result.reg.userId, event, result).catch(
+      (err) => this.logger.error('Failed to send waitlist offer', err),
     );
 
     return {
@@ -970,31 +968,39 @@ export class WaitlistService {
     });
   }
 
+  /** Push + email (critical): a seat is held for them until they pay. */
   private async notifyOffered(
+    registrationId: string,
     userId: string,
     event: { id: string; title: string; startDateTime: Date },
     offer: { totalAmount: number },
   ) {
-    const to = await this.recipient(userId);
-    if (!to) return;
+    const [user, full] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { fullName: true, username: true },
+      }),
+      this.prisma.event.findUnique({
+        where: { id: event.id },
+        select: {
+          type: true,
+          onlineUrl: true,
+          venueName: true,
+          city: true,
+          slug: true,
+          startDateTime: true,
+          endDateTime: true,
+          timezone: true,
+        },
+      }),
+    ]);
+    if (!user) return;
 
-    const full = await this.prisma.event.findUnique({
-      where: { id: event.id },
-      select: {
-        type: true,
-        onlineUrl: true,
-        venueName: true,
-        city: true,
-        slug: true,
-        startDateTime: true,
-        endDateTime: true,
-        timezone: true,
-      },
-    });
-
-    await this.email.sendWaitlistPromoted({
-      ...to,
+    await this.notify.notify(userId, 'waitlist.offer', {
+      entryId: registrationId,
+      userName: user.fullName || user.username || 'there',
       eventId: event.id,
+      eventSlug: full?.slug,
       eventTitle: event.title,
       eventDate: this.formatDate(event.startDateTime, full?.timezone),
       eventTime: full
@@ -1017,13 +1023,5 @@ export class WaitlistService {
       // No deadline any more — the seat is held until paid for or revoked.
       expiresInHours: null,
     });
-
-    // Offline push (best-effort, decoupled): prompts the pay-to-claim.
-    this.events.emit(NotificationEvents.WaitlistOffer, {
-      userId,
-      eventId: event.id,
-      eventTitle: event.title,
-      eventSlug: full?.slug,
-    } satisfies WaitlistOfferEvent);
   }
 }
