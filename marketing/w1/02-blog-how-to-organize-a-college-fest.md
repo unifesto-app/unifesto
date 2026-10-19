@@ -148,11 +148,12 @@ The Starter plan costs ₹0 a month. Fees:
 
 | Fee (as of 21 Oct 2026) | Who pays | Starter | Pro | Enterprise |
 |---|---|---|---|---|
-| Platform fee | Organiser, per paid ticket | 2.5% | 1.5% | 1% |
-| Processing fee | Buyer, added at checkout | 5% | 5% | 5% |
+| Processing fee | Buyer, added at checkout | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket | 5%, max ₹99 per ticket |
+| Platform fee, today | Organiser | 0% | 0% | 0% |
+| Platform fee, from 2 Nov 2026 | Organiser, on paid tickets sold from that date | 2.5% | 1.5% | 1% |
 | Free RSVP events | Nobody | No fees | No fees | No fees |
 
-On a ₹500 ticket on Starter, the buyer pays ₹525 and the organiser gets ₹487.50. Platform fees are launch pricing for Spaces that join before 31 March 2027.
+On a ₹500 ticket on Starter, the buyer pays ₹525. The organiser gets ₹500 for tickets sold before 2 Nov 2026 and ₹487.50 for tickets sold from 2 Nov. Tickets already sold keep the fee they were sold at. Platform fees are launch pricing for Spaces that join before 31 March 2027.
 
 Unifesto does not run your sponsor deck, your vendors or your stage. Those stay in your team's hands.
 
@@ -180,4 +181,4 @@ Plan for 6 to 8 check-in volunteers per 1,000 attendees, spread across the entry
 
 ### Is Unifesto free for college fests?
 
-The Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the organiser pays a platform fee (2.5% on Starter, 1.5% on Pro, 1% on Enterprise) and the buyer pays a 5% processing fee at checkout, as of 21 Oct 2026. On a ₹500 ticket on Starter, the buyer pays ₹525 and the organiser gets ₹487.50.
+The Starter plan costs ₹0 a month. Free RSVP events have no fees. On paid tickets, the buyer pays a 5% processing fee at checkout, up to ₹99 per ticket. As of 21 Oct 2026 the organiser pays no platform fee. From 2 Nov 2026, tickets sold carry a platform fee of 2.5% on Starter, 1.5% on Pro and 1% on Enterprise. On a ₹500 Starter ticket sold from 2 Nov, the buyer pays ₹525 and the organiser gets ₹487.50.

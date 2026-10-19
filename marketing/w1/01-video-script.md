@@ -127,8 +127,8 @@ Not a screen tour. One story: **the club that survives its president graduating.
 | Short 1 "Should your gate volunteer see your bank details?" | 2:50–4:05, reframed 9:16 on the keycards | 45 s | `04-shorts.md` |
 | Short 2 "Every event gets its own team" | 4:05–5:14 | 40 s | `04-shorts.md` |
 | LinkedIn video (16:9, 75 s) | 0:00–0:22 (hook) + 3:05–3:40 (keycards) + 5:58–6:06 (payoff) | 75 s | `05-linkedin.md` |
-| How-to carousel | chapters 1–5 | 7 slides | `assets/howto-carousel.json` |
-| Thumbnail | 0:12 frame (Bujji + headline) | | `assets/thumbnail.json` |
+| How-to carousel | chapters 1–5 | 8 slides | `assets/howto-carousel.json` |
+| Thumbnail | Bujji + payoff line | | `assets/thumbnail-bujji.jpg` (A), `assets/thumbnail.png` (B) |
 
 ---
 
@@ -165,7 +165,7 @@ Unifesto is an event platform built in India for clubs, communities, colleges an
 
 **Tags:** how to run a college club, college club management, college club, student club, run a club, club president, club handover, college fest, event team, club roles, unifesto, unifesto space, india college events
 
-**Thumbnail:** `assets/thumbnail.png`, re-rendered from the 0:12 frame: Bujji + "Your club shouldn't graduate with your president" (short form on the thumb: "Your club *survives* graduation").
+**Thumbnail (A/B with YouTube "Test & compare"):** A = `assets/thumbnail-bujji.jpg` (3840x2160, Bujji + "Your club survives graduation." on the club orbit, from `~/Startups/unifesto-video/src/thumbnail_w1.py`). B = `assets/thumbnail.png` (same hook on the Space dashboard phone, `assets/thumbnail.json`).
 **Captions:** upload the SRT from the kit timeline (the "Bujji says" column), not auto-captions.
 **End screen:** "Subscribe" + "What is Unifesto?". **Card** at 0:22: "What is Unifesto?" (Bujji's first video).
 **Pinned comment:** "Which ring does your club struggle with most: Space, team, roles, event crews or the handover? Tell us and we'll answer every one. Start here: https://www.unifesto.app/links?utm_source=youtube&utm_campaign=v5-w1"

@@ -4,7 +4,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 
 ## Before anything goes out
 
-1. **Fees (user decision, 18 Oct): both are real.** Platform fee paid by the organiser per paid ticket: Starter 2.5%, Pro 1.5%, Enterprise 1% (`PLANS` in site.ts, launch pricing). Processing fee paid by the buyer at checkout on every plan: 5% (`PROCESSING_FEE_PERCENT`). Free RSVP events: no fees. Worked example: ₹500 on Starter, buyer pays ₹525 and the organiser gets ₹487.50, as of 21 Oct 2026. Never describe fees from demo-Space money numbers (that Space is on the comped FREE model). /pricing is being updated in a separate PR. Open: GST on either fee is not stated in the copy.
+1. **Fees (as live on /pricing and /terms, checked 19 Oct).** Buyer: 5% processing fee at checkout on every plan, max ₹99 per ticket, not refundable. Organiser: platform fee 0% today; from **2 Nov 2026** (A10 go-live) 2.5% Starter / 1.5% Pro / 1% Enterprise on paid tickets sold from that date (launch pricing). Free RSVP events: no fees. ₹500 Starter ticket: buyer ₹525; organiser ₹500 before 2 Nov, ₹487.50 from 2 Nov. If a W1 piece slips past 2 Nov, drop the "today 0%" rows. Never describe fees from demo-Space money numbers (that Space is on the comped FREE model). Open: GST on either fee is not stated in the copy.
 2. **Registration is app-only.** The web register page redirects to the event page; attendees register in the Unifesto app. The blogs say so. Don't let any copy say "register on the web".
 3. **Header phone number.** Your real number shows top-right on space.unifesto.app desktop. Crop or blur it in the recording.
 4. **Google Forms facts.** Re-open the two Google help links in `03` on publish day.
@@ -56,7 +56,8 @@ If you'd like a Space for your club, it's free for RSVP events. Happy to set it 
 05-linkedin.md                             3 posts + video cut note
 06-instagram.md                            carousel captions + daily stories
 assets/*.json                              template pieces (render: python3 ../templates/render.py *.json from assets/)
-assets/thumbnail.png                       YouTube thumbnail 1280x720
+assets/thumbnail-bujji.jpg                 YouTube thumbnail A, Bujji (3840x2160)
+assets/thumbnail.png                       YouTube thumbnail B, dashboard phone (1280x720)
 assets/howto-carousel/ + .pdf              IG slides + LinkedIn PDF
 assets/vs-google-forms-carousel/ + .pdf    IG slides + LinkedIn PDF
 assets/short{1,2,3}-cover.png              Short covers 1080x1920

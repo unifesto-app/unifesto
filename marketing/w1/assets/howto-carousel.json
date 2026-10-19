@@ -1,12 +1,57 @@
 {
   "template": "carousel",
   "slides": [
-    { "kind": "cover", "label": "How to run a college club", "title": "Your whole club in *one Space.*", "lede": "Space, team and roles, set up in 10 minutes.", "shot": "shots/01-dashboard-mobile.jpg" },
-    { "kind": "step", "title": "Set up your Space", "text": "Name, link and one line about your club. Every event and member lives here.", "shot": "shots/07-space-settings.jpg" },
-    { "kind": "step", "title": "Add your core team", "text": "Search for their Unifesto account and add them. One or two Space Admins, everyone else a member.", "shot": "shots/02-members-roster-mobile.jpg" },
-    { "kind": "step", "title": "Decide who can do what", "text": "Curator runs the event. Co-Curator helps. Crew scans at the gate. *Money stays with the Curator.*", "shot": "shots/03-iam-roles-matrix.jpg" },
-    { "kind": "step", "title": "Start an event with a name", "text": "It stays a draft. The checklist shows what's left before you publish.", "shot": "shots/05-event-setup-checklist.jpg" },
-    { "kind": "step", "title": "Give each event a team", "text": "Pick people from your Space and set their role for that event only.", "shot": "shots/06-event-team-roster.jpg" },
-    { "kind": "cta", "title": "Set up your Space *tonight.*", "lede": "Free for RSVP events. When you graduate, hand the Space to next year's lead.", "pills": ["unifesto.app/organisers", "Save for later"] }
+    {
+      "kind": "cover",
+      "label": "How to run a college club",
+      "title": "Your club *survives graduation.*",
+      "lede": "One Space, your team, clear roles and a crew for every event. Set up in 10 minutes.",
+      "shot": "shots/01-dashboard-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Set up your Space",
+      "text": "Name, link and one line about your club. Every event, member and rupee lives here, not on one laptop.",
+      "shot": "shots/07-space-settings.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Add your core team",
+      "text": "Search for their Unifesto account and add them. Two Space Admins: the president and one backup.",
+      "shot": "shots/02-members-roster-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Decide who can do what",
+      "text": "Curator runs the event. Co-Curator helps. Crew scans passes at the gate. *Money stays with the Curator.*",
+      "shot": "shots/03-iam-roles-matrix.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Start an event with a name",
+      "text": "It stays a draft. The checklist shows what's left before you publish.",
+      "shot": "shots/05-event-setup-checklist.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Give each event a crew",
+      "text": "Pick people from your Space, set their role for that event only. *Crew at the fest, Curator at the workshop.*",
+      "shot": "shots/06-event-team-roster.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Hand it to next year's lead",
+      "text": "Transfer the Space when you graduate. Every event, count and report stays with the club.",
+      "shot": "shots/01-dashboard.jpg"
+    },
+    {
+      "kind": "cta",
+      "title": "Your president graduates. *Your club doesn't.*",
+      "lede": "Free for RSVP events. Full 10-minute guide on our YouTube.",
+      "pills": [
+        "unifesto.app/request-space",
+        "Save for later"
+      ]
+    }
   ]
 }

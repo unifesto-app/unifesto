@@ -6,11 +6,11 @@ Reels captions are in `04-shorts.md`. Post feed items 7–9 PM IST. Bio link: `h
 
 ## Wed 21 Oct · How-to carousel
 
-**Files:** `assets/howto-carousel/01.png` … `07.png` (1080x1350).
-**Alt text, slide 1:** "Black slide with the text: Your whole club in one Space. Space, team and roles, set up in 10 minutes. A phone shows the Aurora Tech Club dashboard."
+**Files:** `assets/howto-carousel/01.png` … `08.png` (1080x1350).
+**Alt text, slide 1:** "Black slide with the text: Your club survives graduation. One Space, your team, clear roles and a crew for every event. A phone shows the Aurora Tech Club dashboard."
 
 ```
-Running a club? Stop running it from 5 WhatsApp groups 📵
+Your president graduates in May. Does your club? 🎓
 
 How to set up your club on Unifesto ➝ swipe
 
@@ -18,9 +18,10 @@ How to set up your club on Unifesto ➝ swipe
 2️⃣ Add your core team
 3️⃣ Decide who can do what
 4️⃣ Start an event with just a name
-5️⃣ Give each event a team
+5️⃣ Give each event a crew
+6️⃣ Hand it to next year's lead
 
-Free for RSVP events. And when you graduate, the Space goes to next year's lead with everything in it.
+Free for RSVP events. Every event, count and report stays with the club.
 
 🔖 Save this for your next committee meeting
 📤 Send it to your club president
