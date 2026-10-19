@@ -71,6 +71,15 @@ describe('EmailService brandFor', () => {
     expect(r.sender).toEqual({ fromName: 'Acme', replyTo: 'hi@acme.edu', fromAddress: 'tickets@mail.acme.edu' });
   });
 
+  it('drops the branded sender when the space branding is suspended', async () => {
+    space.brandingSuspendedAt = new Date() as any;
+    try {
+      expect((await build(true).brandFor('e1')).sender).toBeUndefined();
+    } finally {
+      space.brandingSuspendedAt = null;
+    }
+  });
+
   it('stays Unifesto without the plan perk or an eventId', async () => {
     expect(await build(false).brandFor('e1')).toEqual({ brand: null, sender: undefined });
     expect(await build(true).brandFor()).toEqual({ brand: null });
@@ -201,5 +210,41 @@ describe('EmailService branded sender fallback', () => {
     const res = await service.sendViaResend('a@b.co', 'Hi', '<p>Hi</p>', undefined, { fromName: 'Acme', fromAddress: 'tickets@mail.acme.edu' }, 'k1');
     expect(res.retryable).toBe(true);
     expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('EmailService certificate sender (H14)', () => {
+  const config = { get: (_key: string, fallback?: unknown) => fallback } as unknown as ConfigService;
+  const data = {
+    eventId: 'e1', email: 'a@b.co', recipientName: 'Asha', eventTitle: 'Fest', issuerName: 'Acme',
+    certificateNumber: 'C-1', verifyUrl: 'https://unifesto.app/verify/x', pdfUrl: 'https://cdn/x.pdf',
+  };
+  const send = async (branding: { brand: unknown; sender?: unknown }) => {
+    const service = new EmailService(config) as any;
+    service.brandFor = jest.fn().mockResolvedValue(branding);
+    service.sendViaResend = jest.fn().mockResolvedValue({ id: 'r-1' });
+    service.sendViaSES = jest.fn().mockResolvedValue({ id: 's-1' });
+    await expect(service.sendCertificateIssued(data)).resolves.toBe(true);
+    return service;
+  };
+
+  it('goes via Resend from the space address when its sending domain is verified', async () => {
+    const sender = { fromName: 'Acme', replyTo: 'hi@acme.edu', fromAddress: 'tickets@mail.acme.edu' };
+    const s = await send({ brand: { name: 'Acme' }, sender });
+    expect(s.sendViaSES).not.toHaveBeenCalled();
+    expect(s.sendViaResend).toHaveBeenCalledWith('a@b.co', expect.any(String), expect.any(String), undefined, sender, expect.any(String));
+  });
+
+  it('stays on SES (name + reply-to only) without a verified domain', async () => {
+    const sender = { fromName: 'Acme', replyTo: 'hi@acme.edu', fromAddress: null };
+    const s = await send({ brand: { name: 'Acme' }, sender });
+    expect(s.sendViaResend).not.toHaveBeenCalled();
+    expect(s.sendViaSES).toHaveBeenCalledWith('a@b.co', expect.any(String), expect.any(String), sender);
+  });
+
+  it('stays on SES unbranded when branding is off or suspended', async () => {
+    const s = await send({ brand: null });
+    expect(s.sendViaResend).not.toHaveBeenCalled();
+    expect(s.sendViaSES).toHaveBeenCalledWith('a@b.co', expect.any(String), expect.any(String), undefined);
   });
 });
