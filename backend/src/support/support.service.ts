@@ -131,6 +131,7 @@ const SUBJECT_MODELS = {
   SubEventAttachRequest: 'subEventAttachRequest',
   ContentReport: 'contentReport',
   PayoutBankAccount: 'payoutBankAccount',
+  StayBooking: 'stayBooking',
 } as const;
 export type CaseSubject = { type: string; data: Record<string, unknown> };
 
@@ -516,9 +517,10 @@ export class SupportService {
     const subjects = await this.caseSubjects(ticket);
     if (platform) return { ...ticket, subjects };
     // The space desk gets the requester's email, not their phone number, and of
-    // the typed records only refunds: it reviews those first (D6).
+    // the typed records only the money it acts on: refunds it reviews first
+    // (D6) and stays it cancels and refunds (D23).
     const { mobileNumber: _phone, ...requester } = ticket.requester;
-    return { ...ticket, requester, subjects: subjects.filter((x) => x.type === 'RefundRequest') };
+    return { ...ticket, requester, subjects: subjects.filter((x) => x.type === 'RefundRequest' || x.type === 'StayBooking') };
   }
 
   /** The typed records behind a case: its subject, plus refunds raised from it. */

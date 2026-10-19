@@ -31,10 +31,11 @@ describe('SessionsService.cancelSession', () => {
       },
     };
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any);
+    const events = { emit: jest.fn() };
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any, events as any);
     jest.spyOn(svc as any, 'assertCanManageSpace').mockResolvedValue(undefined);
     jest.spyOn(svc as any, 'getPrimaryEmail').mockResolvedValue(null);
-    return { svc, prisma, payments, calls };
+    return { svc, prisma, payments, calls, events };
   };
 
   it('refunds the ticket price, not the processing fee', async () => {
@@ -50,6 +51,24 @@ describe('SessionsService.cancelSession', () => {
       where: { id: 'sr-1' },
       data: expect.objectContaining({ refundDueAt: null, paymentStatus: PaymentStatus.REFUNDED }),
     });
+  });
+
+  it('D23: opens a CANCELLATION case per paid booking on the space desk and resolves it once refunded', async () => {
+    const { svc, events } = build();
+    await svc.cancelSession('host', 's-1', 'Speaker ill');
+    await settle();
+    const sent = events.emit.mock.calls;
+    expect(sent[0]).toEqual([
+      'assist.subject.open',
+      expect.objectContaining({
+        subjectType: 'SessionRegistration', subjectId: 'sr-1', requesterId: 'u-1', kind: 'CANCELLATION',
+        desk: 'SPACE', spaceId: 'space-1', raisedForRequester: true, message: expect.stringContaining('Speaker ill'),
+      }),
+    ]);
+    expect(sent[1]).toEqual([
+      'assist.subject.update',
+      expect.objectContaining({ subjectId: 'sr-1', status: 'RESOLVED', text: expect.stringContaining('₹100 refunded') }),
+    ]);
   });
 
   it('reads paid attendees after claiming the session, so a verify in between is not missed', async () => {
