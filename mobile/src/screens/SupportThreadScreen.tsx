@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { cancelAccountDeletion } from '../lib/api/profile';
 import useAnalyticsScreenTracking from '../hooks/useAnalyticsScreenTracking';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
@@ -34,7 +35,7 @@ import { font } from '../theme/fontHelpers';
 export default function SupportThreadScreen() {
   const { ticketId } = useLocalSearchParams<{ ticketId: string }>();
   const tokens = useTokens();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing();
   const scroll = useRef<ScrollView>(null);
@@ -77,6 +78,27 @@ export default function SupportThreadScreen() {
     if (!ok) return AppAlert.alert("Couldn't update the request");
     await load();
   };
+
+  // D24: my account deletion's case; while it's pending I can keep the account from here.
+  const keepAccount = () =>
+    AppAlert.alert('Keep my account?', 'The deletion is cancelled and the account stays as it is.', [
+      { text: 'Not now', style: 'cancel' },
+      {
+        text: 'Keep my account',
+        onPress: async () => {
+          setActing(true);
+          try {
+            await cancelAccountDeletion();
+            updateUser({ deletionScheduledFor: null });
+            await load();
+          } catch (e: any) {
+            AppAlert.alert("Couldn't cancel the deletion", e.message || 'Please try again.');
+          } finally {
+            setActing(false);
+          }
+        },
+      },
+    ]);
 
   const escalate = () =>
     AppAlert.alert('Escalate to Unifesto?', 'You will still be able to read it, but only Unifesto replies.', [
@@ -123,6 +145,8 @@ export default function SupportThreadScreen() {
     : [KIND_LABEL[ticket.kind], STATUS_LABEL[ticket.status], withUnifesto ? 'With Unifesto' : `With ${spaceName}`];
   // The desk can write while the case is on it; the requester until it closes.
   const canWrite = !closed && (!asDesk || !withUnifesto);
+  const deletionPending =
+    !asDesk && ticket.kind === 'PRIVACY' && ticket.subjectType === 'User' && !!user?.deletionScheduledFor;
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -150,6 +174,8 @@ export default function SupportThreadScreen() {
           ) : (
             <Text style={[styles.hint, { color: tokens.textMuted }]}>This case is closed.</Text>
           )
+        ) : deletionPending ? (
+          <Button label="Keep my account" variant="ghost" loading={acting} onPress={keepAccount} style={styles.action} />
         ) : (
           <Button label={closed ? 'Reopen request' : 'Mark as solved'} variant="ghost" loading={acting} onPress={toggle} style={styles.action} />
         )}
