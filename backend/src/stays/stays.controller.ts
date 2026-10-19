@@ -30,6 +30,7 @@ import {
   ApproveStayBookingDto,
   CancelMyStayDto,
   CancelStayBookingDto,
+  CheckInStayDto,
   CreateStayBookingDto,
   CreateStayDto,
   CreateStayOptionDto,
@@ -304,8 +305,9 @@ export class StaysController {
     return this.bookings.lookupPass(eventId, passCode);
   }
 
-  // Recording money taken is not a desk/scanner job: crew (check-in only)
-  // can't mark a stay paid; curators and co-curators can.
+  // Recording money taken on its own is not a desk/scanner job: crew
+  // (check-in only) can't mark a stay paid; curators and co-curators can.
+  // Crew record pay-at-property money only as part of check-in (below).
   @Post('events/:eventId/stay-bookings/:bookingId/mark-paid')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.EVENT_MANAGE_ATTENDEES, { eventKey: 'eventId' })
@@ -323,8 +325,9 @@ export class StaysController {
     @Param('eventId', uuid) eventId: string,
     @Param('bookingId', uuid) bookingId: string,
     @CurrentUser() user: User,
+    @Body() dto: CheckInStayDto,
   ) {
-    return this.bookings.checkIn(eventId, bookingId, user.id);
+    return this.bookings.checkIn(eventId, bookingId, user.id, dto?.collected);
   }
 
   @Post('events/:eventId/stay-bookings/:bookingId/check-out')

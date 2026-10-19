@@ -1170,7 +1170,17 @@ export class StayBookingsService {
     return this.getForEvent(eventId, bookingId);
   }
 
-  async checkIn(eventId: string, bookingId: string, userId: string) {
+  /**
+   * `collected`: the desk took pay-at-property money just now. Marking paid
+   * rides on the check-in (one write, guest present) so crew, who can't mark
+   * a stay paid on its own (S30), can still run the property desk.
+   */
+  async checkIn(
+    eventId: string,
+    bookingId: string,
+    userId: string,
+    collected = false,
+  ) {
     const b = await this.loadForEvent(eventId, bookingId);
     if (b.status === StayBookingStatus.CHECKED_IN)
       throw new ConflictException(
@@ -1178,20 +1188,28 @@ export class StayBookingsService {
       );
     if (b.status !== StayBookingStatus.CONFIRMED)
       throw new BadRequestException('Only confirmed stays can check in.');
-    if (
+    const collectNow =
       b.paymentMode === StayPaymentMode.PAY_AT_PROPERTY &&
-      b.paymentStatus !== PaymentStatus.PAID
-    ) {
+      b.paymentStatus !== PaymentStatus.PAID;
+    if (collectNow && !collected) {
       throw new BadRequestException(
         `Collect ${rupees(num(b.totalAmount))} and mark it paid first.`,
       );
     }
+    const now = new Date();
     const res = await this.prisma.stayBooking.updateMany({
-      where: { id: b.id, status: StayBookingStatus.CONFIRMED },
+      where: {
+        id: b.id,
+        status: StayBookingStatus.CONFIRMED,
+        ...(collectNow ? { paymentStatus: PaymentStatus.PENDING } : {}),
+      },
       data: {
         status: StayBookingStatus.CHECKED_IN,
-        checkedInAt: new Date(),
+        checkedInAt: now,
         checkedInById: userId,
+        ...(collectNow
+          ? { paymentStatus: PaymentStatus.PAID, paidAt: now }
+          : {}),
       },
     });
     if (!res.count)

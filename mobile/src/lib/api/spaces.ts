@@ -91,18 +91,10 @@ export interface Space {
   };
   userRoles?: SpaceMember[];
   organisers?: SpaceMember[];
-  userRole?: {
-    id: string;
-    userId: string;
-    roleId: string;
-    spaceId: string;
-    role: {
-      id: string;
-      code: string;
-      name: string;
-      scope: string;
-    };
-  } | null;
+  /** My role here, flattened by the API (null = not a member). */
+  userRole?: { id: string; code: string; name: string } | null;
+  /** Public team: Curators and Co-Curators of the space's events. */
+  team?: { id: string; fullName: string | null; username: string | null; avatarUrl: string | null; roleCode: string }[];
 }
 
 export interface SpaceMember {

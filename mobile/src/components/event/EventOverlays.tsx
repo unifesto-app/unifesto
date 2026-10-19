@@ -17,6 +17,9 @@ const CTA_LABEL: Record<RegisterMode, string> = {
   choose: 'Choose ticket',
   free: 'Register free',
   paid: 'Register',
+  soldOut: 'Sold out',
+  notOpen: 'Not open yet',
+  closed: 'Registration closed',
 };
 
 /**
@@ -36,10 +39,12 @@ export function RegisterBar({ price, mode, accent, onPress, backdropImage, backd
   backdropColor?: string | null;
 }) {
   const done = mode === 'registered';
+  const unavailable = mode === 'soldOut' || mode === 'notOpen' || mode === 'closed';
   return (
     <ActionBar
-      info={done ? null : price}
+      info={done || unavailable ? null : price}
       label={CTA_LABEL[mode]}
+      disabled={unavailable}
       // Silver button, the cosmos primary, in every state (the event page has no blue).
       tone="neutral"
       accent={accent}
