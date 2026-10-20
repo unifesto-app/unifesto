@@ -262,7 +262,7 @@ export const ORBIT_STEPS = [
 ] as const;
 
 export const ORBIT_TIERS = [
-  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Certificate", "Orbit badge", "The Orbit Leads WhatsApp community"] },
+  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Orbit certificate", "Orbit badge"] },
   { name: "Bronze", bar: "5 active clubs", rewards: ["Letter of recommendation signed by the founder", "A feature on Unifesto's socials"] },
   { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club"] },
   { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year"] },

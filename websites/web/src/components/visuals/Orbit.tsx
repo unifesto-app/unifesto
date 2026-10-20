@@ -127,6 +127,75 @@ export function OrbitStartVisual() {
   );
 }
 
+/* The Orbit badge: a planet with one satellite on a tilted orbit, in the
+   tier's metal. Lead wears the brand glow; the rest are metals. */
+export type OrbitTierName = "Lead" | "Bronze" | "Silver" | "Gold";
+const METAL: Record<OrbitTierName, { ring: string; core: string; label: string }> = {
+  Lead: { ring: "#8fa8ff", core: "#cdd8ff", label: "Orbit Lead" },
+  Bronze: { ring: "#b9825a", core: "#e4b48c", label: "Bronze" },
+  Silver: { ring: "#b8bdc9", core: "#eef0f5", label: "Silver" },
+  Gold: { ring: "#d6ac4e", core: "#f6dc94", label: "Gold" },
+};
+
+export function OrbitBadge({ tier, size = 112, withLabel = true }: { tier: OrbitTierName; size?: number; withLabel?: boolean }) {
+  const m = METAL[tier];
+  const id = `orbit-badge-${tier}`;
+  return (
+    <figure aria-hidden="true" className="flex flex-col items-center gap-2">
+      <svg width={size} height={size} viewBox="0 0 120 120" className="max-w-full">
+        <defs>
+          <radialGradient id={`${id}-core`} cx="38%" cy="32%" r="70%">
+            <stop offset="0%" stopColor={m.core} />
+            <stop offset="100%" stopColor={m.ring} stopOpacity="0.55" />
+          </radialGradient>
+          <path id={`${id}-arc`} d="M 22 60 A 38 38 0 0 1 98 60" fill="none" />
+        </defs>
+        <circle cx="60" cy="60" r="57" fill="#0b0c10" stroke={m.ring} strokeWidth="2" />
+        <circle cx="60" cy="60" r="50" fill="none" stroke={m.ring} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="2 4" />
+        <text fill={m.ring} fontSize="8.5" letterSpacing="3" fontFamily="inherit">
+          <textPath href={`#${id}-arc`} startOffset="50%" textAnchor="middle">UNIFESTO ORBIT</textPath>
+        </text>
+        <ellipse cx="60" cy="70" rx="34" ry="11" fill="none" stroke={m.ring} strokeWidth="1.5" transform="rotate(-18 60 70)" />
+        <circle cx="60" cy="70" r="15" fill={`url(#${id}-core)`} />
+        <circle cx="91" cy="60" r="4" fill={m.core} />
+      </svg>
+      {withLabel && <figcaption className="text-[11px] uppercase tracking-[0.18em] text-paper/70">{m.label}</figcaption>}
+    </figure>
+  );
+}
+
+/* The Orbit certificate, as issued through Unifesto (sample recipient). */
+export function OrbitCertificate() {
+  return (
+    <div
+      aria-hidden="true"
+      className="relative w-full max-w-xl rounded-xl bg-night-2 p-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.1),0_30px_60px_-30px_rgba(0,0,0,0.9)]"
+    >
+      <div className="relative overflow-hidden rounded-lg border border-paper/15 p-6 sm:p-9">
+        <div className="pointer-events-none absolute inset-1.5 rounded-md border border-paper/10" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full border border-dashed border-paper/10" />
+        <p className="text-[10px] uppercase tracking-[0.28em] text-paper/50">Unifesto Orbit</p>
+        <p className="mt-3 font-display text-xl text-paper sm:text-2xl">Certificate of Recognition</p>
+        <p className="mt-5 text-[11px] text-paper/55">This certifies that</p>
+        <p className="mt-1 font-display text-lg text-paper sm:text-xl">Ananya R.</p>
+        <p className="mt-3 max-w-[34ch] text-[12px] leading-relaxed text-paper/70">
+          served as Orbit Lead for MRU, Hyderabad, brought 7 clubs onto Unifesto and reached the Bronze tier.
+        </p>
+        <div className="mt-7 flex items-end justify-between gap-4">
+          <div className="min-w-0">
+            <svg width="96" height="26" viewBox="0 0 96 26" className="text-paper/70">
+              <path d="M2 18c8-12 14-12 12 0s8-14 14-6 4 8 10-2 10-4 12 4 10-2 16-6 12 2 16 0" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            <div className="mt-1 w-32 border-t border-paper/25 pt-1 text-[10px] text-paper/55">Founder, Unifesto</div>
+          </div>
+          <OrbitBadge tier="Bronze" size={64} withLabel={false} />
+        </div>
+        <p className="mt-5 text-[9px] tracking-wide text-paper/40">March 2027 · Verify at unifesto.app/verify</p>
+      </div>
+    </div>
+  );
+}
+
 /* A pinned sheet on the campus notice board. */
 export function Pinned({ tilt = 0, className = "", children }: { tilt?: number; className?: string; children: ReactNode }) {
   return (

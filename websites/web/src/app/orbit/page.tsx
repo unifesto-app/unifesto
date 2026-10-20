@@ -9,7 +9,7 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
-import { OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
+import { OrbitBadge, OrbitCertificate, OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
 import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
 
 export const metadata: Metadata = withSocial({
@@ -89,6 +89,7 @@ export default function OrbitPage() {
           title="Start with 30 days"
           lede="The first 30 days are your start period: onboard 2 clubs. After that there is no end date. You stay as long as you are active."
           points={[
+            "Join the Orbit Leads WhatsApp community on day one",
             "Onboard 2 clubs in your first 30 days",
             "No end date after that",
             "Exam breaks are fine. Tell your Program Lead.",
@@ -121,6 +122,27 @@ export default function OrbitPage() {
             </li>
           ))}
         </ul>
+
+        {/* What the Lead tier's certificate and badge look like (sample recipient). */}
+        <div className="mt-20 grid items-center gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <div className="min-w-0" data-reveal="rise">
+            <OrbitCertificate />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-xl text-paper">Your certificate and badge</h3>
+            <p className="mt-3 max-w-[48ch] text-[15px] font-light leading-relaxed text-paper/65">
+              Pass your first 30 days and you get the Orbit certificate, issued through Unifesto with a link anyone can
+              verify. Your badge levels up with your tier.
+            </p>
+            <ul className="mt-8 grid grid-cols-4 gap-3" aria-label="Orbit badges by tier">
+              {(["Lead", "Bronze", "Silver", "Gold"] as const).map((t) => (
+                <li key={t} className="min-w-0">
+                  <OrbitBadge tier={t} size={84} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
         <div className="mt-16 max-w-xl">
           <Pinned tilt={-0.5}>
