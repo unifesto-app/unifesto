@@ -10,7 +10,7 @@ import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { OrbitBadge, OrbitCertificate, OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
-import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
+import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_QUARTERLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
 
 export const metadata: Metadata = withSocial({
   title: "Unifesto Orbit: the campus programme for students",
@@ -144,7 +144,19 @@ export default function OrbitPage() {
           </div>
         </div>
 
-        <div className="mt-16 max-w-xl">
+        <div className="mt-16 grid gap-8 md:grid-cols-2">
+          <Pinned tilt={0.6}>
+            <h3 className="font-display text-lg text-paper">{ORBIT_QUARTERLY.title}</h3>
+            <ul className="mt-4 space-y-2.5">
+              {ORBIT_QUARTERLY.points.map((r) => (
+                <li key={r} className="flex gap-3 text-sm leading-relaxed text-paper/80">
+                  <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-paper/50" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-[13px] leading-relaxed text-paper/50">{ORBIT_QUARTERLY.note}</p>
+          </Pinned>
           <Pinned tilt={-0.5}>
             <h3 id="rules" className="font-display text-lg text-paper">Ground rules</h3>
             <ul className="mt-4 space-y-2.5">

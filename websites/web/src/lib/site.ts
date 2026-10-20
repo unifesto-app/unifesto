@@ -52,6 +52,11 @@ export type Release = { date: string; title: string; body: string };
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-10-21",
+    title: "Unifesto Orbit, our campus programme for students",
+    body: "One Orbit Lead per campus represents Unifesto and helps every club on campus run its events here. Leads earn a certificate, a badge that levels up with their tier, and quarterly goodies. Applications are open at unifesto.app/orbit.",
+  },
+  {
     date: "2026-10-07",
     title: "A new look for the Unifesto mark",
     body: "The same u and wordmark, now in silver on black to match the product. A new app icon and favicon, and a brand kit for press and partners on this page.",
@@ -267,6 +272,17 @@ export const ORBIT_TIERS = [
   { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club"] },
   { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year"] },
 ] as const;
+
+/* Quarterly goodies: shipped after each quarter closes (Mar, Jun, Sep, Dec). */
+export const ORBIT_QUARTERLY = {
+  title: "Goodies every quarter",
+  points: [
+    "Every active Lead: a sticker and lanyard pack",
+    "Silver and Gold: a T-shirt or hoodie too",
+    "Shipped after March, June, September and December",
+  ],
+  note: "Active means you have passed your first 30 days and added a club or event in the last 60 days.",
+} as const;
 
 export const ORBIT_RULES = [
   "Never say you represent your college. You represent Unifesto.",
