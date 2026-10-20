@@ -24,15 +24,17 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Tue 20 | 12 PM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, upload `assets/howto-carousel-linkedin.pdf` (LinkedIn-only slide 8) | no | **approved 19 Oct** (6 steps) |
 | Tue 20 | 3 PM | | Go/no-go on video files | | | |
 | Tue 20 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail-bujji.jpg` / `assets/thumbnail.png` | is the video | needs render + edit + upload |
-| Tue 20 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1.mp4`, `assets/short1-cover.png` | yes (cut) | **ready** 20 Oct: `short1.mp4` 58.9 s, 1080x1920, the long video's own lines (L18–L24), captions burned in, ends on unifesto.app/request-space; copy **approved 20 Oct** |
+| Tue 20 | 7 PM | YT Shorts + IG Reels | Short 1: Who can do what in your club | `04-shorts.md`, `assets/short1.mp4`, `assets/short1-cover.png` | yes (cut) | **approved 20 Oct** (video + copy) **ready** 20 Oct: `short1.mp4` 58.9 s, 1080x1920, the long video's own lines (L18–L24), captions burned in, ends on unifesto.app/request-space; copy **approved 20 Oct** |
 | Tue 20 | 7:30 PM | Instagram | How-to carousel | `assets/howto-carousel/`, `06-instagram.md` | yes | **approved 20 Oct** (caption) |
-| Tue 20 | 8 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2.mp4`, `assets/short2-cover.png` | yes (cut) | **ready** 20 Oct: `short2.mp4` 34.7 s, 1080x1920, the long video's own lines (L25–L31), captions burned in, ends on unifesto.app/request-space; copy **approved 20 Oct** |
-| Tue 20 | 8:30 PM | LinkedIn (company) | 73 s video in the frame (0:00–0:22 + 2:57–3:40 + 5:58.3–6:06) | `05-linkedin.md`, `assets/linkedin-cut.mp4`, `assets/linkedin-frame/` | yes (cut) | **ready** 20 Oct: `linkedin-cut.mp4` 72.7 s, 1920x1080, the 1.43:1 video filling the frame's slot, captions burned in; text **approved 20 Oct** |
+| Tue 20 | 8 PM | YT Shorts + IG Reels | Short 2: Every event gets its own team | `04-shorts.md`, `assets/short2.mp4`, `assets/short2-cover.png` | yes (cut) | **approved 20 Oct** (video + copy) **ready** 20 Oct: `short2.mp4` 34.7 s, 1080x1920, the long video's own lines (L25–L31), captions burned in, ends on unifesto.app/request-space; copy **approved 20 Oct** |
+| Tue 20 | 8:30 PM | LinkedIn (company) | 73 s video in the frame (0:00–0:22 + 2:57–3:40 + 5:58.3–6:06) | `05-linkedin.md`, `assets/linkedin-cut.mp4`, `assets/linkedin-frame/` | yes (cut) | **approved 20 Oct** (video + copy) **ready** 20 Oct: `linkedin-cut.mp4` 72.7 s, 1920x1080, the 1.43:1 video filling the frame's slot, captions burned in; text **approved 20 Oct** |
 | Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3.mp4`, `assets/short3-cover.png` | no | **approved 20 Oct**, locked: post `short3.mp4` as committed in 2681fd65 (45 s, md5 89980cde), no re-renders |
 | Tue 20 | 9:30 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | **approved 20 Oct** (caption) |
 | Tue 20 | evening | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
 | Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
 | Daily | | IG stories | See the stories table | `06-instagram.md` | | ready |
+
+**YouTube (20 Oct):** long video public since 3:18 PM, https://youtu.be/IshthAzVgoE. Description links, pinning the comment and thumbnail A/B need YouTube Advanced features verification (Studio › Settings › Channel › Feature eligibility); until then the Shorts' Related video plus LinkedIn/IG links carry the clicks.
 
 Video length: the final render runs 6:55.5 (4096x2864, 1.43:1, plus a 1920x1342 copy in ~/Startups/unifesto-video-w1/out). The title's "in 10 minutes" is setup time; never call it "a 10-minute video" in posts or DMs.
 
