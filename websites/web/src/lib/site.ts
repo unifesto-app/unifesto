@@ -52,6 +52,11 @@ export type Release = { date: string; title: string; body: string };
 
 export const RELEASES: Release[] = [
   {
+    date: "2026-10-21",
+    title: "Unifesto Orbit, our campus programme for students",
+    body: "One Orbit Lead per campus represents Unifesto and helps every club on campus run its events here. Leads earn a certificate, a badge that levels up with their tier, and quarterly goodies. Applications are open at unifesto.app/orbit.",
+  },
+  {
     date: "2026-10-07",
     title: "A new look for the Unifesto mark",
     body: "The same u and wordmark, now in silver on black to match the product. A new app icon and favicon, and a brand kit for press and partners on this page.",
@@ -252,10 +257,7 @@ export const FAQ_HUDDLE: Faq[] = [
 /* One Orbit Lead per campus. Rewards are recognition, not cash. The tier
    thresholds and rewards here are the programme's, set by the founder. */
 
-const ORBIT_SUBJECT = "Orbit Lead – <Your name> – <College>";
-const ORBIT_BODY =
-  "College:\nYear:\nClubs I'm part of:\n\n15 active clubs on my campus (with their next event, if known):\n1.\n";
-export const ORBIT_APPLY = `mailto:careers@unifesto.app?subject=${encodeURIComponent(ORBIT_SUBJECT)}&body=${encodeURIComponent(ORBIT_BODY)}`;
+export const ORBIT_APPLY = "/orbit/apply";
 
 export const ORBIT_STEPS = [
   { title: "Map", body: "Make a list of every club on your campus." },
@@ -265,11 +267,59 @@ export const ORBIT_STEPS = [
 ] as const;
 
 export const ORBIT_TIERS = [
-  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Certificate", "Orbit badge", "The Orbit Leads WhatsApp community"] },
+  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Orbit certificate", "Orbit badge", "The Lead welcome kit"] },
   { name: "Bronze", bar: "5 active clubs", rewards: ["Letter of recommendation signed by the founder", "A feature on Unifesto's socials"] },
-  { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club"] },
-  { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year"] },
+  { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club", "A limited-edition hoodie every quarter"] },
+  { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year", "A limited-edition hoodie every quarter"] },
 ] as const;
+
+/* Orbit welcome kits. Lead: shipped when a Lead passes their first 30 days.
+   Crew: a lighter kit for the 2 to 3 crew on big campuses. */
+export const ORBIT_WELCOME_KIT = {
+  lead: {
+    label: "Lead edition",
+    lede: "Pass your first 30 days and a box lands at your door.",
+    items: [
+      { name: "Orbit hoodie", body: "With the Orbit mark on the chest." },
+      { name: "The Orbit Playbook", body: "Pitches, scripts and your first 30 days, in one book." },
+      { name: "Welcome letter", body: "A signed note from our founder." },
+      { name: "Sticker pack", body: "For your laptop, bottle and club notice board." },
+      { name: "Pins, phone grip, keychain", body: "The small stuff, in Orbit colours." },
+    ],
+  },
+  crew: {
+    label: "Crew edition",
+    lede: "On big campuses, the Lead's crew gets a kit of their own once their Lead passes the first 30 days.",
+    items: [
+      { name: "Orbit tee", body: "With the Orbit mark on the chest." },
+      { name: "Welcome letter", body: "A signed note from our founder." },
+      { name: "Sticker pack", body: "For your laptop, bottle and club notice board." },
+      { name: "Pins and keychain", body: "The small stuff, in Orbit colours." },
+    ],
+  },
+} as const;
+
+/* Quarterly goodies: shipped after each quarter closes (Mar, Jun, Sep, Dec). */
+export const ORBIT_QUARTERLY = {
+  title: "Goodies every quarter",
+  points: [
+    "Every active Lead: a sticker and lanyard pack",
+    "Silver and Gold: that quarter's limited-edition hoodie, a new design each time",
+    "Shipped after March, June, September and December",
+  ],
+  note: "Active means you have passed your first 30 days and added a club or event in the last 60 days.",
+} as const;
+
+/* What Orbit Crew get: they help a Lead on a big campus, with no tier of their own. */
+export const ORBIT_CREW_EARN = {
+  title: "Orbit Crew",
+  points: [
+    "The Crew welcome kit, once your Lead passes the first 30 days",
+    "An Orbit certificate",
+    "No targets or tiers of your own: you help your Lead",
+  ],
+  note: "Crew join on big campuses, 2 to 3 per campus, chosen with the Lead.",
+} as const;
 
 export const ORBIT_RULES = [
   "Never say you represent your college. You represent Unifesto.",

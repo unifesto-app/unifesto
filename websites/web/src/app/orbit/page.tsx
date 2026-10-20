@@ -9,8 +9,11 @@ import Section from "@/components/site/Section";
 import FeatureRow from "@/components/site/FeatureRow";
 import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
-import { OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
-import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
+import { OrbitBadge, OrbitCertificate, OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
+import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_CREW_EARN, ORBIT_QUARTERLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
+import { OrbitKitShowcase } from "@/components/visuals/OrbitKitShowcase";
+import { getOrbitMap } from "@/lib/api/orbit";
+import { OrbitIndiaMap } from "@/components/visuals/OrbitIndiaMap";
 
 export const metadata: Metadata = withSocial({
   title: "Unifesto Orbit: the campus programme for students",
@@ -21,7 +24,11 @@ export const metadata: Metadata = withSocial({
 
 const tilts = [-1.2, 0.8, -0.6, 1.1];
 
-export default function OrbitPage() {
+/* The application map refreshes from the API at most every 5 minutes. */
+export const revalidate = 300;
+
+export default async function OrbitPage() {
+  const map = await getOrbitMap();
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <JsonLd data={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Unifesto Orbit", path: "/orbit" }])} />
@@ -33,10 +40,10 @@ export default function OrbitPage() {
         lede="Unifesto Orbit is our campus programme. One Orbit Lead per campus represents Unifesto, not the college, and helps every club on campus run its events on Unifesto."
         actions={
           <>
-            <a href={ORBIT_APPLY} className="btn btn-lg btn-primary">
+            <Link href={ORBIT_APPLY} className="btn btn-lg btn-primary">
               Apply to be an Orbit Lead
               <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
-            </a>
+            </Link>
             <Link href="/orbit/terms" className="btn btn-lg btn-secondary">
               Programme terms
             </Link>
@@ -89,6 +96,7 @@ export default function OrbitPage() {
           title="Start with 30 days"
           lede="The first 30 days are your start period: onboard 2 clubs. After that there is no end date. You stay as long as you are active."
           points={[
+            "Join the Orbit Leads WhatsApp community on day one",
             "Onboard 2 clubs in your first 30 days",
             "No end date after that",
             "Exam breaks are fine. Tell your Program Lead.",
@@ -122,7 +130,52 @@ export default function OrbitPage() {
           ))}
         </ul>
 
-        <div className="mt-16 max-w-xl">
+        {/* What the Lead tier's certificate and badge look like (sample recipient). */}
+        <div className="mt-20 grid items-center gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+          <div className="min-w-0" data-reveal="rise">
+            <OrbitCertificate />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-xl text-paper">Your certificate and badge</h3>
+            <p className="mt-3 max-w-[48ch] text-[15px] font-light leading-relaxed text-paper/65">
+              Pass your first 30 days and you get the Orbit certificate, issued through Unifesto with a link anyone can
+              verify. Your badge levels up with your tier.
+            </p>
+            <ul className="mt-8 grid grid-cols-4 gap-3" aria-label="Orbit badges by tier">
+              {(["Lead", "Bronze", "Silver", "Gold"] as const).map((t) => (
+                <li key={t} className="min-w-0">
+                  <OrbitBadge tier={t} size={84} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <Pinned tilt={-0.4}>
+            <h3 className="font-display text-lg text-paper">{ORBIT_CREW_EARN.title}</h3>
+            <ul className="mt-4 space-y-2.5">
+              {ORBIT_CREW_EARN.points.map((r) => (
+                <li key={r} className="flex gap-3 text-sm leading-relaxed text-paper/80">
+                  <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-paper/50" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-[13px] leading-relaxed text-paper/50">{ORBIT_CREW_EARN.note}</p>
+          </Pinned>
+          <Pinned tilt={0.6}>
+            <h3 className="font-display text-lg text-paper">{ORBIT_QUARTERLY.title}</h3>
+            <ul className="mt-4 space-y-2.5">
+              {ORBIT_QUARTERLY.points.map((r) => (
+                <li key={r} className="flex gap-3 text-sm leading-relaxed text-paper/80">
+                  <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-paper/50" />
+                  {r}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-[13px] leading-relaxed text-paper/50">{ORBIT_QUARTERLY.note}</p>
+          </Pinned>
           <Pinned tilt={-0.5}>
             <h3 id="rules" className="font-display text-lg text-paper">Ground rules</h3>
             <ul className="mt-4 space-y-2.5">
@@ -137,7 +190,36 @@ export default function OrbitPage() {
         </div>
       </Section>
 
+      {/* The welcome kits (Lead and Crew), laid out like a product shot. */}
+      <Section aria-labelledby="kit-heading" id="kit">
+        <h2 id="kit-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.2vw,2.4rem)] leading-[1.12] text-paper">
+          Your welcome kit.
+        </h2>
+        <div className="mt-6">
+          <OrbitKitShowcase />
+        </div>
+        <p className="mt-8 text-[12px] text-paper/45">
+          Illustration for visual purposes only. The actual kit and its contents may vary.
+        </p>
+      </Section>
+
       <FaqList faqs={FAQ_ORBIT} />
+
+      {/* Where applications come from: a network in orbit around the hub.
+          Hidden if the API is unreachable. */}
+      {map && (
+      <Section aria-labelledby="map-heading" id="map">
+        <h2 id="map-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.2vw,2.4rem)] leading-[1.12] text-paper">
+          Orbit across India.
+        </h2>
+        <p data-reveal="blur" className="mt-4 max-w-[60ch] text-[15px] font-light leading-relaxed text-paper/65 md:text-base">
+          Where applications are coming from. Hover or tap a city to see its colleges.
+        </p>
+        <div className="mt-12">
+          <OrbitIndiaMap cities={map.cities} totals={map.totals} />
+        </div>
+      </Section>
+      )}
 
       <Section surface="blue" id="apply" aria-labelledby="apply-heading" width="text" innerClassName="text-center">
         <h2
@@ -148,13 +230,13 @@ export default function OrbitPage() {
           Lead your campus.
         </h2>
         <p data-reveal="blur" className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-ink/75 md:text-lg">
-          Email careers@unifesto.app with the subject &ldquo;Orbit Lead – your name – college&rdquo;. Include your college, your year, the clubs you are part of, and a list of 15 active clubs on your campus with their next event if you know it.
+          Apply in about ten minutes. Tell us your campus, the clubs you are part of, and the active clubs on your campus. We verify your email and phone, and the Program Lead gets back to you.
         </p>
         <div data-reveal="rise" className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a href={ORBIT_APPLY} className="btn btn-lg btn-primary w-full sm:w-auto">
-            Apply by email
+          <Link href={ORBIT_APPLY} className="btn btn-lg btn-primary w-full sm:w-auto">
+            Apply now
             <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
-          </a>
+          </Link>
           <Link href="/orbit/terms" className="btn btn-lg btn-secondary w-full sm:w-auto">
             Programme terms
           </Link>

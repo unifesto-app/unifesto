@@ -135,6 +135,8 @@ export interface OrbitCampus {
   slug: string;
   verified: boolean;
   leads: OrbitLeadRow[];
+  /** Crew helping the Lead: no campus admin access, no clock or tier. */
+  crew: OrbitLeadRow[];
   clubs: number;
   /** Clubs with at least one published event. */
   activeClubs: number;
@@ -152,12 +154,36 @@ export interface OrbitCampus {
 
 export const getOrbitLeaderboard = (): Result<{ campuses: OrbitCampus[] }> =>
   apiCall(backendClient.get("/orbit/admin/leaderboard"));
-/** Also makes them Space Admin of the campus. They need a Unifesto account. */
-export const appointOrbitLead = (spaceId: string, email: string): Result<{ id: string }> =>
-  apiCall(backendClient.post("/orbit/admin/leads", { spaceId, email }));
+/** A Lead is also made Space Admin of the campus; Crew get no admin access. They need a Unifesto account. */
+export const appointOrbitLead = (spaceId: string, email: string, role: "LEAD" | "CREW" = "LEAD"): Result<{ id: string }> =>
+  apiCall(backendClient.post("/orbit/admin/leads", { spaceId, email, role }));
 /** Removes their campus admin access; the row stays as history. */
 export const endOrbitLead = (id: string, reason?: string): Result<{ id: string }> =>
   apiCall(backendClient.patch(`/orbit/admin/leads/${id}/end`, { reason }));
+export interface OrbitApplication {
+  id: string;
+  status: "PENDING" | "APPOINTED" | "DECLINED";
+  collegeName: string;
+  yearOfStudy: string;
+  myClubs: string;
+  campusClubs: string;
+  why: string;
+  reviewNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  /** The campus they picked; null when theirs isn't on Unifesto yet. */
+  space: { id: string; name: string } | null;
+  user: { id: string; fullName: string | null; mobileNumber: string; identities: { email: string | null }[] };
+}
+
+export const getOrbitApplications = (): Result<OrbitApplication[]> =>
+  apiCall(backendClient.get("/orbit/admin/applications"));
+/** Makes them Orbit Lead (and Space Admin) of the chosen campus. */
+export const appointOrbitApplication = (id: string, spaceId: string): Result<{ id: string }> =>
+  apiCall(backendClient.post(`/orbit/admin/applications/${id}/appoint`, { spaceId }));
+export const declineOrbitApplication = (id: string, note?: string): Result<{ id: string }> =>
+  apiCall(backendClient.patch(`/orbit/admin/applications/${id}/decline`, { note }));
+
 /** A declared exam window pauses the inactivity clock; null clears it. */
 export const setOrbitExamPause = (id: string, until: string | null): Result<{ id: string }> =>
   apiCall(backendClient.patch(`/orbit/admin/leads/${id}/exam-pause`, { until }));

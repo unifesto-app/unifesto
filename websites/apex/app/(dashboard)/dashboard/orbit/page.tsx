@@ -13,10 +13,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { inr } from "@/lib/utils/money";
 import {
+  appointOrbitApplication,
   appointOrbitLead,
+  declineOrbitApplication,
   endOrbitLead,
+  getOrbitApplications,
   getOrbitLeaderboard,
   setOrbitExamPause,
+  type OrbitApplication,
   type OrbitCampus,
   type OrbitLeadRow,
 } from "@/lib/api/platform-tools-api";
@@ -36,6 +40,7 @@ export default function OrbitPage() {
   const [error, setError] = useState("");
   const [campusId, setCampusId] = useState("");
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"LEAD" | "CREW">("LEAD");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -57,7 +62,7 @@ export default function OrbitPage() {
 
   const appoint = async () => {
     if (!campusId || !email.trim()) return setError("Pick a campus and enter the student's account email.");
-    await run(appointOrbitLead(campusId, email.trim()));
+    await run(appointOrbitLead(campusId, email.trim(), role));
     setEmail("");
   };
 
@@ -97,6 +102,8 @@ export default function OrbitPage() {
             <StatCard icon={Wallet} title="Campus GMV" value={inr(rows.reduce((n, r) => n + r.gmv, 0))} />
           </div>
 
+          <ApplicationsPanel campuses={rows} onChanged={load} />
+
           <Card>
             <CardContent className="flex flex-wrap items-end gap-3 p-4">
               <label className="grid gap-1 text-sm">
@@ -118,7 +125,18 @@ export default function OrbitPage() {
                 <span className="text-muted-foreground">Student&apos;s Unifesto account email</span>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@college.edu" />
               </label>
-              <Button onClick={appoint} disabled={busy}>Appoint Orbit Lead</Button>
+              <label className="grid gap-1 text-sm">
+                <span className="text-muted-foreground">Role</span>
+                <select
+                  className="h-9 rounded-md border bg-background px-2"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as "LEAD" | "CREW")}
+                >
+                  <option value="LEAD">Lead (campus admin)</option>
+                  <option value="CREW">Crew (no admin access)</option>
+                </select>
+              </label>
+              <Button onClick={appoint} disabled={busy}>Appoint</Button>
             </CardContent>
           </Card>
 
@@ -170,6 +188,13 @@ export default function OrbitPage() {
                         ) : (
                           <Badge variant="warning">Open</Badge>
                         )}
+                        {r.crew.map((c) => (
+                          <div key={c.id} className="mt-1 flex items-center gap-2 text-xs">
+                            <Badge variant="neutral">Crew</Badge>
+                            <span title={c.user.email ?? undefined}>{c.user.fullName || c.user.username || c.user.email}</span>
+                            <button className="text-destructive hover:underline" disabled={busy} onClick={() => end(c, r.name)}>End</button>
+                          </div>
+                        ))}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{r.clubs} ({r.activeClubs})</td>
                       <td className="px-4 py-3 text-right tabular-nums">{r.publishedEvents}</td>
@@ -200,5 +225,135 @@ export default function OrbitPage() {
         </>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Applications from unifesto.app/orbit/apply. Open ones first, each with the
+ * campus to appoint them to (their pick by default; a college that isn't on
+ * Unifesto yet needs its campus Space created first).
+ */
+function ApplicationsPanel({ campuses, onChanged }: { campuses: OrbitCampus[]; onChanged: () => void }) {
+  const [apps, setApps] = useState<OrbitApplication[] | null>(null);
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => {
+    void getOrbitApplications().then(({ data, error }) => {
+      if (error) return setError(error.message);
+      setApps(data ?? []);
+    });
+  }, []);
+  useEffect(load, [load]);
+
+  const act = async (id: string, call: Promise<{ error: { message: string } | null }>) => {
+    setBusy(id);
+    setError("");
+    const { error } = await call;
+    setBusy("");
+    if (error) return setError(error.message);
+    load();
+    onChanged();
+  };
+
+  if (!apps) return null;
+  const open = apps.filter((a) => a.status === "PENDING");
+  const decided = apps.filter((a) => a.status !== "PENDING");
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-base font-medium">Applications</h2>
+          <span className="text-sm text-muted-foreground">{open.length} open</span>
+        </div>
+        {error && <ErrorNotice message={error} />}
+        {open.length === 0 && (
+          <p className="text-sm text-muted-foreground">No open applications. They arrive from unifesto.app/orbit/apply.</p>
+        )}
+        {open.map((a) => {
+          const spaceId = pick[a.id] ?? a.space?.id ?? "";
+          const email = a.user.identities[0]?.email;
+          return (
+            <div key={a.id} className="space-y-3 rounded-lg border p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <span className="font-medium">{a.user.fullName || email || "Applicant"}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {" "}· {a.collegeName} · {a.yearOfStudy}
+                    {!a.space && " · college not on Unifesto yet"}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {email} · {a.user.mobileNumber} · {day(a.createdAt)}
+                </span>
+              </div>
+              <dl className="grid gap-3 text-sm md:grid-cols-3">
+                {(
+                  [
+                    ["Their clubs", a.myClubs],
+                    ["Clubs on campus", a.campusClubs],
+                    ["Why", a.why],
+                  ] as const
+                ).map(([k, v]) => (
+                  <div key={k} className="min-w-0">
+                    <dt className="text-muted-foreground">{k}</dt>
+                    <dd className="whitespace-pre-line break-words">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label="Campus to appoint them to"
+                  className="h-9 min-w-56 rounded-md border bg-background px-2 text-sm"
+                  value={spaceId}
+                  onChange={(e) => setPick({ ...pick, [a.id]: e.target.value })}
+                >
+                  <option value="">Choose a campus</option>
+                  {campuses.map((c) => (
+                    <option key={c.spaceId} value={c.spaceId}>
+                      {c.name}{c.leads.length ? " (has a Lead)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  disabled={!spaceId || busy === a.id}
+                  onClick={() => void act(a.id, appointOrbitApplication(a.id, spaceId))}
+                >
+                  Appoint Orbit Lead
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy === a.id}
+                  onClick={() => {
+                    const note = window.prompt("Decline this application? Optional note for the record:");
+                    if (note !== null) void act(a.id, declineOrbitApplication(a.id, note));
+                  }}
+                >
+                  Decline
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+        {decided.length > 0 && (
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted-foreground">Decided ({decided.length})</summary>
+            <ul className="mt-2 space-y-1">
+              {decided.map((a) => (
+                <li key={a.id}>
+                  <Badge variant={a.status === "APPOINTED" ? "success" : "neutral"}>{a.status === "APPOINTED" ? "Appointed" : "Declined"}</Badge>{" "}
+                  {a.user.fullName || a.user.identities[0]?.email} · {a.space?.name ?? a.collegeName}
+                  {a.reviewedAt && ` · ${day(a.reviewedAt)}`}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </CardContent>
+    </Card>
   );
 }

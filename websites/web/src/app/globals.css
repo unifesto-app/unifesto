@@ -214,6 +214,30 @@ body {
   }
 }
 
+/* Orbit across India map (/orbit): turning rings, pulses along the network
+   arcs, breathing halos. All stop under prefers-reduced-motion. */
+.orbit-ring {
+  animation: orbit-spin linear infinite;
+}
+@keyframes orbit-pulse-run {
+  from { stroke-dashoffset: 406; }
+  to { stroke-dashoffset: 0; }
+}
+.orbit-pulse {
+  animation: orbit-pulse-run 3.2s linear infinite;
+}
+@keyframes orbit-halo-breathe {
+  0%, 100% { transform: scale(0.85); opacity: 0.5; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+.orbit-halo {
+  animation: orbit-halo-breathe 4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit-ring, .orbit-pulse, .orbit-halo { animation: none; }
+  .orbit-pulse { display: none; }
+}
+
 /* ─── Glow Pulse for CTA ─────────────────────────────────────────────── */
 @keyframes glow-pulse {
 

@@ -4,12 +4,15 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventStatus, PaymentStatus, RoleCode, SpaceType } from '@prisma/client';
+import { EventStatus, PaymentStatus, RoleCode, SpaceStatus, SpaceType, SpaceVisibility } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PayoutsService } from '../payouts/payouts.service';
 import { SpacesService } from '../spaces/spaces.service';
+import { EmailService } from '../email/email.service';
+import { APEX, button, esc, h1, p, strong } from '../email/layout';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { ORBIT_GOALS, ORBIT_PROBATION_DAYS, ORBIT_TIERS, orbitClock, orbitTier } from './orbit-tier';
+import { aggregateOrbitMap, ORBIT_MAP_STATUSES, type OrbitMap } from './orbit-map';
 
 const LIVE_EVENT = [EventStatus.PUBLISHED, EventStatus.ONGOING, EventStatus.COMPLETED];
 /** Registrations that ever brought real money in (same set as Financials). */
@@ -27,6 +30,7 @@ export class OrbitService {
     private readonly prisma: PrismaService,
     private readonly payouts: PayoutsService,
     private readonly spaces: SpacesService,
+    private readonly email: EmailService,
   ) {}
 
   /**
@@ -48,6 +52,7 @@ export class OrbitService {
         select: {
           id: true,
           spaceId: true,
+          role: true,
           joinedAt: true,
           examPauseUntil: true,
           user: {
@@ -122,9 +127,10 @@ export class OrbitService {
           platformEarnings: round2(platformEarnings),
         };
         const tier = orbitTier(stats);
-        const campusLeads = leads
+        const people = leads
           .filter((l) => l.spaceId === c.id)
           .map((l) => ({
+            role: l.role,
             id: l.id,
             user: {
               id: l.user.id,
@@ -136,7 +142,9 @@ export class OrbitService {
             examPauseUntil: l.examPauseUntil,
             probationEndsAt: new Date(l.joinedAt.getTime() + ORBIT_PROBATION_DAYS * 86_400_000),
           }));
-        // The clock follows the longest-serving Lead on the campus.
+        const campusLeads = people.filter((p) => p.role !== 'CREW');
+        const crew = people.filter((p) => p.role === 'CREW');
+        // The clock follows the longest-serving Lead on the campus; Crew don't run one.
         const clock = campusLeads[0]
           ? orbitClock({ joinedAt: campusLeads[0].joinedAt, lastActivityAt, examPauseUntil: campusLeads[0].examPauseUntil }, now)
           : null;
@@ -146,6 +154,7 @@ export class OrbitService {
           slug: c.slug,
           verified: !!c.verifiedAt,
           leads: campusLeads,
+          crew,
           ...stats,
           tier,
           tierName: ORBIT_TIERS[tier],
@@ -179,8 +188,17 @@ export class OrbitService {
     return { ...campus, rank: i + 1, campusCount: all.length, nextGoal };
   }
 
-  /** Appoint an Orbit Lead by email and make them Space Admin of the campus. */
-  async appoint(spaceId: string, email: string, actorId: string) {
+  /** Appoint an Orbit Lead (made Space Admin of the campus) or Crew (no admin access) by email. */
+  async appoint(spaceId: string, email: string, actorId: string, role: OrbitRole = 'LEAD') {
+    const user = await this.prisma.user.findFirst({
+      where: { identities: { some: { email: { equals: email.trim(), mode: 'insensitive' } } } },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException('No Unifesto account with that email. Ask them to sign up first.');
+    return this.appointUser(spaceId, user.id, actorId, role);
+  }
+
+  private async appointUser(spaceId: string, userId: string, actorId: string, role: OrbitRole = 'LEAD') {
     const space = await this.prisma.space.findUnique({
       where: { id: spaceId },
       select: { type: true, parentSpaceId: true },
@@ -189,13 +207,12 @@ export class OrbitService {
     if (space.type !== SpaceType.SUPER || space.parentSpaceId) {
       throw new BadRequestException('Orbit Leads go on a campus: a top-level Super space');
     }
-    const user = await this.prisma.user.findFirst({
-      where: { identities: { some: { email: { equals: email.trim(), mode: 'insensitive' } } } },
-      select: { id: true },
-    });
-    if (!user) throw new NotFoundException('No Unifesto account with that email. Ask them to sign up first.');
+    const user = { id: userId };
     if (await this.prisma.orbitLead.findFirst({ where: { spaceId, userId: user.id, endedAt: null } })) {
-      throw new ConflictException('Already the Orbit Lead of this campus');
+      throw new ConflictException('Already in Orbit on this campus');
+    }
+    if (role === 'CREW') {
+      return this.prisma.orbitLead.create({ data: { spaceId, userId: user.id, role } });
     }
 
     const existing = await this.prisma.userRole.findFirst({
@@ -216,7 +233,8 @@ export class OrbitService {
   async end(leadId: string, reason: string | undefined, actorId: string) {
     const lead = await this.prisma.orbitLead.findUnique({ where: { id: leadId } });
     if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
-    const roles = await this.prisma.userRole.findMany({
+    // Only Leads were given campus admin access; Crew memberships are left alone.
+    const roles = lead.role === 'CREW' ? [] : await this.prisma.userRole.findMany({
       where: { userId: lead.userId, spaceId: lead.spaceId, eventId: null },
       select: { id: true },
     });
@@ -233,4 +251,138 @@ export class OrbitService {
     if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
     return this.prisma.orbitLead.update({ where: { id: leadId }, data: { examPauseUntil: until } });
   }
+
+  // ── Public map (unifesto.app/orbit) ───────────────────────────────────────
+
+  // ponytail: per-instance 5-minute cache; fine for one backend container,
+  // move to Redis if the backend scales out.
+  private mapCache: { at: number; data: OrbitMap } | null = null;
+
+  /** Aggregate-only Orbit application map; see aggregateOrbitMap for the privacy rules. */
+  async applicationMap(): Promise<OrbitMap> {
+    if (this.mapCache && Date.now() - this.mapCache.at < 5 * 60_000) return this.mapCache.data;
+    const rows = await this.prisma.orbitApplication.findMany({
+      where: { status: { in: [...ORBIT_MAP_STATUSES] } },
+      select: { collegeName: true, space: { select: { name: true, city: true } } },
+    });
+    const data = aggregateOrbitMap(rows);
+    this.mapCache = { at: Date.now(), data };
+    return data;
+  }
+
+  // ── Applications (unifesto.app/orbit/apply) ───────────────────────────────
+
+  /** Public campus picker for the apply form. `open` = no live Orbit Lead yet. */
+  async campusOptions() {
+    const rows = await this.prisma.space.findMany({
+      where: { type: SpaceType.SUPER, parentSpaceId: null, visibility: SpaceVisibility.PUBLIC, status: SpaceStatus.ACTIVE },
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true, city: true, _count: { select: { orbitLeads: { where: { endedAt: null } } } } },
+    });
+    return rows.map((r) => ({ id: r.id, name: r.name, city: r.city, open: r._count.orbitLeads === 0 }));
+  }
+
+  /** A signed-in student applies. One open application per person. */
+  async apply(userId: string, dto: OrbitApplyInput) {
+    if (dto.spaceId) {
+      const campus = await this.prisma.space.findFirst({
+        where: { id: dto.spaceId, type: SpaceType.SUPER, parentSpaceId: null },
+        select: { id: true },
+      });
+      if (!campus) throw new BadRequestException('Pick your campus from the list, or choose "Not listed".');
+    }
+    if (await this.prisma.orbitLead.findFirst({ where: { userId, endedAt: null } })) {
+      throw new ConflictException('You are already in Orbit.');
+    }
+    if (await this.prisma.orbitApplication.findFirst({ where: { userId, status: 'PENDING' } })) {
+      throw new ConflictException('You already have an application in review. We will get back to you.');
+    }
+    const app = await this.prisma.orbitApplication.create({
+      data: {
+        userId,
+        spaceId: dto.spaceId ?? null,
+        collegeName: dto.collegeName.trim(),
+        yearOfStudy: dto.yearOfStudy.trim(),
+        myClubs: dto.myClubs.trim(),
+        campusClubs: dto.campusClubs.trim(),
+        why: dto.why.trim(),
+        confirmedAt: new Date(),
+      },
+      include: { user: { select: { fullName: true, mobileNumber: true, identities: { where: { email: { not: null } }, select: { email: true }, take: 1 } } } },
+    });
+
+    // Tell the Program Lead. A failed email must not lose the application.
+    const who = app.user.fullName || 'Someone';
+    void this.email
+      .sendRawEmail(
+        ORBIT_INBOX,
+        `New Orbit Lead application: ${who}, ${app.collegeName}`,
+        h1('New Orbit Lead application') +
+          p(`${strong(esc(who))} applied for ${strong(esc(app.collegeName))} (${esc(app.yearOfStudy)}).`) +
+          p(`Email: ${esc(app.user.identities[0]?.email ?? 'not set')} · Phone: ${esc(app.user.mobileNumber)}`) +
+          p(`<b>Clubs they're part of</b><br>${esc(app.myClubs).replace(/\n/g, '<br>')}`) +
+          p(`<b>Clubs on their campus</b><br>${esc(app.campusClubs).replace(/\n/g, '<br>')}`) +
+          p(`<b>Why</b><br>${esc(app.why).replace(/\n/g, '<br>')}`) +
+          button('Review in Apex', `${APEX}/dashboard/orbit`),
+      )
+      .catch(() => undefined);
+    return { id: app.id, status: app.status };
+  }
+
+  /** Apex queue: open applications first, then the latest decisions. */
+  async applications() {
+    return this.prisma.orbitApplication.findMany({
+      orderBy: [{ status: 'desc' }, { createdAt: 'desc' }], // PENDING sorts above APPOINTED/DECLINED
+      take: 200,
+      include: {
+        space: { select: { id: true, name: true } },
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            mobileNumber: true,
+            identities: { where: { email: { not: null } }, select: { email: true }, take: 1 },
+          },
+        },
+      },
+    });
+  }
+
+  /** Appoint from an application: makes them Lead of the chosen campus. */
+  async appointApplication(id: string, spaceId: string, actorId: string) {
+    const app = await this.pendingApplication(id);
+    await this.appointUser(spaceId, app.userId, actorId);
+    return this.prisma.orbitApplication.update({
+      where: { id },
+      data: { status: 'APPOINTED', spaceId, reviewedBy: actorId, reviewedAt: new Date() },
+    });
+  }
+
+  async declineApplication(id: string, note: string | undefined, actorId: string) {
+    await this.pendingApplication(id);
+    return this.prisma.orbitApplication.update({
+      where: { id },
+      data: { status: 'DECLINED', reviewNote: note?.slice(0, 500) || null, reviewedBy: actorId, reviewedAt: new Date() },
+    });
+  }
+
+  private async pendingApplication(id: string) {
+    const app = await this.prisma.orbitApplication.findUnique({ where: { id } });
+    if (!app || app.status !== 'PENDING') throw new NotFoundException('No open application with that id');
+    return app;
+  }
 }
+
+export type OrbitRole = 'LEAD' | 'CREW';
+
+export interface OrbitApplyInput {
+  spaceId?: string;
+  collegeName: string;
+  yearOfStudy: string;
+  myClubs: string;
+  campusClubs: string;
+  why: string;
+}
+
+/** The Orbit Program Lead's inbox (Google Group). */
+const ORBIT_INBOX = 'orbit@unifesto.app';

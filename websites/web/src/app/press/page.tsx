@@ -59,7 +59,7 @@ const ASSETS = [
 ] as const;
 
 /* Product lockups: the wordmark plus the product name, silver on black. */
-const PRODUCTS = ["Stay", "Huddle", "Sprint"] as const;
+const PRODUCTS = ["Stay", "Huddle", "Sprint", "Orbit"] as const;
 
 /* Sample posters showing where each lockup sits. Content on them is made up. */
 const POSTER_SETS = [
@@ -187,9 +187,9 @@ export default function PressPage() {
         <div id="products" className="mt-20 scroll-mt-28">
           <h3 className="text-xl text-ink">Products</h3>
           <p className="mt-3 max-w-[60ch] text-[15px] font-light leading-relaxed text-ink/70">
-            Unifesto Stay, Unifesto Huddle and Unifesto Sprint. Silver on dark, ink on light, same rules as the logo.
+            Unifesto Stay, Unifesto Huddle, Unifesto Sprint and Unifesto Orbit. Silver on dark, ink on light, same rules as the logo.
           </p>
-          <ul data-stagger="rise" className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul data-stagger="rise" className="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
             {PRODUCTS.map((p) => {
               const file = `/press/lockup-${p.toLowerCase()}`;
               return (
