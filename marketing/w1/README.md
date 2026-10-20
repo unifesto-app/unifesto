@@ -19,8 +19,8 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 |---|---|---|---|---|---|---|
 | Mon 19 | tonight | IG story | BTS + poll ("drops tomorrow") | `06-instagram.md` | no | ready |
 | Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" ("Tonight I'm putting out a short video") | `05-linkedin.md` | no | **approved 19 Oct** (then "This week" → "Tonight" for the drop) |
-| Tue 20 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | draft, ready |
-| Tue 20 | 10:30 AM | Blog (Apex) | Google Forms for event registration vs Unifesto (recheck the Google help links first) | `03-blog-unifesto-vs-google-forms.md` | no | draft, check 4 |
+| Tue 20 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | **approved 20 Oct** |
+| Tue 20 | 10:30 AM | Blog (Apex) | Google Forms for event registration vs Unifesto (recheck the Google help links first) | `03-blog-unifesto-vs-google-forms.md` | no | **approved 20 Oct** |
 | Tue 20 | 12 PM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, upload `assets/howto-carousel-linkedin.pdf` (LinkedIn-only slide 8) | no | **approved 19 Oct** (6 steps) |
 | Tue 20 | 3 PM | | Go/no-go on video files | | | |
 | Tue 20 | 6 PM | YouTube | How to run a college club: your Space and team in 10 minutes | `01-video-script.md` (title, description, tags, chapters), `assets/thumbnail-bujji.jpg` / `assets/thumbnail.png` | is the video | needs render + edit + upload |
@@ -34,7 +34,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
 | Daily | | IG stories | See the stories table | `06-instagram.md` | | ready |
 
-Video length: the cut runs about 7:30. The title's "in 10 minutes" is setup time; never call it "a 10-minute video" in posts or DMs.
+Video length: the final render runs 6:55.5 (4096x2864, 1.43:1, plus a 1920x1342 copy in ~/Startups/unifesto-video-w1/out). The title's "in 10 minutes" is setup time; never call it "a 10-minute video" in posts or DMs.
 
 Email: none in W1 (every 2 weeks, first one in W2).
 

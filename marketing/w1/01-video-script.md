@@ -156,7 +156,7 @@ Chapters
 2:50 Roles: who can do what
 4:05 A crew for every event
 5:20 Hand the club to next year's lead
-6:20 Recap and next step
+6:07 Recap and next step
 
 Everything on screen is a demo Space (Aurora Tech Club) with sample data.
 
