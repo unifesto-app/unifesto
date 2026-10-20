@@ -31,6 +31,7 @@ import { CancelEventDto } from '../events/dto';
 import { UpdatePlatformConfigDto } from './dto/platform-config.dto';
 import { UpdateAppVersionDto } from './dto/app-version.dto';
 import { UpdateStatsRecipientsDto } from './dto/stats-recipients.dto';
+import { SetEmployeeDto } from './dto/employee.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -169,6 +170,20 @@ export class AdminController {
     @Body() dto: UpdateProfileDto,
   ) {
     return this.usersService.updateUserByIdAdmin(id, dto);
+  }
+
+  /**
+   * Make a user an Employee or remove it (ADMIN only)
+   * PUT /admin/users/:id/employee  { enabled }
+   */
+  @Put('users/:id/employee')
+  @Roles(RoleCode.ADMIN)
+  async setEmployee(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: SetEmployeeDto,
+    @CurrentUser() admin: User,
+  ) {
+    return this.adminService.setEmployee(id, dto.enabled, admin.id);
   }
 
   /**

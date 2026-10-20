@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
-import { adminNav, isNavActive } from "./nav-config";
+import { isNavActive, navFor } from "./nav-config";
+import { useSession } from "@/lib/context/SessionContext";
 import { getSupportStats, ASSIST_READ_EVENT } from "@/lib/api/support-api";
 
 /** Unread cases on the Unifesto desk (D3): recounted on navigation, on read, and each minute. */
-function useAssistUnread(pathname: string) {
+function useAssistUnread(pathname: string, enabled: boolean) {
   const [unread, setUnread] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     const load = () => getSupportStats().then(({ data }) => data && setUnread(data.unread));
     load();
     const timer = setInterval(load, 60_000);
@@ -19,7 +21,7 @@ function useAssistUnread(pathname: string) {
       clearInterval(timer);
       window.removeEventListener(ASSIST_READ_EVENT, load);
     };
-  }, [pathname]);
+  }, [pathname, enabled]);
   return unread;
 }
 
@@ -29,7 +31,10 @@ function useAssistUnread(pathname: string) {
  */
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  const unread = useAssistUnread(pathname);
+  const { user, role } = useSession();
+  const nav = navFor(role, user?.platform);
+  // Assist stats are admin-only; employees don't see Assist.
+  const unread = useAssistUnread(pathname, role === "platform_admin");
 
   // Navigating closes the drawer; Escape does too.
   useEffect(onClose, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -56,7 +61,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         )}
       >
         <nav className="space-y-6 p-4">
-          {adminNav.map((group, i) => (
+          {nav.map((group, i) => (
             <div key={group.label ?? i}>
               {group.label && <p className="text-eyebrow mb-2 px-3">{group.label}</p>}
               <div className="space-y-0.5">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Lock } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { spaceUrl } from "@/lib/types/rbac";
 import { CommandPaletteProvider } from "@/lib/context/CommandPaletteContext";
@@ -10,29 +11,40 @@ import { CommandPalette } from "./CommandPalette";
 import { Sidebar } from "./Sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { isPathOpen, navFor } from "./nav-config";
 
 /**
- * Authenticated shell for the platform-admin surface. Apex is platform-staff
- * only (P1.4): admins stay, organisers are sent to the space app where their
- * operator surface now lives, and accounts with no Apex surface (Member /
- * attendee) go to /no-access.
+ * Authenticated shell for platform staff. Apex is platform-staff only (P1.4):
+ * admins see everything, employees see the pages their platform capabilities
+ * open, organisers are sent to the space app where their operator surface now
+ * lives, and accounts with no Apex surface (Member / attendee) go to /no-access.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { role, loading, error, refresh } = useSession();
+  const pathname = usePathname();
+  const { user, role, loading, error, refresh } = useSession();
   const [navOpen, setNavOpen] = useState(false);
   const closeNav = useCallback(() => setNavOpen(false), []);
+  const staff = role === "platform_admin" || role === "employee";
+  const nav = useMemo(() => navFor(role, user?.platform), [role, user?.platform]);
 
   useEffect(() => {
     // A failed load says nothing about the role: don't bounce on it.
-    if (loading || error || role === "platform_admin") return;
+    if (loading || error) return;
+    if (staff) {
+      // The admin home isn't an employee page: start them on their first one.
+      const first = nav[0]?.items[0]?.href;
+      if (role === "employee" && pathname === "/dashboard" && first) router.replace(first);
+      return;
+    }
     if (role === "space_admin") {
       // External origin — hard navigation, not the SPA router.
       window.location.href = spaceUrl();
     } else {
       router.replace("/no-access");
     }
-  }, [loading, error, role, router]);
+  }, [loading, error, staff, role, nav, pathname, router]);
 
   if (error && !loading) {
     return (
@@ -44,9 +56,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Until we know the user is an admin, hold the skeleton rather than flashing
+  // Until we know the user is staff, hold the skeleton rather than flashing
   // mission-control content (a redirect may be in flight).
-  if (loading || role !== "platform_admin") {
+  if (loading || !staff) {
     return <ShellSkeleton />;
   }
 
@@ -57,7 +69,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar open={navOpen} onClose={closeNav} />
         <CommandPalette />
         <main className="min-h-screen pt-16 lg:pl-60">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:p-8">{children}</div>
+          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:p-8">
+            {isPathOpen(pathname, nav) ? (
+              children
+            ) : (
+              <EmptyState
+                icon={Lock}
+                title="No access to this page"
+                description="Your account can't open this part of Apex. Ask a platform admin if you need it."
+              />
+            )}
+          </div>
         </main>
       </div>
     </CommandPaletteProvider>

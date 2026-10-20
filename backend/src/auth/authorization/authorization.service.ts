@@ -90,6 +90,18 @@ export class AuthorizationService {
     }
   }
 
+  /** Every PLATFORM action the caller holds (one role load), for the Apex nav. */
+  async platformActions(user: Pick<User, 'id'>): Promise<Action[]> {
+    const assignments = await this.loadAssignments(user.id);
+    return (Object.keys(ACTION_SCOPE) as Action[]).filter(
+      (action) =>
+        ACTION_SCOPE[action] === RoleScope.PLATFORM &&
+        assignments.some((a) =>
+          this.grants(a, action, RoleScope.PLATFORM, {}, null),
+        ),
+    );
+  }
+
   // --- internals -----------------------------------------------------------
 
   /** Does a single assignment grant `action` on `resource`? */

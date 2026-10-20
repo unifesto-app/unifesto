@@ -109,6 +109,65 @@ describe('AuthorizationService', () => {
     expect(await svc.can(user, Action.EVENT_EDIT, { eventId: EVENT_IN_A })).toBe(false);
   });
 
+  describe('EMPLOYEE (platform team member)', () => {
+    const employee = () =>
+      build([
+        { code: RoleCode.EMPLOYEE, scope: RoleScope.PLATFORM, spaceId: null, eventId: null },
+      ]);
+
+    it('holds company and product view/edit by default', async () => {
+      const svc = employee();
+      for (const action of [
+        Action.COMPANY_VIEW,
+        Action.COMPANY_EDIT,
+        Action.PRODUCT_VIEW,
+        Action.PRODUCT_EDIT,
+      ]) {
+        expect(await svc.can(user, action)).toBe(true);
+      }
+    });
+
+    it('does not see restricted items, manage company, or run the platform', async () => {
+      const svc = employee();
+      expect(await svc.can(user, Action.COMPANY_VIEW_RESTRICTED)).toBe(false);
+      expect(await svc.can(user, Action.COMPANY_MANAGE)).toBe(false);
+      expect(await svc.can(user, Action.PLATFORM_MANAGE)).toBe(false);
+    });
+
+    it('gets nothing in spaces or events', async () => {
+      const svc = employee();
+      expect(await svc.can(user, Action.SPACE_VIEW, { spaceId: SPACE_A })).toBe(false);
+      expect(await svc.can(user, Action.EVENT_VIEW, { eventId: EVENT_IN_A })).toBe(false);
+    });
+
+    it('platformActions lists exactly the employee defaults', async () => {
+      expect((await employee().platformActions(user)).sort()).toEqual(
+        [
+          Action.COMPANY_VIEW,
+          Action.COMPANY_EDIT,
+          Action.PRODUCT_VIEW,
+          Action.PRODUCT_EDIT,
+        ].sort(),
+      );
+    });
+
+    it('Platform ADMIN inherits every company and product action', async () => {
+      const svc = build([
+        { code: RoleCode.ADMIN, scope: RoleScope.PLATFORM, spaceId: null, eventId: null },
+      ]);
+      for (const action of [
+        Action.COMPANY_VIEW,
+        Action.COMPANY_EDIT,
+        Action.COMPANY_MANAGE,
+        Action.COMPANY_VIEW_RESTRICTED,
+        Action.PRODUCT_VIEW,
+        Action.PRODUCT_EDIT,
+      ]) {
+        expect(await svc.can(user, action)).toBe(true);
+      }
+    });
+  });
+
   describe('space:manage-email (outbound email capability)', () => {
     it('Space Admin holds it in their own space', async () => {
       const svc = build([

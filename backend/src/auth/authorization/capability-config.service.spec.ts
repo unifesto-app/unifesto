@@ -67,6 +67,36 @@ describe('CapabilityConfigService.setGrant', () => {
     expect(prisma.roleCapability.findMany).toHaveBeenCalled();
   });
 
+  it('never grants EMPLOYEE platform:manage or company:manage (no escalation)', async () => {
+    const { svc, prisma } = build();
+    for (const action of [Action.PLATFORM_MANAGE, Action.COMPANY_MANAGE]) {
+      await expect(
+        svc.setGrant(RoleCode.EMPLOYEE, action, true),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    }
+    expect(prisma.roleCapability.upsert).not.toHaveBeenCalled();
+  });
+
+  it('lets EMPLOYEE be granted company:view-restricted', async () => {
+    const { svc, prisma } = build();
+    await svc.setGrant(RoleCode.EMPLOYEE, Action.COMPANY_VIEW_RESTRICTED, true);
+    expect(prisma.roleCapability.upsert).toHaveBeenCalled();
+  });
+
+  it('shows EMPLOYEE as an editable row with its defaults', () => {
+    const { svc } = build();
+    const row = svc.getMatrix().roles.find((r) => r.code === RoleCode.EMPLOYEE);
+    expect(row?.editable).toBe(true);
+    expect(row?.grants.sort()).toEqual(
+      [
+        Action.COMPANY_VIEW,
+        Action.COMPANY_EDIT,
+        Action.PRODUCT_VIEW,
+        Action.PRODUCT_EDIT,
+      ].sort(),
+    );
+  });
+
   it('revokes a grant via deleteMany', async () => {
     const { svc, prisma } = build();
     await svc.setGrant(RoleCode.CREW, Action.EVENT_CHECK_IN, false);

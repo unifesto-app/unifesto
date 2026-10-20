@@ -153,22 +153,22 @@ export function hasSpaceAppAccess(user?: CurrentUser | null): boolean {
   return operatorSpaces(user).length > 0;
 }
 
-/** Platform role codes that live in Apex, not here. */
-const PLATFORM_ADMIN_CODES = new Set(["ADMIN"]);
+/** Platform role codes that live in Apex, not here: Admin and Employee. */
+const PLATFORM_STAFF_CODES = new Set(["ADMIN", "EMPLOYEE"]);
 
 /**
- * True when the account is platform staff (runs Unifesto from Apex). Used by
- * the landing gate to bounce a pure platform admin — one with no operator space
- * role — over to Apex instead of showing them the no-access screen.
+ * True when the account is platform staff (works in Apex). Used by the landing
+ * gate to bounce staff with no operator space role over to Apex instead of
+ * showing them the no-access screen.
  */
-export function isPlatformAdmin(user?: CurrentUser | null): boolean {
-  return !!user?.platformRole && PLATFORM_ADMIN_CODES.has(user.platformRole.toUpperCase());
+export function isPlatformStaff(user?: CurrentUser | null): boolean {
+  return !!user?.platformRole && PLATFORM_STAFF_CODES.has(user.platformRole.toUpperCase());
 }
 
 /**
  * Where the landing gate should send a signed-in user:
  *   - operator role in ≥1 space → stay here (`/dashboard`)
- *   - else platform admin       → Apex (they belong there)
+ *   - else platform staff       → Apex (they belong there)
  *   - else                      → no-access (signed in, nothing to operate)
  */
 export type LandingDestination =
@@ -178,7 +178,7 @@ export type LandingDestination =
 
 export function resolveLanding(user?: CurrentUser | null): LandingDestination {
   if (hasSpaceAppAccess(user)) return { kind: "dashboard" };
-  if (isPlatformAdmin(user)) return { kind: "apex" };
+  if (isPlatformStaff(user)) return { kind: "apex" };
   return { kind: "no-access" };
 }
 

@@ -24,6 +24,7 @@ import {
   updateUser,
   uploadUserAvatar,
   removeUserAvatar,
+  setEmployee,
   type UpdateUserPayload,
   type UserDetail,
 } from "@/lib/api/admin-users-api";
@@ -34,6 +35,8 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatLastSeen, lastSeenTitle } from "@/lib/utils/last-seen";
 import { MessageTable } from "@/components/messages/MessageTable";
+import { confirmDialog } from "@/components/shared/ConfirmDialog";
+import { EMPLOYEE_ROLE_CODE } from "@/lib/types/rbac";
 import {
   Card,
   CardContent,
@@ -103,6 +106,10 @@ export default function UserDetailPage() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [avatarError, setAvatarError] = useState("");
 
+  const [employeeBusy, setEmployeeBusy] = useState(false);
+  const [employeeError, setEmployeeError] = useState("");
+  const isEmployee = !!user?.roles.some((r) => r.code === EMPLOYEE_ROLE_CODE);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -115,6 +122,25 @@ export default function UserDetailPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const toggleEmployee = useCallback(async () => {
+    const enable = !isEmployee;
+    const ok = await confirmDialog({
+      title: enable ? "Make this user an employee?" : "Remove employee access?",
+      description: enable
+        ? "They can open the Product board in Apex. Restricted company items stay hidden unless their role is granted company:view-restricted."
+        : "They lose employee access to Apex.",
+      confirmLabel: enable ? "Make employee" : "Remove",
+      destructive: !enable,
+    });
+    if (!ok) return;
+    setEmployeeBusy(true);
+    setEmployeeError("");
+    const { error } = await setEmployee(id, enable);
+    setEmployeeBusy(false);
+    if (error) return setEmployeeError(error.message);
+    void load();
+  }, [id, isEmployee, load]);
 
   const startEdit = useCallback(() => {
     if (!user) return;
@@ -544,12 +570,24 @@ export default function UserDetailPage() {
 
           {/* Roles */}
           <Card>
-            <CardHeader className="pb-2">
+            <CardHeader className="flex flex-row items-center justify-between gap-3 pb-2">
               <CardTitle className="text-base">
                 Roles ({user.roles.length})
               </CardTitle>
+              <Button
+                size="sm"
+                variant={isEmployee ? "outline" : "default"}
+                onClick={() => void toggleEmployee()}
+                disabled={employeeBusy}
+              >
+                {employeeBusy && <CircleNotch className="mr-1.5 h-4 w-4 animate-spin" />}
+                {isEmployee ? "Remove employee" : "Make employee"}
+              </Button>
             </CardHeader>
             <CardContent className="pt-2">
+              {employeeError && (
+                <p className="mb-3 text-sm text-destructive">{employeeError}</p>
+              )}
               {user.roles.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No roles assigned.
