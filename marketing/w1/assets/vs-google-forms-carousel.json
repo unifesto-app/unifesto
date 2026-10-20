@@ -1,0 +1,49 @@
+{
+  "template": "carousel",
+  "slides": [
+    {
+      "kind": "cover",
+      "label": "Unifesto vs Google Forms",
+      "title": "Google Forms is great. *Until the fest.*",
+      "lede": "What changes when you sell tickets, register teams and check people in.",
+      "shot": "shots/01-dashboard-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Payment",
+      "text": "*Forms: a UPI ID and a screenshot to match by hand.*\n\nUnifesto: Razorpay at registration, paid out to your bank."
+    },
+    {
+      "kind": "step",
+      "title": "Teams",
+      "text": "*Forms: one response with four names typed in.*\n\nUnifesto: the lead buys a group ticket, each member claims a seat.",
+      "shot": "shots/03-squad-ticket-detail-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "The gate",
+      "text": "*Forms: a printed sheet and a pen.*\n\nUnifesto: a QR pass per person, scanned from a phone.",
+      "shot": "shots/03-checkin-scanner-recent-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Your team",
+      "text": "*Forms: everyone with the sheet sees everything.*\n\nUnifesto: Curator, Co-Curator and Crew, each with their own access.",
+      "shot": "shots/03-iam-roles-matrix.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Where Google Forms wins",
+      "text": "Free forever, no app to install, ready in two minutes. Use it for surveys, quizzes and small free events. *We do too.*"
+    },
+    {
+      "kind": "cta",
+      "title": "Running a paid fest? *Try a Space.*",
+      "lede": "Free RSVP events: no fees. Paid tickets: buyer pays 5% (max ₹99). Your platform fee: 0% until 2 Nov 2026, then your plan's rate (unifesto.app/pricing). ₹500 ticket sold before 2 Nov: buyer pays ₹525, you get ₹500.",
+      "pills": [
+        "unifesto.app/blog",
+        "Save for later"
+      ]
+    }
+  ]
+}

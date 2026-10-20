@@ -1,0 +1,49 @@
+{
+  "template": "carousel",
+  "slides": [
+    {
+      "kind": "cover",
+      "label": "Townscript alternatives",
+      "title": "Unifesto vs Townscript, *honestly.*",
+      "lede": "Which one fits a college club or fest, as of 30 Oct 2026.",
+      "shot": "shots/01-dashboard-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Your team",
+      "text": "*Townscript: an organiser account.*\n\nUnifesto: a Space with Curator, Co-Curator and Crew roles per event.",
+      "shot": "shots/03-iam-roles-matrix.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Team events",
+      "text": "*Every member, not just the lead.*\n\nUnifesto: the lead pays once, each member claims a seat, answers their own questions and gets a pass.",
+      "shot": "shots/03-squad-ticket-detail-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Hackathons",
+      "text": "*Not listed on Townscript.*\n\nUnifesto Sprint: teams, rounds, judging and a help desk (Pro).",
+      "shot": "shots/01-sprint-hub-mobile.jpg"
+    },
+    {
+      "kind": "step",
+      "title": "Where Townscript wins",
+      "text": "Many currencies. A widget for your own website. No app for attendees. Lower fees: 4% listed vs our 7.5% on Starter. *We'll say it first.*"
+    },
+    {
+      "kind": "step",
+      "title": "The fees",
+      "text": "₹500 ticket, total listed fees before taxes:\n\nTownscript: 2% + 2% gateway = ₹20.\n\nUnifesto Starter: 2.5% platform (organiser) + 5% processing (buyer) = ₹37.50. Buyer pays ₹525, you get ₹487.50.\n\n*Free events: no fees on either. As of 21 Oct 2026.*"
+    },
+    {
+      "kind": "cta",
+      "title": "Running a club? *Try a Space.*",
+      "lede": "Free for RSVP events. Full comparison on our blog.",
+      "pills": [
+        "unifesto.app/blog",
+        "Save for later"
+      ]
+    }
+  ]
+}

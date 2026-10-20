@@ -1,0 +1,10 @@
+{
+  "template": "blog-cover",
+  "kind": "versus",
+  "eyebrow": "Comparison · Event registration",
+  "title": "Google Forms is great.\n*Until the fest.*",
+  "size": 72,
+  "left": {"title": "Form + UPI + sheet", "items": ["Form link", "UPI screenshots", "Paid? column", "4 names, 1 box", "Printed gate list"]},
+  "right": {"title": "One Space", "items": ["Pay at registration", "Group tickets", "QR check-in", "Roles for the team"]},
+  "tag": "Honest comparison, fees included"
+}

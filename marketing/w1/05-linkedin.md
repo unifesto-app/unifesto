@@ -1,0 +1,110 @@
+# W1 LinkedIn: 3 posts + 1 video
+
+Rules: links go in the first comment, not the body. Post at the README run sheet times (founder 9 AM; company 12 PM and 8:30 PM). Reply to every comment in the first hour. Numbers are from `PROOF` in `websites/web/src/lib/site.ts` (70 Spaces live, 10,000+ attendees, 25+ events, as of October 2026).
+
+---
+
+## Tue 20 Oct, 9 AM · Founder post (Abhinavtej, personal profile)
+
+**No-go fallback (approved text, edit only on a 3 PM no-go):** if the video moves to Wed 21, edit the post line to `Tomorrow I'm putting out a short video on setting one up from scratch.` and the first comment to `The video goes up tomorrow evening on YouTube. Everything else: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1`
+
+**Image:** `assets/shots/03-iam-roles-matrix.jpg` (or no image).
+
+```
+Every college club I've worked with has the same problem.
+
+One person knows everything.
+
+The form. The sheet. The UPI number. The WhatsApp groups. The password to the Instagram.
+
+Then they graduate, and the club starts from zero.
+
+We built Unifesto around one idea: the club owns its events, not one person's laptop.
+
+So every club gets a Space.
+Members join with their own account.
+Roles decide who can touch the money, the attendee list and the scanner.
+When the lead graduates, the Space moves to the next lead. Every event and report stays.
+
+70 Spaces are live on Unifesto today.
+
+Today I put out a short video on setting one up from scratch.
+
+If you ran a club in college, what did you lose when the old team left?
+```
+
+**First comment:** `The video: https://youtu.be/IshthAzVgoE?utm_source=linkedin&utm_campaign=v5-w1`
+
+---
+
+## Tue 20 Oct, 12 PM · Company post (Unifesto page)
+
+**Upload:** `assets/howto-carousel-linkedin.pdf` as a Document (LinkedIn-only render: slide 8 reads "Set up your Space in 10 minutes." because the video is not up at 12 PM; the IG carousel keeps the video line). Document title: "How to run a college club from one Space".
+
+```
+How to run a college club from one Space, in 6 steps:
+
+1. Set up your Space: name, link, one line about your club
+2. Add your core team with their own accounts
+3. Decide who can do what: Curator, Co-Curator, Crew
+4. Start an event with just a name, publish when the checklist is done
+5. Give each event its own team
+6. Hand the Space to next year's lead when you graduate
+
+Free for RSVP events. Swipe through and save it for your next committee meeting.
+
+#collegeclub #studentleadership #eventmanagement #collegefest
+```
+
+**First comment:** `Set up your Space: https://www.unifesto.app/request-space?utm_source=linkedin&utm_campaign=v5-w1`
+
+---
+
+## Tue 20 Oct, 8:30 PM · LinkedIn video (company page; founder comments on it instead of resharing, reshare no earlier than Thu 22)
+
+On a 3 PM no-go this moves to Wed 21, 8:30 PM.
+
+**Cut:** about 73 s, 16:9, from the long video: 0:00-0:22 (hook) + 2:57-3:40 (spreadsheet vs Space, then the three keycards) + 5:58-6:06 ("Your president graduates. Your club doesn't."). Re-check the ranges against the rendered timeline before cutting. Put it in the slot of `assets/linkedin-frame/01.png` (overlay; slot 1376x774 at 272, 236). Burned-in captions, because most people watch muted. `assets/linkedin-frame/02.png` is the preview poster.
+
+**Post text:**
+
+```
+Your club shouldn't graduate with your president.
+
+On Unifesto, the whole club runs from one Space. Your team joins with their own accounts, and roles decide who can do what.
+
+Curators run an event. Co-Curators help. Crew scan passes at the gate.
+Nobody sees what they don't need.
+
+Setup takes about 10 minutes. The full walkthrough is on YouTube, link in the first comment.
+```
+
+**First comment:** `Full video: https://youtu.be/IshthAzVgoE?utm_source=linkedin&utm_campaign=v5-w1` (video is live since 20 Oct 3:18 PM IST; strip any `?si=...` from the share link first; for a watch URL use `https://www.youtube.com/watch?v=IshthAzVgoE&utm_source=linkedin&utm_campaign=v5-w1`. Tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
+
+---
+
+## Wed 21 Oct, 9 AM · Founder post (Abhinavtej)
+
+**Upload:** `assets/vs-google-forms-carousel.pdf` as a Document. Document title: "Google Forms vs Unifesto, honestly".
+
+```
+Google Forms is a great tool. I use it every week.
+
+It's just not an event platform.
+
+Here's what happens when a fest runs on one:
+A UPI ID in the description. 400 screenshots in a folder.
+Team events with four names typed into one box.
+A printed sheet at the gate.
+Everyone on the committee with edit access to everything.
+
+We wrote an honest comparison: where Google Forms is better (free forever, no app, ready in two minutes) and where an event platform earns its place.
+
+We also listed our gaps: rupees only, registration only in our app, no live polls yet.
+
+What's the one thing you still use Google Forms for at your events?
+
+#googleforms #eventmanagement #collegefest #buildinpublic
+```
+
+**First comment:** `The full comparison: https://www.unifesto.app/blog/unifesto-vs-google-forms?utm_source=linkedin&utm_campaign=v5-w1`

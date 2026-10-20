@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Blog cover template (1600x900, 16:9 for Apex › Blog)</title>
+<link rel="stylesheet" href="kit/cosmos.css">
+<style>
+  .cover { --planet-top: -70; --planet-right: -60; }
+  .cover > *:not(.sky) { position: absolute; z-index: 1; }
+  .eyebrow { left: 96px; top: 96px; font-size: 22px; letter-spacing: .22em; text-transform: uppercase; }
+  .eyebrow::before { margin-bottom: 22px; }
+  .title { left: 96px; top: 190px; width: 1100px; font-size: var(--size, 76px); line-height: 1.1; }
+  .wm-foot { left: 100px; bottom: 76px; }
+  .tag { right: 96px; bottom: 82px; font-size: 22px; padding: 12px 24px; }
+
+  /* timeline: 8 weeks counting down to fest day */
+  .track { left: 96px; right: 96px; top: 520px; height: 200px; }
+  .track .rail { position: absolute; left: 0; right: 0; top: 30px; height: 2px; background: linear-gradient(90deg, rgb(var(--glow) / .14), rgb(var(--glow) / .7)); }
+  .track .wk { position: absolute; top: 0; width: 150px; margin-left: -75px; text-align: center; }
+  .track .dot { width: 18px; height: 18px; margin: 22px auto 0; border-radius: 50%; background: var(--night); box-shadow: inset 0 0 0 2px rgb(var(--glow) / var(--a)); }
+  .track .num { font-family: "Michroma", sans-serif; font-size: 20px; color: rgb(var(--glow) / var(--a)); margin-top: 26px; }
+  .track .what { font-size: 19px; line-height: 1.3; color: rgb(var(--glow) / calc(var(--a) * .9)); margin-top: 10px; }
+  .track .wk.end .dot { width: 30px; height: 30px; margin-top: 16px; background: #ececee; box-shadow: 0 0 40px rgb(var(--glow) / .6); }
+  .track .wk.end .num { color: #fff; }
+
+  /* versus: the scattered old way vs one Space */
+  .side { top: 470px; width: 640px; }
+  .side.left { left: 96px; }
+  .side.right { left: 864px; }
+  .side h3 { font-size: 22px; letter-spacing: .18em; text-transform: uppercase; font-weight: 500; margin-bottom: 26px; }
+  .side.left h3 { color: rgb(var(--glow) / .45); }
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; }
+  .chip { font-size: 24px; padding: 14px 22px; border-radius: 14px; }
+  .side.left .chip { color: rgb(var(--glow) / .5); box-shadow: inset 0 0 0 1.5px rgb(var(--glow) / .14); background: rgb(var(--glow) / .02); }
+  .side.left .chip:nth-child(odd) { transform: rotate(-1.6deg); }
+  .side.left .chip:nth-child(even) { transform: rotate(1.4deg) translateY(4px); }
+  .side.right .chip { color: var(--ink); background: rgb(var(--glow) / .07); box-shadow: inset 0 0 0 1.5px rgb(var(--glow) / .35), 0 20px 60px -20px rgb(var(--glow) / .25); }
+  .divider { left: 800px; top: 470px; height: 230px; width: 2px; background: linear-gradient(rgb(var(--glow) / 0), rgb(var(--glow) / .35), rgb(var(--glow) / 0)); }
+  .vs { left: 777px; top: 560px; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-family: "Michroma", sans-serif; font-size: 15px; background: var(--night); box-shadow: inset 0 0 0 1.5px rgb(var(--glow) / .35); }
+</style>
+</head>
+<body>
+<script src="kit/kit.js"></script>
+<script>
+// kind: "timeline" (weeks: [{n, what}], last one is the bright end node) or "versus" (left/right: {title, items}).
+// eyebrow: small caps label. title: *word* dims a run, \n breaks. tag: optional ghost pill bottom right.
+const DEFAULTS = {
+  template: "blog-cover",
+  kind: "timeline",
+  eyebrow: "Guide",
+  title: "How to organize a college fest:\n*the 8-week checklist*",
+  weeks: [{ n: "W8", what: "Date + team" }, { n: "Fest", what: "Day one" }],
+};
+
+Kit.run(DEFAULTS, (d) => {
+  let body = "";
+  if (d.kind === "timeline") {
+    const w = d.weeks, last = w.length - 1;
+    body = `<div class="track"><div class="rail"></div>` + w.map((x, i) => {
+      const a = (0.38 + 0.62 * (i / last)).toFixed(2);
+      return `<div class="wk ${i === last ? "end" : ""}" style="left:${(i / last) * 100}%;--a:${a}"><div class="dot"></div><div class="num">${Kit.esc(x.n)}</div><div class="what">${Kit.rich(x.what)}</div></div>`;
+    }).join("") + `</div>`;
+  } else {
+    const side = (cls, s) => `<div class="side ${cls}"><h3>${Kit.esc(s.title)}</h3><div class="chips">${s.items.map((t) => `<span class="chip">${Kit.esc(t)}</span>`).join("")}</div></div>`;
+    body = side("left", d.left) + `<div class="divider"></div><div class="vs">VS</div>` + side("right", d.right);
+  }
+  return Kit.page(1600, 900, "cover",
+    Kit.sky({ horizon: "86%", scrim: "30% 40%" }) +
+    `<div class="label eyebrow">${Kit.esc(d.eyebrow)}</div>` +
+    `<h1 class="display title" style="${d.size ? `--size:${d.size}px` : ""}">${Kit.rich(d.title)}</h1>` +
+    body +
+    `<div class="wm-foot">${Kit.wordmark(40)}</div>` +
+    (d.tag ? `<div class="pill ghost tag">${Kit.esc(d.tag)}</div>` : ""));
+});
+</script>
+</body>
+</html>
