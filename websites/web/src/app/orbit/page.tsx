@@ -11,6 +11,7 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { OrbitBadge, OrbitCertificate, OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
 import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_QUARTERLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
+import { OrbitKitShowcase } from "@/components/visuals/OrbitKitShowcase";
 import { getOrbitMap } from "@/lib/api/orbit";
 import { OrbitIndiaMap } from "@/components/visuals/OrbitIndiaMap";
 
@@ -175,6 +176,19 @@ export default async function OrbitPage() {
             </ul>
           </Pinned>
         </div>
+      </Section>
+
+      {/* The welcome kits (Lead and Crew), laid out like a product shot. */}
+      <Section aria-labelledby="kit-heading" id="kit">
+        <h2 id="kit-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.2vw,2.4rem)] leading-[1.12] text-paper">
+          Your welcome kit.
+        </h2>
+        <div className="mt-6">
+          <OrbitKitShowcase />
+        </div>
+        <p className="mt-8 text-[12px] text-paper/45">
+          Illustration for visual purposes only. The actual kit and its contents may vary.
+        </p>
       </Section>
 
       <FaqList faqs={FAQ_ORBIT} />

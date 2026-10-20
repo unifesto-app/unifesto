@@ -273,6 +273,32 @@ export const ORBIT_TIERS = [
   { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year"] },
 ] as const;
 
+/* Orbit welcome kits. Lead: shipped when a Lead passes their first 30 days.
+   Crew: a lighter kit for the 2 to 3 crew on big campuses. */
+export const ORBIT_WELCOME_KIT = {
+  lead: {
+    label: "Lead edition",
+    lede: "Pass your first 30 days and a box lands at your door.",
+    items: [
+      { name: "Orbit hoodie", body: "With the Orbit mark on the chest." },
+      { name: "The Orbit Playbook", body: "Pitches, scripts and your first 30 days, in one book." },
+      { name: "Welcome letter", body: "A signed note from our founder." },
+      { name: "Sticker pack", body: "For your laptop, bottle and club notice board." },
+      { name: "Pins, phone grip, keychain", body: "The small stuff, in Orbit colours." },
+    ],
+  },
+  crew: {
+    label: "Crew edition",
+    lede: "On big campuses, the Lead's crew gets a kit of their own.",
+    items: [
+      { name: "Orbit tee", body: "With the Orbit mark on the chest." },
+      { name: "Welcome letter", body: "A signed note from our founder." },
+      { name: "Sticker pack", body: "For your laptop, bottle and club notice board." },
+      { name: "Pins and keychain", body: "The small stuff, in Orbit colours." },
+    ],
+  },
+} as const;
+
 /* Quarterly goodies: shipped after each quarter closes (Mar, Jun, Sep, Dec). */
 export const ORBIT_QUARTERLY = {
   title: "Goodies every quarter",
