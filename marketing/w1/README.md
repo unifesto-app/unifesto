@@ -31,7 +31,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Tue 20 | 9 PM | YT Shorts + IG Reels | Short 3: Organiser POV, 2 AM UPI screenshots (Bujji-animated) | `04-shorts.md`, `assets/short3.mp4`, `assets/short3-cover.png` | no | **approved 20 Oct**, locked: post `short3.mp4` as committed in 2681fd65 (45 s, md5 89980cde), no re-renders |
 | Tue 20 | 9:30 PM | Instagram | Unifesto vs Google Forms carousel | `assets/vs-google-forms-carousel/`, `06-instagram.md` | no | **approved 20 Oct** (caption) |
 | Tue 20 | evening | Outreach DMs (10) | Send the video to fest and club pages | see below | yes | to do |
-| Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | draft, ready |
+| Wed 21 | 9 AM | LinkedIn (founder) | Google Forms, honestly + PDF | `05-linkedin.md`, `assets/vs-google-forms-carousel.pdf` | no | **approved 20 Oct** |
 | Daily | | IG stories | See the stories table | `06-instagram.md` | | ready |
 
 **YouTube (20 Oct):** long video public since 3:18 PM, https://youtu.be/IshthAzVgoE. Description links, pinning the comment and thumbnail A/B need YouTube Advanced features verification (Studio › Settings › Channel › Feature eligibility); until then the Shorts' Related video plus LinkedIn/IG links carry the clicks.
