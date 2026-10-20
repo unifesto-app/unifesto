@@ -33,10 +33,10 @@ export default function OrbitPage() {
         lede="Unifesto Orbit is our campus programme. One Orbit Lead per campus represents Unifesto, not the college, and helps every club on campus run its events on Unifesto."
         actions={
           <>
-            <a href={ORBIT_APPLY} className="btn btn-lg btn-primary">
+            <Link href={ORBIT_APPLY} className="btn btn-lg btn-primary">
               Apply to be an Orbit Lead
               <ArrowRight className="btn-arrow h-3.5 w-3.5" weight="bold" aria-hidden="true" />
-            </a>
+            </Link>
             <Link href="/orbit/terms" className="btn btn-lg btn-secondary">
               Programme terms
             </Link>
@@ -148,13 +148,13 @@ export default function OrbitPage() {
           Lead your campus.
         </h2>
         <p data-reveal="blur" className="mx-auto mt-5 max-w-lg text-base leading-relaxed text-ink/75 md:text-lg">
-          Email careers@unifesto.app with the subject &ldquo;Orbit Lead – your name – college&rdquo;. Include your college, your year, the clubs you are part of, and a list of 15 active clubs on your campus with their next event if you know it.
+          Apply in about ten minutes. Tell us your campus, the clubs you are part of, and the active clubs on your campus. We verify your email and phone, and the Program Lead gets back to you.
         </p>
         <div data-reveal="rise" className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a href={ORBIT_APPLY} className="btn btn-lg btn-primary w-full sm:w-auto">
-            Apply by email
+          <Link href={ORBIT_APPLY} className="btn btn-lg btn-primary w-full sm:w-auto">
+            Apply now
             <ArrowRight className="btn-arrow h-4 w-4" weight="bold" aria-hidden="true" />
-          </a>
+          </Link>
           <Link href="/orbit/terms" className="btn btn-lg btn-secondary w-full sm:w-auto">
             Programme terms
           </Link>

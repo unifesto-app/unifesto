@@ -252,10 +252,7 @@ export const FAQ_HUDDLE: Faq[] = [
 /* One Orbit Lead per campus. Rewards are recognition, not cash. The tier
    thresholds and rewards here are the programme's, set by the founder. */
 
-const ORBIT_SUBJECT = "Orbit Lead – <Your name> – <College>";
-const ORBIT_BODY =
-  "College:\nYear:\nClubs I'm part of:\n\n15 active clubs on my campus (with their next event, if known):\n1.\n";
-export const ORBIT_APPLY = `mailto:careers@unifesto.app?subject=${encodeURIComponent(ORBIT_SUBJECT)}&body=${encodeURIComponent(ORBIT_BODY)}`;
+export const ORBIT_APPLY = "/orbit/apply";
 
 export const ORBIT_STEPS = [
   { title: "Map", body: "Make a list of every club on your campus." },

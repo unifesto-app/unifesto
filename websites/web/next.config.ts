@@ -35,6 +35,8 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: '/features', destination: '/organisers', permanent: true },
+      // Apex links legal docs as /<slug>; the Orbit terms live under /orbit.
+      { source: '/orbit-terms', destination: '/orbit/terms', permanent: true },
       { source: '/host', destination: '/organisers', permanent: true },
       { source: '/products', destination: '/organisers', permanent: true },
       // Account pages moved to the app (the website has no sign-in).
