@@ -2,7 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { LegalService } from './legal.service';
 
 /** In-memory stand-in for the two legal tables (plus the operator check). */
-function build(operators: string[] = []) {
+function build(operators: string[] = [], orbitLeads: string[] = []) {
   const docs: any[] = [];
   const acc: any[] = [];
   const pick = (row: any, select?: any) => {
@@ -53,6 +53,7 @@ function build(operators: string[] = []) {
       },
     },
     userRole: { count: async ({ where }: any) => (operators.includes(where.userId) ? 1 : 0) },
+    orbitLead: { count: async ({ where }: any) => (orbitLeads.includes(where.userId) && where.endedAt === null ? 1 : 0) },
   };
   return { svc: new LegalService(prisma), docs, acc };
 }
@@ -140,5 +141,13 @@ describe('LegalService (I2)', () => {
     await publishNew(svc, 'terms', true);
     expect((await svc.pending('op')).map((d) => d.slug).sort()).toEqual(['organiser-agreement', 'terms']);
     expect((await svc.pending('attendee')).map((d) => d.slug)).toEqual(['terms']);
+  });
+
+  it('the Orbit terms are only asked of live Orbit Leads, even if they also run a space', async () => {
+    const { svc } = build(['lead', 'op'], ['lead']);
+    await publishNew(svc, 'orbit-terms', true);
+    expect((await svc.pending('lead')).map((d) => d.slug)).toEqual(['orbit-terms']);
+    expect(await svc.pending('op')).toEqual([]);
+    expect(await svc.pending('attendee')).toEqual([]);
   });
 });

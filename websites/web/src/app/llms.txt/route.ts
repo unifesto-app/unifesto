@@ -4,6 +4,7 @@ import {
   FAQ_HOME,
   pricingFaq,
   FAQ_STAY, FAQ_HUDDLE, HUDDLE_STEPS,
+  FAQ_ORBIT, ORBIT_STEPS, ORBIT_TIERS,
   STAY_STEPS,
   HACKATHON_STAGES,
   LAUNCH_OFFER_ENDS,
@@ -44,6 +45,7 @@ Unifesto is built in Hyderabad, India by ${SITE.legalName}. It started at ${PROO
 - [Unifesto Sprint](${SITE.url}/sprint): hackathons with teams, judging, help desk and leaderboards
 - [Unifesto Stay](${SITE.url}/stay): accommodation booking for event attendees
 - [Unifesto Huddle](${SITE.url}/huddle): online sessions for Spaces, hosted in-app
+- [Unifesto Orbit](${SITE.url}/orbit): the campus programme; one Orbit Lead per campus helps every club run its events on Unifesto
 - [Pricing](${SITE.url}/pricing): plans, platform fees and launch pricing; buyers pay a ${buyerFeeText(rates.buyerFee, rates.buyerFeeCap)} on paid tickets
 - [Events](${SITE.url}/events): public events on Unifesto
 - [Spaces](${SITE.url}/spaces): clubs, communities and institutions hosting on Unifesto
@@ -69,6 +71,16 @@ ${FAQ_STAY.map((f) => `- ${f.q} ${f.a}`).join("\n")}
 ${HUDDLE_STEPS.map((s, i) => `${i + 1}. ${s.title}: ${s.body}`).join("\n")}
 
 ${FAQ_HUDDLE.map((f) => `- ${f.q} ${f.a}`).join("\n")}
+
+## Unifesto Orbit (campus programme)
+
+One Orbit Lead per campus represents Unifesto (not the college) and helps every club on campus run its events on Unifesto. Rewards are recognition, not cash. Terms: ${SITE.url}/orbit/terms
+
+${ORBIT_STEPS.map((s, i) => `${i + 1}. ${s.title}: ${s.body}`).join("\n")}
+
+${ORBIT_TIERS.map((t) => `- ${t.name} (${t.bar}): ${t.rewards.join("; ")}`).join("\n")}
+
+${FAQ_ORBIT.map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## The attendee app
 

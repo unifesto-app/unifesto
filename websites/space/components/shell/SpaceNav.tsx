@@ -36,7 +36,7 @@ export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
 
   if (!currentSpace) return null;
 
-  const navGroups = resolveNavGroups(currentSpace.sub_org_count, currentRole);
+  const navGroups = resolveNavGroups(currentSpace, currentRole);
 
   const isActive = (item: NavItem) => {
     const fullPath = `${BASE_URL}${item.href}`;
