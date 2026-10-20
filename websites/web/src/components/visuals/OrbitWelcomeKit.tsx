@@ -388,7 +388,10 @@ export function OrbitWelcomeKit({ edition = "lead" }: { edition?: KitEdition }) 
         {/* Everything in the box, scaled to sit with breathing room. */}
         <g transform="translate(800 458) scale(0.86) translate(-800 -458)">
         {/* 1 · Folded hoodie (Lead) or tee (Crew). */}
-        <Garment lead={lead} />
+        {/* Crew: the tee sits centred on the left instead of low. */}
+        <g transform={lead ? undefined : "translate(30 -70)"}>
+          <Garment lead={lead} />
+        </g>
 
         {lead && (
         <>
@@ -421,7 +424,7 @@ export function OrbitWelcomeKit({ edition = "lead" }: { edition?: KitEdition }) 
         </>
         )}
 
-        <g transform={lead ? undefined : "translate(0 -150)"}>
+        <g transform={lead ? undefined : "translate(-24 -178)"}>
         {/* 3 · Welcome letter on its sealed envelope. */}
         <g transform="rotate(7 960 690)" filter="url(#kit-shadow-md)">
           <rect x="800" y="580" width="330" height="214" rx="8" fill="url(#kit-envelope)" />
@@ -531,6 +534,8 @@ export function OrbitWelcomeKit({ edition = "lead" }: { edition?: KitEdition }) 
         </>
         )}
 
+        {/* Crew: the keychain moves up into the phone grip's spot. */}
+        <g transform={lead ? undefined : "translate(0 -96)"}>
         <g transform="rotate(10 1420 720)">
           <circle cx="1400" cy="650" r="20" fill="none" stroke={FOIL} strokeWidth="5" filter="url(#kit-shadow-sm)" />
           <rect x="1396" y="668" width="8" height="18" rx="3" fill={FOIL} />
@@ -541,6 +546,7 @@ export function OrbitWelcomeKit({ edition = "lead" }: { edition?: KitEdition }) 
           <Mark x={1400} y={738} s={0.85} fill="#e3e9ff" stroke="#e3e9ff" />
           <text x="1400" y="776" textAnchor="middle" fill="#eef1ff" fontSize="12" letterSpacing="4">ORBIT</text>
           <path d="M1360 700 L1376 690" stroke="#fff" strokeOpacity="0.55" strokeWidth="4" strokeLinecap="round" />
+        </g>
         </g>
 
         {/* Markers, matching the numbered list under the image. */}
@@ -554,8 +560,8 @@ export function OrbitWelcomeKit({ edition = "lead" }: { edition?: KitEdition }) 
           </>
         ) : (
           <>
-            <Marker x={204} y={304} n={1} />
-            <Marker x={742} y={658} n={2} />
+            <Marker x={234} y={234} n={1} />
+            <Marker x={718} y={630} n={2} />
             <Marker x={1468} y={150} n={3} />
             <Marker x={1132} y={520} n={4} />
           </>
