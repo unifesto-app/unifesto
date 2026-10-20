@@ -68,14 +68,75 @@ function Hatch({ x, y, n, angle = -55, len = 16, gap = 6 }: { x: number; y: numb
   );
 }
 
-function ChestPrint({ y, sub }: { y: number; sub: string }) {
+/** The Unifesto "u" symbol (brand kit path), glyph box x 3..69, y -46..1.6. */
+const U_PATH =
+  "M 27.55 1.63 C 22.5 1.63 18.13 0.74 14.44 -1.03 C 10.75 -2.8 7.91 -5.34 5.94 -8.64 C 3.96 -11.94 2.97 -15.84 2.97 -20.34 L 2.97 -46.08 L 19.44 -46.08 L 19.44 -22.05 C 19.44 -17.79 20.75 -14.45 23.39 -12.05 C 26.04 -9.65 29.73 -8.45 34.47 -8.45 C 40.16 -8.45 44.62 -9.92 47.83 -12.86 C 51.05 -15.8 52.66 -19.92 52.66 -25.2 L 52.66 -46.08 L 69.03 -46.08 L 69.03 0 L 54.72 0 L 53.02 -11.44 L 52.92 -11.44 C 50.82 -7.41 47.56 -4.23 43.16 -1.89 C 38.75 0.45 33.55 1.63 27.55 1.63 Z";
+
+const PRINT = "rgba(214,217,226,0.34)"; // tonal screen print for the campus art
+
+/** A fine line-art campus: trees, an arcade, a clock tower with its own
+ *  orbit, a domed hall with a flag, a side block. Centred on cx, sits on base. */
+function CampusSkyline({ cx, base, s = 1 }: { cx: number; base: number; s?: number }) {
+  return (
+    <g transform={`translate(${cx} ${base}) scale(${s})`} fill="none" stroke={PRINT} strokeWidth={1.1 / s} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M-104 0 L104 0" />
+      {/* Trees. */}
+      <path d="M-92 0 L-92 -9 M94 0 L94 -8" />
+      <circle cx="-92" cy="-15" r="7" />
+      <circle cx="94" cy="-13.5" r="6" />
+      {/* Arcade. */}
+      <path d="M-80 0 L-80 -18 L-40 -18 L-40 0" />
+      {[0, 1, 2].map((i) => (
+        <path key={i} d={`M${-76 + i * 12.5} 0 L${-76 + i * 12.5} -8 A4.25 4.25 0 0 1 ${-67.5 + i * 12.5} -8 L${-67.5 + i * 12.5} 0`} />
+      ))}
+      {/* Clock tower with an orbit around its spire. */}
+      <path d="M-33 0 L-33 -46 L-15 -46 L-15 0 M-35 -46 L-24 -60 L-13 -46" />
+      <circle cx="-24" cy="-36" r="4" />
+      <path d="M-24 -36 L-24 -38.5 M-24 -36 L-22.3 -35" />
+      <path d="M-28 -24 L-28 -16 M-20 -24 L-20 -16" />
+      <ellipse cx="-24" cy="-57" rx="17" ry="4" transform="rotate(-14 -24 -57)" />
+      <circle cx="-8" cy="-61" r="1.6" fill={PRINT} />
+      {/* Domed hall with columns and a flag. */}
+      <path d="M-10 0 L-10 -24 L46 -24 L46 0 M-12 -24 L48 -24" />
+      <path d="M2 -24 A16 16 0 0 1 34 -24" />
+      <path d="M18 -40 L18 -50 M18 -50 L26 -47.5 L18 -45" />
+      {[-4, 6, 16, 26, 36].map((x) => (
+        <path key={x} d={`M${x} -20 L${x} -2`} />
+      ))}
+      {/* Side block with windows. */}
+      <path d="M52 0 L52 -16 L82 -16 L82 0" />
+      {[56, 64, 72].map((x) => (
+        <path key={x} d={`M${x} -11 L${x + 5} -11 M${x} -6 L${x + 5} -6`} />
+      ))}
+      {/* A few stars over campus. */}
+      <path d="M-58 -40 l0 5 M-60.5 -37.5 l5 0 M62 -36 l0 4 M60 -34 l4 0" />
+    </g>
+  );
+}
+
+/** Chest print: the "u" in foil inside a thin orbit, "orbit" set beneath,
+ *  then the campus line art. */
+function ChestPrint({ y }: { y: number }) {
+  const s = 0.82;
   return (
     <>
-      <Mark x={395} y={y} s={1.45} />
-      <text x="395" y={y + 62} textAnchor="middle" fill={FOIL} fontSize="32" className="font-display">unifesto</text>
-      <text x="395" y={y + 94} textAnchor="middle" fill="rgba(236,235,230,0.75)" fontSize="14" letterSpacing="9">ORBIT</text>
-      <text x="395" y={y + 118} textAnchor="middle" fill="rgba(236,235,230,0.35)" fontSize="9.5" letterSpacing="3.5">{sub}</text>
+      {/* The ring passes behind the u; its moon sits on the ring, upper right. */}
+      <ellipse cx="395" cy={y - 18} rx="54" ry="14" fill="none" stroke="rgba(214,217,226,0.55)" strokeWidth="1.4" transform={`rotate(-14 395 ${y - 18})`} />
+      <circle cx="432" cy={y - 37} r="3.2" fill={FOIL} />
+      <path d={U_PATH} fill={FOIL} transform={`translate(${395 - 36 * s} ${y}) scale(${s})`} />
+      <text x="395" y={y + 34} textAnchor="middle" fill={FOIL} fontSize="22" letterSpacing="2" className="font-display">orbit</text>
+      <CampusSkyline cx={395} base={y + 104} s={0.86} />
     </>
+  );
+}
+
+/** A small woven brand tag, sewn onto a hem. */
+function HemTag({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      <rect x={x} y={y} width="38" height="15" rx="2" fill="rgba(214,217,226,0.1)" stroke={PRINT} strokeWidth="1" />
+      <text x={x + 19} y={y + 10.5} textAnchor="middle" fill="rgba(214,217,226,0.6)" fontSize="6.5" letterSpacing="1.5">ORBIT</text>
+    </g>
   );
 }
 
@@ -154,7 +215,8 @@ function Hoodie() {
       <rect x="365" y="344" width="11" height="20" rx="3" fill={FLEECE} stroke={LINE} strokeWidth="1.3" transform="rotate(12 371 354)" />
       <rect x="414" y="346" width="11" height="20" rx="3" fill={FLEECE} stroke={LINE} strokeWidth="1.3" transform="rotate(-10 420 356)" />
 
-      <ChestPrint y={402} sub="LEAD · CAMPUS EDITION" />
+      <ChestPrint y={420} />
+      <HemTag x={292} y={680} />
     </g>
   );
 }
@@ -199,7 +261,8 @@ function Tee() {
       })}
       <path d="M326 302 C332 358 458 358 464 302" {...stitch} />
 
-      <ChestPrint y={448} sub="CREW · CAMPUS EDITION" />
+      <ChestPrint y={452} />
+      <HemTag x={230} y={668} />
     </g>
   );
 }
