@@ -535,6 +535,7 @@ model User {
   pollVotes                    PollVote[]
   quizAnswers                  QuizAnswer[]
   legalAcceptances             LegalAcceptance[]
+  orbitLeads                   OrbitLead[]
 
   @@index([deletionRequestedAt])
   @@map("users")
@@ -1158,6 +1159,7 @@ model Space {
   // Relations
   userRoles                UserRole[]
   events                   Event[]
+  orbitLeads               OrbitLead[]
   statusRequests           SpaceStatusRequest[]
   ownershipRequests        SpaceOwnershipRequest[]
   whiteLabelRequests       WhiteLabelRequest[]
@@ -6064,4 +6066,29 @@ model LegalAcceptance {
 
   @@unique([userId, documentId])
   @@map("legal_acceptances")
+}
+
+/// Unifesto Orbit: a student who represents Unifesto on one campus (a
+/// top-level SUPER space). Rows are kept as history: ending a Lead sets
+/// `endedAt`. At most one live row per (space, user), enforced by a partial
+/// unique index in the migration.
+model OrbitLead {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId  String @map("user_id") @db.Uuid
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spaceId String @map("space_id") @db.Uuid
+  space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  /// Starts the 30-day probation and the inactivity clock.
+  joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
+  /// A declared exam window: the inactivity clock is paused until then.
+  examPauseUntil DateTime? @map("exam_pause_until") @db.Timestamptz(6)
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz(6)
+  endReason      String?   @map("end_reason") @db.VarChar(200)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([spaceId])
+  @@index([userId])
+  @@map("orbit_leads")
 }

@@ -115,3 +115,49 @@ export const getExternalStatus = (): Result<ExternalStatus> => apiCall(backendCl
 /** Recount event and ticket seat counters (groups count as groupSize). Idempotent. */
 export const reconcileSeatCounts = (): Result<{ success: boolean; ticketTypesReset: number; eventsReset: number }> =>
   apiCall(backendClient.post("/admin/reconcile-seat-counts", {}));
+
+// ── Unifesto Orbit (campus programme) ────────────────────────────────────────
+
+export type OrbitTierName = "Probation" | "Lead" | "Bronze" | "Silver" | "Gold";
+export type OrbitClockStatus = "active" | "paused" | "check-in" | "reopen";
+
+export interface OrbitLeadRow {
+  id: string;
+  user: { id: string; fullName: string | null; username: string | null; email: string | null };
+  joinedAt: string;
+  examPauseUntil: string | null;
+  probationEndsAt: string;
+}
+
+export interface OrbitCampus {
+  spaceId: string;
+  name: string;
+  slug: string;
+  verified: boolean;
+  leads: OrbitLeadRow[];
+  clubs: number;
+  /** Clubs with at least one published event. */
+  activeClubs: number;
+  publishedEvents: number;
+  paidEvents: number;
+  paidRegistrations: number;
+  gmv: number;
+  platformEarnings: number;
+  tier: number;
+  tierName: OrbitTierName;
+  lastActivityAt: string | null;
+  /** Null when the campus has no Orbit Lead. */
+  clock: { inactiveDays: number; status: OrbitClockStatus } | null;
+}
+
+export const getOrbitLeaderboard = (): Result<{ campuses: OrbitCampus[] }> =>
+  apiCall(backendClient.get("/orbit/admin/leaderboard"));
+/** Also makes them Space Admin of the campus. They need a Unifesto account. */
+export const appointOrbitLead = (spaceId: string, email: string): Result<{ id: string }> =>
+  apiCall(backendClient.post("/orbit/admin/leads", { spaceId, email }));
+/** Removes their campus admin access; the row stays as history. */
+export const endOrbitLead = (id: string, reason?: string): Result<{ id: string }> =>
+  apiCall(backendClient.patch(`/orbit/admin/leads/${id}/end`, { reason }));
+/** A declared exam window pauses the inactivity clock; null clears it. */
+export const setOrbitExamPause = (id: string, until: string | null): Result<{ id: string }> =>
+  apiCall(backendClient.patch(`/orbit/admin/leads/${id}/exam-pause`, { until }));

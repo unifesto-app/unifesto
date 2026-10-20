@@ -207,6 +207,13 @@ body {
   white-space: nowrap;
 }
 
+/* ─── Orbit rings (/orbit) ───────────────────────────────────────────── */
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ─── Glow Pulse for CTA ─────────────────────────────────────────────── */
 @keyframes glow-pulse {
 

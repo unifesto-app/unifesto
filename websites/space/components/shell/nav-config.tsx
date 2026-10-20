@@ -18,6 +18,7 @@ import {
   Funnel,
   ChartLineUp,
   Tray,
+  Globe,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
@@ -139,10 +140,34 @@ export function withSubspaces(groups: NavGroup[], subOrgCount: number): NavGroup
   });
 }
 
+// Unifesto Orbit: only on campus spaces, for the campus's Orbit Lead.
+export const ORBIT_NAV_ITEM: NavItem = {
+  href: "/orbit",
+  label: "Orbit",
+  icon: Globe,
+  requires: "space:manage-members",
+  keywords: "orbit campus clubs tier leaderboard",
+};
+
+/**
+ * A campus is a top-level SUPER space. `type` arrives as the backend's
+ * SUPER/REGULAR (from /users/me/spaces), not the UI `SpaceType` labels.
+ */
+export function isCampus(space: { type?: string; parentSpaceId?: string | null }): boolean {
+  return space.type === "SUPER" && !space.parentSpaceId;
+}
+
 /**
  * The role- and space-aware nav, resolved once. Both the sidebar and the
  * command palette build from this so they can never drift out of sync.
  */
-export function resolveNavGroups(subOrgCount: number, role: SpaceAppRole): NavGroup[] {
-  return visibleGroups(withSubspaces(NAV_GROUPS, subOrgCount), role);
+export function resolveNavGroups(
+  space: { sub_org_count: number; type?: string; parentSpaceId?: string | null },
+  role: SpaceAppRole,
+): NavGroup[] {
+  const groups = withSubspaces(NAV_GROUPS, space.sub_org_count);
+  const withOrbit = isCampus(space)
+    ? [groups[0], { label: "Orbit", items: [ORBIT_NAV_ITEM] }, ...groups.slice(1)]
+    : groups;
+  return visibleGroups(withOrbit, role);
 }

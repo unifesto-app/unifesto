@@ -59,7 +59,7 @@ export function CommandPalette() {
     const list: Command[] = [];
 
     // Navigation destinations, in the same order/grouping as the sidebar.
-    for (const group of resolveNavGroups(currentSpace.sub_org_count, currentRole)) {
+    for (const group of resolveNavGroups(currentSpace, currentRole)) {
       for (const item of group.items) {
         list.push({
           id: `nav:${item.href}`,

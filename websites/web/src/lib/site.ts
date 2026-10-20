@@ -248,6 +248,64 @@ export const FAQ_HUDDLE: Faq[] = [
   },
 ];
 
+/* ── Unifesto Orbit (campus programme) ─────────────────────────────────── */
+/* One Orbit Lead per campus. Rewards are recognition, not cash. The tier
+   thresholds and rewards here are the programme's, set by the founder. */
+
+const ORBIT_SUBJECT = "Orbit Lead – <Your name> – <College>";
+const ORBIT_BODY =
+  "College:\nYear:\nClubs I'm part of:\n\n15 active clubs on my campus (with their next event, if known):\n1.\n";
+export const ORBIT_APPLY = `mailto:careers@unifesto.app?subject=${encodeURIComponent(ORBIT_SUBJECT)}&body=${encodeURIComponent(ORBIT_BODY)}`;
+
+export const ORBIT_STEPS = [
+  { title: "Map", body: "Make a list of every club on your campus." },
+  { title: "Onboard", body: "Each club creates its Space on Unifesto and joins your campus." },
+  { title: "Activate", body: "The club publishes its first event. That makes it an active club." },
+  { title: "Support", body: "Be the first help for organisers on your campus." },
+] as const;
+
+export const ORBIT_TIERS = [
+  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Certificate", "Orbit badge", "The Orbit Leads WhatsApp community"] },
+  { name: "Bronze", bar: "5 active clubs", rewards: ["Letter of recommendation signed by the founder", "A feature on Unifesto's socials"] },
+  { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club"] },
+  { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year"] },
+] as const;
+
+export const ORBIT_RULES = [
+  "Never say you represent your college. You represent Unifesto.",
+  "Never collect money outside Unifesto.",
+  "No fake clubs or events.",
+  "No spam.",
+  "When you post about Unifesto, say you are an Orbit Lead and tag #UnifestoOrbit.",
+] as const;
+
+export const FAQ_ORBIT: Faq[] = [
+  {
+    q: "Is this paid?",
+    a: "No. Orbit rewards are recognition, not cash. Top Leads get a fast-track interview for a paid internship.",
+  },
+  {
+    q: "Do I need to be in a club?",
+    a: "Yes. You should be active in a club or fest team on your campus. That is where the work starts.",
+  },
+  {
+    q: "Can two people from one college apply?",
+    a: "There is one Orbit Lead per campus. Big campuses can have 2 to 3 crew members working under the Lead.",
+  },
+  {
+    q: "What if my college is not on Unifesto yet?",
+    a: "Apply anyway. We create the campus Space.",
+  },
+  {
+    q: "What happens during exams?",
+    a: "Take a break. Tell your Program Lead before you go and pick up again after.",
+  },
+  {
+    q: "How much time does it take?",
+    a: "There are no fixed hours and it is fully remote. In the first 30 days the goal is 2 clubs onboarded. After that there is no end date: you stay as long as you are active.",
+  },
+];
+
 /* ── Attendee app ───────────────────────────────────────────────────── */
 
 export const APP_FEATURES = [

@@ -4,6 +4,8 @@ import type { LegalClient, SaveLegalDraftDto } from './legal.dto';
 
 /** Documents only Space operators are asked to accept. */
 export const OPERATOR_ONLY = new Set(['organiser-agreement']);
+/** Documents only live Unifesto Orbit Leads are asked to accept. */
+export const ORBIT_ONLY = new Set(['orbit-terms']);
 
 const SUMMARY = {
   id: true,
@@ -57,7 +59,11 @@ export class LegalService {
       accepted.set(a.document.slug, Math.max(a.version, accepted.get(a.document.slug) ?? 0));
     }
 
-    const owed = [...required].filter(([slug, v]) => (accepted.get(slug) ?? 0) < v).map(([slug]) => slug);
+    let owed = [...required].filter(([slug, v]) => (accepted.get(slug) ?? 0) < v).map(([slug]) => slug);
+    if (owed.some((s) => ORBIT_ONLY.has(s))) {
+      const lead = await this.prisma.orbitLead.count({ where: { userId, endedAt: null } });
+      if (!lead) owed = owed.filter((s) => !ORBIT_ONLY.has(s));
+    }
     if (owed.some((s) => OPERATOR_ONLY.has(s))) {
       const operator = await this.prisma.userRole.count({ where: { userId, spaceId: { not: null } } });
       if (!operator) return owed.filter((s) => !OPERATOR_ONLY.has(s)).map((s) => latest.get(s)!);

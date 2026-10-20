@@ -41,6 +41,7 @@ import {
   ImageSquare,
   ChartLineUp,
   Tray,
+  Globe,
 } from "@unifesto/unicon/react";
 
 export interface NavItem {
@@ -76,6 +77,7 @@ export const adminNav: NavGroup[] = [
     items: [
       { href: "/dashboard/users", label: "Users", icon: Users, keywords: "people accounts" },
       { href: "/dashboard/spaces", label: "Spaces", icon: Buildings, keywords: "orgs tenants verify" },
+      { href: "/dashboard/orbit", label: "Orbit", icon: Globe, keywords: "orbit campus leads ambassador university leaderboard" },
       { href: "/dashboard/events", label: "Events", icon: CalendarBlank },
       { href: "/dashboard/sessions", label: "Sessions", icon: VideoCamera, keywords: "huddle live" },
       { href: "/dashboard/categories", label: "Categories", icon: Tag },

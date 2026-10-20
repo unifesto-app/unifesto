@@ -41,6 +41,7 @@ import { CertificatesModule } from './certificates/certificates.module';
 import { ReportsModule } from './reports/reports.module';
 import { CareersModule } from './careers/careers.module';
 import { LegalModule } from './legal/legal.module';
+import { OrbitModule } from './orbit/orbit.module';
 import { PmModule } from './pm/pm.module';
 import { ContentReportsModule } from './content-reports/content-reports.module';
 import { BlogModule } from './blog/blog.module';
@@ -194,6 +195,7 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
     ReportsModule,
     CareersModule,
     LegalModule,
+    OrbitModule,
     PmModule,
     ContentReportsModule,
     BlogModule,
