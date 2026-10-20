@@ -61,7 +61,8 @@ export function OrbitSystem() {
 export function OrbitIdCard() {
   const rows: [string, string][] = [
     ["Name", "Ananya R."],
-    ["Campus", "MRU, Hyderabad"],
+    ["Campus", "MRU"],
+    ["City", "Hyderabad, Telangana"],
     ["Batch", "2023-27"],
     ["Blood group", "B+"],
   ];
