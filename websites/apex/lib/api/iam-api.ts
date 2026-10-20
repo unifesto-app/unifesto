@@ -52,6 +52,12 @@ export async function setCapabilityGrant(input: {
 /** Human labels for actions — the backend sends only keys. */
 export const ACTION_LABELS: Record<string, string> = {
   "platform:manage": "Manage platform",
+  "company:view": "View company",
+  "company:edit": "Edit own company items",
+  "company:manage": "Manage company",
+  "company:view-restricted": "Restricted company items",
+  "product:view": "View product board",
+  "product:edit": "Edit product board",
   "space:view": "View space",
   "space:manage-billing": "Billing & plan",
   "space:manage-members": "Manage members",
@@ -71,6 +77,7 @@ export const ACTION_LABELS: Record<string, string> = {
 /** Human labels for role codes. */
 export const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Platform Admin",
+  EMPLOYEE: "Employee",
   SPACE_ADMIN: "Space Admin",
   CURATOR: "Curator",
   CO_CURATOR: "Co-Curator",

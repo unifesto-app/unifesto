@@ -19,6 +19,7 @@ import type { User } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { CurrentUser, Roles } from '../auth/decorators';
+import { Action, Can, CanGuard } from '../auth/authorization';
 import { PmService } from './pm.service';
 import { PmMcp } from './pm.mcp';
 import {
@@ -28,9 +29,12 @@ import {
   UpsertTrackDto,
 } from './dto';
 
-const actorOf = (u: User) => `${u.fullName || u.username || 'Admin'} (apex)`;
+const actorOf = (u: User) => `${u.fullName || u.username || 'Apex user'} (apex)`;
 
-/** Apex product dashboard (platform ADMIN only). */
+/**
+ * Apex product dashboard. Board routes are open to product:view / product:edit
+ * (ADMIN by inheritance, EMPLOYEE by default); MCP tokens stay ADMIN-only.
+ */
 @Controller('pm')
 export class PmController {
   constructor(
@@ -70,43 +74,43 @@ export class PmController {
   }
 
   @Get('board')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.PRODUCT_VIEW)
   board() {
     return this.pm.board();
   }
 
   @Get('activity')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.PRODUCT_VIEW)
   activity(@Query('take') take?: string) {
     return this.pm.activity(Number(take) || 50);
   }
 
   @Put('tracks')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.PRODUCT_EDIT)
   upsertTrack(@Body() dto: UpsertTrackDto) {
     return this.pm.upsertTrack(dto.key, dto.name, dto.sortOrder);
   }
 
   @Put('tasks')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.PRODUCT_EDIT)
   upsertTask(@CurrentUser() user: User, @Body() dto: UpsertTaskDto) {
     return this.pm.upsertTask(dto, actorOf(user));
   }
 
   @Get('tasks/:key')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.PRODUCT_VIEW)
   getTask(@Param('key') key: string) {
     return this.pm.getTask(key);
   }
 
   @Post('notes')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleCode.ADMIN)
+  @UseGuards(JwtAuthGuard, CanGuard)
+  @Can(Action.PRODUCT_EDIT)
   addNote(@CurrentUser() user: User, @Body() dto: AddNoteDto) {
     return this.pm.addNote(actorOf(user), dto.message, dto.key);
   }

@@ -19,6 +19,16 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
   // finite list — see authorization.service.ts. Left out of the matrix on
   // purpose so nobody has to keep it in sync with every new Action.
 
+  // Platform-scoped team member: works the Company section and Product board in
+  // Apex. company:view-restricted is off by default; platform:manage and
+  // company:manage can never be granted (see EMPLOYEE_NEVER_GRANTABLE).
+  [RoleCode.EMPLOYEE]: [
+    Action.COMPANY_VIEW,
+    Action.COMPANY_EDIT,
+    Action.PRODUCT_VIEW,
+    Action.PRODUCT_EDIT,
+  ],
+
   [RoleCode.SPACE_ADMIN]: [
     Action.SPACE_VIEW,
     Action.SPACE_MANAGE_BILLING,

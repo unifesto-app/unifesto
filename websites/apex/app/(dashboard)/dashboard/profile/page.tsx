@@ -66,6 +66,7 @@ export default function ProfilePage() {
             <div className="space-y-1">
               <CardTitle className="text-xl">{user.name}</CardTitle>
               {role === "platform_admin" && <Badge variant="brand">Platform Admin</Badge>}
+              {role === "employee" && <Badge variant="brand">Employee</Badge>}
             </div>
           </div>
         </CardHeader>

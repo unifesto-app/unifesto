@@ -36,6 +36,12 @@ export function isAdminRole(code?: string | null): boolean {
   return !!code && (ADMIN_ROLE_CODES as readonly string[]).includes(code);
 }
 
+/**
+ * Platform-scoped Unifesto team member. Sees only the Apex pages their
+ * platform capabilities open (`CurrentUser.platform`). Admin wins over it.
+ */
+export const EMPLOYEE_ROLE_CODE = "EMPLOYEE";
+
 // ---------------------------------------------------------------------------
 // Space-level role codes — decide space-operator permissions per space.
 // ---------------------------------------------------------------------------
@@ -63,7 +69,7 @@ export function isSpaceOperatorRole(code?: string | null): boolean {
 // The Apex "app role" — which surface a signed-in user sees.
 // ---------------------------------------------------------------------------
 
-export type AppRole = "platform_admin" | "space_admin" | "none";
+export type AppRole = "platform_admin" | "employee" | "space_admin" | "none";
 
 export interface CurrentUser {
   id: string;
@@ -71,8 +77,13 @@ export interface CurrentUser {
   email: string;
   username?: string | null;
   avatar_url?: string | null;
-  /** Platform role code as returned by the backend. */
+  /** Platform role code as returned by the backend (ADMIN, else EMPLOYEE). */
   role?: string | null;
+  /**
+   * The caller's PLATFORM capabilities (`company:*`, `product:*`), from
+   * `GET /users/me/access`. Loaded for employees only; admins hold them all.
+   */
+  platform?: string[];
   /** Space memberships (for space-operator access). */
   spaces?: SpaceWithHierarchy[];
 }
@@ -87,13 +98,15 @@ export function hasSpaceAccess(user?: CurrentUser | null): boolean {
  *
  * Each user has exactly one active surface — there is no dual-role switching.
  * Platform Admin takes precedence: platform staff land on the PLATFORM_ADMIN
- * surface. Otherwise a user holding a space-operator role in any space lands
+ * surface. An Employee gets a restricted Apex (capability-filtered nav).
+ * Otherwise a user holding a space-operator role in any space lands
  * on the SPACE_ADMIN surface. Everyone else resolves to `none` (bounced to
  * /login).
  */
 export function resolveAppRole(user?: CurrentUser | null): AppRole {
   if (!user) return "none";
   if (isAdminRole(user.role)) return "platform_admin";
+  if (user.role === EMPLOYEE_ROLE_CODE) return "employee";
   if (hasSpaceAccess(user)) return "space_admin";
   return "none";
 }

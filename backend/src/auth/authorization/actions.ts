@@ -14,6 +14,14 @@ import { RoleScope } from '@prisma/client';
 export const Action = {
   // ---- Platform scope (apex.unifesto.app) ----
   PLATFORM_MANAGE: 'platform:manage', // run Unifesto: plan catalog, partnerships, ops
+  // Company section (obligations, documents, KPIs) and the Product board. ADMIN
+  // holds all of these by inheritance; EMPLOYEE gets view/edit by default.
+  COMPANY_VIEW: 'company:view',
+  COMPANY_EDIT: 'company:edit', // update status/notes on items you own
+  COMPANY_MANAGE: 'company:manage', // create + assign items (never grantable to EMPLOYEE)
+  COMPANY_VIEW_RESTRICTED: 'company:view-restricted', // finance, bank, shareholding
+  PRODUCT_VIEW: 'product:view',
+  PRODUCT_EDIT: 'product:edit',
 
   // ---- Space scope (space.unifesto.app) ----
   SPACE_VIEW: 'space:view',
@@ -50,6 +58,12 @@ export type Action = (typeof Action)[keyof typeof Action];
  */
 export const ACTION_SCOPE: Record<Action, RoleScope> = {
   [Action.PLATFORM_MANAGE]: RoleScope.PLATFORM,
+  [Action.COMPANY_VIEW]: RoleScope.PLATFORM,
+  [Action.COMPANY_EDIT]: RoleScope.PLATFORM,
+  [Action.COMPANY_MANAGE]: RoleScope.PLATFORM,
+  [Action.COMPANY_VIEW_RESTRICTED]: RoleScope.PLATFORM,
+  [Action.PRODUCT_VIEW]: RoleScope.PLATFORM,
+  [Action.PRODUCT_EDIT]: RoleScope.PLATFORM,
 
   [Action.SPACE_VIEW]: RoleScope.SPACE,
   [Action.SPACE_MANAGE_BILLING]: RoleScope.SPACE,

@@ -40,10 +40,24 @@ const ROLE_CATALOGUE: readonly RoleMeta[] = [
     editable: false,
     note: 'Platform superuser — full access to every space and event by inheritance. Not governed by this matrix and cannot be edited.',
   },
+  {
+    code: RoleCode.EMPLOYEE,
+    scope: RoleScope.PLATFORM,
+    editable: true,
+    note: 'Unifesto team member. platform:manage and company:manage can never be granted.',
+  },
   { code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, editable: true },
   { code: RoleCode.CURATOR, scope: RoleScope.EVENT, editable: true },
   { code: RoleCode.CO_CURATOR, scope: RoleScope.EVENT, editable: true },
   { code: RoleCode.CREW, scope: RoleScope.EVENT, editable: true },
+];
+
+// The IAM console itself is @Can(platform:manage), so granting it to EMPLOYEE
+// would let an employee grant themselves anything. company:manage (create and
+// assign company items) stays with ADMIN too.
+const EMPLOYEE_NEVER_GRANTABLE: readonly Action[] = [
+  Action.PLATFORM_MANAGE,
+  Action.COMPANY_MANAGE,
 ];
 
 // ---- "IAM for Spaces" policy (per-space overrides) --------------------------
@@ -250,7 +264,8 @@ export class CapabilityConfigService implements OnModuleInit {
    *   - editing a locked role (ADMIN) — its power is inheritance, not a grant;
    *   - an unknown action;
    *   - an action whose scope does not match the role's scope (it could never
-   *     satisfy the direct-match check anyway, so allowing it would only mislead).
+   *     satisfy the direct-match check anyway, so allowing it would only mislead);
+   *   - granting EMPLOYEE platform:manage or company:manage (escalation).
    */
   async setGrant(
     code: RoleCode,
@@ -273,6 +288,15 @@ export class CapabilityConfigService implements OnModuleInit {
     if (actionScope !== meta.scope) {
       throw new BadRequestException(
         `Action ${action} (${actionScope}) cannot be granted to ${code} (${meta.scope}) — scopes must match.`,
+      );
+    }
+    if (
+      granted &&
+      code === RoleCode.EMPLOYEE &&
+      EMPLOYEE_NEVER_GRANTABLE.includes(action)
+    ) {
+      throw new BadRequestException(
+        `${action} can never be granted to ${code}.`,
       );
     }
 

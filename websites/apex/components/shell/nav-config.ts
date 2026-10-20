@@ -42,6 +42,7 @@ import {
   ChartLineUp,
   Tray,
 } from "@unifesto/unicon/react";
+import type { AppRole } from "@/lib/types/rbac";
 
 export interface NavItem {
   href: string;
@@ -52,6 +53,11 @@ export interface NavItem {
   keywords?: string;
   /** Show the Assist unread count beside it. */
   unreadBadge?: boolean;
+  /**
+   * PLATFORM capability that opens this page to employees. Items without one
+   * are admin-only.
+   */
+  capability?: string;
 }
 
 export interface NavGroup {
@@ -68,7 +74,7 @@ export const adminNav: NavGroup[] = [
   {
     items: [
       { href: "/dashboard", label: "Dashboard", icon: SquaresFour, exact: true, keywords: "home overview analytics" },
-      { href: "/dashboard/product", label: "Product", icon: RocketLaunch, keywords: "kanban board roadmap tasks plan pm" },
+      { href: "/dashboard/product", label: "Product", icon: RocketLaunch, keywords: "kanban board roadmap tasks plan pm", capability: "product:view" },
     ],
   },
   {
@@ -142,6 +148,28 @@ export const adminNav: NavGroup[] = [
     ],
   },
 ];
+
+/** The nav this user sees: everything for admins, capability-gated for employees. */
+export function navFor(role: AppRole, platform: readonly string[] = []): NavGroup[] {
+  if (role === "platform_admin") return adminNav;
+  return adminNav
+    .map((g) => ({
+      ...g,
+      items: g.items.filter((i) => i.capability && platform.includes(i.capability)),
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
+/** Pages every signed-in Apex user may open, whatever the nav shows. */
+const ALWAYS_OPEN = ["/dashboard/profile"];
+
+/** True when `pathname` sits under an item of `nav` (or is always open). */
+export function isPathOpen(pathname: string, nav: NavGroup[]) {
+  return (
+    ALWAYS_OPEN.includes(pathname) ||
+    nav.some((g) => g.items.some((i) => isNavActive(pathname, i)))
+  );
+}
 
 export function isNavActive(pathname: string, item: NavItem) {
   return item.exact

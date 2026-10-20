@@ -36,8 +36,11 @@ import {
   type RoleScope,
 } from "@/lib/api/iam-api";
 
-/** The editable scopes, in display order. PLATFORM (ADMIN) is shown separately. */
-const EDITABLE_SCOPES: RoleScope[] = ["SPACE", "EVENT"];
+/**
+ * The editable scopes, in display order. ADMIN is shown separately; PLATFORM
+ * holds the Employee row (the backend refuses platform/company manage for it).
+ */
+const EDITABLE_SCOPES: RoleScope[] = ["PLATFORM", "SPACE", "EVENT"];
 
 const cellKey = (code: string, action: string) => `${code}|${action}`;
 

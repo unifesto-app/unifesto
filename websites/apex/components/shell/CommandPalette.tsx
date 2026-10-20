@@ -6,7 +6,8 @@ import { MagnifyingGlass, ArrowRight, SignOut } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
 import { useCommandPalette } from "@/lib/context/CommandPaletteContext";
 import { clearAuthToken } from "@/lib/utils/auth";
-import { adminNav } from "./nav-config";
+import { useSession } from "@/lib/context/SessionContext";
+import { navFor } from "./nav-config";
 import { cn } from "@/lib/utils/cn";
 
 interface Command {
@@ -22,11 +23,12 @@ interface Command {
 
 /**
  * ⌘K / Ctrl-K jump-anywhere palette. Destinations are built from the same
- * `adminNav` the sidebar uses, plus quick actions (sign out).
+ * capability-filtered nav the sidebar uses, plus quick actions (sign out).
  */
 export function CommandPalette() {
   const router = useRouter();
   const { open, setOpen } = useCommandPalette();
+  const { user, role } = useSession();
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +49,7 @@ export function CommandPalette() {
   }, [open]);
 
   const commands = useMemo<Command[]>(() => {
-    const list: Command[] = adminNav.flatMap((group) =>
+    const list: Command[] = navFor(role, user?.platform).flatMap((group) =>
       group.items.map((item) => ({
         id: `nav:${item.href}`,
         label: item.label,
@@ -69,7 +71,7 @@ export function CommandPalette() {
       },
     });
     return list;
-  }, [router]);
+  }, [router, role, user?.platform]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

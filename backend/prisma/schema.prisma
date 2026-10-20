@@ -67,6 +67,7 @@ enum RoleCode {
   CURATOR // EVENT scope: owns one event end-to-end
   CO_CURATOR // EVENT scope: helps run an event (no publish/cancel, no money)
   CREW // EVENT scope: on-the-ground check-in / scanning only
+  EMPLOYEE // PLATFORM scope: Unifesto team member (Company section + Product board in Apex)
 
   @@map("role_code")
 }

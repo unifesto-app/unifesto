@@ -8,7 +8,7 @@
  */
 
 import backendClient, { apiCall, ApiError } from "./backend-client";
-import { CurrentUser, SpaceMembership, isPlatformAdmin } from "@/lib/types/rbac";
+import { CurrentUser, SpaceMembership, isPlatformStaff } from "@/lib/types/rbac";
 
 interface RawProfile {
   id: string;
@@ -22,7 +22,7 @@ interface RawProfile {
 /**
  * Fetch the current user, folding their platform role (if any) and space
  * memberships into a single `CurrentUser`. `platformRole` carries the first
- * platform-admin code present so the landing gate can route pure platform
+ * platform-staff code (ADMIN or EMPLOYEE) present so the landing gate can route platform
  * staff to Apex; space access is decided entirely by `spaces[].userRole`.
  */
 export async function getCurrentUser(): Promise<{
@@ -37,7 +37,7 @@ export async function getCurrentUser(): Promise<{
   const platformRole =
     (profile.roles ?? [])
       .map((r) => r.role.code)
-      .find((code) => isPlatformAdmin({ platformRole: code } as CurrentUser)) ??
+      .find((code) => isPlatformStaff({ platformRole: code } as CurrentUser)) ??
     null;
 
   // `includeEventRoles=true` also surfaces spaces the user reaches only through

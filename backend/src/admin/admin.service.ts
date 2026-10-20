@@ -11,7 +11,7 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { NotifyService } from '../notifications/notify.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { SpaceStatus, PaymentStatus, Prisma } from '@prisma/client';
+import { SpaceStatus, PaymentStatus, Prisma, RoleCode } from '@prisma/client';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
@@ -1618,4 +1618,29 @@ export class AdminService {
     return { success: true, ticketTypesReset, eventsReset };
   }
 
+
+  /**
+   * Make a user an Employee (platform-scoped, spaceId/eventId null) or remove it.
+   * findFirst before create: the user_roles unique treats NULL scope ids as
+   * distinct, so a plain create could stack duplicate rows (T12).
+   */
+  async setEmployee(userId: string, enabled: boolean, adminId: string) {
+    const [user, role] = await Promise.all([
+      this.prisma.user.findUnique({ where: { id: userId }, select: { id: true } }),
+      this.prisma.role.findUnique({ where: { code: RoleCode.EMPLOYEE } }),
+    ]);
+    if (!user) throw new NotFoundException('User not found');
+    if (!role) throw new BadRequestException('EMPLOYEE role is not seeded');
+
+    const where = { userId, roleId: role.id, spaceId: null, eventId: null };
+    if (enabled) {
+      const existing = await this.prisma.userRole.findFirst({ where });
+      if (!existing) {
+        await this.prisma.userRole.create({ data: { ...where, assignedBy: adminId } });
+      }
+    } else {
+      await this.prisma.userRole.deleteMany({ where });
+    }
+    return { userId, employee: enabled };
+  }
 }

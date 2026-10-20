@@ -11,6 +11,7 @@ import {
   CurrentUser,
   SpaceWithHierarchy,
   isAdminRole,
+  EMPLOYEE_ROLE_CODE,
 } from "@/lib/types/rbac";
 
 interface RawProfile {
@@ -25,7 +26,7 @@ interface RawProfile {
 /**
  * Fetch the current user, folding platform roles + space memberships into a
  * single `CurrentUser`. `role` is set to the first admin-granting role code
- * when present (so `resolveAppRole` can route to the admin surface).
+ * when present, else EMPLOYEE (so `resolveAppRole` can route the surface).
  */
 export async function getCurrentUser(): Promise<{
   data: CurrentUser | null;
@@ -38,10 +39,15 @@ export async function getCurrentUser(): Promise<{
 
   const roleCodes = (profile.roles ?? []).map((r) => r.role.code);
   const adminCode = roleCodes.find((code) => isAdminRole(code)) ?? null;
+  const employee = !adminCode && roleCodes.includes(EMPLOYEE_ROLE_CODE);
 
-  const { data: spaces } = await apiCall<SpaceWithHierarchy[]>(
-    backendClient.get("/users/me/spaces")
-  );
+  const [{ data: spaces }, access] = await Promise.all([
+    apiCall<SpaceWithHierarchy[]>(backendClient.get("/users/me/spaces")),
+    // Employees see only what their platform capabilities open.
+    employee
+      ? apiCall<{ platform: string[] }>(backendClient.get("/users/me/access"))
+      : null,
+  ]);
 
   const user: CurrentUser = {
     id: profile.id,
@@ -49,7 +55,8 @@ export async function getCurrentUser(): Promise<{
     email: profile.mobileNumber,
     username: profile.username,
     avatar_url: profile.avatarUrl,
-    role: adminCode,
+    role: adminCode ?? (employee ? EMPLOYEE_ROLE_CODE : null),
+    platform: access?.data?.platform ?? [],
     spaces: spaces ?? [],
   };
 

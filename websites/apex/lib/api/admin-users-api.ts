@@ -157,6 +157,16 @@ export async function updateUser(
   );
 }
 
+/** Make a user an Employee (enabled) or remove it. ADMIN only. */
+export async function setEmployee(
+  id: string,
+  enabled: boolean
+): Promise<{ data: { userId: string; employee: boolean } | null; error: ApiError | null }> {
+  return apiCall<{ userId: string; employee: boolean }>(
+    backendClient.put(`/admin/users/${id}/employee`, { enabled })
+  );
+}
+
 /** Add or replace a user's avatar (admin). Returns the new hosted URL. */
 export async function uploadUserAvatar(
   id: string,
