@@ -130,12 +130,11 @@ export function OrbitIdCard() {
         <span className="h-1.5 w-12 rounded-full bg-night shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]" />
       </div>
       <div className="relative flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-        <svg viewBox="0 0 64 40" className="h-10 w-16">
-          <ellipse cx="32" cy="22" rx="27" ry="7" fill="none" stroke="rgb(var(--glow) / 0.45)" strokeWidth="1" transform="rotate(-18 32 22)" />
-          <path d={U_PATH} fill="var(--primary-bright)" transform="translate(18.5 32) scale(0.38)" />
-          <circle cx="55" cy="13" r="2" fill="var(--primary-bright)" />
-        </svg>
-        <span className="font-display text-xl text-paper">Unifesto</span>
+        {/* The brand wordmark from the press kit: silver on dark, ink on the light theme. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/press/wordmark-silver.svg" alt="Unifesto" className="h-7 w-auto [[data-theme=light]_&]:hidden" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/press/wordmark-ink.svg" alt="" className="hidden h-7 w-auto [[data-theme=light]_&]:block" />
         <span className="text-[9px] uppercase tracking-[0.24em] text-paper/50">Orbit • Campus programme</span>
       </div>
       <div className="h-px bg-[linear-gradient(90deg,#f6c4ff,#bfe8ff,#c9ffe7,#ffe9b8)] opacity-40" />
