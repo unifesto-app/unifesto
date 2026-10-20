@@ -28,12 +28,12 @@ When the lead graduates, the Space moves to the next lead. Every event and repor
 
 70 Spaces are live on Unifesto today.
 
-Tonight I'm putting out a short video on setting one up from scratch.
+Today I put out a short video on setting one up from scratch.
 
 If you ran a club in college, what did you lose when the old team left?
 ```
 
-**First comment:** `The video goes up tonight on YouTube. Everything else: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1`
+**First comment:** `The video: https://youtu.be/IshthAzVgoE?utm_source=linkedin&utm_campaign=v5-w1`
 
 ---
 
@@ -79,7 +79,7 @@ Nobody sees what they don't need.
 Setup takes about 10 minutes. The full walkthrough is on YouTube, link in the first comment.
 ```
 
-**First comment:** `Full video: https://youtu.be/<VIDEO_ID>?utm_source=linkedin&utm_campaign=v5-w1` (paste the real ID after the 6 PM upload; strip any `?si=...` from the share link first; for a watch URL use `https://www.youtube.com/watch?v=<VIDEO_ID>&utm_source=linkedin&utm_campaign=v5-w1`. Tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
+**First comment:** `Full video: https://youtu.be/IshthAzVgoE?utm_source=linkedin&utm_campaign=v5-w1` (video is live since 20 Oct 3:18 PM IST; strip any `?si=...` from the share link first; for a watch URL use `https://www.youtube.com/watch?v=IshthAzVgoE&utm_source=linkedin&utm_campaign=v5-w1`. Tracked links page: https://www.unifesto.app/links?utm_source=linkedin&utm_campaign=v5-w1)
 
 ---
 

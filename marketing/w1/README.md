@@ -18,7 +18,7 @@ Board: P24 (W1 package, split out of P5). Everything here is a **draft**. Nothin
 | Day | Time (IST) | Channel | What | File | Needs video? | Status |
 |---|---|---|---|---|---|---|
 | Mon 19 | tonight | IG story | BTS + poll ("drops tomorrow") | `06-instagram.md` | no | ready |
-| Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" ("Tonight I'm putting out a short video") | `05-linkedin.md` | no | **approved 19 Oct** (then "This week" → "Tonight" for the drop) |
+| Tue 20 | 9 AM | LinkedIn (founder) | "One person knows everything" ("Today I put out a short video"; video went public 3:18 PM, https://youtu.be/IshthAzVgoE) | `05-linkedin.md` | no | **approved 19 Oct** (then "This week" → "Tonight" for the drop) |
 | Tue 20 | 10 AM | Blog (Apex) | How to organize a college fest: the 8-week checklist, then Rich Results Test (P16) | `02-blog-how-to-organize-a-college-fest.md` | no | **approved 20 Oct** |
 | Tue 20 | 10:30 AM | Blog (Apex) | Google Forms for event registration vs Unifesto (recheck the Google help links first) | `03-blog-unifesto-vs-google-forms.md` | no | **approved 20 Oct** |
 | Tue 20 | 12 PM | LinkedIn (company) | How-to carousel as a PDF | `05-linkedin.md`, upload `assets/howto-carousel-linkedin.pdf` (LinkedIn-only slide 8) | no | **approved 19 Oct** (6 steps) |
@@ -51,7 +51,7 @@ Fill the `{...}` bits per page. Link: paste only the 11-character video ID and d
 ```
 Hi {page name} team! Saw {their last event} on your page, looked great.
 
-I'm Abhinav, I build Unifesto. We just put out a video on running a club from one place: your team, who can do what, and a crew for every event. Might help before {their fest}: https://youtu.be/<VIDEO_ID>?utm_source=instagram&utm_campaign=v5-w1
+I'm Abhinav, I build Unifesto. We just put out a video on running a club from one place: your team, who can do what, and a crew for every event. Might help before {their fest}: https://youtu.be/IshthAzVgoE?utm_source=instagram&utm_campaign=v5-w1
 
 If you want a Space for your club, Starter is free and free RSVP events have no fees. Happy to set it up with you.
 ```
