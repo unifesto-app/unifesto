@@ -10,7 +10,7 @@ Publish **Tue 20 Oct**, 10 AM IST (W1 drop day), from Apex › Blog. Draft only 
 | Author | Abhinavtej Reddy |
 | Read minutes | 8 |
 | Featured | yes (first guide) |
-| Cover image | 16:9 (Apex crops to 16:9). A real fest photo with the organiser's OK. If there is none, leave it empty and the post uses its branded OG card. Do not use `assets/thumbnail.png`; that is the video's "Your club survives graduation" thumbnail. |
+| Cover image | `assets/blog1-cover.png` (1600x900, 16:9, template `marketing/templates/blog-cover.html`, source `assets/blog1-cover.json`) |
 | Excerpt | To organize a college fest, start 8 weeks out: date and team in week 8, budget in week 7, sponsors by week 6, registrations by week 4, check-in last. |
 
 Paste everything below the line into **Content**. The page shows the title as the H1, so the body starts at `##`.

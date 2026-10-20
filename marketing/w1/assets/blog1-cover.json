@@ -1,0 +1,19 @@
+{
+  "template": "blog-cover",
+  "kind": "timeline",
+  "eyebrow": "Guide · College fests",
+  "title": "How to organize a college fest:\n*the 8‑week checklist*",
+  "size": 68,
+  "weeks": [
+    {"n": "W8", "what": "Date +\ncore team"},
+    {"n": "W7", "what": "Budget +\nevents"},
+    {"n": "W6", "what": "Sponsors +\nvenues"},
+    {"n": "W5", "what": "Tickets"},
+    {"n": "W4", "what": "Registrations\nopen"},
+    {"n": "W3", "what": "Marketing\npush"},
+    {"n": "W2", "what": "Volunteers"},
+    {"n": "W1", "what": "Check-in\ntested"},
+    {"n": "FEST", "what": "Day one"}
+  ],
+  "tag": "unifesto.app/blog"
+}

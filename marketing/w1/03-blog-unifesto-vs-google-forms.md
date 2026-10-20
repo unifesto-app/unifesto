@@ -17,7 +17,7 @@ Rules followed: P11 (as-of dates, rival's own pages linked, "where Google Forms 
 | Category | Comparisons |
 | Author | Abhinavtej Reddy |
 | Read minutes | 6 |
-| Cover image | No cover (the auto-generated /blog/unifesto-vs-google-forms/opengraph-image covers social cards; 01.png is 4:5 carousel art, do not crop it) |
+| Cover image | `assets/blog2-cover.png` (1600x900, 16:9, template `marketing/templates/blog-cover.html`, source `assets/blog2-cover.json`) |
 | Excerpt | Google Forms works for small free events. For paid tickets, team registration and QR check-in, Unifesto does it in one place. Fees and gaps compared. |
 
 Paste everything below the line into **Content**.
