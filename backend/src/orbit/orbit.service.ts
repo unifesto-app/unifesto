@@ -12,6 +12,7 @@ import { EmailService } from '../email/email.service';
 import { APEX, button, esc, h1, p, strong } from '../email/layout';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { ORBIT_GOALS, ORBIT_PROBATION_DAYS, ORBIT_TIERS, orbitClock, orbitTier } from './orbit-tier';
+import { aggregateOrbitMap, ORBIT_MAP_STATUSES, type OrbitMap } from './orbit-map';
 
 const LIVE_EVENT = [EventStatus.PUBLISHED, EventStatus.ONGOING, EventStatus.COMPLETED];
 /** Registrations that ever brought real money in (same set as Financials). */
@@ -240,6 +241,24 @@ export class OrbitService {
     const lead = await this.prisma.orbitLead.findUnique({ where: { id: leadId } });
     if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
     return this.prisma.orbitLead.update({ where: { id: leadId }, data: { examPauseUntil: until } });
+  }
+
+  // ── Public map (unifesto.app/orbit) ───────────────────────────────────────
+
+  // ponytail: per-instance 5-minute cache; fine for one backend container,
+  // move to Redis if the backend scales out.
+  private mapCache: { at: number; data: OrbitMap } | null = null;
+
+  /** Aggregate-only Orbit application map; see aggregateOrbitMap for the privacy rules. */
+  async applicationMap(): Promise<OrbitMap> {
+    if (this.mapCache && Date.now() - this.mapCache.at < 5 * 60_000) return this.mapCache.data;
+    const rows = await this.prisma.orbitApplication.findMany({
+      where: { status: { in: [...ORBIT_MAP_STATUSES] } },
+      select: { collegeName: true, space: { select: { name: true, city: true } } },
+    });
+    const data = aggregateOrbitMap(rows);
+    this.mapCache = { at: Date.now(), data };
+    return data;
   }
 
   // ── Applications (unifesto.app/orbit/apply) ───────────────────────────────

@@ -11,6 +11,8 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { OrbitBadge, OrbitCertificate, OrbitSystem, OrbitIdCard, OrbitStartVisual, Pinned } from "@/components/visuals/Orbit";
 import { FAQ_ORBIT, ORBIT_APPLY, ORBIT_QUARTERLY, ORBIT_RULES, ORBIT_STEPS, ORBIT_TIERS } from "@/lib/site";
+import { getOrbitMap } from "@/lib/api/orbit";
+import { OrbitIndiaMap } from "@/components/visuals/OrbitIndiaMap";
 
 export const metadata: Metadata = withSocial({
   title: "Unifesto Orbit: the campus programme for students",
@@ -21,7 +23,11 @@ export const metadata: Metadata = withSocial({
 
 const tilts = [-1.2, 0.8, -0.6, 1.1];
 
-export default function OrbitPage() {
+/* The application map refreshes from the API at most every 5 minutes. */
+export const revalidate = 300;
+
+export default async function OrbitPage() {
+  const map = await getOrbitMap();
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
       <JsonLd data={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Unifesto Orbit", path: "/orbit" }])} />
@@ -172,6 +178,22 @@ export default function OrbitPage() {
       </Section>
 
       <FaqList faqs={FAQ_ORBIT} />
+
+      {/* Where applications come from: a network in orbit around the hub.
+          Hidden if the API is unreachable. */}
+      {map && (
+      <Section aria-labelledby="map-heading" id="map">
+        <h2 id="map-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.2vw,2.4rem)] leading-[1.12] text-paper">
+          Orbit across India.
+        </h2>
+        <p data-reveal="blur" className="mt-4 max-w-[60ch] text-[15px] font-light leading-relaxed text-paper/65 md:text-base">
+          Where applications are coming from. Hover or tap a city to see its colleges.
+        </p>
+        <div className="mt-12">
+          <OrbitIndiaMap cities={map.cities} totals={map.totals} />
+        </div>
+      </Section>
+      )}
 
       <Section surface="blue" id="apply" aria-labelledby="apply-heading" width="text" innerClassName="text-center">
         <h2

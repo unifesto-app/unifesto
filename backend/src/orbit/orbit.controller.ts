@@ -57,6 +57,13 @@ export class OrbitController {
     return this.orbit.campusOptions();
   }
 
+  /** PUBLIC: aggregate counts for the "Orbit across India" map. No names below
+   *  3 applications per college, no personal data. Cached 5 minutes. */
+  @Get('application-map')
+  applicationMap() {
+    return this.orbit.applicationMap();
+  }
+
   /** A signed-in student applies (unifesto.app/orbit/apply). */
   @Post('applications')
   @UseGuards(JwtAuthGuard)
