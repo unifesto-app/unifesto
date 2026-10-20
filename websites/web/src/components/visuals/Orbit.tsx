@@ -135,8 +135,8 @@ export function OrbitIdCard() {
           <path d={U_PATH} fill="var(--primary-bright)" transform="translate(18.5 32) scale(0.38)" />
           <circle cx="55" cy="13" r="2" fill="var(--primary-bright)" />
         </svg>
-        <span className="font-display text-xl text-paper">Unifesto Orbit</span>
-        <span className="text-[9px] uppercase tracking-[0.24em] text-paper/50">Campus programme</span>
+        <span className="font-display text-xl text-paper">Unifesto</span>
+        <span className="text-[9px] uppercase tracking-[0.24em] text-paper/50">Orbit • Campus programme</span>
       </div>
       <div className="h-px bg-[linear-gradient(90deg,#f6c4ff,#bfe8ff,#c9ffe7,#ffe9b8)] opacity-40" />
       <div className="relative flex items-center justify-between gap-4 px-4 py-3">
