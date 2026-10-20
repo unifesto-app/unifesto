@@ -421,6 +421,11 @@ set -euo pipefail
 cd "$1"; sha="$2"; services="$3"; shift 3
 # Hold on to what :latest is now; the build moves :latest off it.
 for img; do docker tag "${img}:latest" "${img}:pre-build" 2>/dev/null || true; done
+# The 29G root fills up otherwise (~2.5G of build cache per deploy; ENOSPC
+# killed parallel Next builds on 2026-10-19 and 2026-10-21). Costs the
+# backend's cached npm ci layers; the websites rebuild those anyway.
+docker builder prune -af >/dev/null
+docker image prune -f >/dev/null
 SENTRY_RELEASE="${sha}" docker compose build ${services}
 for img; do
   docker tag "${img}:latest" "${img}:${sha}"
@@ -430,9 +435,9 @@ for img; do
     fi
     docker rmi "${img}:pre-build" >/dev/null
   fi
-  # ponytail: keeps the 5 newest :<sha> tags per image (:previous and :latest
-  # stay); older ones are untagged and freed by the next image prune.
-  docker images "${img}" --format '{{.Tag}}' | grep -E '^[0-9a-f]{7,40}(-dirty)?$' | tail -n +6 \
+  # ponytail: keeps the 3 newest :<sha> tags per image (:previous and :latest
+  # stay); older ones are untagged and freed by the next deploy's image prune.
+  docker images "${img}" --format '{{.Tag}}' | grep -E '^[0-9a-f]{7,40}(-dirty)?$' | tail -n +4 \
     | xargs -I{} docker rmi "${img}:{}" >/dev/null 2>&1 || true
 done
 BUILD
