@@ -4,6 +4,8 @@
    acrylic keychain). Numbered markers match the list under it on the page.
    A fixed dark stage so it reads the same in both themes. Decorative. */
 
+import { U_PATH } from "./Orbit";
+
 const FOIL = "url(#kit-foil)";
 const LEAD = "#8fa8ff";
 
@@ -67,10 +69,6 @@ function Hatch({ x, y, n, angle = -55, len = 16, gap = 6 }: { x: number; y: numb
     </g>
   );
 }
-
-/** The Unifesto "u" symbol (brand kit path), glyph box x 3..69, y -46..1.6. */
-const U_PATH =
-  "M 27.55 1.63 C 22.5 1.63 18.13 0.74 14.44 -1.03 C 10.75 -2.8 7.91 -5.34 5.94 -8.64 C 3.96 -11.94 2.97 -15.84 2.97 -20.34 L 2.97 -46.08 L 19.44 -46.08 L 19.44 -22.05 C 19.44 -17.79 20.75 -14.45 23.39 -12.05 C 26.04 -9.65 29.73 -8.45 34.47 -8.45 C 40.16 -8.45 44.62 -9.92 47.83 -12.86 C 51.05 -15.8 52.66 -19.92 52.66 -25.2 L 52.66 -46.08 L 69.03 -46.08 L 69.03 0 L 54.72 0 L 53.02 -11.44 L 52.92 -11.44 C 50.82 -7.41 47.56 -4.23 43.16 -1.89 C 38.75 0.45 33.55 1.63 27.55 1.63 Z";
 
 const PRINT = "rgba(214,217,226,0.34)"; // tonal screen print for the campus art
 

@@ -127,6 +127,10 @@ export function OrbitStartVisual() {
   );
 }
 
+/** The Unifesto "u" symbol (brand kit path), glyph box x 3..69, y -46..1.6. */
+export const U_PATH =
+  "M 27.55 1.63 C 22.5 1.63 18.13 0.74 14.44 -1.03 C 10.75 -2.8 7.91 -5.34 5.94 -8.64 C 3.96 -11.94 2.97 -15.84 2.97 -20.34 L 2.97 -46.08 L 19.44 -46.08 L 19.44 -22.05 C 19.44 -17.79 20.75 -14.45 23.39 -12.05 C 26.04 -9.65 29.73 -8.45 34.47 -8.45 C 40.16 -8.45 44.62 -9.92 47.83 -12.86 C 51.05 -15.8 52.66 -19.92 52.66 -25.2 L 52.66 -46.08 L 69.03 -46.08 L 69.03 0 L 54.72 0 L 53.02 -11.44 L 52.92 -11.44 C 50.82 -7.41 47.56 -4.23 43.16 -1.89 C 38.75 0.45 33.55 1.63 27.55 1.63 Z";
+
 /* The Orbit badge: a planet with one satellite on a tilted orbit, in the
    tier's metal. Lead wears the brand glow; the rest are metals. */
 export type OrbitTierName = "Lead" | "Bronze" | "Silver" | "Gold";
@@ -144,20 +148,31 @@ export function OrbitBadge({ tier, size = 112, withLabel = true }: { tier: Orbit
     <figure aria-hidden="true" className="flex flex-col items-center gap-2">
       <svg width={size} height={size} viewBox="0 0 120 120" className="max-w-full">
         <defs>
-          <radialGradient id={`${id}-core`} cx="38%" cy="32%" r="70%">
+          <linearGradient id={`${id}-metal`} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor={m.core} />
-            <stop offset="100%" stopColor={m.ring} stopOpacity="0.55" />
-          </radialGradient>
-          <path id={`${id}-arc`} d="M 22 60 A 38 38 0 0 1 98 60" fill="none" />
+            <stop offset="55%" stopColor={m.ring} />
+            <stop offset="100%" stopColor={m.core} />
+          </linearGradient>
+          {/* Top arc reads left to right over the top; bottom arc runs under
+              the bottom (sweep 0) so its text stays upright. */}
+          <path id={`${id}-top`} d="M 18 60 A 42 42 0 0 1 102 60" fill="none" />
+          <path id={`${id}-bottom`} d="M 15 60 A 45 45 0 0 0 105 60" fill="none" />
         </defs>
         <circle cx="60" cy="60" r="57" fill="#0b0c10" stroke={m.ring} strokeWidth="2" />
-        <circle cx="60" cy="60" r="50" fill="none" stroke={m.ring} strokeOpacity="0.35" strokeWidth="1" strokeDasharray="2 4" />
-        <text fill={m.ring} fontSize="8.5" letterSpacing="3" fontFamily="inherit">
-          <textPath href={`#${id}-arc`} startOffset="50%" textAnchor="middle">UNIFESTO ORBIT</textPath>
+        <circle cx="60" cy="60" r="34" fill="none" stroke={m.ring} strokeOpacity="0.3" strokeWidth="1" strokeDasharray="2 4" />
+        <text fill={m.ring} fontSize="9" letterSpacing="3.2" fontWeight="600">
+          <textPath href={`#${id}-top`} startOffset="50%" textAnchor="middle">UNIFESTO</textPath>
         </text>
-        <ellipse cx="60" cy="70" rx="34" ry="11" fill="none" stroke={m.ring} strokeWidth="1.5" transform="rotate(-18 60 70)" />
-        <circle cx="60" cy="70" r="15" fill={`url(#${id}-core)`} />
-        <circle cx="91" cy="60" r="4" fill={m.core} />
+        <text fill={m.ring} fontSize="9" letterSpacing="3.2" fontWeight="600" dominantBaseline="hanging">
+          <textPath href={`#${id}-bottom`} startOffset="50%" textAnchor="middle">ORBIT</textPath>
+        </text>
+        {/* Dots between the two words, at 9 and 3 o'clock. */}
+        <circle cx="12" cy="60" r="1.8" fill={m.ring} />
+        <circle cx="108" cy="60" r="1.8" fill={m.ring} />
+        {/* The u inside its orbit: ring behind, moon on the ring. */}
+        <ellipse cx="60" cy="60" rx="30" ry="8" fill="none" stroke={m.ring} strokeOpacity="0.45" strokeWidth="1" transform="rotate(-18 60 60)" />
+        <path d={U_PATH} fill={`url(#${id}-metal)`} transform="translate(42 72) scale(0.5)" />
+        <circle cx="82" cy="48" r="3" fill={m.core} />
       </svg>
       {withLabel && <figcaption className="text-[11px] uppercase tracking-[0.18em] text-paper/70">{m.label}</figcaption>}
     </figure>

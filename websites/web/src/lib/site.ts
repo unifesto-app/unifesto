@@ -267,10 +267,10 @@ export const ORBIT_STEPS = [
 ] as const;
 
 export const ORBIT_TIERS = [
-  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Orbit certificate", "Orbit badge"] },
+  { name: "Lead", bar: "Pass the first 30 days", rewards: ["Orbit certificate", "Orbit badge", "The Lead welcome kit"] },
   { name: "Bronze", bar: "5 active clubs", rewards: ["Letter of recommendation signed by the founder", "A feature on Unifesto's socials"] },
-  { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club"] },
-  { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year"] },
+  { name: "Silver", bar: "10 active clubs and 1 paid event", rewards: ["Free Pro plan for your own club", "A limited-edition hoodie every quarter"] },
+  { name: "Gold", bar: "15 active clubs, or bring your fest onto Unifesto", rewards: ["Fast-track interview for a paid internship", "A shot at Orbit Lead of the Year", "A limited-edition hoodie every quarter"] },
 ] as const;
 
 /* Orbit welcome kits. Lead: shipped when a Lead passes their first 30 days.
@@ -304,10 +304,21 @@ export const ORBIT_QUARTERLY = {
   title: "Goodies every quarter",
   points: [
     "Every active Lead: a sticker and lanyard pack",
-    "Silver and Gold: a limited-edition hoodie too, a new design each quarter",
+    "Silver and Gold: that quarter's limited-edition hoodie, a new design each time",
     "Shipped after March, June, September and December",
   ],
   note: "Active means you have passed your first 30 days and added a club or event in the last 60 days.",
+} as const;
+
+/* What Orbit Crew get: they help a Lead on a big campus, with no tier of their own. */
+export const ORBIT_CREW_EARN = {
+  title: "Orbit Crew",
+  points: [
+    "The Crew welcome kit, once your Lead passes the first 30 days",
+    "An Orbit certificate",
+    "No targets or tiers of your own: you help your Lead",
+  ],
+  note: "Crew join on big campuses, 2 to 3 per campus, chosen with the Lead.",
 } as const;
 
 export const ORBIT_RULES = [
