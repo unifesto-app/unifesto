@@ -135,6 +135,8 @@ export interface OrbitCampus {
   slug: string;
   verified: boolean;
   leads: OrbitLeadRow[];
+  /** Crew helping the Lead: no campus admin access, no clock or tier. */
+  crew: OrbitLeadRow[];
   clubs: number;
   /** Clubs with at least one published event. */
   activeClubs: number;
@@ -152,9 +154,9 @@ export interface OrbitCampus {
 
 export const getOrbitLeaderboard = (): Result<{ campuses: OrbitCampus[] }> =>
   apiCall(backendClient.get("/orbit/admin/leaderboard"));
-/** Also makes them Space Admin of the campus. They need a Unifesto account. */
-export const appointOrbitLead = (spaceId: string, email: string): Result<{ id: string }> =>
-  apiCall(backendClient.post("/orbit/admin/leads", { spaceId, email }));
+/** A Lead is also made Space Admin of the campus; Crew get no admin access. They need a Unifesto account. */
+export const appointOrbitLead = (spaceId: string, email: string, role: "LEAD" | "CREW" = "LEAD"): Result<{ id: string }> =>
+  apiCall(backendClient.post("/orbit/admin/leads", { spaceId, email, role }));
 /** Removes their campus admin access; the row stays as history. */
 export const endOrbitLead = (id: string, reason?: string): Result<{ id: string }> =>
   apiCall(backendClient.patch(`/orbit/admin/leads/${id}/end`, { reason }));

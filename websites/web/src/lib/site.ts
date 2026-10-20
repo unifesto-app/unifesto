@@ -289,7 +289,7 @@ export const ORBIT_WELCOME_KIT = {
   },
   crew: {
     label: "Crew edition",
-    lede: "On big campuses, the Lead's crew gets a kit of their own.",
+    lede: "On big campuses, the Lead's crew gets a kit of their own once their Lead passes the first 30 days.",
     items: [
       { name: "Orbit tee", body: "With the Orbit mark on the chest." },
       { name: "Welcome letter", body: "A signed note from our founder." },
@@ -304,7 +304,7 @@ export const ORBIT_QUARTERLY = {
   title: "Goodies every quarter",
   points: [
     "Every active Lead: a sticker and lanyard pack",
-    "Silver and Gold: a T-shirt or hoodie too",
+    "Silver and Gold: a limited-edition hoodie too, a new design each quarter",
     "Shipped after March, June, September and December",
   ],
   note: "Active means you have passed your first 30 days and added a club or event in the last 60 days.",

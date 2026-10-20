@@ -40,6 +40,7 @@ export default function OrbitPage() {
   const [error, setError] = useState("");
   const [campusId, setCampusId] = useState("");
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"LEAD" | "CREW">("LEAD");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -61,7 +62,7 @@ export default function OrbitPage() {
 
   const appoint = async () => {
     if (!campusId || !email.trim()) return setError("Pick a campus and enter the student's account email.");
-    await run(appointOrbitLead(campusId, email.trim()));
+    await run(appointOrbitLead(campusId, email.trim(), role));
     setEmail("");
   };
 
@@ -124,7 +125,18 @@ export default function OrbitPage() {
                 <span className="text-muted-foreground">Student&apos;s Unifesto account email</span>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@college.edu" />
               </label>
-              <Button onClick={appoint} disabled={busy}>Appoint Orbit Lead</Button>
+              <label className="grid gap-1 text-sm">
+                <span className="text-muted-foreground">Role</span>
+                <select
+                  className="h-9 rounded-md border bg-background px-2"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as "LEAD" | "CREW")}
+                >
+                  <option value="LEAD">Lead (campus admin)</option>
+                  <option value="CREW">Crew (no admin access)</option>
+                </select>
+              </label>
+              <Button onClick={appoint} disabled={busy}>Appoint</Button>
             </CardContent>
           </Card>
 
@@ -176,6 +188,13 @@ export default function OrbitPage() {
                         ) : (
                           <Badge variant="warning">Open</Badge>
                         )}
+                        {r.crew.map((c) => (
+                          <div key={c.id} className="mt-1 flex items-center gap-2 text-xs">
+                            <Badge variant="neutral">Crew</Badge>
+                            <span title={c.user.email ?? undefined}>{c.user.fullName || c.user.username || c.user.email}</span>
+                            <button className="text-destructive hover:underline" disabled={busy} onClick={() => end(c, r.name)}>End</button>
+                          </div>
+                        ))}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{r.clubs} ({r.activeClubs})</td>
                       <td className="px-4 py-3 text-right tabular-nums">{r.publishedEvents}</td>

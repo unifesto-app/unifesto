@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } f
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RoleCode } from '@prisma/client';
 import type { User } from '@prisma/client';
-import { Equals, IsBoolean, IsEmail, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsIn, IsISO8601, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles, CurrentUser } from '../auth/decorators';
@@ -12,6 +12,8 @@ import { OrbitService } from './orbit.service';
 class AppointOrbitLeadDto {
   @IsUUID() spaceId!: string;
   @IsEmail() email!: string;
+  /** LEAD (default) or CREW. */
+  @IsOptional() @IsIn(['LEAD', 'CREW']) role?: 'LEAD' | 'CREW';
 }
 
 class EndOrbitLeadDto {
@@ -105,7 +107,7 @@ export class OrbitController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleCode.ADMIN)
   appoint(@Body() dto: AppointOrbitLeadDto, @CurrentUser() user: User) {
-    return this.orbit.appoint(dto.spaceId, dto.email, user.id);
+    return this.orbit.appoint(dto.spaceId, dto.email, user.id, dto.role);
   }
 
   @Patch('admin/leads/:id/end')

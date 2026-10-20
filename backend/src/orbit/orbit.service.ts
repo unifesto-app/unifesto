@@ -52,6 +52,7 @@ export class OrbitService {
         select: {
           id: true,
           spaceId: true,
+          role: true,
           joinedAt: true,
           examPauseUntil: true,
           user: {
@@ -126,9 +127,10 @@ export class OrbitService {
           platformEarnings: round2(platformEarnings),
         };
         const tier = orbitTier(stats);
-        const campusLeads = leads
+        const people = leads
           .filter((l) => l.spaceId === c.id)
           .map((l) => ({
+            role: l.role,
             id: l.id,
             user: {
               id: l.user.id,
@@ -140,7 +142,9 @@ export class OrbitService {
             examPauseUntil: l.examPauseUntil,
             probationEndsAt: new Date(l.joinedAt.getTime() + ORBIT_PROBATION_DAYS * 86_400_000),
           }));
-        // The clock follows the longest-serving Lead on the campus.
+        const campusLeads = people.filter((p) => p.role !== 'CREW');
+        const crew = people.filter((p) => p.role === 'CREW');
+        // The clock follows the longest-serving Lead on the campus; Crew don't run one.
         const clock = campusLeads[0]
           ? orbitClock({ joinedAt: campusLeads[0].joinedAt, lastActivityAt, examPauseUntil: campusLeads[0].examPauseUntil }, now)
           : null;
@@ -150,6 +154,7 @@ export class OrbitService {
           slug: c.slug,
           verified: !!c.verifiedAt,
           leads: campusLeads,
+          crew,
           ...stats,
           tier,
           tierName: ORBIT_TIERS[tier],
@@ -183,17 +188,17 @@ export class OrbitService {
     return { ...campus, rank: i + 1, campusCount: all.length, nextGoal };
   }
 
-  /** Appoint an Orbit Lead by email and make them Space Admin of the campus. */
-  async appoint(spaceId: string, email: string, actorId: string) {
+  /** Appoint an Orbit Lead (made Space Admin of the campus) or Crew (no admin access) by email. */
+  async appoint(spaceId: string, email: string, actorId: string, role: OrbitRole = 'LEAD') {
     const user = await this.prisma.user.findFirst({
       where: { identities: { some: { email: { equals: email.trim(), mode: 'insensitive' } } } },
       select: { id: true },
     });
     if (!user) throw new NotFoundException('No Unifesto account with that email. Ask them to sign up first.');
-    return this.appointUser(spaceId, user.id, actorId);
+    return this.appointUser(spaceId, user.id, actorId, role);
   }
 
-  private async appointUser(spaceId: string, userId: string, actorId: string) {
+  private async appointUser(spaceId: string, userId: string, actorId: string, role: OrbitRole = 'LEAD') {
     const space = await this.prisma.space.findUnique({
       where: { id: spaceId },
       select: { type: true, parentSpaceId: true },
@@ -204,7 +209,10 @@ export class OrbitService {
     }
     const user = { id: userId };
     if (await this.prisma.orbitLead.findFirst({ where: { spaceId, userId: user.id, endedAt: null } })) {
-      throw new ConflictException('Already the Orbit Lead of this campus');
+      throw new ConflictException('Already in Orbit on this campus');
+    }
+    if (role === 'CREW') {
+      return this.prisma.orbitLead.create({ data: { spaceId, userId: user.id, role } });
     }
 
     const existing = await this.prisma.userRole.findFirst({
@@ -225,7 +233,8 @@ export class OrbitService {
   async end(leadId: string, reason: string | undefined, actorId: string) {
     const lead = await this.prisma.orbitLead.findUnique({ where: { id: leadId } });
     if (!lead || lead.endedAt) throw new NotFoundException('No live Orbit Lead with that id');
-    const roles = await this.prisma.userRole.findMany({
+    // Only Leads were given campus admin access; Crew memberships are left alone.
+    const roles = lead.role === 'CREW' ? [] : await this.prisma.userRole.findMany({
       where: { userId: lead.userId, spaceId: lead.spaceId, eventId: null },
       select: { id: true },
     });
@@ -283,7 +292,7 @@ export class OrbitService {
       if (!campus) throw new BadRequestException('Pick your campus from the list, or choose "Not listed".');
     }
     if (await this.prisma.orbitLead.findFirst({ where: { userId, endedAt: null } })) {
-      throw new ConflictException('You are already an Orbit Lead.');
+      throw new ConflictException('You are already in Orbit.');
     }
     if (await this.prisma.orbitApplication.findFirst({ where: { userId, status: 'PENDING' } })) {
       throw new ConflictException('You already have an application in review. We will get back to you.');
@@ -363,6 +372,8 @@ export class OrbitService {
     return app;
   }
 }
+
+export type OrbitRole = 'LEAD' | 'CREW';
 
 export interface OrbitApplyInput {
   spaceId?: string;

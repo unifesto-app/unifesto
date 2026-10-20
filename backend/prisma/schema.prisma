@@ -6082,6 +6082,10 @@ model OrbitLead {
   spaceId String @map("space_id") @db.Uuid
   space   Space  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
+  /// LEAD | CREW. Crew help a Lead on big campuses: no campus admin access,
+  /// no probation, clock or tier of their own. Both accept the Orbit terms.
+  role String @default("LEAD") @db.VarChar(10)
+
   /// Starts the 30-day probation and the inactivity clock.
   joinedAt       DateTime  @default(now()) @map("joined_at") @db.Timestamptz(6)
   /// A declared exam window: the inactivity clock is paused until then.
