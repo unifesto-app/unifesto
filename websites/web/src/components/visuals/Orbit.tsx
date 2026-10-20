@@ -55,40 +55,59 @@ export function OrbitSystem() {
   );
 }
 
-/* The Lead's college-style ID card, lanyard slot and all. */
+/* The Lead's campus ID: lanyard slot, a header band with the u-in-orbit
+   mark, a holographic hairline, photo, name, campus, batch and blood group.
+   Sample person. */
 export function OrbitIdCard() {
   const rows: [string, string][] = [
     ["Name", "Ananya R."],
     ["Campus", "MRU, Hyderabad"],
-    ["Active clubs", "7"],
-    ["Tier", "Bronze"],
+    ["Batch", "2023-27"],
+    ["Blood group", "B+"],
   ];
   return (
     <div
       aria-hidden="true"
-      className="w-full max-w-sm overflow-hidden rounded-2xl bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_30px_60px_-30px_rgba(0,0,0,0.9)]"
+      className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-night-2 shadow-[inset_0_0_0_1px_rgb(var(--glow)/0.08),0_30px_60px_-30px_rgba(0,0,0,0.9)]"
     >
+      {/* Faint orbit lines behind everything. */}
+      <svg className="pointer-events-none absolute -right-16 -bottom-20 h-64 w-64 opacity-[0.07]" viewBox="0 0 200 200">
+        <ellipse cx="100" cy="100" rx="95" ry="30" fill="none" stroke="currentColor" className="text-paper" strokeWidth="1" transform="rotate(-18 100 100)" />
+        <ellipse cx="100" cy="100" rx="70" ry="22" fill="none" stroke="currentColor" className="text-paper" strokeWidth="1" transform="rotate(-18 100 100)" />
+      </svg>
+
       <div className="flex justify-center pt-3">
-        <span className="h-1.5 w-12 rounded-full bg-night" />
+        <span className="h-1.5 w-12 rounded-full bg-night shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]" />
       </div>
-      <div className="mt-3 flex items-center justify-between bg-night-3 px-4 py-2">
-        <span className="font-display text-[12px] text-paper">Unifesto Orbit</span>
-        <span className="text-[9px] uppercase tracking-[0.18em] text-paper/50">Orbit Lead</span>
+
+      <div className="mt-3 flex items-center justify-between bg-night-3 px-4 py-2.5">
+        <span className="flex items-center gap-2">
+          <svg viewBox="0 0 64 40" className="h-6 w-10">
+            <ellipse cx="32" cy="22" rx="27" ry="7" fill="none" stroke="rgb(var(--glow) / 0.45)" strokeWidth="1.2" transform="rotate(-18 32 22)" />
+            <path d={U_PATH} fill="var(--primary-bright)" transform="translate(18.5 32) scale(0.38)" />
+            <circle cx="55" cy="13" r="2" fill="var(--primary-bright)" />
+          </svg>
+          <span className="font-display text-[12px] text-paper">Unifesto Orbit</span>
+        </span>
+        <span className="text-[9px] uppercase tracking-[0.2em] text-paper/55">Orbit Lead</span>
       </div>
-      <div className="flex gap-4 p-4">
-        <div className="grid h-24 w-20 shrink-0 place-items-center rounded-md bg-[radial-gradient(120%_90%_at_80%_0%,rgb(var(--glow)/0.22),transparent_60%),linear-gradient(160deg,var(--sand),var(--night-2))] font-display text-lg text-paper/70">
-          AR
+      <div className="h-px bg-[linear-gradient(90deg,#f6c4ff,#bfe8ff,#c9ffe7,#ffe9b8)] opacity-50" />
+
+      <div className="relative flex gap-4 p-4">
+        <div className="relative grid h-[104px] w-[82px] shrink-0 place-items-center overflow-hidden rounded-lg bg-[radial-gradient(120%_90%_at_80%_0%,rgb(var(--glow)/0.22),transparent_60%),linear-gradient(160deg,var(--sand),var(--night-2))]">
+          <span className="font-display text-lg text-paper/70">AR</span>
         </div>
-        <div className="flex-1 space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1.5">
           {rows.map(([k, v]) => (
-            <div key={k} className="flex items-center justify-between text-[10px]">
+            <div key={k} className="flex items-center justify-between gap-3 text-[10px]">
               <span className="text-paper/50">{k}</span>
-              <span className="text-paper">{v}</span>
+              <span className="truncate text-paper">{v}</span>
             </div>
           ))}
         </div>
       </div>
-      <div className="flex items-end justify-between gap-4 px-4 pb-4">
+
+      <div className="relative flex items-end justify-between gap-4 px-4 pb-4">
         <span className="text-[9px] leading-snug text-paper/50">Represents Unifesto, not the college.</span>
         <span className="flex h-6 items-stretch gap-[2px]">
           {[2, 1, 3, 1, 1, 2, 1, 3, 2, 1, 1, 2].map((w, i) => (
