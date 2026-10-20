@@ -21,7 +21,7 @@ export const CAPABILITIES: Partial<Record<RoleCode, ReadonlyArray<Action>>> = {
 
   // Platform-scoped team member: works the Company section and Product board in
   // Apex. company:view-restricted is off by default; platform:manage and
-  // company:manage can never be granted (see EMPLOYEE_NEVER_GRANTABLE).
+  // company:manage can never be granted (see NEVER_GRANTABLE in capability-config.service.ts).
   [RoleCode.EMPLOYEE]: [
     Action.COMPANY_VIEW,
     Action.COMPANY_EDIT,

@@ -55,10 +55,9 @@ const ROLE_CATALOGUE: readonly RoleMeta[] = [
 // The IAM console itself is @Can(platform:manage), so granting it to EMPLOYEE
 // would let an employee grant themselves anything. company:manage (create and
 // assign company items) stays with ADMIN too.
-const EMPLOYEE_NEVER_GRANTABLE: readonly Action[] = [
-  Action.PLATFORM_MANAGE,
-  Action.COMPANY_MANAGE,
-];
+const NEVER_GRANTABLE: Partial<Record<RoleCode, readonly Action[]>> = {
+  [RoleCode.EMPLOYEE]: [Action.PLATFORM_MANAGE, Action.COMPANY_MANAGE],
+};
 
 // ---- "IAM for Spaces" policy (per-space overrides) --------------------------
 //
@@ -115,6 +114,8 @@ export interface MatrixRole {
   note?: string;
   /** Action keys this role currently grants directly. */
   grants: Action[];
+  /** Actions this role can never be granted (the console shows them locked). */
+  locked?: Action[];
 }
 
 /** The whole matrix payload: the action catalogue plus every role row. */
@@ -252,6 +253,7 @@ export class CapabilityConfigService implements OnModuleInit {
       editable: meta.editable,
       note: meta.note,
       grants: [...this.capabilitiesFor(meta.code)] as Action[],
+      locked: NEVER_GRANTABLE[meta.code] ? [...NEVER_GRANTABLE[meta.code]!] : undefined,
     }));
 
     return { actions, roles };
@@ -290,11 +292,7 @@ export class CapabilityConfigService implements OnModuleInit {
         `Action ${action} (${actionScope}) cannot be granted to ${code} (${meta.scope}) — scopes must match.`,
       );
     }
-    if (
-      granted &&
-      code === RoleCode.EMPLOYEE &&
-      EMPLOYEE_NEVER_GRANTABLE.includes(action)
-    ) {
+    if (granted && NEVER_GRANTABLE[code]?.includes(action)) {
       throw new BadRequestException(
         `${action} can never be granted to ${code}.`,
       );
