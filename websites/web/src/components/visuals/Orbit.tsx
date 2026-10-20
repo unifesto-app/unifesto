@@ -87,7 +87,6 @@ export function OrbitIdCard() {
             <path d={U_PATH} fill="var(--primary-bright)" transform="translate(18.5 32) scale(0.38)" />
             <circle cx="55" cy="13" r="2" fill="var(--primary-bright)" />
           </svg>
-          <span className="font-display text-[12px] text-paper">Unifesto Orbit</span>
         </span>
         <span className="text-[9px] uppercase tracking-[0.2em] text-paper/55">Orbit Lead</span>
       </div>
