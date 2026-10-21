@@ -1,8 +1,15 @@
 import type { Metadata } from "next";
 import { SITE } from "./site";
+import { OG_PAGES } from "./og-pages";
 
 /** The site-wide share card, served by app/opengraph-image.tsx. */
 const DEFAULT_IMAGE = { url: "/opengraph-image", width: 1200, height: 630, alt: SITE.name };
+
+/** The page's own card (app/og/[...path]) when it has one, else the site default. */
+function shareImage(path: string | undefined) {
+  const page = path ? OG_PAGES[path] : undefined;
+  return page ? { ...DEFAULT_IMAGE, url: `/og${path}`, alt: page.title } : DEFAULT_IMAGE;
+}
 
 type Social = {
   /** og/twitter title; defaults to the page title with the brand appended. */
@@ -32,7 +39,7 @@ export function withSocial(meta: Metadata, s: Social = {}): Metadata {
   const description = s.description ?? meta.description ?? SITE.description;
   const canonical = meta.alternates?.canonical;
   const url = typeof canonical === "string" || canonical instanceof URL ? canonical : undefined;
-  const images = s.image === false ? undefined : [DEFAULT_IMAGE];
+  const images = s.image === false ? undefined : [shareImage(typeof url === "string" ? url : url?.pathname)];
 
   return {
     ...meta,
