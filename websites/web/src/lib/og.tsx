@@ -132,21 +132,36 @@ const clamp2: CSSProperties = {
   overflow: "hidden",
 };
 
+/** Lines `text` takes when greedily word-wrapped at `perLine` characters. */
+function wrappedLines(text: string, perLine: number): number {
+  let lines = 1;
+  let used = 0;
+  for (const word of text.split(/\s+/)) {
+    const need = used === 0 ? word.length : used + 1 + word.length;
+    if (need <= perLine) used = need;
+    else {
+      lines += Math.ceil(word.length / perLine);
+      used = word.length % perLine || perLine;
+    }
+  }
+  return lines;
+}
+
 /**
  * Pick the largest Michroma size that fits the title in two lines of `width`,
  * then cap the length so the smallest size still fits. Michroma is an
- * extended face: ~0.62em per glyph measured, 0.72 with word-wrap slack.
+ * extended face: ~0.67em per lowercase glyph, wider for capitals, so 0.72;
+ * wrapping is simulated per word.
  * ponytail: width estimate, not measured; swap for real text metrics if titles clip.
  */
 function fitTitle(title: string, width: number): { text: string; size: number } {
   const perChar = 0.72;
   const sizes = [56, 48, 40, 34];
   for (const size of sizes) {
-    const perLine = Math.floor(width / (size * perChar));
-    if (title.length <= perLine * 2) return { text: title, size };
+    if (wrappedLines(title, Math.floor(width / (size * perChar))) <= 2) return { text: title, size };
   }
   const min = sizes[sizes.length - 1];
-  return { text: truncate(title, Math.floor(width / (min * perChar)) * 2), size: min };
+  return { text: truncate(title, Math.floor(width / (min * perChar)) * 2 - 8), size: min };
 }
 
 export interface OgCardProps {
@@ -169,6 +184,8 @@ export interface OgCardProps {
   imageBg?: string;
   /** Hairline frame around the artwork. Off for the bare brand symbol. */
   frame?: boolean;
+  /** A glyph drawn in a 1:1 frame instead of an image (static pages). */
+  icon?: ReactNode;
 }
 
 /**
@@ -187,9 +204,10 @@ export function OgCard({
   imageFit = "cover",
   imageBg = BRAND.surface,
   frame = true,
+  icon,
 }: OgCardProps): ReactNode {
-  const hasArt = image !== undefined;
-  const art = imageAspect === "1:1" ? { w: 400, h: 400 } : { w: 452, h: 339 };
+  const hasArt = image !== undefined || icon !== undefined;
+  const art = imageAspect === "1:1" || icon ? { w: 400, h: 400 } : { w: 452, h: 339 };
   const colWidth = OG_SIZE.width - PAD * 2 - (hasArt ? art.w + GAP : 0);
   const fitted = fitTitle(title, colWidth);
   const safeSubtitle = subtitle ? truncate(subtitle, hasArt ? 92 : 160) : null;
@@ -326,7 +344,9 @@ export function OgCard({
               justifyContent: "center",
             }}
           >
-            {image ? (
+            {icon ? (
+              icon
+            ) : image ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={image}

@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = `${sessionWhen(s)} · ${sessionPrice(s)} · online${s.space ? ` · by ${s.space.name}` : ""}`;
   return withSocial(
     { title: s.title, description, alternates: { canonical: `/session/${s.slug}` } },
-    { title: s.title, description },
+    { title: s.title, description, image: false },
   );
 }
 
