@@ -862,3 +862,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-20** · Unifesto Orbit campus programme: Orbit Lead record, tiers + inactivity clock, Apex leaderboard, space Orbit page, public /orbit + terms (#303)
 - **2026-10-21** · Orbit apply page (/orbit/apply, applications, Apex queue), certificate + badges + quarterly goodies on /orbit, Orbit in brand kit and press, Orbit across India map (public aggregate API), welcome kit (Lead/Crew), Orbit Crew role (#304)
 - **2026-10-21** · deploy.sh prunes Docker build cache and dangling images before every build (ENOSPC fix) (#305)
+- **2026-10-21** · web share cards for every public page (/og route + help article + Huddle session cards) (#306)
