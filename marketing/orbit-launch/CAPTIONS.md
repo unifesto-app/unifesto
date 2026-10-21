@@ -6,6 +6,12 @@ Apply link everywhere: https://unifesto.app/orbit/apply
 Questions: orbit@unifesto.app
 Programme hashtag (Orbit ground rules ask Leads to use it): #UnifestoOrbit
 
+Kit folder (render output, not in git): `~/Startups/orbit-launch-kit/`
+- `youtube/`: `unifesto-orbit-long.mp4`, `youtube-thumbnail.png`, `youtube-thumbnail.jpg`
+- `youtube-short/`: `unifesto-orbit-short.mp4`, `short-cover.png`
+- `instagram/`: `instagram-carousel-01..05.png`, `unifesto-orbit-reel.mp4`, `reel-cover.png`, `instagram-story.png`, `instagram-story-sticker-guide.png`
+- `COPY.md`: this file
+
 Music in both videos is an original soundtrack synthesized for this kit (soundtrack.py). No licensed audio, no copyright claims.
 
 ---
@@ -72,7 +78,7 @@ Category: Education. Audience: not made for kids. Language: English. Add an end 
 ## 2. YouTube Short
 
 File: `unifesto-orbit-short.mp4` (1080x1920, 9:16, 30 fps, 30 s). Same picture as the Reel.
-Cover (if the app asks for one): `reel-cover.png`.
+Cover (if the app asks for one): `short-cover.png`.
 
 ### Title
 
@@ -184,7 +190,7 @@ Rewards are recognition, not cash. A verifiable certificate, a badge that grows 
 
 If you are a student who already runs things on campus, or you know one who does, this is for you.
 
-Watch the 90 second explainer: <YOUTUBE_URL>
+Watch the 90-second explainer: <YOUTUBE_URL>
 Apply in about ten minutes: https://unifesto.app/orbit/apply
 
 Questions go to orbit@unifesto.app
