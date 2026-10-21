@@ -37,6 +37,14 @@
     <div class="display" style="left:120px;top:500px;font-size:150px">${lines(["Lead your", "campus."], 1)}</div>
     <div data-card="1.9" style="left:1260px;top:400px;transform:rotate(-7deg)"></div>`);
 
+  // ---------- blog cover, 4:3 ----------
+  page("blog-cover", 1440, 1080, "1440x1080", { top: 900, rx: 1080, ry: 760 }, .6, `
+    ${lock(96, 90, 48)}
+    <p class="kicker" style="left:98px;top:250px;font-size:30px">Introducing</p>
+    <div class="display" style="left:96px;top:330px;font-size:96px">${lines(["Unifesto", "Orbit."], 1)}</div>
+    <p class="lede" style="left:96px;top:600px;width:560px;font-size:32px">One student per campus. Every club in one orbit.</p>
+    <div data-orbit="560" style="left:800px;top:180px"></div>`);
+
   // ---------- Instagram carousel, 4:5 ----------
   page("instagram-carousel-01", 1080, 1350, "1080x1350", P45, .35, `
     ${lock(84, 84, 40)}

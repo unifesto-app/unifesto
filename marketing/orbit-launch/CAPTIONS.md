@@ -10,6 +10,7 @@ Kit folder (render output, not in git): `~/Startups/orbit-launch-kit/`
 - `youtube/`: `unifesto-orbit-long.mp4`, `youtube-thumbnail.png`, `youtube-thumbnail.jpg`
 - `youtube-short/`: `unifesto-orbit-short.mp4`, `short-cover.png`
 - `instagram/`: `instagram-carousel-01..05.png`, `unifesto-orbit-reel.mp4`, `reel-cover.png`, `instagram-story.png`, `instagram-story-sticker-guide.png`
+- `blog/`: `blog-unifesto-orbit.md` (Apex fields + content), `blog-cover.png` (1440x1080, 4:3)
 - `COPY.md`: this file
 
 Music in both videos is an original soundtrack synthesized for this kit (soundtrack.py). No licensed audio, no copyright claims.
@@ -196,3 +197,9 @@ Apply in about ten minutes: https://unifesto.app/orbit/apply
 Questions go to orbit@unifesto.app
 
 #UnifestoOrbit #StudentLeadership #CollegeClubs #CampusLife
+
+---
+
+## 7. Blog
+
+Full post with Apex fields: `blog/blog-unifesto-orbit.md` (source: `marketing/orbit-launch/blog-unifesto-orbit.md`). Cover: `blog/blog-cover.png`. Paste into Apex › Blog as a draft, replace `<YOUTUBE_URL>` once the video is up, then publish. It lands at https://unifesto.app/blog/unifesto-orbit
