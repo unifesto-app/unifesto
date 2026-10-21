@@ -1,6 +1,6 @@
 # Unifesto Orbit launch kit: copy
 
-Every title, description, caption and post for the Orbit launch, in one place. Facts come from unifesto.app/orbit (websites/web/src/app/orbit and websites/web/src/lib/site.ts). Nothing here has been posted.
+Every title, description, caption and post for the Orbit launch, in one place. Facts come from unifesto.app/orbit (websites/web/src/app/orbit and websites/web/src/lib/site.ts). Uploaded 21 Oct 2026 as Private (not public yet): long video https://youtu.be/qgugX2qlpUo and the Short, both with title, description, tags and thumbnail. Nothing else has been posted.
 
 Apply link everywhere: https://unifesto.app/orbit/apply
 Questions: orbit@unifesto.app
@@ -169,7 +169,7 @@ Optional second frame: share the Reel to Story with the same link sticker.
 
 ## 6. LinkedIn post
 
-Post from the Unifesto company page. Attach `youtube-thumbnail.png` only if LinkedIn does not build a preview from the YouTube link. Replace `<YOUTUBE_URL>` with the long video's link once it is uploaded.
+Post from the Unifesto company page. Attach `youtube-thumbnail.png` only if LinkedIn does not build a preview from the YouTube link. The YouTube link is filled in (https://youtu.be/qgugX2qlpUo, uploaded as Private on 21 Oct 2026). Make the video Public before posting, or the link will not play for anyone else.
 
 ### Post
 
@@ -191,7 +191,7 @@ Rewards are recognition, not cash. A verifiable certificate, a badge that grows 
 
 If you are a student who already runs things on campus, or you know one who does, this is for you.
 
-Watch the 90-second explainer: <YOUTUBE_URL>
+Watch the 90-second explainer: https://youtu.be/qgugX2qlpUo
 Apply in about ten minutes: https://unifesto.app/orbit/apply
 
 Questions go to orbit@unifesto.app
@@ -202,4 +202,4 @@ Questions go to orbit@unifesto.app
 
 ## 7. Blog
 
-Full post with Apex fields: `blog/blog-unifesto-orbit.md` (source: `marketing/orbit-launch/blog-unifesto-orbit.md`). Cover: `blog/blog-cover.png`. Paste into Apex › Blog as a draft, replace `<YOUTUBE_URL>` once the video is up, then publish. It lands at https://unifesto.app/blog/unifesto-orbit
+Full post with Apex fields: `blog/blog-unifesto-orbit.md` (source: `marketing/orbit-launch/blog-unifesto-orbit.md`). Cover: `blog/blog-cover.png`. Paste into Apex › Blog as a draft and publish once the YouTube video is Public (the post links to https://youtu.be/qgugX2qlpUo). It lands at https://unifesto.app/blog/unifesto-orbit

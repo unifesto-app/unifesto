@@ -21,7 +21,7 @@ Every campus runs on its clubs. The coding club, the dance crew, the E-Cell, the
 
 Unifesto Orbit changes that, one campus at a time. It is our new campus programme for students, and applications are open now.
 
-**[Apply to be an Orbit Lead](https://unifesto.app/orbit/apply)** · [Watch the 90-second video](<YOUTUBE_URL>)
+**[Apply to be an Orbit Lead](https://unifesto.app/orbit/apply)** · [Watch the 90-second video](https://youtu.be/qgugX2qlpUo)
 
 ## What Orbit is
 
