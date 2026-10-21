@@ -10,7 +10,7 @@ Publish from Apex › Blog. Draft until approved.
 | Author | Abhinavtej Reddy |
 | Read minutes | 5 |
 | Featured | Yes |
-| Cover image | `blog-cover.png` (1440x1080, 4:3) |
+| Cover image | `blog-cover-16x9.png` (1920x1080, 16:9, what Apex asks for); `blog-cover.png` is a 4:3 alternative |
 | Excerpt | Unifesto Orbit is our new campus programme for students. One Orbit Lead per campus represents Unifesto, not the college, and helps every club on campus run its events on Unifesto. Here is what the role involves, what you earn, who can apply and how to apply in about ten minutes. |
 
 Paste everything below the line into **Content**.

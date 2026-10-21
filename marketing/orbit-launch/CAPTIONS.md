@@ -1,6 +1,6 @@
 # Unifesto Orbit launch kit: copy
 
-Every title, description, caption and post for the Orbit launch, in one place. Facts come from unifesto.app/orbit (websites/web/src/app/orbit and websites/web/src/lib/site.ts). Uploaded 21 Oct 2026 as Private (not public yet): long video https://youtu.be/qgugX2qlpUo and the Short, both with title, description, tags and thumbnail. Nothing else has been posted.
+Every title, description, caption and post for the Orbit launch, in one place. Facts come from unifesto.app/orbit (websites/web/src/app/orbit and websites/web/src/lib/site.ts). Published 21 Oct 2026: YouTube long video (https://youtu.be/qgugX2qlpUo) and Short, the blog (https://unifesto.app/blog/unifesto-orbit), the LinkedIn company post, and the Instagram carousel and Reel. Still to post from the phone: the Instagram Story (Instagram web cannot post Stories).
 
 Apply link everywhere: https://unifesto.app/orbit/apply
 Questions: orbit@unifesto.app
@@ -169,7 +169,7 @@ Optional second frame: share the Reel to Story with the same link sticker.
 
 ## 6. LinkedIn post
 
-Post from the Unifesto company page. Attach `youtube-thumbnail.png` only if LinkedIn does not build a preview from the YouTube link. The YouTube link is filled in (https://youtu.be/qgugX2qlpUo, uploaded as Private on 21 Oct 2026). Make the video Public before posting, or the link will not play for anyone else.
+Post from the Unifesto company page. Attach `youtube-thumbnail.png` only if LinkedIn does not build a preview from the YouTube link. Posted on the Unifesto company page on 21 Oct 2026.
 
 ### Post
 

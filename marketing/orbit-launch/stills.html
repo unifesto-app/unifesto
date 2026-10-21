@@ -45,6 +45,14 @@
     <p class="lede" style="left:96px;top:600px;width:560px;font-size:32px">One student per campus. Every club in one orbit.</p>
     <div data-orbit="560" style="left:800px;top:180px"></div>`);
 
+  // ---------- blog cover, 16:9 (Apex blog card and post header) ----------
+  page("blog-cover-16x9", 1920, 1080, "1920x1080", { top: 900, rx: 1500, ry: 900 }, .6, `
+    ${lock(120, 96, 52)}
+    <p class="kicker" style="left:122px;top:290px;font-size:32px">Introducing</p>
+    <div class="display" style="left:120px;top:370px;font-size:110px">${lines(["Unifesto", "Orbit."], 1)}</div>
+    <p class="lede" style="left:120px;top:670px;width:700px;font-size:36px">One student per campus. Every club in one orbit.</p>
+    <div data-orbit="620" style="left:1140px;top:140px"></div>`);
+
   // ---------- Instagram carousel, 4:5 ----------
   page("instagram-carousel-01", 1080, 1350, "1080x1350", P45, .35, `
     ${lock(84, 84, 40)}
