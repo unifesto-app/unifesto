@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unifesto Orbit launch stills</title>
+<link rel="stylesheet" href="kit.css">
+<script src="india.js"></script>
+<script src="kit.js"></script>
+<style>
+  /* Pages render at css size and are screenshotted at 2x, then scaled to data-out (render.py stills). */
+  body { display: flex; flex-direction: column; align-items: flex-start; gap: 40px; padding: 40px; background: #222; }
+  .page > * { position: absolute; }
+  .page .pfoot { left: 84px; right: 84px; bottom: 64px; display: flex; justify-content: space-between; font-size: 24px; color: rgb(255 255 255 / .5); }
+  .port .stops .stop { position: relative; padding-left: 62px; }
+  .port .stops .stop .dot { position: absolute; left: 0; top: 4px; }
+  .port .stops .stop .n { margin-top: 0; }
+  .port .stops .route { left: 9px; top: 10px; bottom: 10px; width: 2px; height: auto; background: repeating-linear-gradient(180deg, rgb(255 255 255 / .35) 0 8px, transparent 8px 16px); }
+  .sticker { left: 220px; width: 640px; top: 1428px; height: 120px; border-radius: 22px; border: 3px dashed rgb(255 255 255 / .55); display: grid; place-items: center; font-size: 26px; color: rgb(255 255 255 / .7); }
+</style>
+</head>
+<body>
+<script>
+(() => {
+  const LOCK = Kit.BRAND + "lockup-orbit-silver.svg", AR = 758 / 138;
+  const lines = (arr, dimFrom = 99) => arr.map((l, i) => `<span class="ln"><span class="in${i >= dimFrom ? " dim" : ""}">${l}</span></span>`).join("");
+  const pages = [];
+  // name, css w, h, out size, planet, glow, html
+  const page = (name, w, h, out, planet, glow, inner, cls = "") => pages.push({ name, w, h, out, planet, glow, inner, cls });
+  const P45 = { top: 1190, rx: 760, ry: 630 }, P916 = { top: 1560, rx: 756, ry: 625 };
+  const lock = (x, y, h) => `<img src="${LOCK}" style="left:${x}px;top:${y}px;height:${h}px">`;
+  const foot = n => `<div class="pfoot"><span>unifesto.app/orbit</span><span>${n} / 5</span></div>`;
+
+  // ---------- YouTube thumbnail, 1.43:1 ----------
+  page("youtube-thumbnail", 2048, 1432, "4096x2864", { top: 1190, rx: 1540, ry: 960 }, .85, `
+    ${lock(120, 110, 70)}
+    <p class="kicker" style="left:124px;top:380px;font-size:52px">Now open</p>
+    <div class="display" style="left:120px;top:500px;font-size:150px">${lines(["Lead your", "campus."], 1)}</div>
+    <div data-card="1.9" style="left:1260px;top:400px;transform:rotate(-7deg)"></div>`);
+
+  // ---------- Instagram carousel, 4:5 ----------
+  page("instagram-carousel-01", 1080, 1350, "1080x1350", P45, .35, `
+    ${lock(84, 84, 40)}
+    <p class="kicker" style="left:84px;top:200px;font-size:30px">Introducing Unifesto Orbit</p>
+    <div class="display" style="left:84px;top:290px;font-size:80px">${lines(["Every club", "on campus,", "in one orbit."], 2)}</div>
+    <div data-orbit="560" style="left:260px;top:640px"></div>${foot(1)}`);
+  page("instagram-carousel-02", 1080, 1350, "1080x1350", P45, .2, `
+    ${lock(84, 84, 40)}
+    <div class="display" style="left:84px;top:200px;font-size:66px">${lines(["One Orbit Lead", "per campus."], 1)}</div>
+    <p class="lede" style="left:84px;top:390px;width:880px;font-size:34px">You represent Unifesto, not your college, and help every club on campus run its events on Unifesto.</p>
+    <div data-card="2.1" style="left:137px;top:620px;transform:rotate(-3deg)"></div>${foot(2)}`);
+  page("instagram-carousel-03", 1080, 1350, "1080x1350", P45, .2, `
+    ${lock(84, 84, 40)}
+    <div class="display" style="left:84px;top:200px;font-size:66px">${lines(["The job,", "in four stops."], 1)}</div>
+    <div class="stops" style="left:84px;top:400px;width:760px;gap:24px;zoom:1.12"><i class="route"></i>${Kit.stops()}</div>${foot(3)}`, "port");
+  page("instagram-carousel-04", 1080, 1350, "1080x1350", P45, .2, `
+    ${lock(84, 84, 40)}
+    <div class="display" style="left:84px;top:200px;font-size:66px">${lines(["What you earn."])}</div>
+    <p class="lede" style="left:84px;top:300px;font-size:34px">Rewards are recognition, not cash.</p>
+    <div class="tiers" style="left:84px;top:400px;width:${912 / 1.08}px;grid-template-columns:1fr 1fr;gap:18px;zoom:1.08">${Kit.tiers(72)}</div>${foot(4)}`);
+  page("instagram-carousel-05", 1080, 1350, "1080x1350", P45, .9, `
+    ${lock((1080 - 50 * AR) / 2, 330, 50)}
+    <div class="display" style="left:0;width:1080px;text-align:center;top:450px;font-size:96px">${lines(["Lead your", "campus."])}</div>
+    <p class="lede" style="left:0;width:1080px;text-align:center;top:720px;font-size:38px">Apply in about ten minutes.</p>
+    <div style="left:0;width:1080px;top:820px;text-align:center"><span class="pill solid url" style="font-size:32px">unifesto.app/orbit/apply</span></div>
+    <p style="left:0;width:1080px;text-align:center;top:950px;font-size:26px;color:rgb(255 255 255 / .55)">Link in bio · Questions? orbit@unifesto.app</p>${foot(5)}`);
+
+  // ---------- Instagram Story, 9:16, with a spot for the link sticker ----------
+  const story = guide => `
+    ${lock(84, 250, 46)}
+    <p class="kicker" style="left:84px;top:380px;font-size:32px">Unifesto Orbit is live</p>
+    <div class="display" style="left:84px;top:450px;font-size:100px">${lines(["Lead your", "campus."], 1)}</div>
+    <p class="lede" style="left:84px;top:730px;width:900px;font-size:36px">One Orbit Lead per campus. Apply in about ten minutes.</p>
+    <div data-card="1.95" style="left:165px;top:810px;transform:rotate(-3deg)"></div>
+    <p style="left:0;width:1080px;text-align:center;top:1366px;font-size:28px;color:rgb(255 255 255 / .6)">Tap the link to apply</p>
+    ${guide ? `<div class="sticker">Link sticker: unifesto.app/orbit/apply</div>` : ""}`;
+  page("instagram-story", 1080, 1920, "1080x1920", P916, .35, story(false));
+  page("instagram-story-sticker-guide", 1080, 1920, "1080x1920", P916, .35, story(true));
+
+  // ---------- build ----------
+  pages.forEach(p => {
+    const s = Kit.html(`<section class="page stage ${p.cls}" data-name="${p.name}" data-out="${p.out}" style="width:${p.w}px;height:${p.h}px"><canvas class="sky"></canvas>${p.inner}</section>`);
+    document.body.appendChild(s);
+    s.querySelectorAll("[data-card]").forEach(m => m.appendChild(Kit.idCard(+m.dataset.card)));
+    s.querySelectorAll("[data-orbit]").forEach(m => { const o = Kit.orbitSystem(+m.dataset.orbit, 20); o.place(23.83); m.appendChild(o); });
+    p.el = s;
+  });
+  window.ready = Kit.fonts().then(() => {
+    pages.forEach((p, i) => Kit.sky(p.el.querySelector("canvas"), p.w, p.h, p.planet, 20261021 + i)(0, { glow: p.glow }));
+    return true;
+  });
+})();
+</script>
+</body>
+</html>

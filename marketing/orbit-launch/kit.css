@@ -1,0 +1,121 @@
+/* Unifesto Orbit launch kit: shared look for the videos (orbit.html) and the stills (stills.html).
+   Monochrome cosmos from brand-2026: night ground, light type, silver accent, planet with a lit rim. */
+@font-face { font-family: "Michroma"; src: url("../../websites/web/public/fonts/og/Michroma-Regular.ttf") format("truetype"); font-weight: 400; }
+@font-face { font-family: "Hanken Grotesk"; src: url("../brand-2026/HankenGrotesk.ttf") format("truetype"); font-weight: 100 900; }
+
+:root {
+  --ink: #ececee; --muted: #8a8a90; --night2: #0a0a0b; --night3: #141416; --sand: #1a1a1d;
+  --line: rgb(255 255 255 / .12);
+  --silver: linear-gradient(180deg, #ffffff 0%, #e4e4e8 50%, #a6a6ad 100%);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #000; }
+body { font-family: "Hanken Grotesk", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+.stage { position: relative; overflow: hidden; background: #000; }
+.stage > canvas.sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* type */
+.display { font-family: "Michroma", sans-serif; font-weight: 400; letter-spacing: .01em; line-height: 1.16; }
+.display .dim, .dim { color: rgb(255 255 255 / .5); }
+.ln { display: block; overflow: hidden; padding: .12em 0 .24em; margin: -.12em 0 -.24em; white-space: nowrap; }
+.ln > .in { display: block; }
+.silver { background: var(--silver); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.kicker { font-size: 26px; font-weight: 400; color: rgb(255 255 255 / .62); letter-spacing: .01em; }
+.kicker.center::before { margin-left: auto; margin-right: auto; }
+.kicker::before { content: ""; display: block; width: 64px; height: 2px; background: rgb(255 255 255 / .6); margin-bottom: 22px; }
+.lede { font-weight: 300; line-height: 1.4; color: rgb(255 255 255 / .72); text-wrap: balance; }
+.lede b { font-weight: 500; color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: .5em; padding: .55em 1em; border-radius: 999px; font-weight: 500; white-space: nowrap; line-height: 1.2; }
+.pill.solid { background: #e8e8ea; color: #000; }
+.pill.ghost { border: 2px solid rgb(255 255 255 / .28); background: var(--night2); }
+.card { background: var(--night2); border-radius: 28px; box-shadow: inset 0 0 0 1.5px var(--line), 0 40px 80px -40px #000; }
+
+/* ID card (sizes in em; set font-size on .idc to scale: 1em = one site px) */
+.idc { position: relative; width: 384em; height: 252em; perspective: 1400em; }
+.idc .flip { position: absolute; inset: 0; transform-style: preserve-3d; }
+.idc .face { position: absolute; inset: 0; overflow: hidden; border-radius: 16em; background: var(--night2); backface-visibility: hidden;
+  box-shadow: inset 0 0 0 1em rgb(255 255 255 / .1), 0 30em 60em -30em #000; display: flex; flex-direction: column; }
+.idc .back { transform: rotateY(180deg); }
+.idc .slot { display: flex; justify-content: center; padding-top: 12em; }
+.idc .slot i { width: 48em; height: 6em; border-radius: 9em; background: #000; box-shadow: inset 0 1em 2em rgb(0 0 0 / .6); }
+.idc .band { margin-top: 12em; display: flex; align-items: center; justify-content: space-between; background: var(--night3); padding: 10em 16em; }
+.idc .band span { font-size: 9em; letter-spacing: .2em; text-transform: uppercase; color: rgb(255 255 255 / .55); }
+.idc .holo { height: 1em; background: linear-gradient(90deg, #f6c4ff, #bfe8ff, #c9ffe7, #ffe9b8); opacity: .5; }
+.idc .body { display: flex; gap: 16em; padding: 16em; }
+.idc .photo { width: 82em; height: 104em; flex: none; border-radius: 8em; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 80% 0%, rgb(255 255 255 / .22), transparent 60%), linear-gradient(160deg, var(--sand), var(--night2)); }
+.idc .photo b { font-family: "Michroma"; font-weight: 400; font-size: 18em; color: rgb(255 255 255 / .7); }
+.idc .rows { flex: 1; display: grid; gap: 6em; align-content: start; }
+.idc .row { display: flex; justify-content: space-between; gap: 12em; font-size: 10em; }
+.idc .row span:first-child { color: rgb(255 255 255 / .5); }
+.idc .foot { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 16em 16em; margin-top: auto; }
+.idc .foot small { font-size: 9em; color: rgb(255 255 255 / .5); }
+.idc .bars { display: flex; gap: 2em; height: 24em; }
+.idc .bars i { background: rgb(255 255 255 / .4); }
+.idc .mid { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10em; }
+.idc .mid img { height: 28em; }
+.idc .mid span { font-size: 9em; letter-spacing: .24em; text-transform: uppercase; color: rgb(255 255 255 / .5); }
+.idc .back .foot { align-items: center; padding: 12em 16em; }
+.idc .rings { position: absolute; pointer-events: none; opacity: .07; }
+
+/* Orbit system: clubs circling a Unifesto core (positions set per frame by Kit.orbitAt) */
+.osys { position: relative; }
+.osys .ring { position: absolute; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .14); }
+.osys .body { position: absolute; left: 0; top: 0; }
+.osys .chip { display: flex; align-items: center; gap: .45em; white-space: nowrap; border-radius: 999px; background: var(--night2); padding: .35em .9em .35em .4em;
+  color: rgb(255 255 255 / .85); box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .12); transform: translate(-50%, -50%); }
+.osys .chip i { width: .8em; height: .8em; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff, rgb(255 255 255 / .25)); }
+.osys .core { position: absolute; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #1a1a1d 70%); box-shadow: 0 0 80px rgb(255 255 255 / .25); }
+.osys .core span { font-family: "Michroma"; color: #000; }
+
+/* the four stops */
+.stops { position: relative; display: grid; }
+.stops .route { position: absolute; background: repeating-linear-gradient(90deg, rgb(255 255 255 / .35) 0 8px, transparent 8px 16px); height: 2px; }
+.stop .dot { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--night2); box-shadow: inset 0 0 0 2.5px rgb(255 255 255 / .7); }
+.stop .n { display: block; margin-top: 20px; font-family: "Michroma"; font-size: 18px; color: rgb(255 255 255 / .45); }
+.stop h3 { margin-top: 8px; font-size: 34px; font-weight: 500; }
+.stop p { margin-top: 8px; font-size: 22px; font-weight: 300; line-height: 1.4; color: rgb(255 255 255 / .62); }
+
+/* "My start period" panel */
+.panel { width: 560px; padding: 0; overflow: hidden; }
+.panel .ph { display: flex; align-items: center; gap: 10px; padding: 18px 26px; border-bottom: 1.5px solid rgb(255 255 255 / .08); font-size: 20px; color: rgb(255 255 255 / .6); }
+.panel .ph i { width: 10px; height: 10px; border-radius: 50%; background: rgb(255 255 255 / .25); }
+.panel .pb { padding: 26px; }
+.panel .top { display: flex; align-items: baseline; justify-content: space-between; }
+.panel .top b { font-family: "Michroma"; font-weight: 400; font-size: 28px; }
+.panel .top span { font-size: 18px; color: rgb(255 255 255 / .55); }
+.panel .bar { margin-top: 16px; height: 10px; border-radius: 9px; background: var(--night3); overflow: hidden; }
+.panel .bar i { display: block; height: 100%; width: 0; border-radius: 9px; background: #e8e8ea; }
+.panel .club { margin-top: 12px; display: flex; justify-content: space-between; border-radius: 12px; background: var(--night3); padding: 16px 18px; font-size: 20px; }
+.panel .club span:last-child { color: rgb(255 255 255 / .6); }
+
+/* tiers */
+.tiers { display: grid; gap: 22px; }
+.tier { padding: 26px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.tier h3 { font-family: "Michroma"; font-weight: 400; font-size: 24px; margin-top: 6px; }
+.tier .bar { font-size: 17px; color: rgb(255 255 255 / .5); line-height: 1.35; }
+.tier ul { list-style: none; margin-top: 6px; display: grid; gap: 6px; }
+.tier li { font-size: 18px; line-height: 1.35; color: rgb(255 255 255 / .82); }
+
+/* certificate */
+.cert { width: 600px; padding: 10px; }
+.cert .in2 { position: relative; overflow: hidden; border-radius: 14px; border: 1.5px solid rgb(255 255 255 / .15); padding: 40px; }
+.cert .in2::before { content: ""; position: absolute; inset: 7px; border-radius: 9px; border: 1.5px solid rgb(255 255 255 / .1); }
+.cert .in2::after { content: ""; position: absolute; right: -70px; top: -70px; width: 200px; height: 200px; border-radius: 50%; border: 1.5px dashed rgb(255 255 255 / .1); }
+.cert .k { font-size: 12px; letter-spacing: .28em; text-transform: uppercase; color: rgb(255 255 255 / .5); }
+.cert .t { margin-top: 14px; font-family: "Michroma"; font-size: 28px; }
+.cert .s { margin-top: 22px; font-size: 14px; color: rgb(255 255 255 / .55); }
+.cert .nm { margin-top: 4px; font-family: "Michroma"; font-size: 24px; }
+.cert .p { margin-top: 14px; max-width: 34ch; font-size: 16px; line-height: 1.55; color: rgb(255 255 255 / .7); }
+.cert .sig { margin-top: 30px; display: flex; align-items: flex-end; justify-content: space-between; }
+.cert .sig div { width: 160px; border-top: 1.5px solid rgb(255 255 255 / .25); padding-top: 6px; font-size: 13px; color: rgb(255 255 255 / .55); }
+.cert .v { margin-top: 20px; font-size: 12px; color: rgb(255 255 255 / .4); letter-spacing: .03em; }
+
+/* checklist */
+.checks { list-style: none; display: grid; gap: 18px; }
+.checks li { display: flex; align-items: center; gap: 18px; font-weight: 400; }
+.checks li::before { content: ""; flex: none; width: .9em; height: .9em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, rgb(255 255 255 / .2)); box-shadow: 0 0 18px rgb(255 255 255 / .25); }
+
+.url { font-family: "Michroma"; letter-spacing: .01em; }
