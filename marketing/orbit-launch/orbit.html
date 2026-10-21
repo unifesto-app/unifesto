@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unifesto Orbit launch video</title>
+<link rel="stylesheet" href="kit.css">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomEase.min.js"></script>
+<script src="cuts.js"></script>
+<script src="india.js"></script>
+<script src="kit.js"></script>
+<style>
+  html, body { overflow: hidden; height: 100%; }
+  #stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .scene { position: absolute; inset: 0; visibility: hidden; }
+  .scene > * { position: absolute; }
+  #corner { position: absolute; z-index: 2; }
+  #play { position: fixed; inset: 0; display: none; place-items: center; background: rgb(0 0 0 / .55); color: #fff; font: 500 22px "Hanken Grotesk"; cursor: pointer; z-index: 10; }
+  /* portrait: the stops run down the page on a vertical route */
+  .port .stops .stop { position: relative; padding-left: 62px; }
+  .port .stops .stop .dot { position: absolute; left: 0; top: 4px; }
+  .port .stops .stop .n { margin-top: 0; }
+</style>
+</head>
+<body>
+<div id="stage" class="stage"><canvas class="sky" id="sky"></canvas></div>
+<audio id="snd" preload="auto"></audio>
+<div id="play">Click to play with sound</div>
+<script>
+(() => {
+  const q = new URLSearchParams(location.search), CUT = q.get("cut") || "long", C = CUTS[CUT];
+  const W = C.w, H = C.h, LAND = W > H, DUR = C.scenes.reduce((s, [, d]) => s + d, 0), BEAT = 60 / CUTS.bpm;
+  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const stage = $("#stage"); stage.classList.add(LAND ? "land" : "port");
+  Object.assign(stage.style, { width: W + "px", height: H + "px" });
+
+  gsap.registerPlugin(CustomEase);
+  CustomEase.create("out", "0.23,1,0.32,1"); CustomEase.create("inOut", "0.77,0,0.175,1");
+  gsap.defaults({ ease: "out", overwrite: false });
+  const tl = gsap.timeline({ paused: true }), S = { glow: 0, shine: 0, day: 1 }, ticks = [];
+
+  // ---------- layout: one set of scenes, placed for landscape (1536x1074) or portrait (1080x1920) ----------
+  const P = LAND ? { x: 110, vx: 1150, vy: 430, h: 52, lede: 26, top: 250, planet: { top: 884, rx: 1150, ry: 720 } }
+                 : { x: 84, vx: 540, vy: 1090, h: 74, lede: 36, top: 300, planet: { top: 1500, rx: 756, ry: 625 } };
+  const lines = (arr, dimFrom = 99) => arr.map((l, i) => `<span class="ln"><span class="in${i >= dimFrom ? " dim" : ""}">${l}</span></span>`).join("");
+  const head = (arr, dimFrom, at, size = P.h) => `<div class="display" data-in="rise"${at != null ? ` data-at="${at}"` : ""} style="left:${P.x}px;top:${P.top}px;font-size:${size}px">${lines(arr, dimFrom)}</div>`;
+  const lede = (txt, top, at, w = LAND ? 600 : 880) => `<p class="lede" data-in="blur"${at != null ? ` data-at="${at}"` : ""} style="left:${P.x}px;top:${top}px;width:${w}px;font-size:${P.lede}px">${txt}</p>`;
+  const vis = (inner, w, h, extra = "", kind = "pop", at) => `<div class="vis" data-in="${kind}"${at != null ? ` data-at="${at}"` : ""} style="left:${P.vx - w / 2}px;top:${P.vy - h / 2}px;width:${w}px;height:${h}px;display:grid;place-items:center;${extra}">${inner}</div>`;
+  const LOCK = Kit.BRAND + "lockup-orbit-silver.svg", LOCK_AR = 758 / 138;
+
+  const SCENES = {
+    intro: () => `
+      <img data-in="pop" data-at=".3" src="${LOCK}" style="left:${(W - (LAND ? 84 : 92) * LOCK_AR) / 2}px;top:${LAND ? 370 : 760}px;height:${LAND ? 84 : 92}px">
+      <p class="lede" data-in="blur" data-at="1.6" style="left:0;width:${W}px;text-align:center;top:${LAND ? 510 : 920}px;font-size:${LAND ? 30 : 40}px">The campus programme for students.</p>`,
+    hook: () => LAND ? `
+      <p class="kicker center" data-in="blur" data-at=".1" style="left:0;width:${W}px;top:230px;text-align:center;font-size:24px">Introducing Unifesto Orbit</p>
+      <div class="display" data-in="rise" data-at=".35" style="left:0;width:${W}px;top:330px;font-size:74px;text-align:center">${lines(["Every club on campus,", "in one orbit."], 1)}</div>` : `
+      <p class="kicker" data-in="blur" data-at=".05" style="left:${P.x}px;top:560px;font-size:32px">Introducing Unifesto Orbit</p>
+      <div class="display" data-in="rise" data-at=".25" style="left:${P.x}px;top:660px;font-size:100px">${lines(["Every club", "on campus,", "in one", "orbit."], 2)}</div>`,
+    system: () => head(["One Orbit Lead", "per campus."], 1) +
+      lede("You help every club on your campus run its events on Unifesto.", LAND ? 420 : 520) +
+      vis('<div class="sysmount"></div>', LAND ? 640 : 780, LAND ? 640 : 780),
+    id: () => head(LAND ? ["You represent", "Unifesto,", "not your college."] : ["You represent", "Unifesto, not", "your college."], 2) +
+      lede("Remote and flexible, with no fixed hours. You stay as long as you are active.", LAND ? 480 : 640) +
+      vis('<div class="idmount"></div>', LAND ? 576 : 826, LAND ? 378 : 545, "", "pop", .5),
+    stops: () => (LAND ? head(["The job, in four stops."], 9, null) : head(["The job,", "in four stops."], 1)) + (LAND ? `
+      <div class="stops" data-in="stops" data-at=".7" style="left:${P.x}px;top:420px;width:${W - 2 * P.x}px;grid-template-columns:repeat(4,1fr);gap:44px"><i class="route" style="left:0;right:0;top:9px;transform-origin:0 50%"></i>${Kit.stops()}</div>
+      ${CUT === "long" ? lede("One more: introduce your fest committee to Unifesto.", 740, 5.2, 900) : ""}` : `
+      <div class="stops" data-in="stops" data-at=".5" style="left:${P.x}px;top:580px;width:${700}px;gap:40px;zoom:1.3"><i class="route" style="left:9px;top:10px;bottom:10px;width:2px;height:auto;background:repeating-linear-gradient(180deg,rgb(255 255 255 / .35) 0 8px,transparent 8px 16px);transform-origin:50% 0"></i>${Kit.stops()}</div>`),
+    start: () => head(["Start with", "30 days."], 1) +
+      lede("Onboard 2 clubs in your first 30 days. After that there is no end date.", LAND ? 420 : 520) +
+      vis(Kit.startPanel(), LAND ? 616 : 868, LAND ? 330 : 470, "", "pop", .5),
+    tiers: () => (LAND ? `
+      <div class="display" data-in="rise" style="left:${P.x}px;top:150px;font-size:${P.h}px">${lines(["What you earn."])}</div>
+      <p class="lede" data-in="blur" style="left:${P.x}px;top:236px;font-size:${P.lede}px">Rewards are recognition, not cash.</p>
+      <div class="tiers" data-in="stagger" data-at=".8" style="left:${P.x}px;top:320px;width:${(W - 2 * P.x) / 1.25}px;grid-template-columns:repeat(4,1fr);zoom:1.25">${Kit.tiers(96)}</div>` : `
+      <div class="display" data-in="rise" style="left:${P.x}px;top:${P.top}px;font-size:${P.h}px">${lines(["What you earn."])}</div>
+      <p class="lede" data-in="blur" style="left:${P.x}px;top:410px;font-size:${P.lede}px">Rewards are recognition, not cash.</p>
+      <div class="tiers" data-in="stagger" data-at=".6" style="left:${P.x}px;top:510px;width:${912 / 1.15}px;grid-template-columns:1fr 1fr;gap:18px;zoom:1.15">${Kit.tiers(76)}</div>`),
+    kit: () => head(["Certificate,", "badge and", "welcome kit."], 2) +
+      lede("Pass your first 30 days and a box lands at your door: the Orbit hoodie, the Orbit Playbook, a signed welcome letter and stickers. Goodies every quarter after that.", 480) +
+      vis(Kit.cert(), 600, 440, "transform:rotate(-1.5deg)", "pop", .6),
+    who: () => head(["Who it is for."], 9) + `
+      <ul class="checks" data-in="stagger" data-at=".6" style="left:${P.x}px;top:370px;font-size:28px"><li>18 or older</li><li>Studying at the campus you would lead</li><li>Active in a club or fest team</li><li>Up for remote work, no fixed hours</li></ul>` +
+      vis(`<div class="card" style="width:500px;padding:40px"><div style="display:flex;align-items:center;gap:22px">${Kit.badge("Lead", 92)}<div><p class="display" style="font-size:28px">Orbit Crew</p><p style="margin-top:6px;font-size:18px;color:rgb(255 255 255 / .55)">On big campuses</p></div></div>
+        <p class="lede" style="margin-top:26px;font-size:22px">2 to 3 Crew per campus, chosen with the Lead. Crew get their own welcome kit and an Orbit certificate.</p></div>`, 500, 320, "", "pop", 1.4),
+    map: () => head(["Orbit across", "India."], 1) +
+      lede("Open to campuses across India. College not on Unifesto yet? Apply anyway. We create the campus Space.", 420) +
+      vis(`<svg class="india" viewBox="-20 -20 1040 1168" width="610" height="685" style="overflow:visible"><path class="outline" d="${INDIA_PATH}" fill="rgb(255 255 255 / .03)" stroke="rgb(255 255 255 / .5)" stroke-width="1.6" stroke-linejoin="round"/><g class="hub"></g></svg>`, 610, 685, "", "blur", .2),
+    close: () => LAND ? `
+      <img data-in="pop" data-at=".1" src="${LOCK}" style="left:${(W - 46 * LOCK_AR) / 2}px;top:230px;height:46px">
+      <div class="display" data-in="rise" data-at=".4" style="left:0;width:${W}px;text-align:center;top:330px;font-size:84px">${lines(["Lead your campus."])}</div>
+      <p class="lede" data-in="blur" data-at="1" style="left:0;width:${W}px;text-align:center;top:470px;font-size:30px">Apply in about ten minutes.</p>
+      <div data-in="pop" data-at="1.5" style="left:0;width:${W}px;top:560px;text-align:center"><span class="pill solid url" style="font-size:30px">unifesto.app/orbit/apply</span></div>
+      <p data-in="blur" data-at="2.2" style="left:0;width:${W}px;text-align:center;top:690px;font-size:20px;color:rgb(255 255 255 / .5)">Questions? orbit@unifesto.app</p>` : `
+      <img data-in="pop" data-at=".1" src="${LOCK}" style="left:${(W - 54 * LOCK_AR) / 2}px;top:500px;height:54px">
+      <div class="display" data-in="rise" data-at=".35" style="left:0;width:${W}px;text-align:center;top:640px;font-size:96px">${lines(["Lead your", "campus."])}</div>
+      <p class="lede" data-in="blur" data-at=".9" style="left:0;width:${W}px;text-align:center;top:930px;font-size:40px">Apply in about ten minutes.</p>
+      <div data-in="pop" data-at="1.3" style="left:0;width:${W}px;top:1040px;text-align:center"><span class="pill solid url" style="font-size:34px">unifesto.app/orbit/apply</span></div>
+      <p data-in="blur" data-at="1.9" style="left:0;width:${W}px;text-align:center;top:1180px;font-size:28px;color:rgb(255 255 255 / .5)">Questions? orbit@unifesto.app</p>`,
+  };
+
+  // ---------- per-scene motion beyond the generic entrances ----------
+  const EXTRA = {
+    intro(sc, t0, d) { tl.to(S, { glow: .9, duration: 2.6, ease: "sine.inOut" }, t0 + .2); tl.to(S, { glow: .2, duration: 2.4, ease: "sine.inOut" }, t0 + 3); },
+    system(sc, t0) {
+      const o = Kit.orbitSystem(LAND ? 600 : 740, LAND ? 18 : 24); $(".sysmount", sc).replaceWith(o);
+      ticks.push(t => o.place(Math.max(0, t - t0) + 3));
+      tl.fromTo($$(".ring", o), { scale: .6, autoAlpha: 0 }, { scale: 1, autoAlpha: 1, duration: 1.2, stagger: .12 }, t0 + .2);
+      tl.fromTo($$(".chip", o), { autoAlpha: 0, scale: .7 }, { autoAlpha: 1, scale: 1, duration: .5, stagger: .1, ease: "back.out(1.8)" }, t0 + .7);
+    },
+    id(sc, t0, d) {
+      const c = Kit.idCard(LAND ? 1.5 : 2.15); $(".idmount", sc).replaceWith(c);
+      const f = $(".flip", c);
+      tl.fromTo(f, { rotationX: 24, rotationY: -18, y: 50 }, { rotationX: 0, rotationY: 0, y: 0, duration: 1.4 }, t0 + .5);
+      tl.to(f, { rotationY: 180, duration: 1.2, ease: "inOut" }, t0 + d * .55);
+      ticks.push(t => { if (t > t0 && t < t0 + d) gsap.set(c, { y: 8 * Math.sin((t - t0) * 1.6) }); });
+    },
+    stops(sc, t0) {
+      const r = $(".route", sc), at = +$(".stops", sc).dataset.at;
+      tl.fromTo(r, LAND ? { scaleX: 0 } : { scaleY: 0 }, { ...(LAND ? { scaleX: 1 } : { scaleY: 1 }), duration: CUT === "long" ? 3.6 : 2.2, ease: "inOut" }, t0 + at);
+    },
+    start(sc, t0, d) {
+      const day = $(".day", sc), cnt = $(".cnt", sc), bar = $(".bar i", sc), c1 = $(".c1", sc), c2 = $(".c2", sc);
+      tl.fromTo(S, { day: 1 }, { day: 30, duration: d * .62, ease: "power1.inOut" }, t0 + 1);
+      ticks.push(t => { if (t < t0 || t > t0 + d) return;
+        const n = Math.round(S.day), k = (n >= 9) + (n >= 21);
+        day.textContent = `Day ${n} of 30`; cnt.textContent = n >= 30 ? "Start period passed" : `${k} of 2 clubs onboarded`;
+        bar.style.width = (S.day / 30 * 100).toFixed(2) + "%";
+        [c1, c2].forEach((c, i) => { const on = k > i; c.style.opacity = on ? 1 : 0; c.style.transform = on ? "none" : "translateY(10px)"; });
+      });
+    },
+    map(sc, t0, d) {
+      const p = $(".outline", sc), len = Math.ceil(p.getTotalLength()), g = $(".hub", sc), h = indiaPoint(78.4867, 17.385);
+      p.style.strokeDasharray = len;
+      tl.fromTo(p, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: 2.6, ease: "inOut" }, t0 + .2);
+      g.innerHTML = [0, 1, 2].map(() => `<circle cx="${h.x}" cy="${h.y}" r="10" fill="none" stroke="#fff" stroke-width="2"/>`).join("") +
+        `<circle cx="${h.x}" cy="${h.y}" r="9" fill="#fff"/><text x="${h.x + 22}" y="${h.y + 8}" fill="rgb(255 255 255 / .75)" font-size="26" font-family="Hanken Grotesk">Hyderabad</text>`;
+      const rings = $$("circle", g).slice(0, 3);
+      ticks.push(t => rings.forEach((c, i) => { const u = ((t - t0 - 1 + i * .9) / 2.7) % 1, on = t > t0 + 1 + i * .9 ? 1 : 0;
+        c.setAttribute("r", (10 + 520 * u).toFixed(1)); c.setAttribute("stroke-opacity", (on * .5 * (1 - u) ** 2).toFixed(3)); }));
+    },
+    close(sc, t0) {
+      tl.to(S, { glow: 1, shine: 1, duration: .7 }, t0 + .2);
+      tl.to(S, { glow: .6, shine: .35, duration: 2, ease: "sine.out" }, t0 + 1);
+    },
+  };
+
+  // ---------- build ----------
+  const corner = Kit.html(`<img id="corner" src="${LOCK}" alt="" style="left:${P.x}px;top:${LAND ? 74 : 170}px;height:${LAND ? 34 : 44}px">`);
+  stage.appendChild(corner);
+  function enter(sc, t0) {
+    let auto = .15;
+    $$("[data-in]", sc).forEach(el => {
+      const at = el.dataset.at != null ? +el.dataset.at : auto, t = t0 + at, k = el.dataset.in;
+      if (k === "rise") { const ins = $$(".in", el); tl.fromTo(ins, { yPercent: 112 }, { yPercent: 0, duration: .8, stagger: .09 }, t); auto = at + .09 * ins.length + .15; return; }
+      if (k === "stagger" || k === "stops") { const kids = [...el.children].filter(c => !c.classList.contains("route")), gap = k === "stops" ? (CUT === "long" ? .9 : .5) : .16;
+        tl.fromTo(kids, { autoAlpha: 0, y: 24, filter: "blur(8px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: .6, stagger: gap }, t); auto = at + gap * kids.length; return; }
+      if (k === "pop") tl.fromTo(el, { autoAlpha: 0, scale: .93, filter: "blur(10px)" }, { autoAlpha: 1, scale: 1, filter: "blur(0px)", duration: .9 }, t);
+      else tl.fromTo(el, { autoAlpha: 0, y: 18, filter: "blur(8px)" }, { autoAlpha: 1, y: 0, filter: "blur(0px)", duration: .6 }, t);
+      auto = at + .2;
+    });
+  }
+  function build() {
+    let t0 = 0;
+    C.scenes.forEach(([name, d], i) => {
+      const sc = Kit.html(`<div class="scene" id="sc-${name}">${SCENES[name]()}</div>`); stage.appendChild(sc);
+      tl.set(sc, { autoAlpha: 1 }, t0);
+      enter(sc, t0);
+      if (EXTRA[name]) EXTRA[name](sc, t0, d);
+      if (i < C.scenes.length - 1) tl.to(sc, { autoAlpha: 0, y: -24, filter: "blur(10px)", duration: .4, ease: "power2.in" }, t0 + d - .4);
+      else tl.to(sc, { autoAlpha: 0, duration: .6, ease: "power1.in" }, DUR - .6);     // fade to black at the very end
+      t0 += d;
+    });
+    const first = C.scenes[0][0] === "intro" ? C.scenes[0][1] : 0, last = DUR - C.scenes.at(-1)[1];
+    tl.fromTo(corner, { autoAlpha: 0 }, { autoAlpha: 1, duration: .6 }, first + .1);
+    tl.to(corner, { autoAlpha: 0, duration: .4 }, last - .4);
+    tl.to({}, { duration: .001 }, DUR - .001);
+  }
+
+  // ---------- frame t ----------
+  const kicks = []; for (let t = C.kick[0]; t <= C.kick[1] + 1e-6; t += BEAT) kicks.push({ t, a: Math.abs(t / 2 - Math.round(t / 2)) < 1e-6 ? 1 : .55 });
+  const pulse = t => { let v = 0; for (const k of kicks) { const d = t - k.t; if (d >= 0 && d < 1.2) v += k.a * Math.min(1, d / .012) * Math.exp(-d / .17); } return .22 * v; };
+  let draw;
+  function frame(t) {
+    t = Math.min(Math.max(t, 0), DUR);
+    tl.seek(t, true); ticks.forEach(f => f(t));
+    draw(t, { glow: S.glow + pulse(t), shine: S.shine });
+  }
+  window.seek = frame; window.DUR = DUR;
+
+  function fit() { const k = Math.min(innerWidth / W, innerHeight / H); stage.style.transform = `scale(${k})`; stage.style.left = (innerWidth - W * k) / 2 + "px"; }
+  window.ready = Kit.fonts().then(() => {
+    build();
+    return Kit.fonts();                       // images inside the scenes
+  }).then(() => {
+    draw = Kit.sky($("#sky"), W, H, P.planet);
+    frame(0);
+    if (!q.has("render")) {
+      fit(); addEventListener("resize", fit);
+      const play = $("#play"), snd = $("#snd"); snd.src = `soundtrack-${CUT}.wav`; play.style.display = "grid";
+      play.onclick = () => { play.style.display = "none"; snd.currentTime = +(q.get("t") || 0); snd.play().catch(() => {}); const s0 = performance.now() - snd.currentTime * 1000;
+        gsap.ticker.add(() => frame(snd.paused || !snd.duration ? (performance.now() - s0) / 1000 : snd.currentTime)); };
+      if (q.has("t")) frame(+q.get("t"));
+    }
+    return true;
+  });
+})();
+</script>
+</body>
+</html>
