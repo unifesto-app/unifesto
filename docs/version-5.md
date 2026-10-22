@@ -497,7 +497,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | IN_REVIEW (#308) |
 | J9 | **Keep private event and session fields out of public APIs.** - Anonymous GET /events, GET /events/space/:id and favourites return every Event column through include with no select (backend/src/events/events.service.ts:1554-1593, getSpaceEvents ~:2675), exposing whatsappAttendeeGroupUrl, onl | next |
 | J10 | **Close cross-tenant writes on ticket types and space hierarchy.** 1. IDOR: deleteTicketType never checks that tt.eventId equals the authorised event (backend/src/events/events.service.ts:3056-3086; | next |
-| J11 | **Fix stored XSS in email preview and SSRF in certificate render.** 1. XSS: the Space email preview iframe uses srcDoc with no sandbox (websites/space/app/(dashboard)/dashboard/email/new/page.tsx:449-453), so template HTML runs in the Space origin. | next |
+| J11 | **Fix stored XSS in email preview and SSRF in certificate render.** 1. XSS: the Space email preview iframe uses srcDoc with no sandbox (websites/space/app/(dashboard)/dashboard/email/new/page.tsx:449-453), so template HTML runs in the Space origin. | IN_REVIEW (#310) |
 | J12 | **Make Redis and config caches replica-safe.** 1. The shared RedisService retryStrategy returns null after 3 tries (backend/src/redis/redis.service.ts:41-55), so the ioredis client ends for good, and a failed boot ping sets client=null (:106-108). | next |
 | J13 | **Deploy only CI-green main with a rollback image.** deploy.sh:87-110 rsyncs the local working tree with no check on git status, branch, origin/main or CI, and parallel sessions share this tree. | done (#292) |
 | J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | planned |
@@ -865,3 +865,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-21** · web share cards for every public page (/og route + help article + Huddle session cards) (#306)
 - **2026-10-21** · Orbit launch marketing kit tooling (marketing/orbit-launch): 4K 1.43:1 YouTube cut, 9:16 Short/Reel, Instagram stills, copy (#307)
 - **2026-10-22** · J8 group size capped on every registration path (MAX_GROUP_SIZE 100) (#308)
+- **2026-10-22** · J11 email HTML sanitised at save+render, apex preview sandboxed, certificate backgrounds locked to our S3 host with 15 MB/no-redirect fetch and pre-decode dimension check (#310)
