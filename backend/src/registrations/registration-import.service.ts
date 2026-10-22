@@ -24,7 +24,7 @@ import {
 import { PaymentStatus, RegistrationStatus, Prisma, Provider, FormFieldType } from '@prisma/client';
 import { GroupSeatsService } from './group-seats.service';
 import * as crypto from 'crypto';
-import { generateQRCode, generateTicketCode, ticketsIn } from './registration.util';
+import { generateQRCode, generateTicketCode, resolveGroupSize, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
 
@@ -674,19 +674,7 @@ export class RegistrationImportService {
     this.assertAttendeeActionsOpen(event.endDateTime);
 
     // Resolve the group size + how many seats this booking consumes.
-    let groupSize: number | null = null;
-    if (ticketType.kind === 'GROUP') {
-      const size = dto.groupSize ?? ticketType.minGroupSize ?? 1;
-      if (
-        (ticketType.minGroupSize != null && size < ticketType.minGroupSize) ||
-        (ticketType.maxGroupSize != null && size > ticketType.maxGroupSize)
-      ) {
-        throw new BadRequestException(
-          `Group size must be between ${ticketType.minGroupSize} and ${ticketType.maxGroupSize}`,
-        );
-      }
-      groupSize = size;
-    }
+    const groupSize = resolveGroupSize(ticketType, dto.groupSize);
     const seats = groupSize && groupSize > 1 ? groupSize : 1;
 
     // Capacity (null = unlimited).

@@ -11,9 +11,11 @@ import {
   IsUUID,
   Length,
   Matches,
+  Max,
   Min,
   MaxLength,
 } from 'class-validator';
+import { MAX_GROUP_SIZE } from '../../registrations/registration.util';
 
 /**
  * Create a discount code on one event. `code` is normalised to uppercase by the
@@ -135,5 +137,6 @@ export class ValidateCouponDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   groupSize?: number;
 }
