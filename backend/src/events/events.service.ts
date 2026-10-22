@@ -419,6 +419,17 @@ export class EventsService {
       throw new ForbiddenException('You cannot manage this event');
     }
 
+    // ...and you must be able to run the parent too (J10): owning a child is
+    // no licence to hang it under someone else's hub.
+    const parent = await this.prisma.event.findUnique({
+      where: { id: parentId },
+      select: { id: true, spaceId: true },
+    });
+    if (!parent) throw new NotFoundException('Parent event not found');
+    if (!(await this.canManageEvent(userId, parent.spaceId, parent.id))) {
+      throw new ForbiddenException('You cannot manage the parent event');
+    }
+
     await this.assertChildAttachable(child, parentId);
 
     const updated = await this.performSubEventAttach(child, parentId);
@@ -3253,6 +3264,16 @@ export class EventsService {
     const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
     if (!canManage) {
       throw new ForbiddenException('You cannot manage this event');
+    }
+
+    // The ticket type must belong to the event the caller manages (J10):
+    // otherwise any curator could delete another space's tickets by id.
+    const existing = await this.prisma.eventTicketType.findUnique({
+      where: { id: typeId },
+      select: { eventId: true },
+    });
+    if (!existing || existing.eventId !== eventId) {
+      throw new NotFoundException('Ticket type not found');
     }
 
     // Refuse to delete a ticket type that has real (paid, non-cancelled)

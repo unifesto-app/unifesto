@@ -430,10 +430,11 @@ export class SpacesController {
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.SPACE_MANAGE_SETTINGS)
   async updateSpace(
+    @CurrentUser() user: User,
     @Param('id') id: string,
     @Body() dto: UpdateSpaceDto,
   ) {
-    return this.spacesService.updateSpace(id, dto);
+    return this.spacesService.updateSpace(id, dto, user.id);
   }
 
   /**
