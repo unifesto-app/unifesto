@@ -59,6 +59,49 @@ describe('CertificateRenderService.renderAll (S20)', () => {
   }, 30_000); // real 6000² sharp + Skia render; slow on CI runners
 });
 
+describe('certificate background input bounds (J11)', () => {
+  const render = new CertificateRenderService();
+  const cap = (buf: Buffer) => (render as any).capBackground(buf, 2000, 2000);
+
+  it('rejects bytes that are not a readable image instead of passing them to Skia', async () => {
+    await expect(cap(Buffer.from('not an image'))).rejects.toThrow(
+      'readable image',
+    );
+  });
+
+  it('rejects an image over 10000 x 10000 from its header, before decoding', async () => {
+    // A 1 x 20000 x 20000 PNG header is enough: sharp reads dimensions only.
+    const huge = await sharp({
+      create: { width: 1, height: 1, channels: 3, background: '#fff' },
+    })
+      .png()
+      .toBuffer();
+    huge.writeUInt32BE(20000, 16); // IHDR width
+    huge.writeUInt32BE(20000, 20); // IHDR height
+    await expect(cap(huge)).rejects.toThrow('10000 x 10000');
+  });
+
+  it('fetches with no redirects and a 15 MB cap', async () => {
+    process.env.S3_BUCKET_NAME = 'b';
+    process.env.AWS_REGION = 'r';
+    const axios = require('axios');
+    const get = jest
+      .spyOn(axios, 'get')
+      .mockResolvedValue({ data: new ArrayBuffer(1) });
+    await (render as any).fetchBackground(
+      'https://b.s3.r.amazonaws.com/bg.png',
+    );
+    expect(get).toHaveBeenCalledWith(
+      'https://b.s3.r.amazonaws.com/bg.png',
+      expect.objectContaining({
+        maxRedirects: 0,
+        maxContentLength: 15 * 1024 * 1024,
+      }),
+    );
+    get.mockRestore();
+  });
+});
+
 function setup(queue: { add?: jest.Mock; addReissueRevoked?: jest.Mock }) {
   const prisma = {
     certificate: { count: jest.fn().mockResolvedValue(4) },

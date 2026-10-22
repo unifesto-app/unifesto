@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import { CERTIFICATE_FONT_FAMILIES } from '../certificate-fonts';
+import { IsOwnS3Url } from '../../storage/own-s3-url';
 import {
   ArrayMaxSize,
   ArrayMinSize,
@@ -11,7 +12,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUrl,
   IsUUID,
   Max,
   MaxLength,
@@ -88,7 +88,7 @@ export class CreateCertificateTemplateDto {
   @MaxLength(150)
   name: string;
 
-  @IsUrl()
+  @IsOwnS3Url()
   @MaxLength(2000)
   backgroundUrl: string;
 
@@ -117,7 +117,7 @@ export class UpdateCertificateTemplateDto {
   name?: string;
 
   @IsOptional()
-  @IsUrl()
+  @IsOwnS3Url()
   @MaxLength(2000)
   backgroundUrl?: string;
 
