@@ -34,7 +34,7 @@ function db(counts: Partial<Record<'reg' | 'refund' | 'stay' | 'payout' | 'sessi
 
 function events(prisma: ReturnType<typeof db>) {
   const s = Object.create(EventsService.prototype);
-  Object.assign(s, { prisma, cache: { invalidateEventCache: jest.fn() } });
+  Object.assign(s, { prisma, cache: { invalidateEventCache: jest.fn() }, authz: { can: jest.fn(async () => true) } });
   s.canManageEvent = jest.fn(async () => true);
   return s as EventsService;
 }
