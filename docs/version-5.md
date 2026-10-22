@@ -494,7 +494,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
-| J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | next |
+| J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | IN_REVIEW (#308) |
 | J9 | **Keep private event and session fields out of public APIs.** - Anonymous GET /events, GET /events/space/:id and favourites return every Event column through include with no select (backend/src/events/events.service.ts:1554-1593, getSpaceEvents ~:2675), exposing whatsappAttendeeGroupUrl, onl | next |
 | J10 | **Close cross-tenant writes on ticket types and space hierarchy.** 1. IDOR: deleteTicketType never checks that tt.eventId equals the authorised event (backend/src/events/events.service.ts:3056-3086; | next |
 | J11 | **Fix stored XSS in email preview and SSRF in certificate render.** 1. XSS: the Space email preview iframe uses srcDoc with no sandbox (websites/space/app/(dashboard)/dashboard/email/new/page.tsx:449-453), so template HTML runs in the Space origin. | next |
@@ -864,3 +864,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-21** · deploy.sh prunes Docker build cache and dangling images before every build (ENOSPC fix) (#305)
 - **2026-10-21** · web share cards for every public page (/og route + help article + Huddle session cards) (#306)
 - **2026-10-21** · Orbit launch marketing kit tooling (marketing/orbit-launch): 4K 1.43:1 YouTube cut, 9:16 Short/Reel, Instagram stills, copy (#307)
+- **2026-10-22** · J8 group size capped on every registration path (MAX_GROUP_SIZE 100) (#308)
