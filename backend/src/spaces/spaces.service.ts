@@ -54,6 +54,9 @@ import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
+/** Deepest sub-space level the analytics walk follows (J10 cycle bound). */
+const MAX_SPACE_DEPTH = 20;
+
 @Injectable()
 export class SpacesService {
   private readonly logger = new Logger(SpacesService.name);
@@ -419,11 +422,20 @@ export class SpacesService {
   /**
    * Update space
    */
-  async updateSpace(id: string, dto: UpdateSpaceDto) {
+  async updateSpace(id: string, dto: UpdateSpaceDto, actorId: string) {
     const space = await this.prisma.space.findUnique({ where: { id } });
 
     if (!space) {
       throw new NotFoundException('Space not found');
+    }
+
+    // Structure and limits are Unifesto's call (J10): a Space Admin goes
+    // through the reviewed sub-space request flow instead.
+    if (
+      (dto.type !== undefined || dto.parentSpaceId !== undefined || dto.coCuratorLimit !== undefined) &&
+      !(await isPlatformAdmin(this.prisma, actorId))
+    ) {
+      throw new ForbiddenException('Only Unifesto can change a space type, parent or co-curator limit');
     }
     this.logger.log(`parentSpace: ${JSON.stringify((space as any).parentSpace)}`);
 
@@ -442,6 +454,7 @@ export class SpacesService {
       if (parentSpace.type !== 'SUPER') {
         throw new BadRequestException('A parent space must be a SUPER space. A REGULAR space cannot be a parent.');
       }
+      await this.assertNoHierarchyCycle(space.id, parentSpace.parentSpaceId);
     }
 
     // A space that has children (is a parent) must remain SUPER — it cannot be
@@ -2077,6 +2090,28 @@ export class SpacesService {
   // =====================================================
 
   /**
+   * Cycle guard: walking up from `ancestorId` (the future parent's own parent)
+   * must never reach `spaceId`, or re-parenting `spaceId` would form a loop.
+   */
+  private async assertNoHierarchyCycle(spaceId: string, ancestorId: string | null) {
+    const visited = new Set<string>();
+    while (ancestorId) {
+      if (ancestorId === spaceId) {
+        throw new BadRequestException(
+          'This assignment would create a cycle in the space hierarchy',
+        );
+      }
+      if (visited.has(ancestorId)) break;
+      visited.add(ancestorId);
+      const ancestor = await this.prisma.space.findUnique({
+        where: { id: ancestorId },
+        select: { parentSpaceId: true },
+      });
+      ancestorId = ancestor?.parentSpaceId ?? null;
+    }
+  }
+
+  /**
    * Create a sub-space request (authenticated users)
    */
   async createSubSpaceRequest(userId: string, dto: CreateSubSpaceRequestDto) {
@@ -2146,24 +2181,7 @@ export class SpacesService {
           );
         }
 
-        // Cycle guard: the target (future parent) must not be a descendant of
-        // the sub-space, otherwise we would create a loop in the hierarchy.
-        let ancestorId: string | null = targetSpace.parentSpaceId;
-        const visited = new Set<string>();
-        while (ancestorId) {
-          if (ancestorId === subSpaceId) {
-            throw new BadRequestException(
-              'This assignment would create a cycle in the space hierarchy',
-            );
-          }
-          if (visited.has(ancestorId)) break;
-          visited.add(ancestorId);
-          const ancestor = await this.prisma.space.findUnique({
-            where: { id: ancestorId },
-            select: { parentSpaceId: true },
-          });
-          ancestorId = ancestor?.parentSpaceId ?? null;
-        }
+        await this.assertNoHierarchyCycle(subSpaceId, targetSpace.parentSpaceId);
       }
 
       // Removal requests: the sub-space must currently be a child of target.
@@ -2468,29 +2486,36 @@ export class SpacesService {
     // Walk the whole subtree with a recursive CTE. `depth` is the number of
     // hops from the root (direct sub-spaces = 1, sub-sub-spaces = 2, …). The
     // root itself is excluded from the descendant set.
-    const descendants = await this.prisma.$queryRaw<
-      Array<{
-        id: string;
-        name: string;
-        slug: string;
-        type: string;
-        status: string;
-        parent_space_id: string | null;
-        depth: number;
-      }>
-    >(Prisma.sql`
-      WITH RECURSIVE subtree AS (
-        SELECT id, name, slug, type, status, parent_space_id, 1 AS depth
-        FROM spaces
-        WHERE parent_space_id = ${id}::uuid
-        UNION ALL
-        SELECT s.id, s.name, s.slug, s.type, s.status, s.parent_space_id, st.depth + 1
-        FROM spaces s
-        JOIN subtree st ON s.parent_space_id = st.id
-      )
-      SELECT id, name, slug, type, status, parent_space_id, depth
-      FROM subtree
-    `);
+    // A bad row could still form a loop, so the walk carries its path and
+    // never revisits a space, stops at MAX_SPACE_DEPTH, and runs under a
+    // statement timeout (J10).
+    const descendants = await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL statement_timeout = '5s'`;
+      return tx.$queryRaw<
+        Array<{
+          id: string;
+          name: string;
+          slug: string;
+          type: string;
+          status: string;
+          parent_space_id: string | null;
+          depth: number;
+        }>
+      >(Prisma.sql`
+        WITH RECURSIVE subtree AS (
+          SELECT id, name, slug, type, status, parent_space_id, 1 AS depth, ARRAY[${id}::uuid, id] AS path
+          FROM spaces
+          WHERE parent_space_id = ${id}::uuid AND id <> ${id}::uuid
+          UNION ALL
+          SELECT s.id, s.name, s.slug, s.type, s.status, s.parent_space_id, st.depth + 1, st.path || s.id
+          FROM spaces s
+          JOIN subtree st ON s.parent_space_id = st.id
+          WHERE st.depth < ${MAX_SPACE_DEPTH} AND s.id <> ALL(st.path)
+        )
+        SELECT id, name, slug, type, status, parent_space_id, depth
+        FROM subtree
+      `);
+    });
 
     const descendantIds = descendants.map((d) => d.id);
 
