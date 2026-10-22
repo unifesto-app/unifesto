@@ -13,7 +13,7 @@ import {
   type EventTeamRole,
 } from "@/lib/api/events-api";
 import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { can, outranks, roleForEvent } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -97,8 +97,11 @@ function Avatar({ user }: { user: TeamUser }) {
 export default function EventTeamPage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const { currentRole } = useSession();
-  const canAssign = can(currentRole, "event:assign-curators");
+  const { currentSpace, user } = useSession();
+  const myRole = roleForEvent(currentSpace, eventId);
+  const canAssign = can(myRole, "event:assign-curators");
+  // Only roles below your own can be handed out (only a Space Admin names a Curator).
+  const roleOptions = TEAM_ROLES.filter((r) => outranks(myRole, r.code));
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +173,7 @@ export default function EventTeamPage() {
     );
   }
 
-  const selectedRole = TEAM_ROLES.find((r) => r.code === role);
+  const selectedRole = roleOptions.find((r) => r.code === role);
 
   return (
     <div className="space-y-6">
@@ -207,7 +210,7 @@ export default function EventTeamPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TEAM_ROLES.map((r) => (
+                  {roleOptions.map((r) => (
                     <SelectItem key={r.code} value={r.code}>
                       {r.label}
                     </SelectItem>
@@ -305,7 +308,7 @@ export default function EventTeamPage() {
                     <Badge variant={roleVariant(m.role?.code)}>
                       {roleLabel(m.role?.code, m.role?.name)}
                     </Badge>
-                    {canAssign && (
+                    {canAssign && m.userId !== user?.id && outranks(myRole, m.role?.code) && (
                       <Button
                         variant="ghost"
                         size="sm"

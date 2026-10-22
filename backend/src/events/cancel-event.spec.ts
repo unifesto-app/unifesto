@@ -48,8 +48,7 @@ function build(opts: { claimed?: number; children?: { id: string }[] } = {}) {
   };
   const cache: any = { invalidateEventCache: jest.fn(async () => undefined) };
   const events = { emit: jest.fn() };
-  const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, {} as any, {} as any);
-  jest.spyOn(svc, 'canManageEvent').mockResolvedValue(true);
+  const svc = new EventsService(prisma, {} as any, {} as any, cache, email, {} as any, events as any, { can: jest.fn(async () => true) } as any, {} as any);
   return { svc, prisma, email, events };
 }
 

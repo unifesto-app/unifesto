@@ -5,6 +5,8 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { MagnifyingGlass, User } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { useSpaceAccess } from '../context/SpaceAccessContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import {
   addTeamMember,
@@ -12,10 +14,12 @@ import {
   removeTeamMember,
   roleLabel,
   searchTeamCandidates,
+  TEAM_RANK,
   TEAM_ROLES,
   type TeamMember,
   type TeamUser,
 } from '../lib/api/eventTeam';
+import { getManagedEvent } from '../lib/api/eventAdmin';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { AppAlert } from '../components/ui/AppAlert';
@@ -51,6 +55,24 @@ export default function EventTeamScreen() {
   const [results, setResults] = useState<TeamUser[]>([]);
   const [searching, setSearching] = useState(false);
   const seq = useRef(0);
+  const { user } = useAuth();
+  const { spaces } = useSpaceAccess();
+  const [spaceId, setSpaceId] = useState<string | null>(null);
+
+  // My rank here: Space Admin of the owning space, else my own event role.
+  const myRank = Math.max(
+    0,
+    ...spaces.flatMap((s) => [
+      s.id === spaceId ? TEAM_RANK[s.userRole?.code ?? ''] ?? 0 : 0,
+      TEAM_RANK[s.eventAccess.find((e) => e.eventId === eventId)?.roleCode ?? ''] ?? 0,
+    ]),
+  );
+  const roleOptions = TEAM_ROLES.filter((r) => TEAM_RANK[r.code] < myRank);
+  const canEdit = (m: TeamMember) => m.userId !== user?.id && (TEAM_RANK[m.role?.code ?? ''] ?? 0) < myRank;
+
+  useEffect(() => {
+    if (eventId) void getManagedEvent(eventId).then((res) => res.ok && setSpaceId(res.data.spaceId));
+  }, [eventId]);
 
   const load = useCallback(async () => {
     if (!eventId) return;
@@ -91,7 +113,7 @@ export default function EventTeamScreen() {
 
   const add = (u: TeamUser) =>
     AppAlert.alert(`Add ${nameOf(u)} as`, undefined, [
-      ...TEAM_ROLES.map((r) => ({
+      ...roleOptions.map((r) => ({
         text: r.label,
         onPress: async () => {
           setBusy(u.id);
@@ -149,22 +171,24 @@ export default function EventTeamScreen() {
         />
       }
     >
-      <View style={styles.search}>
-        <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Add someone from your space"
-          placeholderTextColor={tokens.textMuted}
-          selectionColor={tokens.accent}
-          autoCorrect={false}
-          autoCapitalize="none"
-          style={[styles.searchInput, { color: tokens.text }]}
-        />
-        {searching ? <ActivityIndicator size="small" color={tokens.accent} /> : null}
-      </View>
-      {query.trim().length >= 2 && !searching ? (
+      {roleOptions.length > 0 ? (
+        <View style={styles.search}>
+          <CardBackdrop shape={styles.search} />
+          <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Add someone from your space"
+            placeholderTextColor={tokens.textMuted}
+            selectionColor={tokens.accent}
+            autoCorrect={false}
+            autoCapitalize="none"
+            style={[styles.searchInput, { color: tokens.text }]}
+          />
+          {searching ? <ActivityIndicator size="small" color={tokens.accent} /> : null}
+        </View>
+      ) : null}
+      {roleOptions.length > 0 && query.trim().length >= 2 && !searching ? (
         <SettingsGroup>
           {results.length === 0 ? <SettingsRow label="No space members match" /> : null}
           {results.map((u) => (
@@ -195,7 +219,7 @@ export default function EventTeamScreen() {
             trailing={
               busy === m.userId ? (
                 <ActivityIndicator size="small" color={tokens.danger} />
-              ) : (
+              ) : !canEdit(m) ? undefined : (
                 <Pressable onPress={() => remove(m)} hitSlop={8}>
                   <Text style={[styles.link, { color: tokens.danger }]}>Remove</Text>
                 </Pressable>

@@ -77,6 +77,10 @@ export default function EventSettingsScreen() {
 
   // Payout routing is money, so Space Admins of the owning space only.
   const isSpaceAdmin = !!event && spaces.some((s) => s.id === event.spaceId && s.userRole?.code === 'SPACE_ADMIN');
+  // Publish, cancel, hide, restore and delete belong to the event's owners: a
+  // Space Admin of the owning space or the event's Curator (T1).
+  const isEventOwner =
+    isSpaceAdmin || spaces.some((s) => s.eventAccess.some((e) => e.eventId === eventId && e.roleCode === 'CURATOR'));
   useEffect(() => {
     if (!isSpaceAdmin || !eventId) return;
     void getEligibleAccounts(eventId).then((res) => {
@@ -212,7 +216,7 @@ export default function EventSettingsScreen() {
           <Text style={[styles.note, { color: tokens.textMuted }]}>Reason: {event.cancellationReason}</Text>
         ) : null}
 
-        {isDraft ? (
+        {isDraft && isEventOwner ? (
           <Button
             label="Publish event"
             size="lg"
@@ -326,62 +330,66 @@ export default function EventSettingsScreen() {
           </>
         ) : null}
 
-        <SettingsGroup title="Danger zone">
-          {canCancel ? (
-            <SettingsRow icon={icon(XCircle, tokens.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
-          ) : null}
-          {isHidden ? (
-            <SettingsRow
-              icon={icon(ArrowCounterClockwise)}
-              label="Restore event"
-              trailing={busy === 'restore' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
-              onPress={() => void run('restore', () => restoreEvent(eventId!))}
-            />
-          ) : (
-            <SettingsRow
-              icon={icon(EyeSlash, canHide ? tokens.accent : tokens.textMuted)}
-              label="Hide event"
-              trailing={busy === 'hide' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
-              onPress={canHide ? hide : undefined}
-            />
-          )}
-          <SettingsRow
-            icon={icon(Trash, canDelete ? tokens.danger : tokens.textMuted)}
-            label="Delete permanently"
-            danger={canDelete}
-            trailing={busy === 'delete' ? <ActivityIndicator size="small" color={tokens.danger} /> : undefined}
-            onPress={canDelete ? remove : undefined}
-          />
-        </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
-          {canDelete
-            ? 'Hiding is reversible. Deleting is not.'
-            : isCompleted
-              ? "A finished event can't be deleted, its attendance and payments are kept. Hide it instead."
-              : 'Only finished or cancelled events can be hidden. Cancel it first to delete it.'}
-        </Text>
-
-        {cancelOpen ? (
+        {isEventOwner ? (
           <>
-            <SettingsGroup title="Cancel event" plain>
-              <FieldRow
-                stacked
-                multiline
-                label="Reason (optional, shown to attendees)"
-                value={reason}
-                onChangeText={setReason}
-                placeholder="Due to unforeseen circumstances…"
+          <SettingsGroup title="Danger zone">
+            {canCancel ? (
+              <SettingsRow icon={icon(XCircle, tokens.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
+            ) : null}
+            {isHidden ? (
+              <SettingsRow
+                icon={icon(ArrowCounterClockwise)}
+                label="Restore event"
+                trailing={busy === 'restore' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
+                onPress={() => void run('restore', () => restoreEvent(eventId!))}
               />
-            </SettingsGroup>
-            <Button
-              label="Cancel event"
-              variant="danger"
-              size="lg"
-              fullWidth
-              loading={busy === 'cancel'}
-              onPress={confirmCancel}
-              style={{ marginTop: spacing[4] }}
+            ) : (
+              <SettingsRow
+                icon={icon(EyeSlash, canHide ? tokens.accent : tokens.textMuted)}
+                label="Hide event"
+                trailing={busy === 'hide' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
+                onPress={canHide ? hide : undefined}
+              />
+            )}
+            <SettingsRow
+              icon={icon(Trash, canDelete ? tokens.danger : tokens.textMuted)}
+              label="Delete permanently"
+              danger={canDelete}
+              trailing={busy === 'delete' ? <ActivityIndicator size="small" color={tokens.danger} /> : undefined}
+              onPress={canDelete ? remove : undefined}
             />
+          </SettingsGroup>
+          <Text style={[styles.note, { color: tokens.textMuted }]}>
+            {canDelete
+              ? 'Hiding is reversible. Deleting is not.'
+              : isCompleted
+                ? "A finished event can't be deleted, its attendance and payments are kept. Hide it instead."
+                : 'Only finished or cancelled events can be hidden. Cancel it first to delete it.'}
+          </Text>
+
+          {cancelOpen ? (
+            <>
+              <SettingsGroup title="Cancel event" plain>
+                <FieldRow
+                  stacked
+                  multiline
+                  label="Reason (optional, shown to attendees)"
+                  value={reason}
+                  onChangeText={setReason}
+                  placeholder="Due to unforeseen circumstances…"
+                />
+              </SettingsGroup>
+              <Button
+                label="Cancel event"
+                variant="danger"
+                size="lg"
+                fullWidth
+                loading={busy === 'cancel'}
+                onPress={confirmCancel}
+                style={{ marginTop: spacing[4] }}
+              />
+            </>
+          ) : null}
           </>
         ) : null}
       </ScrollView>

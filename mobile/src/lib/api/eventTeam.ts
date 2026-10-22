@@ -28,6 +28,9 @@ export const TEAM_ROLES: { code: EventTeamRole; label: string; blurb: string }[]
   { code: 'CREW', label: 'Crew', blurb: 'Check-in and scanning only' },
 ];
 
+/** Rank on an event's team. You can only grant, change or remove roles below your own (T1). */
+export const TEAM_RANK: Record<string, number> = { CREW: 1, CO_CURATOR: 2, CURATOR: 3, SPACE_ADMIN: 4 };
+
 export const roleLabel = (code?: string | null, fallback?: string | null) =>
   TEAM_ROLES.find((r) => r.code === code)?.label ?? fallback ?? 'Member';
 
