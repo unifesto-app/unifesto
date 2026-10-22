@@ -62,6 +62,8 @@ import {
   canAccessSpaceOnlyEvent,
   listableEventsWhere,
   memberSpaceIds,
+  PRIVATE_EVENT_DETAIL_FIELDS,
+  PUBLIC_EVENT_CARD_SELECT,
 } from './event-access';
 import {
   CancelEventDto,
@@ -1654,7 +1656,8 @@ export class EventsService {
         skip,
         take: limit,
         orderBy,
-        include: {
+        select: {
+          ...PUBLIC_EVENT_CARD_SELECT,
           space: {
             select: {
               id: true,
@@ -1724,7 +1727,6 @@ export class EventsService {
         venueName: true,
         venueAddress: true,
         city: true,
-        onlineUrl: true,
         visibility: true,
         status: true,
         isRecurring: true,
@@ -1755,7 +1757,9 @@ export class EventsService {
       venueName: event.venueName,
       venueAddress: event.venueAddress,
       city: event.city,
-      onlineUrl: event.onlineUrl,
+      // Public download: never the join link (J9). Ticket holders get it in
+      // their confirmation email and .ics.
+      onlineUrl: null,
       organiserName: event.space?.name ?? event.creator?.fullName ?? null,
       customDomain: event.space?.subscription
         ? resolveSpaceBranding(
@@ -1851,7 +1855,26 @@ export class EventsService {
     if (!(await canAccessSpaceOnlyEvent(this.prisma, event, viewerId))) {
       throw new NotFoundException('Event not found');
     }
+    // The join link is for the people running the event and those holding a
+    // ticket (J9). Copy, never mutate: the payload is the shared cache entry.
+    if (event.onlineUrl && !(await this.canSeeJoinLink(event, viewerId))) {
+      return { ...event, onlineUrl: null };
+    }
     return event;
+  }
+
+  /** Operators and attending ticket holders (booking or claimed group seat). */
+  private async canSeeJoinLink(event: { id: string; spaceId: string }, viewerId?: string) {
+    if (!viewerId) return false;
+    if (await this.canViewUnpublishedEvent(event, viewerId)) return true;
+    const tickets = await this.prisma.eventRegistration.count({
+      where: {
+        eventId: event.id,
+        ...COUNTS_AS_ATTENDING,
+        OR: [{ userId: viewerId }, { groupSeats: { some: { ...CLAIMED_MEMBER_SEAT, claimedByUserId: viewerId } } }],
+      },
+    });
+    return tickets > 0;
   }
 
   private async canViewUnpublishedEvent(
@@ -2064,7 +2087,7 @@ export class EventsService {
     // The private attendee group is surfaced only through JWT-guarded
     // per-registration endpoints. The operator WhatsApp page loads/edits these
     // via GET/PATCH /events/:id/whatsapp.
-    delete (event as any).whatsappAttendeeGroupUrl;
+    for (const field of PRIVATE_EVENT_DETAIL_FIELDS) delete (event as any)[field];
     for (const tt of (event as any).ticketTypes ?? []) {
       delete tt.whatsappGroupUrl;
     }
@@ -2885,7 +2908,12 @@ export class EventsService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: {
+        // Card columns only, operators included: the dashboard list needs no
+        // join links or payout routing. `deletedAt` badges hidden events for
+        // operators (outsiders only ever get active rows).
+        select: {
+          ...PUBLIC_EVENT_CARD_SELECT,
+          deletedAt: true,
           creator: {
             select: {
               id: true,

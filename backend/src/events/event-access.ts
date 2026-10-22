@@ -106,6 +106,66 @@ export async function canAccessSpaceOnlyEvent(
   return !!ticket;
 }
 
+/**
+ * The Event columns a public card may carry: GET /events, a space's public
+ * list, favourites (J9). An allow-list, so a new column stays private until
+ * someone adds it here. Left out on purpose: the join link (`onlineUrl`, only
+ * for operators and ticket holders), the attendee WhatsApp group, payout
+ * routing, the projector `displayToken`, `createdBy` and housekeeping columns.
+ */
+export const PUBLIC_EVENT_CARD_SELECT = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  coverImageUrl: true,
+  type: true,
+  registrationType: true,
+  startDateTime: true,
+  endDateTime: true,
+  timezone: true,
+  venueName: true,
+  venueAddress: true,
+  city: true,
+  state: true,
+  country: true,
+  latitude: true,
+  longitude: true,
+  onlinePlatform: true,
+  capacity: true,
+  registeredCount: true,
+  waitlistEnabled: true,
+  waitlistCount: true,
+  isFree: true,
+  absorbProcessingFee: true,
+  tags: true,
+  category: true,
+  categories: true,
+  visibility: true,
+  status: true,
+  whiteLabelEnabled: true,
+  brandColor: true,
+  brandLogoUrl: true,
+  isRecurring: true,
+  seriesParentId: true,
+  parentEventId: true,
+  spaceId: true,
+  publishedAt: true,
+  cancelledAt: true,
+  cancellationReason: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.EventSelect;
+
+/** Columns never sent on the public event detail, cached or not (J9). */
+export const PRIVATE_EVENT_DETAIL_FIELDS = [
+  'whatsappAttendeeGroupUrl',
+  'payoutBankAccountId',
+  'displayToken',
+  'deletedBy',
+  'formUploadsPurgedAt',
+] as const;
+
 type EventWith<S extends Prisma.EventSelect> = Prisma.EventGetPayload<{
   select: S & { id: true; spaceId: true };
 }>;

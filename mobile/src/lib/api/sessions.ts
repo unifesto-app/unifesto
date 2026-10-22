@@ -5,7 +5,7 @@
  * the join window.
  */
 
-import { makeAuthenticatedRequest, makePublicRequest } from './helpers';
+import { makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
 
 export type SessionPlatform =
   | 'GOOGLE_MEET'
@@ -96,7 +96,8 @@ export async function listSessions(): Promise<Session[]> {
 }
 
 export async function getSessionBySlug(slug: string): Promise<Session | null> {
-  const response = await makePublicRequest(`/sessions/${slug}`);
+  // Signed in → the backend adds the recording for registrants (J9).
+  const response = await makeOptionalAuthRequest(`/sessions/${slug}`);
   if (!response?.ok) return null;
   return response.json() as Promise<Session>;
 }

@@ -31,6 +31,7 @@ import {
   VerifySessionPaymentDto,
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 
 @ApiTags('Sessions')
 @Controller()
@@ -46,9 +47,10 @@ export class SessionsController {
   }
 
   @Get('sessions/:slug')
-  @ApiOperation({ summary: 'Public session detail (no meeting link)' })
-  async getBySlug(@Param('slug') slug: string) {
-    return this.sessionsService.getPublicSession(slug);
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: 'Public session detail (no meeting link; recording for registrants)' })
+  async getBySlug(@Request() req, @Param('slug') slug: string) {
+    return this.sessionsService.getPublicSession(slug, req.user?.id);
   }
 
   // --- Attendee -------------------------------------------------------------
