@@ -22,6 +22,8 @@ import {
 } from "@/lib/api/events-api";
 import { toLocalDatetime } from "@/lib/constants/event-form";
 import { Toggle } from "@/components/hackathon/HackParts";
+import { useSession } from "@/lib/context/SessionContext";
+import { can, roleForEvent } from "@/lib/types/rbac";
 import {
   getEventEligibleAccounts,
   setEventPayoutAccount,
@@ -48,6 +50,9 @@ export default function EventSettingsPage() {
   const eventId = params.eventId as string;
 
   const [event, setEvent] = useState<Event | null>(null);
+  const { currentSpace } = useSession();
+  // Publish, cancel, hide, restore and delete belong to the event's owners (T1).
+  const canPublish = can(roleForEvent(currentSpace, eventId), "event:publish");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -256,7 +261,7 @@ export default function EventSettingsPage() {
           )}
 
           {/* Status Change Actions - only show if not cancelled */}
-          {!isCancelled && (
+          {!isCancelled && canPublish && (
             <div className="pt-4 border-t border-border">
               {isDraft && (
                 <div className="flex items-start justify-between gap-4">
@@ -304,108 +309,110 @@ export default function EventSettingsPage() {
       <EventPayoutAccountCard eventId={eventId} />
 
       {/* Danger Zone */}
-      <Card className="border-destructive/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base text-destructive">
-            <Warning className="h-5 w-5" />
-            Danger zone
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6 px-4 py-4">
-          {/* Cancel Event — also while it's running (a called-off day two). */}
-          {(isPublished || isOngoing) && (
-            <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
+      {canPublish && (
+        <Card className="border-destructive/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base text-destructive">
+              <Warning className="h-5 w-5" />
+              Danger zone
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6 px-4 py-4">
+            {/* Cancel Event — also while it's running (a called-off day two). */}
+            {(isPublished || isOngoing) && (
+              <div className="flex items-start justify-between gap-4 pb-6 border-b border-border">
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Cancel event
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Mark this event as cancelled. Attendees will be notified.
+                    After cancelling, you can delete the event.
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setCancelDialogOpen(true)}
+                  className="flex-shrink-0"
+                >
+                  <XCircle className="h-4 w-4" />
+                  Cancel event
+                </Button>
+              </div>
+            )}
+
+            {/* Hide / restore — the reversible option, offered first because it
+                is almost always the right one for a finished event. */}
+            <div className="flex items-start justify-between gap-4 border-b border-border pb-6">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Cancel event
+                  {isHidden ? "Restore event" : "Hide event"}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  Mark this event as cancelled. Attendees will be notified.
-                  After cancelling, you can delete the event.
+                  {isHidden
+                    ? "This event is hidden. Restoring puts it back everywhere, with its registrations, tickets and payments exactly as they were."
+                    : canHide
+                      ? "Take this event off every listing without deleting anything. Registrations, tickets and payments are kept, and you can restore it at any time."
+                      : isOngoing
+                        ? "This event is running right now. You can hide it once it finishes."
+                        : "Only completed or cancelled events can be hidden. Cancel this event first."}
+                </p>
+              </div>
+              <Button
+                variant={isHidden ? "default" : "outline"}
+                onClick={() => {
+                  setError("");
+                  if (isHidden) void handleRestoreEvent();
+                  else setHideDialogOpen(true);
+                }}
+                disabled={hiding || (!canHide && !isHidden)}
+                className="flex-shrink-0"
+              >
+                {isHidden ? (
+                  <ArrowCounterClockwise className="h-4 w-4" />
+                ) : (
+                  <EyeSlash className="h-4 w-4" />
+                )}
+                {hiding
+                  ? "Working…"
+                  : isHidden
+                    ? "Restore event"
+                    : "Hide event"}
+              </Button>
+            </div>
+
+            {/* Permanent delete */}
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Delete permanently
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {canDelete
+                    ? isCancelled
+                      ? "This cancelled event can be permanently deleted. Everything goes with it, and this cannot be undone."
+                      : "Permanently delete this draft. This cannot be undone."
+                    : isCompleted
+                      ? "A completed event cannot be deleted: its attendance and payment records have to be kept. Hide it instead."
+                      : "To delete a published event, you must first cancel it."}
                 </p>
               </div>
               <Button
                 variant="destructive"
-                onClick={() => setCancelDialogOpen(true)}
+                onClick={() => {
+                  setError("");
+                  setDeleteDialogOpen(true);
+                }}
+                disabled={!canDelete}
                 className="flex-shrink-0"
               >
-                <XCircle className="h-4 w-4" />
-                Cancel event
+                <Trash className="h-4 w-4" />
+                Delete permanently
               </Button>
             </div>
-          )}
-
-          {/* Hide / restore — the reversible option, offered first because it
-              is almost always the right one for a finished event. */}
-          <div className="flex items-start justify-between gap-4 border-b border-border pb-6">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                {isHidden ? "Restore event" : "Hide event"}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {isHidden
-                  ? "This event is hidden. Restoring puts it back everywhere, with its registrations, tickets and payments exactly as they were."
-                  : canHide
-                    ? "Take this event off every listing without deleting anything. Registrations, tickets and payments are kept, and you can restore it at any time."
-                    : isOngoing
-                      ? "This event is running right now. You can hide it once it finishes."
-                      : "Only completed or cancelled events can be hidden. Cancel this event first."}
-              </p>
-            </div>
-            <Button
-              variant={isHidden ? "default" : "outline"}
-              onClick={() => {
-                setError("");
-                if (isHidden) void handleRestoreEvent();
-                else setHideDialogOpen(true);
-              }}
-              disabled={hiding || (!canHide && !isHidden)}
-              className="flex-shrink-0"
-            >
-              {isHidden ? (
-                <ArrowCounterClockwise className="h-4 w-4" />
-              ) : (
-                <EyeSlash className="h-4 w-4" />
-              )}
-              {hiding
-                ? "Working…"
-                : isHidden
-                  ? "Restore event"
-                  : "Hide event"}
-            </Button>
-          </div>
-
-          {/* Permanent delete */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                Delete permanently
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {canDelete
-                  ? isCancelled
-                    ? "This cancelled event can be permanently deleted. Everything goes with it, and this cannot be undone."
-                    : "Permanently delete this draft. This cannot be undone."
-                  : isCompleted
-                    ? "A completed event cannot be deleted: its attendance and payment records have to be kept. Hide it instead."
-                    : "To delete a published event, you must first cancel it."}
-              </p>
-            </div>
-            <Button
-              variant="destructive"
-              onClick={() => {
-                setError("");
-                setDeleteDialogOpen(true);
-              }}
-              disabled={!canDelete}
-              className="flex-shrink-0"
-            >
-              <Trash className="h-4 w-4" />
-              Delete permanently
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cancel Event Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>

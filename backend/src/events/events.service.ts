@@ -13,6 +13,7 @@ import { SubscriptionService } from '../subscription/subscription.service';
 import {
   Action,
   AuthorizationService,
+  SPACE_ADMIN_ROLE_CODES,
 } from '../auth/authorization';
 import { CacheService } from '../cache/cache.service';
 import { EmailService } from '../email/email.service';
@@ -1269,6 +1270,69 @@ export class EventsService {
     avatarUrl: true,
   };
 
+  /**
+   * 403s unless the caller holds `action` on the event itself. Unlike
+   * `canManageEvent` there is no co-host fallback: publishing, cancelling,
+   * hiding and deleting belong to the event's owners (T1).
+   */
+  private async assertEventAction(userId: string, eventId: string, action: Action, message: string) {
+    if (!(await this.authz.can({ id: userId }, action, { eventId }))) {
+      throw new ForbiddenException(message);
+    }
+  }
+
+  /** Event roles by rank. A caller may only grant, change or remove roles ranked below their own. */
+  private static readonly TEAM_RANK: Partial<Record<RoleCode, number>> = {
+    [RoleCode.CREW]: 1,
+    [RoleCode.CO_CURATOR]: 2,
+    [RoleCode.CURATOR]: 3,
+  };
+
+  /**
+   * The caller's rank on an event: Platform ADMIN 5, Space Admin of the owning
+   * space 4, else their own event role (Curator 3, Co-Curator 2, Crew 1).
+   */
+  private async teamRank(userId: string, event: { id: string; spaceId: string }) {
+    const roles = await this.prisma.userRole.findMany({
+      where: { userId },
+      select: { spaceId: true, eventId: true, role: { select: { code: true } } },
+    });
+    let rank = 0;
+    for (const r of roles) {
+      if (r.role.code === RoleCode.ADMIN) rank = Math.max(rank, 5);
+      else if (r.spaceId === event.spaceId && SPACE_ADMIN_ROLE_CODES.includes(r.role.code)) rank = Math.max(rank, 4);
+      else if (r.eventId === event.id) rank = Math.max(rank, EventsService.TEAM_RANK[r.role.code] ?? 0);
+    }
+    return rank;
+  }
+
+  /**
+   * Team edits (T1): needs EVENT_ASSIGN_CREW on the event (no co-host
+   * fallback), never on yourself, and never on someone ranked at or above you.
+   * Returns the event and the target's current event role, if any.
+   */
+  private async assertCanEditTeamMember(userId: string, eventId: string, targetUserId: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { id: true, spaceId: true, space: { select: { coCuratorLimit: true } } },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    await this.assertEventAction(userId, eventId, Action.EVENT_ASSIGN_CREW, 'You cannot change this event team');
+    if (targetUserId === userId) {
+      throw new ForbiddenException('You cannot change your own role on this event');
+    }
+    const rank = await this.teamRank(userId, event);
+    const current = await this.prisma.userRole.findFirst({
+      where: { eventId, userId: targetUserId },
+      select: { role: { select: { code: true } } },
+    });
+    const currentCode = current?.role.code ?? null;
+    if (currentCode && (EventsService.TEAM_RANK[currentCode] ?? 0) >= rank) {
+      throw new ForbiddenException('You cannot change the role of someone at or above your own level');
+    }
+    return { event, rank, currentCode };
+  }
+
   /** Loads the event (id, spaceId, slug for cache busting) or 404s; 403s unless the caller may manage it. */
   private async assertCanManageEvent(userId: string, eventId: string) {
     const event = await this.prisma.event.findUnique({
@@ -1345,11 +1409,33 @@ export class EventsService {
     targetUserId: string,
     roleCode: EventTeamRole = EventTeamRole.CREW,
   ) {
-    await this.assertCanManageEvent(userId, eventId);
+    const { event, rank, currentCode } = await this.assertCanEditTeamMember(userId, eventId, targetUserId);
     // EventTeamRole is a curated subset of RoleCode with identical values; the
     // cast bridges the two enum types (DTO validation already constrained it).
+    const code = roleCode as unknown as RoleCode;
+    // Only a Space Admin of the owning space or a Platform ADMIN outranks
+    // CURATOR, so only they can hand out the event's money capability.
+    if ((EventsService.TEAM_RANK[code] ?? 0) >= rank) {
+      throw new ForbiddenException('You can only assign roles below your own');
+    }
+    const isMember = await this.prisma.userRole.count({
+      where: { userId: targetUserId, spaceId: event.spaceId },
+    });
+    if (!isMember) {
+      throw new BadRequestException('Only members of this space can join the event team');
+    }
+    if (code === RoleCode.CO_CURATOR) {
+      const coCurators = await this.prisma.userRole.count({
+        where: { eventId, userId: { not: targetUserId }, role: { code: RoleCode.CO_CURATOR } },
+      });
+      if (coCurators >= event.space.coCuratorLimit) {
+        throw new BadRequestException(
+          `This event already has ${event.space.coCuratorLimit} co-curators, the most this space allows`,
+        );
+      }
+    }
     const role = await this.prisma.role.findFirst({
-      where: { code: roleCode as unknown as RoleCode },
+      where: { code },
       select: { id: true },
     });
     if (!role) throw new NotFoundException(`${roleCode} role not configured`);
@@ -1370,12 +1456,15 @@ export class EventsService {
         },
       }),
     ]);
+    this.logger.log(
+      `[audit] event role grant: event=${eventId} target=${targetUserId} role=${code} was=${currentCode ?? 'none'} by=${userId}`,
+    );
     return { success: true };
   }
 
   /** Remove a user from the event team (and clear their check-in grants). */
   async removeTeamMember(userId: string, eventId: string, targetUserId: string) {
-    await this.assertCanManageEvent(userId, eventId);
+    const { currentCode } = await this.assertCanEditTeamMember(userId, eventId, targetUserId);
     await this.prisma.$transaction([
       this.prisma.userRole.deleteMany({
         where: { eventId, userId: targetUserId },
@@ -1384,6 +1473,9 @@ export class EventsService {
         where: { eventId, userId: targetUserId },
       }),
     ]);
+    this.logger.log(
+      `[audit] event role revoke: event=${eventId} target=${targetUserId} was=${currentCode ?? 'none'} by=${userId}`,
+    );
     return { success: true };
   }
 
@@ -2455,10 +2547,7 @@ export class EventsService {
       throw new BadRequestException('This event is already hidden');
     }
 
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot hide this event');
-    }
+    await this.assertEventAction(userId, event.id, Action.EVENT_CANCEL, 'You cannot hide this event');
 
     if (
       event.status !== EventStatus.COMPLETED &&
@@ -2495,10 +2584,7 @@ export class EventsService {
       throw new BadRequestException('This event is not hidden');
     }
 
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot restore this event');
-    }
+    await this.assertEventAction(userId, event.id, Action.EVENT_CANCEL, 'You cannot restore this event');
 
     const restored = await this.prisma.event.update({
       where: { id: eventId },
@@ -2528,10 +2614,7 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot delete this event');
-    }
+    await this.assertEventAction(userId, event.id, Action.EVENT_CANCEL, 'You cannot delete this event');
 
     if (event.status === EventStatus.COMPLETED) {
       throw new BadRequestException(
@@ -2575,10 +2658,7 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot publish this event');
-    }
+    await this.assertEventAction(userId, event.id, Action.EVENT_PUBLISH, 'You cannot publish this event');
 
     if (event.status !== EventStatus.DRAFT) {
       throw new BadRequestException('Event is already published');
@@ -2712,10 +2792,7 @@ export class EventsService {
       throw new NotFoundException('Event not found');
     }
 
-    const canManage = await this.canManageEvent(userId, event.spaceId, event.id);
-    if (!canManage) {
-      throw new ForbiddenException('You cannot cancel this event');
-    }
+    await this.assertEventAction(userId, event.id, Action.EVENT_CANCEL, 'You cannot cancel this event');
 
     // Only a live event can be cancelled (A24): a repeat cancel would re-email
     // everyone, and a completed one could then be hard-deleted with its money.

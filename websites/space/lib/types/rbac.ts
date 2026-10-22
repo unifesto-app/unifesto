@@ -65,6 +65,14 @@ export function higherRole(a: SpaceAppRole, b: SpaceAppRole): SpaceAppRole {
   return ROLE_PRIORITY.indexOf(a) <= ROLE_PRIORITY.indexOf(b) ? a : b;
 }
 
+/**
+ * True when `role` ranks strictly above the event role `code`. The backend
+ * only lets you grant, change or remove event roles below your own (T1).
+ */
+export function outranks(role: SpaceAppRole, code?: string | null): boolean {
+  return ROLE_PRIORITY.indexOf(role) < ROLE_PRIORITY.indexOf(appRoleFromCode(code));
+}
+
 // ---------------------------------------------------------------------------
 // Session shapes (subset of the backend's /users/me + /users/me/spaces).
 // ---------------------------------------------------------------------------
@@ -140,6 +148,19 @@ export function roleInSpace(
 ): SpaceAppRole {
   const space = (user?.spaces ?? []).find((s) => s.id === spaceId);
   return appRoleFromCode(space?.userRole?.code);
+}
+
+/**
+ * The governing role on one event: the higher of the space role and any
+ * event-scoped role the user holds on it. Gate event controls on this, not on
+ * the space-level `currentRole`, which is `none` for event-only operators.
+ */
+export function roleForEvent(
+  space: SpaceMembership | null | undefined,
+  eventId: string
+): SpaceAppRole {
+  const eventCode = space?.eventAccess?.find((e) => e.eventId === eventId)?.roleCode;
+  return higherRole(appRoleFromCode(space?.userRole?.code), appRoleFromCode(eventCode));
 }
 
 /**
