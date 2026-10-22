@@ -37,6 +37,7 @@ import { utmColumns } from '../common/utm';
 import {
   generateQRCode,
   generateTicketCode,
+  resolveGroupSize,
   seatsFor,
   SETTLEABLE_PAYMENT,
   ticketsIn,
@@ -385,11 +386,11 @@ export class RegistrationCheckoutService {
 
     this.assertTicketOnSale(ticketType);
 
+    // Validated before anything uses it, the waiting list included (J8).
+    const groupSize = resolveGroupSize(ticketType, dto.groupSize);
+
     // Seats this booking will occupy — a group takes groupSize seats, not 1.
-    const plannedSeats =
-      ticketType.kind === 'GROUP'
-        ? dto.groupSize ?? ticketType.minGroupSize ?? 1
-        : dto.quantity;
+    const plannedSeats = groupSize ?? dto.quantity;
 
     // Check availability
     // null totalQuantity = unlimited capacity.
@@ -404,7 +405,7 @@ export class RegistrationCheckoutService {
         return this.addToWaitlist(userId, eventId, {
           ticketTypeId: dto.ticketTypeId,
           quantity: dto.quantity,
-          groupSize: dto.groupSize,
+          groupSize: groupSize ?? undefined,
           groupMembers: dto.groupMembers,
           formResponses: dto.formResponses,
         });
@@ -419,23 +420,12 @@ export class RegistrationCheckoutService {
     }
 
     // Calculate amounts — GROUP tickets price per-group or per-person.
-    let groupSize: number | null = null;
     let baseAmount: number;
-    if (ticketType.kind === 'GROUP') {
-      const size: number = dto.groupSize ?? ticketType.minGroupSize ?? 1;
-      if (
-        (ticketType.minGroupSize != null && size < ticketType.minGroupSize) ||
-        (ticketType.maxGroupSize != null && size > ticketType.maxGroupSize)
-      ) {
-        throw new BadRequestException(
-          `Group size must be between ${ticketType.minGroupSize} and ${ticketType.maxGroupSize}`,
-        );
-      }
-      groupSize = size;
-      this.assertGroupMembersComplete(dto.groupMembers, size);
+    if (groupSize != null) {
+      this.assertGroupMembersComplete(dto.groupMembers, groupSize);
       baseAmount =
         ticketType.groupPricingMode === 'PER_PERSON'
-          ? Number(ticketType.price) * size
+          ? Number(ticketType.price) * groupSize
           : Number(ticketType.price);
     } else {
       baseAmount = Number(ticketType.price) * dto.quantity;

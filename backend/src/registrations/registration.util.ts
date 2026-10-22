@@ -1,7 +1,33 @@
+import { BadRequestException } from '@nestjs/common';
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import * as crypto from 'crypto';
 
 // Shared by the registration services (split out of registrations.service.ts).
+
+/**
+ * Platform ceiling on one group booking, whatever the ticket allows. Each
+ * person is a group_seats row, so an unbounded size is a memory/DB bomb (J8).
+ */
+export const MAX_GROUP_SIZE = 100;
+
+/**
+ * The people a booking covers: null for non-GROUP tickets (whatever the client
+ * sent), else the requested size checked against the ticket's bounds and
+ * MAX_GROUP_SIZE. Every registration path runs this before using a size.
+ */
+export function resolveGroupSize(
+  ticketType: { kind?: string | null; minGroupSize?: number | null; maxGroupSize?: number | null },
+  requested: number | null | undefined,
+): number | null {
+  if (ticketType.kind !== 'GROUP') return null;
+  const size = requested ?? ticketType.minGroupSize ?? 1;
+  const min = ticketType.minGroupSize ?? 1;
+  const max = Math.min(ticketType.maxGroupSize ?? MAX_GROUP_SIZE, MAX_GROUP_SIZE);
+  if (!Number.isInteger(size) || size < min || size > max) {
+    throw new BadRequestException(`Group size must be between ${min} and ${max}`);
+  }
+  return size;
+}
 
 /**
  * A payment may settle a registration only while its money is unsettled and

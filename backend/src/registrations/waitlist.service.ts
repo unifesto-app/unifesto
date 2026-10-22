@@ -12,7 +12,7 @@ import { PaymentsService } from '../payments/payments.service';
 import { GroupSeatsService } from './group-seats.service';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { SoldOutError, takeTicketSeats } from './capacity.util';
-import { ticketsIn } from './registration.util';
+import { resolveGroupSize, ticketsIn } from './registration.util';
 import { NotifyService } from '../notifications/notify.service';
 import {
   PaymentStatus,
@@ -146,6 +146,7 @@ export class WaitlistService {
     ]);
     if (!event) throw new NotFoundException('Event not found');
     if (!ticketType) throw new NotFoundException('Ticket type not found');
+    const groupSize = resolveGroupSize(ticketType, input.groupSize);
 
     const existing = await this.prisma.eventRegistration.findFirst({
       where: {
@@ -171,7 +172,7 @@ export class WaitlistService {
           userId,
           ticketTypeId,
           quantity: input.quantity || 1,
-          groupSize: input.groupSize ?? null,
+          groupSize,
           totalAmount: new Prisma.Decimal(0),
           paymentStatus: PaymentStatus.PENDING,
           isWaitlisted: true,

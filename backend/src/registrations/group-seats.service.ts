@@ -22,7 +22,7 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { resolveRegistrationWhatsAppInvite } from '../common/whatsapp-links';
 import { teamChangeWindow } from './attendee-details.service';
 import { button, h1, p, small, strong } from '../email/layout';
-import { holdsSeats, seatTicketOf } from './registration.util';
+import { holdsSeats, MAX_GROUP_SIZE, seatTicketOf } from './registration.util';
 
 export interface CreateSeatsParams {
   registrationId: string;
@@ -189,6 +189,11 @@ export class GroupSeatsService {
   ): Promise<void> {
     const { registrationId, leadUserId, seatCount } = params;
     if (seatCount <= 1) return; // not a group
+    // Last line of defence: every path validates first, but one row per seat
+    // means an unchecked size here is a memory/DB bomb (J8).
+    if (seatCount > MAX_GROUP_SIZE) {
+      throw new BadRequestException(`A group can have at most ${MAX_GROUP_SIZE} people`);
+    }
 
     const existing = await tx.groupSeat.count({ where: { registrationId } });
     if (existing > 0) return;

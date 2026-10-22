@@ -9,6 +9,8 @@
  * never drift apart.
  */
 
+import { MAX_GROUP_SIZE } from './registration.util';
+
 export type ImportTicketKind = 'RSVP' | 'INDIVIDUAL' | 'GROUP';
 
 /** One custom form field, reduced to what the template needs. */
@@ -361,11 +363,12 @@ export function parseImportRows(
       const size = Number.isFinite(declared) && declared > 0 ? declared : members.length;
       if (
         (shape.minGroupSize != null && size < shape.minGroupSize) ||
-        (shape.maxGroupSize != null && size > shape.maxGroupSize)
+        (shape.maxGroupSize != null && size > shape.maxGroupSize) ||
+        size > MAX_GROUP_SIZE
       ) {
         rows.push({
           ...base,
-          error: `Group size ${size} is outside the allowed ${shape.minGroupSize ?? 1}–${shape.maxGroupSize ?? '∞'}.`,
+          error: `Group size ${size} is outside the allowed ${shape.minGroupSize ?? 1}–${Math.min(shape.maxGroupSize ?? MAX_GROUP_SIZE, MAX_GROUP_SIZE)}.`,
         });
         continue;
       }

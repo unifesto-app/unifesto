@@ -20,6 +20,7 @@ import {
   ValidateIf,
   IsObject,
 } from 'class-validator';
+import { MAX_GROUP_SIZE } from '../../registrations/registration.util';
 import { Type, Transform } from 'class-transformer';
 import { MAX_EVENT_CATEGORIES } from '../event-categories';
 import {
@@ -412,12 +413,14 @@ export class CreateTicketTypeDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   minGroupSize?: number;
 
   @ApiPropertyOptional({ example: 5, description: 'Max people (GROUP only).' })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   maxGroupSize?: number;
 
   @ApiPropertyOptional({
@@ -552,12 +555,14 @@ export class UpdateTicketTypeDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   minGroupSize?: number;
 
   @ApiPropertyOptional({ example: 5 })
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   maxGroupSize?: number;
 
   @ApiPropertyOptional({ description: 'Optional capacity cap; omit for unlimited.' })

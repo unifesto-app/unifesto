@@ -20,6 +20,7 @@ import {
   IsBoolean,
   ArrayMaxSize,
 } from 'class-validator';
+import { MAX_GROUP_SIZE } from '../registration.util';
 import { BADGE_LAYOUT_KEYS, type BadgeLayoutKey } from '../badges.util';
 
 /**
@@ -104,6 +105,7 @@ export class RegisterForEventDto extends UtmAttributionDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   groupSize?: number;
 
   @ApiPropertyOptional({
@@ -192,6 +194,7 @@ export class ManualAddAttendeeDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   groupSize?: number;
 
   @ApiPropertyOptional({ type: [ManualGroupMemberDto] })
@@ -251,6 +254,7 @@ export class CreateOrderDto extends UtmAttributionDto {
   @IsOptional()
   @IsInt()
   @Min(1)
+  @Max(MAX_GROUP_SIZE)
   groupSize?: number;
 
   @ApiPropertyOptional({
