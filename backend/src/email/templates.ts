@@ -768,8 +768,8 @@ export function subscriptionCancelledEmail(d: SubscriptionCancelledData): Email 
     html: layout(
       `${h1('Plan cancelled')}
       ${greet(d.userName)}
-      ${p(`Your ${strong(d.plan)} plan is cancelled. You keep everything in it until ${strong(d.expiresAt)}, then your space moves to the Free plan.`)}
-      ${p('Changed your mind? You can restart any time.')}
+      ${p(`Your ${strong(d.plan)} plan is cancelled. You keep everything in it until ${strong(d.expiresAt)}, then your space moves to the Starter plan.`)}
+      ${p('Want it back after that? Pick a plan again from billing.')}
       ${button('Open billing', BILLING)}`,
     ),
   };

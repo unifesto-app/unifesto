@@ -96,15 +96,26 @@ export class SubscriptionSchedulerService {
     for (const sub of expired) {
       const oldPlan = sub.plan;
 
-      // Update subscription to STARTER
-      await this.prisma.orgSubscription.update({
-        where: { id: sub.id },
-        data: {
-          plan: OrgPlan.STARTER,
-          isActive: false,
-          cancelledAt: now,
-        },
-      });
+      // Period over (renewal lapsed, or a cancel-at-period-end came due): drop
+      // to STARTER and log it, since cancel no longer writes the STARTER row.
+      await this.prisma.$transaction([
+        this.prisma.subscriptionHistory.create({
+          data: {
+            subscriptionId: sub.id,
+            fromPlan: oldPlan,
+            toPlan: OrgPlan.STARTER,
+            reason: sub.cancelledAt ? 'Cancelled plan ended' : 'Plan expired',
+          },
+        }),
+        this.prisma.orgSubscription.update({
+          where: { id: sub.id },
+          data: {
+            plan: OrgPlan.STARTER,
+            isActive: false,
+            cancelledAt: sub.cancelledAt ?? now,
+          },
+        }),
+      ]);
 
       // Invalidate whichever plan cache this row feeds
       await this.invalidatePlan(sub);
