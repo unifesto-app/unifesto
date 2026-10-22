@@ -103,7 +103,7 @@ export default function BillingPage() {
   async function handleCancel() {
     if (
       !window.confirm(
-        "Cancel this plan and drop to Starter at the end of the period?"
+        "Cancel this plan? You keep it until the end of this period, then the space moves to Starter."
       )
     )
       return;
@@ -176,6 +176,8 @@ export default function BillingPage() {
   }
 
   const currentPlan: OrgPlan = sub?.plan ?? "STARTER";
+  // Free and revenue-share spaces are arranged by Unifesto: no self-serve plan changes.
+  const selfServe = !sub?.billingModel || sub.billingModel === "SUBSCRIPTION";
   const currentRank = planRank(currentPlan);
   const orderedPlans = [...plans].sort(
     (a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan)
@@ -223,7 +225,7 @@ export default function BillingPage() {
                 )}
               </CardDescription>
             </div>
-            {!loading && currentRank > 0 && (
+            {!loading && currentRank > 0 && selfServe && !sub?.cancelledAt && (
               <Button
                 variant="outline"
                 size="sm"
@@ -418,6 +420,11 @@ export default function BillingPage() {
                         Contact sales
                       </a>
                     </Button>
+                  ) : !selfServe ? (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Your plan is arranged by Unifesto. Contact support to
+                      change it.
+                    </p>
                   ) : direction === "down" ? (
                     <p className="text-center text-xs text-muted-foreground">
                       To move down, cancel your plan. It ends at the close of

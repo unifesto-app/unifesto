@@ -46,6 +46,35 @@ const SUBSCRIPTION_PLAN_FEATURES: Record<string, string[]> = {
   ],
 };
 
+const IST_OFFSET_MS = 330 * 60 * 1000;
+
+/**
+ * One billing cycle after `from`, on the same IST calendar day and time,
+ * clamped to the month's last day (31 Jan monthly -> 28/29 Feb).
+ * ponytail: no anchor day stored, so 31 Jan -> 28 Feb -> 28 Mar drifts; store
+ * the anchor if renewals need to snap back to the 31st.
+ */
+export function addBillingCycle(from: Date, cycle: BillingCycle): Date {
+  const ist = new Date(from.getTime() + IST_OFFSET_MS);
+  const y = ist.getUTCFullYear();
+  const m = ist.getUTCMonth() + (cycle === BillingCycle.ANNUAL ? 12 : 1);
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const day = Math.min(ist.getUTCDate(), lastDay);
+  return new Date(
+    Date.UTC(y, m, day, ist.getUTCHours(), ist.getUTCMinutes(), ist.getUTCSeconds(), ist.getUTCMilliseconds()) -
+      IST_OFFSET_MS,
+  );
+}
+
+/** Plans are only sold to spaces billed by subscription; FREE and REVENUE_SHARE are set by Unifesto. */
+function assertSelfServeBilling(model: BillingModel) {
+  if (model !== BillingModel.SUBSCRIPTION) {
+    throw new BadRequestException(
+      "This space's billing is arranged by Unifesto, so its plan can't be changed here. Contact support to change it.",
+    );
+  }
+}
+
 @Injectable()
 export class SubscriptionService {
   private readonly logger = new Logger(SubscriptionService.name);
@@ -163,6 +192,7 @@ export class SubscriptionService {
       throw new BadRequestException('That plan is no longer available');
     }
     const subscription = await this.getSpaceSubscription(spaceId);
+    assertSelfServeBilling(subscription.billingModel);
 
     if (
       subscription.plan === dto.plan &&
@@ -231,10 +261,11 @@ export class SubscriptionService {
     const plan = order.notes?.plan as OrgPlan;
     const billingCycle = order.notes?.billingCycle as BillingCycle;
 
-    const expiresAt =
-      billingCycle === BillingCycle.MONTHLY
-        ? this.getNextMonthStart()
-        : this.getNextYearStart();
+    // Time left on the current period carries over; a lapsed one starts now.
+    const now = new Date();
+    const periodStart =
+      subscription.expiresAt && subscription.expiresAt > now ? subscription.expiresAt : now;
+    const expiresAt = addBillingCycle(periodStart, billingCycle);
 
     const oldPlan = subscription.plan;
 
@@ -266,7 +297,8 @@ export class SubscriptionService {
           amount: new Prisma.Decimal(Number(order.amount) / 100),
           isActive: true,
           expiresAt,
-          lastPaymentAt: new Date(),
+          cancelledAt: null,
+          lastPaymentAt: now,
           nextPaymentAt: expiresAt,
         },
       });
@@ -309,34 +341,47 @@ export class SubscriptionService {
     return updated;
   }
 
+  /**
+   * Cancel at period end: the plan and expiresAt stay, cancelledAt marks it, and
+   * the expiry cron moves the space to Starter once expiresAt passes. A paid plan
+   * with no end date (or one already past) has no period left, so it ends now.
+   */
   async cancelSubscriptionForSpace(spaceId: string) {
     const subscription = await this.getSpaceSubscription(spaceId);
 
     if (subscription.plan === OrgPlan.STARTER) {
       throw new BadRequestException('Cannot cancel free plan');
     }
+    assertSelfServeBilling(subscription.billingModel);
+    if (subscription.cancelledAt) {
+      throw new BadRequestException('This plan is already cancelled');
+    }
 
-    const oldPlan = subscription.plan;
+    const now = new Date();
+    const endsAt =
+      subscription.expiresAt && subscription.expiresAt > now ? subscription.expiresAt : null;
 
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.subscriptionHistory.create({
         data: {
           subscriptionId: subscription.id,
           fromPlan: subscription.plan,
-          toPlan: OrgPlan.STARTER,
-          reason: 'User cancelled',
+          toPlan: endsAt ? subscription.plan : OrgPlan.STARTER,
+          reason: endsAt ? 'User cancelled (ends at period end)' : 'User cancelled',
         },
       });
 
       return tx.orgSubscription.update({
         where: { id: subscription.id },
-        data: {
-          plan: OrgPlan.STARTER,
-          isActive: true,
-          cancelledAt: new Date(),
-          expiresAt: null,
-          nextPaymentAt: null,
-        },
+        data: endsAt
+          ? { cancelledAt: now, nextPaymentAt: null }
+          : {
+              plan: OrgPlan.STARTER,
+              isActive: true,
+              cancelledAt: now,
+              expiresAt: null,
+              nextPaymentAt: null,
+            },
       });
     });
 
@@ -349,8 +394,8 @@ export class SubscriptionService {
         .sendSubscriptionCancelled({
           email: recipient.email,
           userName: recipient.name,
-          plan: oldPlan,
-          expiresAt: 'immediately',
+          plan: subscription.plan,
+          expiresAt: endsAt ? this.formatDate(endsAt) : this.formatDate(now),
         })
         .catch((err) =>
           this.logger.error('Failed to send subscription cancelled email', err),
@@ -635,15 +680,6 @@ export class SubscriptionService {
   private getNextMonthStart(): Date {
     const date = new Date();
     date.setMonth(date.getMonth() + 1);
-    date.setDate(1);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  }
-
-  private getNextYearStart(): Date {
-    const date = new Date();
-    date.setFullYear(date.getFullYear() + 1);
-    date.setMonth(0);
     date.setDate(1);
     date.setHours(0, 0, 0, 0);
     return date;
