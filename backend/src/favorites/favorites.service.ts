@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NOT_DELETED } from '../common/soft-delete';
+import { PUBLIC_EVENT_CARD_SELECT } from '../events/event-access';
 
 /**
  * Saved / favourited events. One row per (user, event), enforced by a unique
@@ -12,7 +13,8 @@ export class FavoritesService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** The event shape returned in favourite lists — matches the events list API. */
-  private readonly eventInclude = {
+  private readonly eventSelect = {
+    ...PUBLIC_EVENT_CARD_SELECT,
     space: { select: { id: true, name: true, slug: true, logoUrl: true } },
     creator: {
       select: { id: true, fullName: true, username: true, avatarUrl: true },
@@ -58,7 +60,7 @@ export class FavoritesService {
       // survives untouched, so restoring the event brings the heart back.
       where: { userId, event: NOT_DELETED },
       orderBy: { createdAt: 'desc' },
-      include: { event: { include: this.eventInclude } },
+      include: { event: { select: this.eventSelect } },
     });
     // Unwrap to a plain list of events (the shape mobile event cards expect).
     return rows.map((r) => r.event);

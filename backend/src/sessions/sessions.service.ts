@@ -163,7 +163,8 @@ export class SessionsService {
     currency: true,
     status: true,
     visibility: true,
-    recordingUrl: true,
+    // No recordingUrl: recordings are for registrants (J9), see
+    // getPublicSession / listMyRegistrations.
     cancelledAt: true,
     cancellationReason: true,
     createdAt: true,
@@ -897,8 +898,11 @@ export class SessionsService {
     });
   }
 
-  /** Public detail by slug — the meeting link is never included here. */
-  async getPublicSession(slug: string) {
+  /**
+   * Public detail by slug — the meeting link is never included here. The
+   * recording is added only for a signed-in registrant.
+   */
+  async getPublicSession(slug: string, viewerId?: string) {
     const session = await this.prisma.session.findUnique({
       where: { slug },
       // `deletedAt` is not in publicSelect (it never goes over the wire), so
@@ -911,7 +915,17 @@ export class SessionsService {
       throw new NotFoundException('Session not found');
     }
     const { deletedAt: _hidden, ...publicSession } = session;
-    return publicSession;
+    if (!viewerId) return publicSession;
+    const reg = await this.prisma.sessionRegistration.findFirst({
+      where: {
+        sessionId: session.id,
+        userId: viewerId,
+        status: RegistrationStatus.REGISTERED,
+        paymentStatus: PaymentStatus.PAID,
+      },
+      select: { session: { select: { recordingUrl: true } } },
+    });
+    return reg ? { ...publicSession, recordingUrl: reg.session.recordingUrl } : publicSession;
   }
 
   // ---------------------------------------------------------------------------
@@ -1245,7 +1259,7 @@ export class SessionsService {
         paymentStatus: true,
         joinedAt: true,
         registeredAt: true,
-        session: { select: this.publicSelect },
+        session: { select: { ...this.publicSelect, recordingUrl: true } },
       },
     });
   }
