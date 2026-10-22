@@ -18,6 +18,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { sanitizeEmailHtml } from '../email/sanitize-email-html';
 import { emailOptedOutUserIds } from '../email/email-preferences';
 import { withoutSuppressed } from '../email/email-suppression';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
@@ -127,7 +128,7 @@ export class EmailCampaignsService {
         subject: dto.subject,
         subjectB: dto.subjectB ?? null,
         abSplitPct: dto.subjectB ? (dto.abSplitPct ?? 50) : null,
-        body: dto.body,
+        body: sanitizeEmailHtml(dto.body),
         templateId: dto.templateId ?? null,
         sentBy: actorId,
         targetType: dto.targetType,

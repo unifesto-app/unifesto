@@ -410,6 +410,7 @@ export default function ComposeCampaignPage() {
           </DialogHeader>
           <iframe
             title="Email preview"
+            sandbox=""
             srcDoc={preview ?? ""}
             className="h-[60vh] w-full rounded-md border border-border bg-white"
           />

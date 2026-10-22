@@ -6,6 +6,7 @@ import {
 import { EmailTemplateScope, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/template.dto';
+import { sanitizeEmailHtml } from '../email/sanitize-email-html';
 
 /**
  * CRUD for reusable email templates.
@@ -52,7 +53,7 @@ export class EmailTemplatesService {
         spaceId: null,
         name: dto.name,
         subject: dto.subject,
-        body: dto.body,
+        body: dto.body && sanitizeEmailHtml(dto.body),
         variables: this.serialiseVariables(dto.variables),
         createdBy: userId,
       },
@@ -66,7 +67,7 @@ export class EmailTemplatesService {
       data: {
         name: dto.name,
         subject: dto.subject,
-        body: dto.body,
+        body: dto.body && sanitizeEmailHtml(dto.body),
         variables: this.serialiseVariables(dto.variables),
       },
     });
@@ -109,7 +110,7 @@ export class EmailTemplatesService {
         spaceId,
         name: dto.name,
         subject: dto.subject,
-        body: dto.body,
+        body: dto.body && sanitizeEmailHtml(dto.body),
         variables: this.serialiseVariables(dto.variables),
         createdBy: userId,
       },
@@ -135,7 +136,7 @@ export class EmailTemplatesService {
       data: {
         name: dto.name,
         subject: dto.subject,
-        body: dto.body,
+        body: dto.body && sanitizeEmailHtml(dto.body),
         variables: this.serialiseVariables(dto.variables),
       },
     });

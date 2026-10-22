@@ -14,6 +14,7 @@ import {
   trackedSend,
 } from '../notifications/message-delivery';
 import { suppressedAmong, SUPPRESSION_EXEMPT_KINDS } from './email-suppression';
+import { sanitizeEmailHtml } from './sanitize-email-html';
 import { PrismaService } from '../prisma/prisma.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 import {
@@ -657,7 +658,7 @@ export class EmailService {
 
   /** Wrap an operator-authored campaign body in the branded shell. */
   wrapCampaignHtml(content: string, unsubscribeUrl?: string): string {
-    return layout(content, '', null, unsubscribeUrl);
+    return layout(sanitizeEmailHtml(content), '', null, unsubscribeUrl);
   }
 }
 

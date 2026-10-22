@@ -20,6 +20,7 @@ import {
   SCRIPT_FONTS,
   scriptFontFor,
 } from './certificate-fonts';
+import { isOwnS3Url } from '../storage/own-s3-url';
 
 /**
  * One positioned element on a certificate. Coordinates are authored in the
@@ -77,6 +78,10 @@ export interface CertificateRenderInput {
  */
 export const MAX_RENDER_SIDE = 3508;
 export const MAX_RENDER_PIXELS = 3508 * 2480;
+
+/** Background input bounds (J11): the 10000 px template max, and 15 MB on the wire. */
+export const MAX_BACKGROUND_PIXELS = 10000 * 10000;
+export const MAX_BACKGROUND_BYTES = 15 * 1024 * 1024;
 
 /** Scale factor (<= 1) that fits w x h inside the raster ceiling. */
 export function renderScale(w: number, h: number): number {
@@ -174,12 +179,23 @@ function ensureCanvasFonts(logger: Logger): void {
 export class CertificateRenderService {
   private readonly logger = new Logger(CertificateRenderService.name);
 
-  /** Fetch the template background once; both renderers reuse the bytes. */
+  /**
+   * Fetch the template background once; both renderers reuse the bytes. Only
+   * our own bucket, no redirects and a size cap (J11: SSRF + worker OOM); the
+   * DTO checks the host too, this covers rows saved before it did.
+   */
   private async fetchBackground(url: string): Promise<Buffer> {
+    if (!isOwnS3Url(url)) {
+      throw new BadRequestException(
+        'The certificate background must be an image uploaded to Unifesto',
+      );
+    }
     try {
       const res = await axios.get<ArrayBuffer>(url, {
         responseType: 'arraybuffer',
         timeout: 15000,
+        maxContentLength: MAX_BACKGROUND_BYTES,
+        maxRedirects: 0,
       });
       return Buffer.from(res.data);
     } catch (error) {
@@ -316,23 +332,33 @@ export class CertificateRenderService {
 
   /**
    * Shrink an oversized background to the output size with libvips (streams,
-   * shrink-on-load) before Skia ever decodes it at full size. Smaller images,
-   * or bytes sharp can't read, pass through untouched.
+   * shrink-on-load) before Skia ever decodes it at full size. Dimensions come
+   * from the header alone; bytes sharp can't read, or images over
+   * MAX_BACKGROUND_PIXELS, are rejected rather than handed to Skia (J11).
    */
   private async capBackground(
     buf: Buffer,
     width: number,
     height: number,
   ): Promise<Buffer> {
+    const reject = () =>
+      new BadRequestException(
+        'The certificate background must be a readable image of at most 10000 x 10000 px',
+      );
+    const meta = await sharp(buf)
+      .metadata()
+      .catch(() => null);
+    const w = meta?.width ?? 0;
+    const h = meta?.height ?? 0;
+    if (!w || !h || w * h > MAX_BACKGROUND_PIXELS) throw reject();
+    if (w <= width && h <= height) return buf;
     try {
-      const meta = await sharp(buf).metadata();
-      if ((meta.width ?? 0) <= width && (meta.height ?? 0) <= height) return buf;
-      return await sharp(buf)
+      return await sharp(buf, { limitInputPixels: MAX_BACKGROUND_PIXELS })
         .resize(width, height, { fit: 'fill' })
         .png({ compressionLevel: 1 })
         .toBuffer();
     } catch {
-      return buf;
+      throw reject();
     }
   }
 
