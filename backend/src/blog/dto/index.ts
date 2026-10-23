@@ -57,6 +57,10 @@ export class CreateBlogDto {
   @IsOptional()
   @IsIn(STATUSES)
   status?: (typeof STATUSES)[number];
+
+  @IsOptional() @IsString() @MaxLength(60) metaTitle?: string;
+  @IsOptional() @IsString() @MaxLength(155) metaDescription?: string;
+  @IsOptional() @IsString() @MaxLength(300) coverAlt?: string;
 }
 
 export class UpdateBlogDto {
@@ -70,4 +74,14 @@ export class UpdateBlogDto {
   @IsOptional() @IsInt() @Min(1) @Max(180) readMinutes?: number;
   @IsOptional() @IsBoolean() featured?: boolean;
   @IsOptional() @IsIn(STATUSES) status?: (typeof STATUSES)[number];
+  @IsOptional() @IsString() @MaxLength(60) metaTitle?: string;
+  @IsOptional() @IsString() @MaxLength(155) metaDescription?: string;
+  @IsOptional() @IsString() @MaxLength(300) coverAlt?: string;
+}
+
+export class SearchConsoleDto {
+  /** The Pages CSV from Search Console's Performance report. */
+  @IsString()
+  @MaxLength(2_000_000)
+  csv: string;
 }

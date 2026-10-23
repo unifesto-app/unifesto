@@ -17,6 +17,7 @@ export const AI_FEATURES = {
   desk: { maxTokens: 2048, dailyCapPerUser: 200 }, // D15
   event_draft: { maxTokens: 4096, dailyCapPerUser: 20 }, // M1
   report_summary: { maxTokens: 1024, dailyCapPerUser: 20 }, // M3
+  blog_writer: { maxTokens: 8192, dailyCapPerUser: 0 }, // auto-blog; system calls, no user
 } as const;
 export type AiFeature = keyof typeof AI_FEATURES;
 
@@ -35,8 +36,10 @@ export interface AiRunInput {
    * `format`, the reply is parsed and returned as `json`; unparseable is an error.
    */
   outputConfig?: Anthropic.OutputConfig;
-  /** Client tools (D14 bot). Part of the cached prefix, so keep them stable. */
-  tools?: Anthropic.Tool[];
+  /** Client tools (D14 bot) or server tools (web search). Part of the cached prefix, so keep them stable. */
+  tools?: Anthropic.ToolUnion[];
+  /** Request timeout; defaults to the client's 30s. Web research needs longer. */
+  timeoutMs?: number;
 }
 
 /**
@@ -154,7 +157,7 @@ export class AiService {
         messages: input.messages,
         ...(input.tools ? { tools: input.tools } : {}),
         ...(input.outputConfig ? { output_config: input.outputConfig } : {}),
-      });
+      }, input.timeoutMs ? { timeout: input.timeoutMs } : undefined);
     } catch (err) {
       this.logger.warn(`AI ${feature} call failed: ${(err as Error).message}`);
     }

@@ -73,3 +73,34 @@ export async function uploadBlogCover(file: File): Result<{ url: string }> {
     })
   );
 }
+
+// ── Auto-blog queue ────────────────────────────────────────────────────
+
+export type BlogQuestionStatus = "QUEUED" | "WRITING" | "PUBLISHED" | "FAILED";
+
+export interface BlogQuestion {
+  id: string;
+  question: string;
+  topic: string;
+  intent: string;
+  angle: string | null;
+  appLink: string | null;
+  status: BlogQuestionStatus;
+  source: "SEED" | "REFILL" | "SEARCH_CONSOLE";
+  failReason: string | null;
+  post: { slug: string; title: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `GET /blog/questions` — the whole queue, oldest first. */
+export async function getBlogQuestions(): Result<BlogQuestion[]> {
+  return apiCall<BlogQuestion[]>(backendClient.get("/blog/questions"));
+}
+
+/** `POST /blog/questions/search-console` — queue 10 questions from a Pages CSV. */
+export async function learnFromSearchConsole(
+  csv: string
+): Result<{ added: number; pages: { slug: string; clicks: number }[] }> {
+  return apiCall(backendClient.post("/blog/questions/search-console", { csv }));
+}

@@ -44,7 +44,8 @@ export class BlogService {
     return this.prisma.blogPost.findMany({ orderBy: { createdAt: 'desc' } });
   }
 
-  async create(dto: CreateBlogDto, adminId: string) {
+  /** `adminId` is null for posts the auto-blog writes. */
+  async create(dto: CreateBlogDto, adminId: string | null) {
     const slug = await this.uniqueSlug(dto.slug || dto.title);
     const status = (dto.status as BlogStatus) ?? BlogStatus.DRAFT;
     const post = await this.prisma.blogPost.create({
@@ -57,6 +58,9 @@ export class BlogService {
         author: dto.author,
         coverImageUrl: dto.coverImageUrl ?? null,
         readMinutes: dto.readMinutes ?? null,
+        metaTitle: dto.metaTitle ?? null,
+        metaDescription: dto.metaDescription ?? null,
+        coverAlt: dto.coverAlt ?? null,
         featured: dto.featured ?? false,
         status,
         publishedAt: status === BlogStatus.PUBLISHED ? new Date() : null,
@@ -83,6 +87,9 @@ export class BlogService {
     if (dto.coverImageUrl !== undefined) data.coverImageUrl = dto.coverImageUrl;
     if (dto.readMinutes !== undefined) data.readMinutes = dto.readMinutes;
     if (dto.featured !== undefined) data.featured = dto.featured;
+    if (dto.metaTitle !== undefined) data.metaTitle = dto.metaTitle;
+    if (dto.metaDescription !== undefined) data.metaDescription = dto.metaDescription;
+    if (dto.coverAlt !== undefined) data.coverAlt = dto.coverAlt;
 
     if (dto.status !== undefined) {
       const status = dto.status as BlogStatus;

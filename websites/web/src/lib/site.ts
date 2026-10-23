@@ -32,6 +32,20 @@ export const SOCIAL = {
   youtube: "https://www.youtube.com/@unifesto-app",
 } as const;
 
+/* Blog authors, keyed by BlogPost.author. Drives the author box under each
+   post and the Person in its Article JSON-LD. image and links are the
+   author's own (photo URL, personal profiles); leave empty until real. */
+export type Author = { role: string; bio: string; image: string | null; links: { label: string; url: string }[] };
+
+export const AUTHORS: Record<string, Author> = {
+  "Abhinavtej Reddy": {
+    role: "Founder, Unifesto",
+    bio: "Builds Unifesto, the event platform that started at Malla Reddy University, Hyderabad.",
+    image: null,
+    links: [],
+  },
+};
+
 /* Proof. Keep this honest and dated: these numbers ship in copy and in
    structured data. spacesLive = active Spaces the public API lists
    (GET /spaces?status=ACTIVE, signed out, so private Spaces such as the demo
