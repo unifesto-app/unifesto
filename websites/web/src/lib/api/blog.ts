@@ -14,6 +14,9 @@ export interface BlogPost {
   category: string;
   author: string;
   coverImageUrl: string | null;
+  coverAlt: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
   readMinutes: number | null;
   featured: boolean;
   status: "DRAFT" | "PUBLISHED";
