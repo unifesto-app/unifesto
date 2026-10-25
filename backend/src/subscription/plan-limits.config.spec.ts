@@ -1,7 +1,10 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { OrgPlan } from '@prisma/client';
+import { validate } from 'class-validator';
+import { plainToInstance } from 'class-transformer';
 import { PLAN_LIMITS } from './plan-limits.config';
+import { UpdatePlanConfigDto } from './dto';
 
 /**
  * plan_configs is the one source of plan limits, prices and features (T10);
@@ -76,9 +79,6 @@ describe('PLAN_LIMITS matches the plan_configs seed', () => {
 describe('UpdatePlanConfigDto platformFeePercent', () => {
   // Clearing the fee used to send null past @IsOptional into a NOT NULL column (500).
   it('rejects null with a validation error, accepts a number or leaving it out', async () => {
-    const { validate } = await import('class-validator');
-    const { plainToInstance } = await import('class-transformer');
-    const { UpdatePlanConfigDto } = await import('./dto');
     const errs = (body: object) => validate(plainToInstance(UpdatePlanConfigDto, body));
     expect((await errs({ platformFeePercent: null })).map((e) => e.property)).toEqual(['platformFeePercent']);
     expect(await errs({ platformFeePercent: 2.5 })).toEqual([]);
