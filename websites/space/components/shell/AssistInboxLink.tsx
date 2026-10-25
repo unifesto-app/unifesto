@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tray } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
-import { hasEventDeskAccess } from "@/lib/types/rbac";
+import { isEventScopedSpace } from "@/lib/types/rbac";
 import { getSpaceDeskUnread, ASSIST_READ_EVENT } from "@/lib/api/support-api";
 import { cn } from "@/lib/utils/cn";
 
@@ -41,8 +41,8 @@ export function AssistInboxLink({
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const { currentSpace } = useSession();
-  const enabled = hasEventDeskAccess(currentSpace);
+  const { currentSpace, can } = useSession();
+  const enabled = isEventScopedSpace(currentSpace) && can("event:manage-support");
   const unread = useDeskUnread(currentSpace?.id, enabled, pathname);
 
   if (!enabled) return null;

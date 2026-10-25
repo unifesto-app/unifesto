@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useSession } from "@/lib/context/SessionContext";
 import { BASE_URL, resolveNavGroups, type NavItem } from "./nav-config";
 import { cn } from "@/lib/utils/cn";
-import { can } from "@/lib/types/rbac";
 import { useDeskUnread } from "./AssistInboxLink";
 
 interface SpaceNavProps {
@@ -31,12 +30,12 @@ interface SpaceNavProps {
  */
 export function SpaceNav({ onNavigate, collapsed = false }: SpaceNavProps) {
   const pathname = usePathname();
-  const { currentSpace, currentRole } = useSession();
-  const unread = useDeskUnread(currentSpace?.id, can(currentRole, "event:manage-support"), pathname);
+  const { currentSpace, access, can } = useSession();
+  const unread = useDeskUnread(currentSpace?.id, can("event:manage-support"), pathname);
 
   if (!currentSpace) return null;
 
-  const navGroups = resolveNavGroups(currentSpace, currentRole);
+  const navGroups = resolveNavGroups(currentSpace, access);
 
   const isActive = (item: NavItem) => {
     const fullPath = `${BASE_URL}${item.href}`;

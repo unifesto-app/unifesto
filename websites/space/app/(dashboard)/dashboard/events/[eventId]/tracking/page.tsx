@@ -13,8 +13,7 @@ import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/component
 import { getRegistrationSources, sourceLabel, type RegistrationSources } from "@/lib/api/tracking";
 import { conversion, getTraffic, type TrafficScope, type TrafficStats } from "@/lib/api/traffic";
 import { getEventById } from "@/lib/api/events-api";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 
 const WEB_URL = "https://www.unifesto.app";
 
@@ -25,7 +24,7 @@ const WEB_URL = "https://www.unifesto.app";
  */
 export default function EventTrackingPage() {
   const eventId = useParams().eventId as string;
-  const { currentRole } = useSession();
+  const { can } = useAccess(eventId);
   const scope = useMemo<TrafficScope>(() => ({ kind: "event", id: eventId }), [eventId]);
   const [slug, setSlug] = useState("");
   const [sources, setSources] = useState<RegistrationSources | null>(null);
@@ -97,13 +96,13 @@ export default function EventTrackingPage() {
                   label={sourceLabel(s)}
                   sublabel={s.campaign ?? undefined}
                   value={`${fmt(s.registrations)} · ${Math.round((s.registrations / total) * 100)}%`}
-                  href={can(currentRole, "event:manage-attendees") ? sourceHref(s) : undefined}
+                  href={can("event:manage-attendees") ? sourceHref(s) : undefined}
                 />
               ))
             )}
           </ListGroup>
 
-          <ShortLinksPanel scope={scope} canEdit={can(currentRole, "event:edit")} destination="this event" />
+          <ShortLinksPanel scope={scope} canEdit={can("event:edit")} destination="this event" />
           <PartnersPanel eventId={eventId} />
           {slug && <TrackingLinks url={`${WEB_URL}/event/${slug}`} campaign={slug} />}
         </>

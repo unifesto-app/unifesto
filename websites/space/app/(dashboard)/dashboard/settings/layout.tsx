@@ -3,8 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "@/lib/context/SessionContext";
-import { can, type Capability } from "@/lib/types/rbac";
+import { useSession, type Capability } from "@/lib/context/SessionContext";
 import { cn } from "@/lib/utils/cn";
 
 const TABS: Array<{ href: string; label: string; requires: Capability }> = [
@@ -15,8 +14,8 @@ const TABS: Array<{ href: string; label: string; requires: Capability }> = [
 /** Route-backed tabs so Branding lives inside Settings but keeps its own URL. */
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { currentRole } = useSession();
-  const tabs = TABS.filter((t) => can(currentRole, t.requires));
+  const { can } = useSession();
+  const tabs = TABS.filter((t) => can(t.requires));
 
   return (
     <div className="space-y-6">

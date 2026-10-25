@@ -30,7 +30,6 @@ import {
   type AddableUser,
   type SpaceOwnershipRequest,
 } from "@/lib/api/spaces-api";
-import { isOrganiserRole } from "@/lib/types/rbac";
 import { downloadCsv } from "@/lib/utils/csv";
 import { Pager } from "@/components/shared/ListControls";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -99,12 +98,12 @@ function formatDate(isoDate: string): string {
 
 export default function SpaceMembersPage() {
   const spaceId = useSpaceId();
-  const { spaces, user } = useSession();
+  const { spaces, user, can } = useSession();
   const currentSpace = spaces.find((s) => s.id === spaceId);
   const userRole = currentSpace?.userRole?.code;
 
   // Determine what roles the current user can assign/manage.
-  const canManageMembers = isOrganiserRole(userRole);
+  const canManageMembers = can("space:manage-members");
   // Flat admin model: a Space Admin can grant/revoke admin and member.
   const isFullAdmin = userRole === "SPACE_ADMIN";
 

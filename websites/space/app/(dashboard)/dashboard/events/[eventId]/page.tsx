@@ -18,8 +18,7 @@ import type { Event } from "@/lib/api/events-api";
 import { getCheckinStats, getAttendeeStats } from "@/lib/api/registrations-api";
 import type { CheckinStats, AttendeeStats } from "@/lib/api/registrations-api";
 import { useLayoutEvent } from "@/components/events/EventLayoutContext";
-import { useSession } from "@/lib/context/SessionContext";
-import { can, roleForEvent } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -77,8 +76,8 @@ export default function EventOverviewPage() {
 
   // The layout already loaded the event (B12: it was fetched twice).
   const layout = useLayoutEvent();
-  const { currentSpace } = useSession();
-  const canPublish = can(roleForEvent(currentSpace, eventId), "event:publish");
+  const { can } = useAccess(eventId);
+  const canPublish = can("event:publish");
   const event: Event | null = layout?.event ?? null;
   const [stats, setStats] = useState<CheckinStats | null>(null);
   const loading = !event;
@@ -172,7 +171,7 @@ export default function EventOverviewPage() {
                 Publish
               </Button>
             )}
-            {(event.status === "PUBLISHED" || event.status === "ONGOING") && (
+            {(event.status === "PUBLISHED" || event.status === "ONGOING") && can("event:edit") && (
               <Button
                 variant="outline"
                 size="sm"

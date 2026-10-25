@@ -22,8 +22,7 @@ import {
 } from "@/lib/api/events-api";
 import { toLocalDatetime } from "@/lib/constants/event-form";
 import { Toggle } from "@/components/hackathon/HackParts";
-import { useSession } from "@/lib/context/SessionContext";
-import { can, roleForEvent } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 import {
   getEventEligibleAccounts,
   setEventPayoutAccount,
@@ -50,9 +49,9 @@ export default function EventSettingsPage() {
   const eventId = params.eventId as string;
 
   const [event, setEvent] = useState<Event | null>(null);
-  const { currentSpace } = useSession();
+  const { can } = useAccess(eventId);
   // Publish, cancel, hide, restore and delete belong to the event's owners (T1).
-  const canPublish = can(roleForEvent(currentSpace, eventId), "event:publish");
+  const canPublish = can("event:publish");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -306,7 +305,9 @@ export default function EventSettingsPage() {
       )}
 
       {/* Payout account — default destination for this event's earnings. */}
-      <EventPayoutAccountCard eventId={eventId} />
+      {(can("event:manage-money") || can("space:manage-money")) && (
+        <EventPayoutAccountCard eventId={eventId} />
+      )}
 
       {/* Danger Zone */}
       {canPublish && (

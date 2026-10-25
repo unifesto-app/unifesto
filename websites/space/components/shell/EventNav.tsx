@@ -31,8 +31,7 @@ import {
   Timer,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
-import { useSession, type SpaceFeatures } from "@/lib/context/SessionContext";
-import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
+import { useAccess, type Capability, type SpaceFeature } from "@/lib/context/SessionContext";
 import { cn } from "@/lib/utils/cn";
 import { AssistInboxLink } from "./AssistInboxLink";
 
@@ -44,7 +43,7 @@ interface EventNavItem {
   /** Capability the role must hold to see this section. Absent = any operator. */
   requires?: Capability;
   /** Plan feature that must be enabled. Absent = not plan-gated. */
-  feature?: keyof SpaceFeatures;
+  feature?: SpaceFeature;
 }
 
 interface EventNavGroup {
@@ -97,7 +96,7 @@ const NAV_GROUPS: EventNavGroup[] = [
       { href: "/quizzes", label: "Live quizzes", icon: Timer, requires: "event:edit" },
       { href: "/certificates", label: "Certificates", icon: Certificate, requires: "event:edit", feature: "hasCertificates" },
       // Unifesto Sprint (hackathon mode). Plan gating is shown in-page.
-      { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-attendees" },
+      { href: "/hackathon", label: "Sprint", icon: Trophy, requires: "event:manage-leaderboard" },
       // Unifesto Stay. Crew get the property desk; setup and approvals are gated in-page.
       { href: "/stays", label: "Stay", icon: Bed, requires: "event:check-in" },
     ],
@@ -105,7 +104,7 @@ const NAV_GROUPS: EventNavGroup[] = [
   {
     label: "Configure",
     items: [
-      { href: "/team", label: "Team", icon: UsersFour, requires: "event:assign-curators" },
+      { href: "/team", label: "Team", icon: UsersFour, requires: "event:assign-crew" },
       { href: "/settings", label: "Settings", icon: Gear, requires: "event:edit" },
     ],
   },
@@ -115,44 +114,15 @@ const NAV_GROUPS: EventNavGroup[] = [
     items: [
       { href: "/occurrences", label: "Occurrences", icon: ArrowsClockwise, requires: "event:edit" },
       { href: "/sub-events", label: "Sub-events", icon: Stack, requires: "event:edit" },
-      { href: "/co-hosting", label: "Co-Hosting", icon: ShareNetwork, requires: "event:assign-curators" },
+      { href: "/co-hosting", label: "Co-Hosting", icon: ShareNetwork, requires: "event:assign-crew" },
     ],
   },
 ];
-
-/** Plan-gate check. Unknown flags (still loading) resolve to visible. */
-function featureEnabled(features: SpaceFeatures | null, key: keyof SpaceFeatures): boolean {
-  return features === null ? true : Boolean(features[key]);
-}
-
-/** Keep only the sections this role + plan can reach; drop groups left empty. */
-function visibleGroups(
-  groups: EventNavGroup[],
-  role: SpaceAppRole,
-  features: SpaceFeatures | null
-): EventNavGroup[] {
-  return groups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (i) =>
-          (!i.requires || can(role, i.requires)) &&
-          (!i.feature || featureEnabled(features, i.feature))
-      ),
-    }))
-    .filter((group) => group.items.length > 0);
-}
 
 interface EventNavProps {
   eventId: string;
   onNavigate?: () => void;
   collapsed?: boolean;
-  /**
-   * Role to gate sections by. Defaults to the space-level `currentRole`; the
-   * layout passes the user's EVENT-scoped role for event-only operators (whose
-   * `currentRole` is `none`), so their curator/crew sections still show.
-   */
-  roleOverride?: SpaceAppRole;
 }
 
 /**
@@ -165,14 +135,19 @@ export function EventNav({
   eventId,
   onNavigate,
   collapsed = false,
-  roleOverride,
 }: EventNavProps) {
   const pathname = usePathname();
-  const { currentRole, features } = useSession();
-  const role = roleOverride ?? currentRole;
+  // This event's capabilities from the backend: event-only operators, per-space
+  // overrides and Space Admin inheritance included.
+  const { can, hasFeature } = useAccess(eventId);
   const baseUrl = `/dashboard/events/${eventId}`;
 
-  const navGroups = visibleGroups(NAV_GROUPS, role, features);
+  const navGroups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      (i) => (!i.requires || can(i.requires)) && (!i.feature || hasFeature(i.feature))
+    ),
+  })).filter((group) => group.items.length > 0);
 
   const isActive = (item: EventNavItem) => {
     const fullPath = `${baseUrl}${item.href}`;

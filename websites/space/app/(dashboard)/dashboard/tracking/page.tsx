@@ -11,7 +11,6 @@ import { ShortLinksPanel, TrackingLinks, TrafficSummary, fmt } from "@/component
 import { getSpaceRegistrationSources, sourceLabel, type SpaceRegistrationSource } from "@/lib/api/tracking";
 import { conversion, getTraffic, type SpaceTrafficStats, type TrafficScope } from "@/lib/api/traffic";
 import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
 
 const keyOf = (s: SpaceRegistrationSource) => `${s.source}|${s.medium}|${s.campaign}`;
 
@@ -21,7 +20,7 @@ const keyOf = (s: SpaceRegistrationSource) => `${s.source}|${s.medium}|${s.campa
  * per-event split, then drill into who), plus space-level short links.
  */
 export default function SpaceTrackingPage() {
-  const { currentSpace, currentRole } = useSession();
+  const { currentSpace, can } = useSession();
   const spaceId = currentSpace?.id ?? "";
   const scope = useMemo<TrafficScope>(() => ({ kind: "space", id: spaceId }), [spaceId]);
   const [data, setData] = useState<{ total: number; tagged: number; sources: SpaceRegistrationSource[] } | null>(null);
@@ -119,7 +118,7 @@ export default function SpaceTrackingPage() {
           )}
 
           {spaceId && (
-            <ShortLinksPanel scope={scope} canEdit={can(currentRole, "space:manage-members")} destination="the space page" />
+            <ShortLinksPanel scope={scope} canEdit={can("space:manage-members")} destination="the space page" />
           )}
           {slug && <TrackingLinks url={`https://www.unifesto.app/space/${slug}`} campaign={slug} />}
         </>

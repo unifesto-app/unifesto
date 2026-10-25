@@ -25,7 +25,6 @@ import {
   REGISTRATION_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
 } from "@/lib/api/registrations-api";
-import { getSpaceUsage } from "@/lib/api/subscriptions-api";
 import { ExportMenu } from "@/components/shared/ExportMenu";
 import {
   getManageTicketTypes,
@@ -40,8 +39,7 @@ import type {
 } from "@/lib/api/registrations-api";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 import { PrintBadgesDialog } from "./PrintBadgesDialog";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -72,7 +70,7 @@ export default function EventRegistrationsPage() {
   const router = useRouter();
   const eventId = params.eventId as string;
   const searchParams = useSearchParams();
-  const { currentRole } = useSession();
+  const { can } = useAccess(eventId);
 
   const [event, setEvent] = useState<Event | null>(null);
   // Operator ticket list (incl. hidden tiers) for the filter; the public event
@@ -95,9 +93,10 @@ export default function EventRegistrationsPage() {
   const [sendingInvite, setSendingInvite] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [checkingIn, setCheckingIn] = useState(false);
-  // Whether this space's plan includes bulk export. `undefined` until the
-  // space's plan resolves; the ExportMenu keeps the button live meanwhile.
-  const [canExport, setCanExport] = useState<boolean | undefined>(undefined);
+  // Whether this space's plan includes bulk export (the flag the backend
+  // enforces with). `undefined` until access loads; ExportMenu stays live then.
+  const exportAccess = useAccess(eventId);
+  const canExport = exportAccess.access ? exportAccess.hasFeature("hasBulkExport") : undefined;
 
   const loadEvent = useCallback(async () => {
     const [{ data }, { data: tiers }] = await Promise.all([
@@ -107,10 +106,6 @@ export default function EventRegistrationsPage() {
     if (!data) return;
     setEvent(data);
     setTicketTypes(tiers ?? data.ticketTypes ?? []);
-    // Gate the Export control on the space's effective plan, using the same
-    // flag the backend enforces with (getEffectiveLimits → hasBulkExport).
-    const { data: usage } = await getSpaceUsage(data.spaceId);
-    if (usage) setCanExport(usage.features.hasBulkExport);
   }, [eventId]);
 
   const loadRegistrations = useCallback(async () => {
@@ -305,7 +300,7 @@ export default function EventRegistrationsPage() {
             <Plus className="h-4 w-4" />
             Add attendee
           </Button>
-          {can(currentRole, "event:manage-attendees") && (
+          {can("event:manage-attendees") && (
             <PrintBadgesDialog
               eventId={eventId}
               eventSlug={event?.slug}

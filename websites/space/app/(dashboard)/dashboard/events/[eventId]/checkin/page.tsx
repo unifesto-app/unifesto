@@ -37,8 +37,7 @@ import type {
   RecentCheckin,
 } from "@/lib/api/registrations-api";
 import { EventExportMenu } from "@/components/shared/EventExportMenu";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -56,7 +55,7 @@ function initials(name?: string | null, username?: string | null): string {
 export default function EventCheckinPage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const { currentRole } = useSession();
+  const { can } = useAccess(eventId);
 
   const [types, setTypes] = useState<CheckinType[]>([]);
   const [activeTypeId, setActiveTypeId] = useState<string>("");
@@ -94,12 +93,12 @@ export default function EventCheckinPage() {
       <PageHeader
         title="Check-in"
         subtitle={
-          can(currentRole, "event:assign-curators")
+          can("event:assign-crew")
             ? "Manage check-in points, grant your team access, and check attendees in"
             : "Scan or search to check attendees in"
         }
         actions={
-          can(currentRole, "event:manage-attendees") ? (
+          can("event:manage-attendees") ? (
             <EventExportMenu eventId={eventId} type="checkins" />
           ) : undefined
         }
@@ -145,7 +144,7 @@ export default function EventCheckinPage() {
       </div>
 
       {/* Setting up points and access is for organisers; Crew just check in. */}
-      {can(currentRole, "event:assign-curators") && (
+      {can("event:assign-crew") && (
         <>
           <CheckinPointsCard eventId={eventId} types={types} onChanged={loadTypes} />
           <CheckinAccessCard eventId={eventId} />

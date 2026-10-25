@@ -12,8 +12,8 @@ import {
   type TeamUser,
   type EventTeamRole,
 } from "@/lib/api/events-api";
-import { useSession } from "@/lib/context/SessionContext";
-import { can, outranks, roleForEvent } from "@/lib/types/rbac";
+import { useAccess, useSession } from "@/lib/context/SessionContext";
+import { appRoleFromCode, higherRole, outranks } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -97,9 +97,11 @@ function Avatar({ user }: { user: TeamUser }) {
 export default function EventTeamPage() {
   const params = useParams();
   const eventId = params.eventId as string;
-  const { currentSpace, user } = useSession();
-  const myRole = roleForEvent(currentSpace, eventId);
-  const canAssign = can(myRole, "event:assign-curators");
+  const { user } = useSession();
+  const { access, can } = useAccess(eventId);
+  // Governing role here: the higher of the space and event role the backend reports.
+  const myRole = higherRole(appRoleFromCode(access?.spaceRole), appRoleFromCode(access?.eventRole));
+  const canAssign = can("event:assign-crew");
   // Only roles below your own can be handed out (only a Space Admin names a Curator).
   const roleOptions = TEAM_ROLES.filter((r) => outranks(myRole, r.code));
 

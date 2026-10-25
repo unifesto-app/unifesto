@@ -13,7 +13,6 @@ import {
 } from "@unifesto/unicon/react";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
 import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
 import {
   createEvent,
   createTicketType,
@@ -229,8 +228,8 @@ function CreateEventInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const spaceId = useSpaceId();
-  const { currentRole } = useSession();
-  const allowed = can(currentRole, "event:create");
+  const { can } = useSession();
+  const allowed = can("space:create-event");
 
   const parentId = searchParams.get("parentId") || undefined;
   const isSubEvent = Boolean(parentId);

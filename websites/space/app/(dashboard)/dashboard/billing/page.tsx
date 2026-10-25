@@ -11,7 +11,6 @@ import {
 } from "@unifesto/unicon/react";
 import { useSession } from "@/lib/context/SessionContext";
 import { useSpaceId } from "@/lib/hooks/useSpaceId";
-import { can } from "@/lib/types/rbac";
 import {
   getSpaceSubscription,
   getSpaceUsage,
@@ -65,8 +64,8 @@ const PLAN_FEATURES: { key: keyof PlanInfo; label: string }[] = [
 
 export default function BillingPage() {
   const spaceId = useSpaceId();
-  const { currentSpace, currentRole } = useSession();
-  const allowed = can(currentRole, "space:manage-billing");
+  const { currentSpace, can } = useSession();
+  const allowed = can("space:manage-billing");
 
   const [sub, setSub] = useState<Subscription | null>(null);
   const [usage, setUsage] = useState<SubscriptionUsage | null>(null);

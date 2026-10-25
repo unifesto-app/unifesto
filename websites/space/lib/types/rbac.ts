@@ -127,19 +127,6 @@ export function isEventScopedSpace(space?: SpaceMembership | null): boolean {
 }
 
 /**
- * Event-only operator whose event role answers Assist cases. They may open
- * the space's Assist inbox, which the backend scopes to those events.
- */
-export function hasEventDeskAccess(space?: SpaceMembership | null): boolean {
-  return (
-    isEventScopedSpace(space) &&
-    (space?.eventAccess ?? []).some((e) =>
-      can(appRoleFromCode(e.roleCode), "event:manage-support")
-    )
-  );
-}
-
-/**
  * The user's surface role in a specific space (the governing role there).
  */
 export function roleInSpace(
@@ -148,19 +135,6 @@ export function roleInSpace(
 ): SpaceAppRole {
   const space = (user?.spaces ?? []).find((s) => s.id === spaceId);
   return appRoleFromCode(space?.userRole?.code);
-}
-
-/**
- * The governing role on one event: the higher of the space role and any
- * event-scoped role the user holds on it. Gate event controls on this, not on
- * the space-level `currentRole`, which is `none` for event-only operators.
- */
-export function roleForEvent(
-  space: SpaceMembership | null | undefined,
-  eventId: string
-): SpaceAppRole {
-  const eventCode = space?.eventAccess?.find((e) => e.eventId === eventId)?.roleCode;
-  return higherRole(appRoleFromCode(space?.userRole?.code), appRoleFromCode(eventCode));
 }
 
 /**
@@ -208,68 +182,6 @@ export function apexUrl(): string {
   return process.env.NEXT_PUBLIC_APEX_URL || "https://apex.unifesto.app";
 }
 
-// ---------------------------------------------------------------------------
-// Capabilities — what each surface role may DO.
-//
-// One matrix, checked everywhere, so a permission is never re-derived ad hoc.
-// Keep this in lockstep with the backend's own guards: the frontend hides,
-// the backend enforces.
-// ---------------------------------------------------------------------------
-
-export type Capability =
-  | "space:manage-billing" // view/upgrade the space plan, pay
-  | "space:manage-settings" // profile, white-label, sub-spaces
-  | "space:manage-members" // invite/remove admins, curators, crew
-  | "space:manage-money" // bank account, payouts, refunds
-  | "space:manage-email" // compose/send email campaigns, manage templates
-  | "space:manage-sponsors" // sponsor roster/tiers, event attach, lead inbox
-  | "event:create" // spin up a new event (name only)
-  | "event:assign-curators" // add curator / co-curator / crew to an event
-  | "event:edit" // edit event content
-  | "event:publish" // publish / cancel an event
-  | "event:manage-money" // event refunds + payout requests (D9: Space Admin and Curator)
-  | "event:manage-attendees" // manually add / bulk-import attendees, payment links
-  | "event:manage-support" // answer attendee cases on the space's Assist desk
-  | "event:check-in"; // scan / check attendees in
-
-const CAPABILITIES: Record<SpaceAppRole, Capability[]> = {
-  space_admin: [
-    "space:manage-billing",
-    "space:manage-settings",
-    "space:manage-members",
-    "space:manage-money",
-    "space:manage-email",
-    "space:manage-sponsors",
-    "event:create",
-    "event:assign-curators",
-    "event:edit",
-    "event:publish",
-    "event:manage-money",
-    "event:manage-attendees",
-    "event:manage-support",
-    "event:check-in",
-  ],
-  curator: [
-    "space:manage-email",
-    "space:manage-sponsors",
-    "event:assign-curators",
-    "event:edit",
-    "event:publish",
-    "event:manage-money",
-    "event:manage-attendees",
-    "event:manage-support",
-    "event:check-in",
-  ],
-  co_curator: ["event:edit", "event:manage-attendees", "event:manage-support", "event:check-in"],
-  crew: ["event:check-in"],
-  none: [],
-};
-
-/** True when `role` is permitted to perform `cap`. */
-export function can(role: SpaceAppRole, cap: Capability): boolean {
-  return CAPABILITIES[role]?.includes(cap) ?? false;
-}
-
 // ===========================================================================
 // Shared domain types (ported from Apex).
 //
@@ -281,6 +193,8 @@ export function can(role: SpaceAppRole, cap: Capability): boolean {
 // ===========================================================================
 
 // --- Space role codes (see ROLE_CODE map). ----------------------------------
+// What a role may DO comes from the backend: `GET /spaces/:id/access`
+// (`useAccess` / `useSession().can`). There is no capability matrix here.
 
 export type SpaceRoleCode =
   | "SPACE_ADMIN"
@@ -289,19 +203,6 @@ export type SpaceRoleCode =
   | "CREW"
   | "MEMBER"
   | "ADMIN";
-
-/** Space roles that grant operator (space-admin) access — the canonical code is
- * SPACE_ADMIN. */
-export const ORGANISER_ROLE_CODES: SpaceRoleCode[] = ["SPACE_ADMIN"];
-
-/**
- * True when a space role code grants operator (space-admin) access. Some ported
- * pages still gate on this helper; new code should prefer the capability matrix
- * ({@link can}) keyed by {@link SpaceAppRole}.
- */
-export function isOrganiserRole(code?: string | null): boolean {
-  return !!code && ORGANISER_ROLE_CODES.includes(code as SpaceRoleCode);
-}
 
 // --- Spaces ----------------------------------------------------------------
 

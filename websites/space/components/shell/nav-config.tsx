@@ -21,7 +21,13 @@ import {
   Globe,
 } from "@unifesto/unicon/react";
 import type { Icon } from "@unifesto/unicon/react";
-import { can, type Capability, type SpaceAppRole } from "@/lib/types/rbac";
+import {
+  accessCan,
+  featureOn,
+  type Capability,
+  type SpaceFeature,
+} from "@/lib/context/SessionContext";
+import type { SpaceAccess } from "@/lib/api/spaces-api";
 
 export interface NavItem {
   href: string;
@@ -30,6 +36,8 @@ export interface NavItem {
   exact?: boolean;
   /** Capability required to see this item; absent = visible to any operator. */
   requires?: Capability;
+  /** Plan feature that must be on. Absent = not plan-gated. */
+  feature?: SpaceFeature;
   /** Extra terms the command palette matches against (beyond the label). */
   keywords?: string;
   /** Reachable from the command palette only; the sidebar shows its parent. */
@@ -58,7 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Programming",
     items: [
       { href: "/events", label: "Events", icon: CalendarBlank, keywords: "event" },
-      { href: "/sessions", label: "Sessions", icon: VideoCamera, requires: "event:create", keywords: "online live" },
+      { href: "/sessions", label: "Sessions", icon: VideoCamera, requires: "space:create-event", feature: "hasSessions", keywords: "online live" },
     ],
   },
   {
@@ -66,8 +74,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/members", label: "Members", icon: Users, requires: "space:manage-members", keywords: "team people crew" },
       { href: "/email", label: "Email", icon: EnvelopeSimple, requires: "space:manage-email", keywords: "campaigns templates marketing" },
-      { href: "/sponsors", label: "Sponsors", icon: Handshake, requires: "space:manage-sponsors", keywords: "sponsors partners tiers" },
-      { href: "/leads", label: "Leads", icon: Funnel, requires: "space:manage-sponsors", keywords: "leads funnel interest inquiry notify crm" },
+      { href: "/sponsors", label: "Sponsors", icon: Handshake, requires: "space:manage-sponsors", feature: "hasSponsors", keywords: "sponsors partners tiers" },
+      { href: "/leads", label: "Leads", icon: Funnel, requires: "space:manage-sponsors", feature: "hasSponsors", keywords: "leads funnel interest inquiry notify crm" },
       { href: "/tracking", label: "Tracking", icon: ChartLineUp, keywords: "traffic utm short links sources analytics views" },
     ],
   },
@@ -117,12 +125,16 @@ export const SUBSPACES_NAV_ITEM: NavItem = {
   keywords: "child spaces sub-org",
 };
 
-/** Keep only the items this role can act on; drop groups left empty. */
-export function visibleGroups(groups: NavGroup[], role: SpaceAppRole): NavGroup[] {
+/** Keep only the items this access (capability + plan) reaches; drop groups left empty. */
+export function visibleGroups(groups: NavGroup[], access: SpaceAccess | null): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
-      items: group.items.filter((i) => !i.requires || can(role, i.requires)),
+      items: group.items.filter(
+        (i) =>
+          (!i.requires || accessCan(access, i.requires)) &&
+          (!i.feature || featureOn(access, i.feature))
+      ),
     }))
     .filter((group) => group.items.length > 0);
 }
@@ -163,11 +175,11 @@ export function isCampus(space: { type?: string; parentSpaceId?: string | null }
  */
 export function resolveNavGroups(
   space: { sub_org_count: number; type?: string; parentSpaceId?: string | null },
-  role: SpaceAppRole,
+  access: SpaceAccess | null,
 ): NavGroup[] {
   const groups = withSubspaces(NAV_GROUPS, space.sub_org_count);
   const withOrbit = isCampus(space)
     ? [groups[0], { label: "Orbit", items: [ORBIT_NAV_ITEM] }, ...groups.slice(1)]
     : groups;
-  return visibleGroups(withOrbit, role);
+  return visibleGroups(withOrbit, access);
 }

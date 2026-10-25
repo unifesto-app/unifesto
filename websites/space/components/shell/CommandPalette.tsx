@@ -33,7 +33,7 @@ interface Command {
  */
 export function CommandPalette() {
   const router = useRouter();
-  const { currentSpace, currentRole, spaces, setCurrentSpace } = useSession();
+  const { currentSpace, access, spaces, setCurrentSpace } = useSession();
   const { open, setOpen } = useCommandPalette();
   const [query, setQuery] = useState("");
   const [highlight, setHighlight] = useState(0);
@@ -59,7 +59,7 @@ export function CommandPalette() {
     const list: Command[] = [];
 
     // Navigation destinations, in the same order/grouping as the sidebar.
-    for (const group of resolveNavGroups(currentSpace, currentRole)) {
+    for (const group of resolveNavGroups(currentSpace, access)) {
       for (const item of group.items) {
         list.push({
           id: `nav:${item.href}`,
@@ -98,7 +98,7 @@ export function CommandPalette() {
     });
 
     return list;
-  }, [currentSpace, currentRole, spaces, router, setCurrentSpace]);
+  }, [currentSpace, access, spaces, router, setCurrentSpace]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

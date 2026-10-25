@@ -11,8 +11,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { ListGroup, ListRow } from "@/components/shared/ListGroup";
 import { HackPage as Page, StatsRow, useResult } from "@/components/hackathon/HackParts";
 import { dayLabel, getTeamStays, lookupStayPass, PROPERTY_LABELS, staysBase } from "@/lib/api/stays";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 
 /**
  * Unifesto Stay for the event team (port of StaysManageScreen + the pass desk
@@ -22,9 +21,9 @@ import { can } from "@/lib/types/rbac";
 export default function StaysPage() {
   const eventId = useParams().eventId as string;
   const router = useRouter();
-  const { currentRole } = useSession();
-  const canManage = can(currentRole, "event:manage-attendees");
-  const canEdit = can(currentRole, "event:edit");
+  const { can } = useAccess(eventId);
+  const canManage = can("event:manage-attendees");
+  const canEdit = can("event:edit");
   const fetcher = useCallback(() => getTeamStays(eventId), [eventId]);
   const { data, error } = useResult(fetcher, "You can't manage stays for this event.");
   const [pass, setPass] = useState("");

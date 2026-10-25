@@ -20,7 +20,6 @@ import {
 import { getSpaceEvents } from "@/lib/api/events-api";
 import type { Event } from "@/lib/api/events-api";
 import type { SpaceWithHierarchy } from "@/lib/types/rbac";
-import { can } from "@/lib/types/rbac";
 import { useSession } from "@/lib/context/SessionContext";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -100,8 +99,8 @@ function DateChip({ iso }: { iso?: string }) {
 export default function SpaceDashboardPage() {
   const router = useRouter();
   const spaceId = useSpaceId();
-  const { user, spaces, currentRole, loading: sessionLoading } = useSession();
-  const canCreate = can(currentRole, "event:create");
+  const { user, spaces, can, loading: sessionLoading } = useSession();
+  const canCreate = can("space:create-event");
 
   const [currentSpace, setCurrentSpace] = useState<SpaceWithHierarchy | null>(null);
   const [events, setEvents] = useState<Event[]>([]);

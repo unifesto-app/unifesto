@@ -10,8 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCopy } from "./TrackingParts";
 import { createPartnerLink, getPartnerLinks, revokePartnerLink, type PartnerLink } from "@/lib/api/tracking";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 
 /**
  * Partners for one event (port of EventPartnersScreen), shown inside Tracking:
@@ -20,8 +19,8 @@ import { can } from "@/lib/types/rbac";
  * Counts only, never attendees.
  */
 export function PartnersPanel({ eventId }: { eventId: string }) {
-  const { currentRole } = useSession();
-  const canEdit = can(currentRole, "event:edit");
+  const { can } = useAccess(eventId);
+  const canEdit = can("event:edit");
   const [partners, setPartners] = useState<PartnerLink[] | null>(null);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);

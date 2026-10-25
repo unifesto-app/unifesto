@@ -151,7 +151,7 @@ export default function ManageEventScreen() {
         </View>
       </View>
 
-      {e.status === 'DRAFT' && h.access.hosts ? (
+      {e.status === 'DRAFT' && h.access.canPublish ? (
         <Button
           label="Review and publish"
           size="lg"
