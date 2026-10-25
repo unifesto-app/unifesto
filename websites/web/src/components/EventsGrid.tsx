@@ -92,9 +92,9 @@ export default function EventsGrid() {
           <div>
             <h2 id="events-heading" data-reveal="clip" className="font-display text-[clamp(1.6rem,3.4vw,2.6rem)] leading-[1.12] text-paper">
               {showNext ? "What is on next" : "Recently on Unifesto"}{" "}
-              {showNext && (
+              {showNext && city && (
                 <span className="mt-2 block font-sans text-lg font-light text-paper/55 md:text-xl">
-                  {city ? `in ${city}` : "at Malla Reddy University"}
+                  in {city}
                 </span>
               )}
             </h2>

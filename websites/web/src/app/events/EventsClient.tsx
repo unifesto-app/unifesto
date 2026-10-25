@@ -285,7 +285,7 @@ function EventsContent({ initialEvents }: { initialEvents: Event[] | null }) {
         lines={["Find something", "worth your evening."]}
         accentFrom={1}
         size="md"
-        lede="Hackathons, workshops, fests and talks at Malla Reddy University. Register in seconds."
+        lede="Hackathons, workshops, fests and talks from campuses and communities. Register in seconds."
       />
       {/* Same gap below the hero's horizon line as above it */}
       <div className="h-14 md:h-20" aria-hidden />
