@@ -870,3 +870,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-22** · J10 cross-tenant writes closed: deleteTicketType event check, PATCH /spaces type/parent/coCuratorLimit platform-admin only + cycle guard, attachSubEvent checks parent, analytics CTE path/depth-bounded with statement_timeout (#313)
 - **2026-10-22** · J9 public event/session APIs stop leaking private fields: PUBLIC_EVENT_CARD_SELECT allow-list on lists/favourites, onlineUrl only for operators + ticket holders, no join link in public .ics, recordingUrl only for registrants (#311)
 - **2026-10-23** · T1 Co-Curator escalation closed: publish/cancel/hide/restore/delete need EVENT_PUBLISH/EVENT_CANCEL (no co-host fallback), team edits need EVENT_ASSIGN_CREW with rank rules + coCuratorLimit + audit log; space + mobile controls gated (#309)
+- **2026-10-25** · Auto-blog: 50-question queue, 3/day researched + humanized + gated posts, Search Console learn, author box (#314)
