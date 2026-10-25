@@ -1,24 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Bell, BellRinging, DoorOpen, Gavel, Lifebuoy, Lightbulb, LinkSimple, LockSimple, MapPin, Trophy, UsersThree, WarningCircle } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import QuickTiles, { type QuickTile } from '../components/profile/QuickTiles';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getMyHackathon, type HackathonHub } from '../lib/api/hackathon';
 import { evalStatusLabel, stageCopy, venueMapsUrl } from '../lib/hackathon';
 import { isEventOver } from '../lib/eventEnded';
 import { AfterEventGroup, useEventCertificate } from '../components/EventEnded';
 import { onNotificationArrived } from '../lib/notificationBus';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 
 /**
@@ -30,7 +29,6 @@ export default function HackathonHubScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [hub, setHub] = useState<HackathonHub | null | undefined>(undefined);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -85,28 +83,34 @@ export default function HackathonHubScreen() {
 
   if (hub === undefined) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <>
         {header}
-        <ActivityIndicator color={c.primary} />
-      </View>
+        <CosmosScreen>
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        </CosmosScreen>
+      </>
     );
   }
 
   if (!hub || !hub.team) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <>
         {header}
-        <Text style={[styles.emptyTitle, { color: c.text }]}>
-          {!hub ? 'No hackathon here right now' : 'You’re not on a hackathon team'}
-        </Text>
-        <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>
-          {error ||
-            (!hub
-              ? 'This event isn’t running its hackathon in the app at the moment.'
-              : 'Teams are made from group registrations. If someone invited you to their group, claim your seat from the invite, then come back here.')}
-        </Text>
-        <Button label="Refresh" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[5] }} />
-      </View>
+        <CosmosScreen contentContainerStyle={styles.content}>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyTitle, { color: c.text }]}>
+              {!hub ? 'No hackathon here right now' : 'You’re not on a hackathon team'}
+            </Text>
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>
+              {error ||
+                (!hub
+                  ? 'This event isn’t running its hackathon in the app at the moment.'
+                  : 'Teams are made from group registrations. If someone invited you to their group, claim your seat from the invite, then come back here.')}
+            </Text>
+            <Button label="Refresh" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[5] }} />
+          </View>
+        </CosmosScreen>
+      </>
     );
   }
 
@@ -140,23 +144,15 @@ export default function HackathonHubScreen() {
   return (
     <>
       {header}
-      <ScrollView
-        style={{ backgroundColor: c.bg }}
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await load();
-              setRefreshing(false);
-            }}
-            tintColor={c.primary}
-            colors={[c.primary]}
-            progressViewOffset={topSpacing}
-          />
-        }
+      <CosmosScreen
+        contentContainerStyle={styles.content}
+        bottom={100}
+        refreshing={refreshing}
+        onRefresh={async () => {
+          setRefreshing(true);
+          await load();
+          setRefreshing(false);
+        }}
       >
         {/* Team pass: who you are, then what's next */}
         <View style={styles.pass}>
@@ -264,22 +260,22 @@ export default function HackathonHubScreen() {
             {n}
           </Text>
         ))}
-      </ScrollView>
+      </CosmosScreen>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  emptyTitle: { fontSize: typography.fontSize.xl, textAlign: 'center', ...cosmosFont.strong },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  emptyTitle: { fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
-  pass: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  pass: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   passTop: { paddingHorizontal: spacing[5], paddingTop: spacing[6], paddingBottom: spacing[5], alignItems: 'center' },
   passDivider: { height: 2 },
   passBottom: { padding: spacing[5] },
-  label: { fontSize: typography.fontSize.xs, letterSpacing: 0.5, ...cosmosFont.strong },
-  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], ...cosmosFont.display },
+  label: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  teamCode: { marginTop: spacing[2], fontSize: typography.fontSize['5xl'], ...cosmosFont.figure },
   teamName: { marginTop: spacing[1], fontSize: typography.fontSize.lg, textAlign: 'center', ...cosmosFont.strong },
   stageRow: { flexDirection: 'row', gap: spacing[3] },
   stageTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },

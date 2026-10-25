@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IdentificationCard, Lightbulb, LockSimple, WarningCircle } from '@unifesto/unicon/react-native';
@@ -8,13 +8,12 @@ import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Badge } from '../components/ui/Badge';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { getRooms, getTeam, updateTeam, type Room, type TeamDetail } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const NAME_SOURCE: Record<string, string> = {
   FORM: 'From their registration',
@@ -38,7 +37,6 @@ export default function HackathonTeamEditorScreen() {
   const router = useRouter();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -84,9 +82,15 @@ export default function HackathonTeamEditorScreen() {
 
   if (!team || !draft) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -122,118 +126,116 @@ export default function HackathonTeamEditorScreen() {
   const joined = team.members.filter((m) => m.joined).length;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        {cancelled ? (
-          <View style={styles.banner}>
-            <Badge label="Cancelled" tone="danger" />
-            <Text style={[styles.note, { color: c.soft, marginTop: spacing[2] }]}>
-              This team’s registration was cancelled. It keeps {team.teamCode ?? 'its Team ID'} and the ID is never given to
-              another team. If the registration is restored, the team comes back as it was.
-            </Text>
-          </View>
-        ) : null}
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={<SaveBar visible={dirty} label="Save team" onPress={save} loading={saving} error={error} />}
+    >
+      {cancelled ? (
+        <View style={styles.banner}>
+          <Badge label="Cancelled" tone="danger" />
+          <Text style={[styles.note, { color: c.soft, marginTop: spacing[2] }]}>
+            This team’s registration was cancelled. It keeps {team.teamCode ?? 'its Team ID'} and the ID is never given to
+            another team. If the registration is restored, the team comes back as it was.
+          </Text>
+        </View>
+      ) : null}
 
-        <SettingsGroup plain>
-          <FieldRow label="Team ID" value={draft.teamCode} onChangeText={(v) => set({ teamCode: v })} autoCapitalize="characters" autoCorrect={false} />
-          <FieldRow stacked label="Team name" value={draft.name} onChangeText={(v) => set({ name: v })} />
-        </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>
-          {team.nameSource ? `${NAME_SOURCE[team.nameSource]}. ` : ''}Changing the name here overrides it.
-        </Text>
+      <SettingsGroup plain>
+        <FieldRow label="Team ID" value={draft.teamCode} onChangeText={(v) => set({ teamCode: v })} autoCapitalize="characters" autoCorrect={false} />
+        <FieldRow stacked label="Team name" value={draft.name} onChangeText={(v) => set({ name: v })} />
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>
+        {team.nameSource ? `${NAME_SOURCE[team.nameSource]}. ` : ''}Changing the name here overrides it.
+      </Text>
 
-        {!cancelled ? (
-          <>
-            <SettingsGroup title="Room" plain>
-              <SelectRow
-                label="Room"
-                value={draft.roomName}
-                options={rooms.map((r) => r.name)}
-                onChange={(v) => set({ roomName: v })}
-                placeholder={rooms.length ? 'No room' : 'Add rooms first'}
-                clearable
-              />
-            </SettingsGroup>
-            <Text style={[styles.note, { color: c.muted }]}>
-              {room
-                ? `${room.occupied} of ${room.capacity} teams in ${room.name}${room.location ? ` · ${room.location}` : ''}. The team is notified when you save.`
-                : 'The team is notified when you put it in a room.'}
-            </Text>
-          </>
-        ) : null}
-
-        {!cancelled || team.statement ? (
-          <>
-            <SettingsGroup title="Problem statement">
-              <SettingsRow
-                icon={
-                  team.statement ? (
-                    <LockSimple size={26} color={c.text} />
-                  ) : (
-                    <Lightbulb size={26} color={c.text} />
-                  )
-                }
-                label={team.statement ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ') : 'Not chosen yet'}
-                value={team.statement?.themeLabel ?? (cancelled ? undefined : 'Assign')}
-                onPress={() =>
-                  router.push({ pathname: `/manage/event/${eventId}/hackathon/team-statement`, params: { teamId } } as never)
-                }
-              />
-            </SettingsGroup>
-            {team.statement?.changedAfterEvalAt ? (
-              <View style={styles.flag}>
-                <WarningCircle size={16} color={c.warn} weight="fill" />
-                <Text style={[styles.flagText, { color: c.warn }]}>Changed after evaluation. Earlier marks were kept.</Text>
-              </View>
-            ) : (
-              <Text style={[styles.note, { color: c.muted }]}>
-                {team.statement
-                  ? team.statement.setBy?.kind === 'ORGANISER'
-                    ? 'Assigned by organisers. Locked for the team.'
-                    : `Locked in by ${team.statement.setBy?.name ?? 'the team'}. Only organisers can change it.`
-                  : 'The team can’t be judged until it has one.'}
-              </Text>
-            )}
-          </>
-        ) : null}
-
-        <SettingsGroup title={`Members · ${joined} of ${team.members.length} joined`} plain>
-          {team.members.map((m) => (
-            <SettingsRow
-              key={m.seat}
-              label={m.name || `Seat ${m.seat}`}
-              value={[m.isLead ? 'Lead' : '', m.joined ? '' : 'Not joined yet'].filter(Boolean).join(' · ') || undefined}
-            />
-          ))}
-        </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>
-          Members see the hackathon once they claim their seat in the app. The lead can invite people from their ticket.
-        </Text>
-
-        {team.registrationId ? (
-          <SettingsGroup>
-            <SettingsRow
-              icon={<IdentificationCard size={26} color={c.text} />}
-              label="Open the registration"
-              onPress={() => router.push(`/manage/event/${eventId}/attendee/${team.registrationId}`)}
+      {!cancelled ? (
+        <>
+          <SettingsGroup title="Room" plain>
+            <SelectRow
+              label="Room"
+              value={draft.roomName}
+              options={rooms.map((r) => r.name)}
+              onChange={(v) => set({ roomName: v })}
+              placeholder={rooms.length ? 'No room' : 'Add rooms first'}
+              clearable
             />
           </SettingsGroup>
-        ) : null}
-      </ScrollView>
+          <Text style={[styles.note, { color: c.muted }]}>
+            {room
+              ? `${room.occupied} of ${room.capacity} teams in ${room.name}${room.location ? ` · ${room.location}` : ''}. The team is notified when you save.`
+              : 'The team is notified when you put it in a room.'}
+          </Text>
+        </>
+      ) : null}
 
-      <SaveBar visible={dirty} label="Save team" onPress={save} loading={saving} error={error} />
-    </KeyboardAvoidingView>
+      {!cancelled || team.statement ? (
+        <>
+          <SettingsGroup title="Problem statement">
+            <SettingsRow
+              icon={
+                team.statement ? (
+                  <LockSimple size={26} color={c.text} />
+                ) : (
+                  <Lightbulb size={26} color={c.text} />
+                )
+              }
+              label={team.statement ? [team.statement.code, team.statement.title].filter(Boolean).join(' · ') : 'Not chosen yet'}
+              value={team.statement?.themeLabel ?? (cancelled ? undefined : 'Assign')}
+              onPress={() =>
+                router.push({ pathname: `/manage/event/${eventId}/hackathon/team-statement`, params: { teamId } } as never)
+              }
+            />
+          </SettingsGroup>
+          {team.statement?.changedAfterEvalAt ? (
+            <View style={styles.flag}>
+              <WarningCircle size={16} color={c.warn} weight="fill" />
+              <Text style={[styles.flagText, { color: c.warn }]}>Changed after evaluation. Earlier marks were kept.</Text>
+            </View>
+          ) : (
+            <Text style={[styles.note, { color: c.muted }]}>
+              {team.statement
+                ? team.statement.setBy?.kind === 'ORGANISER'
+                  ? 'Assigned by organisers. Locked for the team.'
+                  : `Locked in by ${team.statement.setBy?.name ?? 'the team'}. Only organisers can change it.`
+                : 'The team can’t be judged until it has one.'}
+            </Text>
+          )}
+        </>
+      ) : null}
+
+      <SettingsGroup title={`Members · ${joined} of ${team.members.length} joined`} plain>
+        {team.members.map((m) => (
+          <SettingsRow
+            key={m.seat}
+            label={m.name || `Seat ${m.seat}`}
+            value={[m.isLead ? 'Lead' : '', m.joined ? '' : 'Not joined yet'].filter(Boolean).join(' · ') || undefined}
+          />
+        ))}
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>
+        Members see the hackathon once they claim their seat in the app. The lead can invite people from their ticket.
+      </Text>
+
+      {team.registrationId ? (
+        <SettingsGroup>
+          <SettingsRow
+            icon={<IdentificationCard size={26} color={c.text} />}
+            label="Open the registration"
+            onPress={() => router.push(`/manage/event/${eventId}/attendee/${team.registrationId}`)}
+          />
+        </SettingsGroup>
+      ) : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   banner: { marginBottom: spacing[2] },
   flag: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[2], marginHorizontal: spacing[1] },
   flagText: { flexShrink: 1, fontSize: typography.fontSize.xs, ...cosmosFont.strong },

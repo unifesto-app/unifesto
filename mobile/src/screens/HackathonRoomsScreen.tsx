@@ -1,19 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { HeaderActions, HeaderIconButton } from '../navigation/HeaderActions';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { autoAllocateRooms, getRooms, type Room } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Rooms at the venue and how full they are. "Auto-allocate" fills free places
@@ -24,7 +22,6 @@ export default function HackathonRoomsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [rooms, setRooms] = useState<Room[] | null>(null);
   const [unallocated, setUnallocated] = useState(0);
   const [error, setError] = useState('');
@@ -83,9 +80,9 @@ export default function HackathonRoomsScreen() {
 
   if (!rooms) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -102,28 +99,20 @@ export default function HackathonRoomsScreen() {
           ),
         }}
       />
-      <ScrollView
-        style={{ backgroundColor: c.bg }}
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await load();
-              setRefreshing(false);
-            }}
-            tintColor={c.primary}
-            colors={[c.primary]}
-            progressViewOffset={topSpacing}
-          />
-        }
+      <CosmosScreen
+        contentContainerStyle={styles.content}
+        bottom={100}
+        refreshing={refreshing}
+        onRefresh={async () => {
+          setRefreshing(true);
+          await load();
+          setRefreshing(false);
+        }}
       >
         {rooms.length === 0 ? (
-          <View style={{ marginTop: spacing[10], alignItems: 'center' }}>
+          <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
             <Text style={[styles.empty, { color: c.text }]}>No rooms yet</Text>
-            <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
+            <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>
               Add the rooms teams will work in, with how many teams each one fits.
             </Text>
             <Button label="Add a room" onPress={() => openRoom('new')} style={{ marginTop: spacing[5] }} />
@@ -162,15 +151,15 @@ export default function HackathonRoomsScreen() {
           </>
         )}
         {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
-      </ScrollView>
+      </CosmosScreen>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: GUTTER },
+  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
   empty: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
-  summary: { fontSize: typography.fontSize.xl, ...cosmosFont.strong },
+  summary: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

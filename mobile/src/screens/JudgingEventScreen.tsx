@@ -1,44 +1,36 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { CaretRight, CheckCircle, CircleDashed, Lock } from '@unifesto/unicon/react-native';
-import { useTheme } from '../context/ThemeContext';
 import {
   getMyAssignments,
   MyAssignments,
   AssignmentRound,
   RoundStatus,
 } from '../lib/api/leaderboard';
-import { spacing, borderRadius, font } from '../theme';
-import { getFontFamily } from '../theme/fontHelpers';
-import useTopSpacing from '../hooks/useTopSpacing';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { cosmosCardRadius, cosmosFont, useCosmos, type Cosmos } from '../theme/cosmos';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import JudgeConsoleScreen from './JudgeConsoleScreen';
 
 /** Colour + label for a round's lifecycle state. */
-function roundBadge(status: RoundStatus, colors: any): { label: string; color: string } {
+function roundBadge(status: RoundStatus, c: Cosmos): { label: string; color: string } {
   switch (status) {
     case 'ACTIVE':
-      return { label: 'Open for scoring', color: colors.success };
+      return { label: 'Open for scoring', color: c.success };
     case 'CLOSED':
-      return { label: 'Closed', color: colors.textMuted };
+      return { label: 'Closed', color: c.muted };
     default:
-      return { label: 'Not started', color: colors.warning };
+      return { label: 'Not started', color: c.warn };
   }
 }
 
 export default function JudgingEventScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const { eventId } = useLocalSearchParams<{ eventId: string; title?: string }>();
 
   const [data, setData] = useState<MyAssignments | null>(null);
@@ -57,155 +49,47 @@ export default function JudgingEventScreen() {
 
   const isMentor = data?.kind === 'MENTOR';
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: spacing[6], paddingBottom: spacing[8] },
-    intro: {
-      fontSize: 14,
-      fontFamily: getFontFamily('normal'),
-      color: colors.textMuted,
-      lineHeight: 20,
-      marginBottom: spacing[6],
-    },
-    roundBlock: { marginBottom: spacing[6] },
-    roundHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: spacing[3],
-    },
-    roundName: {
-      fontSize: 18,
-      ...font('heading'),
-      color: colors.text,
-      letterSpacing: -0.3,
-      flex: 1,
-    },
-    badge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[1],
-      paddingHorizontal: spacing[3],
-      paddingVertical: 4,
-      borderRadius: borderRadius.full,
-      backgroundColor: colors.backgroundSecondary,
-    },
-    badgeText: { fontSize: 11, fontFamily: getFontFamily('bold'), letterSpacing: 0.4 },
-    card: {
-      borderRadius: borderRadius['2xl'],
-      overflow: 'hidden',
-    },
-    entrantRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[4],
-      gap: spacing[3],
-    },
-    entrantRowDivider: { borderTopWidth: 1, borderTopColor: colors.borderMuted },
-    entrantText: { flex: 1 },
-    entrantName: {
-      fontSize: 16,
-      fontFamily: getFontFamily('semibold'),
-      color: colors.text,
-      letterSpacing: -0.2,
-    },
-    entrantStatus: {
-      fontSize: 13,
-      fontFamily: getFontFamily('medium'),
-      marginTop: 2,
-    },
-    lockedNote: {
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[5],
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[3],
-    },
-    emptyNote: {
-      paddingHorizontal: spacing[4],
-      paddingVertical: spacing[5],
-    },
-    noteText: {
-      fontSize: 14,
-      fontFamily: getFontFamily('normal'),
-      color: colors.textMuted,
-      lineHeight: 20,
-      flex: 1,
-    },
-    center: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: topSpacing + 100,
-      paddingHorizontal: spacing[6],
-    },
-    emptyTitle: {
-      fontSize: 20,
-      ...font('heading'),
-      color: colors.text,
-      marginBottom: spacing[2],
-      textAlign: 'center',
-    },
-    emptyText: {
-      fontSize: 15,
-      fontFamily: getFontFamily('normal'),
-      color: colors.textMuted,
-      textAlign: 'center',
-      lineHeight: 22,
-      maxWidth: 300,
-    },
-  });
-
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
-  const refreshControl = (
-    <RefreshControl
-      refreshing={refreshing}
-      onRefresh={() => {
-        setRefreshing(true);
-        load();
-      }}
-      tintColor={colors.primary}
-    />
-  );
+  const onRefresh = () => {
+    setRefreshing(true);
+    load();
+  };
 
   // Hackathons run on a queue: the judge console replaces the team list.
   if (data?.isHackathon && eventId) return <JudgeConsoleScreen eventId={eventId} />;
 
   if (!data || data.rounds.length === 0) {
     return (
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.center}
-        refreshControl={refreshControl}
-      >
-        <Text style={styles.emptyTitle}>Nothing to judge yet</Text>
-        <Text style={styles.emptyText}>
-          {data
-            ? 'The organiser hasn’t opened a round for you yet. Pull to refresh once judging begins.'
-            : 'You’re no longer on the panel for this event.'}
-        </Text>
-      </ScrollView>
+      <CosmosScreen contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing to judge yet</Text>
+          <Text style={[styles.emptyText, { color: c.soft }]}>
+            {data
+              ? 'The organiser hasn’t opened a round for you yet. Pull to refresh once judging begins.'
+              : 'You’re no longer on the panel for this event.'}
+          </Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
   const renderRound = (round: AssignmentRound) => {
-    const badge = roundBadge(round.status, colors);
+    const badge = roundBadge(round.status, c);
     const isClosed = round.status === 'CLOSED';
     const isActive = round.status === 'ACTIVE';
 
     return (
       <View key={round.id} style={styles.roundBlock}>
         <View style={styles.roundHeader}>
-          <Text style={styles.roundName}>{round.name}</Text>
-          <View style={styles.badge}>
+          <Text style={[styles.roundName, { color: c.text }]}>{round.name}</Text>
+          <View style={[styles.badge, { backgroundColor: `${badge.color}26` }]}>
             {isClosed && <Lock size={12} color={badge.color} weight="fill" />}
             <Text style={[styles.badgeText, { color: badge.color }]}>{badge.label}</Text>
           </View>
@@ -215,14 +99,14 @@ export default function JudgingEventScreen() {
           <CardBackdrop shape={styles.card} />
           {isClosed ? (
             <View style={styles.lockedNote}>
-              <Lock size={20} color={colors.textMuted} weight="duotone" />
-              <Text style={styles.noteText}>
+              <Lock size={20} color={c.muted} weight="duotone" />
+              <Text style={[styles.noteText, { color: c.soft }]}>
                 This round is closed. Your scores are locked and can no longer be changed.
               </Text>
             </View>
           ) : round.entrants.length === 0 ? (
             <View style={styles.emptyNote}>
-              <Text style={styles.noteText}>
+              <Text style={[styles.noteText, { color: c.soft }]}>
                 No {data.title ? 'teams' : 'entrants'} assigned to you in this round.
               </Text>
             </View>
@@ -230,7 +114,7 @@ export default function JudgingEventScreen() {
             round.entrants.map((entrant, idx) => (
               <TouchableOpacity
                 key={entrant.id}
-                style={[styles.entrantRow, idx > 0 && styles.entrantRowDivider]}
+                style={[styles.entrantRow, idx > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.border }]}
                 activeOpacity={isActive ? 0.7 : 1}
                 disabled={!isActive}
                 onPress={() =>
@@ -245,16 +129,16 @@ export default function JudgingEventScreen() {
                 }
               >
                 {entrant.reviewed ? (
-                  <CheckCircle size={26} color={colors.success} weight="fill" />
+                  <CheckCircle size={26} color={c.success} weight="fill" />
                 ) : (
-                  <CircleDashed size={26} color={colors.textMuted} weight="regular" />
+                  <CircleDashed size={26} color={c.muted} weight="regular" />
                 )}
                 <View style={styles.entrantText}>
-                  <Text style={styles.entrantName}>{entrant.name}</Text>
+                  <Text style={[styles.entrantName, { color: c.text }]}>{entrant.name}</Text>
                   <Text
                     style={[
                       styles.entrantStatus,
-                      { color: entrant.reviewed ? colors.success : colors.textMuted },
+                      { color: entrant.reviewed ? c.success : c.muted },
                     ]}
                   >
                     {entrant.reviewed
@@ -266,7 +150,7 @@ export default function JudgingEventScreen() {
                         : 'Not scored'}
                   </Text>
                 </View>
-                {isActive && <CaretRight size={18} color={colors.textMuted} weight="bold" />}
+                {isActive && <CaretRight size={18} color={c.muted} weight="bold" />}
               </TouchableOpacity>
             ))
           )}
@@ -276,18 +160,35 @@ export default function JudgingEventScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing + spacing[2] }]}
-      contentInsetAdjustmentBehavior="never"
-      refreshControl={refreshControl}
-    >
-      <Text style={styles.intro}>
+    <CosmosScreen contentContainerStyle={styles.content} refreshing={refreshing} onRefresh={onRefresh}>
+      <Text style={[styles.intro, { color: c.soft }]}>
         {isMentor
           ? 'As a mentor you leave written feedback for each team. You don’t enter scores.'
           : 'Score each team against the criteria and leave an overall review. You only ever see your own marks.'}
       </Text>
       {data.rounds.map(renderRound)}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: GUTTER },
+  intro: { fontSize: typography.fontSize.sm, lineHeight: 20, marginBottom: spacing[6], ...cosmosFont.body },
+  roundBlock: { marginBottom: spacing[6] },
+  roundHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3], marginBottom: spacing[3] },
+  // Round names carry numbers ("Round 2"), so no Michroma.
+  roundName: { fontSize: 17, flex: 1, ...cosmosFont.strong },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  badgeText: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
+  entrantRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[4], paddingVertical: spacing[4], gap: spacing[3] },
+  entrantText: { flex: 1 },
+  entrantName: { fontSize: 16, ...cosmosFont.strong },
+  entrantStatus: { fontSize: 13, marginTop: 2, ...cosmosFont.body },
+  lockedNote: { paddingHorizontal: spacing[4], paddingVertical: spacing[5], flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
+  emptyNote: { paddingHorizontal: spacing[4], paddingVertical: spacing[5] },
+  noteText: { fontSize: typography.fontSize.sm, lineHeight: 20, flex: 1, ...cosmosFont.body },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  emptyTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+});

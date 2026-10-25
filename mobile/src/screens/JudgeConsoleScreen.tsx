@@ -1,15 +1,15 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { CheckCircle, Hourglass, LockSimple, MegaphoneSimple, PencilSimple, UserMinus, VideoCamera } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket, { useNow } from '../hooks/useHackathonSocket';
 import {
   callNextTeam,
@@ -23,11 +23,10 @@ import {
 } from '../lib/api/hackathon';
 import type { Result } from '../lib/api/manageEvent';
 import { evalStatusLabel, formatClock, secondsUntil } from '../lib/hackathon';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 
 /**
@@ -39,7 +38,6 @@ const ICON = 26;
 export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [data, setData] = useState<JudgeConsole | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -81,16 +79,16 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <>
-            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
-          </>
+          </View>
         ) : (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -105,7 +103,7 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
     const submitted = !!s.myMarks?.submittedAt;
     const meeting = q.meetingUrl;
     return (
-      <View key={s.requestId} style={[styles.card, { borderColor: s.status === 'AWAITING_MARKS' ? c.warn : c.primary }]}>
+      <View key={s.requestId} style={styles.card}>
         <CardBackdrop shape={styles.card} />
         <Text style={[styles.overline, { color: c.muted }]}>
           {[q.kind === 'PANEL' ? q.name : null, s.round?.name, evalStatusLabel(s.status)].filter(Boolean).join(' · ')}
@@ -199,23 +197,15 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      bottom={100}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       <SettingsGroup plain>
         <SwitchRow
@@ -234,9 +224,11 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         </Text>
       ) : null}
       {!openRound ? (
-        <Text style={[styles.note, { color: c.muted, marginTop: spacing[4] }]}>
-          No round you {mentor ? 'mentor' : 'judge'} is open right now. We’ll notify you when one opens.
-        </Text>
+        <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[4] }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>
+            No round you {mentor ? 'mentor' : 'judge'} is open right now. We’ll notify you when one opens.
+          </Text>
+        </View>
       ) : null}
 
       {data.queues.filter((q) => q.current).map((q) => slotCard(q, q.current!))}
@@ -317,16 +309,17 @@ export default function JudgeConsoleScreen({ eventId }: { eventId: string }) {
         You can change your {mentor ? 'feedback' : 'marks'} for 5 minutes after you submit. After that {mentor ? 'it locks' : 'they lock'}; the
         organisers can reopen {mentor ? 'it' : 'them'} if needed.
       </Text>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  card: { marginTop: spacing[5], borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[5], borderWidth: 2 },
-  overline: { fontSize: typography.fontSize.xs, letterSpacing: 0.6, textTransform: 'uppercase', ...cosmosFont.strong },
-  teamCode: { marginTop: spacing[1], fontSize: typography.fontSize['3xl'], letterSpacing: 0.5, ...cosmosFont.strong },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  card: { marginTop: spacing[5], borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
+  overline: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  teamCode: { marginTop: spacing[1], fontSize: typography.fontSize['3xl'], ...cosmosFont.figure },
   teamName: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   meta: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.4, ...cosmosFont.body },

@@ -1,14 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { CheckCircle, Coffee, Gavel, MapPin, UsersThree, VideoCamera } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
-import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
   getEvaluators,
@@ -20,11 +20,10 @@ import {
   type TeamRound,
 } from '../lib/api/hackathon';
 import { evalStatusLabel, roundBlockedCopy, stageCopy, teamRequestCopy, waitLabel } from '../lib/hackathon';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 
 /**
@@ -35,7 +34,6 @@ const ICON = 26;
 export default function HackathonEvaluateScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [data, setData] = useState<MyEvaluation | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -108,16 +106,16 @@ export default function HackathonEvaluateScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <>
-            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
-          </>
+          </View>
         ) : (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -128,23 +126,15 @@ export default function HackathonEvaluateScreen() {
   const called = req?.status === 'CALLED';
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      bottom={100}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       <Text style={[styles.label, { color: c.muted }]}>{[data.team.teamCode, data.team.name].filter(Boolean).join(' · ')}</Text>
 
@@ -159,7 +149,7 @@ export default function HackathonEvaluateScreen() {
       ) : null}
 
       {req && copy ? (
-        <View style={[styles.card, styles.requestCard, { marginTop: spacing[3], borderColor: called ? c.primary : 'transparent' }]}>
+        <View style={[styles.card, { marginTop: spacing[3] }]}>
           <CardBackdrop shape={styles.card} />
           <Text style={[styles.overline, { color: called ? c.primary : c.muted }]}>{req.roundName ?? 'Evaluation'}</Text>
           <Text style={[styles.bigTitle, { color: c.text }]}>{copy.title}</Text>
@@ -297,17 +287,17 @@ export default function HackathonEvaluateScreen() {
         </SettingsGroup>
       ) : null}
       <Text style={[styles.note, { color: c.muted }]}>Marks are never shown to teams. Results come from the organisers.</Text>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[5] },
-  requestCard: { borderWidth: 2 },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[5] },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  overline: { fontSize: typography.fontSize.xs, letterSpacing: 0.6, textTransform: 'uppercase', ...cosmosFont.strong },
+  overline: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
   bigTitle: { marginTop: spacing[1], fontSize: typography.fontSize['2xl'], ...cosmosFont.strong },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },

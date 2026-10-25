@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Trash } from '@unifesto/unicon/react-native';
@@ -8,14 +8,13 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import MultiChips from '../components/hackathon/MultiChips';
 import { createRoom, deleteRoom, getRooms, staffName, updateRoom, type Room, type StaffUser } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 interface Draft {
   name: string;
@@ -34,7 +33,6 @@ export default function HackathonRoomEditorScreen() {
   const router = useRouter();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [room, setRoom] = useState<Room | null>(null);
   const [staff, setStaff] = useState<StaffUser[]>([]);
   const [draft, setDraft] = useState<Draft | null>(isNew ? EMPTY : null);
@@ -72,10 +70,16 @@ export default function HackathonRoomEditorScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title }} />
-        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -116,75 +120,73 @@ export default function HackathonRoomEditorScreen() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={<SaveBar visible={dirty} label={isNew ? 'Add room' : 'Save room'} onPress={save} loading={saving} disabled={deleting} error={error} />}
+    >
       <Stack.Screen options={{ title }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <SettingsGroup plain>
-          <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Lab 2" />
-          <FieldRow stacked label="Where it is (optional)" value={draft.location} onChangeText={(v) => set({ location: v })} placeholder="Block C, 2nd floor" />
-          <FieldRow label="Teams it fits" value={draft.capacity} onChangeText={(v) => set({ capacity: v })} keyboardType="number-pad" placeholder="10" />
-          <FieldRow stacked multiline label="Notes for teams (optional)" value={draft.notes} onChangeText={(v) => set({ notes: v })} placeholder="Wi-Fi: HackNet · Power strips at every table" />
+      <SettingsGroup plain>
+        <FieldRow stacked label="Name" value={draft.name} onChangeText={(v) => set({ name: v })} placeholder="Lab 2" />
+        <FieldRow stacked label="Where it is (optional)" value={draft.location} onChangeText={(v) => set({ location: v })} placeholder="Block C, 2nd floor" />
+        <FieldRow label="Teams it fits" value={draft.capacity} onChangeText={(v) => set({ capacity: v })} keyboardType="number-pad" placeholder="10" />
+        <FieldRow stacked multiline label="Notes for teams (optional)" value={draft.notes} onChangeText={(v) => set({ notes: v })} placeholder="Wi-Fi: HackNet · Power strips at every table" />
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>Teams see the name, location and notes on their hackathon screen.</Text>
+
+      <SettingsGroup title="Volunteers here" plain>
+        {staff.length ? (
+          <View style={styles.chips}>
+            <MultiChips
+              options={staff.map((u) => ({ value: u.id, label: staffName(u) }))}
+              value={draft.volunteerUserIds}
+              onChange={(v) => set({ volunteerUserIds: v })}
+            />
+          </View>
+        ) : (
+          <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
+        )}
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>
+        Teams in this room see their volunteers, and every query they raise goes to them too.
+      </Text>
+
+      {room ? (
+        <SettingsGroup title={`Teams here · ${room.occupied} of ${room.capacity}`} plain>
+          {room.teams.length === 0 ? <SettingsRow label="No teams yet" /> : null}
+          {room.teams.map((t) => (
+            <SettingsRow
+              key={t.id}
+              label={`${t.teamCode ?? '—'}  ${t.name}`}
+              onPress={() => router.push(`/manage/event/${eventId}/hackathon/team/${t.id}`)}
+            />
+          ))}
         </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>Teams see the name, location and notes on their hackathon screen.</Text>
+      ) : null}
 
-        <SettingsGroup title="Volunteers here" plain>
-          {staff.length ? (
-            <View style={styles.chips}>
-              <MultiChips
-                options={staff.map((u) => ({ value: u.id, label: staffName(u) }))}
-                value={draft.volunteerUserIds}
-                onChange={(v) => set({ volunteerUserIds: v })}
-              />
-            </View>
-          ) : (
-            <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
-          )}
-        </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>
-          Teams in this room see their volunteers, and every query they raise goes to them too.
-        </Text>
-
-        {room ? (
-          <SettingsGroup title={`Teams here · ${room.occupied} of ${room.capacity}`} plain>
-            {room.teams.length === 0 ? <SettingsRow label="No teams yet" /> : null}
-            {room.teams.map((t) => (
-              <SettingsRow
-                key={t.id}
-                label={`${t.teamCode ?? '—'}  ${t.name}`}
-                onPress={() => router.push(`/manage/event/${eventId}/hackathon/team/${t.id}`)}
-              />
-            ))}
-          </SettingsGroup>
-        ) : null}
-
-        {!isNew ? (
-          <Button
-            label="Delete room"
-            variant="danger"
-            size="lg"
-            fullWidth
-            loading={deleting}
-            disabled={saving}
-            icon={<Trash size={18} color={c.danger} weight="bold" />}
-            onPress={remove}
-            style={{ marginTop: spacing[10] }}
-          />
-        ) : null}
-      </ScrollView>
-
-      <SaveBar visible={dirty} label={isNew ? 'Add room' : 'Save room'} onPress={save} loading={saving} disabled={deleting} error={error} />
-    </KeyboardAvoidingView>
+      {!isNew ? (
+        <Button
+          label="Delete room"
+          variant="danger"
+          size="lg"
+          fullWidth
+          loading={deleting}
+          disabled={saving}
+          icon={<Trash size={18} color={c.danger} weight="bold" />}
+          onPress={remove}
+          style={{ marginTop: spacing[10] }}
+        />
+      ) : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
   chips: { paddingVertical: spacing[2] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

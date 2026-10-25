@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LockSimple } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import StatementCard from '../components/hackathon/StatementCard';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import {
   getMyHackathon,
   getMyStatementOptions,
@@ -21,11 +21,9 @@ import {
 } from '../lib/api/hackathon';
 import { blockCopy, formatWhen, placesLabel } from '../lib/hackathon';
 import { onNotificationArrived } from '../lib/notificationBus';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * The team's problem statement. Once locked it just shows what the team has.
@@ -37,7 +35,6 @@ export default function HackathonStatementScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [hub, setHub] = useState<HackathonHub | null>(null);
   const [opts, setOpts] = useState<MyStatementOptions | null>(null);
   const [error, setError] = useState('');
@@ -85,16 +82,16 @@ export default function HackathonStatementScreen() {
 
   if (!opts) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <>
-            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+          <View style={[styles.box, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
             <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
-          </>
+          </View>
         ) : (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -156,176 +153,169 @@ export default function HackathonStatementScreen() {
       : null;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 120 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
-            tintColor={c.primary}
-            colors={[c.primary]}
-            progressViewOffset={topSpacing}
-          />
-        }
-      >
-        {locked ? (
-          <>
-            <View style={styles.lockedHead}>
-              <LockSimple size={18} color={c.success} weight="fill" />
-              <Text style={[styles.lockedLabel, { color: c.success }]}>
-                {mine.setBy?.kind === 'ORGANISER'
-                  ? 'Assigned by the organisers'
-                  : `Locked in${mine.setBy?.name ? ` by ${mine.setBy.name}` : ''}`}
-                {mine.lockedAt ? ` · ${formatWhen(mine.lockedAt)}` : ''}
-              </Text>
-            </View>
-            <StatementCard
-              code={mine.code}
-              title={mine.title}
-              description={mine.description}
-              theme={mine.themeLabel}
-              expanded
-            />
-            <Text style={[styles.note, { color: c.muted }]}>
-              Your team’s problem statement is final. Only the organisers can change it.
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={120 + insets.bottom}
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={refresh}
+    >
+      {locked ? (
+        <>
+          <View style={styles.lockedHead}>
+            <LockSimple size={18} color={c.success} weight="fill" />
+            <Text style={[styles.lockedLabel, { color: c.success }]}>
+              {mine.setBy?.kind === 'ORGANISER'
+                ? 'Assigned by the organisers'
+                : `Locked in${mine.setBy?.name ? ` by ${mine.setBy.name}` : ''}`}
+              {mine.lockedAt ? ` · ${formatWhen(mine.lockedAt)}` : ''}
             </Text>
-          </>
-        ) : stop ? (
-          <View style={[styles.box, { borderColor: c.outline }]}>
-            <Text style={[styles.boxTitle, { color: c.text }]}>{stop.title}</Text>
-            <Text style={[styles.boxBody, { color: c.soft }]}>{stop.body}</Text>
           </View>
-        ) : (
-          <>
-            <Text style={[styles.heading, { color: c.text }]}>
-              {writing ? 'Write your problem statement' : 'Pick your problem statement'}
-            </Text>
-            <Text style={[styles.body, { color: c.soft }]}>
-              {opts.isLead
-                ? 'Choose carefully: once you lock it in, your team can’t change it.'
-                : 'Your team lead locks it in. Talk it through with them.'}
-              {opts.deadline ? ` Closes ${formatWhen(opts.deadline)}.` : ''}
-            </Text>
+          <StatementCard
+            code={mine.code}
+            title={mine.title}
+            description={mine.description}
+            theme={mine.themeLabel}
+            expanded
+          />
+          <Text style={[styles.note, { color: c.muted }]}>
+            Your team’s problem statement is final. Only the organisers can change it.
+          </Text>
+        </>
+      ) : stop ? (
+        <View style={[styles.box, { backgroundColor: c.raised }]}>
+          <Text style={[styles.boxTitle, { color: c.text }]}>{stop.title}</Text>
+          <Text style={[styles.boxBody, { color: c.soft }]}>{stop.body}</Text>
+        </View>
+      ) : (
+        <>
+          <Text style={[styles.heading, { color: c.text }]}>
+            {writing ? 'Write your problem statement' : 'Pick your problem statement'}
+          </Text>
+          <Text style={[styles.body, { color: c.soft }]}>
+            {opts.isLead
+              ? 'Choose carefully: once you lock it in, your team can’t change it.'
+              : 'Your team lead locks it in. Talk it through with them.'}
+            {opts.deadline ? ` Closes ${formatWhen(opts.deadline)}.` : ''}
+          </Text>
 
-            {writing ? (
-              canChoose ? (
-                <SettingsGroup plain>
-                  <FieldRow
-                    stacked
-                    label="Title"
-                    value={title}
-                    onChangeText={(v) => {
-                      setError('');
-                      setTitle(v);
-                    }}
-                    placeholder="Real-time crop prices for farmers"
-                    maxLength={200}
-                  />
-                  <FieldRow
-                    stacked
-                    multiline
-                    label="The problem, in a few lines"
-                    value={description}
-                    onChangeText={(v) => {
-                      setError('');
-                      setDescription(v);
-                    }}
-                    placeholder="Who has the problem, why it matters, and what you’ll build."
-                    maxLength={4000}
-                  />
-                </SettingsGroup>
-              ) : null
-            ) : opts.statements.length === 0 ? (
-              <Text style={[styles.note, { color: c.muted }]}>The organisers haven’t added problem statements yet.</Text>
+          {writing ? (
+            canChoose ? (
+              <SettingsGroup plain>
+                <FieldRow
+                  stacked
+                  label="Title"
+                  value={title}
+                  onChangeText={(v) => {
+                    setError('');
+                    setTitle(v);
+                  }}
+                  placeholder="Real-time crop prices for farmers"
+                  maxLength={200}
+                />
+                <FieldRow
+                  stacked
+                  multiline
+                  label="The problem, in a few lines"
+                  value={description}
+                  onChangeText={(v) => {
+                    setError('');
+                    setDescription(v);
+                  }}
+                  placeholder="Who has the problem, why it matters, and what you’ll build."
+                  maxLength={4000}
+                />
+              </SettingsGroup>
+            ) : null
+          ) : opts.statements.length === 0 ? (
+            <View style={[styles.box, { backgroundColor: c.raised, marginTop: spacing[5] }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>The organisers haven’t added problem statements yet.</Text>
+            </View>
+          ) : (
+            opts.statements.map((s) => {
+              const full = s.placesLeft === 0;
+              return (
+                <StatementCard
+                  key={s.id}
+                  code={s.code}
+                  title={s.title}
+                  description={s.description}
+                  theme={s.theme?.name}
+                  note={placesLabel(s.placesLeft)}
+                  selected={canChoose && s.id === pickedId}
+                  disabled={full}
+                  onPress={
+                    canChoose && !full
+                      ? () => {
+                          setError('');
+                          setPickedId(s.id);
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })
+          )}
+
+          {canChoose && needsTheme && (writing || picked) ? (
+            opts.themeMode === 'TEXT' ? (
+              <SettingsGroup title="Theme" plain>
+                <FieldRow
+                  stacked
+                  label="Theme or domain"
+                  value={themeText}
+                  onChangeText={(v) => {
+                    setError('');
+                    setThemeText(v);
+                  }}
+                  placeholder="HealthTech"
+                  maxLength={60}
+                />
+              </SettingsGroup>
             ) : (
-              opts.statements.map((s) => {
-                const full = s.placesLeft === 0;
-                return (
-                  <StatementCard
-                    key={s.id}
-                    code={s.code}
-                    title={s.title}
-                    description={s.description}
-                    theme={s.theme?.name}
-                    note={placesLabel(s.placesLeft)}
-                    selected={canChoose && s.id === pickedId}
-                    disabled={full}
-                    onPress={
-                      canChoose && !full
-                        ? () => {
-                            setError('');
-                            setPickedId(s.id);
-                          }
-                        : undefined
-                    }
-                  />
-                );
-              })
-            )}
+              <View style={{ marginTop: spacing[6] }}>
+                <BlockTitle>Theme</BlockTitle>
+                <ChipPicker
+                  options={opts.themes.map((t) => ({ value: t.id, label: t.name }))}
+                  value={themeId}
+                  onChange={(v) => {
+                    setError('');
+                    setThemeId(v);
+                  }}
+                />
+              </View>
+            )
+          ) : null}
 
-            {canChoose && needsTheme && (writing || picked) ? (
-              opts.themeMode === 'TEXT' ? (
-                <SettingsGroup title="Theme" plain>
-                  <FieldRow
-                    stacked
-                    label="Theme or domain"
-                    value={themeText}
-                    onChangeText={(v) => {
-                      setError('');
-                      setThemeText(v);
-                    }}
-                    placeholder="HealthTech"
-                    maxLength={60}
-                  />
-                </SettingsGroup>
-              ) : (
-                <View style={{ marginTop: spacing[6] }}>
-                  <BlockTitle>Theme</BlockTitle>
-                  <ChipPicker
-                    options={opts.themes.map((t) => ({ value: t.id, label: t.name }))}
-                    value={themeId}
-                    onChange={(v) => {
-                      setError('');
-                      setThemeId(v);
-                    }}
-                  />
-                </View>
-              )
-            ) : null}
-
-            {canChoose ? (
-              <Button
-                label="Lock in"
-                size="lg"
-                fullWidth
-                loading={saving}
-                disabled={!writing && !picked}
-                icon={<LockSimple size={18} color={c.primaryFg} weight="bold" />}
-                onPress={lockIn}
-                style={{ marginTop: spacing[6] }}
-              />
-            ) : null}
-          </>
-        )}
-        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {canChoose ? (
+            <Button
+              label="Lock in"
+              size="lg"
+              fullWidth
+              loading={saving}
+              disabled={!writing && !picked}
+              icon={<LockSimple size={18} color={c.primaryFg} weight="bold" />}
+              onPress={lockIn}
+              style={{ marginTop: spacing[6] }}
+            />
+          ) : null}
+        </>
+      )}
+      {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  heading: { fontSize: typography.fontSize.xl, ...cosmosFont.strong },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  heading: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   lockedHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
   lockedLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  box: { padding: spacing[4], borderRadius: borderRadius.xl, borderWidth: 1 },
+  box: { padding: spacing[6], borderRadius: cosmosCardRadius },
   boxTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   boxBody: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

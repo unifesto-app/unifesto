@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { useAuth } from '../context/AuthContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   getNotifications,
   markNotificationsRead,
@@ -16,11 +16,9 @@ import {
 } from '../lib/api/hackathon';
 import { normalizeDeepLink, routeToDeepLink } from '../services/deepLinkRouter';
 import { onNotificationArrived } from '../lib/notificationBus';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
@@ -42,7 +40,6 @@ const TABS: { key: InboxTab; label: string }[] = [
 export default function HackathonUpdatesScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const { isAuthenticated } = useAuth();
   const [items, setItems] = useState<InAppNotification[] | null>(null);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
@@ -126,9 +123,9 @@ export default function HackathonUpdatesScreen() {
   const showTabs = !eventId && (hasStaff || tab === 'staff');
   if (!items && !showTabs) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -136,23 +133,15 @@ export default function HackathonUpdatesScreen() {
   const anyUnread = !eventId && !!items?.some((n) => !n.readAt);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      bottom={100}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {showTabs ? (
         <View style={{ marginBottom: spacing[4] }}>
@@ -176,13 +165,13 @@ export default function HackathonUpdatesScreen() {
       ) : null}
 
       {!items ? (
-        <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
       ) : items.length === 0 ? (
-        <View style={styles.empty}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
           <Text style={[styles.emptyTitle, { color: c.text }]}>
             {eventId ? 'No updates yet' : tab === 'staff' ? 'No staff queries' : 'No notifications yet'}
           </Text>
-          <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>
+          <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>
             {eventId
               ? 'Room changes, results and messages from the organisers will appear here and as notifications.'
               : tab === 'staff'
@@ -223,22 +212,21 @@ export default function HackathonUpdatesScreen() {
         <Button label="Show older" variant="secondary" loading={loadingMore} onPress={() => void more()} style={{ marginTop: spacing[5] }} />
       ) : null}
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { marginTop: spacing[10], alignItems: 'center' },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
   emptyTitle: { fontSize: typography.fontSize.lg, ...cosmosFont.strong },
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4] },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dot: { width: 8, height: 8, borderRadius: 4 },
   markAll: { alignSelf: 'flex-end', marginBottom: spacing[3] },
   markAllText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { marginTop: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  time: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  time: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.figure },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

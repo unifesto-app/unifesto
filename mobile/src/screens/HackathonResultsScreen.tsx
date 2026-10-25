@@ -5,6 +5,9 @@ import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } fr
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { GUTTER } from '../components/home/Section';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import { GroupCell, SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
@@ -24,9 +27,8 @@ import { SCORING_MODE_OPTIONS, formatScore, standingLabel, topNSplit } from '../
 import { shareCsvText } from '../lib/csvShare';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 const OVERALL = '__overall__';
 
@@ -75,9 +77,16 @@ export default function HackathonResultsScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -176,8 +185,11 @@ export default function HackathonResultsScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <CosmosBackdrop horizon={false} />
       <FlatList<{ t: ResultTeam; p?: ResultRound }>
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 100 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -188,8 +200,8 @@ export default function HackathonResultsScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={c.primary}
-            colors={[c.primary]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
@@ -364,7 +376,8 @@ const RoundRow = React.memo(function RoundRow({ t, p, round, onOpen }: {
 });
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

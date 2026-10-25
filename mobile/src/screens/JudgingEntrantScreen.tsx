@@ -1,19 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, ActivityIndicator, Linking } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Lock, LockSimple, SealCheck } from '@unifesto/unicon/react-native';
-import { useTheme } from '../context/ThemeContext';
-import GradientButton from '../components/GradientButton';
 import {
   getMyAssignments,
   getMyJudgment,
@@ -22,10 +10,13 @@ import {
   MyJudgment,
   PanelistKind,
 } from '../lib/api/leaderboard';
-import { spacing, borderRadius, font } from '../theme';
-import { getFontFamily } from '../theme/fontHelpers';
-import useTopSpacing from '../hooks/useTopSpacing';
+import { spacing } from '../theme/spacing';
+import { typography } from '../theme/typography';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 import { CardBackdrop } from '../components/ui/CardSurface';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { Button } from '../components/ui';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import SlotTimer from '../components/hackathon/SlotTimer';
 import { useNow } from '../hooks/useHackathonSocket';
@@ -66,8 +57,7 @@ function validateForSubmit(
 
 export default function JudgingEntrantScreen() {
   const router = useRouter();
-  const { colors, tokens } = useTheme();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const { eventId, entrantId, roundId, roundName, entrantName } = useLocalSearchParams<{
     eventId: string;
     entrantId: string;
@@ -204,312 +194,217 @@ export default function JudgingEntrantScreen() {
     }
   };
 
-  const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: spacing[6], paddingBottom: spacing[10] },
-    header: { marginBottom: spacing[5] },
-    entrantName: {
-      fontSize: 24,
-      ...font('heading'),
-      color: colors.text,
-      letterSpacing: -0.5,
-    },
-    roundName: {
-      fontSize: 14,
-      fontFamily: getFontFamily('semibold'),
-      color: colors.textMuted,
-      marginTop: spacing[1],
-    },
-    submittedPill: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing[2],
-      alignSelf: 'flex-start',
-      marginTop: spacing[3],
-      paddingHorizontal: spacing[3],
-      paddingVertical: spacing[1],
-      borderRadius: borderRadius.full,
-      backgroundColor: colors.backgroundSecondary,
-    },
-    submittedText: {
-      fontSize: 12,
-      fontFamily: getFontFamily('semibold'),
-      color: colors.success,
-      flexShrink: 1,
-    },
-    contextText: {
-      fontSize: 15,
-      fontFamily: getFontFamily('semibold'),
-      color: colors.text,
-      marginTop: spacing[3],
-      lineHeight: 21,
-    },
-    contextMuted: {
-      fontSize: 13,
-      fontFamily: getFontFamily('normal'),
-      color: colors.textMuted,
-      marginTop: spacing[2],
-      lineHeight: 19,
-    },
-    sectionLabel: {
-      fontSize: 12,
-      fontFamily: getFontFamily('bold'),
-      color: colors.textSecondary,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-      marginBottom: spacing[3],
-      marginTop: spacing[2],
-    },
-    metricCard: {
-      borderRadius: borderRadius.xl,
-      padding: spacing[4],
-      marginBottom: spacing[3],
-    },
-    metricTopRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: spacing[3],
-    },
-    metricLabel: {
-      fontSize: 16,
-      fontFamily: getFontFamily('semibold'),
-      color: colors.text,
-      flex: 1,
-      letterSpacing: -0.2,
-    },
-    scoreInput: {
-      width: 88,
-      textAlign: 'center',
-      fontSize: 20,
-      fontFamily: getFontFamily('bold'),
-      color: colors.text,
-      backgroundColor: tokens.fill,
-      borderRadius: borderRadius.lg,
-      paddingVertical: spacing[2],
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    rangeHint: {
-      fontSize: 12,
-      fontFamily: getFontFamily('medium'),
-      color: colors.textMuted,
-      marginTop: spacing[2],
-    },
-    commentInput: {
-      marginTop: spacing[3],
-      fontSize: 14,
-      fontFamily: getFontFamily('normal'),
-      color: colors.text,
-      backgroundColor: tokens.fill,
-      borderRadius: borderRadius.lg,
-      padding: spacing[3],
-      minHeight: 44,
-      textAlignVertical: 'top',
-    },
-    reviewWrap: { borderRadius: borderRadius.xl, marginBottom: spacing[5] },
-    reviewInput: {
-      fontSize: 15,
-      fontFamily: getFontFamily('normal'),
-      color: colors.text,
-      padding: spacing[4],
-      minHeight: 120,
-      textAlignVertical: 'top',
-    },
-    actions: { gap: spacing[3] },
-    center: {
-      flex: 1,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingTop: topSpacing + 100,
-      paddingHorizontal: spacing[6],
-    },
-    lockIcon: { marginBottom: spacing[5] },
-    lockTitle: {
-      fontSize: 20,
-      ...font('heading'),
-      color: colors.text,
-      marginBottom: spacing[2],
-      textAlign: 'center',
-    },
-    lockText: {
-      fontSize: 15,
-      fontFamily: getFontFamily('normal'),
-      color: colors.textMuted,
-      textAlign: 'center',
-      lineHeight: 22,
-      maxWidth: 300,
-    },
-  });
-
   if (loading) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <ActivityIndicator color={colors.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   if (locked) {
     return (
-      <View style={[styles.container, styles.center]}>
-        <View style={styles.lockIcon}>
-          <Lock size={52} color={colors.textMuted} weight="duotone" />
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.lockCard, { backgroundColor: c.raised }]}>
+          <Lock size={52} color={c.muted} weight="duotone" style={styles.lockIcon} />
+          <Text style={[styles.lockTitle, { color: c.text }]}>Round closed</Text>
+          <Text style={[styles.lockText, { color: c.soft }]}>{lockedMessage}</Text>
         </View>
-        <Text style={styles.lockTitle}>Round closed</Text>
-        <Text style={styles.lockText}>{lockedMessage}</Text>
-      </View>
+      </CosmosScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing + spacing[2] }]}
-        contentInsetAdjustmentBehavior="never"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={styles.entrantName}>{entrantName ?? 'Entrant'}</Text>
-          {roundName && <Text style={styles.roundName}>{roundName}</Text>}
-          {hack?.statement ? (
-            <Text style={styles.contextText}>
-              {[hack.statement.code, hack.statement.title].filter(Boolean).join(' · ')}
-              {hack.statement.themeLabel ? `  (${hack.statement.themeLabel})` : ''}
-            </Text>
-          ) : null}
-          {hack?.statement?.description ? (
-            <Text style={styles.contextMuted} numberOfLines={6}>
-              {hack.statement.description}
-            </Text>
-          ) : null}
-          {hack?.members.length ? <Text style={styles.contextMuted}>{hack.members.join(', ')}</Text> : null}
-          {hack?.links?.length ? (
-            <View style={{ marginTop: spacing[2] }}>
-              {hack.links.map((l) => (
-                <Text key={l.url} style={[styles.contextText, { color: colors.primary, marginTop: spacing[1] }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
-                  {l.label} ↗
-                </Text>
-              ))}
-              {hack.linksNotes ? <Text style={styles.contextMuted}>{hack.linksNotes}</Text> : null}
-            </View>
-          ) : null}
-          {hack?.slot?.status === 'IN_PROGRESS' ? (
-            <View style={{ marginTop: spacing[3] }}>
-              <SlotTimer until={hack.slot.slotEndsAt} label="left in the slot" doneLabel="Time’s up: submit your marks" />
-            </View>
-          ) : null}
-          {hack?.slot?.status === 'AWAITING_MARKS' ? (
-            <Text style={[styles.contextText, { color: colors.warning }]}>Time’s up. Submit your marks to call the next team.</Text>
-          ) : null}
-          {submittedAt && !readOnly && (
-            <View style={styles.submittedPill}>
-              <SealCheck size={14} color={colors.success} weight="fill" />
-              <Text style={styles.submittedText}>
-                {isMentor ? 'Review submitted' : 'Submitted'}
-                {hack && editLeft != null ? ` — you can change it for ${formatClock(Math.max(0, editLeft))}` : ' — you can still edit'}
+    <CosmosScreen keyboard contentContainerStyle={styles.content}>
+      <View style={styles.header}>
+        <Text style={[styles.entrantName, { color: c.text }]}>{entrantName ?? 'Entrant'}</Text>
+        {roundName && <Text style={[styles.roundName, { color: c.muted }]}>{roundName}</Text>}
+        {hack?.statement ? (
+          <Text style={[styles.contextText, { color: c.text }]}>
+            {[hack.statement.code, hack.statement.title].filter(Boolean).join(' · ')}
+            {hack.statement.themeLabel ? `  (${hack.statement.themeLabel})` : ''}
+          </Text>
+        ) : null}
+        {hack?.statement?.description ? (
+          <Text style={[styles.contextMuted, { color: c.muted }]} numberOfLines={6}>
+            {hack.statement.description}
+          </Text>
+        ) : null}
+        {hack?.members.length ? <Text style={[styles.contextMuted, { color: c.muted }]}>{hack.members.join(', ')}</Text> : null}
+        {hack?.links?.length ? (
+          <View style={{ marginTop: spacing[2] }}>
+            {hack.links.map((l) => (
+              <Text key={l.url} style={[styles.contextText, { color: c.primary, marginTop: spacing[1] }]} onPress={() => void Linking.openURL(l.url)} accessibilityRole="link">
+                {l.label} ↗
               </Text>
-            </View>
-          )}
-          {readOnly ? (
-            <View style={styles.submittedPill}>
-              <LockSimple size={14} color={colors.textMuted} weight="fill" />
-              <Text style={[styles.submittedText, { color: colors.textMuted }]}>Locked. Ask the organisers if something needs fixing.</Text>
-            </View>
-          ) : null}
-          {noSlot ? (
-            <View style={styles.submittedPill}>
-              <Lock size={14} color={colors.warning} weight="fill" />
-              <Text style={[styles.submittedText, { color: colors.warning }]}>Call this team from your queue to give marks.</Text>
-            </View>
-          ) : null}
-        </View>
+            ))}
+            {hack.linksNotes ? <Text style={[styles.contextMuted, { color: c.muted }]}>{hack.linksNotes}</Text> : null}
+          </View>
+        ) : null}
+        {hack?.slot?.status === 'IN_PROGRESS' ? (
+          <View style={{ marginTop: spacing[3] }}>
+            <SlotTimer until={hack.slot.slotEndsAt} label="left in the slot" doneLabel="Time’s up: submit your marks" />
+          </View>
+        ) : null}
+        {hack?.slot?.status === 'AWAITING_MARKS' ? (
+          <Text style={[styles.contextText, { color: c.warn }]}>Time’s up. Submit your marks to call the next team.</Text>
+        ) : null}
+        {submittedAt && !readOnly && (
+          <View style={[styles.pill, { backgroundColor: `${c.success}26` }]}>
+            <SealCheck size={14} color={c.success} weight="fill" />
+            <Text style={[styles.pillText, { color: c.success }]}>
+              {isMentor ? 'Review submitted' : 'Submitted'}
+              {hack && editLeft != null ? ` — you can change it for ${formatClock(Math.max(0, editLeft))}` : ' — you can still edit'}
+            </Text>
+          </View>
+        )}
+        {readOnly ? (
+          <View style={[styles.pill, { backgroundColor: c.tint }]}>
+            <LockSimple size={14} color={c.muted} weight="fill" />
+            <Text style={[styles.pillText, { color: c.muted }]}>Locked. Ask the organisers if something needs fixing.</Text>
+          </View>
+        ) : null}
+        {noSlot ? (
+          <View style={[styles.pill, { backgroundColor: `${c.warn}26` }]}>
+            <Lock size={14} color={c.warn} weight="fill" />
+            <Text style={[styles.pillText, { color: c.warn }]}>Call this team from your queue to give marks.</Text>
+          </View>
+        ) : null}
+      </View>
 
-        {!isMentor && metrics.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>Criteria</Text>
-            {metrics.map((m) => (
-              <View key={m.id} style={styles.metricCard}>
-                <CardBackdrop shape={styles.metricCard} />
-                <View style={styles.metricTopRow}>
-                  <Text style={styles.metricLabel}>{m.label}</Text>
-                  <TextInput
-                    style={styles.scoreInput}
-                    keyboardType="decimal-pad"
-                    placeholder="—"
-                    placeholderTextColor={colors.textMuted}
-                    value={scores[m.id] ?? ''}
-                    onChangeText={(t) => setScores((prev) => ({ ...prev, [m.id]: t }))}
-                    editable={!readOnly && !noSlot}
-                    maxLength={7}
-                  />
-                </View>
-                <Text style={styles.rangeHint}>
-                  {m.minValue}–{m.maxValue}
-                  {m.weight !== 1 ? `  ·  weight ${m.weight}` : ''}
-                </Text>
+      {!isMentor && metrics.length > 0 && (
+        <>
+          <Text style={[styles.sectionLabel, { color: c.muted }]}>Criteria</Text>
+          {metrics.map((m) => (
+            <View key={m.id} style={styles.metricCard}>
+              <CardBackdrop shape={styles.metricCard} />
+              <View style={styles.metricTopRow}>
+                <Text style={[styles.metricLabel, { color: c.text }]}>{m.label}</Text>
                 <TextInput
-                  style={styles.commentInput}
-                  placeholder="Add a note for this criterion (optional)"
-                  placeholderTextColor={colors.textMuted}
-                  value={comments[m.id] ?? ''}
-                  onChangeText={(t) => setComments((prev) => ({ ...prev, [m.id]: t }))}
+                  style={[styles.scoreInput, { color: c.text, backgroundColor: c.tint, borderColor: c.border }]}
+                  keyboardType="decimal-pad"
+                  placeholder="—"
+                  placeholderTextColor={c.muted}
+                  selectionColor={c.text}
+                  value={scores[m.id] ?? ''}
+                  onChangeText={(t) => setScores((prev) => ({ ...prev, [m.id]: t }))}
                   editable={!readOnly && !noSlot}
-                  multiline
-                  maxLength={2000}
+                  maxLength={7}
                 />
               </View>
-            ))}
-          </>
-        )}
+              <Text style={[styles.rangeHint, { color: c.muted }]}>
+                {m.minValue}–{m.maxValue}
+                {m.weight !== 1 ? `  ·  weight ${m.weight}` : ''}
+              </Text>
+              <TextInput
+                style={[styles.commentInput, { color: c.text, backgroundColor: c.tint }]}
+                placeholder="Add a note for this criterion (optional)"
+                placeholderTextColor={c.muted}
+                selectionColor={c.text}
+                value={comments[m.id] ?? ''}
+                onChangeText={(t) => setComments((prev) => ({ ...prev, [m.id]: t }))}
+                editable={!readOnly && !noSlot}
+                multiline
+                maxLength={2000}
+              />
+            </View>
+          ))}
+        </>
+      )}
 
-        <Text style={styles.sectionLabel}>
-          {isMentor ? 'Feedback' : 'Overall review'}
-        </Text>
-        <View style={styles.reviewWrap}>
-          <CardBackdrop shape={styles.reviewWrap} />
-          <TextInput
-            style={styles.reviewInput}
-            placeholder={
-              isMentor
-                ? 'Share guidance and feedback for this team'
-                : 'Summarise your assessment (shared with the team only if the organiser reveals it)'
-            }
-            placeholderTextColor={colors.textMuted}
-            value={overallReview}
-            onChangeText={setOverallReview}
-            editable={!readOnly && !noSlot}
-            multiline
-            maxLength={5000}
-          />
-        </View>
+      <Text style={[styles.sectionLabel, { color: c.muted }]}>{isMentor ? 'Feedback' : 'Overall review'}</Text>
+      <View style={styles.reviewWrap}>
+        <CardBackdrop shape={styles.reviewWrap} />
+        <TextInput
+          style={[styles.reviewInput, { color: c.text }]}
+          placeholder={
+            isMentor
+              ? 'Share guidance and feedback for this team'
+              : 'Summarise your assessment (shared with the team only if the organiser reveals it)'
+          }
+          placeholderTextColor={c.muted}
+          selectionColor={c.text}
+          value={overallReview}
+          onChangeText={setOverallReview}
+          editable={!readOnly && !noSlot}
+          multiline
+          maxLength={5000}
+        />
+      </View>
 
-        {readOnly || noSlot ? null : (
+      {readOnly || noSlot ? null : (
         <View style={styles.actions}>
-          <GradientButton
-            onPress={() => handleSave(true)}
+          <Button
+            label={submittedAt ? 'Update review' : 'Submit review'}
+            size="lg"
+            fullWidth
             loading={saving === 'submit'}
             disabled={saving !== false}
+            onPress={() => handleSave(true)}
+          />
+          <Button
+            label="Save draft"
+            variant="secondary"
             size="lg"
-          >
-            {submittedAt ? 'Update review' : 'Submit review'}
-          </GradientButton>
-          <GradientButton
-            onPress={() => handleSave(false)}
+            fullWidth
             loading={saving === 'draft'}
             disabled={saving !== false}
-            variant="outline"
-            size="lg"
-          >
-            Save draft
-          </GradientButton>
+            onPress={() => handleSave(false)}
+          />
         </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      )}
+    </CosmosScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: GUTTER },
+  header: { marginBottom: spacing[5] },
+  // Usually "T-042 · Team name": the Team ID is a code, so no Michroma here.
+  entrantName: { fontSize: 22, lineHeight: 30, ...cosmosFont.strong },
+  roundName: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...cosmosFont.strong },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    alignSelf: 'flex-start',
+    marginTop: spacing[3],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+    borderRadius: 999,
+  },
+  // Carries the edit countdown: figures.
+  pillText: { fontSize: typography.fontSize.xs, flexShrink: 1, ...cosmosFont.figure },
+  contextText: { fontSize: 15, marginTop: spacing[3], lineHeight: 21, ...cosmosFont.strong },
+  contextMuted: { fontSize: 13, marginTop: spacing[2], lineHeight: 19, ...cosmosFont.body },
+  sectionLabel: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginTop: spacing[2], marginLeft: spacing[1], ...cosmosFont.strong },
+  metricCard: { borderRadius: cosmosCardRadius, padding: spacing[4], marginBottom: spacing[3] },
+  metricTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing[3] },
+  metricLabel: { fontSize: 16, flex: 1, ...cosmosFont.strong },
+  scoreInput: {
+    width: 88,
+    textAlign: 'center',
+    fontSize: 20,
+    borderRadius: cosmosRadius,
+    paddingVertical: spacing[2],
+    borderWidth: 1,
+    ...cosmosFont.figure,
+  },
+  rangeHint: { fontSize: typography.fontSize.xs, marginTop: spacing[2], ...cosmosFont.figure },
+  commentInput: {
+    marginTop: spacing[3],
+    fontSize: 14,
+    borderRadius: cosmosRadius,
+    padding: spacing[3],
+    minHeight: 44,
+    textAlignVertical: 'top',
+    ...cosmosFont.body,
+  },
+  reviewWrap: { borderRadius: cosmosCardRadius, marginBottom: spacing[5] },
+  reviewInput: { fontSize: 15, padding: spacing[4], minHeight: 120, textAlignVertical: 'top', ...cosmosFont.body },
+  actions: { gap: spacing[3] },
+  lockCard: { borderRadius: cosmosCardRadius, padding: spacing[6], alignItems: 'center' },
+  lockIcon: { marginBottom: spacing[5] },
+  lockTitle: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  lockText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+});

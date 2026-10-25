@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { onNotificationArrived } from '../lib/notificationBus';
 import {
   escalateHelpQuery,
@@ -17,11 +17,9 @@ import {
   type HelpQueryStatus,
 } from '../lib/api/hackathon';
 import { timeAgo } from '../utils/checkinFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * The event team's help desk: queries teams raised that were sent to me (as a
@@ -31,7 +29,6 @@ const GUTTER = spacing[6];
 export default function HackathonHelpDeskScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [inbox, setInbox] = useState<HelpInbox | undefined>(undefined);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -89,9 +86,9 @@ export default function HackathonHelpDeskScreen() {
 
   if (inbox === undefined) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -100,7 +97,7 @@ export default function HackathonHelpDeskScreen() {
   const resolved = queries.filter((q) => q.status === 'RESOLVED');
 
   const card = (q: HelpInboxQuery) => {
-    const statusColor = q.status === 'OPEN' ? c.danger : q.status === 'ACKNOWLEDGED' ? c.primary : c.muted;
+    const statusColor = q.status === 'OPEN' ? c.danger : q.status === 'ACKNOWLEDGED' ? c.warn : c.muted;
     return (
       <View key={q.id} style={styles.card}>
         <CardBackdrop shape={styles.card} />
@@ -152,33 +149,34 @@ export default function HackathonHelpDeskScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      bottom={100}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {!inbox ? (
-        <Text style={[styles.empty, { color: c.muted }]}>{error || 'This event isn’t running a hackathon.'}</Text>
+        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'This event isn’t running a hackathon.'}</Text>
+          {error ? <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} /> : null}
+        </View>
       ) : (
         <>
           <Text style={[styles.lead, { color: c.soft }]}>
             {inbox.canManage ? 'Every query teams raised.' : 'Queries sent to you as a point of contact or room volunteer.'}
           </Text>
           <Text style={[styles.section, { color: c.muted }]}>Open · {active.length}</Text>
-          {active.length ? active.map(card) : <Text style={[styles.empty, { color: c.muted }]}>All clear. New queries show up here.</Text>}
+          {active.length ? (
+            active.map(card)
+          ) : (
+            <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>All clear. New queries show up here.</Text>
+            </View>
+          )}
           {resolved.length ? (
             <>
               <Text style={[styles.section, { color: c.muted }]}>Resolved</Text>
@@ -187,17 +185,17 @@ export default function HackathonHelpDeskScreen() {
           ) : null}
         </>
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
   lead: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   section: { marginTop: spacing[6], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  empty: { marginTop: spacing[2], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
+  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], marginBottom: spacing[3] },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing[2] },
   topic: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

@@ -4,6 +4,10 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Broadcast, Coffee, Gavel, Hourglass, LockOpen, UsersFour, WifiSlash } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { Button } from '../components/ui';
+import { GUTTER } from '../components/home/Section';
 import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
 import SlotTimer from '../components/hackathon/SlotTimer';
 import useTopSpacing from '../hooks/useTopSpacing';
@@ -24,9 +28,8 @@ import type { Result } from '../lib/api/manageEvent';
 import { evalStatusLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 
 const teamLabel = (t: QueueTeam | null) => (t ? `${t.teamCode ?? '—'}  ${t.name}` : 'Team');
@@ -71,9 +74,16 @@ export default function HackathonQueuesScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.note, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -239,57 +249,66 @@ export default function HackathonQueuesScreen() {
   }
 
   return (
-    <SectionList
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
-      sections={groups}
-      keyExtractor={(item) => item.key}
-      stickySectionHeadersEnabled={false}
-      ListHeaderComponent={
-        <>
-          <View style={styles.liveRow}>
-            {live ? <Broadcast size={16} color={c.success} weight="fill" /> : <WifiSlash size={16} color={c.muted} />}
-            <Text style={[styles.note, { color: live ? c.success : c.muted, marginTop: 0 }]}>
-              {live ? 'Live' : 'Refreshing every 10 seconds'}
-              {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
-            </Text>
-          </View>
-          {!active.length ? (
-            <Text style={[styles.note, { color: c.muted, marginTop: spacing[5] }]}>Nobody is in a queue right now.</Text>
-          ) : null}
-        </>
-      }
-      renderSectionHeader={({ section }) => <SettingsGroupHeader title={section.title} action={section.action} />}
-      renderItem={({ item, index, section }) => (
-        <GroupCell index={index} count={section.data.length}>
-          {item.row}
-        </GroupCell>
-      )}
-      ListFooterComponent={
-        <Text style={[styles.note, { color: c.muted }]}>
-          Marks lock 5 minutes after a judge submits. Reopening gives them 5 more minutes; you never change marks yourself.
-        </Text>
-      }
-    />
+    <View style={[styles.flex, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <SectionList
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 100 }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await load();
+              setRefreshing(false);
+            }}
+            tintColor={c.text}
+            colors={[c.text]}
+            progressViewOffset={topSpacing}
+          />
+        }
+        sections={groups}
+        keyExtractor={(item) => item.key}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <>
+            <View style={styles.liveRow}>
+              {live ? <Broadcast size={16} color={c.success} weight="fill" /> : <WifiSlash size={16} color={c.muted} />}
+              <Text style={[styles.note, { color: live ? c.success : c.muted, marginTop: 0 }]}>
+                {live ? 'Live' : 'Refreshing every 10 seconds'}
+                {data.activeRounds.length ? ` · ${data.activeRounds.map((r) => r.name).join(', ')} open` : ' · No round open'}
+              </Text>
+            </View>
+            {!active.length ? (
+              <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[5] }]}>
+                <Text style={[styles.emptyText, { color: c.soft }]}>Nobody is in a queue right now.</Text>
+              </View>
+            ) : null}
+          </>
+        }
+        renderSectionHeader={({ section }) => <SettingsGroupHeader title={section.title} action={section.action} />}
+        renderItem={({ item, index, section }) => (
+          <GroupCell index={index} count={section.data.length}>
+            {item.row}
+          </GroupCell>
+        )}
+        ListFooterComponent={
+          <Text style={[styles.note, { color: c.muted }]}>
+            Marks lock 5 minutes after a judge submits. Reopening gives them 5 more minutes; you never change marks yourself.
+          </Text>
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  flex: { flex: 1 },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginHorizontal: spacing[1] },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

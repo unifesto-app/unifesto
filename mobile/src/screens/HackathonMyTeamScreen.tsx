@@ -1,17 +1,17 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { Button } from '../components/ui';
+import { GUTTER } from '../components/home/Section';
 import { getMyHackathon, renameMyTeam, type HackathonHub } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Who's on the team, and (for the lead) the team name. Members who haven't
@@ -21,7 +21,6 @@ export default function HackathonMyTeamScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [hub, setHub] = useState<HackathonHub | null | undefined>(undefined);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -44,13 +43,16 @@ export default function HackathonMyTeamScreen() {
   const team = hub?.team;
   if (!team) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {hub === undefined && !error ? (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <Text style={[styles.note, { color: c.muted }]}>{error || 'You’re not on a team for this hackathon.'}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'You’re not on a team for this hackathon.'}</Text>
+            {error ? <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} /> : null}
+          </View>
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -69,60 +71,58 @@ export default function HackathonMyTeamScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        {canRename ? (
-          <>
-            <SettingsGroup title="Team name" plain>
-              <FieldRow
-                stacked
-                label="Name"
-                value={name}
-                onChangeText={(v) => {
-                  setError('');
-                  setName(v);
-                }}
-                maxLength={80}
-              />
-            </SettingsGroup>
-            <Text style={[styles.note, { color: c.muted }]}>
-              You’re the team lead, so you can name the team. Organisers may still adjust it.
-            </Text>
-          </>
-        ) : (
-          <SettingsGroup title="Team" plain>
-            <SettingsRow label={team.name} value={team.teamCode ?? undefined} />
-          </SettingsGroup>
-        )}
-
-        <SettingsGroup title="Members" plain>
-          {team.members.map((m) => (
-            <SettingsRow
-              key={m.seat}
-              label={`${m.name || `Seat ${m.seat}`}${m.isMe ? ' (you)' : ''}`}
-              value={[m.isLead ? 'Lead' : '', m.joined ? '' : 'Not joined yet'].filter(Boolean).join(' · ') || undefined}
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={<SaveBar visible={dirty} label="Save name" onPress={save} loading={saving} error={error} />}
+    >
+      {canRename ? (
+        <>
+          <SettingsGroup title="Team name" plain>
+            <FieldRow
+              stacked
+              label="Name"
+              value={name}
+              onChangeText={(v) => {
+                setError('');
+                setName(v);
+              }}
+              maxLength={80}
             />
-          ))}
+          </SettingsGroup>
+          <Text style={[styles.note, { color: c.muted }]}>
+            You’re the team lead, so you can name the team. Organisers may still adjust it.
+          </Text>
+        </>
+      ) : (
+        <SettingsGroup title="Team" plain>
+          <SettingsRow label={team.name} value={team.teamCode ?? undefined} />
         </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>
-          {team.isLead
-            ? 'Members join by claiming their seat from your invite. Manage invites from your ticket.'
-            : 'Everyone who claims their seat sees this hackathon in the app.'}
-        </Text>
-      </ScrollView>
+      )}
 
-      <SaveBar visible={dirty} label="Save name" onPress={save} loading={saving} error={error} />
-    </KeyboardAvoidingView>
+      <SettingsGroup title="Members" plain>
+        {team.members.map((m) => (
+          <SettingsRow
+            key={m.seat}
+            label={`${m.name || `Seat ${m.seat}`}${m.isMe ? ' (you)' : ''}`}
+            value={[m.isLead ? 'Lead' : '', m.joined ? '' : 'Not joined yet'].filter(Boolean).join(' · ') || undefined}
+          />
+        ))}
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>
+        {team.isLead
+          ? 'Members join by claiming their seat from your invite. Manage invites from your ticket.'
+          : 'Everyone who claims their seat sees this hackathon in the app.'}
+      </Text>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

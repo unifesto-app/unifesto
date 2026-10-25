@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FieldRow } from '../components/manage/FormFields';
@@ -7,7 +7,8 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import MultiChips from '../components/hackathon/MultiChips';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import {
   createHelpTopic,
   deleteHelpTopic,
@@ -18,9 +19,8 @@ import {
 } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 type Topic = HelpTopics['topics'][number];
 
 /**
@@ -33,7 +33,6 @@ export default function HackathonHelpTopicsScreen() {
   const router = useRouter();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [data, setData] = useState<HelpTopics | null>(null);
   /** The topic being edited; null = the form adds a new one. */
   const [editing, setEditing] = useState<Topic | null>(null);
@@ -95,91 +94,85 @@ export default function HackathonHelpTopicsScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 100 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <SettingsGroup title={editing ? `Edit ${editing.name}` : 'Add a topic'} plain>
-          <FieldRow
-            stacked
-            label="Topic"
-            value={name}
-            onChangeText={(v) => {
-              setError('');
-              setName(v);
-            }}
-            placeholder="Food"
-            maxLength={60}
-          />
-        </SettingsGroup>
+    <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={100 + insets.bottom} contentContainerStyle={styles.content}>
+      <SettingsGroup title={editing ? `Edit ${editing.name}` : 'Add a topic'} plain>
+        <FieldRow
+          stacked
+          label="Topic"
+          value={name}
+          onChangeText={(v) => {
+            setError('');
+            setName(v);
+          }}
+          placeholder="Food"
+          maxLength={60}
+        />
+      </SettingsGroup>
 
-        <SettingsGroup title="Points of contact" plain>
-          {data.staff.length ? (
-            <View style={styles.chips}>
-              <MultiChips options={data.staff.map((u) => ({ value: u.id, label: staffName(u) }))} value={pocs} onChange={setPocs} />
-            </View>
-          ) : (
-            <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
-          )}
-        </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>
-          Queries under this topic go to these people and to the volunteers in the team’s room. With nobody picked, they go to the curators.
-        </Text>
-
-        <View style={styles.actions}>
-          <Button label={editing ? 'Save' : 'Add topic'} loading={busy} disabled={!name.trim()} onPress={() => void save()} style={{ flex: 1 }} />
-          {editing ? <Button label="Cancel" variant="secondary" onPress={reset} style={{ flex: 1 }} /> : null}
-        </View>
-        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
-
-        {data.topics.length === 0 ? (
-          <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
-            No topics yet. Teams can still raise “Other” queries, which go to the curators.
-          </Text>
+      <SettingsGroup title="Points of contact" plain>
+        {data.staff.length ? (
+          <View style={styles.chips}>
+            <MultiChips options={data.staff.map((u) => ({ value: u.id, label: staffName(u) }))} value={pocs} onChange={setPocs} />
+          </View>
         ) : (
-          <SettingsGroup title="Topics" plain>
-            {data.topics.map((t) => (
-              <SettingsRow
-                key={t.id}
-                label={t.name}
-                value={t.pocs.length ? t.pocs.map(staffName).join(', ') : 'Curators'}
-                onPress={() =>
-                  AppAlert.alert(t.name, t.pocs.length ? t.pocs.map(staffName).join(', ') : 'No POC yet', [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                      text: 'Edit',
-                      onPress: () => {
-                        setEditing(t);
-                        setName(t.name);
-                        setPocs(t.pocs.map((p) => p.id));
-                        setError('');
-                      },
-                    },
-                    { text: 'Delete', style: 'destructive', onPress: () => remove(t) },
-                  ])
-                }
-              />
-            ))}
-          </SettingsGroup>
+          <SettingsRow label="Add people to the event team first" onPress={() => router.push(`/manage/event/${eventId}/team`)} />
         )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>
+        Queries under this topic go to these people and to the volunteers in the team’s room. With nobody picked, they go to the curators.
+      </Text>
+
+      <View style={styles.actions}>
+        <Button label={editing ? 'Save' : 'Add topic'} loading={busy} disabled={!name.trim()} onPress={() => void save()} style={{ flex: 1 }} />
+        {editing ? <Button label="Cancel" variant="secondary" onPress={reset} style={{ flex: 1 }} /> : null}
+      </View>
+      {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
+
+      {data.topics.length === 0 ? (
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>No topics yet. Teams can still raise “Other” queries, which go to the curators.</Text>
+        </View>
+      ) : (
+        <SettingsGroup title="Topics" plain>
+          {data.topics.map((t) => (
+            <SettingsRow
+              key={t.id}
+              label={t.name}
+              value={t.pocs.length ? t.pocs.map(staffName).join(', ') : 'Curators'}
+              onPress={() =>
+                AppAlert.alert(t.name, t.pocs.length ? t.pocs.map(staffName).join(', ') : 'No POC yet', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Edit',
+                    onPress: () => {
+                      setEditing(t);
+                      setName(t.name);
+                      setPocs(t.pocs.map((p) => p.id));
+                      setError('');
+                    },
+                  },
+                  { text: 'Delete', style: 'destructive', onPress: () => remove(t) },
+                ])
+              }
+            />
+          ))}
+        </SettingsGroup>
+      )}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   chips: { paddingVertical: spacing[2] },
   actions: { flexDirection: 'row', gap: spacing[3], marginTop: spacing[4] },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },

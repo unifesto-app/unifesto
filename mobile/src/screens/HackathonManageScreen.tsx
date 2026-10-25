@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Lifebuoy, Tray, Broadcast, Buildings, Certificate, ChartBar, DoorOpen, DownloadSimple, Gavel, GearSix, Lightbulb, ListNumbers, MapPin, Megaphone, Power, Tag, Trophy, UsersThree } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
@@ -19,9 +19,8 @@ import {
 import { psModeSummary } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 const WHAT_IT_DOES = [
@@ -40,7 +39,6 @@ export default function HackathonManageScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [data, setData] = useState<HackathonOverview | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -102,16 +100,16 @@ export default function HackathonManageScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <>
-            <Text style={[styles.note, { color: c.muted, textAlign: 'center' }]}>{error}</Text>
-            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-          </>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.note, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
         ) : (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -121,23 +119,15 @@ export default function HackathonManageScreen() {
   const venueName = h?.venue.name || data.eventVenue.name || data.eventVenue.address;
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      bottom={100}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {!on ? (
         <View>
@@ -341,14 +331,14 @@ export default function HackathonManageScreen() {
           </SettingsGroup>
         </>
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.strong },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  title: { fontSize: 20, lineHeight: 28, ...cosmosFont.display },
   body: { marginTop: spacing[2], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.5, ...cosmosFont.body },
   note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });
