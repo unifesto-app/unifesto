@@ -18,6 +18,7 @@ const event = {
 export const samples: Record<string, T.Email> = {
   otp: T.otpEmail('482913'),
   welcome: T.welcomeEmail(evil),
+  signInMethodAdded: T.signInMethodAddedEmail(evil),
   registration: T.registrationConfirmationEmail({ ...event, eventSlug: 'demo-day' }),
   payment: T.paymentConfirmationEmail({ ...event, amount: 1499, processingFee: 45, razorpayPaymentId: 'pay_123' }),
   cancellation: T.cancellationConfirmationEmail({ ...event, organiserReason: evil, razorpayRefundInitiated: true, razorpayRefundAmount: 1499 }),

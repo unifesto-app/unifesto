@@ -148,4 +148,15 @@ export class AuthController {
       allDevices: body?.allDevices,
     });
   }
+
+  /**
+   * Sign out everywhere: revokes every access and refresh token of the caller.
+   * POST /auth/logout-all
+   */
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(@Request() req): Promise<{ message: string }> {
+    return this.authService.logout(req.user.id, { allDevices: true });
+  }
 }
