@@ -491,7 +491,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | done (#380) |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#371) |
-| J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | in progress (#383) |
+| J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | done (#386) |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
 | J8 | **Cap group size on every registration path.** Critical. groupSize has only @IsInt @Min(1) (backend/src/registrations/dto/index.ts:100-105, :247-252). | IN_REVIEW (#308) |
@@ -926,3 +926,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · T6 slice 2: Huddle sessions pay out (Payout.sessionId, exactly one source), session sales freeze the organiser fee (trigger + backfill), session money in Space/Apex financials and breakdown; Space payouts list paid sessions (#389)
 - **2026-10-26** · J3 slice 3: GET /admin/queue-counts; mobile Apex home counts every queue in one call instead of downloading 10 lists (#380)
 - **2026-10-26** · J5 slice 2: WhatsApp group-invite blast queued on BullMQ with claim-before-send (no more timeouts or double sends) (#383)
+- **2026-10-26** · J5 slice 4: CSV import capped at 1,000 rows (preview + import); import confirmations sent 5 at a time after the rows (#386)
