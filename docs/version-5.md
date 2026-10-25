@@ -415,7 +415,7 @@ One support system for everything a person needs help with. Every item is an **A
 
 | # | Item | Status |
 |---|---|---|
-| G1 | **Open-on-web handoffs for desk work on mobile.** "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | planned |
+| G1 | **Open-on-web handoffs for desk work on mobile.** "Open on web" handoffs (deep link) for desk work on mobile: event/ticket/coupon/question editors, series dates, sub-events, co-hosting, content editors, stay editors, CSV import, hackathon setup (settings, themes, statements, rounds, criteria, panels, judges, awards, certificates), white-label, billing, payout accounts; Apex blog, careers, categories, email compose/templates, plans, subscriptions, IAM, reconciliation, logs, default images | done (#378) |
 | G2 | **Make on-site mobile tools survive offline and slow networks.** Keep on mobile and polish: check-in (online + offline), scanners, attendee actions, waitlist offers, hackathon queues/rooms/announce/help-desk, judging, leads, refund approve, support, WhatsApp inbox, request review, status, OTA | done (#273) |
 | G3 | **Cosmos migration of the remaining mobile screens.** Cosmos migration in order: manage-event subtree → check-in → attendee leftovers (registration success, claim, group, refund, sessions, live session, stays, edit details) → hackathon/judging → Apex. About 115 screens | planned |
 | G4 | **Move long mobile lists to FlatList.** Long lists → `FlatList`: Waitlist, ManualCheckin results, HackathonTeams, Queues, Results, Leads, Coupons, `sessions.tsx`, `group/[registrationId]` | done (#278) |
@@ -927,3 +927,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J3 slice 3: GET /admin/queue-counts; mobile Apex home counts every queue in one call instead of downloading 10 lists (#380)
 - **2026-10-26** · J5 slice 2: WhatsApp group-invite blast queued on BullMQ with claim-before-send (no more timeouts or double sends) (#383)
 - **2026-10-26** · J5 slice 4: CSV import capped at 1,000 rows (preview + import); import confirmations sent 5 at a time after the rows (#386)
+- **2026-10-26** · G1 mobile desk editors replaced by "open on web" handoffs; 38 screens deleted (#378)
