@@ -57,6 +57,7 @@ import { titleCase } from '../lib/apexQueues';
 import {
   getAdminPayouts,
   getAdminRefunds,
+  getQueueCounts,
   getFinancialTimeseries,
   getGrowthTimeseries,
   getPlatformOverview,
@@ -193,6 +194,22 @@ function trend(values: number[], labels: string[]) {
   return `${d >= 0 ? '+' : '−'}${Math.abs(d)}% vs ${labels[n - 2]}`;
 }
 
+/** Pre-J3 backends: count by listing each queue (remove once /admin/queue-counts is live). */
+async function legacyQueueCounts() {
+  const [queues, refunds, payouts, reports] = await Promise.all([
+    pendingCounts(),
+    getAdminRefunds('PENDING_ADMIN'),
+    getAdminPayouts('PENDING'),
+    listContentReports({ status: 'OPEN' }),
+  ]);
+  return {
+    requests: queues as Record<string, number | null>,
+    refunds: refunds.ok ? refunds.data.pagination?.total ?? refunds.data.requests.length : null,
+    payouts: payouts.ok ? payouts.data.pagination?.total ?? payouts.data.payouts.length : null,
+    reports: reports.ok ? reports.data.length : null,
+  };
+}
+
 /**
  * Platform-admin tab on one page: what's waiting on me, a visual pulse of the
  * platform (revenue, growth, reach, traffic), then every tool in sections of
@@ -220,17 +237,16 @@ export default function ApexScreen() {
 
   const load = useCallback(async () => {
     // Everything in parallel; a failing count or chart just stays blank.
-    const [overview, queues, refunds, payouts, wa, sys, banks, support, reports] = await Promise.all([
+    const [overview, qc, wa, sys, banks, support] = await Promise.all([
       getPlatformOverview(),
-      pendingCounts(),
-      getAdminRefunds('PENDING_ADMIN'),
-      getAdminPayouts('PENDING'),
+      getQueueCounts(),
       getWhatsappStats(),
       getPlatformStatus(),
       getAllBankAccounts({ status: 'PENDING', limit: 1 }),
       getTicketStats(),
-      listContentReports({ status: 'OPEN' }),
     ]);
+    // One counts call (J3); a backend without it yet falls back to listing each queue.
+    const queued = qc.ok ? qc.data : await legacyQueueCounts();
     if (overview.ok) {
       setData(overview.data);
       setError('');
@@ -238,13 +254,13 @@ export default function ApexScreen() {
       setError(overview.denied ? 'Only Unifesto platform admins can see this.' : overview.message);
     }
     setCounts({
-      requests: Object.values(queues).reduce<number>((sum, n) => sum + (n ?? 0), 0),
-      refunds: refunds.ok ? refunds.data.pagination?.total ?? refunds.data.requests.length : null,
-      payouts: payouts.ok ? payouts.data.pagination?.total ?? payouts.data.payouts.length : null,
+      requests: Object.values(queued.requests).reduce<number>((sum, n) => sum + (n ?? 0), 0),
+      refunds: queued.refunds,
+      payouts: queued.payouts,
       whatsapp: wa.ok ? wa.data.unread : null,
       bankAccounts: banks.ok ? banks.data.pagination.total : null,
       support: support.ok ? support.data.open : null,
-      reports: reports.ok ? reports.data.length : null,
+      reports: queued.reports,
     });
     setCountsLoaded(true);
     setStatus(sys.ok ? sys.data : null);

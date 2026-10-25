@@ -577,6 +577,10 @@ export interface PlatformStatus {
 
 export const getPlatformStatus = () => call<PlatformStatus>('/admin/status');
 
+/** GET /admin/queue-counts: every Apex queue's waiting count in one call (J3). */
+export const getQueueCounts = () =>
+  call<{ requests: Record<string, number>; refunds: number; payouts: number; reports: number }>('/admin/queue-counts');
+
 /** UptimeRobot's outside view (read-only key on the server; cached a minute). */
 export interface ExternalMonitor {
   id: number;

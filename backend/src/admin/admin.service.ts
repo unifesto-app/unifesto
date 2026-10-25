@@ -12,7 +12,7 @@ import { StorageService } from '../storage/storage.service';
 import { EmailService } from '../email/email.service';
 import { NotifyService } from '../notifications/notify.service';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { SpaceStatus, PaymentStatus, Prisma, RoleCode } from '@prisma/client';
+import { SpaceStatus, PaymentStatus, Prisma, RoleCode, RefundStatus, PayoutStatus, ContentReportStatus } from '@prisma/client';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
@@ -65,6 +65,33 @@ export class AdminService {
       ...AWS_HTTP_TIMEOUTS,
     });
   }
+  /**
+   * Waiting items per Apex queue, as plain counts. Statuses match what each
+   * queue screen lists as "pending" (refunds: the admin stage only).
+   */
+  async getQueueCounts() {
+    const PENDING = { where: { status: 'PENDING' } };
+    const [space, status, ownership, subspace, transfer, freeAdd, whiteLabel, refunds, payouts, reports] =
+      await Promise.all([
+        this.prisma.spaceRequest.count(PENDING),
+        this.prisma.spaceStatusRequest.count(PENDING),
+        this.prisma.spaceOwnershipRequest.count(PENDING),
+        this.prisma.subSpaceRequest.count(PENDING),
+        this.prisma.registrationTransferRequest.count(PENDING),
+        this.prisma.freeAttendeeAddRequest.count(PENDING),
+        this.prisma.whiteLabelRequest.count(PENDING),
+        this.prisma.refundRequest.count({ where: { status: RefundStatus.PENDING_ADMIN } }),
+        this.prisma.payout.count({ where: { status: PayoutStatus.PENDING } }),
+        this.prisma.contentReport.count({ where: { status: ContentReportStatus.OPEN } }),
+      ]);
+    return {
+      requests: { space, status, ownership, subspace, transfer, 'free-add': freeAdd, 'white-label': whiteLabel },
+      refunds,
+      payouts,
+      reports,
+    };
+  }
+
 
   /**
    * Check health of all infrastructure services

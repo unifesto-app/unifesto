@@ -64,6 +64,17 @@ export class AdminController {
    * Read platform-wide settings (currently the app processing fee).
    * GET /admin/platform-config
    */
+  /**
+   * Every Apex queue's waiting count in one call (J3). Mobile Apex home used to
+   * download up to 100 rows per queue just to count them.
+   * GET /admin/queue-counts
+   */
+  @Get('queue-counts')
+  @Roles(RoleCode.ADMIN)
+  getQueueCounts() {
+    return this.adminService.getQueueCounts();
+  }
+
   @Get('platform-config')
   @Roles(RoleCode.ADMIN)
   async getPlatformConfig() {
