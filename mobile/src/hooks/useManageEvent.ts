@@ -3,22 +3,22 @@ import { useFocusEffect } from 'expo-router';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
 import { getEventById, type Event } from '../lib/api/events';
 import { getCheckinStats, type CheckinStats } from '../lib/api/checkin';
-import { getAttendeeStats, type AttendeeStats } from '../lib/api/manageEvent';
-import { HOSTING_ROLE_CODES } from '../lib/spaceSections';
+import { getAttendeeStats, getSpaceAccess, type AttendeeStats, type SpaceAccess } from '../lib/api/manageEvent';
 
 /**
  * Everything the event hub needs: the event, headcounts, live check-in progress
- * and which tools this user may use here. Permissions are read from data the
- * Space tab already loaded (plus whether the stats call was allowed), so the
- * hub never shows a button the server would reject.
+ * and which tools this user may use here. Permissions come from the backend's
+ * effective capabilities for this event (GET /spaces/:id/access), so the hub
+ * never shows a button the server would reject.
  */
 export function useManageEvent(eventId: string | undefined) {
-  const { spaces, checkinEvents, judgingEvents } = useSpaceAccess();
+  const { judgingEvents } = useSpaceAccess();
 
   const [event, setEvent] = useState<Event | null>(null);
   const [attendeeStats, setAttendeeStats] = useState<AttendeeStats | null>(null);
   const [attendeesDenied, setAttendeesDenied] = useState(false);
   const [checkin, setCheckin] = useState<CheckinStats | null>(null);
+  const [caps, setCaps] = useState<SpaceAccess | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -41,6 +41,9 @@ export function useManageEvent(eventId: string | undefined) {
       setAttendeeStats(stats.ok ? stats.data : null);
       setAttendeesDenied(!stats.ok && stats.denied);
       setCheckin(live);
+      const acc = await getSpaceAccess(ev.spaceId, eventId);
+      if (gen !== generation.current) return;
+      setCaps(acc.ok ? acc.data : null);
     }
     setLoading(false);
   }, [eventId]);
@@ -63,22 +66,20 @@ export function useManageEvent(eventId: string | undefined) {
   }, [load]);
 
   const access = useMemo(() => {
-    const space = spaces.find((s) => s.id === event?.spaceId);
-    const isSpaceAdmin = space?.userRole?.code === 'SPACE_ADMIN';
-    const eventRole = space?.eventAccess.find((a) => a.eventId === eventId)?.roleCode;
-    const hosts = isSpaceAdmin || (!!eventRole && (HOSTING_ROLE_CODES as readonly string[]).includes(eventRole));
+    const can = (action: string) => !!caps?.capabilities.includes(action);
+    const feature = (key: string) => !!caps && (!caps.plan || !!caps.plan.features[key]);
     return {
       /** Curator-level tools (edit, content, WhatsApp, settings). The server re-checks. */
-      hosts,
-      /** Money (payouts) is Space-Admin only, and only for the owning space. */
-      canPayout: isSpaceAdmin,
-      /** Sponsors are space:manage-sponsors — Space Admins of the owning space. */
-      canSponsors: isSpaceAdmin,
+      hosts: can('event:edit'),
+      canPublish: can('event:publish'),
+      /** Payouts: event money (Curator) or space money (Space Admin). */
+      canPayout: can('event:manage-money') || can('space:manage-money'),
+      canSponsors: can('space:manage-sponsors') && feature('hasSponsors'),
       canViewAttendees: !attendeesDenied,
-      canScan: checkinEvents.some((e) => e.id === eventId),
+      canScan: can('event:check-in'),
       canJudge: judgingEvents.some((j) => j.eventId === eventId),
     };
-  }, [spaces, event?.spaceId, eventId, attendeesDenied, checkinEvents, judgingEvents]);
+  }, [caps, eventId, attendeesDenied, judgingEvents]);
 
   return { event, attendeeStats, checkin, access, loading, refreshing, error, refresh, retry: load };
 }

@@ -15,7 +15,7 @@ import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { decideSubjectCase, openSubjectCase } from '../support/subject-cases';
-import { PlanConfigService } from '../subscription/plan-config.service';
+import { PlanConfigService, subscriptionStatus } from '../subscription/plan-config.service';
 import { BRANDING_SPACE_SELECT, resolveSpaceBranding } from '../white-label/branding.util';
 import { SPACE_DOMAINS_ORPHANED } from '../white-label/white-label.service';
 import {
@@ -2474,6 +2474,30 @@ export class SpacesService {
    * Access is enforced by @Can(space:view) at the controller (Space Admin of
    * `:id` — incl. legacy organisers — or platform ADMIN via inheritance).
    */
+  /**
+   * The space's plan as the backend enforces it (T3): status and limits from
+   * getEffectiveLimits, so an EXPIRED plan reports Starter's features. Null when
+   * the space has no subscription yet; plan gates don't apply then.
+   */
+  async getPlanAccess(spaceId: string) {
+    const sub = await this.prisma.orgSubscription.findUnique({ where: { spaceId } });
+    if (!sub) return null;
+    const {
+      platformFeePercent: _fee,
+      monthlyPrice: _monthly,
+      annualPrice: _annual,
+      spaces, eventsPerMonth, attendeesPerEvent, ticketTypes, coCurators,
+      ...features
+    } = this.planConfig.getEffectiveLimits(sub);
+    return {
+      plan: sub.plan,
+      billingModel: sub.billingModel,
+      status: subscriptionStatus(sub),
+      features,
+      limits: { spaces, eventsPerMonth, attendeesPerEvent, ticketTypes, coCurators },
+    };
+  }
+
   async getSubspaceAnalytics(id: string) {
     const root = await this.prisma.space.findUnique({
       where: { id },

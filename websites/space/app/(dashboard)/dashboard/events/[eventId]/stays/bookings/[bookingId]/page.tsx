@@ -29,8 +29,7 @@ import {
   updateStayBooking,
   type TeamStayBooking,
 } from "@/lib/api/stays";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 import { cn } from "@/lib/utils/cn";
 
 const when = (iso: string) =>
@@ -54,8 +53,8 @@ function Banner({ icon, children }: { icon: React.ReactNode; children: React.Rea
  */
 export default function StayBookingPage() {
   const { eventId, bookingId } = useParams() as { eventId: string; bookingId: string };
-  const { currentRole } = useSession();
-  const desk = !can(currentRole, "event:manage-attendees");
+  const { can } = useAccess(eventId);
+  const desk = !can("event:manage-attendees");
   const [b, setB] = useState<TeamStayBooking | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");

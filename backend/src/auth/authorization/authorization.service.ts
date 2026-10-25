@@ -5,6 +5,17 @@ import { Action, ACTION_SCOPE, AuthResource } from './actions';
 import { CapabilityConfigService } from './capability-config.service';
 import { SPACE_ADMIN_ROLE_CODES } from './role-tiers';
 
+/** Space/event role codes, highest first, for picking the one to report. */
+const ROLE_RANK: RoleCode[] = [
+  RoleCode.SPACE_ADMIN,
+  RoleCode.CURATOR,
+  RoleCode.CO_CURATOR,
+  RoleCode.CREW,
+  RoleCode.JUDGE,
+  RoleCode.MENTOR,
+  RoleCode.MEMBER,
+];
+
 /**
  * One role assignment the caller holds, flattened for authorization checks.
  */
@@ -100,6 +111,55 @@ export class AuthorizationService {
           this.grants(a, action, RoleScope.PLATFORM, {}, null),
         ),
     );
+  }
+
+  /**
+   * What the caller may do in one space, for UIs to gate on (T3): their highest
+   * space- and event-scoped role codes plus every SPACE and EVENT action `can()`
+   * would grant, per-space overrides and inheritance included. EVENT actions are
+   * checked on `eventId` when given; without it they mean "on at least one event
+   * of this space" (space-level nav, e.g. the Assist inbox for event-only crew).
+   */
+  async accessIn(
+    user: Pick<User, 'id'>,
+    spaceId: string,
+    eventId?: string,
+  ): Promise<{ spaceRole: RoleCode | null; eventRole: RoleCode | null; capabilities: Action[] }> {
+    const assignments = await this.loadAssignments(user.id);
+    const eventSpaceId = eventId ? await this.resolveEventSpace(eventId) : null;
+    // No eventId: where each event role's event lives, to keep this space's.
+    const eventIds = eventId ? [] : assignments.flatMap((a) => (a.eventId ? [a.eventId] : []));
+    const spaceOf = new Map(
+      eventIds.length
+        ? (
+            await this.prisma.event.findMany({
+              where: { id: { in: eventIds } },
+              select: { id: true, spaceId: true },
+            })
+          ).map((e) => [e.id, e.spaceId])
+        : [],
+    );
+    const capabilities = (Object.keys(ACTION_SCOPE) as Action[]).filter((action) => {
+      const scope = ACTION_SCOPE[action];
+      if (scope === RoleScope.PLATFORM) return false;
+      if (scope === RoleScope.SPACE)
+        return assignments.some((a) => this.grants(a, action, scope, { spaceId }, null));
+      if (eventId)
+        return assignments.some((a) => this.grants(a, action, scope, { eventId }, eventSpaceId));
+      return assignments.some((a) =>
+        a.eventId
+          ? spaceOf.get(a.eventId) === spaceId &&
+            this.grants(a, action, scope, { eventId: a.eventId }, spaceId)
+          : this.grants(a, action, scope, {}, spaceId),
+      );
+    });
+    const highest = (match: (a: Assignment) => boolean) =>
+      ROLE_RANK.find((code) => assignments.some((a) => a.code === code && match(a))) ?? null;
+    return {
+      spaceRole: highest((a) => a.scope === RoleScope.SPACE && a.spaceId === spaceId),
+      eventRole: eventId ? highest((a) => a.scope === RoleScope.EVENT && a.eventId === eventId) : null,
+      capabilities,
+    };
   }
 
   // --- internals -----------------------------------------------------------

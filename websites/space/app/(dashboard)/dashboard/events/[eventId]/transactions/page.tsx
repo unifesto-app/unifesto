@@ -19,7 +19,6 @@ import {
   exportRegistrations,
   EXPORT_EXTENSION,
 } from "@/lib/api/registrations-api";
-import { getSpaceUsage } from "@/lib/api/subscriptions-api";
 import { ExportMenu } from "@/components/shared/ExportMenu";
 import type { Event } from "@/lib/api/events-api";
 import type {
@@ -30,8 +29,7 @@ import type {
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { RequestPayoutDialog } from "@/components/finance/PayoutsPanel";
-import { useSession } from "@/lib/context/SessionContext";
-import { can } from "@/lib/types/rbac";
+import { useAccess } from "@/lib/context/SessionContext";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { StatCard } from "@/components/shared/StatCard";
 import { Button } from "@/components/ui/button";
@@ -151,10 +149,11 @@ export default function EventTransactionsPage() {
   const [page, setPage] = useState(1);
   const [exporting, setExporting] = useState(false);
   const [payoutOpen, setPayoutOpen] = useState(false);
-  const { currentRole } = useSession();
-  // Whether this space's plan includes bulk export. `undefined` until the
-  // space's plan resolves; the ExportMenu keeps the button live meanwhile.
-  const [canExport, setCanExport] = useState<boolean | undefined>(undefined);
+  const { can } = useAccess(eventId);
+  // Whether this space's plan includes bulk export (the flag the backend
+  // enforces with). `undefined` until access loads; ExportMenu stays live then.
+  const exportAccess = useAccess(eventId);
+  const canExport = exportAccess.access ? exportAccess.hasFeature("hasBulkExport") : undefined;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -165,10 +164,6 @@ export default function EventTransactionsPage() {
     ]);
     if (eventResult.data) {
       setEvent(eventResult.data);
-      // Gate the Export control on the space's effective plan, using the same
-      // flag the backend enforces with (getEffectiveLimits → hasBulkExport).
-      const { data: usage } = await getSpaceUsage(eventResult.data.spaceId);
-      if (usage) setCanExport(usage.features.hasBulkExport);
     }
     if (regResult.error) setError(regResult.error.message);
     else setTransactions((regResult.data ?? []).filter(isTransaction));
@@ -251,7 +246,7 @@ export default function EventTransactionsPage() {
         subtitle="View payment transactions and refunds"
         actions={
           <div className="flex flex-wrap gap-2">
-            {event && can(currentRole, "event:manage-money") && (
+            {event && can("event:manage-money") && (
               <Button variant="outline" onClick={() => setPayoutOpen(true)}>
                 Request payout
               </Button>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getEventById } from "@/lib/api/events-api";
-import { getSpaceUsage } from "@/lib/api/subscriptions-api";
+import { useAccess } from "@/lib/context/SessionContext";
 import {
   exportRegistrations,
   EXPORT_EXTENSION,
@@ -25,7 +25,9 @@ export function EventExportMenu({
   disabled?: boolean;
 }) {
   const [slug, setSlug] = useState(eventId);
-  const [canExport, setCanExport] = useState<boolean | undefined>(undefined);
+  // Same flag the backend enforces with; `undefined` until access loads.
+  const { access, hasFeature } = useAccess(eventId);
+  const canExport = access ? hasFeature("hasBulkExport") : undefined;
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
@@ -34,9 +36,6 @@ export function EventExportMenu({
       const { data: event } = await getEventById(eventId);
       if (!event || !active) return;
       setSlug(event.slug);
-      // Same flag the backend enforces with (getEffectiveLimits → hasBulkExport).
-      const { data: usage } = await getSpaceUsage(event.spaceId);
-      if (usage && active) setCanExport(usage.features.hasBulkExport);
     })();
     return () => {
       active = false;

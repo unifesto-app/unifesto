@@ -28,7 +28,7 @@ export async function getSpace(
   // `GET /users/me/spaces` returns a flattened `userRole` ({ id, code, name }),
   // but `GET /spaces/:id` may return the raw membership record where the role
   // code is nested under `userRole.role.code`. Normalize to the flat shape so
-  // `isOrganiserRole(space.userRole?.code)` works regardless of which the
+  // `space.userRole?.code` reads the same regardless of which the
   // backend build sends.
   const rawUserRole = (data as { userRole?: unknown }).userRole as
     | { code?: string; name?: string; role?: { id?: string; code?: string; name?: string } }
@@ -68,6 +68,50 @@ export async function getSpace(
     data: normalized as unknown as SpaceWithHierarchy,
     error: null,
   };
+}
+
+/**
+ * What the signed-in user may do in a space (T3), from `GET /spaces/:id/access`.
+ * `capabilities` are backend action strings (e.g. `event:publish`), resolved
+ * with per-space overrides and inheritance. With `eventId`, event actions are
+ * for that event; without, an event action means "on some event here".
+ */
+export interface SpaceAccess {
+  spaceRole: SpaceRoleCode | null;
+  eventRole: SpaceRoleCode | null;
+  capabilities: string[];
+  /** Null when the space has no subscription yet: plan gates don't apply. */
+  plan: {
+    plan: string;
+    billingModel: "FREE" | "SUBSCRIPTION" | "REVENUE_SHARE";
+    status: "ACTIVE" | "GRACE" | "EXPIRED";
+    features: PlanFeatures;
+    limits: Record<"spaces" | "eventsPerMonth" | "attendeesPerEvent" | "ticketTypes" | "coCurators", number | null>;
+  } | null;
+}
+
+export interface PlanFeatures {
+  hasWaitlist: boolean;
+  hasBulkExport: boolean;
+  hasAnalytics: boolean;
+  hasWhatsappBlast: boolean;
+  hasRecurringEvents: boolean;
+  hasRemoveBranding: boolean;
+  hasPrioritySupport: boolean;
+  hasSessions: boolean;
+  hasLeaderboard: boolean;
+  hasCertificates: boolean;
+  hasSponsors: boolean;
+}
+
+/** `GET /spaces/:id/access?eventId=` */
+export async function getSpaceAccess(
+  spaceId: string,
+  eventId?: string
+): Promise<{ data: SpaceAccess | null; error: ApiError | null }> {
+  return apiCall<SpaceAccess>(
+    backendClient.get(`/spaces/${spaceId}/access`, { params: eventId ? { eventId } : undefined })
+  );
 }
 
 /** A lightweight space result for pickers (co-host invite, etc.). */

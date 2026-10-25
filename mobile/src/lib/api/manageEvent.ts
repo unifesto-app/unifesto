@@ -32,6 +32,22 @@ export interface AttendeeStats {
   byTicketType: { ticketTypeId: string | null; name: string; kind: string; attendees: number; bookings: number }[];
 }
 
+// ── Access ───────────────────────────────────────────────────────────────────
+
+/** What the signed-in user may do in a space / one of its events (T3). */
+export interface SpaceAccess {
+  spaceRole: string | null;
+  eventRole: string | null;
+  /** Backend action strings, e.g. `event:edit`, `event:manage-money`. */
+  capabilities: string[];
+  /** Null when the space has no subscription yet (plan gates don't apply). */
+  plan: { plan: string; status: string; features: Record<string, boolean> } | null;
+}
+
+/** GET /spaces/:spaceId/access?eventId= — effective capabilities and plan. */
+export const getSpaceAccess = (spaceId: string, eventId: string) =>
+  call<SpaceAccess>(`/spaces/${spaceId}/access?eventId=${encodeURIComponent(eventId)}`);
+
 /** GET /events/:id/attendee-stats — people attending, split individual vs group. */
 export const getAttendeeStats = (eventId: string) => call<AttendeeStats>(`/events/${eventId}/attendee-stats`);
 

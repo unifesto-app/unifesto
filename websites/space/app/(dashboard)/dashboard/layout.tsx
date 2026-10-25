@@ -11,7 +11,7 @@ import { SpaceNav } from "@/components/shell/SpaceNav";
 import { EventNav } from "@/components/shell/EventNav";
 import { EventAccessNav } from "@/components/shell/EventAccessNav";
 import { EventAccessChooser } from "@/components/shell/EventAccessChooser";
-import { appRoleFromCode, hasEventDeskAccess, isEventScopedSpace } from "@/lib/types/rbac";
+import { isEventScopedSpace } from "@/lib/types/rbac";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils/cn";
 
@@ -33,7 +33,7 @@ export default function SpaceDashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentSpace, loading } = useSession();
+  const { currentSpace, loading, can } = useSession();
   const { open, setOpen } = useMobileNav();
   const [collapsed, toggleCollapsed] = useCollapsibleRail();
 
@@ -49,14 +49,11 @@ export default function SpaceDashboardLayout({
       : undefined;
   // For an event-only user, whether they may view the event in the URL.
   const viewingOwnEvent = eventId != null && currentEvent != null;
-  const eventRole = currentEvent
-    ? appRoleFromCode(currentEvent.roleCode)
-    : undefined;
   // The Assist inbox is the one space-level page they may open: the backend
   // lists only their events' cases.
   const onDeskInbox =
     (pathname === "/dashboard/assist" || pathname.startsWith("/dashboard/assist/")) &&
-    hasEventDeskAccess(currentSpace);
+    can("event:manage-support");
   // Any other space-level page is off-limits to an event-only user.
   const blockedForEventOnly = eventOnly && !viewingOwnEvent && !onDeskInbox;
 
@@ -84,7 +81,6 @@ export default function SpaceDashboardLayout({
       return viewingOwnEvent ? (
         <EventNav
           eventId={eventId!}
-          roleOverride={eventRole}
           collapsed={opts.collapsed}
           onNavigate={opts.onNavigate}
         />

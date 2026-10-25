@@ -19,7 +19,7 @@ import {
 } from "@/lib/api/spaces-api";
 import { ImageUploadCard } from "@/components/shared/ImageUploadCard";
 import { ParentSpaceCard } from "@/components/settings/ParentSpaceCard";
-import { can, type SpaceWithHierarchy } from "@/lib/types/rbac";
+import type { SpaceWithHierarchy } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -102,13 +102,13 @@ const INDIAN_STATES = [
 export default function SpaceSettingsPage() {
   const router = useRouter();
   const spaceId = useSpaceId();
-  const { spaces, currentRole, refresh: refreshSession } = useSession();
+  const { spaces, can, refresh: refreshSession } = useSession();
   const currentSpace = spaces.find((s) => s.id === spaceId);
 
   // Editing space settings is a Space-Admin capability. Gate through the same
   // matrix the sidebar and backend use — never a raw role-code literal, which
   // silently locks out the canonical SPACE_ADMIN code (and any future rename).
-  const canEdit = can(currentRole, "space:manage-members");
+  const canEdit = can("space:manage-members");
 
   const [space, setSpace] = useState<SpaceWithHierarchy | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);

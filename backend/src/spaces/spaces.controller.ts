@@ -15,13 +15,14 @@ import {
   FileTypeValidator,
   Request,
   ParseUUIDPipe,
+  ForbiddenException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
 import { SpacesService } from './spaces.service';
 import { BannerPaletteService } from '../banner-palette/banner-palette.service';
 import { JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard } from '../auth/guards';
-import { Action, Can, CanGuard } from '../auth/authorization';
+import { Action, AuthorizationService, Can, CanGuard } from '../auth/authorization';
 import { Roles, CurrentUser } from '../auth/decorators';
 import {
   CreateSpaceDto,
@@ -49,6 +50,7 @@ export class SpacesController {
   constructor(
     private readonly spacesService: SpacesService,
     private readonly bannerPalette: BannerPaletteService,
+    private readonly authz: AuthorizationService,
   ) {}
 
   /**
@@ -382,6 +384,27 @@ export class SpacesController {
   async getSpacePalette(@Request() req, @Param('id') id: string) {
     const bannerUrl = await this.spacesService.getSpaceBannerUrl(id, req.user?.id);
     return { colors: await this.bannerPalette.forUrl(bannerUrl) };
+  }
+
+  /**
+   * What the caller may do here (T3): their space/event role, effective
+   * capabilities (per-space overrides and inheritance applied) and the space's
+   * plan. Pass `eventId` for that event's capabilities too. Any member of the
+   * space or the event; 403 for everyone else.
+   * GET /spaces/:id/access?eventId=
+   */
+  @Get(':id/access')
+  @UseGuards(JwtAuthGuard)
+  async getAccess(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Query('eventId') eventId?: string,
+  ) {
+    const access = await this.authz.accessIn(user, id, eventId || undefined);
+    if (!access.spaceRole && !access.eventRole && access.capabilities.length === 0) {
+      throw new ForbiddenException('You are not a member of this space');
+    }
+    return { ...access, plan: await this.spacesService.getPlanAccess(id) };
   }
 
   /**

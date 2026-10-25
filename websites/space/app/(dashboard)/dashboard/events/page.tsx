@@ -21,7 +21,7 @@ import { useSession } from "@/lib/context/SessionContext";
 import { getSpaceEvents } from "@/lib/api/events-api";
 import type { Event, EventStatus } from "@/lib/api/events-api";
 import { parseRRuleToState, describeRecurrence } from "@/lib/recurrence";
-import { can, type SpaceWithHierarchy } from "@/lib/types/rbac";
+import type { SpaceWithHierarchy } from "@/lib/types/rbac";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -151,8 +151,8 @@ function EventCover({ event }: { event: Event }) {
 export default function SpaceEventsPage() {
   const router = useRouter();
   const spaceId = useSpaceId();
-  const { spaces, currentRole, loading: sessionLoading } = useSession();
-  const canCreate = can(currentRole, "event:create");
+  const { spaces, can, loading: sessionLoading } = useSession();
+  const canCreate = can("space:create-event");
 
   const [currentSpace, setCurrentSpace] = useState<SpaceWithHierarchy | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
