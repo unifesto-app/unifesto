@@ -222,6 +222,11 @@ export function PlanEditScreen() {
       }
       body[k] = n;
     }
+    // Blank means "unlimited" for limits, but the fee has no unlimited (the API rejects null).
+    if (body.platformFeePercent === null) {
+      setError('Platform fee can’t be blank. Use 0 for no fee.');
+      return;
+    }
     setError('');
     const show = (v: unknown) => (v === null || v === undefined || v === '' ? 'unlimited' : String(v));
     const diff = Object.entries(body)

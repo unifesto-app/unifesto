@@ -73,10 +73,14 @@ function limitLabel(n: number | null | undefined): string {
 /** The feature lines shown on each plan card, in display order. */
 const PLAN_FEATURES: { key: keyof PlanInfo; label: string }[] = [
   { key: "hasWaitlist", label: "Waiting lists" },
-  { key: "hasAnalytics", label: "Analytics & reports" },
-  { key: "hasSessions", label: "Sessions" },
+  { key: "hasRecurringEvents", label: "Recurring event series" },
   { key: "hasCertificates", label: "Certificates" },
-  { key: "hasLeaderboard", label: "Leaderboards" },
+  { key: "hasSponsors", label: "Sponsors and lead capture" },
+  { key: "hasLeaderboard", label: "Hackathons (Unifesto Sprint)" },
+  { key: "hasSessions", label: "Sessions" },
+  { key: "hasWhatsappBlast", label: "WhatsApp blasts" },
+  { key: "hasAnalytics", label: "Analytics & reports" },
+  { key: "hasBulkExport", label: "Bulk attendee export" },
   { key: "hasRemoveBranding", label: "Remove Unifesto branding" },
   { key: "hasPrioritySupport", label: "Priority support" },
 ];
