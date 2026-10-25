@@ -462,7 +462,7 @@ Goal: a space on a branding plan can make Unifesto disappear: own domain, logo, 
 | H17 | **Serve font presets from the overview endpoint.** Font presets are duplicated in `backend/src/white-label/branding.util.ts` and `websites/space/lib/api/white-label-api.ts`; serve them from the overview endpoint instead | done, live 16 Oct (#135) |
 | H18 | **Custom-host lookup cache delays suspension by up to 60s.** Custom-host lookup is cached 60s per web process, so a suspension or removal takes up to a minute to take effect. Fine for now; shorten or invalidate if that matters | parked |
 | H19 | **Canonical URLs point to the space's custom domain.** Event + space pages of a space with a live custom domain set canonical and og:url to it, also on www (no redirect, old links keep working) | done, live 16 Oct (#135) |
-| H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | planned; needs you (#146 adds the guard: clear 403 when Resend refuses on the domain limit) |
+| H20 | **Upgrade Resend plan before selling custom sending domains.** Free allows 1 domain and `notify.unifesto.app` uses it, so the first space to verify its own sending domain is refused | in progress (#391) |
 | H21 | **Apex white-label form loads the target's live branding.** It showed #3491ff for every space, so Apply could overwrite a real colour | done, live 16 Oct (#140) |
 | H22 | **Square space logo is too small in the branded header and email.** Size up the square fallback or show the name beside it | done (#146), live 19 Oct |
 | H23 | **Branded emails still mention the Unifesto app.** Keep, reword or drop "Your ticket is also in the Unifesto app" when the space theme is live | done (#288) |
@@ -928,3 +928,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J5 slice 2: WhatsApp group-invite blast queued on BullMQ with claim-before-send (no more timeouts or double sends) (#383)
 - **2026-10-26** · J5 slice 4: CSV import capped at 1,000 rows (preview + import); import confirmations sent 5 at a time after the rows (#386)
 - **2026-10-26** · G1 mobile desk editors replaced by "open on web" handoffs; 38 screens deleted (#378)
+- **2026-10-26** · H20 custom sending domains gated by PlatformConfig switch (default off, Apex toggle); studio shows coming soon; Resend limit refusal is a 403 (#391)
