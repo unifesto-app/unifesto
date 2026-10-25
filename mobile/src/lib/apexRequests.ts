@@ -5,7 +5,7 @@ import { shortDate } from '../components/apex/ApexRow';
 import { inr } from '../utils/money';
 
 /*
- * Every Apex decision in one list: the seven approval queues plus refunds and
+ * Every Apex decision in one list: the six approval queues plus refunds and
  * payouts. Each source maps its own status words onto three shared tabs and its
  * rows onto RequestRow, so the Requests screen never branches on the type.
  */
@@ -47,7 +47,6 @@ const CHIP_LABEL: Record<QueueKind, string> = {
   subspace: 'Sub-spaces',
   transfer: 'Ticket transfers',
   'free-add': 'Free adds',
-  'white-label': 'White-label',
 };
 
 // ── Payout hand-off ──────────────────────────────────────────────────────────

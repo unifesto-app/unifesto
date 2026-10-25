@@ -30,7 +30,7 @@ type Filter = RequestSource | 'all';
 
 /**
  * Every Apex decision on one screen: space, status, ownership, sub-space,
- * ticket-transfer, free-add and white-label requests, plus refunds and
+ * ticket-transfer and free-add requests, plus refunds and
  * payouts. "All" groups them by type; a chip narrows to one.
  */
 export default function RequestsScreen() {

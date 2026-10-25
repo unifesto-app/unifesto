@@ -5,6 +5,7 @@ import {
   Delete,
   FileTypeValidator,
   Get,
+  Header,
   MaxFileSizeValidator,
   Param,
   ParseFilePipe,
@@ -39,8 +40,14 @@ import { toPage, toLimit } from '../common/pagination';
 export class WhiteLabelController {
   constructor(private readonly whiteLabel: WhiteLabelService) {}
 
-  /** Legacy (shipped mobile builds): now turns branding on immediately. */
+  /**
+   * @deprecated Legacy (mobile 4.0.5 and older): turns branding on immediately.
+   * Branding is managed in the Space theme studio now. H15: drop this route,
+   * Apex White-label History and `white_label_requests` once 4.0.5 adoption
+   * (Apex › App version) is near zero after 5.0.0 ships.
+   */
   @Post('requests')
+  @Header('Deprecation', 'true')
   @UseGuards(JwtAuthGuard, CanGuard)
   @Can(Action.SPACE_MANAGE_SETTINGS, { source: 'body', spaceKey: 'spaceId' })
   async createRequest(

@@ -161,16 +161,6 @@ export interface FreeAddRequest extends Reviewed {
   reason: string;
 }
 
-export interface WhiteLabelRequest extends Reviewed {
-  space: SpaceRef;
-  event: { id: string; title: string; slug: string } | null;
-  requester: PersonRef;
-  brandColor: string | null;
-  reason: string;
-  /** Whether the space's plan includes white-label right now. */
-  planHasBranding?: boolean;
-}
-
 /** GET /spaces/requests?status= — a plain array. */
 export const getSpaceRequests = (status: RequestStatus) => call<SpaceRequest[]>(`/spaces/requests${qs({ status })}`);
 export const approveSpaceRequest = (id: string) => call<unknown>(`/spaces/requests/${id}/approve`, { method: 'PATCH' });
@@ -205,11 +195,6 @@ export const getFreeAddRequests = (status: RequestStatus) =>
   call<{ requests: FreeAddRequest[]; pagination: Page }>(`/free-attendee-add/requests${qs({ status, limit: 100 })}`);
 export const reviewFreeAddRequest = (id: string, status: Decision, reviewNote?: string) =>
   call<unknown>(`/free-attendee-add/requests/${id}/review`, patch({ status, reviewNote: reviewNote || undefined }));
-
-export const getWhiteLabelRequests = (status: RequestStatus) =>
-  call<{ requests: WhiteLabelRequest[]; pagination: Page }>(`/white-label/requests${qs({ status, limit: 100 })}`);
-export const reviewWhiteLabelRequest = (id: string, status: Decision, reviewNote?: string) =>
-  call<unknown>(`/white-label/requests/${id}/review`, patch({ status, reviewNote: reviewNote || undefined }));
 
 // ── Refunds (final stage) ────────────────────────────────────────────────────
 
