@@ -15,7 +15,9 @@ export type PayoutStatus =
 
 export interface Payout {
   id: string;
-  eventId: string;
+  /** Exactly one of eventId / sessionId is set (T6). */
+  eventId: string | null;
+  sessionId?: string | null;
   userId: string;
   grossRevenue: string;
   platformFeePercent: string;
@@ -33,7 +35,8 @@ export interface Payout {
   paidAt?: string | null;
   notes: string | null;
   createdAt: string;
-  event?: { id: string; title: string; slug: string; startDateTime?: string };
+  event?: { id: string; title: string; slug: string; startDateTime?: string } | null;
+  session?: { id: string; title: string; slug: string; startDateTime?: string } | null;
   user?: { id: string; fullName: string | null; username: string | null };
   /** Full values on the admin list; organiser endpoints mask them. */
   bankAccount?: {
@@ -390,8 +393,10 @@ export interface FinancialsFigures {
   overdrawn: number;
 }
 
-/** One event's financials inside a space. */
+/** One event's (or Huddle session's) financials inside a space. */
 export interface EventFinancials extends FinancialsFigures {
+  /** A session row carries its session id here (T6). */
+  kind?: "event" | "session";
   eventId: string;
   title: string;
   slug: string;

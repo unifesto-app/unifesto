@@ -35,7 +35,7 @@ describe('PayoutsService event balance', () => {
     const { svc, prisma } = build();
     // Sold at 0% (before a plan change); today's rule says 5%.
     prisma.eventRegistration.findMany.mockResolvedValue(regs.map((r) => ({ ...r, platformFeePercent: 0 })));
-    const summary = await svc.getEventPayoutSummary('event-1');
+    const summary = await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(summary.estimatedPlatformFee).toBe(0);
     expect(summary.eventNet).toBe(160);
     expect(summary.defaultPlatformFeePercent).toBe(5);
@@ -57,7 +57,7 @@ describe('PayoutsService event balance', () => {
       spaceId: 'space-1',
       space: { subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: null } },
     });
-    const summary = await svc.getEventPayoutSummary('event-1');
+    const summary = await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(summary.eventNet).toBe(152);
     expect(summary.available).toBe(0);
   });
@@ -69,7 +69,7 @@ describe('PayoutsService event balance', () => {
       { requestedAmount: 40, registration: regs[0] },
       { requestedAmount: null, registration: regs[0] },
     ]);
-    const summary = await svc.getEventPayoutSummary('event-1');
+    const summary = await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(summary.eventNet).toBe(152); // what was earned is unchanged
     expect(summary.available).toBe(19); // (160 − 140) less 5% fee
     expect(prisma.refundRequest.findMany.mock.calls[0][0].where.status.in).toContain('REFUND_FAILED');
@@ -77,7 +77,7 @@ describe('PayoutsService event balance', () => {
 
   it('counts a partial refund net of what went back', async () => {
     const { svc } = build();
-    const summary = await svc.getEventPayoutSummary('event-1');
+    const summary = await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(summary.grossRevenue).toBe(160); // 100 + (100 − 40)
     expect(summary.estimatedPlatformFee).toBe(8);
     expect(summary.eventNet).toBe(152);
@@ -85,7 +85,7 @@ describe('PayoutsService event balance', () => {
 
   it('asks only for held money and skips rows awaiting an automatic refund', async () => {
     const { svc, prisma } = build();
-    await svc.getEventPayoutSummary('event-1');
+    await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(prisma.eventRegistration.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -99,7 +99,7 @@ describe('PayoutsService event balance', () => {
 
   it('takes the fee rule from plan config (null rate = model default, not 0%)', async () => {
     const { svc, planConfig } = build();
-    await svc.getEventPayoutSummary('event-1');
+    await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(planConfig.resolvePlatformFeePercent).toHaveBeenCalledWith({
       billingModel: BillingModel.REVENUE_SHARE,
       revenueSharePercent: null,

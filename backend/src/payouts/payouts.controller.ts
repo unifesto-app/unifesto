@@ -3,7 +3,7 @@ import {
   Body, Param, Query, UseGuards, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-import { PayoutsService } from './payouts.service';
+import { PayoutsService, payoutSource } from './payouts.service';
 import { AddBankAccountDto, CreateEventPayoutDto, CreatePayoutDto, MarkPayoutPaidDto, RequestPayoutDto, RevokeBankAccountDto, UpdateBankAccountStatusDto, SetEventPayoutAccountDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -45,7 +45,13 @@ export class PayoutsController {
 
   @Get('event/:eventId/summary')
   async getEventPayoutSummary(@Request() req, @Param('eventId') eventId: string) {
-    return this.payoutsService.getEventPayoutSummary(eventId, req.user.id);
+    return this.payoutsService.getPayoutSummary({ eventId }, req.user.id);
+  }
+
+  /** A Huddle session's payout balance (T6). */
+  @Get('session/:sessionId/summary')
+  async getSessionPayoutSummary(@Request() req, @Param('sessionId') sessionId: string) {
+    return this.payoutsService.getPayoutSummary({ sessionId }, req.user.id);
   }
 
   /** Transactions page tiles for an event (optionally one ticket type). */
@@ -73,7 +79,12 @@ export class PayoutsController {
   /** Accounts this event's payout may be routed to (own + other Space Admins'). */
   @Get('event/:eventId/eligible-accounts')
   async getEligibleAccounts(@Request() req, @Param('eventId') eventId: string) {
-    return this.payoutsService.getEligibleAccountsForEvent(eventId, req.user.id);
+    return this.payoutsService.getEligibleAccounts({ eventId }, req.user.id);
+  }
+
+  @Get('session/:sessionId/eligible-accounts')
+  async getSessionEligibleAccounts(@Request() req, @Param('sessionId') sessionId: string) {
+    return this.payoutsService.getEligibleAccounts({ sessionId }, req.user.id);
   }
 
   /** Set (or clear, with bankAccountId: null) the event's default payout account. */
@@ -97,7 +108,7 @@ export class PayoutsController {
   ) {
     return this.payoutsService.requestPayout(
       req.user.id,
-      body.eventId,
+      payoutSource(body),
       body.amount,
       body.bankAccountId ?? null,
     );
@@ -152,7 +163,7 @@ export class PayoutsController {
   @UseGuards(RolesGuard)
   @Roles(RoleCode.ADMIN)
   async getAdminEventPayoutSummary(@Param('eventId') eventId: string) {
-    return this.payoutsService.getEventPayoutSummary(eventId);
+    return this.payoutsService.getPayoutSummary({ eventId });
   }
 
   @Post('admin')
@@ -169,11 +180,7 @@ export class PayoutsController {
     @Request() req,
     @Body() body: CreateEventPayoutDto,
   ) {
-    return this.payoutsService.createEventPayout(
-      body.eventId,
-      req.user.id,
-      body.amount,
-    );
+    return this.payoutsService.createPayoutFor(payoutSource(body), req.user.id, body.amount);
   }
 
   @Post('admin/:id/process')

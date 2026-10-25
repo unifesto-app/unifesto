@@ -7,15 +7,17 @@ import { useCallback, useEffect, useState } from "react";
 import { Money, ArrowRight, CheckCircle, Clock } from "@unifesto/unicon/react";
 import {
   getSpacePayouts,
-  getEventPayoutSummary,
+  getPayoutSummary,
   getEventEligibleAccounts,
   requestPayout,
   type Payout,
   type PayoutStatus,
+  type PayoutTarget,
   type EventPayoutSummary,
   type EligibleAccount,
 } from "@/lib/api/payouts-api";
 import { getSpaceEvents, type Event } from "@/lib/api/events-api";
+import { listSpaceSessions, type Session } from "@/lib/api/sessions-api";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Button } from "@/components/ui/button";
@@ -56,21 +58,24 @@ export function PayoutsPanel() {
 
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [requestEvent, setRequestEvent] = useState<Event | null>(null);
+  const [requestTarget, setRequestTarget] = useState<PayoutTarget | null>(null);
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [pRes, eRes] = await Promise.all([
+    const [pRes, eRes, sRes] = await Promise.all([
       getSpacePayouts(spaceId),
       getSpaceEvents(spaceId, { limit: 100 }),
+      listSpaceSessions(spaceId),
     ]);
     if (pRes.error) setError(pRes.error.message);
     else setPayouts(pRes.data ?? []);
     if (eRes.data) setEvents(eRes.data.events);
+    if (sRes.data) setSessions(sRes.data);
     setLoading(false);
   }, [spaceId]);
 
@@ -81,7 +86,9 @@ export function PayoutsPanel() {
   // Payouts already come space-scoped from the backend (every event in the
   // space, not just the caller's own), so no client-side filtering is needed.
   const spacePayouts = payouts;
-  const shown = spacePayouts.filter((p) => matches(search, p.event?.title, p.utr, STATUS[p.status].label));
+  const shown = spacePayouts.filter((p) =>
+    matches(search, p.event?.title ?? p.session?.title, p.utr, STATUS[p.status].label)
+  );
   const { page, setPage, totalPages, pageItems } = usePaged(shown);
   const now = Date.now();
   // Any revenue-earning event can be drawn down — it need not have ended, so a
@@ -93,6 +100,10 @@ export function PayoutsPanel() {
     (e.ticketTypes ?? []).some((t) => Number(t.price) > 0);
   const requestable = events.filter(
     (e) => isPaidEvent(e) && e.status !== "DRAFT" && e.status !== "CANCELLED"
+  );
+  // Paid Huddle sessions pay out the same way (T6).
+  const requestableSessions = sessions.filter(
+    (x) => Number(x.price) > 0 && x.status !== "DRAFT" && x.status !== "CANCELLED"
   );
 
   return (
@@ -111,9 +122,9 @@ export function PayoutsPanel() {
               <CardTitle className="text-base">Request a payout</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
-              {requestable.length === 0 ? (
+              {requestable.length === 0 && requestableSessions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No events are ready for a payout yet. An event becomes eligible once it has earned revenue (paid tickets sold) — it doesn&apos;t have to have ended. Make sure your bank account is verified under <span className="font-medium">Accounts</span>.
+                  No events or sessions are ready for a payout yet. One becomes eligible once it has earned revenue (paid tickets sold) — it doesn&apos;t have to have ended. Make sure your bank account is verified under <span className="font-medium">Accounts</span>.
                 </p>
               ) : (
                 <div className="divide-y divide-border">
@@ -125,7 +136,18 @@ export function PayoutsPanel() {
                           {new Date(e.endDateTime).getTime() < now ? "Ended" : "Ends"} {fmt(e.endDateTime)}
                         </p>
                       </div>
-                      <Button size="sm" onClick={() => setRequestEvent(e)}>
+                      <Button size="sm" onClick={() => setRequestTarget({ kind: "event", id: e.id, title: e.title })}>
+                        <ArrowRight className="mr-1 h-4 w-4" />Request payout
+                      </Button>
+                    </div>
+                  ))}
+                  {requestableSessions.map((x) => (
+                    <div key={x.id} className="flex items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{x.title}</p>
+                        <p className="text-xs text-muted-foreground">Huddle session · {fmt(x.startDateTime)}</p>
+                      </div>
+                      <Button size="sm" onClick={() => setRequestTarget({ kind: "session", id: x.id, title: x.title })}>
                         <ArrowRight className="mr-1 h-4 w-4" />Request payout
                       </Button>
                     </div>
@@ -169,7 +191,7 @@ export function PayoutsPanel() {
                       <div key={p.id} className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-medium text-foreground">{p.event?.title ?? "Event"}</p>
+                            <p className="truncate text-sm font-medium text-foreground">{p.event?.title ?? p.session?.title ?? "Event"}</p>
                             <Badge variant={s.variant}>{s.label}</Badge>
                           </div>
                           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -194,10 +216,10 @@ export function PayoutsPanel() {
       )}
 
       <RequestPayoutDialog
-        event={requestEvent}
-        onClose={() => setRequestEvent(null)}
+        target={requestTarget}
+        onClose={() => setRequestTarget(null)}
         onDone={() => {
-          setRequestEvent(null);
+          setRequestTarget(null);
           void load();
         }}
       />
@@ -210,11 +232,11 @@ export function PayoutsPanel() {
  * amount. Also opened from the event's Transactions page (mobile parity).
  */
 export function RequestPayoutDialog({
-  event,
+  target,
   onClose,
   onDone,
 }: {
-  event: Event | null;
+  target: PayoutTarget | null;
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -228,7 +250,7 @@ export function RequestPayoutDialog({
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    if (!event) return;
+    if (!target) return;
     setSummary(null);
     setAccounts([]);
     setAccountId("");
@@ -237,8 +259,8 @@ export function RequestPayoutDialog({
     setErr("");
     setLoading(true);
     void Promise.all([
-      getEventPayoutSummary(event.id),
-      getEventEligibleAccounts(event.id),
+      getPayoutSummary(target),
+      getEventEligibleAccounts(target.id, target.kind),
     ]).then(([sRes, aRes]) => {
       setLoading(false);
       if (sRes.error) setErr(sRes.error.message);
@@ -258,9 +280,9 @@ export function RequestPayoutDialog({
         );
       }
     });
-  }, [event]);
+  }, [target]);
 
-  if (!event) return null;
+  if (!target) return null;
 
   const available = summary?.available ?? 0;
   const customAmt = Number(amount);
@@ -268,13 +290,13 @@ export function RequestPayoutDialog({
     mode === "custom" && (!amount || customAmt <= 0 || customAmt > available);
 
   async function submit() {
-    if (!event) return;
+    if (!target) return;
     setSubmitting(true);
     setErr("");
     const custom = mode === "custom" ? customAmt : undefined;
     // Pass the chosen account only when it differs from the creator's own
     // primary — otherwise let the backend resolve the default.
-    const { error } = await requestPayout(event.id, custom, accountId || undefined);
+    const { error } = await requestPayout(target, custom, accountId || undefined);
     setSubmitting(false);
     if (error) setErr(error.message);
     else onDone();
@@ -285,7 +307,7 @@ export function RequestPayoutDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Request payout</DialogTitle>
-          <DialogDescription>{event.title}</DialogDescription>
+          <DialogDescription>{target.title}</DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -294,7 +316,7 @@ export function RequestPayoutDialog({
           <div className="space-y-3">
             <div className="rounded-md border border-border p-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Event net</span>
+                <span className="text-muted-foreground">{target.kind === "session" ? "Session net" : "Event net"}</span>
                 <span className="font-medium">{money(summary.eventNet)}</span>
               </div>
               {summary.committed > 0 && (
@@ -317,7 +339,7 @@ export function RequestPayoutDialog({
 
             {available <= 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nothing left to pay out for this event.
+                Nothing left to pay out for this {target.kind}.
               </p>
             ) : (
               <div className="space-y-3">

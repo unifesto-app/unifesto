@@ -64,7 +64,7 @@ const emitted = (events: any, name: string) => events.emit.mock.calls.filter((c:
 describe('payout request ↔ Assist case (D22)', () => {
   it('opens one Platform REQUEST case and resolves it when paid; the payout is unchanged', async () => {
     const { service, payouts, events } = setup();
-    const payout = await service.requestPayout('curator', 'ev-1');
+    const payout = await service.requestPayout('curator', { eventId: 'ev-1' });
     expect(payout).toMatchObject({ netAmount: 1000, status: PayoutStatus.PENDING, bankAccountId: 'acct-1', platformFee: 0 });
 
     expect(emitted(events, SUBJECT_CASE_OPEN)).toEqual([
@@ -91,14 +91,14 @@ describe('payout request ↔ Assist case (D22)', () => {
   it('a refused request (S23) opens no case and creates no payout', async () => {
     const { service, db, events, authz } = setup();
     authz.can.mockResolvedValue(false);
-    await expect(service.requestPayout('creator', 'ev-1')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.requestPayout('creator', { eventId: 'ev-1' })).rejects.toBeInstanceOf(ForbiddenException);
     expect(db.payout.create).not.toHaveBeenCalled();
     expect(events.emit).not.toHaveBeenCalled();
   });
 
   it('an admin-created payout (not a request) opens no case', async () => {
     const { service, events } = setup();
-    await service.createEventPayout('ev-1', 'admin');
+    await service.createPayoutFor({ eventId: 'ev-1' }, 'admin');
     expect(events.emit).not.toHaveBeenCalled();
   });
 });

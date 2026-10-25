@@ -39,6 +39,7 @@ function setup(
       findMany: jest.fn(async ({ where }: any) => [{ totalAmount: paidFor(where.eventId), processingFee: 0, refundedAmount: 0, paymentStatus: 'PAID' }]),
     },
     userRole: { findMany: jest.fn(async () => [{ userId: 'space-admin' }]) },
+    session: { findMany: jest.fn(async () => []) },
     stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },
     refundRequest: { findMany: jest.fn(async () => []) },
@@ -120,7 +121,7 @@ describe('overdrawn events are visible (S12)', () => {
   it('a refund after a payout shows as overdrawn instead of hiding behind available = 0', async () => {
     // ₹1000 paid out, then refunds left only ₹600 of paid revenue.
     const { service } = setup({ paid: 600, payouts: [{ netAmount: 1000, status: PayoutStatus.COMPLETED }] });
-    const summary = await service.getEventPayoutSummary('ev-1');
+    const summary = await service.getPayoutSummary({ eventId: 'ev-1' });
     expect(summary.available).toBe(0);
     expect(summary.overdrawn).toBe(400);
     expect(await service.eventOverdrawn('ev-1')).toBe(400);
@@ -141,9 +142,9 @@ describe('overdrawn events are visible (S12)', () => {
 describe('payout request needs the money capability (S23)', () => {
   it('the event creator without a money role is refused', async () => {
     const { service, db } = setup();
-    await expect(service.requestPayout('creator', 'ev-1')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.requestPayout('creator', { eventId: 'ev-1' })).rejects.toBeInstanceOf(ForbiddenException);
     await expect(service.setEventPayoutAccount('creator', 'ev-1', null)).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(service.getEligibleAccountsForEvent('ev-1', 'creator')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.getEligibleAccounts({ eventId: 'ev-1' }, 'creator')).rejects.toBeInstanceOf(ForbiddenException);
     expect(db.payout.create).not.toHaveBeenCalled();
   });
 
@@ -151,7 +152,7 @@ describe('payout request needs the money capability (S23)', () => {
     const { service, authz, db } = setup();
     authz.can.mockImplementation(async (_u: any, action: Action) => action === Action.EVENT_MANAGE_MONEY);
     db.payoutBankAccount.findFirst.mockResolvedValue({ id: 'acct-1', userId: 'creator' });
-    await expect(service.requestPayout('curator', 'ev-1')).resolves.toMatchObject({ netAmount: 1000 });
+    await expect(service.requestPayout('curator', { eventId: 'ev-1' })).resolves.toMatchObject({ netAmount: 1000 });
   });
 });
 

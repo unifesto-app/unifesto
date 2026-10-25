@@ -45,7 +45,8 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
           { id: 'e2', spaceId: 's1' },
           { id: 'e3', spaceId: 's2' },
         ]),
-      },
+      },      session: { findMany: jest.fn().mockResolvedValue([]) },
+      sessionRegistration: { findMany: jest.fn().mockResolvedValue([]) },
     };
     return { svc: new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any)), prisma };
   };
@@ -77,6 +78,18 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
     expect(res.platformFee).toBe(70);
   });
 
+  it('adds Huddle session money at its frozen fee (T6)', async () => {
+    const { svc, prisma } = build();
+    prisma.session.findMany.mockResolvedValue([{ id: 'x1', spaceId: 's1' }]);
+    prisma.sessionRegistration.findMany.mockResolvedValue([
+      { sessionId: 'x1', paymentStatus: 'PAID', totalAmount: d(210), processingFee: d(10), refundedAmount: d(0), platformFeePercent: null },
+    ]);
+    const res = await svc.getPlatformFinancials();
+    // events 255 + session 200 x s1's 10% = 20
+    expect(res.platformFee).toBe(275);
+    expect(prisma.session.findMany.mock.calls[0][0].where).toEqual({ space: NOT_DEMO_SPACE });
+  });
+
   it('leaves the demo space out of every aggregate (P23)', async () => {
     const { svc, prisma } = build();
     await svc.getPlatformFinancials();
@@ -105,6 +118,8 @@ describe('PayoutsService refunded total', () => {
       refundRequest: { aggregate: agg({ cashRefunded: d(50) }) },
       space: { findMany: jest.fn().mockResolvedValue([]) },
       event: { findMany: jest.fn().mockResolvedValue([{ id: 'e1', spaceId: 's1' }]) },
+      session: { findMany: jest.fn().mockResolvedValue([]) },
+      sessionRegistration: { findMany: jest.fn().mockResolvedValue([]) },
     };
     const svc = new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any));
     const res = await svc.getPlatformFinancials();

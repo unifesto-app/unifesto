@@ -255,9 +255,9 @@ export class PlanConfigService implements OnModuleInit {
    *     rate is NOT 0%).
    *   - FREE (comped spaces) and no subscription: 0.
    *
-   * MIRRORED in SQL by `platform_fee_percent_for_event` (migration
-   * 20261022120000_freeze_platform_fee), which freezes this rate on each sale
-   * when it's paid (A21). Change both together: ship a migration that does
+   * MIRRORED in SQL by `platform_fee_percent_for_space` (migration
+   * 20261115120000_session_payouts; `platform_fee_percent_for_event` calls
+   * it), which freezes this rate on each sale when it's paid (A21, T6). Change both together: ship a migration that does
    * CREATE OR REPLACE FUNCTION with the new rule.
    */
   resolvePlatformFeePercent(
