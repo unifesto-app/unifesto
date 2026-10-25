@@ -395,7 +395,7 @@ One support system for everything a person needs help with. Every item is an **A
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
 | E6 | Hackathon certificates from awards | done |
 | E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
-| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | planned |
+| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | in progress (#319) |
 | E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | planned |
 
 ### F · Feedback and user IAM (from 4.4.0)
@@ -875,3 +875,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J12 Redis client reconnects forever (OTP 503 when down) and IAM/plan/platform config caches sync across replicas via a Redis stamp (~2s, 30s floor) (#316)
 - **2026-10-25** · J14 deploy.sh stops syncing .env files (server-side env gate), local dev compose + .env.development.example, backend/prisma refuse RDS unless NODE_ENV=production (#317)
 - **2026-10-25** · P23 UPI IDs masked in payout pickers/lists; demo space + users left out of financials, analytics and stats broadcasts; no link to a private host space (#318)
+- **2026-10-25** · E8 privacy: removed the legacy public score socket (live scores leaked to attendees) and gated participants-only brackets to attendees, panelists and operators (#319)
