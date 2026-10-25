@@ -33,6 +33,8 @@ export interface Event {
   tags?: string[];
   max_attendees?: number;
   is_free: boolean;
+  /** The organiser includes the buyer's processing fee in the ticket price (A33). */
+  fee_included?: boolean;
   price?: number;
   currency?: string;
   /** Number of distinct visible ticket/RSVP types (drives "Starting from"). */
@@ -310,6 +312,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     tags: (r.tags ?? []) as string[],
     max_attendees: (r.capacity ?? r.max_attendees) as number | undefined,
     is_free: isFree,
+    fee_included: (r.absorbProcessingFee ?? false) as boolean,
     price: minPrice,
     currency: (minTicket?.currency ?? ticketTypes[0]?.currency) as
       | string

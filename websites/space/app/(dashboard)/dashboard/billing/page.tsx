@@ -30,6 +30,7 @@ import {
   type BillingCycle,
 } from "@/lib/api/subscriptions-api";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { GO_LIVE, RATE } from "@/components/shell/FeeNoticeBanner";
 import { StatCard } from "@/components/shared/StatCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
@@ -44,7 +45,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-const ANNUAL_DISCOUNT_LABEL = "Save 12%";
+/** Best annual saving across plans, from the API's prices: "Save 20%". */
+function annualSaving(plans: PlanInfo[]): string | null {
+  const best = Math.max(
+    0,
+    ...plans.map((p) =>
+      p.monthlyPrice && p.annualPrice ? Math.round((1 - p.annualPrice / (p.monthlyPrice * 12)) * 100) : 0
+    )
+  );
+  return best > 0 ? `Save up to ${best}%` : null;
+}
+
+/** "2.5% platform fee per paid ticket", or the announced rate before go-live (DB holds 0 until then). */
+function platformFeeLabel(plan: PlanInfo): string {
+  if (new Date() < GO_LIVE && !plan.platformFeePercent) {
+    const rate = RATE[plan.plan];
+    return rate ? `${rate}% platform fee per paid ticket from 2 Nov 2026` : "No platform fee";
+  }
+  return plan.platformFeePercent ? `${plan.platformFeePercent}% platform fee per paid ticket` : "No platform fee";
+}
 
 /** Human label for a plan limit; `null`/undefined means unlimited. */
 function limitLabel(n: number | null | undefined): string {
@@ -357,9 +376,9 @@ export default function BillingPage() {
               )}
             >
               {c === "MONTHLY" ? "Monthly" : "Annual"}
-              {c === "ANNUAL" && (
+              {c === "ANNUAL" && annualSaving(plans) && (
                 <span className="ml-1.5 text-xs text-success">
-                  {ANNUAL_DISCOUNT_LABEL}
+                  {annualSaving(plans)}
                 </span>
               )}
             </button>
@@ -431,6 +450,10 @@ export default function BillingPage() {
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col gap-4">
                   <ul className="flex-1 space-y-2 text-sm">
+                    <li className="flex items-center gap-2 font-medium text-foreground">
+                      <Check className="h-4 w-4 text-success" weight="bold" />
+                      {platformFeeLabel(plan)}
+                    </li>
                     <li className="flex items-center gap-2 text-muted-foreground">
                       <Check className="h-4 w-4 text-success" weight="bold" />
                       {limitLabel(plan.eventsPerMonth)} events / month
@@ -512,6 +535,11 @@ export default function BillingPage() {
           })}
         </div>
       )}
+      <p className="text-sm text-muted-foreground">
+        Buyers pay a 5% processing fee on paid tickets, capped at ₹99 per ticket, on every plan. You can include it
+        in your price from each event&apos;s Tickets page. Razorpay&apos;s charges come out of that fee. Free RSVP
+        events carry no fees.
+      </p>
     </div>
   );
 }

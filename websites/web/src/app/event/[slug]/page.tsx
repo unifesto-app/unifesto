@@ -10,6 +10,8 @@ import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
 import { getTenant } from "@/lib/tenant";
 import EventDetailClient from "./EventDetailClient";
+import { getRateCard } from "@/lib/api/rate-card";
+import { buyerFeeText } from "@/lib/site";
 
 // One fetch per request, shared by generateMetadata and the page. An event
 // whose space is taken down for now comes back as "unavailable" (J16).
@@ -157,6 +159,7 @@ export default async function EventDetailPage({ params }: Props) {
   // An old slug (renamed event) or an id resolves too: go to the current address.
   if (event.slug && event.slug !== slug) redirect(`/event/${event.slug}`);
   await assertOnTenant(event);
+  const { buyerFee, buyerFeeCap } = await getRateCard();
   // The poster is the LCP element but only appears after the client fetch;
   // preloading it from the server HTML starts the download immediately.
   const poster = event.banner_url || event.thumbnail_url || event.image_url;
@@ -164,7 +167,7 @@ export default async function EventDetailPage({ params }: Props) {
   return (
     <>
       <JsonLd data={eventLd(event)} />
-      <EventDetailClient event={event} />
+      <EventDetailClient event={event} buyerFee={buyerFeeText(buyerFee, buyerFeeCap)} />
     </>
   );
 }

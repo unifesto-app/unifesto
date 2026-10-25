@@ -23,8 +23,8 @@ import { getRateCard } from "@/lib/api/rate-card";
    posts come from the API, so this regenerates hourly. */
 export const revalidate = 3600;
 
-const plan = (p: (typeof PLANS)[number]) =>
-  `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}; ${p.fee}% per paid ticket (standard ${p.standardFee}%). Includes: ${p.includes.join("; ")}.`;
+const plan = (p: (typeof PLANS)[number], feeFrom: string | null) =>
+  `- ${p.name} (${p.forWho}): ${p.price === null ? "custom quote" : `${inr(p.price)}/month, standard ${inr(p.standardPrice!)}`}; organiser platform fee ${p.fee}% per paid ticket${feeFrom ? ` from ${feeFrom}` : ""} (standard ${p.standardFee}%). Includes: ${p.includes.join("; ")}.`;
 
 export async function GET() {
   const [posts, rates] = await Promise.all([getPosts(), getRateCard()]);
@@ -90,9 +90,9 @@ ${APP_FEATURES.map((f) => `- ${f.title}: ${f.body}`).join("\n")}
 
 ## Pricing (launch pricing for Spaces joining before ${LAUNCH_OFFER_ENDS})
 
-${rates.plans.map(plan).join("\n")}
+${rates.plans.map((p) => plan(p, rates.feeFrom)).join("\n")}
 
-${pricingFaq(rates.plans, rates.buyerFee, rates.buyerFeeCap).map((f) => `- ${f.q} ${f.a}`).join("\n")}
+${pricingFaq(rates.plans, rates.buyerFee, rates.buyerFeeCap, rates.feeFrom).map((f) => `- ${f.q} ${f.a}`).join("\n")}
 
 ## Common questions
 

@@ -263,7 +263,8 @@ export const FAQ_HUDDLE: Faq[] = [
   },
   {
     q: "Which plan includes it?",
-    a: "Unifesto Huddle is part of the Pro plan. Free sessions carry no fee; paid sessions use the same platform fee as tickets.",
+    // Literal, not buyerFeeText(): this array is built before the pricing constants below.
+    a: "Unifesto Huddle is part of the Pro plan. Free sessions carry no fees. Paid sessions carry the same 5% processing fee as tickets, capped at ₹99, paid by the attendee.",
   },
 ];
 
@@ -397,12 +398,17 @@ export const APP_FEATURES = [
 
 /* ── Pricing ────────────────────────────────────────────────────────── */
 
-/* Launch pricing, shown as a discount off the standard price. Indian
-   ticketing platforms typically charge 4% to 6% per paid ticket; Unifesto
-   undercuts that on every plan. The fees here are only a fallback: /pricing
-   shows the live platform fee per plan from the backend rate card
-   (GET /config/plan-fees, lib/api/rate-card.ts). Prices and copy stay here. */
+/* Launch pricing, shown as a discount off the standard price. The fees here
+   are only a fallback: /pricing shows the live platform fee per plan from the
+   backend rate card (GET /config/plan-fees, lib/api/rate-card.ts). Prices and
+   copy stay here. Copy says what students pay and what organisers keep,
+   never "lowest fee" (D11). */
 export const LAUNCH_OFFER_ENDS = "31 March 2027";
+
+/** The organiser platform fee starts on this date (D10, A10's notice). Until
+   then copy says "from 2 Nov 2026" and never claims the fee is charged. */
+export const PLATFORM_FEE_STARTS = new Date("2026-11-02T00:00:00+05:30");
+export const PLATFORM_FEE_STARTS_LABEL = "2 Nov 2026";
 
 export type Plan = {
   id: "starter" | "pro" | "enterprise";
@@ -442,7 +448,7 @@ export const PLANS: Plan[] = [
     fee: 2.5,
     standardFee: 4,
     includes: [
-      "Unlimited free RSVP events, no platform fee",
+      "Free RSVP events, no fees",
       "Paid and group tickets with Razorpay",
       "Multi-point QR check-in from the app",
       "Coupons, custom questions, sub-events",
@@ -499,7 +505,30 @@ export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 /** Format dates in one fixed zone: the server renders in UTC, browsers in their own (K16). */
 export const IST = "Asia/Kolkata";
 /** Rupees to the paise, dropping a trailing .00 (₹12.50, ₹0). */
-const rupees = (n: number) => `₹${n.toFixed(2).replace(/\.00$/, "")}`;
+export const rupees = (n: number) => `₹${n.toFixed(2).replace(/\.00$/, "")}`;
+
+/** The worked example on every fee surface: a ₹500 pass. */
+export const EXAMPLE_PASS = 500;
+
+/** What the buyer pays in fees on one ticket of `price` (A34 cap). */
+export const buyerFeeOn = (price: number, percent: number = BUYER_PROCESSING_FEE, cap: number | null = BUYER_PROCESSING_FEE_CAP) =>
+  Math.min((price * percent) / 100, cap ?? Infinity);
+
+/** "Platform fee 2.5% on Starter, 1.5% on Pro, 1% on Enterprise". */
+export const planFeesText = (plans: Plan[] = PLANS) => plans.map((p) => `${p.fee}% on ${p.name}`).join(", ");
+
+/** "from 2 Nov 2026" until the platform fee starts, then nothing. */
+export const platformFeeFrom = (now = new Date()) => (now < PLATFORM_FEE_STARTS ? PLATFORM_FEE_STARTS_LABEL : null);
+
+/** "A ₹500 pass: students pay ₹525, or ₹500 if you include the fee. You keep
+   ₹487.50 on Starter." Computed from the rate card it is given. */
+export const passExample = (
+  plan: Plan = PLANS[0],
+  buyerFee: number = BUYER_PROCESSING_FEE,
+  buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
+  from: string | null = platformFeeFrom(),
+) =>
+  `A ${inr(EXAMPLE_PASS)} pass: students pay ${rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap))}, or ${inr(EXAMPLE_PASS)} if you include the fee. ${from ? `From ${from} you` : "You"} keep ${rupees(EXAMPLE_PASS * (1 - plan.fee / 100))} on ${plan.name}.`;
 
 /* ── FAQs (rendered visibly and as FAQPage structured data) ─────────── */
 
@@ -510,7 +539,7 @@ export const FAQ_HOME: Faq[] = [
   },
   {
     q: "Is Unifesto free to use?",
-    a: `Yes. Free RSVP events cost nothing on any plan. On paid tickets the Starter plan charges the organiser a 2.5% platform fee at launch pricing, lower than the 4% to 6% most Indian ticketing platforms charge. Pro and Enterprise lower the fee further. At checkout, buyers pay a ${buyerFeeText()}.`,
+    a: `Yes. Free RSVP events cost nothing on any plan. On paid tickets, buyers pay a ${buyerFeeText()}, or you include it in your price. From ${PLATFORM_FEE_STARTS_LABEL}, organisers also pay a platform fee per paid ticket: ${planFeesText()}. ${passExample(PLANS[0], BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLATFORM_FEE_STARTS_LABEL)}`,
   },
   {
     q: "How does check-in work?",
@@ -552,7 +581,7 @@ export const FAQ_ORGANISERS: Faq[] = [
 export const FAQ_APP: Faq[] = [
   {
     q: "Is the Unifesto app free?",
-    a: "Yes. The Unifesto app is free on the App Store and Google Play. You only pay for paid event tickets, through Razorpay.",
+    a: `Yes. The Unifesto app is free on the App Store and Google Play. You only pay for paid tickets, through Razorpay. A paid ticket carries a ${buyerFeeText()}, unless the organiser includes it in the price, and you see the total before you pay.`,
   },
   {
     q: "Do I need the app to attend an event?",
@@ -588,6 +617,7 @@ export const pricingFaq = (
   plans: Plan[] = PLANS,
   buyerFee: number = BUYER_PROCESSING_FEE,
   buyerFeeCap: number | null = BUYER_PROCESSING_FEE_CAP,
+  from: string | null = platformFeeFrom(),
 ): Faq[] => [
   {
     q: "What does launch pricing mean?",
@@ -595,15 +625,16 @@ export const pricingFaq = (
   },
   {
     q: "Are free events really free?",
-    a: "Yes. Free RSVP events carry no platform fee on any plan.",
+    a: "Yes. Free RSVP events carry no fees on any plan, for you or your attendees.",
   },
   {
-    q: "Who pays the processing fee?",
-    a: `The buyer. Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}, added at checkout on every plan and not refundable. Your platform fee is separate: ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")}. On a ₹500 Starter ticket the buyer pays ${inr(500 * (1 + buyerFee / 100))} and you pay ${rupees(500 * (plans[0]?.fee ?? 0) / 100)}.`,
+    q: "What do students pay, and what do I keep?",
+    a: `Every paid ticket carries a ${buyerFeeText(buyerFee, buyerFeeCap)}. Students pay it at checkout, or you include it in your ticket price per event and it comes out of your share. It is not refundable. ${from ? `From ${from}, you` : "You"} also pay a platform fee per paid ticket: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap, from)}`,
   },
   {
+    // TODO(A6): GST wording waits for GST registration and the CA.
     q: "Are payment gateway charges included?",
-    a: "No. Razorpay's payment gateway charges are separate from the Unifesto platform fee. All prices exclude 18% GST.",
+    a: "Yes. Razorpay's charges come out of the buyer's processing fee, so you never pay them on top. Prices exclude GST.",
   },
   {
     q: "Can I switch plans later?",
