@@ -120,16 +120,35 @@ jobs:
           node scripts/ota-ci-check.js ../.ota-base/mobile
 
       # ── websites (Node 22) ──────────────────────────────────────────────
+      # Each app also runs the production `next build` (J19): with
+      # ignoreBuildErrors gone (#320) it is the same build the Dockerfile runs.
+      # Env is dummy only: API URLs point at a closed local port (never prod),
+      # no Sentry DSN, and no SENTRY_AUTH_TOKEN, so withSentryConfig skips the
+      # source-map upload. .next/cache is restored per lockfile, so a PR's
+      # later pushes rebuild incrementally.
       - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: websites/web/package-lock.json
+      - uses: actions/cache@v6
+        if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
+        with:
+          path: websites/web/.next/cache
+          key: next-web-${{ hashFiles('websites/web/package-lock.json') }}-${{ github.sha }}
+          restore-keys: next-web-${{ hashFiles('websites/web/package-lock.json') }}-
       - name: Web
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/web
-        run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_WEB_URL: http://127.0.0.1:3000
+          DEPLOYMENT_ID: ci
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          echo "::group::Build"; npm run build; echo "::endgroup::"
 
       - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
@@ -137,10 +156,25 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: websites/space/package-lock.json
+      - uses: actions/cache@v6
+        if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
+        with:
+          path: websites/space/.next/cache
+          key: next-space-${{ hashFiles('websites/space/package-lock.json') }}-${{ github.sha }}
+          restore-keys: next-space-${{ hashFiles('websites/space/package-lock.json') }}-
       - name: Space
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/space
-        run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_WEB_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_APEX_URL: http://127.0.0.1:3002
+          DEPLOYMENT_ID: ci
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          echo "::group::Build"; npm run build; echo "::endgroup::"
 
       - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
@@ -148,10 +182,24 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: websites/apex/package-lock.json
+      - uses: actions/cache@v6
+        if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
+        with:
+          path: websites/apex/.next/cache
+          key: next-apex-${{ hashFiles('websites/apex/package-lock.json') }}-${{ github.sha }}
+          restore-keys: next-apex-${{ hashFiles('websites/apex/package-lock.json') }}-
       - name: Apex
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/apex
-        run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_SPACE_URL: http://127.0.0.1:3001
+          DEPLOYMENT_ID: ci
+          NEXT_TELEMETRY_DISABLED: 1
+        run: |
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          echo "::group::Build"; npm run build; echo "::endgroup::"
 
       # ── backend (Node 24, last so it doesn't change the others' Node) ───
       - name: Migrations have no destructive SQL without review
@@ -190,3 +238,29 @@ jobs:
           echo "::group::Type-check"; npx tsc --noEmit -p tsconfig.json; echo "::endgroup::"
           echo "::group::Unit tests"; npm test -- --ci; echo "::endgroup::"
           echo "::group::Runtime deps: no critical advisories"; npm audit --omit=dev --audit-level=critical; echo "::endgroup::"
+      - name: Backend · migrations replay, no schema drift
+        # J19: every migration applies to an empty Postgres 16, and the result
+        # matches schema.prisma, so a schema change without its migration fails.
+        # Postgres runs via `docker run` here, not as a job `services:` entry:
+        # a service starts on every run (docs-only, push to main) and services
+        # can't read the paths filter.
+        # The history has always differed from schema.prisma (db-push era
+        # leftovers: FK actions, index names, admin_devices, users.gender, ...).
+        # prisma/known-drift.sql pins that diff; any other diff fails. Fixing
+        # old drift = add the migration, then regenerate the file with the
+        # last command below (`--script > prisma/known-drift.sql`).
+        if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
+        working-directory: backend
+        env:
+          # Throwaway container on the runner (J14's guard only refuses RDS hosts).
+          DATABASE_URL: postgresql://postgres:ci@127.0.0.1:5432/postgres
+          DIRECT_URL: postgresql://postgres:ci@127.0.0.1:5432/postgres
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=ci -p 5432:5432 postgres:16 > /dev/null
+          for _ in $(seq 60); do docker exec pg pg_isready -U postgres -h 127.0.0.1 > /dev/null 2>&1 && break; sleep 1; done
+          echo "::group::migrate deploy (empty DB)"; npx prisma migrate deploy; echo "::endgroup::"
+          npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script > /tmp/drift.sql
+          diff -u prisma/known-drift.sql /tmp/drift.sql || {
+            echo "::error file=backend/prisma/schema.prisma::schema.prisma and prisma/migrations disagree (diff above: + needs a migration). Add the migration; if you fixed known drift, regenerate backend/prisma/known-drift.sql."
+            exit 1
+          }
