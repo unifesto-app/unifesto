@@ -250,6 +250,31 @@ export class RegistrationCheckoutService {
         `This event is only open to members of ${event.space?.name ?? 'its space'}. Join the space to register.`,
       );
     }
+    await this.assertAgeConfirmed(userId);
+  }
+
+  /**
+   * Z11 (DPDP): self-registration needs an 18+ confirmation once the platform
+   * switch is on. Off by default (4.x apps cannot send it). Organiser manual
+   * add/import never comes through here, which is the under-18 guest path.
+   */
+  private async assertAgeConfirmed(userId: string) {
+    const config = await this.prisma.platformConfig.findUnique({
+      where: { id: 'global' },
+      select: { requireAgeConfirmation: true },
+    });
+    if (!config?.requireAgeConfirmation) return;
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { ageConfirmedAt: true },
+    });
+    if (user?.ageConfirmedAt) return;
+    throw new BadRequestException({
+      statusCode: 400,
+      code: 'AGE_CONFIRMATION_REQUIRED',
+      message:
+        'Confirm you are 18 or older to register. Under 18? Ask the organiser to register you through a parent or guardian.',
+    });
   }
 
 

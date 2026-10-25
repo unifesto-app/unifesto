@@ -8,6 +8,7 @@ import { BrandTheme, brandStyle } from "@/components/BrandedChrome";
 import { registrationState, type Event } from "@/lib/api/events";
 import {
   ApiError,
+  confirmAge,
   INDIAN_STATES,
   myRegistrations,
   registerFree,
@@ -138,6 +139,8 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
         setDone({ kind: "already", registrationId: mine[0].id });
         return goTo("done");
       }
+      // Z11: the 18+ box is required on the form; record it before registering.
+      await confirmAge(s.token);
       const formResponses = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)));
       const res = await registerFree(event.id, s.token, { ticketTypeId: ticketId, formResponses, ...storedUtm() });
       if (res.isWaitlisted) setDone({ kind: "waitlisted" });
@@ -378,6 +381,16 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
               className={FIELD}
             />
           )}
+        </div>
+
+        <div>
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
+            <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
+            <span>I am 18 or older</span>
+          </label>
+          <p className="mt-2 pl-7 text-xs text-paper/55">
+            Under 18? Ask the organiser to register you through a parent or guardian.
+          </p>
         </div>
 
         {error && <p className="text-sm text-red-400">{error}</p>}

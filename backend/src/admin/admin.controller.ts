@@ -90,6 +90,11 @@ export class AdminController {
         dto.appReviewLoginEnabled,
       );
     }
+    if (dto.requireAgeConfirmation !== undefined) {
+      await this.platformConfig.setRequireAgeConfirmation(
+        dto.requireAgeConfirmation,
+      );
+    }
     return this.platformConfig.getConfig();
   }
 

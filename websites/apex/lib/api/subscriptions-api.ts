@@ -194,6 +194,8 @@ export interface PlatformConfig {
   postEventActionWindowDays: number;
   /** Fixed App Review test login allowed. Store review only. */
   appReviewLoginEnabled: boolean;
+  /** Z11: self-registration needs an 18+ confirmation. */
+  requireAgeConfirmation: boolean;
 }
 
 /** `GET /admin/platform-config` — read app-wide settings (admin). */
