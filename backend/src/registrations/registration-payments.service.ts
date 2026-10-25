@@ -1039,9 +1039,7 @@ export class RegistrationPaymentsService {
       // Amounts differ (a price/fee change, or a genuinely different ticket).
       // Refuse by default so one attendee's payment can't be silently applied
       // to another's ticket. An admin who has verified this payment really is
-      // owed to this attendee can override with `allowAmountMismatch` — the
-      // registration still settles at its own recorded price, so the delta
-      // stays visible on the payment rather than rewriting the ticket amount.
+      // owed to this attendee can override with `allowAmountMismatch`.
       if (!opts?.allowAmountMismatch) {
         throw new BadRequestException(
           `Payment amount (₹${payment.amount / 100}) does not match this registration (₹${
@@ -1055,22 +1053,19 @@ export class RegistrationPaymentsService {
         }) onto registration ${registrationId} (expected ₹${expectedPaise / 100})`,
       );
 
-      // Re-home the registration onto what was *actually* captured so its
-      // per-registration numbers are cash-accurate. `razorpayAmount` is the
-      // amount charged via Razorpay, so it becomes the captured value. To
-      // preserve the razorpayAmount ≤ totalAmount invariant, lift `totalAmount` when the
-      // capture exceeds it. The extra is treated as processing fee, not
-      // ticket price: bump `processingFee` by the same delta so the ticket
-      // base (totalAmount − processingFee) — and hence the refundable amount,
-      // since refunds are base-only — stays flat. This must run BEFORE
-      // settlement: completeWebhookPayment re-reads the row and only writes
-      // payment status, so it will honour these amounts rather than overwrite.
+      // Book what was *actually* captured (T6): `razorpayAmount` becomes the
+      // captured value and `totalAmount` moves by the same delta, so both
+      // stay cash-accurate. The delta is the organiser's ticket base, never
+      // our fee: an over-capture raises the base (and the refundable amount,
+      // refunds being base-only); a short one lowers it, and the buyer fee
+      // only shrinks once the base is gone. This must run BEFORE settlement:
+      // completeWebhookPayment re-reads the row and only writes payment
+      // status, so it will honour these amounts rather than overwrite.
       const capturedInr = payment.amount / 100;
-      const oldTotal = Number(registration.totalAmount);
-      const newTotal = Math.max(oldTotal, capturedInr);
+      const delta = capturedInr - Number(registration.razorpayAmount);
       // Round to paise to avoid binary-float drift (e.g. 3.0000000001).
-      const newFee =
-        Math.round((Number(registration.processingFee) + (newTotal - oldTotal)) * 100) / 100;
+      const newTotal = Math.max(0, Math.round((Number(registration.totalAmount) + delta) * 100) / 100);
+      const newFee = Math.min(Number(registration.processingFee), newTotal);
       await this.prisma.eventRegistration.update({
         where: { id: registrationId },
         data: {

@@ -36,7 +36,7 @@ function setup(
       ),
     },
     eventRegistration: {
-      findMany: jest.fn(async ({ where }: any) => [{ totalAmount: paidFor(where.eventId), processingFee: 0, refundedAmount: 0 }]),
+      findMany: jest.fn(async ({ where }: any) => [{ totalAmount: paidFor(where.eventId), processingFee: 0, refundedAmount: 0, paymentStatus: 'PAID' }]),
     },
     userRole: { findMany: jest.fn(async () => [{ userId: 'space-admin' }]) },
     stayBooking: { findMany: jest.fn(async () => []) },

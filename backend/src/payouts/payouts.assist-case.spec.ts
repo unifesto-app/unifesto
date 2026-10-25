@@ -28,7 +28,7 @@ function setup() {
       findUnique: jest.fn(async ({ where }: any) => ({ id: where.id, title: 'Hack Day', createdBy: 'creator', spaceId: 'sp-1', payoutBankAccountId: null, space: { subscription: null } })),
       findMany: jest.fn(async () => [{ id: 'ev-1' }]),
     },
-    eventRegistration: { findMany: jest.fn(async () => [{ totalAmount: 1000, processingFee: 0, refundedAmount: 0 }]) },
+    eventRegistration: { findMany: jest.fn(async () => [{ totalAmount: 1000, processingFee: 0, refundedAmount: 0, paymentStatus: 'PAID' }]) },
     userRole: { findMany: jest.fn(async () => []) },
     stayBooking: { findMany: jest.fn(async () => []) },
     groupSeatPurchase: { findMany: jest.fn(async () => []) },

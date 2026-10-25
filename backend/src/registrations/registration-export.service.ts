@@ -2,7 +2,8 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { PaymentStatus } from '@prisma/client';
 import { formatAnswer } from './form-answers.util';
 import { PrismaService } from '../prisma/prisma.service';
-import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
+import { settleRow } from '../payouts/settle';
 import { csvChunks, pdfStream, xlsxChunks, type ExportFormat } from './export.util';
 import { Readable } from 'stream';
 import { pages } from '../common/batching';
@@ -109,11 +110,6 @@ export class RegistrationExportService {
       //     base, which is genuine cash the organiser is still holding and owes
       //     back, NOT phantom revenue. The new Registration Status column makes
       //     that visible so the figure is never mistaken for a clean sale.
-      const CAPTURED_STATUSES = new Set([
-        'PAID',
-        'PARTIALLY_REFUNDED',
-        'REFUNDED',
-      ]);
       const header = [
         'Name',
         'Email',
@@ -129,24 +125,13 @@ export class RegistrationExportService {
         'Order ID',
         'Paid At',
       ];
-      // Same fee rule and rounding as the payout figures, so the Net column
-      // sums to the event's netEntitlement (bar add-on seats and stays).
+      // settleRow: the payout figures' own rule, at the fee frozen on each
+      // sale, so the Net column sums to the event's netEntitlement (bar add-on
+      // seats, stays and a paisa of per-row rounding).
       const sharePercent = this.planConfig.resolvePlatformFeePercent(subscription);
       const toRow = (reg: any) => {
-        const captured = CAPTURED_STATUSES.has(reg.paymentStatus);
-        const gross = Number(reg.totalAmount) || 0;
-        const fee = Number(reg.processingFee) || 0;
-        const refunded = Number(reg.refundedAmount) || 0;
-        const collected = captured ? gross : 0;
-        const feeCharged = captured ? fee : 0;
-        // A row whose automatic full refund is still due isn't the organiser's.
-        const kept = reg.refundDueAt ? 0 : Math.max(0, collected - feeCharged - refunded);
-        // The rate frozen on the sale (A21); today's only for a row without one.
-        const platformCut = platformShare(
-          kept,
-          reg.platformFeePercent != null ? Number(reg.platformFeePercent) : sharePercent,
-        );
-        const net = kept - platformCut;
+        const { collected, buyerFee: feeCharged, refunded, platformFee: platformCut, net } =
+          settleRow(reg, sharePercent);
         return [
           reg.user.fullName || '',
           reg.user.identities?.[0]?.email || '',

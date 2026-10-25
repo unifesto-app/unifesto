@@ -3,7 +3,8 @@ import {
   BadRequestException, ForbiddenException, ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { PlanConfigService, platformShare } from '../subscription/plan-config.service';
+import { PlanConfigService } from '../subscription/plan-config.service';
+import { feeAtFrozenRates, SETTLE_SELECT, settle, settleRow } from './settle';
 import { EmailService } from '../email/email.service';
 import { ACCOUNT_NUMBER_RE, AddBankAccountDto, CreatePayoutDto, IFSC_RE, MarkPayoutPaidDto, UPI_RE, UpdateBankAccountStatusDto } from './dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -44,27 +45,6 @@ function round2(n: number): number {
 
 /** The root client or an interactive transaction's: balance reads run in either. */
 type Db = Prisma.TransactionClient;
-
-/**
- * Platform fee on held money with each sale at the rate frozen on it when it
- * was paid (A21); `fallback` (today's rate) only for a sale without one, and
- * an admin `override` replaces every rate. Rounded to the paise per rate, so
- * a single-rate event matches platformShare(gross, rate) exactly.
- */
-export function feeAtFrozenRates(
-  sales: { net: number; percent: Prisma.Decimal | number | null }[],
-  fallback: number,
-  override?: number,
-): number {
-  const netByRate = new Map<number, number>();
-  for (const s of sales) {
-    const rate = override ?? (s.percent != null ? Number(s.percent) : fallback);
-    netByRate.set(rate, (netByRate.get(rate) ?? 0) + s.net);
-  }
-  let fee = 0;
-  for (const [rate, net] of netByRate) fee += platformShare(net, rate);
-  return round2(fee);
-}
 
 @Injectable()
 export class PayoutsService {
@@ -412,20 +392,6 @@ export class PayoutsService {
   }
 
   /**
-   * Organiser's ticket revenue for an event: the sum of ticket prices,
-   * excluding the app processing fee (which the platform collects from the
-   * buyer on top of the ticket price and keeps in full).
-   */
-  private ticketRevenue(
-    registrations: Array<{ totalAmount: Prisma.Decimal; processingFee: Prisma.Decimal; refundedAmount: Prisma.Decimal }>,
-  ): number {
-    return registrations.reduce(
-      (sum, r) => sum + (Number(r.totalAmount) - Number(r.processingFee) - Number(r.refundedAmount)),
-      0,
-    );
-  }
-
-  /**
    * Money the organiser still holds: paid, or partly refunded (counted net of
    * the refund, base-only). A row whose automatic full refund is still due
    * (`refundDueAt`) is not theirs. Registrations and stays carry refundDueAt;
@@ -435,12 +401,7 @@ export class PayoutsService {
   private readonly HELD = { paymentStatus: this.HELD_PAYMENT, refundDueAt: null };
   private readonly HELD_ADDON = { paymentStatus: this.HELD_PAYMENT };
   private readonly HELD_SUM = { totalAmount: true, processingFee: true, refundedAmount: true } as const;
-  private readonly HELD_SELECT = {
-    totalAmount: true,
-    processingFee: true,
-    refundedAmount: true,
-    platformFeePercent: true,
-  } as const;
+  private readonly HELD_SELECT = SETTLE_SELECT;
 
   /**
    * Unifesto Stay bookings paid online (through Razorpay) are event money like
@@ -489,7 +450,7 @@ export class PayoutsService {
    * `overdrawn` is how far payouts already exceed the entitlement (refunds
    * that landed after a payout); `available` alone would hide it as 0.
    */
-  private async computeBalance(eventId: string, feePercentOverride?: number, db: Db = this.prisma) {
+  private async computeBalance(eventId: string, db: Db = this.prisma) {
     const event = await db.event.findUnique({
       where: { id: eventId },
       select: { status: true, space: { select: { subscription: true } } },
@@ -504,19 +465,14 @@ export class PayoutsService {
       this.paidSeatAddons(eventId, db),
     ]);
 
-    const held = [...registrations, ...stays, ...addons];
-    const gross = this.ticketRevenue(held);
     // Today's rate: shown as the default, and charged only on a sale that has
-    // no frozen rate (none after the A21 backfill). An admin override wins.
-    const platformFeePercent =
-      feePercentOverride ??
-      this.resolvePlatformFeePercent(event?.space?.subscription);
-    const platformFee = feeAtFrozenRates(
-      held.map((r) => ({ net: this.ticketRevenue([r]), percent: r.platformFeePercent })),
+    // no frozen rate (none after the A21 backfill). Each sale's own terms are
+    // the only rate (T6): no per-payout override.
+    const platformFeePercent = this.resolvePlatformFeePercent(event?.space?.subscription);
+    const { gross, platformFee, net: eventNet } = settle(
+      [...registrations, ...stays, ...addons],
       platformFeePercent,
-      feePercentOverride,
     );
-    const eventNet = gross - platformFee;
 
     const committedRows = await db.payout.findMany({
       where: { eventId, status: { in: this.COMMITTING_STATUSES } },
@@ -541,7 +497,7 @@ export class PayoutsService {
         sum +
         (r.requestedAmount != null
           ? Number(r.requestedAmount)
-          : Math.max(0, this.ticketRevenue([r.registration]))),
+          : settleRow(r.registration, 0).base),
       0,
     );
     // A refund takes its share of the fee back with it, so it holds only the
@@ -589,7 +545,7 @@ export class PayoutsService {
    * committed payout can be overdrawn, so the full scan runs only on a debt.
    */
   private async spaceShortfall(spaceId: string, exceptEventId: string, db: Db) {
-    const balanceOf = (id: string) => this.computeBalance(id, undefined, db);
+    const balanceOf = (id: string) => this.computeBalance(id, db);
     const paidOut = await db.payout.findMany({
       where: { eventId: { not: exceptEventId }, event: { spaceId }, status: { in: this.COMMITTING_STATUSES } },
       select: { eventId: true },
@@ -619,7 +575,7 @@ export class PayoutsService {
   async getEventPayoutSummary(eventId: string, userId?: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
-      select: { spaceId: true, space: { select: { subscription: true } } },
+      select: { spaceId: true },
     });
     if (!event) throw new NotFoundException('Event not found');
 
@@ -632,15 +588,6 @@ export class PayoutsService {
       select: this.HELD_SELECT,
     });
 
-    const grossRevenue = this.ticketRevenue([
-      ...registrations,
-      ...(await this.paidStayBookings(eventId)),
-      ...(await this.paidSeatAddons(eventId)),
-    ]);
-    const platformFeePercent = this.resolvePlatformFeePercent(
-      event.space?.subscription,
-    );
-
     const balance = await this.computeBalance(eventId);
 
     const existingPayout = await this.prisma.payout.findFirst({
@@ -651,8 +598,8 @@ export class PayoutsService {
     return {
       eventId,
       registrationCount: registrations.length,
-      grossRevenue: Number(grossRevenue.toFixed(2)),
-      defaultPlatformFeePercent: platformFeePercent,
+      grossRevenue: balance.grossRevenue,
+      defaultPlatformFeePercent: balance.platformFeePercent,
       estimatedPlatformFee: balance.platformFee,
       // The organiser's total net entitlement for the event…
       eventNet: balance.eventNet,
@@ -663,6 +610,36 @@ export class PayoutsService {
       // Paid out beyond the entitlement (refunds after a payout): to recover.
       overdrawn: balance.overdrawn,
       existingPayout,
+    };
+  }
+
+  /**
+   * The Transactions page tiles (Space web + mobile) for an event's
+   * registrations, optionally one ticket type: settle() on the server, so the
+   * Net tile carries each sale's organiser fee like the payout figures do.
+   * Same rows and access as the transactions list and export.
+   */
+  async getEventTransactions(userId: string, eventId: string, ticketTypeId?: string) {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { space: { select: { subscription: true } } },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    if (!(await this.authz.can({ id: userId }, Action.EVENT_MANAGE_ATTENDEES, { eventId }))) {
+      throw new ForbiddenException('You do not have permission to view this event’s transactions');
+    }
+    const rows = await this.prisma.eventRegistration.findMany({
+      where: {
+        eventId,
+        ...(ticketTypeId ? { ticketTypeId } : {}),
+        // A transaction moved money: free RSVPs are left out.
+        OR: [{ totalAmount: { gt: 0 } }, { paymentId: { not: null } }, { orderId: { not: null } }],
+      },
+      select: { ...SETTLE_SELECT, refundDueAt: true },
+    });
+    return {
+      ...settle(rows, this.resolvePlatformFeePercent(event.space?.subscription)),
+      count: rows.length,
     };
   }
 
@@ -1224,13 +1201,7 @@ export class PayoutsService {
   async createPayout(
     dto:
       | CreatePayoutDto
-      | {
-          eventId: string;
-          bankAccountId: string;
-          platformFeePercent?: number;
-          netAmount?: number;
-          notes?: string;
-        },
+      | { eventId: string; bankAccountId: string; netAmount?: number; notes?: string },
     adminId: string,
   ) {
     const event = await this.prisma.event.findUnique({
@@ -1254,11 +1225,7 @@ export class PayoutsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout:' + dto.eventId}))`;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'payout-space:' + event.spaceId}))`;
-      const balance = await this.computeBalance(
-        dto.eventId,
-        dto.platformFeePercent,
-        tx,
-      );
+      const balance = await this.computeBalance(dto.eventId, tx);
       if (balance.cancelledWithPaid) {
         throw new BadRequestException(
           'This event was cancelled: refund its paid attendees before any payout',

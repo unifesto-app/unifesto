@@ -6,9 +6,15 @@ import * as Sharing from 'expo-sharing';
 import { Export, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
-import { downloadTransactionsExport, getTransactions, type ExportFormat, type TransactionRow } from '../lib/api/transactions';
+import {
+  downloadTransactionsExport,
+  getTransactions,
+  getTransactionSummary,
+  type ExportFormat,
+  type TransactionRow,
+  type TransactionSummary,
+} from '../lib/api/transactions';
 import { getUsage } from '../lib/api/billing';
-import { num, summarize } from '../lib/transactionSummary';
 import ManageStats from '../components/manage/ManageStats';
 import ChipPicker from '../components/manage/ChipPicker';
 import { CardBackdrop } from '../components/ui/CardSurface';
@@ -87,7 +93,17 @@ export default function TransactionsScreen() {
 
   // Tiles follow the ticket filter only; the list follows every filter.
   const byTicket = useMemo(() => (rows ?? []).filter((r) => !ticket || r.ticketTypeId === ticket), [rows, ticket]);
-  const summary = useMemo(() => summarize(byTicket), [byTicket]);
+  // Tiles come from the server's settle(), so Net carries each sale's
+  // organiser fee exactly as payouts do (T6).
+  const [summary, setSummary] = useState<TransactionSummary | null>(null);
+  const loadSummary = useCallback(async () => {
+    if (!eventId) return;
+    const res = await getTransactionSummary(eventId, ticket || undefined);
+    if (res.ok) setSummary(res.data);
+  }, [eventId, ticket]);
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
   const list = useMemo(() => {
     const q = query.trim().toLowerCase();
     return byTicket.filter((r) => {
@@ -133,14 +149,16 @@ export default function TransactionsScreen() {
     <View>
       <ManageStats
         stats={[
-          { label: 'Collected', value: inrShort(summary.collected) },
-          { label: 'Net', value: inrShort(summary.net) },
-          { label: 'Refunded', value: inrShort(summary.refunded) },
+          { label: 'Collected', value: summary ? inrShort(summary.collected) : '…' },
+          { label: 'Net', value: summary ? inrShort(summary.net) : '…' },
+          { label: 'Refunded', value: summary ? inrShort(summary.refunded) : '…' },
         ]}
       />
       <Text style={[styles.meta, { color: tokens.textMuted }]}>
-        {summary.paidCount.toLocaleString('en-IN')} paid · {inr(summary.fee)} fees
-        {summary.pending > 0 ? ` · ${inr(summary.pending)} awaiting payment` : ''}
+        {summary
+          ? `${summary.paidCount.toLocaleString('en-IN')} paid · ${inr(summary.buyerFees)} buyer fees · ${inr(summary.platformFee)} platform fee` +
+            (summary.pending > 0 ? ` · ${inr(summary.pending)} awaiting payment` : '')
+          : ' '}
       </Text>
 
       <View style={[styles.search, { marginTop: spacing[6] }]}>
@@ -191,7 +209,7 @@ export default function TransactionsScreen() {
             refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
-              await load();
+              await Promise.all([load(), loadSummary()]);
               setRefreshing(false);
             }}
             tintColor={tokens.accent}
@@ -234,7 +252,7 @@ export default function TransactionsScreen() {
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={[styles.amount, { color: tokens.text }]}>{inr(num(r.totalAmount))}</Text>
+              <Text style={[styles.amount, { color: tokens.text }]}>{inr(Number(r.totalAmount) || 0)}</Text>
               <Text style={[styles.status, { color: statusColor(r.paymentStatus, tokens) }]}>{statusLabel(r.paymentStatus)}</Text>
             </View>
           </Pressable>

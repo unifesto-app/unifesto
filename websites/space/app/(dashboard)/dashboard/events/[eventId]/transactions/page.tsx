@@ -14,6 +14,7 @@ import {
   Receipt,
 } from "@unifesto/unicon/react";
 import { getEventById } from "@/lib/api/events-api";
+import { getEventTransactions, type EventTransactions } from "@/lib/api/payouts-api";
 import {
   getAllEventRegistrations,
   exportRegistrations,
@@ -78,62 +79,6 @@ function paymentBadgeVariant(status: PaymentStatus) {
   }
 }
 
-interface FinancialSummary {
-  collected: number; // gross cash received (PAID)
-  pending: number; // amount on orders not yet paid
-  refunded: number; // amount returned to attendees
-  processingFees: number; // gateway fees on paid transactions
-  net: number; // what the organiser ultimately keeps
-  paidCount: number;
-  totalCount: number;
-}
-
-/**
- * Aggregate the event's transactions into the numbers shown on the summary tiles.
- * Net = collected − processing fees − refunded (decided in version-5 A3).
- */
-function computeFinancialSummary(txns: Registration[]): FinancialSummary {
-  let collected = 0;
-  let pending = 0;
-  let refunded = 0;
-  let processingFees = 0;
-  let paidCount = 0;
-
-  // Money fields arrive as Decimal strings over the wire (despite the `number`
-  // type), so coerce before arithmetic — otherwise `+=` concatenates strings
-  // and the totals come out NaN.
-  const num = (v: number | string | null | undefined): number => Number(v) || 0;
-
-  for (const t of txns) {
-    switch (t.paymentStatus) {
-      case "PAID":
-        collected += num(t.totalAmount);
-        processingFees += num(t.processingFee);
-        paidCount += 1;
-        break;
-      case "PENDING":
-        pending += num(t.totalAmount);
-        break;
-      case "REFUNDED":
-        refunded += num(t.totalAmount);
-        break;
-      // FAILED transactions moved no money — they don't affect the totals.
-    }
-  }
-
-  const net = collected - refunded - processingFees;
-
-  return {
-    collected,
-    pending,
-    refunded,
-    processingFees,
-    net,
-    paidCount,
-    totalCount: txns.length,
-  };
-}
-
 export default function EventTransactionsPage() {
   const params = useParams();
   const router = useRouter();
@@ -187,10 +132,23 @@ export default function EventTransactionsPage() {
         : transactions.filter((t) => t.ticketTypeId === ticketFilter),
     [transactions, ticketFilter]
   );
-  const summary = useMemo(
-    () => computeFinancialSummary(summaryTxns),
-    [summaryTxns]
-  );
+  // Tiles come from the server's settle(), so Net carries each sale's
+  // organiser fee exactly as payouts do (T6).
+  const [summary, setSummary] = useState<EventTransactions | null>();
+  useEffect(() => {
+    let live = true;
+    void getEventTransactions(
+      eventId,
+      ticketFilter === "all" ? undefined : ticketFilter
+    ).then((r) => {
+      if (!live) return;
+      setSummary(r.data);
+      if (r.error) setError(r.error.message);
+    });
+    return () => {
+      live = false;
+    };
+  }, [eventId, ticketFilter]);
 
   // The table applies every filter, including status and the free-text search.
   const filtered = useMemo(() => {
@@ -268,35 +226,35 @@ export default function EventTransactionsPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Collected"
-          value={money(summary.collected)}
-          hint={`${summary.paidCount} paid · ${money(
-            summary.processingFees
-          )} fees`}
+          value={money(summary?.collected ?? 0)}
+          hint={`${summary?.paidCount ?? 0} paid · ${money(
+            summary?.buyerFees ?? 0
+          )} buyer fees`}
           icon={CurrencyInr}
           tone="success"
-          loading={loading}
+          loading={summary === undefined}
         />
         <StatCard
           title="Net revenue"
-          value={money(summary.net)}
-          hint="After refunds & processing fees"
+          value={money(summary?.net ?? 0)}
+          hint={`After refunds, buyer fees and ${money(summary?.platformFee ?? 0)} platform fee`}
           icon={Receipt}
           tone="brand"
-          loading={loading}
+          loading={summary === undefined}
         />
         <StatCard
           title="Pending"
-          value={money(summary.pending)}
+          value={money(summary?.pending ?? 0)}
           hint="Awaiting payment"
           icon={Clock}
-          loading={loading}
+          loading={summary === undefined}
         />
         <StatCard
           title="Refunded"
-          value={money(summary.refunded)}
+          value={money(summary?.refunded ?? 0)}
           hint="Returned to attendees"
           icon={ArrowCounterClockwise}
-          loading={loading}
+          loading={summary === undefined}
         />
       </div>
 
