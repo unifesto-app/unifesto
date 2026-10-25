@@ -572,6 +572,8 @@ export interface WhatsappInviteResult {
   /** Eligible attendees whose ticket type / event had no resolvable group link. */
   noLink: number;
   failed: number;
+  /** Sends run in the background; `sent` is how many were queued. */
+  queued?: boolean;
 }
 
 /**

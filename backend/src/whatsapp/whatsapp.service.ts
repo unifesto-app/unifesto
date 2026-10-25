@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional, ServiceUnavailableException } from '@nestjs/common';
+import { WhatsappBroadcastQueue } from './whatsapp-broadcast.queue';
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { MarketingChannel, MessageChannel, Prisma, SupportCaseKind, SupportDesk, WhatsappMessageDirection } from '@prisma/client';
@@ -116,7 +117,9 @@ export class WhatsAppService {
     private readonly storage: StorageService,
     private readonly events: EventEmitter2,
     private readonly platformConfig: PlatformConfigService,
+    @Optional() private readonly broadcastQueue?: WhatsappBroadcastQueue,
   ) {
+    broadcastQueue?.setHandler((id) => this.runBroadcastById(id));
     this.phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID')!;
     this.accessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN')!;
     this.apiUrl = `${this.graphBase}/${this.phoneNumberId}/messages`;
@@ -1336,42 +1339,47 @@ export class WhatsAppService {
   }
 
   /**
-   * Run the actual fan-out. Sequential + fail-soft (mirrors
-   * broadcastStatsUpdate): one unreachable number never stops the rest, and the
-   * pacing keeps us under Meta's per-second cap. Logs a final tally.
+   * Run (or resume) one broadcast from its audit row. Sequential + fail-soft
+   * (mirrors broadcastStatsUpdate): one unreachable number never stops the
+   * rest, and the pacing keeps us under Meta's per-second cap. Every send is
+   * deduped on `broadcast:<id>:<user>`, so a re-run only reaches people not
+   * yet messaged (a deduped send counts as sent). Counts are saved every 50
+   * sends and at the end.
    */
-  private async runBroadcast(
-    broadcastId: string,
-    recipients: Array<{ userId: string; name: string; mobileNumber: string }>,
-    templateName: string,
-    bodyParams: string[],
-    languageCode: string,
-  ): Promise<{ sent: number; failed: number }> {
+  async runBroadcastById(broadcastId: string): Promise<{ sent: number; failed: number }> {
+    const b = await this.prisma.whatsappBroadcast.findUnique({ where: { id: broadcastId } });
+    if (!b || b.finishedAt) return { sent: b?.sentCount ?? 0, failed: b?.failedCount ?? 0 };
+    const recipients = await this.resolveBroadcastRecipients({
+      audience: b.audience as 'ALL' | 'SPACE' | 'USER' | 'STAFF',
+      spaceId: b.spaceId ?? undefined,
+      userIds: b.userIds,
+      category: b.category,
+      test: b.isTest,
+    });
+    const tally = (data: { sentCount: number; failedCount: number; finishedAt?: Date }) =>
+      this.prisma.whatsappBroadcast
+        .update({ where: { id: broadcastId }, data })
+        .catch((err) => this.logger.error(`Broadcast ${broadcastId} tally not saved: ${err?.message ?? err}`));
     let sent = 0;
     let failed = 0;
     for (const r of recipients) {
-      const params = this.personalizeParams(bodyParams, r);
       const ok = await this.sendTemplateMessage(
         r.mobileNumber,
-        templateName,
-        params,
+        b.templateName,
+        this.personalizeParams(b.bodyParams, r),
         false,
         undefined,
-        languageCode,
-        { kind: 'broadcast', userId: r.userId },
+        b.languageCode,
+        { kind: 'broadcast', userId: r.userId, dedupKey: `broadcast:${broadcastId}:${r.userId}` },
       );
       if (ok) sent += 1;
       else failed += 1;
+      if ((sent + failed) % 50 === 0) await tally({ sentCount: sent, failedCount: failed });
     }
     this.logger.log(
-      `WhatsApp broadcast "${templateName}" finished: ${sent} sent, ${failed} failed of ${recipients.length}.`,
+      `WhatsApp broadcast "${b.templateName}" finished: ${sent} sent, ${failed} failed of ${recipients.length}.`,
     );
-    await this.prisma.whatsappBroadcast
-      .update({
-        where: { id: broadcastId },
-        data: { sentCount: sent, failedCount: failed, finishedAt: new Date() },
-      })
-      .catch((err) => this.logger.error(`Broadcast ${broadcastId} tally not saved: ${err?.message ?? err}`));
+    await tally({ sentCount: sent, failedCount: failed, finishedAt: new Date() });
     return { sent, failed };
   }
 
@@ -1440,17 +1448,16 @@ export class WhatsAppService {
         `(audience=${params.audience}) to ${recipients.length} recipient(s).`,
     );
 
-    // Fire-and-forget: a platform-wide audience can be thousands of sequential,
-    // rate-limited sends — far longer than an HTTP request should wait. The loop
-    // is fully fail-soft, so a detached run is safe.
-    void this.runBroadcast(broadcast.id, recipients, templateName, bodyParams, languageCode).catch(
-      (err) =>
+    // A platform-wide audience is thousands of sequential, rate-limited sends,
+    // far longer than a request should wait: a queued job (J5) that resumes
+    // after a crash or deploy. Without Redis, a detached run as before.
+    if (!(await this.broadcastQueue?.add(broadcast.id))) {
+      void this.runBroadcastById(broadcast.id).catch((err) =>
         this.logger.error(
-          `WhatsApp broadcast "${templateName}" crashed: ${
-            err instanceof Error ? err.message : err
-          }`,
+          `WhatsApp broadcast "${templateName}" crashed: ${err instanceof Error ? err.message : err}`,
         ),
-    );
+      );
+    }
 
     return {
       audience: params.audience,
