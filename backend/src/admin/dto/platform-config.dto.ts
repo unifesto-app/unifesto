@@ -38,4 +38,15 @@ export class UpdatePlatformConfigDto {
   @IsOptional()
   @IsBoolean()
   requireAgeConfirmation?: boolean;
+
+  @ApiProperty({
+    example: false,
+    description:
+      'Let spaces add their own email sending domain (H20). Keep off until ' +
+      'the Resend plan allows more than one domain.',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  customSendingDomainsEnabled?: boolean;
 }

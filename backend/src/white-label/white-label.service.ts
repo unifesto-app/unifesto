@@ -69,6 +69,10 @@ export function normaliseHostname(raw: string): string {
   return host;
 }
 
+/** H20: shown while PlatformConfig.customSendingDomainsEnabled is off, or Resend refuses. */
+export const SENDING_DOMAINS_SOON =
+  "Custom sending domains are coming soon. Your emails still go out from Unifesto's address with your sender name.";
+
 /**
  * Resend refuses a new domain once the account's plan limit is hit (Free = 1,
  * used by notify.unifesto.app; H20). Say so plainly instead of passing the
@@ -77,9 +81,7 @@ export function normaliseHostname(raw: string): string {
 export function emailDomainCreateError(error: { name?: string; message?: string } | null) {
   const msg = error?.message ?? '';
   if (/quota/.test(error?.name ?? '') || /limit|plan|upgrade|maximum|quota/i.test(msg)) {
-    return new ForbiddenException(
-      "Custom sending domains aren't available on Unifesto yet. Your emails still go out from Unifesto's address with your sender name. Contact support if you need this.",
-    );
+    return new ForbiddenException(SENDING_DOMAINS_SOON);
   }
   return new BadRequestException(msg || 'Could not add that domain');
 }
@@ -210,8 +212,9 @@ export class WhiteLabelService {
     });
     if (!space) throw new NotFoundException('Space not found');
 
-    const [planHasBranding, events, requests] = await Promise.all([
+    const [planHasBranding, customSendingDomainsEnabled, events, requests] = await Promise.all([
       this.spaceHasBrandingPlan(spaceId),
+      this.sendingDomainsEnabled(),
       this.prisma.event.findMany({
         where: { spaceId, deletedAt: null },
         select: {
@@ -234,6 +237,7 @@ export class WhiteLabelService {
 
     return {
       planHasBranding,
+      customSendingDomainsEnabled,
       live: isSpaceBrandingLive(space, planHasBranding),
       space,
       events,
@@ -441,7 +445,18 @@ export class WhiteLabelService {
     );
   }
 
+  /** H20 platform switch, read fresh so every replica sees a flip at once. */
+  private async sendingDomainsEnabled(): Promise<boolean> {
+    const row = await this.prisma.platformConfig.findUnique({
+      where: { id: 'global' },
+      select: { customSendingDomainsEnabled: true },
+    });
+    return row?.customSendingDomainsEnabled ?? false;
+  }
+
   async addEmailDomain(spaceId: string, rawHost: string, localPart = 'tickets') {
+    // Only adding is gated: a domain added before the switch went off keeps working.
+    if (!(await this.sendingDomainsEnabled())) throw new ForbiddenException(SENDING_DOMAINS_SOON);
     await this.assertPlan(spaceId);
     const hostname = normaliseHostname(rawHost);
     if (await this.prisma.spaceDomain.findFirst({ where: { spaceId, kind: DomainKind.EMAIL } })) {

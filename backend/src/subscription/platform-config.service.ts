@@ -216,10 +216,11 @@ export class PlatformConfigService implements OnModuleInit {
     appVersion: AppVersionConfig;
     appReviewLoginEnabled: boolean;
     requireAgeConfirmation: boolean;
+    customSendingDomainsEnabled: boolean;
   }> {
     const row = await this.prisma.platformConfig.findUnique({
       where: { id: CONFIG_ID },
-      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true },
+      select: { appReviewLoginEnabled: true, requireAgeConfirmation: true, customSendingDomainsEnabled: true },
     });
     return {
       processingFeePercent: PROCESSING_FEE_PERCENT,
@@ -228,6 +229,7 @@ export class PlatformConfigService implements OnModuleInit {
       appVersion: this.appVersion,
       appReviewLoginEnabled: row?.appReviewLoginEnabled ?? false,
       requireAgeConfirmation: row?.requireAgeConfirmation ?? false,
+      customSendingDomainsEnabled: row?.customSendingDomainsEnabled ?? false,
     };
   }
 
@@ -239,6 +241,16 @@ export class PlatformConfigService implements OnModuleInit {
       update: { requireAgeConfirmation: enabled },
     });
     this.logger.warn(`Age confirmation gate turned ${enabled ? 'ON' : 'OFF'}`);
+  }
+
+  /** Admin switch for H20: spaces may add their own email sending domain. */
+  async setCustomSendingDomainsEnabled(enabled: boolean): Promise<void> {
+    await this.prisma.platformConfig.upsert({
+      where: { id: CONFIG_ID },
+      create: { id: CONFIG_ID, customSendingDomainsEnabled: enabled },
+      update: { customSendingDomainsEnabled: enabled },
+    });
+    this.logger.warn(`Custom sending domains turned ${enabled ? 'ON' : 'OFF'}`);
   }
 
   /** Admin switch for the App Review test login (see auth.service). */
