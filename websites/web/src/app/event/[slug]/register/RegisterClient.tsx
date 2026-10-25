@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Script from "next/script";
 import { useEffect, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -9,17 +10,21 @@ import { registrationState, type Event } from "@/lib/api/events";
 import {
   ApiError,
   confirmAge,
+  createOrder,
+  getQuote,
   INDIAN_STATES,
   myRegistrations,
-  registerFree,
   saveName,
   sendEmailCode,
   sendPhoneCode,
   verifyEmailCode,
+  validateCoupon,
+  verifyPayment,
   verifyPhoneCode,
   visibleFieldIds,
   type AuthResponse,
   type FormField,
+  type Quote,
   type RegTicket,
 } from "@/lib/api/registration";
 import { clearSession, getSession, setSession, type WebSession } from "@/lib/auth";
@@ -34,7 +39,22 @@ const NOT_OPEN = { upcoming: "Registration opens soon", sold_out: "Sold out", cl
 const noopSubscribe = () => () => {};
 
 type Step = "form" | "email-otp" | "phone" | "phone-otp" | "done";
-type Done = { kind: "in" | "already" | "waitlisted"; registrationId?: string };
+type Done = { kind: "in" | "already" | "waitlisted" | "confirming"; registrationId?: string };
+
+/** ₹ from paise: "₹499", "₹524.95". */
+const inr = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+interface RazorpayPayment {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+declare global {
+  interface Window {
+    // Razorpay Standard Checkout (checkout.razorpay.com/v1/checkout.js).
+    Razorpay?: new (options: Record<string, unknown>) => { open(): void };
+  }
+}
 
 interface Props {
   event: Event;
@@ -53,6 +73,9 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       (!t.saleEndsAt || Date.parse(t.saleEndsAt) >= now) &&
       (t.totalQuantity == null || t.soldCount < t.totalQuantity || t.waitlistEnabled),
   );
+  // Group tickets need a team roster, which lives in the app.
+  const individual = onSale.filter((t) => t.kind !== "GROUP");
+  const groupInApp = individual.length < onSale.length;
   const status = event.status?.toUpperCase();
   const isOver = status !== "PUBLISHED" || new Date(event.end_date || event.start_date).getTime() < now;
   const appliesTo = (f: FormField, ticketId: string) => !f.ticketTypeId || f.ticketTypeId === ticketId;
@@ -64,11 +87,9 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     handoff = { title: "Pick an event inside", body: "Registration happens for each event inside this one.", app: false };
   else if (!onSale.length)
     handoff = { title: NOT_OPEN[registrationState(event.tickets, now)] || "Registration is not open", body: "Check back on the event page.", app: false };
-  else if (onSale.some((t) => t.price > 0))
-    handoff = { title: "Paid tickets are in the app for now", body: "Get your ticket in the Unifesto app. Paying on the web is coming soon.", app: true };
-  else if (onSale.some((t) => t.kind === "GROUP"))
+  else if (!individual.length)
     handoff = { title: "Group tickets are in the app for now", body: "Register your team in the Unifesto app.", app: true };
-  else if (fields.some((f) => f.type === "FILE" && onSale.some((t) => appliesTo(f, t.id))))
+  else if (fields.some((f) => f.type === "FILE" && individual.some((t) => appliesTo(f, t.id))))
     handoff = { title: "Finish in the app", body: "This registration asks for a file upload, which works in the Unifesto app.", app: true };
 
   // The stored session is read after hydration (the server has none); signing
@@ -76,7 +97,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
   const hydrated = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const [sessionOverride, setSessionState] = useState<WebSession | null | undefined>(undefined);
   const session = sessionOverride !== undefined ? sessionOverride : hydrated ? getSession() : null;
-  const [ticketId, setTicketId] = useState(onSale[0]?.id ?? "");
+  const [ticketId, setTicketIdState] = useState(individual[0]?.id ?? "");
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -87,6 +108,39 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
   const [done, setDone] = useState<Done | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  // discountPaise null = not checked yet (signed out); create-order checks it either way.
+  const [coupon, setCoupon] = useState<{ code: string; discountPaise: number | null } | null>(null);
+  const [couponMsg, setCouponMsg] = useState("");
+  const [quote, setQuote] = useState<Quote | null>(null);
+
+  const ticket = individual.find((t) => t.id === ticketId);
+  const paid = !!ticket && ticket.price > 0;
+  const basePaise = Math.round((ticket?.price ?? 0) * 100);
+  const discountPaise = Math.min(coupon?.discountPaise ?? 0, basePaise);
+  const setTicketId = (id: string) => {
+    setTicketIdState(id);
+    setCoupon(null);
+    setCouponMsg("");
+  };
+
+  // Price from the server's fee rules (T5), never computed here. Debounced so
+  // flipping between tickets doesn't fire a call per click.
+  useEffect(() => {
+    if (!paid) return;
+    let live = true;
+    const t = setTimeout(() => {
+      getQuote(event.id, basePaise, discountPaise)
+        .then((q) => live && setQuote(q))
+        .catch(() => live && setQuote(null));
+    }, 250);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [paid, event.id, basePaise, discountPaise]);
+  // Only a quote for what is on screen right now.
+  const shown = paid && quote?.basePaise === basePaise && quote.couponDiscountPaise === discountPaise ? quote : null;
 
   // A returning visitor who already holds a ticket sees it, not the form.
   useEffect(() => {
@@ -142,10 +196,32 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       // Z11: the 18+ box is required on the form; record it before registering.
       await confirmAge(s.token);
       const formResponses = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)));
-      const res = await registerFree(event.id, s.token, { ticketTypeId: ticketId, formResponses, ...storedUtm() });
+      const res = await createOrder(event.id, s.token, {
+        ticketTypeId: ticketId,
+        formResponses,
+        couponCode: coupon?.code,
+        ...storedUtm(),
+      });
       if (res.isWaitlisted) setDone({ kind: "waitlisted" });
-      else if (res.razorpayOrderId) throw new Error("This ticket now has a fee. Finish in the Unifesto app.");
-      else setDone({ kind: "in", registrationId: res.registrationId });
+      else if (!res.razorpayOrderId) setDone({ kind: "in", registrationId: res.registrationId });
+      else {
+        // The pending registration lives server-side; paying again calls
+        // create-order again, which cancels this attempt first (S13).
+        const payment = await pay(res.razorpayKeyId!, res.razorpayOrderId, res.amount, res.currency, s);
+        try {
+          await verifyPayment(event.id, s.token, {
+            registrationId: res.registrationId,
+            razorpayOrderId: payment.razorpay_order_id,
+            razorpayPaymentId: payment.razorpay_payment_id,
+            razorpaySignature: payment.razorpay_signature,
+          });
+          setDone({ kind: "in", registrationId: res.registrationId });
+        } catch {
+          // Money is taken: never offer "pay again". The payment webhook
+          // settles the ticket even when this confirmation call fails.
+          setDone({ kind: "confirming" });
+        }
+      }
       goTo("done");
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
@@ -157,6 +233,42 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       throw e;
     }
   };
+
+  /** Razorpay Standard Checkout: resolves with the signed payment, rejects when closed unpaid. */
+  const pay = (key: string, orderId: string, amount: number, currency: string, s: WebSession) =>
+    new Promise<RazorpayPayment>((resolve, reject) => {
+      if (!window.Razorpay) return reject(new Error("Payment didn't load. Check your connection and try again."));
+      new window.Razorpay({
+        key,
+        order_id: orderId,
+        amount,
+        currency,
+        name: event.branding?.name ? event.space?.name || "Unifesto" : "Unifesto",
+        description: event.title,
+        prefill: { name: s.fullName || "", email: s.email, contact: phone ? mobileNumber : "" },
+        theme: { color: event.branding?.color || "#3491ff" },
+        handler: resolve,
+        // A failed attempt stays inside the sheet so the buyer can try another
+        // method; only closing it ends this attempt.
+        modal: { ondismiss: () => reject(new Error("Payment not completed. Nothing was charged. Try again when you're ready.")) },
+      }).open();
+    });
+
+  const applyCoupon = run(async () => {
+    const code = couponInput.trim();
+    setCouponMsg("");
+    if (!code) return setCoupon(null);
+    if (!session) {
+      // Codes are checked against my account, so before sign-in the code rides
+      // along to checkout, which applies or rejects it.
+      setCoupon({ code, discountPaise: null });
+      return setCouponMsg(`${code.toUpperCase()} is checked when you pay.`);
+    }
+    setCoupon(null);
+    const q = await validateCoupon(event.id, session.token, code, ticketId);
+    setCoupon({ code: q.code, discountPaise: Math.round(q.discount * 100) });
+    setCouponMsg(`${q.code} applied.`);
+  });
 
   /** After the code checks out: name a fresh account, keep the session, register. */
   const signedIn = async (auth: AuthResponse) => {
@@ -227,11 +339,16 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       </div>
     );
   } else if (step === "done" && done) {
-    const title = { in: "You're in", already: "You're already in", waitlisted: "You're on the waiting list" }[done.kind];
-    const text =
-      done.kind === "waitlisted"
-        ? "We'll let you know by email if a spot opens up."
-        : "Your ticket and QR code are in your email and in the Unifesto app under My tickets.";
+    const ticketText = "Your ticket and QR code are in your email and in the Unifesto app under My tickets.";
+    const { title, text } = {
+      in: { title: "You're in", text: ticketText },
+      already: { title: "You're already in", text: ticketText },
+      waitlisted: { title: "You're on the waiting list", text: "We'll let you know by email if a spot opens up. Nothing has been charged." },
+      confirming: {
+        title: "Payment received",
+        text: "We're confirming it now. Your ticket reaches your email and My tickets in the app within a few minutes. Please don't pay again.",
+      },
+    }[done.kind];
     body = (
       <div className="animate-pop-in text-center">
         <h2 className="font-display text-2xl text-paper">{title}</h2>
@@ -296,7 +413,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
         />
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-primary w-full">
-          {busy ? "Verifying…" : "Verify and register"}
+          {busy ? "Verifying…" : paid ? "Verify and pay" : "Verify and register"}
         </button>
         <div className="flex justify-between text-sm text-paper/65">
           <button type="button" onClick={() => goTo(isEmail ? "form" : "phone")} className="hover:text-paper">
@@ -316,25 +433,26 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
   } else {
     body = (
       <form onSubmit={submitForm} className="space-y-6">
-        {onSale.length > 1 ? (
+        {individual.length > 1 ? (
           <fieldset className="space-y-2">
             <legend className="mb-2 text-sm font-semibold text-paper">Ticket</legend>
-            {onSale.map((t) => (
+            {individual.map((t) => (
               <label key={t.id} className={`${CHOICE} ${ticketId === t.id ? "border-primary bg-primary/10" : "border-paper/10"}`}>
                 <input type="radio" name="ticket" checked={ticketId === t.id} onChange={() => setTicketId(t.id)} className="sr-only" />
                 <span className="flex-1">
                   <span className="block font-semibold text-paper">{t.name}</span>
                   {t.description && <span className="block text-paper/60">{t.description}</span>}
                 </span>
-                <span className="font-semibold text-paper">Free</span>
+                <span className="font-semibold text-paper">{t.price > 0 ? inr(Math.round(t.price * 100)) : "Free"}</span>
               </label>
             ))}
           </fieldset>
         ) : (
           <p className="text-sm text-paper/70">
-            <span className="font-semibold text-paper">{onSale[0].name}</span> · Free
+            <span className="font-semibold text-paper">{individual[0].name}</span> · {paid ? inr(basePaise) : "Free"}
           </p>
         )}
+        {groupInApp && <p className="text-xs text-paper/55">Group tickets are in the Unifesto app.</p>}
 
         {ticketFields.some((f) => visible.has(f.id)) && (
           <div className="space-y-5">
@@ -383,6 +501,42 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
           )}
         </div>
 
+        {paid && (
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <input
+                maxLength={64}
+                aria-label="Discount code"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyCoupon();
+                  }
+                }}
+                placeholder="Discount code (optional)"
+                className={FIELD}
+              />
+              <button
+                type="button"
+                disabled={busy || !couponInput.trim()}
+                onClick={() => applyCoupon()}
+                className="btn btn-secondary shrink-0"
+              >
+                Apply
+              </button>
+            </div>
+            {couponMsg && <p className="text-xs text-paper/65">{couponMsg}</p>}
+            <dl className="space-y-1.5 rounded-2xl border border-paper/10 px-4 py-3 text-sm">
+              <PriceLine label="Ticket" value={inr(basePaise)} />
+              {!!shown?.couponDiscountPaise && <PriceLine label="Discount" value={`-${inr(shown.couponDiscountPaise)}`} />}
+              {!!shown?.buyerFeePaise && <PriceLine label="Booking fee" value={inr(shown.buyerFeePaise)} />}
+              <PriceLine label="Total" value={shown ? inr(shown.totalPaise) : "…"} strong />
+            </dl>
+          </div>
+        )}
+
         <div>
           <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
             <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
@@ -395,7 +549,15 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
 
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-lg btn-primary w-full">
-          {busy ? "One moment…" : session ? "Register" : "Continue"}
+          {busy
+            ? "One moment…"
+            : !session
+              ? "Continue"
+              : !paid || shown?.totalPaise === 0
+                ? "Register"
+                : shown
+                  ? `Pay ${inr(shown.totalPaise)}`
+                  : "Pay"}
         </button>
         <p className="text-center text-xs text-paper/50">
           By registering you agree to the{" "}
@@ -406,6 +568,14 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
           <Link href="/privacy" className="underline">
             Privacy Policy
           </Link>
+          {paid && (
+            <>
+              , and the{" "}
+              <Link href="/refund" className="underline">
+                Refund Policy
+              </Link>
+            </>
+          )}
           .
         </p>
       </form>
@@ -415,6 +585,9 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas" style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
+      {individual.some((t) => t.price > 0) && (
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+      )}
       <Navbar />
       <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
         <div className="mx-auto max-w-xl">
@@ -427,6 +600,15 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       </section>
       <Footer />
     </main>
+  );
+}
+
+function PriceLine({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className={`flex justify-between ${strong ? "pt-1 font-semibold text-paper" : "text-paper/70"}`}>
+      <dt>{label}</dt>
+      <dd>{value}</dd>
+    </div>
   );
 }
 

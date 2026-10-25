@@ -2,10 +2,10 @@ import { apiBase, withInternal } from "@/lib/api/internal";
 import { mapEvent, type Event } from "@/lib/api/events";
 
 /**
- * Free registration on the web (K10 slice 1). Same backend calls as the app:
- * email OTP sign-in (`/auth/email` → `/auth/email/verify`, then WhatsApp OTP
- * for a new account) and `POST /events/:id/register/create-order`, which
- * completes a ₹0 ticket on the spot with no Razorpay order.
+ * Registration on the web (K10). Same backend calls as the app: email OTP
+ * sign-in (`/auth/email` → `/auth/email/verify`, then WhatsApp OTP for a new
+ * account), `POST /events/:id/register/create-order` (a ₹0 total completes on
+ * the spot; otherwise it returns a Razorpay order) and `.../register/verify`.
  */
 
 const PUBLIC_API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
@@ -135,14 +135,58 @@ export const myRegistrations = (eventId: string, token: string) =>
 
 export type RegisterResult =
   | { isWaitlisted: true }
-  | { isWaitlisted?: false; registrationId: string; razorpayOrderId: string | null };
+  | {
+      isWaitlisted?: false;
+      registrationId: string;
+      /** null when nothing is due (free ticket, or a coupon took it to ₹0). */
+      razorpayOrderId: string | null;
+      razorpayKeyId: string | null;
+      /** Paise. */
+      amount: number;
+      currency: string;
+    };
 
-/** The app's checkout call. A ₹0 ticket is registered immediately. */
-export const registerFree = (
+/** The app's checkout call. A ₹0 total is registered immediately; anything else returns a Razorpay order. */
+export const createOrder = (
   eventId: string,
   token: string,
-  body: { ticketTypeId: string; formResponses: Record<string, unknown>; utmSource?: string; utmMedium?: string; utmCampaign?: string },
+  body: {
+    ticketTypeId: string;
+    formResponses: Record<string, unknown>;
+    couponCode?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+  },
 ) => call<RegisterResult>("POST", `/events/${eventId}/register/create-order`, { ...body, quantity: 1 }, token);
+
+/** The app's payment confirmation (checks the signature, order and event server-side). */
+export const verifyPayment = (
+  eventId: string,
+  token: string,
+  body: { registrationId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string },
+) => call("POST", `/events/${eventId}/register/verify`, body, token);
+
+/** What a code takes off one ticket, in rupees. Signed-in only; holds nothing until checkout. */
+export const validateCoupon = (eventId: string, token: string, code: string, ticketTypeId: string) =>
+  call<{ code: string; discount: number; baseAmount: number }>(
+    "POST",
+    `/events/${eventId}/coupons/validate`,
+    { code, ticketTypeId, quantity: 1 },
+    token,
+  );
+
+export interface Quote {
+  basePaise: number;
+  couponDiscountPaise: number;
+  buyerFeePaise: number;
+  totalPaise: number;
+  feeAbsorbed: boolean;
+}
+
+/** Display-only price from the server's own fee rules (T5). Checkout re-prices anyway. */
+export const getQuote = (eventId: string, basePaise: number, couponDiscountPaise = 0) =>
+  call<Quote>("POST", "/quote", { eventId, basePaise, tickets: 1, couponDiscountPaise });
 
 /** Answer as the strings a show-if condition compares against (backend answerTokens). */
 function answerTokens(f: FormField, v: unknown): string[] {

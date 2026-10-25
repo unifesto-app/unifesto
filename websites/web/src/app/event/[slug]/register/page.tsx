@@ -22,9 +22,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Free registration on the web (K10 slice 1). Free, individual tickets
- * register here with an email code; paid and group tickets still hand off
- * to the app (see RegisterClient).
+ * Registration on the web (K10). Individual tickets, free or paid (Razorpay),
+ * register here with an email code; group tickets and file-upload questions
+ * still hand off to the app (see RegisterClient).
  */
 export default async function RegisterPage({ params }: Props) {
   const { slug } = await params;
