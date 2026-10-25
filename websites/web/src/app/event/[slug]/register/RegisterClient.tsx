@@ -263,10 +263,10 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     setCouponMsg("");
     if (!code) return setCoupon(null);
     if (!session) {
-      // Codes are checked against my account, so before sign-in the code rides
-      // along to checkout, which applies or rejects it.
+      // Codes are checked against my account, so before sign-in the code waits
+      // for the email code; signedIn checks it and stops here with the total.
       setCoupon({ code, discountPaise: null });
-      return setCouponMsg(`${code.toUpperCase()} is checked when you pay.`);
+      return setCouponMsg(`${code.toUpperCase()} is checked once you confirm your email.`);
     }
     setCoupon(null);
     const q = await validateCoupon(event.id, session.token, code, ticketId);
@@ -283,6 +283,22 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     }
     setSession(s);
     setSessionState(s);
+    // K13: a code entered signed out is checked now. Back on the form the quote
+    // refreshes, so the buyer sees the real total (or why the code failed) and
+    // presses Pay themselves instead of landing in Razorpay with a new amount.
+    if (coupon && coupon.discountPaise === null) {
+      goTo("form");
+      try {
+        const q = await validateCoupon(event.id, s.token, coupon.code, ticketId);
+        setCoupon({ code: q.code, discountPaise: Math.round(q.discount * 100) });
+        setCouponMsg(`${q.code} applied. Check the total and pay.`);
+        return;
+      } catch (e) {
+        setCoupon(null);
+        setCouponMsg("");
+        throw new Error(`${coupon.code.toUpperCase()}: ${e instanceof Error ? e.message : "this code can't be used."} Remove it or try another.`);
+      }
+    }
     // Signed in now, so a rejected answer is fixed back on the form.
     await register(s).catch((e) => {
       goTo("form");
@@ -417,7 +433,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
         />
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-primary w-full">
-          {busy ? "Verifying…" : paid ? "Verify and pay" : "Verify and register"}
+          {busy ? "Verifying…" : coupon?.discountPaise === null ? "Verify" : paid ? "Verify and pay" : "Verify and register"}
         </button>
         <div className="flex justify-between text-sm text-paper/65">
           <button type="button" onClick={() => goTo(isEmail ? "form" : "phone")} className="hover:text-paper">
