@@ -419,9 +419,10 @@ export class EmailService {
   // ACCOUNT
   // =====================================================
 
-  async sendOtpEmail(email: string, otp: string): Promise<void> {
+  /** True only when the provider accepted it (J17: auth says "sent" on true only). */
+  async sendOtpEmail(email: string, otp: string): Promise<boolean> {
     // The subject carries the code: log a fixed label instead.
-    await this.deliver('ses', email, T.otpEmail(otp), { label: 'Sign-in code', delivery: { kind: 'otp' } });
+    return this.deliver('ses', email, T.otpEmail(otp), { label: 'Sign-in code', delivery: { kind: 'otp' } });
   }
 
   async sendWelcomeEmail(email: string, userName: string): Promise<void> {

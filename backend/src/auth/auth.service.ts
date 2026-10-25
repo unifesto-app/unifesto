@@ -5,6 +5,7 @@ import {
   BadRequestException,
   ConflictException,
   HttpException,
+  BadGatewayException,
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,7 +13,6 @@ import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import * as jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
 import jwksClient from 'jwks-rsa';
 import { Prisma, Provider, User } from '@prisma/client';
 import { EmailService } from '../email/email.service';
@@ -20,8 +20,8 @@ import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { OtpService, OtpVerifyResult } from './otp.service';
 import { CognitoJwtService } from './cognito-jwt.service';
 import { AppleSignInService } from './apple-sign-in.service';
+import { findIdentityByEmail, normalizeEmail, normalizeMobile } from './identifiers';
 import {
-  GoogleLoginDto,
   AppleLoginDto,
   EmailLoginDto,
   SendMobileOtpDto,
@@ -102,14 +102,6 @@ const REFRESH_REUSE_GRACE_MS = 60 * 1000;
 const APP_REVIEW_EMAIL = 'test-user@unifesto.app';
 const APP_REVIEW_OTP = '098765';
 
-interface GoogleTokenPayload {
-  sub: string;
-  email: string;
-  email_verified: boolean;
-  name?: string;
-  picture?: string;
-}
-
 interface AppleTokenPayload {
   sub: string;
   email?: string;
@@ -124,7 +116,7 @@ const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
  *
  * AUTHENTICATION FLOW PRESERVATION:
  * This service maintains all existing authentication flows:
- * - Google OAuth login
+ * - Google (via Cognito, /auth/cognito)
  * - Apple Sign-In
  * - Email OTP login
  * - Mobile OTP verification
@@ -147,7 +139,6 @@ const LAST_SEEN_THROTTLE_MS = 5 * 60 * 1000;
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-  private readonly googleClient: OAuth2Client;
   private readonly appleJwksClient: jwksClient.JwksClient;
   private readonly jwtSecret: string;
   private readonly jwtExpiresIn: string;
@@ -172,10 +163,6 @@ export class AuthService {
       '180d',
     );
 
-    // Initialize Google OAuth client
-    const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    this.googleClient = new OAuth2Client(googleClientId);
-
     // Initialize Apple JWKS client
     this.appleJwksClient = jwksClient({
       jwksUri: 'https://appleid.apple.com/auth/keys',
@@ -184,35 +171,6 @@ export class AuthService {
     });
 
     this.logger.log('AuthService initialized - all existing auth flows preserved');
-  }
-
-  // =====================================================
-  // GOOGLE LOGIN
-  // =====================================================
-  async loginWithGoogle(dto: GoogleLoginDto): Promise<AuthResponseDto> {
-    try {
-      // Verify Google ID token
-      const ticket = await this.googleClient.verifyIdToken({
-        idToken: dto.idToken,
-        audience: this.configService.get<string>('GOOGLE_CLIENT_ID'),
-      });
-
-      const payload = ticket.getPayload() as GoogleTokenPayload;
-      if (!payload) {
-        throw new UnauthorizedException('Invalid Google token');
-      }
-
-      return await this.handleProviderLogin(
-        Provider.GOOGLE,
-        payload.sub,
-        payload.email,
-        payload.email_verified,
-        payload.name,
-      );
-    } catch (error) {
-      this.logger.error('Google login failed', error);
-      throw new UnauthorizedException('Google authentication failed');
-    }
   }
 
   // =====================================================
@@ -227,7 +185,7 @@ export class AuthService {
       return await this.handleProviderLogin(
         Provider.APPLE,
         decoded.sub,
-        decoded.email,
+        decoded.email ? normalizeEmail(decoded.email) : undefined,
         isVerified(decoded.email_verified),
       );
     } catch (error) {
@@ -271,6 +229,10 @@ export class AuthService {
   }
 
   private async verifyAppleToken(token: string): Promise<AppleTokenPayload> {
+    // J17: jwt.verify skips the audience check when it's undefined, which let
+    // any app's Apple token in. No configured audience means no Apple login.
+    const audience = this.configService.get<string>('APPLE_CLIENT_ID');
+    if (!audience) throw new UnauthorizedException('Apple sign-in is not configured');
     return new Promise((resolve, reject) => {
       jwt.verify(
         token,
@@ -285,7 +247,7 @@ export class AuthService {
           });
         },
         {
-          audience: this.configService.get<string>('APPLE_CLIENT_ID'),
+          audience,
           issuer: 'https://appleid.apple.com',
         },
         (err, decoded) => {
@@ -303,27 +265,41 @@ export class AuthService {
   // EMAIL LOGIN
   // =====================================================
   async loginWithEmail(dto: EmailLoginDto, ip?: string): Promise<{ message: string }> {
-    await this.otpService.assertCanSend(dto.email, ip);
+    const email = normalizeEmail(dto.email);
+    await this.otpService.assertCanSend(email, ip);
+    await this.sendCode(email, ip, (otp) => this.emailService.sendOtpEmail(email, otp));
+    return {
+      message: 'OTP sent to email. Use the OTP to complete authentication.',
+    };
+  }
+
+  /**
+   * Store a fresh code and deliver it. J17: a failed delivery is a 502 (never
+   * "OTP sent") and hands the send slot back, so provider outages don't burn
+   * the user's daily cap.
+   */
+  private async sendCode(
+    identifier: string,
+    ip: string | undefined,
+    deliver: (otp: string) => Promise<boolean>,
+  ): Promise<void> {
+    const otp = this.otpService.generateOtp();
+    let sent = false;
     try {
-      // Generate OTP
-      const otp = this.otpService.generateOtp();
-
-      // Store OTP
-      await this.otpService.storeOtp(dto.email, otp);
-
-      // Send OTP via Resend
-      await this.emailService.sendOtpEmail(dto.email, otp);
-
-      return {
-        message: 'OTP sent to email. Use the OTP to complete authentication.',
-      };
+      await this.otpService.storeOtp(identifier, otp);
+      sent = await deliver(otp);
     } catch (error) {
-      this.logger.error('Email OTP send failed', error);
-      throw new BadRequestException('Failed to send email OTP');
+      if (isUnavailable(error)) throw error;
+      this.logger.error('OTP delivery failed', error);
+    }
+    if (!sent) {
+      await this.otpService.releaseSend(identifier, ip).catch(() => undefined);
+      throw new BadGatewayException("We couldn't send your code right now. Please try again.");
     }
   }
 
-  async verifyEmailOtp(email: string, otp: string, ip?: string): Promise<AuthResponseDto> {
+  async verifyEmailOtp(rawEmail: string, otp: string, ip?: string): Promise<AuthResponseDto> {
+    const email = normalizeEmail(rawEmail);
     try {
       // App Review bypass: static test account, only while a platform admin
       // has it on in Apex › App version. Read fresh (not the per-replica
@@ -371,22 +347,15 @@ export class AuthService {
   async sendMobileOtp(dto: SendMobileOtpDto, ip?: string): Promise<{ message: string }> {
     try {
       this.verifyTempToken(dto.tempToken);
-      await this.otpService.assertCanSend(dto.mobileNumber, ip);
-
-      // Generate OTP
-      const otp = this.otpService.generateOtp();
-
-      // Store OTP
-      await this.otpService.storeOtp(dto.mobileNumber, otp);
-
-      // Send OTP via WhatsApp
-      await this.whatsappService.sendOtp(dto.mobileNumber, otp);
+      const mobile = this.otpMobile(dto.mobileNumber);
+      await this.otpService.assertCanSend(mobile, ip);
+      await this.sendCode(mobile, ip, (otp) => this.whatsappService.sendOtp(mobile, otp));
 
       return {
         message: 'OTP sent to your WhatsApp',
       };
     } catch (error) {
-      if (error instanceof HttpException && [429, 503].includes(error.getStatus())) throw error;
+      if (error instanceof HttpException && [400, 429, 502, 503].includes(error.getStatus())) throw error;
       this.logger.error('Mobile OTP send failed', error);
       throw new BadRequestException('Failed to send mobile OTP');
     }
@@ -396,9 +365,11 @@ export class AuthService {
     try {
       // Verify temp token
       const decoded = this.verifyTempToken(dto.tempToken);
+      const mobileNumber = normalizeMobile(dto.mobileNumber);
+      if (!mobileNumber) throw new UnauthorizedException('Invalid or expired OTP');
 
       this.assertOtpOk(
-        await this.otpService.verifyOtp(dto.mobileNumber, dto.otp, ip),
+        await this.otpService.verifyOtp(mobileNumber, dto.otp, ip),
       );
 
       // verifyTempToken guarantees provider + providerUserId are non-empty, and
@@ -420,7 +391,7 @@ export class AuthService {
       if (cognitoUser && !cognitoUser.user.mobileVerified) {
         // Check if mobile number already belongs to another user
         const existingMobileUser = await this.prisma.user.findUnique({
-          where: { mobileNumber: dto.mobileNumber },
+          where: { mobileNumber },
         });
 
         if (existingMobileUser && existingMobileUser.id !== cognitoUser.user.id) {
@@ -475,7 +446,7 @@ export class AuthService {
         const updatedUser = await this.prisma.user.update({
           where: { id: cognitoUser.user.id },
           data: {
-            mobileNumber: dto.mobileNumber,
+            mobileNumber,
             mobileVerified: true,
           },
         });
@@ -488,7 +459,7 @@ export class AuthService {
 
       // Check if mobile number already exists
       const existingUser = await this.prisma.user.findUnique({
-        where: { mobileNumber: dto.mobileNumber },
+        where: { mobileNumber },
       });
 
       if (existingUser) {
@@ -510,7 +481,7 @@ export class AuthService {
       } else {
         // Create new user
         const newUser = await this.createUser(
-          dto.mobileNumber,
+          mobileNumber,
           decoded.provider,
           decoded.providerUserId,
           decoded.email,
@@ -543,22 +514,29 @@ export class AuthService {
     emailVerified?: boolean,
     fullName?: string,
   ): Promise<AuthResponseDto> {
-    // Check if identity already exists
-    const existingIdentity = await this.prisma.userIdentity.findUnique({
-      where: {
-        unique_provider_user: {
-          provider,
-          providerUserId,
+    // Check if identity already exists. Email-OTP identities written before
+    // J17 may be mixed-case, so those also match in any case.
+    const existingIdentity =
+      (await this.prisma.userIdentity.findUnique({
+        where: {
+          unique_provider_user: {
+            provider,
+            providerUserId,
+          },
         },
-      },
-      include: {
-        user: true,
-      },
-    });
+        include: {
+          user: true,
+        },
+      })) ??
+      (provider === Provider.EMAIL
+        ? await findIdentityByEmail(this.prisma, providerUserId, { include: { user: true } }, 'providerUserId')
+        : null);
 
     if (existingIdentity) {
       // An identity made for someone (an attendee import) is unverified until
       // they prove the email by signing in with it; seat claims need that (A28).
+      // The temp token carries the stored id, so the mobile step finds it again.
+      providerUserId = existingIdentity.providerUserId;
       if (emailVerified && email && !existingIdentity.emailVerified) {
         await this.prisma.userIdentity.update({
           where: { id: existingIdentity.id },
@@ -598,11 +576,9 @@ export class AuthService {
     // verified (S5). Otherwise fall through to the new-user path: mobile OTP,
     // which links to the existing account only if they prove its mobile.
     if (email && emailVerified) {
-      const existingByEmail = await this.prisma.userIdentity.findFirst({
-        where: { email, emailVerified: true },
-        include: {
-          user: true,
-        },
+      const existingByEmail = await findIdentityByEmail(this.prisma, email, {
+        where: { emailVerified: true },
+        include: { user: true },
       });
 
       if (existingByEmail) {
@@ -711,6 +687,26 @@ export class AuthService {
       this.logger.warn('Identity already linked', error);
     }
     if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
+  }
+
+  /**
+   * The E.164 number a WhatsApp code may go to. J17: only allowlisted country
+   * codes (`OTP_WHATSAPP_COUNTRY_CODES`, default India) since every OTP is a
+   * paid template and there's no budget for the rest of the world.
+   */
+  private otpMobile(raw: string): string {
+    const mobile = normalizeMobile(raw);
+    if (!mobile) throw new BadRequestException('Enter a valid mobile number.');
+    const codes = (this.configService.get<string>('OTP_WHATSAPP_COUNTRY_CODES') || '91')
+      .split(',')
+      .map((c) => c.trim().replace(/^\+/, ''))
+      .filter(Boolean);
+    if (!codes.some((cc) => mobile.startsWith(`+${cc}`))) {
+      throw new BadRequestException(
+        `Sign-in codes can only be sent to ${codes.map((c) => `+${c}`).join(', ')} numbers right now.`,
+      );
+    }
+    return mobile;
   }
 
   /** Throw the right 401 for a failed OTP check. */
@@ -1009,7 +1005,7 @@ export class AuthService {
     }
 
     const payload = await this.cognitoJwtService.verifyCognitoToken(idToken);
-    const email = payload.email;
+    const email = payload.email ? normalizeEmail(payload.email) : undefined;
     const emailVerified = isVerified(payload.email_verified);
     const cognitoSub = payload.sub;
     const rawProvider = payload['identities']?.[0]?.providerName?.toLowerCase() || 'cognito';
@@ -1038,8 +1034,8 @@ export class AuthService {
     // mobile number.
     // Step 2: Find user by verified email identity (any provider)
     if (!user && emailVerified) {
-      const identityByEmail = await this.prisma.userIdentity.findFirst({
-        where: { email, emailVerified: true },
+      const identityByEmail = await findIdentityByEmail(this.prisma, email, {
+        where: { emailVerified: true },
         include: { user: { include: { roles: { include: { role: true } } } } },
       });
       if (identityByEmail) {
@@ -1050,10 +1046,12 @@ export class AuthService {
 
     // Step 3: Find user by EMAIL provider identity (email OTP users)
     if (!user && emailVerified) {
-      const emailIdentity = await this.prisma.userIdentity.findFirst({
-        where: { provider: Provider.EMAIL, providerUserId: email },
-        include: { user: { include: { roles: { include: { role: true } } } } },
-      });
+      const emailIdentity = await findIdentityByEmail(
+        this.prisma,
+        email,
+        { include: { user: { include: { roles: { include: { role: true } } } } } },
+        'providerUserId',
+      );
       if (emailIdentity) {
         user = emailIdentity.user;
         await this.linkIdentityToUser(user.id, providerEnum, cognitoSub, email, true);
