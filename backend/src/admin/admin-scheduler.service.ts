@@ -5,6 +5,7 @@ import { EmailService } from '../email/email.service';
 import { EmailCampaignsService } from '../email-campaigns/email-campaigns.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { RedisService } from '../redis/redis.service';
+import { NOT_DEMO_EVENT, NOT_DEMO_SPACE, NOT_DEMO_USER } from '../common/demo-data';
 
 @Injectable()
 export class AdminSchedulerService {
@@ -42,12 +43,13 @@ export class AdminSchedulerService {
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     const [newUsers, newSpaces, newEvents, registrations, revenue] = await Promise.all([
-      this.prisma.user.count({ where: { createdAt: { gte: yesterday } } }),
-      this.prisma.space.count({ where: { createdAt: { gte: yesterday } } }),
-      this.prisma.event.count({ where: { createdAt: { gte: yesterday } } }),
-      this.prisma.eventRegistration.count({ where: { registeredAt: { gte: yesterday } } }),
+      // The screen-recording demo space + users are left out (P23).
+      this.prisma.user.count({ where: { ...NOT_DEMO_USER, createdAt: { gte: yesterday } } }),
+      this.prisma.space.count({ where: { ...NOT_DEMO_SPACE, createdAt: { gte: yesterday } } }),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, createdAt: { gte: yesterday } } }),
+      this.prisma.eventRegistration.count({ where: { event: NOT_DEMO_EVENT, registeredAt: { gte: yesterday } } }),
       this.prisma.eventRegistration.aggregate({
-        where: { registeredAt: { gte: yesterday }, paymentStatus: 'PAID' },
+        where: { event: NOT_DEMO_EVENT, registeredAt: { gte: yesterday }, paymentStatus: 'PAID' },
         _sum: { razorpayAmount: true }
       }),
     ]);
@@ -95,16 +97,16 @@ export class AdminSchedulerService {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const [totalUsers, newUsers, totalEvents, newEvents, revenue, registrations, newSpaces] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-      this.prisma.event.count({ where: { status: 'PUBLISHED' } }),
-      this.prisma.event.count({ where: { createdAt: { gte: weekAgo } } }),
+      this.prisma.user.count({ where: NOT_DEMO_USER }),
+      this.prisma.user.count({ where: { ...NOT_DEMO_USER, createdAt: { gte: weekAgo } } }),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, status: 'PUBLISHED' } }),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, createdAt: { gte: weekAgo } } }),
       this.prisma.eventRegistration.aggregate({
-        where: { registeredAt: { gte: weekAgo }, paymentStatus: 'PAID' },
+        where: { event: NOT_DEMO_EVENT, registeredAt: { gte: weekAgo }, paymentStatus: 'PAID' },
         _sum: { razorpayAmount: true }
       }),
-      this.prisma.eventRegistration.count({ where: { registeredAt: { gte: weekAgo } } }),
-      this.prisma.space.count({ where: { createdAt: { gte: weekAgo } } }),
+      this.prisma.eventRegistration.count({ where: { event: NOT_DEMO_EVENT, registeredAt: { gte: weekAgo } } }),
+      this.prisma.space.count({ where: { ...NOT_DEMO_SPACE, createdAt: { gte: weekAgo } } }),
     ]);
 
     const adminEmail = process.env.ADMIN_EMAIL || 'aws@unifesto.app';
@@ -151,14 +153,14 @@ export class AdminSchedulerService {
 
     const [revenue, transactions, topEvents] = await Promise.all([
       this.prisma.eventRegistration.aggregate({
-        where: { registeredAt: { gte: firstOfLastMonth, lte: firstOfThisMonth }, paymentStatus: 'PAID' },
+        where: { event: NOT_DEMO_EVENT, registeredAt: { gte: firstOfLastMonth, lte: firstOfThisMonth }, paymentStatus: 'PAID' },
         _sum: { razorpayAmount: true }
       }),
       this.prisma.eventRegistration.count({
-        where: { registeredAt: { gte: firstOfLastMonth, lte: firstOfThisMonth }, paymentStatus: 'PAID' }
+        where: { event: NOT_DEMO_EVENT, registeredAt: { gte: firstOfLastMonth, lte: firstOfThisMonth }, paymentStatus: 'PAID' }
       }),
       this.prisma.event.findMany({
-        where: { createdAt: { gte: firstOfLastMonth, lte: firstOfThisMonth } },
+        where: { ...NOT_DEMO_EVENT, createdAt: { gte: firstOfLastMonth, lte: firstOfThisMonth } },
         orderBy: { registeredCount: 'desc' },
         take: 5,
         select: { title: true, registeredCount: true }

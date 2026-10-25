@@ -166,7 +166,7 @@ export default function EventDetailClient({ event }: Props) {
   const branded = hasBrandedChrome(event.branding) ? event.branding : null;
 
   const hostedBy = [
-    ...(eventSpace ? [{ id: eventSpace.id, name: eventSpace.name, slug: eventSpace.slug, logo_url: eventSpace.logo_url }] : []),
+    ...(eventSpace ? [{ id: eventSpace.id, name: eventSpace.name, slug: eventSpace.slug, logo_url: eventSpace.logo_url, visibility: eventSpace.visibility }] : []),
     ...coHosts,
   ];
 
@@ -174,7 +174,7 @@ export default function EventDetailClient({ event }: Props) {
     <main className={`min-h-screen overflow-x-hidden bg-canvas ${isOver ? "" : "pb-24"}`} style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
       {branded ? (
-        <BrandHeader branding={branded} href={eventSpace?.slug ? `/space/${eventSpace.slug}` : `/event/${event.slug}`} />
+        <BrandHeader branding={branded} href={eventSpace?.slug && eventSpace.visibility !== "PRIVATE" ? `/space/${eventSpace.slug}` : `/event/${event.slug}`} />
       ) : (
         <Navbar />
       )}
@@ -465,17 +465,25 @@ export default function EventDetailClient({ event }: Props) {
         {(hostedBy.length > 0 || contacts.length > 0) && (
           <Block title="Hosted by">
             <Card>
-              {hostedBy.map((h) => (
-                <Link
-                  key={h.id}
-                  href={`/space/${h.slug || h.id}`}
-                  className="flex items-center gap-4 border-t border-paper/10 p-4 transition-colors first:border-t-0 hover:bg-paper/[0.04]"
-                >
-                  <Avatar src={h.logo_url} name={h.name} size={44} />
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
-                  <CaretRight className="h-4 w-4 shrink-0 text-paper/45" aria-hidden />
-                </Link>
-              ))}
+              {hostedBy.map((h) =>
+                // A PRIVATE space has no public page (it would 404), so no link.
+                h.visibility === "PRIVATE" ? (
+                  <div key={h.id} className="flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0">
+                    <Avatar src={h.logo_url} name={h.name} size={44} />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
+                  </div>
+                ) : (
+                  <Link
+                    key={h.id}
+                    href={`/space/${h.slug || h.id}`}
+                    className="flex items-center gap-4 border-t border-paper/10 p-4 transition-colors first:border-t-0 hover:bg-paper/[0.04]"
+                  >
+                    <Avatar src={h.logo_url} name={h.name} size={44} />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
+                    <CaretRight className="h-4 w-4 shrink-0 text-paper/45" aria-hidden />
+                  </Link>
+                ),
+              )}
               {contacts.map((ct) => (
                 <div key={ct.id} className="flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0">
                   <div className="min-w-0 flex-1">

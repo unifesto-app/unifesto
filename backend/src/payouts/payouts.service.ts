@@ -13,8 +13,23 @@ import { AuthorizationService } from '../auth/authorization/authorization.servic
 import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
 import { OPEN_REFUND_STATUSES } from '../refunds/open-statuses';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
+import { NOT_DEMO_EVENT, NOT_DEMO_SPACE } from '../common/demo-data';
 
 /** Round a rupee figure to 2 dp, avoiding binary float drift in comparisons. */
+/** `ab***@okhdfc`: first 2 chars of the handle, full @provider. Only Apex payout execution sees the full VPA. */
+export function maskUpiId(upiId: string | null): string | null {
+  if (!upiId) return upiId;
+  const at = upiId.lastIndexOf('@');
+  return `${upiId.slice(0, Math.min(2, at < 0 ? upiId.length : at))}***${at < 0 ? '' : upiId.slice(at)}`;
+}
+
+/** A payout's account for a non-admin list: UPI masked, account number cut to its last 4. */
+function maskPayoutAccount<P extends { bankAccount: { upiId: string | null; accountNumber: string | null } | null }>(p: P): P {
+  if (!p.bankAccount) return p;
+  const b = p.bankAccount;
+  return { ...p, bankAccount: { ...b, upiId: maskUpiId(b.upiId), accountNumber: b.accountNumber?.slice(-4) ?? null } };
+}
+
 function round2(n: number): number {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
@@ -739,7 +754,7 @@ export class PayoutsService {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return { payouts };
+    return { payouts: payouts.map(maskPayoutAccount) };
   }
 
   /** Financials for one space. Viewable by the space's admins (or a platform admin). */
@@ -777,19 +792,23 @@ export class PayoutsService {
    * though the fee percent differs per space.
    */
   async getPlatformFinancials() {
-    const [reg, payouts, refunded, spaces, events] = await Promise.all([
-      this.aggregateRegistrations(undefined),
-      this.aggregatePayouts(undefined),
-      this.aggregateRefunds(undefined),
-      this.prisma.space.findMany({ select: { id: true, subscription: true } }),
-      this.prisma.event.findMany({ select: { id: true, spaceId: true } }),
+    // The demo space's money is left out (P23): aggregate over every other event.
+    const [spaces, events] = await Promise.all([
+      this.prisma.space.findMany({ where: NOT_DEMO_SPACE, select: { id: true, subscription: true } }),
+      this.prisma.event.findMany({ where: NOT_DEMO_EVENT, select: { id: true, spaceId: true } }),
+    ]);
+    const eventIds = events.map((e) => e.id);
+    const [reg, payouts, refunded] = await Promise.all([
+      this.aggregateRegistrations(eventIds),
+      this.aggregatePayouts(eventIds),
+      this.aggregateRefunds(eventIds),
     ]);
 
     // Each sale is charged at the rate frozen on it (A21); today's space rate
     // only for a sale without one. Fixed number of queries for any size.
     const pctBySpace = new Map(spaces.map((s) => [s.id, this.resolvePlatformFeePercent(s.subscription)]));
     const spaceOf = new Map(events.map((e) => [e.id, e.spaceId]));
-    const feeByEvent = await this.heldFeeByEvent(undefined, (id) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0);
+    const feeByEvent = await this.heldFeeByEvent(eventIds, (id) => pctBySpace.get(spaceOf.get(id) ?? '') ?? 0);
     const platformFee = round2([...feeByEvent.values()].reduce((x, y) => x + y, 0));
 
     return {
@@ -825,7 +844,10 @@ export class PayoutsService {
       addonCurrentByEvent,
       autoRefundByEvent,
     ] = await Promise.all([
+        // Every total is rolled up from this list, so leaving the demo space
+        // out here keeps it out of the platform totals too (P23).
         this.prisma.space.findMany({
+          where: NOT_DEMO_SPACE,
           select: { id: true, name: true, slug: true, subscription: true },
         }),
         this.prisma.event.findMany({
@@ -1213,7 +1235,7 @@ export class PayoutsService {
         bankName: a.bankName,
         // Masked — never expose the full account number to a routing picker.
         accountNumberLast4: a.accountNumber ? a.accountNumber.slice(-4) : null,
-        upiId: a.upiId,
+        upiId: maskUpiId(a.upiId),
         isPrimary: a.isPrimary,
         ownerId: a.userId,
         ownerName: a.user.fullName || a.user.username || 'Organiser',
@@ -1529,7 +1551,7 @@ export class PayoutsService {
       }),
       this.prisma.payout.count({ where: { userId } }),
     ]);
-    return { payouts, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
+    return { payouts: payouts.map(maskPayoutAccount), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
   }
 
   async getAllBankAccounts(page = 1, limit = 20, status?: string) {

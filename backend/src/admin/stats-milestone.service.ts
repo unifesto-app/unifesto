@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
+import { NOT_DEMO_EVENT, NOT_DEMO_USER } from '../common/demo-data';
 
 /**
  * A single point-in-time reading of the platform-wide counters we watch for
@@ -154,11 +155,12 @@ export class StatsMilestoneService {
   /** Current platform-wide totals for every metric we watch. */
   private async readTotals(): Promise<Record<StatsMetricReading['metric'], number>> {
     const [totalUsers, totalEvents, totalRegistrations, revenue] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.event.count({ where: { status: 'PUBLISHED' } }),
-      this.prisma.eventRegistration.count(),
+      // The screen-recording demo space + users are left out (P23).
+      this.prisma.user.count({ where: NOT_DEMO_USER }),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, status: 'PUBLISHED' } }),
+      this.prisma.eventRegistration.count({ where: { event: NOT_DEMO_EVENT } }),
       this.prisma.eventRegistration.aggregate({
-        where: { paymentStatus: 'PAID' },
+        where: { event: NOT_DEMO_EVENT, paymentStatus: 'PAID' },
         _sum: { razorpayAmount: true },
       }),
     ]);
