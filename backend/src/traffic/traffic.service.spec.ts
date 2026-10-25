@@ -1,6 +1,8 @@
 import {
   TrafficService,
   countryOf,
+  externalReferrerDomain,
+  pagePath,
   deviceOf,
   fillDays,
   isAllowedDestination,
@@ -183,5 +185,59 @@ describe('TrafficService', () => {
     await expect(service.createAdmin('u1', { url: 'https://www.unifesto.app', spaceId: 's1' } as any)).rejects.toThrow(
       'exactly one',
     );
+  });
+});
+
+describe('website page views (K6)', () => {
+  process.env.TRAFFIC_HASH_SECRET ??= 'test-traffic-secret';
+  const browser = { ip: '1.2.3.4', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)' };
+  const build = () => {
+    const prisma: any = { pageView: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() } };
+    return { prisma, service: new TrafficService(prisma) };
+  };
+
+  it('normalises referrers to an external domain and paths to no query', () => {
+    expect(externalReferrerDomain('https://www.google.com/search?q=unifesto')).toBe('google.com');
+    expect(externalReferrerDomain('https://l.instagram.com/?u=https%3A%2F%2Fwww.unifesto.app')).toBe('instagram.com');
+    expect(externalReferrerDomain('https://www.unifesto.app/events')).toBeNull();
+    expect(externalReferrerDomain('https://space.unifesto.app/')).toBeNull();
+    expect(externalReferrerDomain('https://notunifesto.app/')).toBe('notunifesto.app');
+    expect(externalReferrerDomain('')).toBeNull();
+    expect(externalReferrerDomain(undefined)).toBeNull();
+    expect(pagePath('/event/x?utm_source=ig#top')).toBe('/event/x');
+    expect(pagePath('//evil.com/x')).toBeNull();
+    expect(pagePath('https://evil.com')).toBeNull();
+  });
+
+  it('stores path, referrer domain and utm with a hashed visitor, never the IP', async () => {
+    const { prisma, service } = build();
+    await expect(
+      service.recordWebView(
+        { path: '/blog/a?x=1', referrer: 'https://www.linkedin.com/feed/', source: 'li', campaign: 'launch' },
+        browser,
+      ),
+    ).resolves.toEqual({ recorded: true });
+    const data = prisma.pageView.create.mock.calls[0][0].data;
+    expect(data).toMatchObject({
+      target: 'PAGE',
+      platform: 'web',
+      path: '/blog/a',
+      referrerDomain: 'linkedin.com',
+      source: 'li',
+      medium: null,
+      campaign: 'launch',
+    });
+    expect(data.visitorId).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(data)).not.toContain('1.2.3.4');
+  });
+
+  it('drops bots and repeat loads', async () => {
+    const { prisma, service } = build();
+    await expect(service.recordWebView({ path: '/' }, { ip: '1.2.3.4', ua: 'Googlebot/2.1' })).resolves.toEqual({
+      recorded: false,
+    });
+    prisma.pageView.findFirst.mockResolvedValueOnce({ id: 'v1' });
+    await expect(service.recordWebView({ path: '/' }, browser)).resolves.toEqual({ recorded: false });
+    expect(prisma.pageView.create).not.toHaveBeenCalled();
   });
 });

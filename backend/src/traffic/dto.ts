@@ -51,6 +51,39 @@ export class RecordViewDto {
   campaign?: string;
 }
 
+/** Website page-view beacon (K6). Visitor identity comes from the request, never the body. */
+export class RecordWebViewDto {
+  @ApiProperty({ example: '/event/tech-fest' })
+  @IsString()
+  @Matches(/^\//)
+  @MaxLength(2000)
+  path: string;
+
+  @ApiPropertyOptional({ description: 'document.referrer; only its domain is kept' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  referrer?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  source?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  medium?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  campaign?: string;
+}
+
 export class TrafficRangeQuery {
   @ApiPropertyOptional({ default: 30, minimum: 1, maximum: 365 })
   @IsOptional()

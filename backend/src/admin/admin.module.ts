@@ -19,11 +19,13 @@ import { RegistrationsModule } from '../registrations/registrations.module';
 import { EventsModule } from '../events/events.module';
 import { WhatsAppModule } from '../whatsapp/whatsapp.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SupportModule } from '../support/support.module';
+import { ScorecardService } from './scorecard.service';
 
 @Module({
-  imports: [PrismaModule, RedisModule, StorageModule, AuthModule, EmailModule, EmailCampaignsModule, UsersModule, RegistrationsModule, EventsModule, WhatsAppModule, NotificationsModule],
+  imports: [PrismaModule, RedisModule, StorageModule, AuthModule, EmailModule, EmailCampaignsModule, UsersModule, RegistrationsModule, EventsModule, WhatsAppModule, NotificationsModule, SupportModule],
   controllers: [AdminController, AdminEmailController, WhatsAppAdminController, MessagesAdminController, OtaAdminController, OtaStatusIngestController],
-  providers: [AdminService, OtaAdminService, AdminSchedulerService, StatsMilestoneService],
+  providers: [AdminService, OtaAdminService, AdminSchedulerService, StatsMilestoneService, ScorecardService],
   exports: [AdminService],
 })
 export class AdminModule {}
