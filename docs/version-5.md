@@ -505,7 +505,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | done (#367) |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
-| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#362) |
+| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#357) |
 
 ### K · Growth and discovery
 
@@ -910,3 +910,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · E8 hackathon judging integrity: panel race, COI guard, no-mark force-complete, criteria lock, top-N/decision confirms, award unpublish revokes certs (#366)
 - **2026-10-26** · J17 Apex and Space send a nonce-based CSP script-src with strict-dynamic (#367)
 - **2026-10-26** · J19 lint gate: web/space/apex lint clean (errors) and run in CI (#362)
+- **2026-10-26** · J19 reconciliation migration pays down the db-push drift; known-drift.sql is down to 2 deliberate diffs (#357)
