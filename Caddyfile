@@ -72,13 +72,19 @@ api.unifesto.app {
 
 apex.unifesto.app {
 	import cf_origin
-	reverse_proxy apex:3000
+	reverse_proxy apex:3000 {
+		# The proxy rate limiter keys on this (J17); one trusted value, not the client's chain.
+		header_up X-Forwarded-For {client_ip}
+	}
 }
 
 # Operator console for space admins, curators and crew.
 space.unifesto.app {
 	import cf_origin
-	reverse_proxy space:3000
+	reverse_proxy space:3000 {
+		# The proxy rate limiter keys on this (J17); one trusted value, not the client's chain.
+		header_up X-Forwarded-For {client_ip}
+	}
 }
 
 # Both hostnames serve `web`. The app's own middleware canonicalises
