@@ -505,7 +505,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | in progress (#358) |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
-| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#346) |
+| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#360) |
 
 ### K · Growth and discovery
 
@@ -901,3 +901,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J17 account gets an email when a new sign-in method is linked (#358)
 - **2026-10-25** · K12 web registration records Terms/Privacy acceptance (LegalAcceptance, client web) (#353)
 - **2026-10-25** · K13 web checks a signed-out discount code after sign-in and stops on the final total (#354)
+- **2026-10-25** · J19 web has its first frontend tests (node --test, no new deps), run in CI (#360)
