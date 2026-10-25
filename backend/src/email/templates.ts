@@ -88,6 +88,19 @@ export function welcomeEmail(userName: string): Email {
   };
 }
 
+/** J17: a new provider identity was linked to the account. */
+export function signInMethodAddedEmail(method: string): Email {
+  return {
+    subject: 'New sign-in method added to your Unifesto account',
+    html: layout(
+      `${h1('New sign-in method added')}
+      ${p(`${strong(esc(method))} can now be used to sign in to your Unifesto account.`)}
+      ${p(`If this was you, there's nothing to do. If not, contact ${link(SUPPORT, `mailto:${SUPPORT}`)} right away so we can lock the account.`)}`,
+      `${method} can now sign in to your account.`,
+    ),
+  };
+}
+
 // =====================================================
 // REGISTRATIONS & TICKETS
 // =====================================================

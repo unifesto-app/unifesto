@@ -82,6 +82,9 @@ interface SessionTokenPayload {
   type?: unknown;
   tv?: unknown;
   jti?: unknown;
+  /** Refresh only (J17): when the user signed in, carried across rotations. */
+  at?: unknown;
+  iat?: number;
   exp?: number;
 }
 
@@ -94,9 +97,13 @@ const isVerified = (v: unknown): boolean => v === true || v === 'true';
  * A rotated refresh token still works for this long (a client retrying a
  * rotate whose response was lost). After that, and after logout, it is refused.
  * ponytail: no reuse-triggered revoke-all (flaky networks would log people
- * out); add it if refresh-token theft shows up in the logs.
+ * Presented again after that, the token was copied: J17 revokes the whole
+ * family (tokenVersion bump), so the thief's rotated pair dies with it.
  */
 const REFRESH_REUSE_GRACE_MS = 60 * 1000;
+
+/** Redis marker for a token revoked by logout: refused, but not a theft signal. */
+const LOGOUT_MARKER = 'logout';
 
 /** App Store review login bypass; off unless this env var is exactly "true". */
 const APP_REVIEW_EMAIL = 'test-user@unifesto.app';
@@ -143,6 +150,7 @@ export class AuthService {
   private readonly jwtSecret: string;
   private readonly jwtExpiresIn: string;
   private readonly refreshExpiresIn: string;
+  private readonly refreshMaxAgeSec: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -162,6 +170,9 @@ export class AuthService {
       'REFRESH_EXPIRES_IN',
       '180d',
     );
+    // J17: absolute session lifetime. Rotation can't stretch a sign-in past it.
+    this.refreshMaxAgeSec =
+      (Number(this.configService.get<string>('REFRESH_MAX_AGE_DAYS')) || 365) * 86400;
 
     // Initialize Apple JWKS client
     this.appleJwksClient = jwksClient({
@@ -685,8 +696,24 @@ export class AuthService {
     } catch (error) {
       // Identity might already exist
       this.logger.warn('Identity already linked', error);
+      if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
+      return;
     }
     if (provider === Provider.APPLE) await this.claimAppleToken(providerUserId);
+    this.notifySignInMethodAdded(userId, provider).catch((err) =>
+      this.logger.error(`sign-in method notice failed for ${userId}`, err),
+    );
+  }
+
+  /** J17: tell every email on the account that a new sign-in method was linked. */
+  private async notifySignInMethodAdded(userId: string, provider: Provider): Promise<void> {
+    const identities = await this.prisma.userIdentity.findMany({
+      where: { userId, email: { not: null } },
+      select: { email: true },
+    });
+    const emails = new Set(identities.map((i) => i.email!.toLowerCase()));
+    const method = { GOOGLE: 'Google', APPLE: 'Apple', EMAIL: 'Email sign-in codes', PHONE: 'Phone' }[provider];
+    for (const email of emails) await this.emailService.sendSignInMethodAdded(email, method);
   }
 
   /**
@@ -727,7 +754,10 @@ export class AuthService {
    * token issued before. The refresh token also carries a `jti` so it can be
    * revoked on its own (one-time use on rotate, and on logout).
    */
-  private tokensFor(user: TokenUser): { accessToken: string; refreshToken: string } {
+  private tokensFor(
+    user: TokenUser,
+    authTime = Math.floor(Date.now() / 1000),
+  ): { accessToken: string; refreshToken: string } {
     const tv = user.tokenVersion ?? 0;
     return {
       accessToken: jwt.sign(
@@ -736,7 +766,7 @@ export class AuthService {
         { expiresIn: this.jwtExpiresIn } as jwt.SignOptions,
       ),
       refreshToken: jwt.sign(
-        { userId: user.id, type: 'refresh', tv, jti: randomUUID() },
+        { userId: user.id, type: 'refresh', tv, jti: randomUUID(), at: authTime },
         this.jwtSecret,
         { expiresIn: this.refreshExpiresIn } as jwt.SignOptions,
       ),
@@ -795,7 +825,7 @@ export class AuthService {
   /**
    * Exchange a valid refresh token for a new access + refresh pair (rotation).
    * The presented token is spent: after REFRESH_REUSE_GRACE_MS it can't be
-   * exchanged again.
+   * exchanged again, and trying revokes every session of the user.
    */
   async refreshSession(
     refreshToken: string,
@@ -819,20 +849,30 @@ export class AuthService {
     if ((decoded.tv ?? 0) !== user.tokenVersion) {
       throw new UnauthorizedException('Session revoked');
     }
+    // Pre-J17 tokens have no `at`; their own iat is the best sign-in time we have.
+    const authTime = typeof decoded.at === 'number' ? decoded.at : (decoded.iat ?? 0);
+    if (Math.floor(Date.now() / 1000) - authTime > this.refreshMaxAgeSec) {
+      throw new UnauthorizedException('Session expired, please sign in again');
+    }
     const spent = await this.spendRefreshToken(decoded, refreshToken, String(Date.now()));
     if (!spent) {
       // Already rotated. Inside the grace window this is a client retrying a
       // rotate whose response it lost, so it gets a fresh pair instead of being
       // logged out; after that the token is dead.
-      const spentAt = Number(
-        await this.redis.get(this.spentRefreshKey(decoded, refreshToken)).catch(() => null),
-      );
+      const marker = await this.redis
+        .get(this.spentRefreshKey(decoded, refreshToken))
+        .catch(() => null);
+      if (marker === LOGOUT_MARKER) {
+        throw new UnauthorizedException('Refresh token already used');
+      }
+      const spentAt = Number(marker);
       if (!spentAt || Date.now() - spentAt > REFRESH_REUSE_GRACE_MS) {
-        this.logger.warn(`Spent refresh token reused for user ${user.id}`);
+        this.logger.warn(`Spent refresh token reused for user ${user.id}; revoking all sessions`);
+        await this.bumpTokenVersion(user.id);
         throw new UnauthorizedException('Refresh token already used');
       }
     }
-    return this.tokensFor(user);
+    return this.tokensFor(user, authTime);
   }
 
   private generateTempToken(
@@ -955,7 +995,7 @@ export class AuthService {
           // Overwrite (not NX) so a token inside its rotate grace window dies too.
           await this.redis.set(
             this.spentRefreshKey(decoded, opts.refreshToken),
-            'logout',
+            LOGOUT_MARKER,
             this.secondsLeft(decoded),
           );
         }

@@ -148,7 +148,7 @@ jobs:
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
-          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical && npm test
           # Legal pages prerender from the API and throw when it's unreachable
           # (on purpose: keep the cached page). A stub that 404s everything
           # builds them as not-found instead.
