@@ -25,26 +25,20 @@ export class PublicConfigController {
   }
 
   /**
-   * The public rate card (A9, D10): what each sellable plan costs and the
-   * platform fee its organisers pay per paid ticket, plus the buyer's
+   * The public rate card (A9, D10, T10): each sellable plan's price, platform
+   * fee per paid ticket, limits and feature flags, plus the buyer's
    * processing fee. The marketing site's /pricing reads this, so it always
    * shows what is actually charged.
    */
   @Get('plan-fees')
-  @ApiOperation({ summary: 'Get plan prices and platform fees (public rate card)' })
+  @ApiOperation({ summary: 'Get sellable plans: prices, platform fees, limits and features (public rate card)' })
   getPlanFees() {
     return {
       buyerProcessingFeePercent: this.platformConfig.getProcessingFeePercent(),
       buyerProcessingFeeCapPerTicket: this.platformConfig.getProcessingFeeCapPerTicket(),
-      plans: SELLABLE_PLANS.map((plan) => {
-        const l = this.planConfig.getLimits(plan);
-        return {
-          plan,
-          platformFeePercent: l.platformFeePercent,
-          monthlyPrice: l.monthlyPrice,
-          annualPrice: l.annualPrice,
-        };
-      }),
+      // The whole plan_configs row (T10): /pricing renders limits and
+      // features from it too, so the site can't drift from what's enforced.
+      plans: SELLABLE_PLANS.map((plan) => ({ plan, ...this.planConfig.getLimits(plan) })),
     };
   }
 }
