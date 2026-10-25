@@ -194,6 +194,22 @@ export interface Quote {
 export const getQuote = (eventId: string, basePaise: number, couponDiscountPaise = 0) =>
   call<Quote>("POST", "/quote", { eventId, basePaise, tickets: 1, couponDiscountPaise });
 
+/** A ticket in My tickets (`GET /users/me/registrations`, the app's list). */
+export interface MyTicket {
+  id: string;
+  qrCode: string | null;
+  ticketType: { name: string } | null;
+  event: { title: string; slug: string; startDateTime: string; venueName: string | null; city: string | null; type: string };
+}
+
+/** K15: my live tickets, newest first (own registrations; group seats I claimed stay in the app). */
+export const myTickets = (token: string) =>
+  call<{ data: MyTicket[] }>("GET", "/users/me/registrations?limit=50", undefined, token).then((r) => r.data);
+
+/** Re-sends my confirmation email (and WhatsApp) with the QR. Throttled to 3 per 10 minutes. */
+export const resendTicket = (registrationId: string, token: string) =>
+  call<{ email: string | null; whatsapp: boolean }>("POST", `/registrations/${registrationId}/resend-confirmation`, undefined, token);
+
 /** Answer as the strings a show-if condition compares against (backend answerTokens). */
 function answerTokens(f: FormField, v: unknown): string[] {
   if (v === true) return ["Yes"];
