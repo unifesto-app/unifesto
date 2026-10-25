@@ -51,9 +51,12 @@ export default function AdminPayoutDetailScreen() {
     AppAlert.alert('Copied', `${label} copied.`);
   };
 
+  // A32: the backend needs a 6 to 40 character UTR, unique per payout.
+  const utrValid = utr.trim().length >= 6 && utr.trim().length <= 40;
+
   const confirmPaid = () => {
-    if (!utr.trim()) {
-      AppAlert.alert('Add the UTR', 'Paste the bank reference so the organiser can match the transfer.');
+    if (!utrValid) {
+      AppAlert.alert('Add the UTR', 'Paste the bank reference (6 to 40 characters) so the organiser can match the transfer.');
       return;
     }
     AppAlert.alert(`Mark ${inr(payout.netAmount)} as paid?`, 'Only do this after the transfer has gone through. The organiser is told.', [
@@ -130,9 +133,9 @@ export default function AdminPayoutDetailScreen() {
         {open ? (
           <>
             <SettingsGroup title="After you've sent it" plain>
-              <FieldRow label="UTR / reference" value={utr} onChangeText={setUtr} placeholder="e.g. 402512345678" autoCapitalize="characters" autoCorrect={false} />
+              <FieldRow label="UTR / reference" value={utr} onChangeText={setUtr} placeholder="6 to 40 characters, e.g. 402512345678" autoCapitalize="characters" autoCorrect={false} maxLength={40} />
             </SettingsGroup>
-            <Button label="Mark as paid" size="lg" fullWidth loading={busy === 'PAY'} onPress={confirmPaid} style={{ marginTop: spacing[6] }} />
+            <Button label="Mark as paid" size="lg" fullWidth disabled={!utrValid || busy !== null} loading={busy === 'PAY'} onPress={confirmPaid} style={{ marginTop: spacing[6] }} />
             {payout.status === 'PENDING' ? (
               <Button label="Cancel payout" variant="danger" size="lg" fullWidth disabled={busy !== null} loading={busy === 'CANCEL'} onPress={confirmCancel} style={{ marginTop: spacing[3] }} />
             ) : null}

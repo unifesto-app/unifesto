@@ -283,6 +283,7 @@ export default function PayoutsPage() {
                       <p className="mt-1 text-xs text-muted-foreground">
                         Scheduled {formatDate(p.scheduledAt)}
                         {p.utr && ` · UTR ${p.utr}`}
+                        {p.paidAt && ` · paid ${formatDate(p.paidAt)}`}
                         {p.failureReason && ` · ${p.failureReason}`}
                       </p>
                     </div>
@@ -497,11 +498,18 @@ function MarkPaidDialog({
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState("");
 
+  const utrValue = utr.trim();
+  const utrValid = utrValue.length >= 6 && utrValue.length <= 40;
+
   const confirm = async () => {
+    if (!utrValid) {
+      setErr("Enter the UTR or bank reference (6 to 40 characters).");
+      return;
+    }
     setErr("");
     setSubmitting(true);
     const { error } = await markPayoutPaid(payout.id, {
-      utr: utr.trim() || undefined,
+      utr: utrValue,
       reference: reference.trim() || undefined,
     });
     if (error) {
@@ -551,19 +559,38 @@ function MarkPaidDialog({
 
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Confirm you have transferred {money(payout.netAmount)} to the
-            organiser&rsquo;s account. Record the bank reference for
-            reconciliation.
+            Transfer {money(payout.netAmount)} to this account, then record the
+            UTR from your bank.
           </p>
+          {payout.bankAccount ? (
+            <dl className="divide-y rounded-md border border-border text-sm">
+              <CopyRow label="Holder name" value={payout.bankAccount.accountHolderName} />
+              {payout.bankAccount.methodType === "UPI" || payout.bankAccount.upiId ? (
+                <CopyRow label="UPI ID" value={payout.bankAccount.upiId} mono />
+              ) : (
+                <>
+                  <CopyRow label="Account number" value={payout.bankAccount.accountNumber} mono />
+                  <CopyRow label="IFSC" value={payout.bankAccount.ifscCode} mono />
+                  <CopyRow label="Bank" value={payout.bankAccount.bankName} />
+                </>
+              )}
+              <CopyRow label="Amount" value={Number(payout.netAmount).toFixed(2)} mono />
+            </dl>
+          ) : (
+            <ErrorNotice message="This payout has no payout method. Cancel it and ask the space to add one." />
+          )}
           <div>
             <label className="text-sm font-medium" htmlFor="payout-utr">
-              UTR (optional)
+              UTR or bank reference
             </label>
             <Input
               id="payout-utr"
               value={utr}
               onChange={(e) => setUtr(e.target.value)}
-              placeholder="Bank transaction UTR"
+              placeholder="6 to 40 characters, from your bank"
+              maxLength={40}
+              required
+              aria-invalid={utr !== "" && !utrValid}
               className="mt-1"
             />
           </div>
@@ -586,11 +613,40 @@ function MarkPaidDialog({
           <Button variant="destructive" onClick={cancel} disabled={submitting}>
             Cancel payout
           </Button>
-          <Button onClick={confirm} disabled={submitting}>
+          <Button onClick={confirm} disabled={submitting || !utrValid}>
             {submitting ? "Saving…" : "Mark paid"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** One transfer detail with a copy button (full values: admin endpoint only). */
+function CopyRow({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="flex min-w-0 items-center gap-2">
+        <span className={`truncate font-medium ${mono ? "font-mono" : ""}`}>{value}</span>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          aria-label={`Copy ${label}`}
+          onClick={() =>
+            navigator.clipboard?.writeText(value).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1200);
+            })
+          }
+        >
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </dd>
+    </div>
   );
 }

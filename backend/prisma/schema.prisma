@@ -2943,7 +2943,12 @@ model Payout {
   failedAt      DateTime?    @map("failed_at") @db.Timestamptz(6)
   failureReason String?      @map("failure_reason") @db.Text
 
+  // Bank UTR / reference of the manual transfer. Required to mark paid (A32);
+  // unique among payouts marked paid since then (partial index payouts_paid_utr_key).
   utr String? @db.VarChar(50)
+  // The platform admin who marked it paid, and when (A32).
+  paidById String?   @map("paid_by_id") @db.Uuid
+  paidAt   DateTime? @map("paid_at") @db.Timestamptz(6)
 
   createdBy String? @map("created_by") @db.Uuid
   notes     String? @db.Text

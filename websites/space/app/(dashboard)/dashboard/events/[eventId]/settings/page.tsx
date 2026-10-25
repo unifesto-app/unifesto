@@ -809,8 +809,8 @@ function EventPayoutAccountCard({ eventId }: { eventId: string }) {
       <CardContent className="space-y-3 px-4 py-4">
         <p className="text-sm text-muted-foreground">
           Where this event&apos;s earnings are paid out. Leave as the default to
-          use your primary account, or route it to another space admin&apos;s verified
-          account.
+          use the event creator&apos;s primary account, or route it to another
+          space admin&apos;s verified account.
         </p>
 
         {error && <ErrorNotice message={error} />}
@@ -827,7 +827,15 @@ function EventPayoutAccountCard({ eventId }: { eventId: string }) {
               }}
               className="flex h-9 w-full max-w-md rounded-md border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20"
             >
-              <option value="">My primary account (default)</option>
+              <option value="">
+                {(() => {
+                  // The default is the event creator's primary, which may not be the viewer's.
+                  const primary = accounts.find((a) => a.isOwn && a.isPrimary);
+                  return primary
+                    ? `Default: ${accountLabel(primary)}`
+                    : "Default: event creator's primary account";
+                })()}
+              </option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {accountLabel(a)}

@@ -5,6 +5,7 @@ import { Bank, CheckCircle, XCircle, Clock } from "@unifesto/unicon/react";
 import {
   getAllBankAccounts,
   updateBankAccountStatus,
+  revokeBankAccount,
   type BankAccount,
   type BankAccountStatus,
 } from "@/lib/api/payouts-api";
@@ -82,6 +83,21 @@ export default function AdminBankAccountsPage() {
     else void load();
   }
 
+  /** Back to pending review with a note the owner sees. Refused while an unpaid payout uses it. */
+  async function revoke(a: BankAccount) {
+    const note = window.prompt("Why revoke verification? The organiser sees this note.");
+    if (note === null) return;
+    if (note.trim().length < 3) {
+      setError("Add a short note for the organiser.");
+      return;
+    }
+    setBusy(a.id);
+    const { error } = await revokeBankAccount(a.id, note.trim());
+    setBusy(null);
+    if (error) setError(error.message);
+    else void load();
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -149,10 +165,15 @@ export default function AdminBankAccountsPage() {
                       Organiser: <span className="text-foreground">{organiser}</span>
                       {a.user?.mobileNumber ? ` · ${a.user.mobileNumber}` : ""}
                     </p>
-                    {a.status === "REJECTED" && a.rejectionReason && (
+                    {a.status !== "VERIFIED" && a.rejectionReason && (
                       <p className="mt-1 text-xs text-destructive">Reason: {a.rejectionReason}</p>
                     )}
                   </div>
+                  {a.status === "VERIFIED" && (
+                    <Button variant="outline" size="sm" className="flex-shrink-0" disabled={busy === a.id} onClick={() => revoke(a)}>
+                      {busy === a.id ? "…" : "Revoke verification"}
+                    </Button>
+                  )}
                   {a.status === "PENDING" && (
                     <div className="flex flex-shrink-0 items-center gap-2">
                       <Button variant="outline" size="sm" disabled={busy === a.id} onClick={() => decide(a, "REJECTED")}>

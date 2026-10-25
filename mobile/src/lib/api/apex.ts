@@ -258,7 +258,7 @@ export const getAdminPayouts = (status: PayoutStatus, page = 1, limit = 30) =>
   call<{ payouts: AdminPayout[]; pagination: Page }>(`/payouts/admin${qs({ status, page, limit })}`);
 
 /** POST /payouts/admin/:id/process — records the manual transfer as done. */
-export const markPayoutPaid = (id: string, utr?: string) => call<AdminPayout>(`/payouts/admin/${id}/process`, post({ utr: utr || undefined }));
+export const markPayoutPaid = (id: string, utr: string) => call<AdminPayout>(`/payouts/admin/${id}/process`, post({ utr }));
 
 /** PATCH /payouts/admin/:id/cancel — pending payouts only. */
 export const cancelPayout = (id: string) => call<AdminPayout>(`/payouts/admin/${id}/cancel`, { method: 'PATCH' });
