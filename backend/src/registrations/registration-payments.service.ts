@@ -38,6 +38,7 @@ import {
 } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
 import { NotifyService } from '../notifications/notify.service';
+import { SubscriptionService } from '../subscription/subscription.service';
 
 /**
  * Settling payments: client verify, the Razorpay webhook, admin reconcile /
@@ -63,6 +64,8 @@ export class RegistrationPaymentsService {
     private readonly sessions: SessionsService,
     private readonly notify: NotifyService,
     private readonly events?: EventEmitter2,
+    // Plan orders ride the same account-wide webhook (T8).
+    private readonly subscriptions?: SubscriptionService,
   ) {}
 
   /**
@@ -510,6 +513,15 @@ export class RegistrationPaymentsService {
       return { received: true };
     }
 
+    if (event === 'order.paid') {
+      // Only plan orders act on order.paid; everything else settles on payment.captured.
+      const order = payload.payload.order?.entity;
+      if (order?.notes?.plan && paymentData?.id) {
+        await this.subscriptions?.completeFromWebhook(order.id, paymentData.id, order);
+      }
+      return { received: true };
+    }
+
     if (event === 'payment.captured') {
       const orderId = paymentData.order_id;
       const paymentId = paymentData.id;
@@ -528,6 +540,10 @@ export class RegistrationPaymentsService {
         }
         // A paid Space session (A16).
         if (await this.sessions.completeFromWebhook(orderId, paymentId, paymentData)) {
+          return { received: true };
+        }
+        // A Space plan order (T8), in case order.paid isn't subscribed.
+        if (await this.subscriptions?.completeFromWebhook(orderId, paymentId)) {
           return { received: true };
         }
         this.logger.error(

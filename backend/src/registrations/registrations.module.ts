@@ -31,6 +31,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { TeamChangesService } from './team-changes.service';
 import { BadgesService } from './badges.service';
 import { RefundsModule } from '../refunds/refunds.module';
+import { SubscriptionModule } from '../subscription/subscription.module';
 
 @Module({
   imports: [
@@ -48,6 +49,8 @@ import { RefundsModule } from '../refunds/refunds.module';
     NotificationsModule,
     // A paid cancel is a refund request (D6).
     RefundsModule,
+    // Space plan orders settle on the same Razorpay webhook (T8).
+    SubscriptionModule,
   ],
   controllers: [RegistrationsController, GroupSeatsController, FormUploadsController, AttendeeDetailsController],
   providers: [RegistrationsService, MyRegistrationsService, RegistrationCheckoutService, RegistrationPaymentsService, RegistrationCancellationService, RegistrationImportService, RegistrationExportService, RegistrationTransfersService, RegistrationAttendeesService, RegistrationConfirmationsService, WaitlistService, GroupSeatsService, FormUploadsService, AttendeeDetailsService, TeamChangesService, BadgesService],

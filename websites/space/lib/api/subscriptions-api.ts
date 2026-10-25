@@ -16,6 +16,7 @@ import backendClient, { apiCall, ApiError } from "./backend-client";
 export type BillingModel = "FREE" | "REVENUE_SHARE" | "SUBSCRIPTION";
 export type OrgPlan = "STARTER" | "GROWTH" | "PRO" | "ENTERPRISE";
 export type BillingCycle = "MONTHLY" | "ANNUAL";
+export type SubscriptionStatus = "ACTIVE" | "GRACE" | "EXPIRED";
 
 export interface Subscription {
   id: string | null;
@@ -31,6 +32,11 @@ export interface Subscription {
   amount: string | number;
   currency: string;
   isActive: boolean;
+  /** From the dates: GRACE = 7 days after expiry, EXPIRED = Starter limits. */
+  status?: SubscriptionStatus;
+  /** A paid downgrade that starts when this period ends. */
+  pendingPlan?: OrgPlan | null;
+  pendingBillingCycle?: BillingCycle | null;
   startedAt: string;
   expiresAt: string | null;
   cancelledAt: string | null;
@@ -117,6 +123,10 @@ export interface UpgradeOrder {
   currency: string;
   plan: OrgPlan;
   billingCycle: BillingCycle;
+  /** renew extends; upgrade starts now; downgrade starts at period end. */
+  kind?: "renew" | "upgrade" | "downgrade";
+  /** ₹ of unused time taken off an upgrade. */
+  credit?: number;
   /** Public key for the checkout modal (served by the backend, not env). */
   razorpayKeyId: string;
 }

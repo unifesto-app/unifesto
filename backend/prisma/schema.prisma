@@ -1265,6 +1265,11 @@ model OrgSubscription {
   lastPaymentAt DateTime? @map("last_payment_at") @db.Timestamptz(6)
   nextPaymentAt DateTime? @map("next_payment_at") @db.Timestamptz(6)
 
+  // A paid downgrade waits for the current period to end; the expiry cron
+  // switches to it at expiresAt and extends by one pending cycle.
+  pendingPlan         OrgPlan?      @map("pending_plan")
+  pendingBillingCycle BillingCycle? @map("pending_billing_cycle")
+
   eventsThisMonth Int      @default(0) @map("events_this_month")
   usageResetAt    DateTime @default(now()) @map("usage_reset_at") @db.Timestamptz(6)
 
@@ -1288,6 +1293,10 @@ model SubscriptionHistory {
   changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
   // Razorpay payment that paid for this change; unique so one receipt upgrades once.
   paymentId String?  @unique @map("payment_id") @db.VarChar(255)
+  // Razorpay order it paid; unique so verify + webhook activate an order once.
+  orderId     String? @unique @map("order_id") @db.VarChar(255)
+  // What was actually paid (paise), Razorpay or offline. MRR reads this.
+  amountPaise Int?    @map("amount_paise")
 
   @@map("subscription_history")
 }

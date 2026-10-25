@@ -136,7 +136,7 @@ export default function BillingPage() {
     new window.Razorpay({
       key: order.razorpayKeyId,
       order_id: order.orderId,
-      amount: order.amount * 100,
+      amount: Math.round(order.amount * 100),
       currency: order.currency,
       name: "Unifesto",
       description: `${PLAN_LABEL[plan]} plan (${targetCycle.toLowerCase()})`,
@@ -153,7 +153,13 @@ export default function BillingPage() {
             `Payment received but the plan didn't activate (${error.message}). Reference ${res.razorpay_payment_id}.`
           );
         } else {
-          setNotice(`You're on ${PLAN_LABEL[plan]} now.`);
+          setNotice(
+            order.kind === "renew"
+              ? `${PLAN_LABEL[plan]} renewed.`
+              : order.kind === "downgrade"
+                ? `${PLAN_LABEL[plan]} (${targetCycle.toLowerCase()}) starts when this period ends.`
+                : `You're on ${PLAN_LABEL[plan]} now.`
+          );
           await load();
         }
         setBusyPlan(null);
@@ -179,6 +185,26 @@ export default function BillingPage() {
   // Free and revenue-share spaces are arranged by Unifesto: no self-serve plan changes.
   const selfServe = !sub?.billingModel || sub.billingModel === "SUBSCRIPTION";
   const currentRank = planRank(currentPlan);
+  const status = sub?.status ?? "ACTIVE";
+  // A paid plan Unifesto gave without a payment (comp): nothing to cancel or renew.
+  const comp = selfServe && currentRank > 0 && !sub?.lastPaymentAt;
+  const canBuy = selfServe && !comp && !sub?.pendingPlan;
+  const fmtDate = (d: string | null | undefined) =>
+    d
+      ? new Date(d).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "—";
+  const limitsFrom =
+    sub?.billingModel === "FREE"
+      ? "Limits come from your free arrangement with Unifesto."
+      : sub?.billingModel === "REVENUE_SHARE"
+        ? "Limits come from your revenue-share arrangement with Unifesto."
+        : status === "EXPIRED"
+          ? `Your ${PLAN_LABEL[currentPlan]} plan expired, so Starter limits apply. Your data is kept; renew to get them back.`
+          : `Limits come from your ${PLAN_LABEL[currentPlan]} plan${comp ? ", set up by Unifesto" : ""}.`;
   const orderedPlans = [...plans].sort(
     (a, b) => PLAN_ORDER.indexOf(a.plan) - PLAN_ORDER.indexOf(b.plan)
   );
@@ -225,7 +251,7 @@ export default function BillingPage() {
                 )}
               </CardDescription>
             </div>
-            {!loading && currentRank > 0 && selfServe && !sub?.cancelledAt && (
+            {!loading && currentRank > 0 && selfServe && !comp && status !== "EXPIRED" && !sub?.cancelledAt && (
               <Button
                 variant="outline"
                 size="sm"
@@ -242,33 +268,37 @@ export default function BillingPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <MiniFact
                 label="Status"
-                value={sub.isActive ? "Active" : "Inactive"}
-              />
-              <MiniFact
-                label={sub.cancelledAt ? "Ends" : "Renews"}
                 value={
-                  sub.expiresAt
-                    ? new Date(sub.expiresAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "—"
+                  status === "GRACE"
+                    ? "Grace period: renew to keep it"
+                    : status === "EXPIRED"
+                      ? "Expired"
+                      : sub.isActive
+                        ? "Active"
+                        : "Inactive"
                 }
               />
               <MiniFact
-                label="Last payment"
-                value={
-                  sub.lastPaymentAt
-                    ? new Date(sub.lastPaymentAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "—"
+                label={
+                  status !== "ACTIVE"
+                    ? "Expired on"
+                    : sub.cancelledAt
+                      ? "Ends"
+                      : "Renews"
                 }
+                value={fmtDate(sub.expiresAt)}
               />
+              <MiniFact label="Last payment" value={fmtDate(sub.lastPaymentAt)} />
             </div>
+            {sub.pendingPlan && (
+              <p className="mt-4 text-sm text-muted-foreground">
+                Moves to {PLAN_LABEL[sub.pendingPlan]}
+                {sub.pendingBillingCycle
+                  ? ` (${sub.pendingBillingCycle.toLowerCase()})`
+                  : ""}{" "}
+                on {fmtDate(sub.expiresAt)}. Already paid.
+              </p>
+            )}
           </CardContent>
         )}
       </Card>
@@ -306,6 +336,9 @@ export default function BillingPage() {
           hint="Plan limit"
         />
       </div>
+      {!loading && sub && (
+        <p className="-mt-2 text-sm text-muted-foreground">{limitsFrom}</p>
+      )}
 
       {/* Plan catalogue --------------------------------------------------- */}
       <div className="flex items-center justify-between">
@@ -348,8 +381,16 @@ export default function BillingPage() {
             const rank = planRank(plan.plan);
             const price = priceFor(plan, cycle);
             const isEnterprise = plan.plan === "ENTERPRISE";
-            const direction =
-              rank > currentRank ? "up" : rank < currentRank ? "down" : "same";
+            // Same plan: annual is "up" from monthly, monthly "down" from annual.
+            const cycleRank = (c: BillingCycle) => (c === "ANNUAL" ? 1 : 0);
+            const diff =
+              rank - currentRank ||
+              (sub ? cycleRank(cycle) - cycleRank(sub.billingCycle) : 0);
+            const direction = diff > 0 ? "up" : diff < 0 ? "down" : "same";
+            const paidTimeLeft =
+              currentRank > 0 &&
+              !!sub?.expiresAt &&
+              new Date(sub.expiresAt) > new Date();
 
             return (
               <Card
@@ -410,10 +451,20 @@ export default function BillingPage() {
                     ))}
                   </ul>
 
-                  {isCurrent ? (
-                    <Button variant="outline" disabled className="w-full">
-                      Current plan
-                    </Button>
+                  {isCurrent && (direction === "same" || !canBuy || !price) ? (
+                    direction === "same" && canBuy && price ? (
+                      <Button
+                        className="w-full"
+                        disabled={busyPlan !== null}
+                        onClick={() => handleChangePlan(plan.plan, cycle)}
+                      >
+                        {busyPlan === plan.plan ? "Working…" : "Renew"}
+                      </Button>
+                    ) : (
+                      <Button variant="outline" disabled className="w-full">
+                        Current plan
+                      </Button>
+                    )
                   ) : isEnterprise ? (
                     <Button variant="outline" className="w-full" asChild>
                       <a href="mailto:sales@unifesto.app?subject=Enterprise%20plan">
@@ -425,7 +476,13 @@ export default function BillingPage() {
                       Your plan is arranged by Unifesto. Contact support to
                       change it.
                     </p>
-                  ) : direction === "down" ? (
+                  ) : !canBuy ? (
+                    <p className="text-center text-xs text-muted-foreground">
+                      {sub?.pendingPlan
+                        ? "A plan change is already scheduled."
+                        : "Your plan is set up by Unifesto. Contact support to change it."}
+                    </p>
+                  ) : direction === "down" && !price ? (
                     <p className="text-center text-xs text-muted-foreground">
                       To move down, cancel your plan. It ends at the close of
                       this period.
@@ -433,11 +490,22 @@ export default function BillingPage() {
                   ) : (
                     <Button
                       className="w-full"
+                      variant={direction === "down" ? "outline" : "default"}
                       disabled={busyPlan !== null || !price}
                       onClick={() => handleChangePlan(plan.plan, cycle)}
                     >
-                      {busyPlan === plan.plan ? "Working…" : "Upgrade"}
+                      {busyPlan === plan.plan
+                        ? "Working…"
+                        : direction === "down" && paidTimeLeft
+                          ? "Switch at period end"
+                          : "Upgrade"}
                     </Button>
+                  )}
+                  {direction === "up" && paidTimeLeft && canBuy && !!price && (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Starts now. Unused days on your current plan come off the
+                      price.
+                    </p>
                   )}
                 </CardContent>
               </Card>
