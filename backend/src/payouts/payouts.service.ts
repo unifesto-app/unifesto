@@ -8,7 +8,7 @@ import { feeAtFrozenRates, SETTLE_SELECT, settle, settleRow, type Settlement } f
 import { EmailService } from '../email/email.service';
 import { ACCOUNT_NUMBER_RE, AddBankAccountDto, CreatePayoutDto, IFSC_RE, MarkPayoutPaidDto, UPI_RE, UpdateBankAccountStatusDto } from './dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, BillingModel, EventStatus, OrgPlan, SessionStatus, RefundStatus, Prisma, StayPaymentMode, SupportCaseKind, SupportDesk, SupportTicketStatus } from '@prisma/client';
+import { PayoutStatus, BankAccountStatus, PayoutMethodType, PaymentStatus, EventStatus, OrgPlan, SessionStatus, RefundStatus, Prisma, StayPaymentMode, SupportCaseKind, SupportDesk, SupportTicketStatus } from '@prisma/client';
 import { Action, SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { button, details, esc, greet, h1, inr, note as callout, p, SPACE_APP, strong } from '../email/layout';
@@ -391,15 +391,10 @@ export class PayoutsService {
   }
 
   /**
-   * Platform fee % the organiser pays out of their ticket sales today: the
-   * plan rate on SUBSCRIPTION, the space's share on REVENUE_SHARE, 0 on FREE
-   * (A9). Each sale is charged the rate frozen on it (A21).
+   * Platform fee % the organiser pays out of their ticket sales today: their
+   * plan's rate (A9). Each sale is charged the rate frozen on it (A21).
    */
-  private resolvePlatformFeePercent(subscription?: {
-    billingModel: BillingModel;
-    plan: OrgPlan;
-    revenueSharePercent: Prisma.Decimal | null;
-  } | null): number {
+  private resolvePlatformFeePercent(subscription?: { plan: OrgPlan } | null): number {
     return this.planConfig.resolvePlatformFeePercent(subscription);
   }
 
@@ -1014,9 +1009,8 @@ export class PayoutsService {
 
   /**
    * Platform-wide financials (Apex). Money-in / refunds / payouts are global
-   * single-query aggregates; the platform fee is summed per REVENUE_SHARE space
-   * (only those carry a non-zero cut), so net entitlement stays accurate even
-   * though the fee percent differs per space.
+   * single-query aggregates; the platform fee is summed per space, so net
+   * entitlement stays accurate even though the fee percent differs per space.
    */
   async getPlatformFinancials() {
     // The demo space's money is left out (P23): aggregate over every other event.
@@ -1232,7 +1226,6 @@ export class PayoutsService {
 
     const spaceRows = spaces.map((space) => {
       const feePercent = this.resolvePlatformFeePercent(space.subscription);
-      const billingModel = space.subscription?.billingModel ?? null;
       const spaceEvents = eventsBySpace.get(space.id) ?? [];
 
       // Space-level raw accumulators (summed from this space's events).
@@ -1314,7 +1307,7 @@ export class PayoutsService {
         name: space.name,
         slug: space.slug,
         feePercent,
-        billingModel,
+        plan: space.subscription?.plan ?? null,
         eventCount: eventRows.length,
         ...this.buildFinancials(
           spaceAcc,

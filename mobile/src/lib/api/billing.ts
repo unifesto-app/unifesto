@@ -6,14 +6,11 @@ import { call } from './manageEvent';
  * BillingScreen for why).
  */
 
-export type OrgPlan = 'STARTER' | 'GROWTH' | 'PRO' | 'ENTERPRISE';
+export type OrgPlan = 'STARTER' | 'CLUB' | 'GROWTH' | 'PRO' | 'ENTERPRISE';
 export type BillingCycle = 'MONTHLY' | 'ANNUAL';
-export type BillingModel = 'FREE' | 'REVENUE_SHARE' | 'SUBSCRIPTION';
 
 export interface Subscription {
   configured?: boolean;
-  billingModel: BillingModel | null;
-  revenueSharePercent: string | number | null;
   plan: OrgPlan | null;
   billingCycle: BillingCycle;
   amount: string | number;
@@ -31,4 +28,4 @@ export interface Usage {
 }
 export const getUsage = (spaceId: string) => call<Usage>(`/subscription/space/${spaceId}/usage`);
 
-export const PLAN_LABEL: Record<OrgPlan, string> = { STARTER: 'Starter', GROWTH: 'Growth', PRO: 'Pro', ENTERPRISE: 'Enterprise' };
+export const PLAN_LABEL: Record<OrgPlan, string> = { STARTER: 'General', CLUB: 'Club', GROWTH: 'Growth', PRO: 'Pro', ENTERPRISE: 'Enterprise' };

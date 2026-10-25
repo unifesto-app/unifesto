@@ -13,11 +13,11 @@ const CONFIG_ID = 'global';
  * the public /config/processing-fee endpoint can never drift apart. The
  * `platform_config.processingFeePercent` column is retained but no longer read.
  */
-export const PROCESSING_FEE_PERCENT = 5;
+export const PROCESSING_FEE_PERCENT = 4;
 
 /**
- * The buyer fee never exceeds this per ticket (A34, D11): min(5%, ₹99). Kicks
- * in above a ₹1,980 ticket. Served with the percent so clients show the same.
+ * The buyer fee never exceeds this per ticket (A34, D11): min(4%, ₹99). Kicks
+ * in above a ₹2,475 ticket. Served with the percent so clients show the same.
  */
 export const PROCESSING_FEE_CAP_PER_TICKET = 99;
 

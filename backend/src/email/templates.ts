@@ -6,6 +6,10 @@ import {
   button, code, details, esc, faint, greet, h1, inr, layout, link, list, note, p, qr, small, strong,
   type EmailBrand,
 } from './layout';
+import { PLAN_NAMES } from '../subscription/plan-limits.config';
+
+/** A plan code as organisers know it ("STARTER" -> "General"). */
+const planName = (code: string) => PLAN_NAMES[code as keyof typeof PLAN_NAMES] ?? code;
 
 export interface Email {
   subject: string;
@@ -751,13 +755,13 @@ export interface SubscriptionActivatedData {
 
 export function subscriptionActivatedEmail(d: SubscriptionActivatedData): Email {
   return {
-    subject: `Your ${d.plan} plan is active`,
+    subject: `Your ${planName(d.plan)} plan is active`,
     html: layout(
-      `${h1(`You're on ${esc(d.plan)}`)}
+      `${h1(`You're on ${esc(planName(d.plan))}`)}
       ${greet(d.userName)}
       ${p('Your plan is active. Thanks for backing Unifesto.')}
       ${details([
-        ['Plan', esc(d.plan)],
+        ['Plan', esc(planName(d.plan))],
         ['Billing', esc(d.billingCycle)],
         ['Amount', inr(d.amount)],
         ['Renews', d.expiresAt && esc(d.expiresAt)],
@@ -777,11 +781,11 @@ export interface SubscriptionCancelledData {
 
 export function subscriptionCancelledEmail(d: SubscriptionCancelledData): Email {
   return {
-    subject: `Your ${d.plan} plan is cancelled`,
+    subject: `Your ${planName(d.plan)} plan is cancelled`,
     html: layout(
       `${h1('Plan cancelled')}
       ${greet(d.userName)}
-      ${p(`Your ${strong(d.plan)} plan is cancelled. You keep everything in it until ${strong(d.expiresAt)}, then your space moves to the Starter plan.`)}
+      ${p(`Your ${strong(planName(d.plan))} plan is cancelled. You keep everything in it until ${strong(d.expiresAt)}, then your space moves to the General plan.`)}
       ${p('Want it back after that? Pick a plan again from billing.')}
       ${button('Open billing', BILLING)}`,
     ),
@@ -798,11 +802,11 @@ export interface SubscriptionExpiringData {
 
 export function subscriptionExpiringEmail(d: SubscriptionExpiringData): Email {
   return {
-    subject: `Your ${d.plan} plan ends on ${d.expiresAt}`,
+    subject: `Your ${planName(d.plan)} plan ends on ${d.expiresAt}`,
     html: layout(
       `${h1('Your plan ends soon')}
       ${greet(d.userName)}
-      ${p(`Your ${strong(d.plan)} plan ends on ${strong(d.expiresAt)}. Renew before then to keep every feature without a gap.`)}
+      ${p(`Your ${strong(planName(d.plan))} plan ends on ${strong(d.expiresAt)}. Renew before then to keep every feature without a gap.`)}
       ${button('Renew plan', d.renewUrl)}
       ${small("If you don't renew, your space moves to the Free plan.")}`,
     ),
@@ -818,11 +822,11 @@ export interface SubscriptionExpiredData {
 
 export function subscriptionExpiredEmail(d: SubscriptionExpiredData): Email {
   return {
-    subject: `Your ${d.plan} plan has ended`,
+    subject: `Your ${planName(d.plan)} plan has ended`,
     html: layout(
       `${h1('Your plan has ended')}
       ${greet(d.userName)}
-      ${p(`Your ${strong(d.plan)} plan ended and your space is now on ${strong(d.downgradedTo)}. Your events and data are safe.`)}
+      ${p(`Your ${strong(planName(d.plan))} plan ended and your space is now on ${strong(planName(d.downgradedTo))}. Your events and data are safe.`)}
       ${button('Renew plan', BILLING)}`,
     ),
   };
@@ -838,11 +842,11 @@ export interface SubscriptionUpgradedData {
 
 export function subscriptionUpgradedEmail(d: SubscriptionUpgradedData): Email {
   return {
-    subject: `You're on ${d.toPlan} now`,
+    subject: `You're on ${planName(d.toPlan)} now`,
     html: layout(
-      `${h1(`Welcome to ${esc(d.toPlan)}`)}
+      `${h1(`Welcome to ${esc(planName(d.toPlan))}`)}
       ${greet(d.userName)}
-      ${p(`You moved from ${strong(d.fromPlan)} to ${strong(d.toPlan)}.`)}
+      ${p(`You moved from ${strong(planName(d.fromPlan))} to ${strong(planName(d.toPlan))}.`)}
       ${d.newFeatures.length ? p(strong('Now unlocked')) + list(d.newFeatures.map(esc)) : ''}
       ${button('Open billing', BILLING)}`,
     ),

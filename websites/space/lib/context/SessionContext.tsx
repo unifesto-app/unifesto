@@ -77,8 +77,8 @@ interface SessionContextValue {
   can: (cap: Capability) => boolean;
   /** True when the current space's plan includes `key`. */
   hasFeature: (key: SpaceFeature) => boolean;
-  /** The current space's plan and billing model, or null while they load. */
-  billing: { plan: string; billingModel: string } | null;
+  /** The current space's plan, or null while it loads. */
+  billing: { plan: string } | null;
   loading: boolean;
   /** Force a re-fetch of the session. */
   refresh: () => Promise<void>;
@@ -195,9 +195,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         access,
         can: (cap) => !!access?.capabilities.includes(cap),
         hasFeature: (key) => featureOn(access, key),
-        billing: access?.plan
-          ? { plan: access.plan.plan, billingModel: access.plan.billingModel }
-          : null,
+        billing: access?.plan ? { plan: access.plan.plan } : null,
         loading,
         refresh: load,
       }}

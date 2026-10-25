@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import { PlanConfigService, SELLABLE_PLANS } from '../subscription/plan-config.service';
+import { PLAN_CATALOG, PLAN_TAGLINES } from '../subscription/plan-limits.config';
 
 /**
  * Public, unauthenticated read of platform settings that clients need in order
@@ -25,9 +26,9 @@ export class PublicConfigController {
   }
 
   /**
-   * The public rate card (A9, D10, T10): each sellable plan's price, platform
-   * fee per paid ticket, limits and feature flags, plus the buyer's
-   * processing fee. The marketing site's /pricing reads this, so it always
+   * The public rate card (A9, D10, T10): each plan's price, platform fee per
+   * paid ticket, limits, feature flags and tagline, the full feature catalog,
+   * plus the buyer's processing fee. The marketing site's /pricing reads this, so it always
    * shows what is actually charged.
    */
   @Get('plan-fees')
@@ -38,7 +39,10 @@ export class PublicConfigController {
       buyerProcessingFeeCapPerTicket: this.platformConfig.getProcessingFeeCapPerTicket(),
       // The whole plan_configs row (T10): /pricing renders limits and
       // features from it too, so the site can't drift from what's enforced.
-      plans: SELLABLE_PLANS.map((plan) => ({ plan, ...this.planConfig.getLimits(plan) })),
+      plans: SELLABLE_PLANS.map((plan) => ({ plan, tagline: PLAN_TAGLINES[plan], ...this.planConfig.getLimits(plan) })),
+      // Every feature, grouped, with the flag or limit that gates it (none =
+      // every plan). Apex, Space billing and /pricing all render this list.
+      catalog: PLAN_CATALOG,
     };
   }
 }

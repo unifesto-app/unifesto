@@ -1,4 +1,4 @@
-import { BillingModel, PaymentStatus } from '@prisma/client';
+import { OrgPlan, PaymentStatus } from '@prisma/client';
 import { PayoutsService } from './payouts.service';
 import { feeAtFrozenRates } from './settle';
 
@@ -17,7 +17,7 @@ describe('PayoutsService event balance', () => {
       event: {
         findUnique: jest.fn(async () => ({
           spaceId: 'space-1',
-          space: { subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: null } },
+          space: { subscription: { plan: OrgPlan.STARTER } },
         })),
       },
       eventRegistration: { findMany: jest.fn(async () => regs) },
@@ -55,7 +55,7 @@ describe('PayoutsService event balance', () => {
     prisma.event.findUnique.mockResolvedValue({
       status: 'CANCELLED',
       spaceId: 'space-1',
-      space: { subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: null } },
+      space: { subscription: { plan: OrgPlan.STARTER } },
     });
     const summary = await svc.getPayoutSummary({ eventId: 'event-1' });
     expect(summary.eventNet).toBe(152);
@@ -97,12 +97,9 @@ describe('PayoutsService event balance', () => {
     );
   });
 
-  it('takes the fee rule from plan config (null rate = model default, not 0%)', async () => {
+  it('takes the fee rule from plan config', async () => {
     const { svc, planConfig } = build();
     await svc.getPayoutSummary({ eventId: 'event-1' });
-    expect(planConfig.resolvePlatformFeePercent).toHaveBeenCalledWith({
-      billingModel: BillingModel.REVENUE_SHARE,
-      revenueSharePercent: null,
-    });
+    expect(planConfig.resolvePlatformFeePercent).toHaveBeenCalledWith({ plan: OrgPlan.STARTER });
   });
 });

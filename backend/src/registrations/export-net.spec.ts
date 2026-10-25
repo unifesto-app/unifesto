@@ -28,7 +28,7 @@ describe('transactions export Net', () => {
           title: 'Fest',
           slug: 'fest',
           spaceId: 'space-1',
-          space: { subscription: { billingModel: 'REVENUE_SHARE', revenueSharePercent: null } },
+          space: { subscription: { plan: 'STARTER' } },
         })),
       },
       userRole: { count: jest.fn(async () => 1) },

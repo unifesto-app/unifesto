@@ -1,4 +1,4 @@
-import { BillingModel, OrgPlan, RoleCode, RoleScope } from '@prisma/client';
+import { OrgPlan, RoleCode, RoleScope } from '@prisma/client';
 import { AuthorizationService } from '../auth/authorization/authorization.service';
 import { CapabilityConfigService } from '../auth/authorization/capability-config.service';
 import { Action } from '../auth/authorization/actions';
@@ -92,11 +92,9 @@ describe('space access (T3)', () => {
     const planConfig = new PlanConfigService({} as any);
     const sub = {
       plan: OrgPlan.PRO,
-      billingModel: BillingModel.SUBSCRIPTION,
       expiresAt: new Date(Date.now() - 30 * 24 * 3600 * 1000),
       cancelledAt: null,
       pendingPlan: null,
-      revenueSharePercent: null,
     };
     const prisma = { orgSubscription: { findUnique: jest.fn().mockResolvedValue(sub) } };
     const svc = new SpacesService(prisma as any, {} as any, {} as any, {} as any, planConfig);

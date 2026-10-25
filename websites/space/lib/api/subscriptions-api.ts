@@ -1,20 +1,19 @@
 /**
  * Subscriptions / billing API — space surface.
  *
- * Billing is per-Space (the P0.2 pivot): a Space is on a plan
- * (STARTER…ENTERPRISE) billed to its accountable admin. Space Admins view and
- * change their own Space's arrangement here; the platform-admin/all-spaces
+ * Billing is per-Space (the P0.2 pivot): a Space is on a plan (General,
+ * Club, Growth, Pro or Enterprise) billed to its accountable admin. Space
+ * Admins view and change their own Space's plan here; the platform-admin/all-spaces
  * views live in Apex. Backed by the NestJS `/subscription/space/:spaceId`
  * endpoints, each gated by `@Can(space:manage-billing)`.
  *
- * Note: Decimal fields (`amount`, `revenueSharePercent`) arrive as strings —
- * coerce with Number() before maths.
+ * Note: `amount` is a Decimal and arrives as a string — coerce with Number()
+ * before maths.
  */
 
 import backendClient, { apiCall, ApiError } from "./backend-client";
 
-export type BillingModel = "FREE" | "REVENUE_SHARE" | "SUBSCRIPTION";
-export type OrgPlan = "STARTER" | "GROWTH" | "PRO" | "ENTERPRISE";
+export type OrgPlan = "STARTER" | "CLUB" | "GROWTH" | "PRO" | "ENTERPRISE";
 export type BillingCycle = "MONTHLY" | "ANNUAL";
 export type SubscriptionStatus = "ACTIVE" | "GRACE" | "EXPIRED";
 
@@ -25,14 +24,12 @@ export interface Subscription {
   spaceId?: string | null;
   /** False when the Space has no arrangement set up yet. */
   configured?: boolean;
-  billingModel: BillingModel | null;
-  revenueSharePercent: string | number | null;
   plan: OrgPlan | null;
   billingCycle: BillingCycle;
   amount: string | number;
   currency: string;
   isActive: boolean;
-  /** From the dates: GRACE = 7 days after expiry, EXPIRED = Starter limits. */
+  /** From the dates: GRACE = 7 days after expiry, EXPIRED = General (STARTER) limits. */
   status?: SubscriptionStatus;
   /** A paid downgrade that starts when this period ends. */
   pendingPlan?: OrgPlan | null;
@@ -57,6 +54,8 @@ export interface Subscription {
 
 export interface PlanInfo {
   plan: OrgPlan;
+  /** Who the plan is for, one line. */
+  tagline?: string;
   spaces: number | null;
   eventsPerMonth: number | null;
   attendeesPerEvent: number | null;
@@ -83,7 +82,6 @@ export interface SubscriptionUsage {
   spacesCount: number;
   eventsThisMonth: number;
   plan: OrgPlan;
-  billingModel?: "FREE" | "SUBSCRIPTION" | "REVENUE_SHARE";
   limits: {
     spaces: number | null;
     eventsPerMonth: number | null;
@@ -95,8 +93,7 @@ export interface SubscriptionUsage {
    * Effective feature flags for this space, computed by the backend from the
    * SAME check its endpoints enforce with. Gate UI controls (e.g. bulk export)
    * on these rather than inferring from `plan`, so the control never disagrees
-   * with the endpoint — FREE / REVENUE_SHARE spaces draw their flags from the
-   * billing-model config, not the plan table.
+   * with the endpoint (a lapsed plan gets General's flags).
    */
   features: {
     hasWaitlist: boolean;
@@ -160,6 +157,31 @@ export async function getSpaceUsage(
   );
 }
 
+export type PlanLimitKey = "spaces" | "eventsPerMonth" | "attendeesPerEvent" | "ticketTypes" | "coCurators";
+export type PlanFeatureFlag = {
+  [K in keyof PlanInfo]-?: PlanInfo[K] extends boolean ? K : never;
+}[keyof PlanInfo];
+
+/** One comparison line: a feature switch, a per-plan limit, or neither (every plan). */
+export interface CatalogRow {
+  label: string;
+  flag?: PlanFeatureFlag;
+  limit?: PlanLimitKey;
+}
+
+export interface PlanCatalog {
+  plans: PlanInfo[];
+  /** Every feature, grouped, as the backend defines it (one list for every plan page). */
+  catalog: { group: string; rows: CatalogRow[] }[];
+  buyerProcessingFeePercent: number;
+  buyerProcessingFeeCapPerTicket: number | null;
+}
+
+/** `GET /config/plan-fees` — every plan plus the full feature catalog. */
+export async function getPlanCatalog(): Promise<Result<PlanCatalog>> {
+  return apiCall<PlanCatalog>(backendClient.get("/config/plan-fees"));
+}
+
 /** `GET /subscription/plans` — plan catalogue with limits + pricing. */
 export async function getAllPlans(): Promise<Result<PlanInfo[]>> {
   return apiCall<PlanInfo[]>(backendClient.get("/subscription/plans"));
@@ -204,41 +226,27 @@ export async function cancelSpaceSubscription(
 /* ------------------------------- Display --------------------------------- */
 
 export const PLAN_LABEL: Record<OrgPlan, string> = {
-  STARTER: "Starter",
+  STARTER: "General",
+  CLUB: "Club",
   GROWTH: "Growth",
   PRO: "Pro",
   ENTERPRISE: "Enterprise",
 };
 
 /** High → low, for ordering the catalogue and deciding upgrade vs downgrade. */
-export const PLAN_ORDER: OrgPlan[] = ["STARTER", "GROWTH", "PRO", "ENTERPRISE"];
+export const PLAN_ORDER: OrgPlan[] = ["STARTER", "CLUB", "GROWTH", "PRO", "ENTERPRISE"];
 
 /** Rank of a plan (index in {@link PLAN_ORDER}); -1 if unknown. */
 export function planRank(plan: OrgPlan | null | undefined): number {
   return plan ? PLAN_ORDER.indexOf(plan) : -1;
 }
 
-/** A short human description of the billing arrangement. */
+/** "Pro · ₹2,999/mo" style label for a space's plan. */
 export function billingSummary(s: Subscription): string {
-  if (s.configured === false || !s.billingModel) return "No arrangement set";
-  switch (s.billingModel) {
-    case "FREE":
-      return "Free — no platform fee";
-    case "REVENUE_SHARE": {
-      const pct = s.revenueSharePercent ?? 0;
-      return `${Number(pct)}% of event sales`;
-    }
-    case "SUBSCRIPTION": {
-      const amt = Number(s.amount) || 0;
-      const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
-      const planLabel = s.plan ? PLAN_LABEL[s.plan] : "Custom";
-      return amt > 0
-        ? `${planLabel} · ₹${amt.toLocaleString("en-IN")}/${cycle}`
-        : planLabel;
-    }
-    default:
-      return "—";
-  }
+  if (s.configured === false || !s.plan) return "No plan set";
+  const amt = Number(s.amount) || 0;
+  const cycle = s.billingCycle === "ANNUAL" ? "yr" : "mo";
+  return amt > 0 ? `${PLAN_LABEL[s.plan]} · ₹${amt.toLocaleString("en-IN")}/${cycle}` : PLAN_LABEL[s.plan];
 }
 
 /** The price for a plan on a given cycle (₹, or null when not purchasable). */

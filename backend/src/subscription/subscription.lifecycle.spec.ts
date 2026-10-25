@@ -30,7 +30,7 @@ describe('subscriptionStatus (T8)', () => {
   });
   it('an expired plan gets Starter limits; grace keeps its own', () => {
     const cfg = new PlanConfigService({} as any);
-    const sub = { billingModel: 'SUBSCRIPTION' as const, ...pro };
+    const sub = { ...pro };
     jest.useFakeTimers().setSystemTime(at(3 * DAY));
     expect(cfg.getEffectiveLimits(sub)).toEqual(cfg.getLimits('PRO'));
     jest.setSystemTime(at(8 * DAY));
@@ -146,7 +146,6 @@ describe('SubscriptionService lifecycle', () => {
     const expiresAt = new Date(Date.now() + 10 * 86400000);
     const { svc, prisma, email } = build({
       plan: 'PRO',
-      billingModel: 'SUBSCRIPTION',
       expiresAt,
       cancelledAt: null,
     });
@@ -158,24 +157,10 @@ describe('SubscriptionService lifecycle', () => {
     expect(email.sendSubscriptionCancelled.mock.calls[0][0].expiresAt).not.toBe('immediately');
   });
 
-  it.each(['FREE', 'REVENUE_SHARE'])('blocks plan checkout on %s billing', async (billingModel) => {
-    const { svc, prisma } = build({ plan: 'STARTER', billingModel, billingCycle: 'MONTHLY' });
-    await expect(
-      svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any),
-    ).rejects.toThrow(/arranged by Unifesto/);
-    expect((svc as any).razorpay.orders.create).not.toHaveBeenCalled();
-    expect(prisma.orgSubscription.update).not.toHaveBeenCalled();
-  });
-
-  it('a space deal naming the plan unblocks a FREE space at the deal price and moves it to SUBSCRIPTION (T4)', async () => {
-    const { svc, prisma } = build({ plan: 'STARTER', billingModel: 'FREE', billingCycle: 'MONTHLY' });
+  it('a space deal naming the plan prices its checkout (T4)', async () => {
+    const { svc, prisma } = build({ plan: 'STARTER', billingCycle: 'MONTHLY' });
     const deal = { id: 'deal-1', plan: 'PRO', billingCycle: null, planPricePaise: 50_000 };
     (svc as any).terms = { activeDeal: jest.fn(async () => deal) };
-
-    // Another plan than the deal's stays blocked.
-    await expect(
-      svc.createUpgradeOrderForSpace('space-A', { plan: 'ENTERPRISE', billingCycle: 'MONTHLY' } as any),
-    ).rejects.toThrow(/arranged by Unifesto/);
 
     const quote = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any);
     expect(quote).toMatchObject({ amount: 500 });
@@ -184,7 +169,7 @@ describe('SubscriptionService lifecycle', () => {
 
     await svc.completeFromWebhook('o', 'p', { id: 'o', status: 'paid', amount: 50_000, notes });
     const data = prisma.orgSubscription.update.mock.calls[0][0].data;
-    expect(data).toMatchObject({ plan: 'PRO', billingModel: 'SUBSCRIPTION' });
+    expect(data).toMatchObject({ plan: 'PRO' });
     expect(Number(data.amount)).toBe(500);
 
     // A comped deal (0) is never sold through checkout.
@@ -202,7 +187,7 @@ describe('SubscriptionService lifecycle', () => {
       notes: { spaceId: 'space-A', plan: 'PRO', billingCycle: 'MONTHLY' },
     };
     const { svc, prisma } = build(
-      { plan: 'PRO', billingModel: 'SUBSCRIPTION', expiresAt, cancelledAt: new Date() },
+      { plan: 'PRO', expiresAt, cancelledAt: new Date() },
       order,
     );
     const signature = crypto.createHmac('sha256', SECRET).update('o|p').digest('hex');
@@ -214,7 +199,6 @@ describe('SubscriptionService lifecycle', () => {
 
   const proMonthly = (expiresAt: Date, lastPaymentAt: Date | null = null) => ({
     plan: 'PRO',
-    billingModel: 'SUBSCRIPTION',
     billingCycle: 'MONTHLY',
     expiresAt,
     lastPaymentAt,
@@ -226,7 +210,7 @@ describe('SubscriptionService lifecycle', () => {
     const expiresAt = new Date('2099-03-10T04:30:00Z');
     const { svc } = build(proMonthly(expiresAt));
     const quote = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any);
-    expect(quote).toMatchObject({ kind: 'renew', amount: 1499, credit: 0 });
+    expect(quote).toMatchObject({ kind: 'renew', amount: 2999, credit: 0 });
     expect(((svc as any).razorpay.orders.create.mock.calls[0][0].receipt as string).length).toBeLessThanOrEqual(40);
 
     const order = { id: 'o', status: 'paid', amount: 49900, notes: { spaceId: 'space-A', plan: 'PRO', billingCycle: 'MONTHLY', kind: 'renew' } };
@@ -241,9 +225,9 @@ describe('SubscriptionService lifecycle', () => {
     const { svc } = build(proMonthly(new Date('2027-02-28T04:30:00Z'), new Date('2027-01-31T04:30:00Z')));
     const quote = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'ANNUAL' } as any);
     jest.useRealTimers();
-    // Pro ₹1,499/mo, 14 of 28 days left: ₹749.50 off Pro annual ₹13,999.
-    expect(quote).toMatchObject({ kind: 'upgrade', credit: 749.5, amount: 13249.5 });
-    expect((svc as any).razorpay.orders.create.mock.calls[0][0].amount).toBe(1399900 - 74950);
+    // Pro ₹2,999/mo, 14 of 28 days left: ₹1,499.50 off Pro annual ₹29,990.
+    expect(quote).toMatchObject({ kind: 'upgrade', credit: 1499.5, amount: 28490.5 });
+    expect((svc as any).razorpay.orders.create.mock.calls[0][0].amount).toBe(2999000 - 149950);
   });
 
   it('a downgrade is paid now and starts at period end', async () => {

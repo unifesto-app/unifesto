@@ -1,4 +1,4 @@
-import { BillingModel, Prisma } from '@prisma/client';
+import { OrgPlan, Prisma } from '@prisma/client';
 import { PayoutsService, payoutSource } from './payouts.service';
 import { PlanConfigService } from '../subscription/plan-config.service';
 
@@ -14,7 +14,7 @@ describe('session payouts', () => {
       session: {
         findUnique: jest.fn(async () => ({
           title: 'Resume clinic', createdBy: 'host', spaceId: 'sp-1', status: sessionStatus,
-          space: { subscription: { billingModel: BillingModel.REVENUE_SHARE, revenueSharePercent: d(10) } },
+          space: { subscription: { plan: OrgPlan.CLUB } },
         })),
         findMany: jest.fn(async () => []),
       },
@@ -31,7 +31,10 @@ describe('session payouts', () => {
       $executeRaw: jest.fn(),
     };
     prisma.$transaction = jest.fn(async (fn: (tx: any) => unknown) => fn(prisma));
-    const svc = new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any));
+    // Club's rate today is 10%.
+    const planConfig = new PlanConfigService({} as any);
+    jest.spyOn(planConfig, 'getLimits').mockReturnValue({ platformFeePercent: 10 } as any);
+    const svc = new PayoutsService(prisma, {} as any, {} as any, planConfig);
     return { svc, prisma, created };
   };
 

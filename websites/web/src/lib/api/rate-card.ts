@@ -1,5 +1,5 @@
 import { apiBase, withInternal } from "@/lib/api/internal";
-import { BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLANS, planIncludes, platformFeeFrom, type Plan, type PlanRow } from "@/lib/site";
+import { BUYER_PROCESSING_FEE, BUYER_PROCESSING_FEE_CAP, PLANS, planIncludes, platformFeeFrom, type Catalog, type Plan, type PlanRow } from "@/lib/site";
 
 /**
  * The live rate card (A9, D10, T10): each plan's price, platform fee, limits
@@ -19,12 +19,15 @@ export interface RateCard {
   buyerFeeCap: number | null;
   /** "2 Nov 2026" until the platform fee starts (copy says "from ..."), then null. */
   feeFrom: string | null;
+  /** Every feature, grouped, from the backend (empty if the API is unreachable). */
+  catalog: Catalog;
 }
 
 interface PlanFeesResponse {
   buyerProcessingFeePercent: number;
   buyerProcessingFeeCapPerTicket?: number | null;
-  plans: (PlanRow & { plan: string; platformFeePercent: number; monthlyPrice: number | null; annualPrice: number | null })[];
+  plans: (PlanRow & { plan: string; tagline?: string; platformFeePercent: number; monthlyPrice: number | null; annualPrice: number | null })[];
+  catalog?: Catalog;
 }
 
 export async function getRateCard(): Promise<RateCard> {
@@ -41,6 +44,8 @@ export async function getRateCard(): Promise<RateCard> {
       const prev = listed[i - 1];
       return {
         ...p,
+        forWho: row.tagline ?? p.forWho,
+        row,
         // Rates sit at 0 until an admin sets them on go-live day (D10); until
         // then show the announced rate, worded "from <date>".
         fee: fee > 0 || !feeFrom ? fee : p.fee,
@@ -55,8 +60,9 @@ export async function getRateCard(): Promise<RateCard> {
       buyerFee: Number(data.buyerProcessingFeePercent),
       buyerFeeCap: Number(data.buyerProcessingFeeCapPerTicket) || null,
       feeFrom,
+      catalog: data.catalog ?? [],
     };
   } catch {
-    return { plans: PLANS, buyerFee: BUYER_PROCESSING_FEE, buyerFeeCap: BUYER_PROCESSING_FEE_CAP, feeFrom: platformFeeFrom() };
+    return { plans: PLANS, buyerFee: BUYER_PROCESSING_FEE, buyerFeeCap: BUYER_PROCESSING_FEE_CAP, feeFrom: platformFeeFrom(), catalog: [] };
   }
 }

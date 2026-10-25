@@ -23,7 +23,6 @@ import {
   RecordOfflinePaymentDto,
   SubscriptionResponseDto,
   SubscriptionUsageDto,
-  UpdateBillingModelConfigDto,
   UpdatePlanConfigDto,
   UpgradeSubscriptionDto,
   VerifyUpgradeDto,
@@ -32,7 +31,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Action, Can, CanGuard } from '../auth/authorization';
-import { RoleCode, BillingModel, OrgPlan } from '@prisma/client';
+import { RoleCode, OrgPlan } from '@prisma/client';
 import { toPage, toLimit } from '../common/pagination';
 
 @ApiTags('Subscription')
@@ -105,18 +104,16 @@ export class SubscriptionController {
 
   @Get('admin/spaces')
   @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Get every space with its billing arrangement (admin only)' })
+  @ApiOperation({ summary: 'Get every space with its plan (admin only)' })
   @ApiResponse({ status: 200 })
   async getAllSpaceSubscriptions(
     @Query('page') page = 1,
     @Query('limit') limit = 20,
-    @Query('billingModel') billingModel?: BillingModel,
     @Query('plan') plan?: OrgPlan,
     @Query('isActive') isActive?: string,
     @Query('search') search?: string,
   ) {
     return this.subscriptionService.getAllSpaceSubscriptions(toPage(page), toLimit(limit), {
-      billingModel,
       plan,
       isActive:
         isActive === 'true' ? true : isActive === 'false' ? false : undefined,
@@ -141,24 +138,6 @@ export class SubscriptionController {
     @Body() dto: UpdatePlanConfigDto,
   ) {
     return this.subscriptionService.updatePlanConfig(plan, dto);
-  }
-
-  @Get('models')
-  @ApiOperation({ summary: 'Billing-model definitions (Free, Revenue-share)' })
-  @ApiResponse({ status: 200 })
-  async getBillingModels() {
-    return this.subscriptionService.getBillingModels();
-  }
-
-  @Patch('admin/models/:model')
-  @Roles(RoleCode.ADMIN)
-  @ApiOperation({ summary: 'Edit a Free / Revenue-share definition (admin)' })
-  @ApiResponse({ status: 200 })
-  async updateBillingModel(
-    @Param('model') model: BillingModel,
-    @Body() dto: UpdateBillingModelConfigDto,
-  ) {
-    return this.subscriptionService.updateBillingModel(model, dto);
   }
 
   @Patch('admin/space/:spaceId')

@@ -1,4 +1,4 @@
-import { BillingModel, OrgPlan } from '@prisma/client';
+import { OrgPlan } from '@prisma/client';
 import { PlanConfigService } from './plan-config.service';
 import { TermsService, dealColumns } from './terms.service';
 
@@ -13,8 +13,9 @@ describe('TermsService.resolve', () => {
         ({
           platformFeePercent: {
             STARTER: 2.5,
-            GROWTH: 2.5,
-            PRO: 1.5,
+            CLUB: 2,
+            GROWTH: 1.5,
+            PRO: 1.25,
             ENTERPRISE: 1,
           }[plan],
         }) as any,
@@ -35,7 +36,6 @@ describe('TermsService.resolve', () => {
     };
   };
   const pro = {
-    billingModel: BillingModel.SUBSCRIPTION,
     plan: OrgPlan.PRO,
     billingCycle: 'MONTHLY',
   };
@@ -59,20 +59,16 @@ describe('TermsService.resolve', () => {
       planPricePaise: null,
       buyerFeeBps: 500,
       buyerFeeCapPaise: 9_900,
-      organiserFeeBps: 150,
+      organiserFeeBps: 125,
       organiserFeeFromDeal: false,
     });
   });
 
-  it('REVENUE_SHARE becomes organiserFeeBps; FREE is 0', async () => {
-    const rs = {
-      billingModel: BillingModel.REVENUE_SHARE,
-      plan: OrgPlan.STARTER,
-      revenueSharePercent: 8,
-    };
-    expect((await build([], rs).svc.resolve('s')).organiserFeeBps).toBe(800);
-    const free = { billingModel: BillingModel.FREE, plan: OrgPlan.STARTER };
-    expect((await build([], free).svc.resolve('s')).organiserFeeBps).toBe(0);
+  it('each plan pays its own rate; no subscription pays 0', async () => {
+    const fee = async (plan: OrgPlan) => (await build([], { plan }).svc.resolve('s')).organiserFeeBps;
+    expect(await fee(OrgPlan.CLUB)).toBe(200);
+    expect(await fee(OrgPlan.GROWTH)).toBe(150);
+    expect((await build([], null).svc.resolve('s')).organiserFeeBps).toBe(0);
   });
 
   it('a space deal overrides only the fields it sets', async () => {
@@ -81,7 +77,7 @@ describe('TermsService.resolve', () => {
     expect(t).toMatchObject({
       dealId: 'space',
       buyerFeeBps: 300,
-      organiserFeeBps: 150,
+      organiserFeeBps: 125,
       organiserFeeFromDeal: false,
     });
   });

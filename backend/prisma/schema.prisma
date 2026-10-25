@@ -110,7 +110,8 @@ enum SubSpaceRequestType {
 }
 
 enum OrgPlan {
-  STARTER
+  STARTER // shown as "General"
+  CLUB
   GROWTH
   PRO
   ENTERPRISE
@@ -123,15 +124,6 @@ enum BillingCycle {
   ANNUAL
 
   @@map("billing_cycle")
-}
-
-// How an organiser is billed by the platform.
-enum BillingModel {
-  FREE // onboarded free — no platform fee, no subscription
-  REVENUE_SHARE // platform takes a % of event sales
-  SUBSCRIPTION // recurring plan fee (STARTER..ENTERPRISE)
-
-  @@map("billing_model")
 }
 
 enum EventType {
@@ -440,11 +432,11 @@ model User {
   mobileVerified Boolean @default(false) @map("mobile_verified")
 
   // Profile
-  username  String? @unique @db.VarChar(50)
-  fullName  String? @map("full_name") @db.VarChar(255)
-  avatarUrl String? @map("avatar_url") @db.Text
-  bio       String? @db.Text
-  gender    String? @db.VarChar(30)
+  username       String?   @unique @db.VarChar(50)
+  fullName       String?   @map("full_name") @db.VarChar(255)
+  avatarUrl      String?   @map("avatar_url") @db.Text
+  bio            String?   @db.Text
+  gender         String?   @db.VarChar(30)
   // Z11 (DPDP): when the user confirmed they are 18 or older. Null = never
   // asked (pre-5.0.0 accounts). Under-18s are registered by the organiser as
   // guests (manual add/import), never by self sign-up.
@@ -1249,11 +1241,6 @@ model OrgSubscription {
   spaceId String? @unique @map("space_id") @db.Uuid
   space   Space?  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
 
-  // How this organiser is billed by the platform.
-  billingModel        BillingModel @default(SUBSCRIPTION) @map("billing_model")
-  // For REVENUE_SHARE: platform's cut of event sales, e.g. 8.00 (%).
-  revenueSharePercent Decimal?     @map("revenue_share_percent") @db.Decimal(5, 2)
-
   plan         OrgPlan      @default(STARTER)
   billingCycle BillingCycle @default(MONTHLY) @map("billing_cycle")
   amount       Decimal      @default(0) @db.Decimal(10, 2)
@@ -1290,21 +1277,21 @@ model SubscriptionHistory {
   subscriptionId String          @map("subscription_id") @db.Uuid
   subscription   OrgSubscription @relation(fields: [subscriptionId], references: [id])
 
-  fromPlan  OrgPlan  @map("from_plan")
-  toPlan    OrgPlan  @map("to_plan")
-  reason    String?  @db.VarChar(500)
-  changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  fromPlan    OrgPlan  @map("from_plan")
+  toPlan      OrgPlan  @map("to_plan")
+  reason      String?  @db.VarChar(500)
+  changedAt   DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
   // Razorpay payment that paid for this change; unique so one receipt upgrades once.
-  paymentId String?  @unique @map("payment_id") @db.VarChar(255)
+  paymentId   String?  @unique @map("payment_id") @db.VarChar(255)
   // Razorpay order it paid; unique so verify + webhook activate an order once.
-  orderId     String? @unique @map("order_id") @db.VarChar(255)
+  orderId     String?  @unique @map("order_id") @db.VarChar(255)
   // What was actually paid (paise), Razorpay or offline.
-  amountPaise Int?    @map("amount_paise")
+  amountPaise Int?     @map("amount_paise")
   /// Plan price this payment bought, before any proration credit (T6). Credit
   /// on a later change and MRR read it; null on payments before T6.
-  pricePaise  Int?    @map("price_paise")
+  pricePaise  Int?     @map("price_paise")
   /// The deal the plan was sold under (T6); null = rate card.
-  dealId      String? @map("deal_id") @db.Uuid
+  dealId      String?  @map("deal_id") @db.Uuid
 
   @@map("subscription_history")
 }
@@ -1384,8 +1371,8 @@ model Deal {
   billingCycle    BillingCycle? @map("billing_cycle")
   /// Buyer fee in basis points (500 = 5%). The ₹99/ticket cap still applies.
   buyerFeeBps     Int?          @map("buyer_fee_bps")
-  /// Organiser platform fee in basis points (150 = 1.5%). Replaces a
-  /// REVENUE_SHARE rate for this space or event.
+  /// Organiser platform fee in basis points (150 = 1.5%). Replaces the
+  /// plan's rate for this space or event.
   organiserFeeBps Int?          @map("organiser_fee_bps")
 
   validFrom  DateTime  @default(now()) @map("valid_from") @db.Timestamptz(6)
@@ -1396,45 +1383,6 @@ model Deal {
 
   @@index([spaceId])
   @@map("deals")
-}
-
-// Admin-editable definition of the non-subscription billing models
-// (FREE and REVENUE_SHARE). Same limit/feature set as a plan, plus a default
-// platform cut for revenue-share. Drives what those organisers can do.
-model BillingModelConfig {
-  billingModel BillingModel @id @map("billing_model")
-
-  // For REVENUE_SHARE: the % prefilled when assigning this model.
-  defaultRevenueSharePercent Decimal? @map("default_revenue_share_percent") @db.Decimal(5, 2)
-
-  // Limits (null = unlimited)
-  spaces            Int?
-  eventsPerMonth    Int? @map("events_per_month")
-  attendeesPerEvent Int? @map("attendees_per_event")
-  ticketTypes       Int? @map("ticket_types")
-  coCurators        Int? @map("co_organisers")
-
-  // Feature flags
-  hasWaitlist        Boolean @default(false) @map("has_waitlist")
-  hasBulkExport      Boolean @default(false) @map("has_bulk_export")
-  hasAnalytics       Boolean @default(false) @map("has_analytics")
-  hasWhatsappBlast   Boolean @default(false) @map("has_whatsapp_blast")
-  hasRecurringEvents Boolean @default(false) @map("has_recurring_events")
-  hasRemoveBranding  Boolean @default(false) @map("has_remove_branding")
-  hasPrioritySupport Boolean @default(false) @map("has_priority_support")
-  // Gates the whole Sessions feature: creating, listing and hosting them.
-  hasSessions        Boolean @default(false) @map("has_sessions")
-  // Gates the competitive dashboard (hack.unifesto.app): whether an event may
-  // have a leaderboard at all. Per-event on/off lives on Leaderboard.enabled.
-  hasLeaderboard     Boolean @default(false) @map("has_leaderboard")
-  // Gates the certificate system: designing templates and issuing certificates.
-  hasCertificates    Boolean @default(false) @map("has_certificates")
-  // Gates the sponsors & lead-generation feature (see PlanConfig.hasSponsors).
-  hasSponsors        Boolean @default(false) @map("has_sponsors")
-
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  @@map("billing_model_configs")
 }
 
 // =====================================================
@@ -2991,7 +2939,7 @@ model Payout {
 
   // Bank UTR / reference of the manual transfer. Required to mark paid (A32);
   // unique among payouts marked paid since then (partial index payouts_paid_utr_key).
-  utr String? @db.VarChar(50)
+  utr      String?   @db.VarChar(50)
   // The platform admin who marked it paid, and when (A32).
   paidById String?   @map("paid_by_id") @db.Uuid
   paidAt   DateTime? @map("paid_at") @db.Timestamptz(6)
@@ -3440,22 +3388,22 @@ model SessionRegistration {
 
   // Payment. Mirrors the money columns on EventRegistration —
   // sessions are Razorpay-only in v1. razorpayAmount == totalAmount for now.
-  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
-  razorpayAmount Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
-  processingFee  Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
-  refundedAmount Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
+  totalAmount        Decimal       @default(0) @map("total_amount") @db.Decimal(10, 2)
+  razorpayAmount     Decimal       @default(0) @map("razorpay_amount") @db.Decimal(10, 2)
+  processingFee      Decimal       @default(0) @map("processing_fee") @db.Decimal(10, 2)
+  refundedAmount     Decimal       @default(0) @map("refunded_amount") @db.Decimal(10, 2)
   /// Deal whose terms priced this sale (T5); null = rate card.
-  dealId         String?       @map("deal_id") @db.Uuid
+  dealId             String?       @map("deal_id") @db.Uuid
   /// Organiser fee % frozen when paid (T6, as A21 on tickets): the deal's own
   /// fee, else stamped by the session_registrations trigger.
-  platformFeePercent Decimal?  @map("platform_fee_percent") @db.Decimal(5, 2)
-  paymentStatus  PaymentStatus @default(PENDING) @map("payment_status")
-  paymentId      String?       @unique @map("payment_id") @db.VarChar(255)
-  orderId        String?       @map("order_id") @db.VarChar(255)
-  paidAt         DateTime?     @map("paid_at") @db.Timestamptz(6)
+  platformFeePercent Decimal?      @map("platform_fee_percent") @db.Decimal(5, 2)
+  paymentStatus      PaymentStatus @default(PENDING) @map("payment_status")
+  paymentId          String?       @unique @map("payment_id") @db.VarChar(255)
+  orderId            String?       @map("order_id") @db.VarChar(255)
+  paidAt             DateTime?     @map("paid_at") @db.Timestamptz(6)
   /// Set when this payment must go back (session cancelled, or it filled up
   /// while being paid). Claimed before Razorpay is called; a retry job clears it.
-  refundDueAt    DateTime?     @map("refund_due_at") @db.Timestamptz(6)
+  refundDueAt        DateTime?     @map("refund_due_at") @db.Timestamptz(6)
 
   status RegistrationStatus @default(REGISTERED)
 
@@ -5768,7 +5716,7 @@ model StayBooking {
   /// Platform fee % frozen on the sale when it was paid (A21), set by the
   /// stamp_platform_fee trigger. Payouts charge this, never today's rate.
   /// Deal whose terms priced this sale (T5); null = rate card.
-  dealId             String?       @map("deal_id") @db.Uuid
+  dealId             String?         @map("deal_id") @db.Uuid
   platformFeePercent Decimal?        @map("platform_fee_percent") @db.Decimal(5, 2)
   /// Set while a captured payment that couldn't be honoured (sold out / closed
   /// while it was being paid) still has to go back in full. A retry job clears

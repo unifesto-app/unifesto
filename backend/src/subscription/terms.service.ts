@@ -82,9 +82,8 @@ export interface CreateDealInput {
  * Resolves what a space (or one of its events) is charged (T4): the active
  * event deal, else the active space deal, else the rate card of the space's
  * plan. Any field a deal leaves null falls back to the rate card. The rate
- * card's organiser fee is resolvePlatformFeePercent (plan_configs for
- * SUBSCRIPTION, the space's revenue share for REVENUE_SHARE, 0 for FREE), so
- * it never drifts from D10; the buyer fee is PlatformConfig's 5% / ₹99 (D11).
+ * card's organiser fee is resolvePlatformFeePercent (the plan's rate in
+ * plan_configs), so it never drifts from D10; the buyer fee is PlatformConfig's 4% / ₹99 (D11).
  */
 @Injectable()
 export class TermsService {
@@ -141,12 +140,7 @@ export class TermsService {
       this.activeDeal(spaceId, eventId, at),
       this.prisma.orgSubscription.findUnique({
         where: { spaceId },
-        select: {
-          billingModel: true,
-          plan: true,
-          billingCycle: true,
-          revenueSharePercent: true,
-        },
+        select: { plan: true, billingCycle: true },
       }),
     ]);
     const rate = rateCardFees(this.platformConfig);
@@ -186,7 +180,7 @@ export class TermsService {
   async createDeal(spaceId: string, input: CreateDealInput, createdBy: string) {
     if (input.plan && !SELLABLE_PLANS.includes(input.plan)) {
       throw new BadRequestException(
-        'That plan is retired; pick Starter, Pro or Enterprise',
+        'That plan is not available',
       );
     }
     if (input.eventId) {

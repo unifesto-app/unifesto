@@ -408,11 +408,11 @@ export interface SpaceFinancials extends FinancialsFigures {
   spaceId: string;
   name: string;
   slug: string;
-  /** Revenue-share cut percent (0 for subscription/free spaces). */
+  /** The space's plan rate today (each sale keeps the rate frozen on it). */
   feePercent: number;
-  billingModel: string | null;
+  plan: string | null;
   eventCount: number;
-  /** This space's take-home: processing fees + its revenue-share cut. */
+  /** This space's take-home: processing fees + its platform fee. */
   platformEarnings: number;
   events: EventFinancials[];
 }

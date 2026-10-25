@@ -16,38 +16,36 @@ const migration = (name: string) =>
 
 const num = (v: string) => (v === 'NULL' ? null : Number(v));
 
-/** The seed rows of 20260712110000_add_plan_configs, by plan. */
+/** The lineup rows of 20261117100000_plan_lineup, by plan. */
 function seedRows() {
-  const sql = migration('20260712110000_add_plan_configs');
+  const sql = migration('20261117100000_plan_lineup');
   const rows = new Map<string, string[]>();
-  for (const m of sql.matchAll(/\('(STARTER|GROWTH|PRO|ENTERPRISE)',([^)]*)\)/g)) {
+  for (const m of sql.matchAll(/\('(STARTER|CLUB|GROWTH|PRO|ENTERPRISE)',([^)]*)\)/g)) {
     rows.set(m[1], m[2].split(',').map((v) => v.trim()));
   }
   return rows;
 }
 
-describe('PLAN_LIMITS matches the plan_configs seed', () => {
+const FLAGS = [
+  'hasWaitlist', 'hasBulkExport', 'hasAnalytics', 'hasWhatsappBlast', 'hasRecurringEvents',
+  'hasRemoveBranding', 'hasPrioritySupport', 'hasSessions', 'hasLeaderboard', 'hasCertificates', 'hasSponsors',
+] as const;
+
+describe('PLAN_LIMITS matches the plan_configs lineup', () => {
   const rows = seedRows();
 
   it.each(Object.values(OrgPlan))('%s', (plan) => {
     const v = rows.get(plan)!;
     expect(v).toBeDefined();
     const l = PLAN_LIMITS[plan];
-    // Column order of the seed INSERT (processing_fee_percent, v[12], was
-    // renamed to platform_fee_percent and reset to 0 by 20261023100000).
+    // Column order of the lineup INSERT: 5 limits, 11 flags, 2 prices.
     expect({
       spaces: l.spaces,
       eventsPerMonth: l.eventsPerMonth,
       attendeesPerEvent: l.attendeesPerEvent,
       ticketTypes: l.ticketTypes,
       coCurators: l.coCurators,
-      hasWaitlist: l.hasWaitlist,
-      hasBulkExport: l.hasBulkExport,
-      hasAnalytics: l.hasAnalytics,
-      hasWhatsappBlast: l.hasWhatsappBlast,
-      hasRecurringEvents: l.hasRecurringEvents,
-      hasRemoveBranding: l.hasRemoveBranding,
-      hasPrioritySupport: l.hasPrioritySupport,
+      ...Object.fromEntries(FLAGS.map((f) => [f, l[f]])),
       monthlyPrice: l.monthlyPrice,
       annualPrice: l.annualPrice,
     }).toEqual({
@@ -56,23 +54,16 @@ describe('PLAN_LIMITS matches the plan_configs seed', () => {
       attendeesPerEvent: num(v[2]),
       ticketTypes: num(v[3]),
       coCurators: num(v[4]),
-      hasWaitlist: v[5] === 'true',
-      hasBulkExport: v[6] === 'true',
-      hasAnalytics: v[7] === 'true',
-      hasWhatsappBlast: v[8] === 'true',
-      hasRecurringEvents: v[9] === 'true',
-      hasRemoveBranding: v[10] === 'true',
-      hasPrioritySupport: v[11] === 'true',
-      monthlyPrice: num(v[13]),
-      annualPrice: num(v[14]),
+      ...Object.fromEntries(FLAGS.map((f, i) => [f, v[5 + i] === 'true'])),
+      monthlyPrice: num(v[16]),
+      annualPrice: num(v[17]),
     });
   });
 
-  it('platform fees ship at 0 (A9 migration), certificates on PRO and ENTERPRISE', () => {
+  it('platform fees ship at 0 (A9 migration), and the lineup leaves them alone', () => {
     expect(migration('20261023100000_organiser_platform_fee')).toMatch(/SET "platform_fee_percent" = 0/);
+    expect(migration('20261117100000_plan_lineup')).not.toMatch(/"platform_fee_percent" =/);
     expect(Object.values(PLAN_LIMITS).every((l) => l.platformFeePercent === 0)).toBe(true);
-    expect(migration('20260729140000_add_certificates')).toMatch(/has_certificates" = true WHERE "plan" IN \('PRO', 'ENTERPRISE'\)/);
-    expect(Object.entries(PLAN_LIMITS).filter(([, l]) => l.hasCertificates).map(([p]) => p)).toEqual(['PRO', 'ENTERPRISE']);
   });
 });
 

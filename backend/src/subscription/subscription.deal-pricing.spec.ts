@@ -37,7 +37,7 @@ const deal = (over: any) => ({
 });
 
 const build = (row: any, deals: any[] = [], lastPayment: any = null) => {
-  const state = { id: 'sub-1', spaceId: 'space-A', billingModel: 'SUBSCRIPTION', cancelledAt: null, pendingPlan: null, lastPaymentAt: null, ...row };
+  const state = { id: 'sub-1', spaceId: 'space-A', cancelledAt: null, pendingPlan: null, lastPaymentAt: null, ...row };
   const prisma: any = {
     orgSubscription: {
       findUnique: jest.fn(async () => ({ ...state })),
@@ -93,7 +93,7 @@ describe('plan checkout parity without a deal (T6)', () => {
   const legacyAmountPaise = (sub: any, plan: OrgPlan, cycle: BillingCycle, now: Date) => {
     const limits = planConfig.getLimits(plan);
     const price = (cycle === 'MONTHLY' ? limits.monthlyPrice : limits.annualPrice)! * 100;
-    const rank = { STARTER: 0, GROWTH: 1, PRO: 2, ENTERPRISE: 3 } as const;
+    const rank = { STARTER: 0, CLUB: 1, GROWTH: 2, PRO: 3, ENTERPRISE: 4 } as const;
     const diff = rank[plan] - rank[sub.plan as OrgPlan] || (cycle === 'ANNUAL' ? 1 : 0) - (sub.billingCycle === 'ANNUAL' ? 1 : 0);
     const paidLeft = sub.plan !== 'STARTER' && sub.expiresAt && sub.expiresAt > now;
     if (diff <= 0 || !paidLeft) return price;
@@ -164,9 +164,9 @@ describe('plan pricing under a deal (T6)', () => {
     const { svc, prisma } = build({ plan: 'STARTER', billingCycle: 'MONTHLY' });
     const q = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any);
     const order = (svc as any).razorpay.orders.create.mock.calls[0][0];
-    expect(q.amount).toBe(1499);
+    expect(q.amount).toBe(2999);
     await svc.completeFromWebhook('o', 'p', { id: 'o', status: 'paid', amount: order.amount, notes: order.notes });
-    expect(prisma.subscriptionHistory.createMany.mock.calls[0][0].data[0]).toMatchObject({ pricePaise: 149_900, dealId: null });
+    expect(prisma.subscriptionHistory.createMany.mock.calls[0][0].data[0]).toMatchObject({ pricePaise: 299_900, dealId: null });
   });
 
   it('upgrade credit is at what the period cost, not list price', async () => {
@@ -174,8 +174,8 @@ describe('plan pricing under a deal (T6)', () => {
     // Paid ₹600 for this Pro month under a deal that has since ended.
     const { svc } = build(proMonthly, [], { toPlan: 'PRO', pricePaise: 60_000 });
     const q = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'ANNUAL' } as any);
-    // 14 of 28 days left of ₹600 = ₹300 off the rate-card annual ₹13,999.
-    expect(q).toMatchObject({ kind: 'upgrade', credit: 300, amount: 13_699 });
+    // 14 of 28 days left of ₹600 = ₹300 off the rate-card annual ₹29,990.
+    expect(q).toMatchObject({ kind: 'upgrade', credit: 300, amount: 29_690 });
   });
 
   it('a comped plan (deal price 0, never paid) earns no credit and is never sold', async () => {
@@ -184,7 +184,7 @@ describe('plan pricing under a deal (T6)', () => {
     const { svc } = build(proMonthly, [comp]);
     // Annual isn't comped, so it sells at the rate card with no credit.
     const q = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'ANNUAL' } as any);
-    expect(q).toMatchObject({ credit: 0, amount: 13_999 });
+    expect(q).toMatchObject({ credit: 0, amount: 29_990 });
     await expect(
       svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any),
     ).rejects.toThrow(/via payment/);
@@ -194,7 +194,7 @@ describe('plan pricing under a deal (T6)', () => {
     const ended = deal({ planPricePaise: 1_000, validUntil: new Date(Date.now() - DAY) });
     const { svc } = build({ plan: 'STARTER', billingCycle: 'MONTHLY' }, [ended]);
     const q = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any);
-    expect(q.amount).toBe(1499);
+    expect(q.amount).toBe(2999);
     expect((svc as any).razorpay.orders.create.mock.calls[0][0].notes.dealId).toBeUndefined();
   });
 

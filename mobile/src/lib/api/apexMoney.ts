@@ -52,7 +52,7 @@ export interface SpaceFinancials extends FinancialsFigures {
   name: string;
   slug: string;
   feePercent: number;
-  billingModel: string | null;
+  plan: string | null;
   eventCount: number;
   platformEarnings: number;
   events: EventFinancials[];
