@@ -489,7 +489,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 |---|---|---|
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
-| J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | in progress (#379) |
+| J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | done (#380) |
 | J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#371) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
@@ -924,3 +924,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J3 slice 2: email brand lookup memoised per event (no N+1 on publish/cancel fan-outs); 11 redundant indexes dropped (#379)
 - **2026-10-26** · T10 part 2: /pricing and llms.txt render plan prices, limits and features from plan_configs; Space billing lists every plan flag (#381)
 - **2026-10-26** · T6 slice 2: Huddle sessions pay out (Payout.sessionId, exactly one source), session sales freeze the organiser fee (trigger + backfill), session money in Space/Apex financials and breakdown; Space payouts list paid sessions (#389)
+- **2026-10-26** · J3 slice 3: GET /admin/queue-counts; mobile Apex home counts every queue in one call instead of downloading 10 lists (#380)
