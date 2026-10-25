@@ -473,6 +473,26 @@ describe('S6: token types, tokenVersion and refresh revocation', () => {
     await expect(service.refreshSession(rt)).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('J17: logout revokes the access token it was called with', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const at = sign({ userId: 'user-1', type: 'access', tv: 0 });
+    const other = sign({ userId: 'user-1', type: 'access', tv: 0, n: 2 });
+
+    await service.logout('user-1', { accessToken: at });
+    await expect(service.validateAccessToken(at)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.validateAccessToken(other)).resolves.toMatchObject({ id: 'user-1' });
+  });
+
+  it("logout can't revoke someone else's access token", async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user({ id: 'victim' }));
+    const at = sign({ userId: 'victim', type: 'access', tv: 0 });
+
+    await service.logout('attacker', { accessToken: at });
+    await expect(service.validateAccessToken(at)).resolves.toMatchObject({ id: 'victim' });
+  });
+
   it("logout can't revoke someone else's refresh token", async () => {
     const { service, prisma } = setup();
     prisma.user.findUnique.mockResolvedValue(user({ id: 'victim' }));

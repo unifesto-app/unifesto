@@ -948,6 +948,10 @@ export class AuthService {
       if ((decoded.tv ?? 0) !== user.tokenVersion) {
         throw new UnauthorizedException('Session revoked');
       }
+      // J17: logged out on this device. Fails open if Redis is down.
+      if (await this.redis.get(this.revokedAccessKey(token)).catch(() => null)) {
+        throw new UnauthorizedException('Session revoked');
+      }
 
       return user;
     } catch (error) {
@@ -986,7 +990,7 @@ export class AuthService {
    */
   async logout(
     userId: string,
-    opts: { refreshToken?: unknown; allDevices?: unknown } = {},
+    opts: { refreshToken?: unknown; allDevices?: unknown; accessToken?: unknown } = {},
   ): Promise<{ message: string }> {
     if (typeof opts.refreshToken === 'string' && opts.refreshToken) {
       try {
@@ -1006,7 +1010,30 @@ export class AuthService {
     if (opts.allDevices === true) {
       await this.bumpTokenVersion(userId);
     }
+    // J17: kill the access token the logout came with, so a copied one
+    // (operator tokens are JS-readable) stops working now, not at its expiry.
+    if (typeof opts.accessToken === 'string' && opts.accessToken) {
+      try {
+        const decoded = jwt.verify(opts.accessToken, this.jwtSecret) as SessionTokenPayload;
+        if (decoded.userId === userId) {
+          await this.redis.set(
+            this.revokedAccessKey(opts.accessToken),
+            '1',
+            this.secondsLeft(decoded),
+          );
+        }
+      } catch (err) {
+        if (!(err instanceof jwt.JsonWebTokenError)) {
+          this.logger.warn(`access revocation failed: ${(err as Error)?.message ?? err}`);
+        }
+      }
+    }
     return { message: 'Logged out successfully' };
+  }
+
+  /** Redis key for a logged-out access token (hashed: pre-S6 tokens have no jti). */
+  private revokedAccessKey(token: string): string {
+    return `auth:access:revoked:${createHash('sha256').update(token).digest('hex')}`;
   }
 
   /**
