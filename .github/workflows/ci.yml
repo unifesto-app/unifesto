@@ -129,7 +129,7 @@ jobs:
       - name: Web
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/web
-        run: npm ci && npx next typegen && npx tsc --noEmit -p .
+        run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
       - uses: actions/setup-node@v4
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
@@ -140,7 +140,7 @@ jobs:
       - name: Space
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/space
-        run: npm ci && npx next typegen && npx tsc --noEmit -p .
+        run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
       - uses: actions/setup-node@v4
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
@@ -151,7 +151,7 @@ jobs:
       - name: Apex
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/apex
-        run: npm ci && npx next typegen && npx tsc --noEmit -p .
+        run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
       # ── backend (Node 24, last so it doesn't change the others' Node) ───
       - name: Migrations have no destructive SQL without review
@@ -189,3 +189,4 @@ jobs:
           npx prisma generate
           echo "::group::Type-check"; npx tsc --noEmit -p tsconfig.json; echo "::endgroup::"
           echo "::group::Unit tests"; npm test -- --ci; echo "::endgroup::"
+          echo "::group::Runtime deps: no critical advisories"; npm audit --omit=dev --audit-level=critical; echo "::endgroup::"

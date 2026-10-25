@@ -27,9 +27,6 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "unifesto-storage-bucket.s3.ap-south-1.amazonaws.com" }],
   },
-  // Ship despite pre-existing type debt (dev never type-checked these).
-  // TODO: clean up the type errors and remove this.
-  typescript: { ignoreBuildErrors: true },
   // The site was restructured around audiences: /features and /host merged
   // into /organisers. Permanent redirects keep old links and rankings.
   async redirects() {
