@@ -35,15 +35,19 @@ const getRateLimitStore = (): RateLimitStore => {
   return g.__apexRateStore;
 };
 
-const getClientIp = (request: NextRequest) => {
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() ?? "unknown";
-  return request.headers.get("x-real-ip") ?? "unknown";
-};
+// J17: Caddy overwrites X-Forwarded-For with the one visitor IP it resolved
+// from Cf-Connecting-Ip (trusted only from Cloudflare ranges), so the last
+// entry is ours; anything to its left could be client-supplied.
+const getClientIp = (request: NextRequest) =>
+  request.headers.get("x-forwarded-for")?.split(",").pop()?.trim() || "unknown";
 
 const isRateLimited = (key: string) => {
   const now = Date.now();
   const store = getRateLimitStore();
+  // Prune expired windows so one-off IPs don't pile up forever.
+  if (store.size > 1000) {
+    for (const [k, v] of store) if (now > v.resetAt) store.delete(k);
+  }
   const existing = store.get(key);
   if (!existing || now > existing.resetAt) {
     store.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
