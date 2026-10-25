@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSpaceLive } from '../spaces/space-access';
 import { deleteWithoutMoney } from '../common/money-records';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
@@ -951,6 +952,7 @@ export class SessionsService {
     ) {
       throw new NotFoundException('Session not open for registration');
     }
+    await assertSpaceLive(this.prisma, { id: session.spaceId });
     if (session.startDateTime.getTime() <= Date.now()) {
       throw new BadRequestException('Registration has closed');
     }

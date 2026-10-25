@@ -4,14 +4,21 @@ import { withSocial } from "@/lib/seo";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { preload } from "react-dom";
-import { getEventBySlug as fetchEvent, type Event } from "@/lib/api/events";
+import { getEventBySlug as fetchEvent, UnavailableError, type Event } from "@/lib/api/events";
+import Unavailable from "@/components/site/Unavailable";
 import JsonLd from "@/components/site/JsonLd";
 import { SITE } from "@/lib/site";
 import { getTenant } from "@/lib/tenant";
 import EventDetailClient from "./EventDetailClient";
 
-// One fetch per request, shared by generateMetadata and the page.
-const getEventBySlug = cache(fetchEvent);
+// One fetch per request, shared by generateMetadata and the page. An event
+// whose space is taken down for now comes back as "unavailable" (J16).
+const getEventBySlug = cache((slug: string) =>
+  fetchEvent(slug).catch((e) => {
+    if (e instanceof UnavailableError) return "unavailable" as const;
+    throw e;
+  }),
+);
 
 /** Drafts and space-only events aren't public; private ones stay reachable by direct link. */
 const isPublic = (e: Event | null): e is Event =>
@@ -51,6 +58,7 @@ async function assertOnTenant(event: Event) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
+  if (event === "unavailable") return { title: "Temporarily unavailable", robots: { index: false } };
 
   // A real 404 (not a 200 + noindex soft-404) so Google drops deleted events.
   if (!isPublic(event)) notFound();
@@ -144,6 +152,7 @@ export default async function EventDetailPage({ params }: Props) {
   // metadata and structured data and hands it the one event fetch.
   const { slug } = await params;
   const event = await getEventBySlug(slug);
+  if (event === "unavailable") return <Unavailable what="event" />;
   if (!isPublic(event)) notFound();
   // An old slug (renamed event) or an id resolves too: go to the current address.
   if (event.slug && event.slug !== slug) redirect(`/event/${event.slug}`);

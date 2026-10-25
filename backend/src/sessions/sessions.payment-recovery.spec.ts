@@ -30,6 +30,7 @@ describe('SessionsService paid-session recovery (A16)', () => {
       ...row,
     };
     const prisma: any = {
+      space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) }, // J16 live-space gate
       $executeRaw: jest.fn(async () => 1),
       session: { findUnique: jest.fn(async () => session) },
       sessionRegistration: {

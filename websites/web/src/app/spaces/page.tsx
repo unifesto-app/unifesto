@@ -183,7 +183,7 @@ function SpacesContent() {
     const loadSpaces = async () => {
       setLoading(true);
       try {
-        const response = await getSpaces(1, 100, { is_active: true });
+        const response = await getSpaces(1, 100);
         setAllSpaces(response.spaces);
       } catch (error) {
         console.error("Error loading spaces:", error);

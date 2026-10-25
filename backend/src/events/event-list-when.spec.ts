@@ -4,7 +4,7 @@ import { EventsService } from './events.service';
 describe('public event lists: upcoming vs past', () => {
   const prisma: any = {
     event: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
-    space: { findUnique: jest.fn(async () => ({ id: 'sp-1', visibility: 'PUBLIC' })) },
+    space: { findUnique: jest.fn(async () => ({ id: 'sp-1', visibility: 'PUBLIC', status: 'ACTIVE' })) },
   };
   const svc = new EventsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   (svc as any).isSpaceInsider = async () => false;

@@ -28,6 +28,7 @@ function setup(
   // A per-event lock a real advisory lock would give: held until the tx ends.
   let lock: Promise<void> = Promise.resolve();
   const db: any = {
+    space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) }, // J16 live-space gate
     event: {
       findUnique: jest.fn(async ({ where }: any) => ({ id: where.id, createdBy: 'creator', spaceId: 'sp-1', payoutBankAccountId: null, space: { subscription: null } })),
       findMany: jest.fn(async ({ where }: any) =>

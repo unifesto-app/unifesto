@@ -470,6 +470,9 @@ export async function getEventById(id: string): Promise<Event | null> {
 /**
  * Get event by slug
  */
+/** The backend's 403 SPACE_UNAVAILABLE: the hosting space is taken down for now (J16). */
+export class UnavailableError extends Error {}
+
 export async function getEventBySlug(slug: string): Promise<Event | null> {
     const response = await fetchWithTimeout(`${API_URL}/events/${slug}`, {
       method: 'GET',
@@ -482,6 +485,7 @@ export async function getEventBySlug(slug: string): Promise<Event | null> {
     // the server page errors out instead of telling crawlers to noindex a live
     // event during an API blip.
     if (response.status === 404) return null;
+    if (response.status === 403) throw new UnavailableError();
     if (!response.ok) {
       throw new Error(`Error fetching event by slug: ${response.status} ${response.statusText}`);
     }

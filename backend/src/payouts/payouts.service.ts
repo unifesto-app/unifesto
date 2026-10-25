@@ -13,6 +13,7 @@ import { AuthorizationService } from '../auth/authorization/authorization.servic
 import { button, greet, h1, p, SPACE_APP, strong } from '../email/layout';
 import { OPEN_REFUND_STATUSES } from '../refunds/open-statuses';
 import { openSubjectCase, updateSubjectCase } from '../support/subject-cases';
+import { assertSpaceLive } from '../spaces/space-access';
 import { NOT_DEMO_EVENT, NOT_DEMO_SPACE } from '../common/demo-data';
 
 /** Round a rupee figure to 2 dp, avoiding binary float drift in comparisons. */
@@ -1427,6 +1428,7 @@ export class PayoutsService {
     });
     if (!event) throw new NotFoundException('Event not found');
     await this.assertEventMoney(userId, eventId, event.spaceId, 'request this event’s payout');
+    await assertSpaceLive(this.prisma, { id: event.spaceId });
     const payout = await this.createEventPayout(eventId, userId, netAmount, bankAccountId);
     // D22: the request is a Platform case; payouts send no mail, so the case tells both sides.
     openSubjectCase(this.events, {

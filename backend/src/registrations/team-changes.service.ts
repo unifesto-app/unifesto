@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSpaceLive } from '../spaces/space-access';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -416,6 +417,7 @@ export class TeamChangesService {
   async createAddSeatsOrder(registrationId: string, userId: string, seats: number) {
     const reg = await this.load(registrationId, { by: 'lead', userId });
     this.assertCanGrow(reg, seats);
+    await assertSpaceLive(this.prisma, { events: { some: { id: reg.eventId } } });
     const tt = reg.ticketType!;
     if (tt.totalQuantity != null && tt.soldCount + seats > tt.totalQuantity) {
       throw new BadRequestException('Not enough seats left on this ticket.');

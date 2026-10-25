@@ -47,7 +47,6 @@ import { resolveEffectiveSponsor } from '../sponsors/sponsors.util';
 import {
   EventStatus,
   RoleCode,
-  SpaceStatus,
   PaymentStatus,
   RegistrationStatus,
   Prisma,
@@ -58,7 +57,14 @@ import {
 } from '@prisma/client';
 import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertEventSchedule } from './event-dates';
-import { assertCanViewSpace } from '../spaces/space-access';
+import {
+  assertCanViewSpace,
+  assertSpaceLive,
+  canViewSpace,
+  isSpaceLive,
+  PUBLIC_LIVE_SPACE_WHERE,
+  spaceHiddenError,
+} from '../spaces/space-access';
 import {
   canAccessSpaceOnlyEvent,
   listableEventsWhere,
@@ -1525,10 +1531,7 @@ export class EventsService {
       throw new NotFoundException('Space not found');
     }
 
-    if (
-      space.status !== SpaceStatus.APPROVED &&
-      space.status !== SpaceStatus.ACTIVE
-    ) {
+    if (!isSpaceLive(space.status)) {
       throw new BadRequestException('Space must be active to create events');
     }
 
@@ -1672,6 +1675,8 @@ export class EventsService {
           }
         : { status: { in: LIVE_EVENT_STATUSES } }),
       visibility: 'PUBLIC',
+      // Only from spaces anyone may see right now (J16).
+      space: PUBLIC_LIVE_SPACE_WHERE,
       // Series-parent templates are non-registerable; only their concrete
       // occurrences (isRecurring=false, seriesParentId set) appear in listings.
       isRecurring: false,
@@ -1824,7 +1829,7 @@ export class EventsService {
         visibility: true,
         status: true,
         isRecurring: true,
-        space: { select: { subscription: true, ...BRANDING_SPACE_SELECT } },
+        space: { select: { subscription: true, ...BRANDING_SPACE_SELECT, visibility: true, status: true } },
         creator: { select: { fullName: true } },
       },
     });
@@ -1833,6 +1838,8 @@ export class EventsService {
       !event ||
       event.visibility !== 'PUBLIC' ||
       event.status !== EventStatus.PUBLISHED ||
+      event.space.visibility !== 'PUBLIC' ||
+      !isSpaceLive(event.space.status) ||
       // A series-parent template is not a real, attendable event — no .ics.
       event.isRecurring
     ) {
@@ -1948,6 +1955,20 @@ export class EventsService {
     // holders) only. Operators are members by definition.
     if (!(await canAccessSpaceOnlyEvent(this.prisma, event, viewerId))) {
       throw new NotFoundException('Event not found');
+    }
+    // The hosting space must be one the viewer may see (live, and PUBLIC or a
+    // member's), read live so a status change needs no cache bust (J16).
+    // Operators and ticket holders keep the page, so nobody is stranded.
+    const space = await this.prisma.space.findUnique({
+      where: { id: event.spaceId },
+      select: { id: true, visibility: true, status: true },
+    });
+    if (
+      space &&
+      !(await canViewSpace(this.prisma, space, viewerId)) &&
+      !(await this.canSeeJoinLink(event, viewerId))
+    ) {
+      throw spaceHiddenError(space);
     }
     // The join link is for the people running the event and those holding a
     // ticket (J9). Copy, never mutate: the payload is the shared cache entry.
@@ -2080,7 +2101,7 @@ export class EventsService {
           },
         },
         childEvents: {
-          where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES } },
+          where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES }, visibility: 'PUBLIC' },
           orderBy: { startDateTime: 'asc' },
           select: this.subEventSelect,
         },
@@ -2157,7 +2178,7 @@ export class EventsService {
             },
           },
           childEvents: {
-            where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES } },
+            where: { deletedAt: null, status: { in: LISTED_EVENT_STATUSES }, visibility: 'PUBLIC' },
             orderBy: { startDateTime: 'asc' },
             select: this.subEventSelect,
           },
@@ -2665,6 +2686,7 @@ export class EventsService {
     if (event.status !== EventStatus.DRAFT) {
       throw new BadRequestException('Event is already published');
     }
+    await assertSpaceLive(this.prisma, { id: event.spaceId });
 
     const updated = await this.prisma.event.update({
       where: { id: eventId },

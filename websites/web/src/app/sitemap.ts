@@ -46,7 +46,7 @@ async function getEventRoutes(): Promise<MetadataRoute.Sitemap> {
  */
 async function getSpaceRoutes(): Promise<MetadataRoute.Sitemap> {
   try {
-    const { spaces } = await getSpaces(1, 200, { is_active: true })
+    const { spaces } = await getSpaces(1, 200)
 
     return spaces
       .filter((s) => Boolean(s.slug))
