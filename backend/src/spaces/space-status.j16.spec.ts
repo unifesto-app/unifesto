@@ -5,6 +5,7 @@ import { buildRegistrationsService } from '../registrations/registrations.testin
 import { RegistrationImportService } from '../registrations/registration-import.service';
 import { FreeAttendeeAddService } from '../free-attendee-add/free-attendee-add.service';
 import { canViewSpace, isSpaceLive, PUBLIC_LIVE_SPACE_WHERE, visibleSpacesWhere } from './space-access';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * J16: a space taken down (SUSPENDED, ARCHIVED, REJECTED, INACTIVE, PENDING)
@@ -126,7 +127,7 @@ describe('curator attendee adds in a suspended space (J16)', () => {
 
   it('manual add and CSV import are refused before any write', async () => {
     const prisma: any = suspended();
-    const svc = new RegistrationImportService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new RegistrationImportService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms());
     await expect(
       svc.manualAddAttendee('ev-1', { ticketTypeId: 'tt-1', name: 'A', email: 'a@x.com', gender: 'M' }),
     ).rejects.toThrow(UNAVAILABLE);
