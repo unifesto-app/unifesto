@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowCounterClockwise, Bank, CheckCircle, CircleIcon, EyeSlash, RocketLaunch, Trash, XCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   cancelEvent,
   deleteEvent,
@@ -22,11 +19,12 @@ import DateTimeRow from '../components/manage/DateTimeRow';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 type ManagedEvent = NonNullable<Extract<Awaited<ReturnType<typeof getManagedEvent>>, { ok: true }>['data']>;
@@ -47,8 +45,7 @@ const STATUS_TEXT: Record<string, string> = {
 export default function EventSettingsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const { spaces } = useSpaceAccess();
 
   const [event, setEvent] = useState<ManagedEvent | null>(null);
@@ -161,16 +158,16 @@ export default function EventSettingsScreen() {
 
   if (!event) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error ? (
-          <>
-            <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text>
-            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-          </>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft, marginLeft: 0 }]}>{error}</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
@@ -182,225 +179,215 @@ export default function EventSettingsScreen() {
   const canHide = (isCompleted || isCancelled) && !isHidden;
   const canDelete = isDraft || isCancelled;
   const canCancel = status === 'PUBLISHED';
-  const icon = (I: typeof Trash, color = tokens.text) => <I size={ICON} color={color} />;
+  const icon = (I: typeof Trash, color = c.text) => <I size={ICON} color={color} />;
   const radio = (on: boolean) =>
-    on ? <CheckCircle size={22} color={tokens.accent} weight="fill" /> : <CircleIcon size={22} color={tokens.textMuted} />;
+    on ? <CheckCircle size={22} color={c.primary} weight="fill" /> : <CircleIcon size={22} color={c.muted} />;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await load();
-              setRefreshing(false);
-            }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
-            progressViewOffset={topSpacing}
-          />
-        }
-      >
-        <Text style={[styles.status, { color: isCancelled ? tokens.danger : isDraft ? tokens.warning : tokens.success }]}>
-          {isHidden ? 'Hidden' : status.charAt(0) + status.slice(1).toLowerCase()}
-        </Text>
-        <Text style={[styles.muted, { color: tokens.textSecondary, textAlign: 'left' }]}>
-          {isHidden ? 'Off every listing. Restore it to bring it back.' : STATUS_TEXT[status] ?? ''}
-        </Text>
-        {isCancelled && event.cancellationReason ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>Reason: {event.cancellationReason}</Text>
-        ) : null}
+    <CosmosScreen
+      keyboard
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
+    >
+      <Text style={[styles.status, { color: isCancelled ? c.danger : isDraft ? c.warn : c.success }]}>
+        {isHidden ? 'Hidden' : status.charAt(0) + status.slice(1).toLowerCase()}
+      </Text>
+      <Text style={[styles.muted, { color: c.soft, textAlign: 'left' }]}>
+        {isHidden ? 'Off every listing. Restore it to bring it back.' : STATUS_TEXT[status] ?? ''}
+      </Text>
+      {isCancelled && event.cancellationReason ? (
+        <Text style={[styles.note, { color: c.muted }]}>Reason: {event.cancellationReason}</Text>
+      ) : null}
 
-        {isDraft && isEventOwner ? (
-          <Button
-            label="Publish event"
-            size="lg"
-            fullWidth
-            loading={busy === 'publish'}
-            icon={<RocketLaunch size={18} color={tokens.accentFg} weight="fill" />}
-            onPress={publish}
-            style={{ marginTop: spacing[6] }}
-          />
-        ) : null}
+      {isDraft && isEventOwner ? (
+        <Button
+          label="Publish event"
+          size="lg"
+          fullWidth
+          loading={busy === 'publish'}
+          icon={<RocketLaunch size={18} color={c.primaryFg} weight="fill" />}
+          onPress={publish}
+          style={{ marginTop: spacing[6] }}
+        />
+      ) : null}
 
-        {!isCompleted && !isCancelled ? (
-          <>
-            <SettingsGroup title="Attendees" plain>
-              <SwitchRow
-                label="Allow team changes"
-                hint="Team leads can add, remove or replace members and hand over the lead. You can always do this from Attendees."
-                value={!!event.allowTeamChanges}
-                disabled={busy === 'teamChanges'}
-                onValueChange={(v) => setControls('teamChanges', { allowTeamChanges: v })}
-              />
-              {event.allowTeamChanges ? (
-                <SwitchRow
-                  label="Lock teams at a set time"
-                  value={!!event.teamChangesUntil}
-                  disabled={busy === 'teamDeadline'}
-                  onValueChange={(v) =>
-                    setControls('teamDeadline', {
-                      // Default to the day before the event starts, never in the past.
-                      teamChangesUntil: v
-                        ? new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString()
-                        : null,
-                    })
-                  }
-                />
-              ) : null}
-              {event.allowTeamChanges && event.teamChangesUntil ? (
-                <DateTimeRow
-                  label="Teams lock"
-                  value={new Date(event.teamChangesUntil)}
-                  minimumDate={new Date()}
-                  onChange={(d) => setControls('teamDeadline', { teamChangesUntil: d.toISOString() })}
-                />
-              ) : null}
-              <SwitchRow
-                label="Attendees can edit their details"
-                hint="People can change their registration answers from their ticket. Group leads edit the team's, members their own."
-                value={!!event.attendeeEditsEnabled}
-                disabled={busy === 'edits'}
-                onValueChange={(v) => setControls('edits', { attendeeEditsEnabled: v })}
-              />
-              {event.attendeeEditsEnabled ? (
-                <SwitchRow
-                  label="Close edits at a set time"
-                  value={!!event.attendeeEditsUntil}
-                  disabled={busy === 'deadline'}
-                  onValueChange={(v) =>
-                    setControls('deadline', {
-                      // Default to the day before the event starts, never in the past.
-                      attendeeEditsUntil: v
-                        ? new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString()
-                        : null,
-                    })
-                  }
-                />
-              ) : null}
-              {event.attendeeEditsEnabled && event.attendeeEditsUntil ? (
-                <DateTimeRow
-                  label="Edits close"
-                  value={new Date(event.attendeeEditsUntil)}
-                  minimumDate={new Date()}
-                  onChange={(d) => setControls('deadline', { attendeeEditsUntil: d.toISOString() })}
-                />
-              ) : null}
-            </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
-              {event.attendeeEditsEnabled && event.attendeeEditsUntil && new Date(event.attendeeEditsUntil).getTime() <= Date.now()
-                ? 'The edit deadline has passed, so details are locked. Move the deadline or turn it off to reopen.'
-                : 'You can always edit any attendee’s details from Attendees, whatever these say.'}
-            </Text>
-          </>
-        ) : null}
-
-        {/* Where this event's earnings are paid. Blank = the creator's primary account. */}
-        {isSpaceAdmin && accounts ? (
-          <>
-            <SettingsGroup title="Payout account">
-              <SettingsRow
-                icon={icon(Bank)}
-                label="Creator's primary account"
-                trailing={radio(selected === '')}
-                onPress={() => setSelected('')}
-              />
-              {accounts.map((a) => (
-                <SettingsRow
-                  key={a.id}
-                  icon={icon(Bank)}
-                  label={describeAccount(a)}
-                  value={a.isOwn ? undefined : a.ownerName}
-                  trailing={radio(selected === a.id)}
-                  onPress={() => setSelected(a.id)}
-                />
-              ))}
-            </SettingsGroup>
-            {accounts.length === 0 ? (
-              <Text style={[styles.note, { color: tokens.textMuted }]}>No verified accounts yet. Add one under Finance, Payout accounts.</Text>
-            ) : null}
-            {selected !== savedAccount ? (
-              <Button label="Save payout account" onPress={saveAccount} loading={busy === 'account'} fullWidth style={{ marginTop: spacing[4] }} />
-            ) : null}
-          </>
-        ) : null}
-
-        {isEventOwner ? (
-          <>
-          <SettingsGroup title="Danger zone">
-            {canCancel ? (
-              <SettingsRow icon={icon(XCircle, tokens.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
-            ) : null}
-            {isHidden ? (
-              <SettingsRow
-                icon={icon(ArrowCounterClockwise)}
-                label="Restore event"
-                trailing={busy === 'restore' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
-                onPress={() => void run('restore', () => restoreEvent(eventId!))}
-              />
-            ) : (
-              <SettingsRow
-                icon={icon(EyeSlash, canHide ? tokens.accent : tokens.textMuted)}
-                label="Hide event"
-                trailing={busy === 'hide' ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
-                onPress={canHide ? hide : undefined}
-              />
-            )}
-            <SettingsRow
-              icon={icon(Trash, canDelete ? tokens.danger : tokens.textMuted)}
-              label="Delete permanently"
-              danger={canDelete}
-              trailing={busy === 'delete' ? <ActivityIndicator size="small" color={tokens.danger} /> : undefined}
-              onPress={canDelete ? remove : undefined}
+      {!isCompleted && !isCancelled ? (
+        <>
+          <SettingsGroup title="Attendees" plain>
+            <SwitchRow
+              label="Allow team changes"
+              hint="Team leads can add, remove or replace members and hand over the lead. You can always do this from Attendees."
+              value={!!event.allowTeamChanges}
+              disabled={busy === 'teamChanges'}
+              onValueChange={(v) => setControls('teamChanges', { allowTeamChanges: v })}
             />
-          </SettingsGroup>
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
-            {canDelete
-              ? 'Hiding is reversible. Deleting is not.'
-              : isCompleted
-                ? "A finished event can't be deleted, its attendance and payments are kept. Hide it instead."
-                : 'Only finished or cancelled events can be hidden. Cancel it first to delete it.'}
-          </Text>
-
-          {cancelOpen ? (
-            <>
-              <SettingsGroup title="Cancel event" plain>
-                <FieldRow
-                  stacked
-                  multiline
-                  label="Reason (optional, shown to attendees)"
-                  value={reason}
-                  onChangeText={setReason}
-                  placeholder="Due to unforeseen circumstances…"
-                />
-              </SettingsGroup>
-              <Button
-                label="Cancel event"
-                variant="danger"
-                size="lg"
-                fullWidth
-                loading={busy === 'cancel'}
-                onPress={confirmCancel}
-                style={{ marginTop: spacing[4] }}
+            {event.allowTeamChanges ? (
+              <SwitchRow
+                label="Lock teams at a set time"
+                value={!!event.teamChangesUntil}
+                disabled={busy === 'teamDeadline'}
+                onValueChange={(v) =>
+                  setControls('teamDeadline', {
+                    // Default to the day before the event starts, never in the past.
+                    teamChangesUntil: v
+                      ? new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString()
+                      : null,
+                  })
+                }
               />
-            </>
+            ) : null}
+            {event.allowTeamChanges && event.teamChangesUntil ? (
+              <DateTimeRow
+                label="Teams lock"
+                value={new Date(event.teamChangesUntil)}
+                minimumDate={new Date()}
+                onChange={(d) => setControls('teamDeadline', { teamChangesUntil: d.toISOString() })}
+              />
+            ) : null}
+            <SwitchRow
+              label="Attendees can edit their details"
+              hint="People can change their registration answers from their ticket. Group leads edit the team's, members their own."
+              value={!!event.attendeeEditsEnabled}
+              disabled={busy === 'edits'}
+              onValueChange={(v) => setControls('edits', { attendeeEditsEnabled: v })}
+            />
+            {event.attendeeEditsEnabled ? (
+              <SwitchRow
+                label="Close edits at a set time"
+                value={!!event.attendeeEditsUntil}
+                disabled={busy === 'deadline'}
+                onValueChange={(v) =>
+                  setControls('deadline', {
+                    // Default to the day before the event starts, never in the past.
+                    attendeeEditsUntil: v
+                      ? new Date(Math.max(Date.now() + 3600e3, new Date(event.startDateTime).getTime() - 864e5)).toISOString()
+                      : null,
+                  })
+                }
+              />
+            ) : null}
+            {event.attendeeEditsEnabled && event.attendeeEditsUntil ? (
+              <DateTimeRow
+                label="Edits close"
+                value={new Date(event.attendeeEditsUntil)}
+                minimumDate={new Date()}
+                onChange={(d) => setControls('deadline', { attendeeEditsUntil: d.toISOString() })}
+              />
+            ) : null}
+          </SettingsGroup>
+          <Text style={[styles.note, { color: c.muted }]}>
+            {event.attendeeEditsEnabled && event.attendeeEditsUntil && new Date(event.attendeeEditsUntil).getTime() <= Date.now()
+              ? 'The edit deadline has passed, so details are locked. Move the deadline or turn it off to reopen.'
+              : 'You can always edit any attendee’s details from Attendees, whatever these say.'}
+          </Text>
+        </>
+      ) : null}
+
+      {/* Where this event's earnings are paid. Blank = the creator's primary account. */}
+      {isSpaceAdmin && accounts ? (
+        <>
+          <SettingsGroup title="Payout account">
+            <SettingsRow
+              icon={icon(Bank)}
+              label="Creator's primary account"
+              trailing={radio(selected === '')}
+              onPress={() => setSelected('')}
+            />
+            {accounts.map((a) => (
+              <SettingsRow
+                key={a.id}
+                icon={icon(Bank)}
+                label={describeAccount(a)}
+                value={a.isOwn ? undefined : a.ownerName}
+                trailing={radio(selected === a.id)}
+                onPress={() => setSelected(a.id)}
+              />
+            ))}
+          </SettingsGroup>
+          {accounts.length === 0 ? (
+            <Text style={[styles.note, { color: c.muted }]}>No verified accounts yet. Add one under Finance, Payout accounts.</Text>
           ) : null}
+          {selected !== savedAccount ? (
+            <Button label="Save payout account" onPress={saveAccount} loading={busy === 'account'} fullWidth style={{ marginTop: spacing[4] }} />
+          ) : null}
+        </>
+      ) : null}
+
+      {isEventOwner ? (
+        <>
+        <SettingsGroup title="Danger zone">
+          {canCancel ? (
+            <SettingsRow icon={icon(XCircle, c.danger)} label="Cancel event" danger onPress={() => setCancelOpen((o) => !o)} />
+          ) : null}
+          {isHidden ? (
+            <SettingsRow
+              icon={icon(ArrowCounterClockwise)}
+              label="Restore event"
+              trailing={busy === 'restore' ? <ActivityIndicator size="small" color={c.text} /> : undefined}
+              onPress={() => void run('restore', () => restoreEvent(eventId!))}
+            />
+          ) : (
+            <SettingsRow
+              icon={icon(EyeSlash, canHide ? c.primary : c.muted)}
+              label="Hide event"
+              trailing={busy === 'hide' ? <ActivityIndicator size="small" color={c.text} /> : undefined}
+              onPress={canHide ? hide : undefined}
+            />
+          )}
+          <SettingsRow
+            icon={icon(Trash, canDelete ? c.danger : c.muted)}
+            label="Delete permanently"
+            danger={canDelete}
+            trailing={busy === 'delete' ? <ActivityIndicator size="small" color={c.danger} /> : undefined}
+            onPress={canDelete ? remove : undefined}
+          />
+        </SettingsGroup>
+        <Text style={[styles.note, { color: c.muted }]}>
+          {canDelete
+            ? 'Hiding is reversible. Deleting is not.'
+            : isCompleted
+              ? "A finished event can't be deleted, its attendance and payments are kept. Hide it instead."
+              : 'Only finished or cancelled events can be hidden. Cancel it first to delete it.'}
+        </Text>
+
+        {cancelOpen ? (
+          <>
+            <SettingsGroup title="Cancel event" plain>
+              <FieldRow
+                stacked
+                multiline
+                label="Reason (optional, shown to attendees)"
+                value={reason}
+                onChangeText={setReason}
+                placeholder="Due to unforeseen circumstances…"
+              />
+            </SettingsGroup>
+            <Button
+              label="Cancel event"
+              variant="danger"
+              size="lg"
+              fullWidth
+              loading={busy === 'cancel'}
+              onPress={confirmCancel}
+              style={{ marginTop: spacing[4] }}
+            />
           </>
         ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </>
+      ) : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 120 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  status: { fontSize: typography.fontSize['2xl'], marginLeft: spacing[1], ...font('heading') },
-  muted: { marginTop: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  status: { fontSize: typography.fontSize['2xl'], marginLeft: spacing[1], ...cosmosFont.display },
+  muted: { marginTop: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

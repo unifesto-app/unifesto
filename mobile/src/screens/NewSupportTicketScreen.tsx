@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { CATEGORY_LABEL, createTicket, type SupportTicketCategory } from '../lib/api/support';
 import { BlockTitle, FieldRow } from '../components/manage/FormFields';
 import ChipPicker from '../components/manage/ChipPicker';
@@ -11,9 +11,8 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const CATEGORIES = (Object.keys(CATEGORY_LABEL) as SupportTicketCategory[]).map((c) => ({ value: c, label: CATEGORY_LABEL[c] }));
 /** Unifesto answers these even about an event (decision D2, mirrors the backend). */
 const PLATFORM_CATEGORIES: SupportTicketCategory[] = ['ACCOUNT', 'PAYMENTS', 'TECHNICAL'];
@@ -33,9 +32,8 @@ export default function NewSupportTicketScreen() {
   }>();
   const aboutEvent = !!(eventId || registrationId);
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [category, setCategory] = useState<SupportTicketCategory>('EVENTS');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -59,18 +57,18 @@ export default function NewSupportTicketScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      {aboutEvent ? <Stack.Screen options={{ title: 'Get help' }} /> : null}
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        {about ? <Text style={[styles.about, { color: tokens.text }]}>{about}</Text> : null}
+    <CosmosScreen
+      keyboard
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={<SaveBar visible label="Send" onPress={send} loading={busy} error={error} />}
+    >
+        {aboutEvent ? <Stack.Screen options={{ title: 'Get help' }} /> : null}
+        {about ? <Text style={[styles.about, { color: c.text }]} accessibilityRole="header">{about}</Text> : null}
         <BlockTitle>About</BlockTitle>
         <ChipPicker options={CATEGORIES} value={category} onChange={(v) => v && setCategory(v)} />
         {aboutEvent ? (
-          <Text style={[styles.hint, { color: tokens.textMuted }]}>
+          <Text style={[styles.hint, { color: c.muted }]}>
             {PLATFORM_CATEGORIES.includes(category)
               ? 'Unifesto answers account, payment and app questions.'
               : 'The organiser answers this, and can pass it to Unifesto.'}
@@ -99,14 +97,12 @@ export default function NewSupportTicketScreen() {
             placeholder={aboutEvent ? 'What you tried, what happened' : 'Which event, what you tried, what happened'}
           />
         </SettingsGroup>
-      </ScrollView>
-      <SaveBar visible label="Send" onPress={send} loading={busy} error={error} />
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  about: { fontSize: typography.fontSize.lg, marginBottom: spacing[2], ...font('heading') },
-  hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font() },
+  about: { fontSize: typography.fontSize.lg, lineHeight: 26, marginBottom: spacing[2], ...cosmosFont.display },
+  hint: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

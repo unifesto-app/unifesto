@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -34,21 +33,20 @@ import {
   Wallet,
   WhatsappLogo,
 } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useManageEvent } from '../hooks/useManageEvent';
 import { getTeamStays } from '../lib/api/stays';
-import useTopSpacing from '../hooks/useTopSpacing';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { relativeWhen } from '../utils/eventFormat';
 import { useEventCover } from '../lib/defaultImages';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 const COVER_W = 120;
 const COVER_H = 90; // 4:3
@@ -69,8 +67,7 @@ function eventState(e: { status: string; startDateTime: string; endDateTime: str
 export default function ManageEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const h = useManageEvent(eventId);
   // Crew don't get the Stay hub; they get the property desk (scan a Stay Pass,
   // take payment, check in) when the event has a published stay.
@@ -86,18 +83,20 @@ export default function ManageEventScreen() {
 
   if (h.loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   if (h.error || !h.event) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>{h.error || 'Event not found'}</Text>
-        <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[3] }} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{h.error || 'Event not found'}</Text>
+          <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[4] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
@@ -113,38 +112,25 @@ export default function ManageEventScreen() {
   const ticketTypes = (e as unknown as { ticketTypes?: { kind: string }[] }).ticketTypes ?? [];
   const rsvpCount = ticketTypes.filter((t) => t.kind === 'RSVP').length;
   const ticketCount = ticketTypes.length - rsvpCount;
-  const icon = (I: typeof QrCode) => <I size={ICON} color={tokens.text} />;
+  const icon = (I: typeof QrCode) => <I size={ICON} color={c.text} />;
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={h.refreshing}
-          onRefresh={h.refresh}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
+    <CosmosScreen refreshing={h.refreshing} onRefresh={h.refresh} contentContainerStyle={styles.content}>
       {/* Identity */}
       <View style={styles.hero}>
         {cover ? <Image source={{ uri: cover }} style={styles.cover} /> : null}
         <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: tokens.text }]} numberOfLines={3}>
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={3}>
             {e.title}
           </Text>
           <Text
-            style={[styles.state, { color: state === 'Live now' ? tokens.success : state === 'Cancelled' ? tokens.danger : tokens.textMuted }]}
+            style={[styles.state, { color: state === 'Live now' ? c.success : state === 'Cancelled' ? c.danger : c.muted }]}
             numberOfLines={1}
           >
             {state}
           </Text>
           {e.venueName || e.city ? (
-            <Text style={[styles.muted, { color: tokens.textMuted }]} numberOfLines={1}>
+            <Text style={[styles.muted, { color: c.muted }]} numberOfLines={1}>
               {e.venueName || e.city}
             </Text>
           ) : null}
@@ -174,10 +160,10 @@ export default function ManageEventScreen() {
 
       {h.checkin && checkinTotal > 0 ? (
         <View style={styles.progressWrap}>
-          <View style={[styles.track, { backgroundColor: tokens.elevated }]}>
-            <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: tokens.accent }]} />
+          <View style={[styles.track, { backgroundColor: c.raised }]}>
+            <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: c.primary }]} />
           </View>
-          <Text style={[styles.muted, { color: tokens.textMuted }]}>
+          <Text style={[styles.muted, { color: c.muted }]}>
             {Math.round(progress * 100)}% checked in · {h.checkin.remaining.toLocaleString('en-IN')} to go
           </Text>
         </View>
@@ -340,7 +326,7 @@ export default function ManageEventScreen() {
       ) : null}
 
       {!h.access.canViewAttendees ? (
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           The attendee list is only open to Space admins right now.
         </Text>
       ) : null}
@@ -352,7 +338,7 @@ export default function ManageEventScreen() {
             {h.attendeeStats.byTicketType.map((t) => (
               <SettingsRow
                 key={t.ticketTypeId ?? t.name}
-                icon={<Text style={[styles.count, { color: tokens.text }]}>{t.attendees}</Text>}
+                icon={<Text style={[styles.count, { color: c.text }]}>{t.attendees}</Text>}
                 label={t.name}
                 value={t.kind === 'GROUP' ? `${t.bookings} groups` : undefined}
               />
@@ -372,21 +358,22 @@ export default function ManageEventScreen() {
           />
         </SettingsGroup>
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', gap: spacing[4], alignItems: 'center' },
-  cover: { width: COVER_W, height: COVER_H, borderRadius: borderRadius.lg },
-  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...font('heading') },
-  state: { marginTop: 6, fontSize: typography.fontSize.sm, ...font('semibold') },
-  muted: { fontSize: typography.fontSize.sm, ...font() },
+  cover: { width: COVER_W, height: COVER_H, borderRadius: cosmosRadius },
+  title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...cosmosFont.display },
+  state: { marginTop: 6, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   progressWrap: { marginTop: spacing[4], gap: spacing[2] },
   track: { height: 8, borderRadius: 4, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 4 },
-  note: { marginTop: spacing[3], fontSize: typography.fontSize.xs, ...font() },
-  count: { width: ICON, textAlign: 'center', fontSize: typography.fontSize.base, ...font('semibold') },
+  note: { marginTop: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  count: { width: ICON, textAlign: 'center', fontSize: typography.fontSize.base, ...cosmosFont.figure },
 });

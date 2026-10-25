@@ -1,15 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as DocumentPicker from 'expo-document-picker';
@@ -20,9 +10,9 @@ import { BlockTitle } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { useTokens } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { getProfile } from '../lib/api/profile';
 import { buyerFee, getProcessingFeeTerms, NO_FEE } from '../lib/api/tickets';
 import {
@@ -45,9 +35,8 @@ import {
 import { firstFormProblem, visibleFields, type FileAnswer } from '../utils/formQuestions';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const GENDERS: GuestGender[] = ['MALE', 'FEMALE', 'OTHER'];
 
 interface GuestDraft {
@@ -73,9 +62,8 @@ const toGender = (g: string | null | undefined): GuestGender | '' => {
 export default function StayBookingScreen() {
   const { eventId, stayId, optionId } = useLocalSearchParams<{ eventId: string; stayId: string; optionId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const { user } = useAuth();
   const [stay, setStay] = useState<Stay | null>(null);
   const [option, setOption] = useState<StayOption | null>(null);
@@ -133,10 +121,16 @@ export default function StayBookingScreen() {
 
   if (!stay || !option) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         <Stack.Screen options={{ title: 'Book a stay' }} />
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -208,17 +202,11 @@ export default function StayBookingScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen keyboard keyboardDismissMode="interactive" bottom={60 + insets.bottom} contentContainerStyle={styles.content}>
       <Stack.Screen options={{ title: 'Book a stay' }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 60 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.kicker, { color: tokens.accent }]}>{stay.name.toUpperCase()}</Text>
-        <Text style={[styles.title, { color: tokens.text }]}>{option.name}</Text>
-        <Text style={[styles.muted, { color: tokens.textSecondary, textAlign: 'left' }]}>
+        <Text style={[styles.kicker, { color: c.muted }]}>{stay.name}</Text>
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">{option.name}</Text>
+        <Text style={[styles.muted, { color: c.soft, textAlign: 'left' }]}>
           {[priceLabel(option), option.gender !== 'ANY' ? GENDER_LABELS[option.gender] : null].filter(Boolean).join(' · ')}
         </Text>
 
@@ -243,7 +231,7 @@ export default function StayBookingScreen() {
               <DayChip key={d} day={d} on={d === checkOut} onPress={() => setCheckOut(d)} />
             ))}
           </ScrollView>
-          <Text style={[styles.hint, { color: fullNight ? tokens.danger : tokens.textMuted }]}>
+          <Text style={[styles.hint, { color: fullNight ? c.danger : c.muted }]}>
             {fullNight
               ? `Not enough beds on the night of ${dayLabel(fullNight)}.`
               : `${nights} night${nights === 1 ? '' : 's'}${stay.checkInTime ? ` · check-in from ${stay.checkInTime}` : ''}${stay.checkOutTime ? ` · check-out by ${stay.checkOutTime}` : ''}`}
@@ -273,7 +261,7 @@ export default function StayBookingScreen() {
               autoCapitalize="none"
             />
             <View style={styles.inner}>
-              <Text style={[styles.caption, { color: tokens.textMuted }]}>Gender</Text>
+              <Text style={[styles.caption, { color: c.muted }]}>Gender</Text>
               <View style={styles.genderRow}>
                 {GENDERS.map((x) => {
                   const on = g.gender === x;
@@ -283,9 +271,9 @@ export default function StayBookingScreen() {
                       onPress={() => setGuest(i, { gender: x })}
                       accessibilityRole="radio"
                       accessibilityState={{ checked: on }}
-                      style={[styles.genderChip, { backgroundColor: on ? tokens.accent : tokens.fill }]}
+                      style={[styles.genderChip, { backgroundColor: on ? c.primary : c.tint }]}
                     >
-                      <Text style={[styles.genderText, { color: on ? tokens.accentFg : tokens.text }]}>{GUEST_GENDER_LABELS[x]}</Text>
+                      <Text style={[styles.genderText, { color: on ? c.primaryFg : c.text }]}>{GUEST_GENDER_LABELS[x]}</Text>
                     </Pressable>
                   );
                 })}
@@ -304,7 +292,7 @@ export default function StayBookingScreen() {
             label="Add a teammate"
             variant="secondary"
             fullWidth
-            icon={<Plus size={18} color={tokens.text} weight="bold" />}
+            icon={<Plus size={18} color={c.text} weight="bold" />}
             onPress={() => setGuests((g) => [...g, blankGuest()])}
             style={{ marginTop: spacing[4] }}
           />
@@ -351,7 +339,7 @@ export default function StayBookingScreen() {
           {fee ? <SettingsRow label="Processing fee" value={rupees(fee)} /> : null}
           {base ? <SettingsRow label="Total" value={rupees(base + fee)} /> : null}
         </SettingsGroup>
-        <Text style={[styles.hint, { color: tokens.textMuted }]}>
+        <Text style={[styles.hint, { color: c.muted }]}>
           {!base
             ? 'Free. The event team confirms your bed.'
             : option.paymentMode === 'ONLINE'
@@ -359,7 +347,7 @@ export default function StayBookingScreen() {
               : 'You pay at the property when you check in.'}
         </Text>
 
-        {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
         <Button
           label="Send request"
           size="lg"
@@ -368,25 +356,24 @@ export default function StayBookingScreen() {
           onPress={() => void submit()}
           style={{ marginTop: spacing[5] }}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 function DayChip({ day, on, sub, warn, onPress }: { day: string; on: boolean; sub?: string; warn?: boolean; onPress: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ checked: on }}
       accessibilityLabel={`${dayLabel(day, { weekday: 'long', day: 'numeric', month: 'long' })}${sub ? `, ${sub}` : ''}`}
-      style={[styles.day, { backgroundColor: on ? tokens.accent : tokens.fill }]}
+      style={[styles.day, { backgroundColor: on ? c.primary : c.tint }]}
     >
-      <Text style={[styles.dayWeek, { color: on ? tokens.accentFg : tokens.textMuted }]}>{dayLabel(day, { weekday: 'short' })}</Text>
-      <Text style={[styles.dayNum, { color: on ? tokens.accentFg : tokens.text }]}>{dayLabel(day, { day: 'numeric' })}</Text>
-      <Text style={[styles.dayWeek, { color: on ? tokens.accentFg : tokens.textMuted }]}>{dayLabel(day, { month: 'short' })}</Text>
-      {sub ? <Text style={[styles.daySub, { color: on ? tokens.accentFg : warn ? tokens.danger : tokens.textMuted }]}>{sub}</Text> : null}
+      <Text style={[styles.dayWeek, { color: on ? c.primaryFg : c.muted }]}>{dayLabel(day, { weekday: 'short' })}</Text>
+      <Text style={[styles.dayNum, { color: on ? c.primaryFg : c.text }]}>{dayLabel(day, { day: 'numeric' })}</Text>
+      <Text style={[styles.dayWeek, { color: on ? c.primaryFg : c.muted }]}>{dayLabel(day, { month: 'short' })}</Text>
+      {sub ? <Text style={[styles.daySub, { color: on ? c.primaryFg : warn ? c.danger : c.muted }]}>{sub}</Text> : null}
     </Pressable>
   );
 }
@@ -396,16 +383,16 @@ function Input({
   multiline,
   ...rest
 }: { label: string } & Omit<React.ComponentProps<typeof TextInput>, 'style' | 'placeholder'>) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={styles.inner}>
-      <Text style={[styles.caption, { color: tokens.textMuted }]}>{label}</Text>
+      <Text style={[styles.caption, { color: c.muted }]}>{label}</Text>
       <TextInput
         {...rest}
         multiline={multiline}
-        placeholderTextColor={tokens.textMuted}
-        selectionColor={tokens.accent}
-        style={[styles.input, multiline && { minHeight: 64, textAlignVertical: 'top' }, { color: tokens.text }]}
+        placeholderTextColor={c.muted}
+        selectionColor={c.primary}
+        style={[styles.input, multiline && { minHeight: 64, textAlignVertical: 'top' }, { color: c.text }]}
       />
     </View>
   );
@@ -423,7 +410,7 @@ function IdProofPicker({
   required: boolean;
   onChange: (f: FileAnswer | null) => void;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -449,15 +436,15 @@ function IdProofPicker({
 
   return (
     <View style={styles.inner}>
-      <Text style={[styles.caption, { color: tokens.textMuted }]}>Photo ID{required ? '' : ' (optional)'}</Text>
+      <Text style={[styles.caption, { color: c.muted }]}>Photo ID{required ? '' : ' (optional)'}</Text>
       {value ? (
-        <View style={[styles.file, { backgroundColor: tokens.fill }]}>
-          <Paperclip size={18} color={tokens.accent} />
-          <Text style={[styles.fileName, { color: tokens.text }]} numberOfLines={1}>
+        <View style={[styles.file, { backgroundColor: c.tint }]}>
+          <Paperclip size={18} color={c.primary} />
+          <Text style={[styles.fileName, { color: c.text }]} numberOfLines={1}>
             {value.name}
           </Text>
           <Pressable onPress={() => onChange(null)} hitSlop={10} accessibilityLabel="Remove ID">
-            <X size={18} color={tokens.textMuted} />
+            <X size={18} color={c.muted} />
           </Pressable>
         </View>
       ) : (
@@ -465,36 +452,36 @@ function IdProofPicker({
           onPress={() => void pick()}
           disabled={busy}
           accessibilityRole="button"
-          style={({ pressed }) => [styles.file, { backgroundColor: tokens.fill, opacity: pressed ? 0.85 : 1 }]}
+          style={({ pressed }) => [styles.file, { backgroundColor: c.tint, opacity: pressed ? 0.85 : 1 }]}
         >
-          {busy ? <ActivityIndicator color={tokens.accent} /> : <IdentificationCard size={20} color={tokens.accent} />}
-          <Text style={[styles.fileName, { color: tokens.accent }]}>{busy ? 'Uploading…' : 'Upload college or government ID'}</Text>
+          {busy ? <ActivityIndicator color={c.text} /> : <IdentificationCard size={20} color={c.primary} />}
+          <Text style={[styles.fileName, { color: c.primary }]}>{busy ? 'Uploading…' : 'Upload college or government ID'}</Text>
         </Pressable>
       )}
-      {err ? <Text style={[styles.hint, { color: tokens.danger }]}>{err}</Text> : null}
+      {err ? <Text style={[styles.hint, { color: c.danger }]}>{err}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  kicker: { fontSize: typography.fontSize.xs, letterSpacing: 1.2, ...font('semibold') },
-  title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize['2xl'], ...font('heading') },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  kicker: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { marginTop: spacing[1], marginBottom: spacing[1], fontSize: typography.fontSize.xl, lineHeight: 28, ...cosmosFont.display },
   block: { marginTop: spacing[6] },
   dayRow: { gap: spacing[2], paddingRight: spacing[4] },
-  day: { width: 64, paddingVertical: spacing[2], borderRadius: borderRadius.lg, alignItems: 'center', gap: 1 },
-  dayWeek: { fontSize: typography.fontSize.xs, ...font('medium') },
-  dayNum: { fontSize: typography.fontSize.xl, ...font('heading') },
-  daySub: { marginTop: 2, fontSize: 10, ...font('semibold') },
-  hint: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  day: { width: 64, paddingVertical: spacing[2], borderRadius: cosmosRadius, alignItems: 'center', gap: 1 },
+  dayWeek: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  dayNum: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
+  daySub: { marginTop: 2, fontSize: 10, ...cosmosFont.strong },
+  hint: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   inner: { paddingHorizontal: spacing[4], paddingTop: spacing[3], paddingBottom: spacing[2] },
-  caption: { fontSize: typography.fontSize.xs, ...font('medium') },
-  input: { fontSize: typography.fontSize.base, paddingTop: spacing[1], paddingBottom: spacing[2], ...font('medium') },
+  caption: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  input: { fontSize: typography.fontSize.base, paddingTop: spacing[1], paddingBottom: spacing[2], ...cosmosFont.strong },
   genderRow: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[2] },
   genderChip: { flex: 1, alignItems: 'center', paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  genderText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  genderText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   file: {
     marginTop: spacing[2],
     flexDirection: 'row',
@@ -502,8 +489,8 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
-    borderRadius: borderRadius.lg,
+    borderRadius: cosmosRadius,
   },
-  fileName: { flex: 1, fontSize: typography.fontSize.sm, ...font('semibold') },
-  error: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...font('medium') },
+  fileName: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  error: { marginTop: spacing[4], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

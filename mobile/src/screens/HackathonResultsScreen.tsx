@@ -5,10 +5,12 @@ import { CheckCircle, CircleDashed, FileCsv, Trophy, WarningCircle, XCircle } fr
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { GUTTER } from '../components/home/Section';
 import ChipPicker from '../components/manage/ChipPicker';
 import { BlockTitle, FieldRow, SwitchRow } from '../components/manage/FormFields';
 import { GroupCell, SettingsGroup, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
 import useHackathonSocket from '../hooks/useHackathonSocket';
 import {
@@ -25,9 +27,8 @@ import { SCORING_MODE_OPTIONS, formatScore, standingLabel, topNSplit } from '../
 import { shareCsvText } from '../lib/csvShare';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 const OVERALL = '__overall__';
 
@@ -42,7 +43,7 @@ const teamLabel = (t: ResultTeam) => `${t.teamCode ?? '—'}  ${t.name}`;
 export default function HackathonResultsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [data, setData] = useState<HackathonResults | null>(null);
   const [error, setError] = useState('');
@@ -76,9 +77,16 @@ export default function HackathonResultsScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -176,9 +184,12 @@ export default function HackathonResultsScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <CosmosBackdrop horizon={false} />
       <FlatList<{ t: ResultTeam; p?: ResultRound }>
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 100 }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -189,8 +200,8 @@ export default function HackathonResultsScreen() {
               await load();
               setRefreshing(false);
             }}
-            tintColor={tokens.accent}
-            colors={[tokens.accent]}
+            tintColor={c.text}
+            colors={[c.text]}
             progressViewOffset={topSpacing}
           />
         }
@@ -235,11 +246,11 @@ export default function HackathonResultsScreen() {
             {!round ? (
               <>
                 {data.teams.some((t) => t.psChangedAfterEvalAt) ? (
-                  <Text style={[styles.note, { color: tokens.warning }]}>
+                  <Text style={[styles.note, { color: c.warn }]}>
                     Teams with a warning sign had their problem statement changed after they were evaluated. Their marks are kept.
                   </Text>
                 ) : null}
-                <Text style={[styles.note, { color: tokens.textMuted }]}>
+                <Text style={[styles.note, { color: c.muted }]}>
                   Only submitted marks count. Rankings are a guide: you decide who advances and who wins.
                 </Text>
 
@@ -251,7 +262,7 @@ export default function HackathonResultsScreen() {
                     onChange={(v) => v && !busy && void setMode(v)}
                   />
                 </View>
-                <Text style={[styles.note, { color: tokens.textMuted }]}>
+                <Text style={[styles.note, { color: c.muted }]}>
                   {SCORING_MODE_OPTIONS.find((o) => o.value === data.scoringMode)?.hint} Choose which rounds count on each round’s screen.
                 </Text>
 
@@ -281,13 +292,13 @@ export default function HackathonResultsScreen() {
                       onPress={applyTopN}
                       style={{ marginTop: spacing[3] }}
                     />
-                    <Text style={[styles.note, { color: tokens.textMuted }]}>
+                    <Text style={[styles.note, { color: c.muted }]}>
                       Teams tied at the cut all go through. Change any single team from the round’s screen.
                     </Text>
                   </>
                 ) : null}
                 {!round.eliminationEnabled ? (
-                  <Text style={[styles.note, { color: tokens.textMuted }]}>This round doesn’t eliminate: every team goes on.</Text>
+                  <Text style={[styles.note, { color: c.muted }]}>This round doesn’t eliminate: every team goes on.</Text>
                 ) : null}
               </>
             )}
@@ -298,11 +309,11 @@ export default function HackathonResultsScreen() {
               size="lg"
               fullWidth
               loading={busy}
-              icon={<FileCsv size={18} color={tokens.text} weight="fill" />}
+              icon={<FileCsv size={18} color={c.text} weight="fill" />}
               onPress={() => void exportCsv()}
               style={{ marginTop: spacing[8] }}
             />
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
+            <Text style={[styles.note, { color: c.muted }]}>
               Every team, each judge’s marks per criterion, round scores, decisions, totals and awards.
             </Text>
           </>
@@ -313,19 +324,19 @@ export default function HackathonResultsScreen() {
 }
 
 const OverallRow = React.memo(function OverallRow({ t, onOpen }: { t: ResultTeam; onOpen: (teamId: string) => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const won = t.awards.filter((a) => a.published).map((a) => a.title);
   return (
     <SettingsRow
       icon={
         t.awards.some((a) => a.published) ? (
-          <Trophy size={ICON} color={tokens.accent} weight="fill" />
+          <Trophy size={ICON} color={c.primary} weight="fill" />
         ) : t.psChangedAfterEvalAt ? (
-          <WarningCircle size={ICON} color={tokens.warning} weight="fill" />
+          <WarningCircle size={ICON} color={c.warn} weight="fill" />
         ) : t.stage === 'CANCELLED' || t.stage === 'ELIMINATED' ? (
-          <XCircle size={ICON} color={tokens.textMuted} weight="fill" />
+          <XCircle size={ICON} color={c.muted} weight="fill" />
         ) : (
-          <CheckCircle size={ICON} color={tokens.success} weight="fill" />
+          <CheckCircle size={ICON} color={c.success} weight="fill" />
         )
       }
       label={`${t.rank != null ? `${t.rank}. ` : ''}${teamLabel(t)}`}
@@ -341,16 +352,16 @@ const RoundRow = React.memo(function RoundRow({ t, p, round, onOpen }: {
   round: HackathonResults['rounds'][number];
   onOpen: (teamId: string) => void;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <SettingsRow
       icon={
         p.standing === 'ADVANCED' ? (
-          <CheckCircle size={ICON} color={tokens.success} weight="fill" />
+          <CheckCircle size={ICON} color={c.success} weight="fill" />
         ) : p.standing === 'ELIMINATED' ? (
-          <XCircle size={ICON} color={tokens.danger} weight="fill" />
+          <XCircle size={ICON} color={c.danger} weight="fill" />
         ) : (
-          <CircleDashed size={ICON} color={tokens.textMuted} />
+          <CircleDashed size={ICON} color={c.muted} />
         )
       }
       label={`${p.rank != null ? `${p.rank}. ` : ''}${teamLabel(t)}`}
@@ -365,7 +376,8 @@ const RoundRow = React.memo(function RoundRow({ t, p, round, onOpen }: {
 });
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

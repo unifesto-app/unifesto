@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import ProfileScreen from '../../src/screens/ProfileScreen';
-import { useTheme } from '../../src/context/ThemeContext';
+import { useCosmos } from '../../src/theme/cosmos';
 
 // Profile is the account hub: Notifications, Support, Edit profile, etc.
 // Thin wrapper mirroring the Tickets tab: an OPAQUE root View (backgroundColor
@@ -11,12 +11,12 @@ import { useTheme } from '../../src/context/ThemeContext';
 // CustomHeader's own notch spacer — the extra top space Profile used to show.
 // ProfileScreen paints its own screenGradient over this background.
 export default function ProfileTab() {
-  const { colors } = useTheme();
+  const c = useCosmos();
 
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: c.bg,
     },
   });
 

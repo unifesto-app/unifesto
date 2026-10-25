@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useTokens } from '../../../context/ThemeContext';
 import { listRefunds, refundableBase } from '../../../lib/api/apexMoney';
 import type { RefundRequest, RefundStatus } from '../../../lib/api/finance';
 import SearchList from '../../../components/apex/SearchList';
@@ -11,6 +10,7 @@ import ManageStats from '../../../components/manage/ManageStats';
 import { refundStatus } from '../../../components/manage/FinanceRows';
 import { inr } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
+import { useCosmos } from '../../../theme/cosmos';
 
 type Filter = RefundStatus | 'all';
 
@@ -38,7 +38,7 @@ const matches = (r: RefundRequest, q: string) =>
  */
 export default function RefundsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const [filter, setFilter] = useState<Filter>('PENDING_ADMIN');
   const [counts, setCounts] = useState<{ waiting: number; approved: number; declined: number } | null>(null);
 
@@ -91,7 +91,7 @@ export default function RefundsScreen() {
         </View>
       }
       renderItem={(r) => {
-        const s = refundStatus(r.status, tokens);
+        const s = refundStatus(r.status, c);
         const amount =
           r.status === 'APPROVED'
             ? inr(r.approvedAmount ?? r.cashRefunded)

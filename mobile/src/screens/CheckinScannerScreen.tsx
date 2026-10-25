@@ -36,8 +36,10 @@ import GroupCheckinSheet from '../components/checkin/GroupCheckinSheet';
 import { attendeeName } from '../utils/checkinFormat';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, cosmosFor, useCosmos } from '../theme/cosmos';
 import { GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import { Button } from '../components/ui';
 
 // Ignore repeat reads of the same code within this window (ms): the camera
 // fires many times per second while a QR stays in frame.
@@ -55,6 +57,8 @@ const GLASS = LIQUID_GLASS ? 'transparent' : 'rgba(0, 0, 0, 0.5)';
 const CameraGlass = () => <GlassFill variant="clear" tint={CAMERA_TINT} />;
 const WHITE = '#ffffff';
 const WHITE_DIM = 'rgba(255, 255, 255, 0.7)';
+// The gates around the camera follow the app theme; the overlay keeps the dark set.
+const NIGHT = cosmosFor('dark');
 
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
@@ -64,6 +68,7 @@ const buzz = (kind: ScanFeedback['kind']) =>
 
 export default function CheckinScannerScreen({ eventId, checkinTypeId }: { eventId: string; checkinTypeId?: string }) {
   const router = useRouter();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const topSpacing = useTopSpacing(spacing[2]);
   const [permission, requestPermission] = useCameraPermissions();
@@ -336,7 +341,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
   if (!permission || pointsLoading) {
     return (
       <Shell>
-        <ActivityIndicator color={WHITE} />
+        <ActivityIndicator color={c.text} />
       </Shell>
     );
   }
@@ -355,21 +360,21 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
   if (!pointId) {
     return (
       <Shell align="top" paddingTop={topSpacing + spacing[6]}>
-        <Text style={styles.chooseTitle}>Where are you scanning?</Text>
-        <Text style={styles.chooseBody}>Check-ins are recorded against this point.</Text>
+        <Text style={[styles.chooseTitle, { color: c.text }]} accessibilityRole="header">Where are you scanning?</Text>
+        <Text style={[styles.chooseBody, { color: c.soft }]}>Check-ins are recorded against this point.</Text>
         <View style={styles.chooseList}>
           {points.map((p) => (
             <Pressable
               key={p.id}
               onPress={() => setPointId(p.id)}
               accessibilityRole="button"
-              style={({ pressed }) => [styles.chooseRow, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+              style={({ pressed }) => [styles.chooseRow, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.98 : 1 }] }]}
             >
-              <MapPin size={22} color={WHITE} weight="fill" />
-              <Text style={styles.chooseName} numberOfLines={1}>
+              <MapPin size={22} color={c.text} weight="fill" />
+              <Text style={[styles.chooseName, { color: c.text }]} numberOfLines={1}>
                 {p.name}
               </Text>
-              <CaretRight size={16} color={WHITE_DIM} />
+              <CaretRight size={16} color={c.muted} />
             </Pressable>
           ))}
         </View>
@@ -380,7 +385,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
   if (!permission.granted) {
     return (
       <Shell>
-        <Camera size={48} color={WHITE} />
+        <Camera size={48} color={c.text} />
         <Message
           title="Camera needed"
           body="Unifesto uses the camera only to read ticket QR codes at the door."
@@ -498,7 +503,7 @@ export default function CheckinScannerScreen({ eventId, checkinTypeId }: { event
   );
 }
 
-/** Black full-screen frame for the gate states (the scanner is dark in any theme). */
+/** Full-screen frame for the gate states, on the app's night sky (the camera itself stays dark). */
 function Shell({
   children,
   align = 'center',
@@ -508,23 +513,23 @@ function Shell({
   align?: 'center' | 'top';
   paddingTop?: number;
 }) {
+  const c = useCosmos();
   return (
-    <View style={[styles.root, styles.shell, align === 'top' && { justifyContent: 'flex-start', paddingTop }]}>
-      <StatusBar style="light" />
+    <View style={[styles.root, styles.shell, { backgroundColor: c.bg }, align === 'top' && { justifyContent: 'flex-start', paddingTop }]}>
+      <CosmosBackdrop horizon={false} />
       {children}
     </View>
   );
 }
 
 function Message({ title, body, action }: { title: string; body: string; action?: { label: string; onPress: () => void } }) {
+  const c = useCosmos();
   return (
     <View style={{ alignItems: 'center', gap: spacing[2] }}>
-      <Text style={styles.msgTitle}>{title}</Text>
-      <Text style={styles.msgBody}>{body}</Text>
+      <Text style={[styles.msgTitle, { color: c.text }]} accessibilityRole="header">{title}</Text>
+      <Text style={[styles.msgBody, { color: c.soft }]}>{body}</Text>
       {action ? (
-        <Pressable onPress={action.onPress} style={({ pressed }) => [styles.msgBtn, { opacity: pressed ? 0.85 : 1 }]}>
-          <Text style={styles.msgBtnText}>{action.label}</Text>
-        </Pressable>
+        <Button label={action.label} size="lg" onPress={action.onPress} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
       ) : null}
     </View>
   );
@@ -545,13 +550,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: GLASS,
   },
-  pillText: { color: WHITE, fontSize: typography.fontSize.sm, ...font('semibold') },
-  count: { color: WHITE_DIM, fontSize: typography.fontSize.sm, marginHorizontal: spacing[5], ...font('medium') },
-  countStrong: { color: WHITE, ...font('semibold') },
-  syncLine: { color: '#f59e0b', fontSize: typography.fontSize.sm, marginHorizontal: spacing[5], marginTop: -spacing[2], ...font('medium') },
+  pillText: { color: WHITE, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  count: { color: WHITE_DIM, fontSize: typography.fontSize.sm, marginHorizontal: spacing[5], ...cosmosFont.figure },
+  countStrong: { color: WHITE },
+  syncLine: { color: NIGHT.warn, fontSize: typography.fontSize.sm, marginHorizontal: spacing[5], marginTop: -spacing[2], ...cosmosFont.strong },
 
   middle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', gap: spacing[5] },
-  hint: { color: WHITE, fontSize: typography.fontSize.base, ...font('medium') },
+  hint: { color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
 
   bottom: { position: 'absolute', left: spacing[4], right: spacing[4], bottom: 0, gap: spacing[3], zIndex: 3 },
   tools: { flexDirection: 'row', gap: spacing[3] },
@@ -563,10 +568,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   toolWide: { flex: 1, width: undefined, flexDirection: 'row', gap: spacing[2], backgroundColor: GLASS },
-  toolText: { color: WHITE, fontSize: typography.fontSize.base, ...font('semibold') },
+  toolText: { color: WHITE, fontSize: typography.fontSize.base, ...cosmosFont.strong },
 
-  chooseTitle: { color: WHITE, fontSize: typography.fontSize['2xl'], textAlign: 'center', ...font('heading') },
-  chooseBody: { color: WHITE_DIM, fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  chooseTitle: { fontSize: typography.fontSize.xl, lineHeight: 28, textAlign: 'center', ...cosmosFont.display },
+  chooseBody: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   chooseList: { alignSelf: 'stretch', gap: spacing[3], marginTop: spacing[4] },
   chooseRow: {
     flexDirection: 'row',
@@ -574,20 +579,10 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     height: 60,
     paddingHorizontal: spacing[5],
-    borderRadius: borderRadius.xl,
-    backgroundColor: '#141414',
+    borderRadius: cosmosCardRadius,
   },
-  chooseName: { flex: 1, color: WHITE, fontSize: typography.fontSize.lg, ...font('semibold') },
+  chooseName: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.strong },
 
-  msgTitle: { color: WHITE, fontSize: typography.fontSize.xl, textAlign: 'center', ...font('heading') },
-  msgBody: { color: WHITE_DIM, fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...font() },
-  msgBtn: {
-    marginTop: spacing[4],
-    height: 48,
-    paddingHorizontal: spacing[8],
-    borderRadius: borderRadius.full,
-    backgroundColor: WHITE,
-    justifyContent: 'center',
-  },
-  msgBtnText: { color: '#000000', fontSize: typography.fontSize.base, ...font('semibold') },
+  msgTitle: { fontSize: typography.fontSize.lg, lineHeight: 26, textAlign: 'center', ...cosmosFont.display },
+  msgBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

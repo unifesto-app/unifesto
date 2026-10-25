@@ -1,23 +1,22 @@
 import React, { useState } from 'react';
 import { Linking, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import type { AssistAction } from '../../lib/api/support';
 import { cancelMyRegistration } from '../../lib/api/registrations';
 import { Button } from '../ui';
 import { AppAlert } from '../ui/AppAlert';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /** DPDP notice for the Assist bot: what it reads, where the chat goes, and the way out. */
 export function AssistNotice() {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
-    <Text style={[styles.notice, { color: tokens.textMuted }]}>
+    <Text style={[styles.notice, { color: c.muted }]}>
       Assist is an AI helper and can get things wrong. To answer, it reads your bookings and refunds on Unifesto, and this chat
       is saved as a support request. A person can take over anytime.{' '}
-      <Text style={{ color: tokens.accent }} onPress={() => Linking.openURL('https://unifesto.app/privacy-notice').catch(() => {})}>
+      <Text style={{ color: c.primary }} onPress={() => Linking.openURL('https://unifesto.app/privacy-notice').catch(() => {})}>
         Privacy notice
       </Text>
     </Text>
@@ -75,6 +74,6 @@ export function AssistActions({ actions, onDone }: { actions: AssistAction[]; on
 }
 
 const styles = StyleSheet.create({
-  notice: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  notice: { fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   actions: { alignSelf: 'flex-start', gap: spacing[2], maxWidth: '85%' },
 });

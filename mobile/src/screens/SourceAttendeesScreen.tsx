@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { UserCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 /** Route params carry the tags as strings; '' means untagged (the Direct row). */
@@ -24,8 +23,7 @@ const orNull = (v?: string) => (v ? v : null);
 export default function SourceAttendeesScreen() {
   const params = useLocalSearchParams<{ eventId: string; source?: string; medium?: string; campaign?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [rows, setRows] = useState<SourceAttendee[] | null>(null);
   const [error, setError] = useState('');
 
@@ -47,9 +45,9 @@ export default function SourceAttendeesScreen() {
 
   if (!rows && !error) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -57,21 +55,20 @@ export default function SourceAttendeesScreen() {
   const headcount = (rows ?? []).reduce((n, r) => n + people(r), 0);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      contentInsetAdjustmentBehavior="never"
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={[styles.title, { color: tokens.text }]}>{sourceLabel(tags)}</Text>
-      <Text style={[styles.muted, { color: tokens.textMuted }]}>
+    <CosmosScreen contentContainerStyle={styles.content}>
+      <Text style={[styles.title, { color: c.text }]}>{sourceLabel(tags)}</Text>
+      <Text style={[styles.muted, { color: c.muted }]}>
         {[tags.medium, tags.campaign].filter(Boolean).join(' · ') || 'No tags'}
       </Text>
 
       {error ? (
-        <Text style={[styles.empty, { color: tokens.textMuted }]}>{error}</Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+        </View>
       ) : rows!.length === 0 ? (
-        <Text style={[styles.empty, { color: tokens.textMuted }]}>No confirmed registrations from this source.</Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>No confirmed registrations from this source.</Text>
+        </View>
       ) : (
         <View style={{ marginTop: spacing[6] }}>
           <SettingsGroup
@@ -84,7 +81,7 @@ export default function SourceAttendeesScreen() {
                   r.user.avatarUrl ? (
                     <Image source={{ uri: r.user.avatarUrl }} style={styles.avatar} />
                   ) : (
-                    <UserCircle size={ICON} color={tokens.accent} weight="fill" />
+                    <UserCircle size={ICON} color={c.primary} weight="fill" />
                   )
                 }
                 label={r.user.fullName || r.user.username || 'Attendee'}
@@ -98,20 +95,20 @@ export default function SourceAttendeesScreen() {
             ))}
           </SettingsGroup>
           {rows!.length === 500 ? (
-            <Text style={[styles.note, { color: tokens.textMuted }]}>Showing the latest 500.</Text>
+            <Text style={[styles.note, { color: c.muted }]}>Showing the latest 500.</Text>
           ) : null}
         </View>
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  title: { fontSize: typography.fontSize.xl, ...font('heading') },
-  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...font() },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   avatar: { width: ICON, height: ICON, borderRadius: ICON / 2 },
 });

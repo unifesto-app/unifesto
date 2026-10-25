@@ -4,7 +4,6 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { House, ShieldCheck, SquaresFour, Ticket, User, type Icon } from '@unifesto/unicon/react-native';
 import type { BottomTabBarProps } from 'expo-router/build/react-navigation/bottom-tabs';
-import { useTokens } from '../context/ThemeContext';
 import { useCosmos } from '../theme/cosmos';
 import { borderRadius, spacing } from '../theme/spacing';
 
@@ -32,7 +31,7 @@ export default function FloatingTabBar({
   hiddenRoutes = [],
 }: BottomTabBarProps & { hiddenRoutes?: string[] }) {
   const c = useCosmos();
-  const rippleColor = useTokens().pressed;
+  const rippleColor = c.tint;
   const insets = useSafeAreaInsets();
 
   const visible = state.routes.filter((r) => TAB_META[r.name] && !hiddenRoutes.includes(r.name));

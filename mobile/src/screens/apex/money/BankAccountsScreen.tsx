@@ -1,22 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
-import { RefreshControl } from '../../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { CosmosList } from '../../../components/ui/CosmosScreen';
+import { GUTTER } from '../../../components/home/Section';
 import * as Clipboard from 'expo-clipboard';
-import { useTokens } from '../../../context/ThemeContext';
-import useTopSpacing from '../../../hooks/useTopSpacing';
 import { getAllBankAccounts, setBankAccountStatus, type AdminBankAccount } from '../../../lib/api/apexMoney';
 import type { BankAccountStatus } from '../../../lib/api/finance';
 import ChipPicker from '../../../components/manage/ChipPicker';
 import { shortDate } from '../../../components/apex/ApexRow';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { Button } from '../../../components/ui';
 import { AppAlert } from '../../../components/ui/AppAlert';
-import type { Tokens } from '../../../theme/tokens';
-import { borderRadius, spacing } from '../../../theme/spacing';
+import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { font } from '../../../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { type Cosmos, cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../../theme/cosmos';
 
 type Filter = BankAccountStatus | 'all';
 
@@ -27,16 +22,15 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'all', label: 'All' },
 ];
 
-const statusLook = (s: BankAccountStatus, tokens: Tokens) =>
-  s === 'VERIFIED' ? { text: 'Verified', color: tokens.success } : s === 'PENDING' ? { text: 'To review', color: tokens.warning } : { text: 'Rejected', color: tokens.danger };
+const statusLook = (s: BankAccountStatus, c: Cosmos) =>
+  s === 'VERIFIED' ? { text: 'Verified', color: c.success } : s === 'PENDING' ? { text: 'To review', color: c.warn } : { text: 'Rejected', color: c.danger };
 
 /**
  * Organiser payout accounts. A verified primary account is what lets payouts
  * queue for an event, so pending ones are the default view.
  */
 export default function BankAccountsScreen() {
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [filter, setFilter] = useState<Filter>('PENDING');
   const [accounts, setAccounts] = useState<AdminBankAccount[]>([]);
   const [total, setTotal] = useState(0);
@@ -110,53 +104,58 @@ export default function BankAccountsScreen() {
   };
 
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
+    <CosmosList
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       contentContainerStyle={styles.content}
       data={loading ? [] : accounts}
       keyExtractor={(a) => a.id}
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
-        <View style={{ paddingTop: topSpacing }}>
+        <View>
           <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
-          {!loading && total > 0 ? <Text style={[styles.count, { color: tokens.textMuted }]}>{`${total} ${total === 1 ? 'account' : 'accounts'}`}</Text> : null}
+          {!loading && total > 0 ? <Text style={[styles.count, { color: c.muted }]}>{`${total} ${total === 1 ? 'account' : 'accounts'}`}</Text> : null}
         </View>
       }
       ListEmptyComponent={
         loading ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <Text style={[styles.empty, { color: error ? tokens.danger : tokens.textMuted }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
+            {error ? <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} /> : null}
+          </View>
         )
       }
       renderItem={({ item: a }) => {
-        const s = statusLook(a.status, tokens);
+        const s = statusLook(a.status, c);
         const owner = a.user?.fullName || (a.user?.username ? `@${a.user.username}` : 'Organiser');
         const upi = a.methodType === 'UPI';
         return (
-          <View style={styles.card}>
-            <CardBackdrop shape={styles.card} />
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
             <View style={styles.head}>
-              <Text style={[styles.title, { color: tokens.text }]} numberOfLines={1}>
+              <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
                 {upi ? 'UPI' : a.bankName || 'Bank account'}
-                {a.isPrimary ? <Text style={{ color: tokens.textMuted }}>{'  ·  Primary'}</Text> : null}
+                {a.isPrimary ? <Text style={{ color: c.muted }}>{'  ·  Primary'}</Text> : null}
               </Text>
-              <Text style={[styles.status, { color: s.color }]}>{s.text}</Text>
+              <View style={[styles.chip, { backgroundColor: `${s.color}26` }]}>
+                <Text style={[styles.status, { color: s.color }]}>{s.text}</Text>
+              </View>
             </View>
-            <Text style={[styles.line, { color: tokens.textSecondary }]}>{a.accountHolderName}</Text>
+            <Text style={[styles.line, { color: c.soft }]}>{a.accountHolderName}</Text>
             {upi ? (
-              <Text style={[styles.line, { color: tokens.textSecondary }]} onPress={copy('UPI id', a.upiId)}>
+              <Text style={[styles.line, { color: c.soft }]} onPress={copy('UPI id', a.upiId)}>
                 {a.upiId}
               </Text>
             ) : (
-              <Text style={[styles.line, { color: tokens.textSecondary }]} onPress={copy('Account number', a.accountNumber)}>
+              <Text style={[styles.line, { color: c.soft }]} onPress={copy('Account number', a.accountNumber)}>
                 {[a.accountNumber, a.ifscCode, a.accountType].filter(Boolean).join('  ·  ')}
               </Text>
             )}
-            <Text style={[styles.meta, { color: tokens.textMuted }]}>
+            <Text style={[styles.meta, { color: c.muted }]}>
               {[owner, a.mobileNumber || a.user?.mobileNumber, `added ${shortDate(a.createdAt)}`].filter(Boolean).join('  ·  ')}
             </Text>
-            {a.status === 'REJECTED' && a.rejectionReason ? <Text style={[styles.meta, { color: tokens.danger }]}>{a.rejectionReason}</Text> : null}
+            {a.status === 'REJECTED' && a.rejectionReason ? <Text style={[styles.meta, { color: c.danger }]}>{a.rejectionReason}</Text> : null}
 
             {a.status === 'PENDING' ? (
               rejecting === a.id ? (
@@ -165,9 +164,9 @@ export default function BankAccountsScreen() {
                     value={reason}
                     onChangeText={setReason}
                     placeholder="Why (the organiser sees this)"
-                    placeholderTextColor={tokens.textMuted}
+                    placeholderTextColor={c.muted}
                     autoFocus
-                    style={[styles.input, { color: tokens.text, backgroundColor: tokens.pressed }]}
+                    style={[styles.input, { color: c.text, backgroundColor: c.tint }]}
                   />
                   <View style={styles.actions}>
                     <Button label="Back" variant="ghost" size="md" onPress={() => setRejecting(null)} style={{ flex: 1 }} />
@@ -203,23 +202,23 @@ export default function BankAccountsScreen() {
       }}
       onEndReached={() => void loadMore()}
       onEndReachedThreshold={0.4}
-      ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
+      ListFooterComponent={loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  count: { marginTop: spacing[4], fontSize: typography.fontSize.xs, ...font('medium') },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
-  card: { marginTop: spacing[3], padding: spacing[4], borderRadius: borderRadius.xl, overflow: 'hidden' },
+  content: { paddingHorizontal: GUTTER },
+  count: { marginTop: spacing[4], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  card: { marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
-  title: { flex: 1, fontSize: typography.fontSize.base, ...font('semibold') },
-  status: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  line: { marginTop: 4, fontSize: typography.fontSize.sm, ...font('medium') },
-  meta: { marginTop: 4, fontSize: typography.fontSize.xs, ...font() },
-  input: { marginTop: spacing[3], height: 44, paddingHorizontal: spacing[3], borderRadius: borderRadius.lg, fontSize: typography.fontSize.sm, ...font() },
+  title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  chip: { paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  line: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  meta: { marginTop: 4, fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  input: { marginTop: spacing[3], height: 44, paddingHorizontal: spacing[3], borderRadius: cosmosRadius, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[3] },
 });

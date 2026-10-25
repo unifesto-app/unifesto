@@ -1,12 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Export, QrCode } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
-import { useTokens } from '../context/ThemeContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { getPortalLeads, type PortalLead } from '../lib/api/sponsorPortal';
 import { SPONSOR_LEAD_SOURCE } from '../lib/api/spaceSponsors';
 import { shareCsv, slugPart } from '../lib/csvShare';
@@ -19,9 +18,8 @@ import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -33,8 +31,7 @@ const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { d
 export default function SponsorPortalScreen() {
   const { sponsorId } = useLocalSearchParams<{ sponsorId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const { sponsorships, refresh: refreshAccess } = useSpaceAccess();
   const sponsor = sponsorships.find((s) => s.sponsorId === sponsorId);
   const [leads, setLeads] = useState<PortalLead[] | null>(null);
@@ -90,38 +87,31 @@ export default function SponsorPortalScreen() {
 
   if (!sponsor) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>This sponsor isn't linked to your account any more.</Text>
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>This sponsor isn't linked to your account any more.</Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await Promise.all([load(), refreshAccess()]);
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await Promise.all([load(), refreshAccess()]);
+        setRefreshing(false);
+      }}
     >
       <View style={styles.hero}>
         <SponsorMark name={sponsor.name} logoUrl={sponsor.logoUrl} size={64} />
         <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: tokens.text }]} numberOfLines={2}>
+          <Text style={[styles.name, { color: c.text }]} numberOfLines={2} accessibilityRole="header">
             {sponsor.name}
           </Text>
-          <Text style={[styles.muted, { color: tokens.textMuted }]}>Sponsoring with {sponsor.spaceName}</Text>
+          <Text style={[styles.muted, { color: c.muted }]}>Sponsoring with {sponsor.spaceName}</Text>
         </View>
       </View>
 
@@ -142,7 +132,7 @@ export default function SponsorPortalScreen() {
           {events.map((e) => (
             <SettingsRow
               key={e.eventSponsorId}
-              icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? tokens.accent : tokens.textMuted} weight="fill" />}
+              icon={<QrCode size={ICON} color={e.leadCaptureEnabled ? c.primary : c.muted} weight="fill" />}
               label={e.title}
               value={e.leadCaptureEnabled ? relativeWhen(e.startDateTime, now) : 'Scanning off'}
               onPress={
@@ -153,29 +143,29 @@ export default function SponsorPortalScreen() {
             />
           ))}
         </SettingsGroup>
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Tap an event to scan attendees' ticket QR codes at your booth. Scanning a ticket shares that attendee's contact with you.
         </Text>
       </View>
 
       <View style={{ marginTop: spacing[8] }}>
-        <Text style={[styles.section, { color: tokens.text }]}>Leads</Text>
+        <Text style={[styles.section, { color: c.text }]} accessibilityRole="header">Leads</Text>
         {events.length > 1 ? (
           <View style={{ marginTop: spacing[3] }}>
             <ChipPicker options={events.map((e) => ({ value: e.eventId, label: e.title }))} value={eventFilter} onChange={setEventFilter} clearable />
           </View>
         ) : null}
-        {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+        {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
         <View style={{ marginTop: spacing[3] }}>
           {!leads ? (
-            <ActivityIndicator color={tokens.accent} />
+            <ActivityIndicator color={c.text} />
           ) : (
             <SettingsGroup plain>
               {shown.length === 0 ? <SettingsRow label="No leads yet" /> : null}
               {shown.map((l) => (
                 <View key={l.id}>
                   <SettingsRow label={l.name || l.email || l.phone || 'Attendee'} value={shortDate(l.createdAt)} onPress={() => contact(l)} />
-                  <Text style={[styles.sub, { color: tokens.textMuted }]} onPress={() => contact(l)} numberOfLines={1}>
+                  <Text style={[styles.sub, { color: c.muted }]} onPress={() => contact(l)} numberOfLines={1}>
                     {[SPONSOR_LEAD_SOURCE[l.source] ?? l.source, events.length > 1 && !eventFilter ? l.eventTitle : null, l.email].filter(Boolean).join(' · ')}
                   </Text>
                 </View>
@@ -188,23 +178,24 @@ export default function SponsorPortalScreen() {
             label="Export CSV"
             variant="secondary"
             fullWidth
-            icon={<Export size={18} color={tokens.text} weight="bold" />}
+            icon={<Export size={18} color={c.text} weight="bold" />}
             onPress={() => void exportCsv()}
             style={{ marginTop: spacing[5] }}
           />
         ) : null}
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  name: { fontSize: typography.fontSize['2xl'], lineHeight: typography.fontSize['2xl'] * 1.15, ...font('heading') },
-  section: { fontSize: typography.fontSize.lg, ...font('heading') },
-  muted: { marginTop: 4, fontSize: typography.fontSize.sm, textAlign: 'left', ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...font() },
+  name: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.35, ...cosmosFont.display },
+  section: { fontSize: 17, lineHeight: 24, ...cosmosFont.display },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, textAlign: 'left', ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

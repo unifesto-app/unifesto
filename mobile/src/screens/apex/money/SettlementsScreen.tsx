@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { CosmosList } from '../../../components/ui/CosmosScreen';
+import { Button } from '../../../components/ui';
+import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useTokens } from '../../../context/ThemeContext';
-import useTopSpacing from '../../../hooks/useTopSpacing';
 import type { AdminPayout, PayoutStatus } from '../../../lib/api/apex';
 import { listPayouts } from '../../../lib/api/apexMoney';
 import { describeAccount } from '../../../lib/api/finance';
@@ -15,9 +15,8 @@ import { payoutStatus } from '../../../components/manage/FinanceRows';
 import { inr, inrShort } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { font } from '../../../theme/fontHelpers';
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../../theme/cosmos';
 
-const GUTTER = spacing[6];
 const OWED: PayoutStatus[] = ['PENDING', 'PROCESSING'];
 
 type Filter = 'all' | 'owed' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
@@ -51,8 +50,7 @@ async function fetchAllPayouts() {
  */
 export default function SettlementsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [payouts, setPayouts] = useState<AdminPayout[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [error, setError] = useState('');
@@ -103,14 +101,17 @@ export default function SettlementsScreen() {
     return list.sort((a, b) => when(b) - when(a));
   }, [payouts, filter]);
 
+  const data = payouts ? rows : [];
+
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
+    <CosmosList
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       contentContainerStyle={styles.content}
-      data={payouts ? rows : []}
+      data={data}
       keyExtractor={(p) => p.id}
       ListHeaderComponent={
-        <View style={{ paddingTop: topSpacing, gap: spacing[4] }}>
+        <View style={{ gap: spacing[4], marginBottom: spacing[4] }}>
           <ManageStats
             loading={!payouts && !error}
             stats={[
@@ -120,40 +121,48 @@ export default function SettlementsScreen() {
             ]}
           />
           <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
-          {error ? <Text style={[styles.empty, { color: tokens.danger, marginTop: 0 }]}>{error}</Text> : null}
+          {error ? (
+            <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+              <Text style={[styles.empty, { color: c.soft }]}>{error}</Text>
+              <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : null}
         </View>
       }
       ListEmptyComponent={
         !payouts && !error ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : payouts ? (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>Nothing here.</Text>
+          <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+            <Text style={[styles.empty, { color: c.soft }]}>Nothing here.</Text>
+          </View>
         ) : null
       }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-      renderItem={({ item: p }) => {
-        const s = payoutStatus(p.status, tokens);
+      renderItem={({ item: p, index }) => {
+        const s = payoutStatus(p.status, c);
         const to = p.bankAccount ? describeAccount(p.bankAccount) : null;
         return (
-          <ApexRow
+          <View style={cardSegment(c.raised, index, data.length)}>
+            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+            <ApexRow
             title={p.event?.title ?? p.session?.title ?? 'Event'}
             meta={[organiserName(p), shortDate(p.completedAt ?? p.createdAt), p.utr ? `UTR ${p.utr}` : to, p.status === 'COMPLETED' ? null : s.text]
               .filter(Boolean)
               .join('  ·  ')}
             value={inr(p.netAmount)}
-            valueColor={p.status === 'COMPLETED' ? tokens.text : s.color}
+            valueColor={p.status === 'COMPLETED' ? c.text : s.color}
             onPress={() => router.push(openPayout(p) as never)}
-          />
+            />
+          </View>
         );
       }}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
+  content: { paddingHorizontal: GUTTER },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

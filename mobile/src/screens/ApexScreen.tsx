@@ -43,7 +43,6 @@ import {
   X,
   type Icon,
 } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useStableTopInset } from '../components/CustomHeader';
 import CosmosBackdrop from '../components/ui/CosmosBackdrop';
 import StatusBarScrim from '../components/ui/StatusBarScrim';
@@ -218,7 +217,6 @@ async function legacyQueueCounts() {
  */
 export default function ApexScreen() {
   const router = useRouter();
-  const tokens = useTokens();
   const c = useCosmos();
   const topInset = useStableTopInset();
   const { width, fontScale } = useWindowDimensions();
@@ -309,7 +307,7 @@ export default function ApexScreen() {
   const updated = data?.generatedAt
     ? new Date(data.generatedAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })
     : null;
-  const sys = status ? overallLabel(status, tokens) : null;
+  const sys = status ? overallLabel(status, c) : null;
   const countOf = (t: Tool) => (t.count ? counts[t.count] ?? 0 : 0);
   const fmt = (n: number) => n.toLocaleString('en-IN');
 
@@ -358,7 +356,7 @@ export default function ApexScreen() {
         <View style={styles.tileTop}>
           <t.icon size={ICON} color={isStatus && sys ? sys.color : c.text} />
           {n ? (
-            <View style={[styles.count, { backgroundColor: `${tokens.warning}26` }]}>
+            <View style={[styles.count, { backgroundColor: `${c.warn}26` }]}>
               <Text style={[styles.countText, { color: c.warn }]}>{fmt(n)}</Text>
             </View>
           ) : t.web ? (
@@ -437,7 +435,7 @@ export default function ApexScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[tokens.accent]} progressViewOffset={topInset} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.primary]} progressViewOffset={topInset} />
         }
       >
         {/* ── Header ─────────────────────────────────────────────── */}
@@ -511,7 +509,7 @@ export default function ApexScreen() {
             ) : waiting.length === 0 ? (
               <View style={styles.clear} accessible accessibilityLabel="All clear. Nothing is waiting on me.">
                 <CardBackdrop shape={styles.clear} />
-                <CheckCircle size={24} color={tokens.success} weight="fill" />
+                <CheckCircle size={24} color={c.success} weight="fill" />
                 <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
               </View>
             ) : (
@@ -536,7 +534,7 @@ export default function ApexScreen() {
                         {name}
                       </Text>
                       {/* Share of everything waiting. */}
-                      <Meter frac={n / waitingTotal} color={tokens.warning} />
+                      <Meter frac={n / waitingTotal} color={c.warn} />
                     </PressableScale>
                   );
                 })}

@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BellRinging } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
+import { useCosmos } from '../../theme/cosmos';
 
 const SHOW_MS = 6_000;
 
@@ -31,7 +31,7 @@ export function showInAppNotice(n: Notice): boolean {
 
 /** Floating glass card at the top; slides in, taps through, then slides away. */
 export function InAppNoticeHost() {
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const [notice, setNotice] = useState<(Notice & { key: number }) | null>(null);
 
@@ -73,13 +73,13 @@ export function InAppNoticeHost() {
             notice.onPress?.();
           }}
         >
-          <BellRinging size={22} color={tokens.accent} weight="fill" />
+          <BellRinging size={22} color={c.primary} weight="fill" />
           <View style={{ flex: 1 }}>
-            <Text variant="label" numberOfLines={1} style={{ color: tokens.text }}>
+            <Text variant="label" numberOfLines={1} style={{ color: c.text }}>
               {notice.title}
             </Text>
             {notice.body ? (
-              <Text variant="caption" numberOfLines={2} style={{ color: tokens.textSecondary }}>
+              <Text variant="caption" numberOfLines={2} style={{ color: c.soft }}>
                 {notice.body}
               </Text>
             ) : null}

@@ -1,9 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Lifebuoy, MagnifyingGlass, QrCode } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useCheckinHub } from '../hooks/useCheckinHub';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';
@@ -11,7 +9,8 @@ import { useIsOffline } from '../lib/offline/connectivity';
 import { offlineStats, pullChanges } from '../lib/offline/checkinQueue';
 import { undoCheckin, type RecentCheckin } from '../lib/api/checkin';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import CheckinProgressCard from '../components/checkin/CheckinProgressCard';
 import OfflineCheckinPanel from '../components/checkin/OfflineCheckinPanel';
 import PersonRow from '../components/checkin/PersonRow';
@@ -23,9 +22,7 @@ import { relativeWhen } from '../utils/eventFormat';
 import { checkinPhase, timeAgo } from '../utils/checkinFormat';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[5];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * One event's door: live progress, the two ways to check people in, and the
@@ -34,8 +31,7 @@ const GUTTER = spacing[5];
  */
 export default function EventCheckinScreen() {
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const params = useLocalSearchParams<{ eventId: string; title?: string; startDateTime?: string; venueName?: string }>();
   const { eventId } = params;
 
@@ -101,35 +97,22 @@ export default function EventCheckinScreen() {
   const toolParams = { checkinTypeId: pointId || (points.length === 1 ? points[0].id : '') };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={hub.refreshing}
-          onRefresh={hub.refresh}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
+    <CosmosScreen refreshing={hub.refreshing} onRefresh={hub.refresh}>
       {/* Identity */}
       <View style={styles.gutter}>
         {live ? (
           <View style={styles.liveRow}>
-            <View style={[styles.liveDot, { backgroundColor: tokens.success }]} />
-            <Text style={[styles.eyebrow, { color: tokens.success }]}>Live now</Text>
+            <View style={[styles.liveDot, { backgroundColor: c.success }]} />
+            <Text style={[styles.eyebrow, { color: c.success }]}>Live now</Text>
           </View>
         ) : start ? (
-          <Text style={[styles.eyebrow, { color: tokens.accent }]}>{relativeWhen(start)}</Text>
+          <Text style={[styles.eyebrow, { color: c.primary }]}>{relativeWhen(start)}</Text>
         ) : null}
-        <Text style={[styles.title, { color: tokens.text }]} numberOfLines={3}>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={3} accessibilityRole="header">
           {title}
         </Text>
         {venue ? (
-          <Text style={[styles.venue, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.venue, { color: c.muted }]} numberOfLines={1}>
             {venue}
           </Text>
         ) : null}
@@ -144,9 +127,9 @@ export default function EventCheckinScreen() {
       {/* Progress */}
       <View style={[styles.gutter, { marginTop: spacing[5] }]}>
         {hub.error && !stats ? (
-          <View style={styles.errorBox}>
-            <Text style={[styles.venue, { color: tokens.textMuted }]}>{hub.error}</Text>
-            <Button label="Try again" variant="secondary" size="sm" onPress={hub.retry} />
+          <View style={[styles.errorBox, { backgroundColor: c.raised }]}>
+            <Text style={[styles.errorText, { color: c.soft }]}>{hub.error}</Text>
+            <Button label="Try again" variant="secondary" onPress={hub.retry} style={{ alignSelf: 'center' }} />
           </View>
         ) : (
           <CheckinProgressCard stats={stats} loading={hub.loading && !localStats} />
@@ -159,7 +142,7 @@ export default function EventCheckinScreen() {
           label="Scan tickets"
           size="lg"
           fullWidth
-          icon={<QrCode size={22} color={tokens.accentFg} weight="bold" />}
+          icon={<QrCode size={22} color={c.primaryFg} weight="bold" />}
           onPress={() => router.push({ pathname: `/checkin/${eventId}/scanner`, params: toolParams })}
         />
         <Button
@@ -167,7 +150,7 @@ export default function EventCheckinScreen() {
           variant="secondary"
           size="lg"
           fullWidth
-          icon={<MagnifyingGlass size={20} color={tokens.text} weight="bold" />}
+          icon={<MagnifyingGlass size={20} color={c.text} weight="bold" />}
           onPress={() => router.push({ pathname: `/checkin/${eventId}/manual`, params: toolParams })}
         />
       </View>
@@ -176,7 +159,7 @@ export default function EventCheckinScreen() {
         <View style={styles.gutter}>
           <SettingsGroup title="Unifesto Sprint">
             <SettingsRow
-              icon={<Lifebuoy size={24} color={tokens.text} />}
+              icon={<Lifebuoy size={24} color={c.text} />}
               label="Help desk"
               value={openQueries ? `${openQueries} open` : 'All clear'}
               onPress={() => router.push(`/hackathon/${eventId}/help-desk`)}
@@ -194,9 +177,9 @@ export default function EventCheckinScreen() {
       <View style={styles.gutter}>
         <SettingsGroup title={activePoint ? `Recent at ${activePoint.name}` : 'Recent check-ins'}>
           {hub.recent === null ? (
-            <Text style={[styles.placeholder, { color: tokens.textMuted }]}>Loading…</Text>
+            <Text style={[styles.placeholder, { color: c.muted }]}>Loading…</Text>
           ) : recent.length === 0 ? (
-            <Text style={[styles.placeholder, { color: tokens.textMuted }]}>
+            <Text style={[styles.placeholder, { color: c.muted }]}>
               No one yet. Scan a ticket or search for someone to get started.
             </Text>
           ) : (
@@ -214,20 +197,20 @@ export default function EventCheckinScreen() {
           )}
         </SettingsGroup>
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing[12] },
   gutter: { paddingHorizontal: GUTTER },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
-  eyebrow: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  title: { fontSize: typography.fontSize['3xl'], lineHeight: 36, marginTop: spacing[1], letterSpacing: -0.5, ...font('heading') },
-  venue: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...font() },
+  eyebrow: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  title: { fontSize: typography.fontSize['2xl'], lineHeight: 32, marginTop: spacing[1], ...cosmosFont.display },
+  venue: { fontSize: typography.fontSize.sm, marginTop: spacing[1], ...cosmosFont.body },
   chips: { marginTop: spacing[5] },
-  errorBox: { alignItems: 'flex-start', gap: spacing[3], paddingVertical: spacing[4] },
+  errorBox: { gap: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  errorText: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   actions: { gap: spacing[3], marginTop: spacing[5] },
-  placeholder: { fontSize: typography.fontSize.sm, padding: spacing[4], lineHeight: 20, ...font() },
+  placeholder: { fontSize: typography.fontSize.sm, padding: spacing[4], lineHeight: 20, ...cosmosFont.body },
 });

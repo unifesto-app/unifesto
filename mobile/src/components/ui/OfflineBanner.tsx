@@ -3,10 +3,10 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { SlideInUp, SlideOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, WarningCircle, WifiSlash } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { useNetworkNotice } from '../../lib/offline/connectivity';
 import { Text } from './Text';
 import { CardBackdrop, CardSurfaceProvider } from './CardSurface';
+import { useCosmos } from '../../theme/cosmos';
 
 const BACK_ONLINE_MS = 2_000;
 
@@ -19,7 +19,7 @@ const BACK_ONLINE_MS = 2_000;
 export function OfflineBanner() {
   const notice = useNetworkNotice();
   const offline = notice === 'offline';
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
   const [backOnline, setBackOnline] = useState(false);
   const wasOffline = useRef(false);
@@ -55,11 +55,11 @@ export function OfflineBanner() {
           <CardBackdrop shape={styles.pill} opaque />
         </CardSurfaceProvider>
         {offline ? (
-          <WifiSlash size={18} color={tokens.warning} weight="bold" />
+          <WifiSlash size={18} color={c.warn} weight="bold" />
         ) : notice === 'saved' ? (
-          <WarningCircle size={18} color={tokens.warning} weight="fill" />
+          <WarningCircle size={18} color={c.warn} weight="fill" />
         ) : (
-          <CheckCircle size={18} color={tokens.success} weight="fill" />
+          <CheckCircle size={18} color={c.success} weight="fill" />
         )}
         <Text variant="label">
           {offline

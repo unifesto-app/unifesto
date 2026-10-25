@@ -1,20 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Megaphone, Plus, Trophy } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { getAwards, publishAwards, type AwardsList } from '../lib/api/hackathon';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 26;
 
 /**
@@ -25,8 +23,7 @@ const ICON = 26;
 export default function HackathonWinnersScreen() {
   const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [data, setData] = useState<AwardsList | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,9 +46,16 @@ export default function HackathonWinnersScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.note, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -80,29 +84,22 @@ export default function HackathonWinnersScreen() {
     );
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      bottom={100}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       <SettingsGroup title="Awards">
         {data.awards.length === 0 ? <SettingsRow label="No awards yet" /> : null}
         {data.awards.map((a) => (
           <SettingsRow
             key={a.id}
-            icon={<Trophy size={ICON} color={a.published ? tokens.accent : tokens.textMuted} weight="fill" />}
+            icon={<Trophy size={ICON} color={a.published ? c.primary : c.muted} weight="fill" />}
             label={`${a.title} · ${a.team.teamCode ?? ''} ${a.team.name}`.trim()}
             value={a.team.cancelled ? 'Team cancelled' : a.published ? 'Published' : 'Not published'}
             external={data.canDeclareWinners}
@@ -110,10 +107,10 @@ export default function HackathonWinnersScreen() {
           />
         ))}
         {data.canDeclareWinners ? (
-          <SettingsRow icon={<Plus size={ICON} color={tokens.accent} weight="bold" />} label="Add an award" external onPress={openAwards} />
+          <SettingsRow icon={<Plus size={ICON} color={c.primary} weight="bold" />} label="Add an award" external onPress={openAwards} />
         ) : null}
       </SettingsGroup>
-      <Text style={[styles.note, { color: tokens.textMuted }]}>
+      <Text style={[styles.note, { color: c.muted }]}>
         {data.canDeclareWinners
           ? 'Pick any team, whatever its rank, and say why it won. Teams see awards and notes once you publish.'
           : 'Only the Curator or a Space Admin can declare and publish winners.'}
@@ -125,7 +122,7 @@ export default function HackathonWinnersScreen() {
           size="lg"
           fullWidth
           loading={busy}
-          icon={<Megaphone size={18} color={tokens.accentFg} weight="fill" />}
+          icon={<Megaphone size={18} color={c.primaryFg} weight="fill" />}
           onPress={publish}
           style={{ marginTop: spacing[6] }}
         />
@@ -138,12 +135,13 @@ export default function HackathonWinnersScreen() {
         onPress={() => router.push(`/manage/event/${eventId}/hackathon/results`)}
         style={{ marginTop: spacing[3] }}
       />
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

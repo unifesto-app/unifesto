@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { useTokens } from '../../context/ThemeContext';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { cancelPayout, markPayoutPaid } from '../../lib/api/apex';
 import { recallPayout, organiserName } from '../../lib/apexRequests';
 import { longDate } from '../../components/apex/ApexRow';
@@ -12,12 +10,12 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { inr } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /**
  * One payout: what's owed, where to send it (copy-on-tap), then record it as
@@ -27,21 +25,22 @@ const GUTTER = spacing[6];
 export default function AdminPayoutDetailScreen() {
   const { payoutId } = useLocalSearchParams<{ payoutId: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const payout = payoutId ? recallPayout(payoutId) : undefined;
   const [utr, setUtr] = useState('');
   const [busy, setBusy] = useState<'PAY' | 'CANCEL' | null>(null);
 
   if (!payout) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>Open this payout from Requests or Settlements.</Text>
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>Open this payout from Requests or Settlements.</Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
-  const status = payoutStatus(payout.status, tokens);
+  const status = payoutStatus(payout.status, c);
   const acct = payout.bankAccount;
   const open = payout.status === 'PENDING' || payout.status === 'PROCESSING';
 
@@ -91,18 +90,14 @@ export default function AdminPayoutDetailScreen() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.amount, { color: tokens.text }]}>{inr(payout.netAmount)}</Text>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>
+    <CosmosScreen keyboard contentContainerStyle={styles.content} keyboardDismissMode="interactive">
+        <Text style={[styles.amount, { color: c.text }]}>{inr(payout.netAmount)}</Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
           {[payout.event?.title ?? payout.session?.title, organiserName(payout)].filter(Boolean).join('  ·  ')}
         </Text>
-        <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
+        <View style={[styles.chip, { backgroundColor: `${status.color}26` }]}>
+          <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
+        </View>
 
         <SettingsGroup title="Money" plain>
           <SettingsRow label="Ticket revenue" value={inr(payout.grossRevenue)} />
@@ -119,7 +114,7 @@ export default function AdminPayoutDetailScreen() {
             {acct.bankName ? <SettingsRow label="Bank" value={acct.bankName} /> : null}
           </SettingsGroup>
         ) : (
-          <Text style={[styles.note, { color: tokens.warning }]}>No payout account on this request.</Text>
+          <Text style={[styles.note, { color: c.warn }]}>No payout account on this request.</Text>
         )}
 
         <SettingsGroup title="History" plain>
@@ -127,8 +122,8 @@ export default function AdminPayoutDetailScreen() {
           {payout.completedAt ? <SettingsRow label="Paid on" value={longDate(payout.completedAt)} /> : null}
           {payout.utr ? <SettingsRow label="UTR" value={payout.utr} onPress={copy('UTR', payout.utr)} /> : null}
         </SettingsGroup>
-        {payout.failureReason ? <Text style={[styles.note, { color: tokens.danger }]}>{payout.failureReason}</Text> : null}
-        {payout.notes ? <Text style={[styles.note, { color: tokens.textSecondary }]}>{payout.notes}</Text> : null}
+        {payout.failureReason ? <Text style={[styles.note, { color: c.danger }]}>{payout.failureReason}</Text> : null}
+        {payout.notes ? <Text style={[styles.note, { color: c.soft }]}>{payout.notes}</Text> : null}
 
         {open ? (
           <>
@@ -141,16 +136,16 @@ export default function AdminPayoutDetailScreen() {
             ) : null}
           </>
         ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  amount: { fontSize: typography.fontSize['4xl'], ...font('heading') },
-  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

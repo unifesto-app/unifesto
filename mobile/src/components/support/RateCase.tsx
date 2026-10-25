@@ -1,25 +1,24 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Star } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { rateTicket, type SupportTicket } from '../../lib/api/support';
 import { Button } from '../ui';
 import { AppAlert } from '../ui/AppAlert';
 import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /** D20: the requester rates a resolved case 1-5, with an optional comment. */
 export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
 
   if (ticket.rating) {
     return (
-      <Text style={[styles.done, { color: tokens.textMuted }]}>
+      <Text style={[styles.done, { color: c.muted }]}>
         You rated this {ticket.rating} of 5. Thanks for telling us.
       </Text>
     );
@@ -35,7 +34,7 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
 
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.title, { color: tokens.text }]}>How did we do?</Text>
+      <Text style={[styles.title, { color: c.text }]}>How did we do?</Text>
       <View style={styles.stars} accessibilityRole="radiogroup">
         {[1, 2, 3, 4, 5].map((n) => (
           <Pressable
@@ -46,7 +45,7 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
             accessibilityState={{ checked: rating === n }}
             accessibilityLabel={`${n} of 5`}
           >
-            <Star size={32} color={n <= rating ? tokens.warning : tokens.textMuted} weight={n <= rating ? 'fill' : 'regular'} />
+            <Star size={32} color={n <= rating ? c.warn : c.muted} weight={n <= rating ? 'fill' : 'regular'} />
           </Pressable>
         ))}
       </View>
@@ -58,11 +57,11 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
               value={comment}
               onChangeText={setComment}
               placeholder="Anything to add? (optional)"
-              placeholderTextColor={tokens.textMuted}
-              selectionColor={tokens.accent}
+              placeholderTextColor={c.muted}
+              selectionColor={c.primary}
               maxLength={1000}
               multiline
-              style={[styles.input, { color: tokens.text }]}
+              style={[styles.input, { color: c.text }]}
             />
           </View>
           <Button label="Send rating" loading={saving} onPress={send} />
@@ -74,9 +73,9 @@ export function RateCase({ ticket, onRated }: { ticket: SupportTicket; onRated: 
 
 const styles = StyleSheet.create({
   wrap: { marginTop: spacing[6], alignItems: 'center', gap: spacing[3] },
-  title: { fontSize: typography.fontSize.base, ...font('500') },
+  title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   stars: { flexDirection: 'row', gap: spacing[2] },
   inputWrap: { alignSelf: 'stretch', borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
-  input: { fontSize: typography.fontSize.base, maxHeight: 120, ...font() },
-  done: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  input: { fontSize: typography.fontSize.base, maxHeight: 120, ...cosmosFont.body },
+  done: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

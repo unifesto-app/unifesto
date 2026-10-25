@@ -1,27 +1,25 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { Button } from '../../components/ui';
+import { GUTTER } from '../../components/home/Section';
 import { useRouter } from 'expo-router';
 import { Scissors } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { conversion, getTraffic, scopeParams, type PlatformTrafficStats } from '../../lib/api/traffic';
 import { sourceLabel } from '../../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { TrafficSummary, fmt } from '../../components/traffic/TrafficSummary';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 const PLATFORM_LABEL: Record<string, string> = { ios: 'iOS', android: 'Android', web: 'Web' };
 
 /** Apex › Traffic: page views across the platform, what's most viewed, and platform short links. */
 export default function TrafficScreen() {
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [data, setData] = useState<PlatformTrafficStats | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -41,35 +39,32 @@ export default function TrafficScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      contentInsetAdjustmentBehavior="never"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-        />
-      }
+    <CosmosScreen
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
+      contentContainerStyle={styles.content}
     >
-      {error ? <Text style={[styles.error, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? (
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.error, { color: c.soft }]}>{error}</Text>
+          <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+        </View>
+      ) : null}
 
       <SettingsGroup title="Links">
         <SettingsRow
-          icon={<Scissors size={ICON} color={tokens.accent} weight="bold" />}
+          icon={<Scissors size={ICON} color={c.text} weight="bold" />}
           label="Short links"
           onPress={() => router.push({ pathname: '/short-links', params: { ...scopeParams({ kind: 'admin' }), title: '' } })}
         />
@@ -113,7 +108,7 @@ export default function TrafficScreen() {
           </Section>
         </>
       ) : null}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
@@ -128,7 +123,7 @@ function Section({ title, empty, children }: { title: string; empty: string; chi
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  error: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  error: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

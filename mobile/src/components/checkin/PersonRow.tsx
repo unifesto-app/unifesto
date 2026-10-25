@@ -2,25 +2,24 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CheckCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { initials } from '../../utils/checkinFormat';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const AVATAR = 40;
 
 export function Avatar({ name, url, size = AVATAR }: { name: string; url?: string | null; size?: number }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   if (url) return <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
   return (
     <View
       style={[
         styles.avatarEmpty,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: tokens.fillStrong },
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: c.input },
       ]}
     >
-      <Text style={[styles.initials, { color: tokens.textSecondary, fontSize: size * 0.36 }]}>{initials(name)}</Text>
+      <Text style={[styles.initials, { color: c.soft, fontSize: size * 0.36 }]}>{initials(name)}</Text>
     </View>
   );
 }
@@ -43,14 +42,14 @@ interface PersonRowProps {
  * "Checked in" once done.
  */
 export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }: PersonRowProps) {
-  const tokens = useTokens();
+  const c = useCosmos();
 
   let trailing: React.ReactNode = null;
   if (action?.state === 'done') {
     trailing = (
       <View style={styles.done}>
-        <CheckCircle size={18} color={tokens.success} weight="fill" />
-        <Text style={[styles.doneText, { color: tokens.success }]}>Checked in</Text>
+        <CheckCircle size={18} color={c.success} weight="fill" />
+        <Text style={[styles.doneText, { color: c.success }]}>Checked in</Text>
       </View>
     );
   } else if (action) {
@@ -63,25 +62,25 @@ export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }:
         hitSlop={6}
         style={({ pressed }) => [
           styles.pill,
-          { backgroundColor: tokens.accent, transform: [{ scale: pressed ? 0.95 : 1 }] },
+          { backgroundColor: c.primary, transform: [{ scale: pressed ? 0.95 : 1 }] },
         ]}
       >
         {action.state === 'busy' ? (
-          <ActivityIndicator size="small" color={tokens.accentFg} />
+          <ActivityIndicator size="small" color={c.primaryFg} />
         ) : (
-          <Text style={[styles.pillText, { color: tokens.accentFg }]}>Check in</Text>
+          <Text style={[styles.pillText, { color: c.primaryFg }]}>Check in</Text>
         )}
       </Pressable>
     );
   } else if (aside) {
-    trailing = <Text style={[styles.aside, { color: tokens.textMuted }]}>{aside}</Text>;
+    trailing = <Text style={[styles.aside, { color: c.muted }]}>{aside}</Text>;
   }
   if (undo) {
     trailing = (
       <View style={styles.trailing}>
         {trailing}
         {undo.busy ? (
-          <ActivityIndicator size="small" color={tokens.textMuted} />
+          <ActivityIndicator size="small" color={c.muted} />
         ) : (
           <Pressable
             onPress={undo.onPress}
@@ -89,7 +88,7 @@ export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }:
             accessibilityLabel={`Undo ${name}'s check-in`}
             hitSlop={8}
           >
-            <Text style={[styles.undoText, { color: tokens.accent }]}>Undo</Text>
+            <Text style={[styles.undoText, { color: c.primary }]}>Undo</Text>
           </Pressable>
         )}
       </View>
@@ -100,11 +99,11 @@ export default function PersonRow({ name, avatarUrl, sub, aside, action, undo }:
     <View style={styles.row}>
       <Avatar name={name} url={avatarUrl} />
       <View style={styles.body}>
-        <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+        <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
           {name}
         </Text>
         {sub ? (
-          <Text style={[styles.sub, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
             {sub}
           </Text>
         ) : null}
@@ -124,11 +123,11 @@ const styles = StyleSheet.create({
     minHeight: 64,
   },
   avatarEmpty: { alignItems: 'center', justifyContent: 'center' },
-  initials: { ...font('semibold') },
+  initials: { ...cosmosFont.strong },
   body: { flex: 1, gap: 2 },
-  name: { fontSize: typography.fontSize.base, ...font('semibold') },
-  sub: { fontSize: typography.fontSize.xs, ...font() },
-  aside: { fontSize: typography.fontSize.xs, ...font('medium') },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  sub: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  aside: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   pill: {
     minWidth: 88,
     height: 34,
@@ -137,9 +136,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pillText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  pillText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   trailing: { alignItems: 'flex-end', gap: 4 },
-  undoText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  undoText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   done: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  doneText: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  doneText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

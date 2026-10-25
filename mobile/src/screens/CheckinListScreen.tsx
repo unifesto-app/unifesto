@@ -1,20 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { QrCode } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { getMyCheckinEvents, type CheckinEvent } from '../lib/api/checkin';
 import CheckinEventCard from '../components/checkin/CheckinEventCard';
 import Skeleton from '../components/Skeleton';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER, Section } from '../components/home/Section';
 import { checkinPhase, type CheckinPhase } from '../utils/checkinFormat';
-import useTopSpacing from '../hooks/useTopSpacing';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[5];
 const ENDED_SHOWN = 5;
 
 const SECTIONS: { phase: CheckinPhase; title: string }[] = [
@@ -26,8 +24,7 @@ const SECTIONS: { phase: CheckinPhase; title: string }[] = [
 /** Every event this user can check people into, bucketed live → upcoming → ended. */
 export default function CheckinListScreen() {
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
 
   const [events, setEvents] = useState<CheckinEvent[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,71 +66,61 @@ export default function CheckinListScreen() {
     });
 
   const empty = events !== null && events.length === 0;
+  const shown = SECTIONS.filter(({ phase }) => grouped[phase].length > 0);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }, empty && styles.grow]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => {
-            setRefreshing(true);
-            void load();
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      refreshing={refreshing}
+      onRefresh={() => {
+        setRefreshing(true);
+        void load();
+      }}
     >
       {events === null && !error ? (
-        <View style={styles.list}>
+        <View style={[styles.pad, styles.list]}>
           <Skeleton width={90} height={16} />
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} height={96} borderRadius={borderRadius.xl} />
+            <Skeleton key={i} height={96} borderRadius={cosmosCardRadius} />
           ))}
         </View>
       ) : error && !events ? (
-        <View style={styles.center}>
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>Couldn't load events</Text>
-          <Text style={[styles.emptyText, { color: tokens.textMuted }]}>{error}</Text>
-          <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+        <View style={styles.pad}>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyTitle, { color: c.text }]}>Couldn't load events</Text>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4], alignSelf: 'center' }} />
+          </View>
         </View>
       ) : empty ? (
-        <View style={styles.center}>
-          <QrCode size={48} color={tokens.textMuted} />
-          <Text style={[styles.emptyTitle, { color: tokens.text }]}>Nothing to check in yet</Text>
-          <Text style={[styles.emptyText, { color: tokens.textMuted }]}>
-            Events you run, or where a curator gives you door access, show up here.
-          </Text>
+        <View style={styles.pad}>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <QrCode size={40} color={c.muted} />
+            <Text style={[styles.emptyTitle, { color: c.text }]}>Nothing to check in yet</Text>
+            <Text style={[styles.emptyText, { color: c.soft }]}>
+              Events you run, or where a curator gives you door access, show up here.
+            </Text>
+          </View>
         </View>
       ) : (
-        SECTIONS.map(({ phase, title }) =>
-          grouped[phase].length > 0 ? (
-            <View key={phase} style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: tokens.textMuted }]}>{title}</Text>
-              <View style={styles.list}>
-                {grouped[phase].map((ev) => (
-                  <CheckinEventCard key={ev.id} event={ev} phase={phase} onPress={() => open(ev)} />
-                ))}
-              </View>
+        shown.map(({ phase, title }, i) => (
+          <Section key={phase} title={title} style={i === 0 ? styles.firstSection : undefined}>
+            <View style={[styles.pad, styles.list]}>
+              {grouped[phase].map((ev) => (
+                <CheckinEventCard key={ev.id} event={ev} phase={phase} onPress={() => open(ev)} />
+              ))}
             </View>
-          ) : null,
-        )
+          </Section>
+        ))
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: spacing[12] },
-  grow: { flexGrow: 1 },
-  section: { marginBottom: spacing[8] },
-  sectionTitle: { fontSize: typography.fontSize.sm, marginBottom: spacing[3], marginLeft: spacing[1], ...font('semibold') },
+  pad: { paddingHorizontal: GUTTER },
+  firstSection: { marginTop: spacing[2] },
   list: { gap: spacing[3] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing[2], paddingBottom: spacing[20] },
-  emptyTitle: { fontSize: typography.fontSize.xl, marginTop: spacing[3], textAlign: 'center', ...font('heading') },
-  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, maxWidth: 290, ...font() },
+  empty: { alignItems: 'center', gap: spacing[2], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyTitle: { fontSize: typography.fontSize.base, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  emptyText: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, maxWidth: 290, ...cosmosFont.body },
 });

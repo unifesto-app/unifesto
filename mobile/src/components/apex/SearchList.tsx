@@ -1,17 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
-import { RefreshControl } from '../ui/RefreshControl';
-import { MagnifyingGlass } from '@unifesto/unicon/react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import type { Result } from '../../lib/api/apex';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { CosmosList } from '../ui/CosmosScreen';
+import SearchField from '../manage/SearchField';
+import { GUTTER } from '../home/Section';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
-import { CardBackdrop } from '../ui/CardSurface';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface PageOf<T> {
   items: T[];
@@ -44,8 +40,7 @@ export default function SearchList<T>({
   deniedMessage = 'Only Unifesto platform admins can see this.',
   refreshOnFocus,
 }: SearchListProps<T>) {
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<T[]>([]);
@@ -110,33 +105,22 @@ export default function SearchList<T>({
     setRefreshing(false);
   };
 
+  const data = loading || error ? [] : rows;
+
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
+    <CosmosList
       contentContainerStyle={styles.content}
-      data={loading || error ? [] : rows}
+      data={data}
       keyExtractor={keyOf}
-      keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       ListHeaderComponent={
-        <View style={{ paddingTop: topSpacing }}>
-          <View style={styles.search}>
-            <CardBackdrop shape={styles.search} />
-            <MagnifyingGlass size={18} color={tokens.textMuted} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder={placeholder}
-              placeholderTextColor={tokens.textMuted}
-              style={[styles.input, { color: tokens.text }]}
-              autoCorrect={false}
-              autoCapitalize="none"
-              clearButtonMode="while-editing"
-            />
-          </View>
+        <View>
+          <SearchField value={search} onChangeText={setSearch} placeholder={placeholder} autoCorrect={false} autoCapitalize="none" />
           {header}
           {!loading && !error && total > 0 ? (
-            <Text style={[styles.count, { color: tokens.textMuted }]}>
+            <Text style={[styles.count, { color: c.muted }]} accessibilityRole="header">
               {total.toLocaleString('en-IN')} {total === 1 ? noun[0] : noun[1]}
             </Text>
           ) : null}
@@ -144,29 +128,31 @@ export default function SearchList<T>({
       }
       ListEmptyComponent={
         loading ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error || (query ? 'No matches.' : `No ${noun[1]}.`)}</Text>
+          </View>
         )
       }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-      renderItem={({ item }) => renderItem(item)}
+      // One card for the list: each row is a segment of it.
+      renderItem={({ item, index }) => (
+        <View style={cardSegment(c.raised, index, data.length)}>
+          {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+          {renderItem(item)}
+        </View>
+      )}
       onEndReached={() => void loadMore()}
       onEndReachedThreshold={0.4}
-      ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-      }
+      ListFooterComponent={loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, height: 44 },
-  input: { flex: 1, fontSize: typography.fontSize.base, ...font() },
-  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...font('medium') },
+  content: { paddingHorizontal: GUTTER },
+  count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

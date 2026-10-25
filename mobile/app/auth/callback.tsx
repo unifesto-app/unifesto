@@ -1,14 +1,13 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useTokens } from '../../src/context/ThemeContext';
 import BrandGlow from '../../src/components/ui/BrandGlow';
 import { typography } from '../../src/theme/typography';
-import { font } from '../../src/theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../src/theme/cosmos';
 
 export default function AuthCallback() {
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
 
   useEffect(() => {
     // expo-auth-session's WebBrowser.maybeCompleteAuthSession()
@@ -21,10 +20,10 @@ export default function AuthCallback() {
   }, []);
 
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: tokens.bg }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, backgroundColor: c.bg }}>
       <BrandGlow />
-      <ActivityIndicator color={tokens.accent} />
-      <Text style={{ color: tokens.textSecondary, fontSize: typography.fontSize.sm, ...font('medium') }}>
+      <ActivityIndicator color={c.primary} />
+      <Text style={{ color: c.soft, fontSize: typography.fontSize.sm, ...cosmosFont.strong }}>
         Signing you in
       </Text>
     </View>

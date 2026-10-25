@@ -18,21 +18,21 @@ export default function SearchField({ value, onChangeText, busy, ...input }: Pro
     <View style={[styles.field, { borderColor: c.input, backgroundColor: c.card }]}>
       <MagnifyingGlass size={18} color={c.muted} />
       <TextInput
+        returnKeyType="search"
+        autoCorrect={false}
+        autoCapitalize="none"
         {...input}
         value={value}
         onChangeText={onChangeText}
         placeholderTextColor={c.muted}
         selectionColor={c.text}
         style={[styles.input, { color: c.text }]}
-        returnKeyType="search"
-        autoCorrect={false}
-        autoCapitalize="none"
         accessibilityRole="search"
       />
       {busy ? (
         <ActivityIndicator size="small" color={c.muted} />
       ) : value.length > 0 ? (
-        <Pressable onPress={() => onChangeText('')} hitSlop={10} accessibilityLabel="Clear search">
+        <Pressable onPress={() => onChangeText('')} hitSlop={12} accessibilityLabel="Clear search">
           <X size={16} color={c.soft} />
         </Pressable>
       ) : null}

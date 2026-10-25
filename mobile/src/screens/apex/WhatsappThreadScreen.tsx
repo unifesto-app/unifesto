@@ -15,7 +15,6 @@ import { Image } from 'expo-image';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlaneRight, Phone } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   conversationName,
@@ -30,8 +29,10 @@ import { whenShort } from '../../components/apex/ApexRow';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
 import { CardBackdrop } from '../../components/ui/CardSurface';
+import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
+import { Button } from '../../components/ui';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 // While the thread is open, check for new messages this often.
 const POLL_MS = 10_000;
@@ -44,7 +45,7 @@ const MAX_REPLY = 4096; // WhatsApp's text body limit
  */
 export default function WhatsappThreadScreen() {
   const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing(8);
   const insets = useSafeAreaInsets();
   const [convo, setConvo] = useState<WhatsappConversation | null>(null);
@@ -126,10 +127,11 @@ export default function WhatsappThreadScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: tokens.bg }}
+      style={{ flex: 1, backgroundColor: c.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? topSpacing - 8 : 0}
     >
+      <CosmosBackdrop horizon={false} />
       <Stack.Screen
         options={{
           title,
@@ -138,7 +140,7 @@ export default function WhatsappThreadScreen() {
                 <View style={styles.headerActions}>
                   {caseId ? (
                     <Pressable hitSlop={8} onPress={() => router.push(`/manage/support/${caseId}`)}>
-                      <Text style={[styles.headerAction, { color: tokens.accent }]}>Open case</Text>
+                      <Text style={[styles.headerAction, { color: c.primary }]}>Open case</Text>
                     </Pressable>
                   ) : (
                     <Pressable
@@ -148,13 +150,13 @@ export default function WhatsappThreadScreen() {
                       accessibilityHint="Tap messages to choose what goes into the case"
                       style={{ opacity: !pickCount || converting ? 0.4 : 1 }}
                     >
-                      <Text style={[styles.headerAction, { color: tokens.accent }]}>
+                      <Text style={[styles.headerAction, { color: c.primary }]}>
                         {converting ? 'Opening…' : `Convert to case (${pickCount})`}
                       </Text>
                     </Pressable>
                   )}
                   <Pressable hitSlop={12} onPress={() => void Linking.openURL(`tel:+${convo.waId}`)} accessibilityLabel="Call">
-                    <Phone size={22} color={tokens.accent} />
+                    <Phone size={22} color={c.primary} />
                   </Pressable>
                 </View>
               )
@@ -163,7 +165,14 @@ export default function WhatsappThreadScreen() {
       />
       {!convo ? (
         <View style={styles.center}>
-          {error ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
+          {error ? (
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
+              <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : (
+            <ActivityIndicator color={c.text} />
+          )}
         </View>
       ) : (
         <FlatList
@@ -187,17 +196,17 @@ export default function WhatsappThreadScreen() {
 
       {convo ? (
         windowOpen ? (
-          <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), borderTopColor: tokens.border }]}>
+          <View style={[styles.composer, { paddingBottom: Math.max(insets.bottom, spacing[3]), borderTopColor: c.border }]}>
             <View style={styles.inputWrap}>
               <CardBackdrop shape={styles.inputWrap} />
               <TextInput
                 value={draft}
                 onChangeText={setDraft}
                 placeholder="Reply on WhatsApp"
-                placeholderTextColor={tokens.textMuted}
+                placeholderTextColor={c.muted}
                 multiline
                 maxLength={MAX_REPLY}
-                style={[styles.input, { color: tokens.text }]}
+                style={[styles.input, { color: c.text }]}
               />
             </View>
             <Pressable
@@ -207,11 +216,11 @@ export default function WhatsappThreadScreen() {
               accessibilityLabel="Send"
               style={({ pressed }) => [styles.send, { opacity: !draft.trim() || sending ? 0.4 : pressed ? 0.6 : 1 }]}
             >
-              {sending ? <ActivityIndicator color={tokens.accent} /> : <PaperPlaneRight size={26} color={tokens.accent} weight="fill" />}
+              {sending ? <ActivityIndicator color={c.text} /> : <PaperPlaneRight size={26} color={c.primary} weight="fill" />}
             </Pressable>
           </View>
         ) : (
-          <Text style={[styles.closed, { color: tokens.textMuted, paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
+          <Text style={[styles.closed, { color: c.muted, paddingBottom: Math.max(insets.bottom, spacing[3]) }]}>
             It's been over 24 hours since their last message, so WhatsApp only allows a template now. Send one from Apex on the web.
           </Text>
         )
@@ -221,7 +230,7 @@ export default function WhatsappThreadScreen() {
 }
 
 function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?: boolean; onPick?: () => void }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const mine = message.direction === 'OUTBOUND';
   const failed = mine && (message.status === 'failed' || !!message.errorText);
   const text = message.body || (message.mediaUrl ? '' : messagePreview(message));
@@ -233,13 +242,12 @@ function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?
         onPress={onPick}
         accessibilityRole={onPick ? 'checkbox' : undefined}
         accessibilityState={onPick ? { checked: !!picked } : undefined}
-        style={[styles.bubble, mine && { backgroundColor: tokens.accent }, { borderColor: picked ? tokens.text : 'transparent' }]}
+        style={[styles.bubble, { backgroundColor: mine ? c.primary : c.raised, borderColor: picked ? c.text : 'transparent' }]}
       >
-        {!mine ? <CardBackdrop shape={styles.bubble} /> : null}
         {message.mediaUrl ? <Image source={{ uri: message.mediaUrl }} style={styles.media} contentFit="cover" /> : null}
-        {text ? <Text style={[styles.body, { color: mine ? '#fff' : tokens.text }]}>{text}</Text> : null}
+        {text ? <Text style={[styles.body, { color: mine ? c.primaryFg : c.text }]}>{text}</Text> : null}
       </Pressable>
-      <Text style={[styles.meta, { color: failed ? tokens.danger : tokens.textMuted, textAlign: mine ? 'right' : 'left' }]}>
+      <Text style={[styles.meta, { color: failed ? c.danger : c.muted, textAlign: mine ? 'right' : 'left' }]}>
         {[whenShort(message.createdAt), tick].filter(Boolean).join('  ·  ')}
         {failed && message.errorText ? `  ·  ${message.errorText}` : ''}
       </Text>
@@ -248,10 +256,11 @@ function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
+  center: { flex: 1, justifyContent: 'center', padding: spacing[6] },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  headerAction: { fontSize: typography.fontSize.base, ...font('medium') },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
+  headerAction: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   list: { paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
   bubbleWrap: { marginVertical: spacing[1], maxWidth: '82%' },
   left: { alignSelf: 'flex-start' },
@@ -259,8 +268,8 @@ const styles = StyleSheet.create({
   // Transparent 2px border always, so picking a message doesn't shift the layout.
   bubble: { borderRadius: borderRadius.xl, borderWidth: 2, paddingHorizontal: spacing[3], paddingVertical: spacing[2], overflow: 'hidden' },
   media: { width: 220, height: 220, borderRadius: borderRadius.lg, marginBottom: spacing[1] },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.35, ...font() },
-  meta: { marginTop: 2, marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.35, ...cosmosFont.body },
+  meta: { marginTop: 2, marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -277,8 +286,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 10,
     fontSize: typography.fontSize.base,
-    ...font(),
+    ...cosmosFont.body,
   },
   send: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center' },
-  closed: { paddingHorizontal: spacing[6], paddingTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, textAlign: 'center', ...font() },
+  closed: { paddingHorizontal: spacing[6], paddingTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, textAlign: 'center', ...cosmosFont.body },
 });

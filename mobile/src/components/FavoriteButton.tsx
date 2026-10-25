@@ -3,7 +3,7 @@ import { TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { Heart } from '@unifesto/unicon/react-native';
 import { useFavorites } from '../context/FavoritesContext';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
+import { useCosmos } from '../theme/cosmos';
 import { useRouter } from 'expo-router';
 import { AppAlert } from './ui/AppAlert';
 
@@ -31,7 +31,7 @@ export default function FavoriteButton({
   style,
 }: FavoriteButtonProps) {
   const router = useRouter();
-  const { colors } = useTheme();
+  const c = useCosmos();
   const { isAuthenticated } = useAuth();
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(eventId);
@@ -67,7 +67,7 @@ export default function FavoriteButton({
       <Heart
         size={size}
         weight={favorited ? 'fill' : 'regular'}
-        color={favorited ? colors.error : color ?? (scrim ? '#ffffff' : colors.text)}
+        color={favorited ? c.danger : color ?? (scrim ? '#ffffff' : c.text)}
       />
     </TouchableOpacity>
   );

@@ -5,7 +5,7 @@ import { useSafeAreaInsets, initialWindowMetrics } from 'react-native-safe-area-
 import { MapPin } from '@unifesto/unicon/react-native';
 import UnifestoAppWordmark from './UnifestoAppWordmark';
 import { spacing, borderRadius, typography } from '../theme';
-import { useTheme } from '../context/ThemeContext';
+import { useCosmos } from '../theme/cosmos';
 import { getFontFamily } from '../theme/fontHelpers';
 
 export const HEADER_CONTENT_HEIGHT = 80;
@@ -42,7 +42,7 @@ export default function CustomHeader({ detectedCity, locationStatus, onEnableLoc
   // Stable inset (see useStableTopInset) so the logo band lines up with the
   // scroll clearance identically on every tab.
   const topInset = useStableTopInset();
-  const { colors } = useTheme();
+  const c = useCosmos();
 
   return (
     <View style={[styles.container, { height: topInset + HEADER_CONTENT_HEIGHT + 24 }]}>
@@ -59,8 +59,8 @@ export default function CustomHeader({ detectedCity, locationStatus, onEnableLoc
         <View style={styles.rightActions}>
           {detectedCity ? (
             <View style={styles.locationPill}>
-              <MapPin size={12} color={colors.primary} weight="fill" />
-              <Text style={[styles.locationPillText, { color: colors.primary }]} numberOfLines={1}>
+              <MapPin size={12} color={c.text} weight="fill" />
+              <Text style={[styles.locationPillText, { color: c.text }]} numberOfLines={1}>
                 {detectedCity}
               </Text>
             </View>
@@ -70,8 +70,8 @@ export default function CustomHeader({ detectedCity, locationStatus, onEnableLoc
               onPress={onEnableLocation}
               activeOpacity={0.8}
             >
-              <MapPin size={12} color={colors.textMuted} />
-              <Text style={[styles.locationPillText, { color: colors.textMuted }]}>Enable</Text>
+              <MapPin size={12} color={c.muted} />
+              <Text style={[styles.locationPillText, { color: c.muted }]}>Enable</Text>
             </TouchableOpacity>
           ) : null}
         </View>

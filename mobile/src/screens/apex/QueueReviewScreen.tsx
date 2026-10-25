@@ -1,9 +1,7 @@
 import { EMAIL_RE } from '../../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import type { Decision, RequestStatus } from '../../lib/api/apex';
 import { queueDef, recallQueueItem, titleCase, type QueueItem } from '../../lib/apexQueues';
 import { longDate } from '../../components/apex/ApexRow';
@@ -11,12 +9,12 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
-import { CardBackdrop } from '../../components/ui/CardSurface';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
-const GUTTER = spacing[6];
 const STATUSES: RequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED'];
 
 const MIN_REJECT_NOTE = 10;
@@ -38,8 +36,7 @@ export default function QueueReviewScreen() {
   const { kind, id } = useLocalSearchParams<{ kind: string; id: string }>();
   const def = queueDef(kind ?? '');
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [item, setItem] = useState<QueueItem | null>(() => (kind && id ? recallQueueItem(kind, id) ?? null : null));
   const [error, setError] = useState('');
   const [rejecting, setRejecting] = useState(false);
@@ -107,38 +104,46 @@ export default function QueueReviewScreen() {
 
   if (!def || !item) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {error || !def ? (
-          <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error || 'Unknown queue.'}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error || 'Unknown queue.'}</Text>
+            {def ? (
+              <Button
+                variant="secondary"
+                label="Try again"
+                onPress={() => {
+                  setError('');
+                  void lookup();
+                }}
+                style={{ marginTop: spacing[4] }}
+              />
+            ) : null}
+          </View>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
-  const statusColor = item.status === 'APPROVED' ? tokens.success : item.status === 'REJECTED' ? tokens.danger : tokens.warning;
+  const statusColor = item.status === 'APPROVED' ? c.success : item.status === 'REJECTED' ? c.danger : c.warn;
   const who = item.requester;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen keyboard contentContainerStyle={styles.content} keyboardDismissMode="interactive">
       <Stack.Screen options={{ title: def.label }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.title, { color: tokens.text }]}>{item.title}</Text>
-        {item.subtitle ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{item.subtitle}</Text> : null}
-        <Text style={[styles.status, { color: statusColor }]}>
-          {item.status === 'PENDING' ? 'Waiting for review' : titleCase(item.status)}
-        </Text>
+        <Text style={[styles.title, { color: c.text }]}>{item.title}</Text>
+        {item.subtitle ? <Text style={[styles.muted, { color: c.muted }]}>{item.subtitle}</Text> : null}
+        <View style={[styles.chip, { backgroundColor: `${statusColor}26` }]}>
+          <Text style={[styles.status, { color: statusColor }]}>
+            {item.status === 'PENDING' ? 'Waiting for review' : titleCase(item.status)}
+          </Text>
+        </View>
 
         {item.reason ? (
-          <View style={styles.quote}>
-            <CardBackdrop shape={styles.quote} />
-            <Text style={[styles.quoteText, { color: tokens.text }]}>“{item.reason}”</Text>
+          <View style={[styles.quote, { backgroundColor: c.raised }]}>
+            <Text style={[styles.quoteText, { color: c.text }]}>“{item.reason}”</Text>
           </View>
         ) : null}
 
@@ -158,9 +163,9 @@ export default function QueueReviewScreen() {
         </SettingsGroup>
 
         {item.reviewNote && item.status !== 'PENDING' ? (
-          <Text style={[styles.note, { color: tokens.textSecondary }]}>Note: {item.reviewNote}</Text>
+          <Text style={[styles.note, { color: c.soft }]}>Note: {item.reviewNote}</Text>
         ) : null}
-        {item.warning && item.status === 'PENDING' ? <Text style={[styles.note, { color: tokens.warning }]}>{item.warning}</Text> : null}
+        {item.warning && item.status === 'PENDING' ? <Text style={[styles.note, { color: c.warn }]}>{item.warning}</Text> : null}
 
         {item.status === 'PENDING' ? (
           rejecting ? (
@@ -200,18 +205,18 @@ export default function QueueReviewScreen() {
             </>
           )
         ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
-  title: { fontSize: typography.fontSize['2xl'], ...font('heading') },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  quote: { marginTop: spacing[5], padding: spacing[4], borderRadius: 14 },
-  quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...font('medium') },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
+  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  quote: { marginTop: spacing[5], padding: spacing[4], borderRadius: cosmosCardRadius },
+  quoteText: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
 });

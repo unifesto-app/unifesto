@@ -1,13 +1,12 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { PaperPlaneRight } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import type { SupportMessage, SupportMessageSide } from '../../lib/api/support';
 import ChipPicker from '../manage/ChipPicker';
 import { CardBackdrop } from '../ui/CardSurface';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export const GUTTER = spacing[6];
 
@@ -38,14 +37,14 @@ export function CaseMessages({
   /** Rendered under a message, e.g. Assist's action cards (D14). */
   after?: (m: SupportMessage) => React.ReactNode;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
     <View style={{ gap: spacing[3] }}>
       {messages.map((m) => {
         const side = sideOf(m);
         if (side === 'SYSTEM') {
           return (
-            <Text key={m.id} style={[styles.system, { color: tokens.textMuted }]}>
+            <Text key={m.id} style={[styles.system, { color: c.muted }]}>
               {m.body} · {stamp(m.createdAt)}
             </Text>
           );
@@ -55,10 +54,10 @@ export function CaseMessages({
         const name = nameOf(m);
         return (
           <React.Fragment key={m.id}>
-            <View style={[styles.bubble, right ? styles.right : styles.left, filled && { backgroundColor: tokens.accent }]}>
+            <View style={[styles.bubble, right ? styles.right : styles.left, filled && { backgroundColor: c.primary }]}>
               {filled ? null : <CardBackdrop shape={styles.bubble} />}
-              <Text style={[styles.body, { color: filled ? tokens.accentFg : tokens.text }]}>{m.body}</Text>
-              <Text style={[styles.time, { color: filled ? tokens.accentFg : tokens.textMuted, opacity: filled ? 0.7 : 1 }]}>
+              <Text style={[styles.body, { color: filled ? c.primaryFg : c.text }]}>{m.body}</Text>
+              <Text style={[styles.time, { color: filled ? c.primaryFg : c.muted, opacity: filled ? 0.7 : 1 }]}>
                 {[m.internal ? 'Internal note' : null, name || null, stamp(m.createdAt)].filter(Boolean).join(' · ')}
               </Text>
             </View>
@@ -93,9 +92,9 @@ export function Composer({
   note?: { on: boolean; set: (on: boolean) => void };
   bottomInset: number;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
-    <View style={[styles.composerWrap, { paddingBottom: Math.max(bottomInset, spacing[3]), backgroundColor: tokens.bg }]}>
+    <View style={[styles.composerWrap, { paddingBottom: Math.max(bottomInset, spacing[3]), backgroundColor: c.bg }]}>
       {note ? (
         <ChipPicker options={NOTE_OPTIONS} value={note.on ? 'note' : 'reply'} onChange={(v) => note.set(v === 'note')} />
       ) : null}
@@ -106,17 +105,17 @@ export function Composer({
             value={value}
             onChangeText={onChangeText}
             placeholder={note?.on ? 'Note for the desk only' : placeholder}
-            placeholderTextColor={tokens.textMuted}
-            selectionColor={tokens.accent}
+            placeholderTextColor={c.muted}
+            selectionColor={c.primary}
             multiline
-            style={[styles.input, { color: tokens.text }]}
+            style={[styles.input, { color: c.text }]}
           />
         </View>
         <Pressable onPress={onSend} disabled={sending || !value.trim()} hitSlop={8} accessibilityLabel={note?.on ? 'Save note' : 'Send reply'}>
           {sending ? (
-            <ActivityIndicator color={tokens.accent} />
+            <ActivityIndicator color={c.text} />
           ) : (
-            <PaperPlaneRight size={28} color={value.trim() ? tokens.accent : tokens.textMuted} weight="fill" />
+            <PaperPlaneRight size={28} color={value.trim() ? c.primary : c.muted} weight="fill" />
           )}
         </Pressable>
       </View>
@@ -125,14 +124,14 @@ export function Composer({
 }
 
 const styles = StyleSheet.create({
-  system: { alignSelf: 'center', textAlign: 'center', maxWidth: '85%', fontSize: typography.fontSize.xs, ...font() },
+  system: { alignSelf: 'center', textAlign: 'center', maxWidth: '85%', fontSize: typography.fontSize.xs, ...cosmosFont.body },
   bubble: { maxWidth: '85%', borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[3] },
   left: { alignSelf: 'flex-start' },
   right: { alignSelf: 'flex-end' },
-  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...font() },
-  time: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...font() },
+  body: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
+  time: { marginTop: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   composerWrap: { paddingHorizontal: GUTTER, paddingTop: spacing[3], gap: spacing[2] },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[3] },
   inputWrap: { flex: 1, borderRadius: borderRadius.xl, overflow: 'hidden', paddingHorizontal: spacing[4], paddingVertical: spacing[2], minHeight: 44, justifyContent: 'center' },
-  input: { fontSize: typography.fontSize.base, maxHeight: 120, ...font() },
+  input: { fontSize: typography.fontSize.base, maxHeight: 120, ...cosmosFont.body },
 });

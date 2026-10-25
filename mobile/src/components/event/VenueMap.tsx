@@ -5,7 +5,6 @@ import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { MapPin, NavigationArrow } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -135,7 +134,6 @@ export async function geocodeVenue(place: VenuePlace): Promise<Coords | null> {
  * build, or when the venue can't be geocoded. Directions opens the maps app.
  */
 export default function VenueMap({ coords, place, name, address, accent, onDirections }: VenueMapProps) {
-  const tokens = useTokens();
   const c = useCosmos();
   const [resolved, setResolved] = useState<Coords | null>(coords ?? null);
   const [geocodeFailed, setGeocodeFailed] = useState(false);
@@ -184,8 +182,8 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
             // Controlled region: the map is fixed (no gestures), and on the new
             // architecture `initialRegion` can be missed, leaving the default view.
             region={{ ...resolved!, latitudeDelta: 0.008, longitudeDelta: 0.008 }}
-            userInterfaceStyle={tokens.scheme}
-            customMapStyle={Platform.OS === 'android' && tokens.scheme === 'dark' ? DARK_GOOGLE_STYLE : undefined}
+            userInterfaceStyle={c.scheme}
+            customMapStyle={Platform.OS === 'android' && c.scheme === 'dark' ? DARK_GOOGLE_STYLE : undefined}
             scrollEnabled={false}
             zoomEnabled={false}
             rotateEnabled={false}
@@ -203,7 +201,7 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
           <WebMap query={place.name?.trim() || !coords ? fullPlaceQuery(place) : `${coords.latitude},${coords.longitude}`} />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.center]}>
-            <MapPin size={28} color={tokens.textMuted} weight="duotone" />
+            <MapPin size={28} color={c.muted} weight="duotone" />
           </View>
         )}
       </View>
@@ -235,16 +233,16 @@ export default function VenueMap({ coords, place, name, address, accent, onDirec
 
 /** Keyless Google embed (CSS-inverted to a dark look in dark mode). The fallback path. */
 function WebMap({ query }: { query: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const [loaded, setLoaded] = useState(false);
   const html = useMemo(() => {
     const src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`;
     return `<!doctype html><html><head>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<style>html,body{margin:0;height:100%;background:${tokens.elevated};overflow:hidden}
-iframe{border:0;width:100%;height:calc(100% + 60px);margin-top:-30px;${tokens.scheme === 'dark' ? 'filter:invert(90%) hue-rotate(180deg) saturate(.85)' : ''}}</style>
+<style>html,body{margin:0;height:100%;background:${c.raised};overflow:hidden}
+iframe{border:0;width:100%;height:calc(100% + 60px);margin-top:-30px;${c.scheme === 'dark' ? 'filter:invert(90%) hue-rotate(180deg) saturate(.85)' : ''}}</style>
 </head><body><iframe src="${src}" loading="eager"></iframe></body></html>`;
-  }, [query, tokens.elevated, tokens.scheme]);
+  }, [query, c.raised, c.scheme]);
   const style = useAnimatedStyle(() => ({ opacity: withTiming(loaded ? 1 : 0, { duration: 350 }) }));
   return (
     <>
@@ -261,7 +259,7 @@ iframe{border:0;width:100%;height:calc(100% + 60px);margin-top:-30px;${tokens.sc
       </Animated.View>
       {!loaded ? (
         <View style={[StyleSheet.absoluteFill, styles.center]}>
-          <MapPin size={28} color={tokens.textMuted} weight="duotone" />
+          <MapPin size={28} color={c.muted} weight="duotone" />
         </View>
       ) : null}
     </>

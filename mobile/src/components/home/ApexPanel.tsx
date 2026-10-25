@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CheckCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
@@ -23,7 +22,6 @@ interface ApexPanelProps {
 
 /** Platform-staff snapshot on Home: headline numbers + every queue waiting on me, one tap each. */
 export default function ApexPanel({ overview, needs, loading, onOpenNeed }: ApexPanelProps) {
-  const tokens = useTokens();
   const c = useCosmos();
   const ov = overview;
 
@@ -47,7 +45,7 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
       ) : needs.length === 0 ? (
         <View style={styles.clear}>
           <CardBackdrop shape={styles.clear} />
-          <CheckCircle size={24} color={tokens.success} weight="fill" />
+          <CheckCircle size={24} color={c.success} weight="fill" />
           <Text style={[styles.clearText, { color: c.text }]}>All clear, nothing waiting on me</Text>
         </View>
       ) : (
@@ -61,7 +59,7 @@ export default function ApexPanel({ overview, needs, loading, onOpenNeed }: Apex
               style={styles.need}
             >
               <CardBackdrop shape={styles.need} />
-              <Text style={[styles.needCount, { color: tokens.warning }]}>{n.count.toLocaleString('en-IN')}</Text>
+              <Text style={[styles.needCount, { color: c.warn }]}>{n.count.toLocaleString('en-IN')}</Text>
               <Text style={[styles.needLabel, { color: c.soft }]} numberOfLines={1}>
                 {n.label}
               </Text>

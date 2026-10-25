@@ -16,11 +16,10 @@ import {
   Trash,
   type Icon,
 } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
 import { CardBackdrop, CardSurfaceProvider } from '../components/ui/CardSurface';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 /**
  * Right-side header actions, shared by every pushed screen so spacing is the
@@ -89,7 +88,7 @@ export function HeaderMenu({
   items: HeaderMenuItem[];
   onSelect: (id: string) => void;
 } & MenuTrigger) {
-  const tokens = useTokens();
+  const c = useCosmos();
   if (Platform.OS === 'android') {
     return <AndroidMenu title={title} items={items} onSelect={onSelect} trigger={trigger} triggerStyle={triggerStyle} label={label} />;
   }
@@ -98,7 +97,7 @@ export function HeaderMenu({
     id: item.id,
     title: item.title,
     image: item.icon.ios,
-    imageColor: item.destructive ? tokens.danger : tokens.text,
+    imageColor: item.destructive ? c.danger : c.text,
     attributes: item.destructive ? { destructive: true } : undefined,
   }));
 
@@ -110,7 +109,7 @@ export function HeaderMenu({
       onPressAction={({ nativeEvent }) => onSelect(nativeEvent.event)}
     >
       <View style={triggerStyle} pointerEvents="none" accessibilityLabel={label}>
-        {trigger ?? <DotsThree size={26} color={tokens.text} weight="bold" />}
+        {trigger ?? <DotsThree size={26} color={c.text} weight="bold" />}
       </View>
     </MenuView>
   );
@@ -129,7 +128,7 @@ function AndroidMenu({
   items: HeaderMenuItem[];
   onSelect: (id: string) => void;
 } & MenuTrigger) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const { width } = useWindowDimensions();
   const buttonRef = useRef<View>(null);
   const [anchor, setAnchor] = useState<{ top: number; right: number } | null>(null);
@@ -166,7 +165,7 @@ function AndroidMenu({
         accessibilityLabel={label}
         style={({ pressed }) => [triggerStyle, { opacity: pressed ? 0.6 : 1 }]}
       >
-        {trigger ?? <DotsThree size={26} color={tokens.text} weight="bold" />}
+        {trigger ?? <DotsThree size={26} color={c.text} weight="bold" />}
       </Pressable>
 
       <Modal visible={!!anchor} transparent animationType="none" statusBarTranslucent onRequestClose={() => close()}>
@@ -183,18 +182,18 @@ function AndroidMenu({
               <CardBackdrop shape={styles.menu} opaque />
             </CardSurfaceProvider>
             {title ? (
-              <Text style={[styles.menuTitle, { color: tokens.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.menuTitle, { color: c.muted }]} numberOfLines={1}>
                 {title}
               </Text>
             ) : null}
             {items.map((item) => {
-              const color = item.destructive ? tokens.danger : tokens.text;
+              const color = item.destructive ? c.danger : c.text;
               const Glyph = item.icon.glyph;
               return (
                 <Pressable
                   key={item.id}
                   onPress={() => close(() => onSelect(item.id))}
-                  android_ripple={{ color: tokens.pressed }}
+                  android_ripple={{ color: c.tint }}
                   accessibilityRole="menuitem"
                   style={styles.menuItem}
                 >
@@ -253,8 +252,8 @@ const styles = StyleSheet.create({
     paddingTop: spacing[1],
     paddingBottom: spacing[2],
     fontSize: 12,
-    ...font('semibold'),
+    ...cosmosFont.strong,
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 48, paddingHorizontal: spacing[4] },
-  menuText: { flexShrink: 1, fontSize: typography.fontSize.base, ...font('medium') },
+  menuText: { flexShrink: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
 });

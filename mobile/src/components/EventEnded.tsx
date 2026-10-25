@@ -4,7 +4,6 @@ import * as WebBrowser from 'expo-web-browser';
 import { Certificate, Confetti, Trophy } from '@unifesto/unicon/react-native';
 import { SettingsGroup, SettingsRow } from './profile/SettingsGroup';
 import { getMyCertificates, type MyCertificate } from '../lib/api/certificates';
-import { useTokens } from '../context/ThemeContext';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
@@ -55,13 +54,13 @@ export function AfterEventGroup({
   results?: { value?: string; onPress: () => void } | null;
   surface?: string;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   if (!cert && !results) return null;
   return (
     <SettingsGroup title="After the event" surface={surface}>
       {results ? (
         <SettingsRow
-          icon={<Trophy size={24} color={tokens.text} />}
+          icon={<Trophy size={24} color={c.text} />}
           label="Results and winners"
           value={results.value || undefined}
           onPress={results.onPress}
@@ -69,7 +68,7 @@ export function AfterEventGroup({
       ) : null}
       {cert ? (
         <SettingsRow
-          icon={<Certificate size={24} color={tokens.text} />}
+          icon={<Certificate size={24} color={c.text} />}
           label="My certificate"
           value={new Date(cert.issuedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
           external

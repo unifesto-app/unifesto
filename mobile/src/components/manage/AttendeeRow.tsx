@@ -2,28 +2,26 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { User } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import type { AttendeeRow as Row } from '../../lib/api/manageEvent';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
-import type { Tokens } from '../../theme/tokens';
+import { type Cosmos, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const AVATAR = 40;
 
 /** One short status per attendee, most important first. */
-export function attendeeBadge(r: Pick<Row, 'status' | 'paymentStatus' | 'isWaitlisted' | 'checkedInAt'>, tokens: Tokens) {
-  if (r.status === 'CANCELLED') return { text: 'Cancelled', color: tokens.danger };
-  if (r.isWaitlisted) return { text: 'Waitlisted', color: tokens.warning };
-  if (r.paymentStatus === 'PENDING' || r.paymentStatus === 'FAILED') return { text: 'Unpaid', color: tokens.warning };
-  if (r.paymentStatus === 'REFUNDED') return { text: 'Refunded', color: tokens.textMuted };
-  if (r.checkedInAt || r.status === 'ATTENDED') return { text: 'Checked in', color: tokens.success };
-  return { text: 'Registered', color: tokens.textMuted };
+export function attendeeBadge(r: Pick<Row, 'status' | 'paymentStatus' | 'isWaitlisted' | 'checkedInAt'>, c: Cosmos) {
+  if (r.status === 'CANCELLED') return { text: 'Cancelled', color: c.danger };
+  if (r.isWaitlisted) return { text: 'Waitlisted', color: c.warn };
+  if (r.paymentStatus === 'PENDING' || r.paymentStatus === 'FAILED') return { text: 'Unpaid', color: c.warn };
+  if (r.paymentStatus === 'REFUNDED') return { text: 'Refunded', color: c.muted };
+  if (r.checkedInAt || r.status === 'ATTENDED') return { text: 'Checked in', color: c.success };
+  return { text: 'Registered', color: c.muted };
 }
 
 export default function AttendeeRow({ row, onPress }: { row: Row; onPress: () => void }) {
-  const tokens = useTokens();
-  const badge = attendeeBadge(row, tokens);
+  const c = useCosmos();
+  const badge = attendeeBadge(row, c);
   const name = row.user.fullName || row.user.username || 'Attendee';
   const sub = [row.ticketType?.name, row.groupSize && row.groupSize > 1 ? `Group of ${row.groupSize}` : null]
     .filter(Boolean)
@@ -38,16 +36,16 @@ export default function AttendeeRow({ row, onPress }: { row: Row; onPress: () =>
       {row.user.avatarUrl ? (
         <Image source={{ uri: row.user.avatarUrl }} style={styles.avatar} />
       ) : (
-        <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: tokens.elevated }]}>
-          <User size={20} color={tokens.textMuted} />
+        <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: c.tint }]}>
+          <User size={20} color={c.muted} />
         </View>
       )}
       <View style={styles.body}>
-        <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+        <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
           {name}
         </Text>
         {sub ? (
-          <Text style={[styles.sub, { color: tokens.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
             {sub}
           </Text>
         ) : null}
@@ -62,7 +60,7 @@ const styles = StyleSheet.create({
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
   avatarEmpty: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
-  name: { fontSize: typography.fontSize.base, ...font('semibold') },
-  sub: { fontSize: typography.fontSize.xs, ...font() },
-  badge: { fontSize: typography.fontSize.xs, ...font('semibold') },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  sub: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  badge: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
 });

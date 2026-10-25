@@ -1,21 +1,22 @@
-import type { Tokens } from '../../theme/tokens';
+import type { Cosmos } from '../../theme/cosmos';
+
 
 /** Word + colour for a push or email campaign status (the two enums overlap). */
-export function campaignStatus(status: string, tokens: Tokens): { label: string; color: string } {
+export function campaignStatus(status: string, c: Cosmos): { label: string; color: string } {
   switch (status) {
     case 'SENT':
-      return { label: 'Sent', color: tokens.success };
+      return { label: 'Sent', color: c.success };
     case 'SENDING':
-      return { label: 'Sending', color: tokens.accent };
+      return { label: 'Sending', color: c.primary };
     case 'SCHEDULED':
-      return { label: 'Scheduled', color: tokens.warning };
+      return { label: 'Scheduled', color: c.warn };
     case 'FAILED':
-      return { label: 'Failed', color: tokens.danger };
+      return { label: 'Failed', color: c.danger };
     case 'CANCELLED':
-      return { label: 'Cancelled', color: tokens.textMuted };
+      return { label: 'Cancelled', color: c.muted };
     case 'PENDING':
-      return { label: 'Queued', color: tokens.textMuted };
+      return { label: 'Queued', color: c.muted };
     default:
-      return { label: 'Draft', color: tokens.textMuted };
+      return { label: 'Draft', color: c.muted };
   }
 }

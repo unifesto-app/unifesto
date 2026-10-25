@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { ViewStyle } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useReducedMotion, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { borderRadius } from '../theme';
-import { useTheme } from '../context/ThemeContext';
+import { useCosmos } from '../theme/cosmos';
 
 interface SkeletonProps {
   width?: number | string;
@@ -23,7 +23,7 @@ export default function Skeleton({
   borderRadius: customBorderRadius = borderRadius.md,
   style,
 }: SkeletonProps) {
-  const { colors } = useTheme();
+  const c = useCosmos();
   const reduced = useReducedMotion();
   // Reduce Motion: hold mid-pulse instead of breathing.
   const pulse = useSharedValue(reduced ? 0.5 : 0);
@@ -41,7 +41,7 @@ export default function Skeleton({
     <Animated.View
       style={[
         {
-          backgroundColor: colors.borderMuted,
+          backgroundColor: c.border,
           overflow: 'hidden',
           width: width as any,
           height: typeof height === 'number' ? height : undefined,

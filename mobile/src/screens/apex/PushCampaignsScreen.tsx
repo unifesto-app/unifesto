@@ -1,10 +1,9 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../../components/ui/RefreshControl';
-import { useTokens } from '../../context/ThemeContext';
-import useTopSpacing from '../../hooks/useTopSpacing';
+import { CosmosList } from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
 import ManageStats from '../../components/manage/ManageStats';
@@ -21,9 +20,8 @@ import {
 } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
-const GUTTER = spacing[6];
 const PAGE_SIZE = 20;
 const ACTIONABLE: PushCampaignStatus[] = ['DRAFT', 'SCHEDULED'];
 
@@ -40,8 +38,7 @@ export function pushTargetLabel(c: PushCampaign): string {
 /** Push broadcasts: history with delivery counts, send-now / cancel for pending ones, delete for any not mid-send. */
 export default function PushCampaignsScreen() {
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
 
   const fetchPage = useCallback(async (page: number) => {
     const res = await listPushCampaigns(page, PAGE_SIZE);
@@ -92,6 +89,7 @@ export default function PushCampaignsScreen() {
     ]);
 
   const now = new Date();
+  const data = loading || error ? [] : rows;
 
   return (
     <>
@@ -100,19 +98,20 @@ export default function PushCampaignsScreen() {
           headerRight: () => (
             <HeaderActions>
               <HeaderIconButton onPress={() => router.push('/apex/push/new')} label="New push">
-                <Plus size={24} color={tokens.text} />
+                <Plus size={24} color={c.text} />
               </HeaderIconButton>
             </HeaderActions>
           ),
         }}
       />
-      <FlatList
-        style={{ backgroundColor: tokens.bg }}
+      <CosmosList
+        refreshing={refreshing}
+        onRefresh={refresh}
         contentContainerStyle={styles.content}
-        data={loading || error ? [] : rows}
+        data={data}
         keyExtractor={(c) => c.id}
         ListHeaderComponent={
-          <View style={{ paddingTop: topSpacing, marginBottom: spacing[2] }}>
+          <View style={{ marginBottom: spacing[4] }}>
             <ManageStats
               loading={loading}
               stats={[
@@ -121,47 +120,48 @@ export default function PushCampaignsScreen() {
                 { label: 'Scheduled', value: totals.scheduled },
               ]}
             />
-            <Text style={[styles.hint, { color: tokens.textMuted }]}>Totals cover the broadcasts loaded below.</Text>
+            <Text style={[styles.hint, { color: c.muted }]}>Totals cover the broadcasts loaded below.</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
+            <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
-            <Text style={[styles.empty, { color: tokens.textMuted }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'No broadcasts yet. Tap + to send one.'}</Text>
+            </View>
           )
         }
-        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-        renderItem={({ item }) => {
-          const s = campaignStatus(item.status, tokens);
+        renderItem={({ item, index }) => {
+          const s = campaignStatus(item.status, c);
           const delivery = item.status === 'SENT' ? `${item.sentCount} sent${item.failedCount ? ` · ${item.failedCount} failed` : ''}` : null;
           const when = item.status === 'SCHEDULED' ? `for ${whenShort(item.scheduledAt, now)}` : whenShort(item.sentAt ?? item.createdAt, now);
           return (
-            <ApexRow
+            <View style={cardSegment(c.raised, index, data.length)}>
+              {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+              <ApexRow
               title={item.title}
               meta={[pushTargetLabel(item), delivery, when].filter(Boolean).join(' · ')}
               value={s.label}
               valueColor={s.color}
               // Everything but a broadcast mid-send can be acted on (at least deleted).
               onPress={item.status !== 'SENDING' ? () => openActions(item) : undefined}
-            />
+              />
+            </View>
           );
         }}
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.4}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={tokens.accent} style={{ marginVertical: spacing[4] }} /> : null}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-        }
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
       />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  hint: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  hint: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -1,25 +1,24 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vibration, View } from 'react-native';
+import { StyleSheet, Text, Vibration, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { MagnifyingGlass, UserFocus, XCircle } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
+import { UserFocus } from '@unifesto/unicon/react-native';
 import { CheckinNetworkError, manualCheckin, searchAttendees, undoCheckin, type AttendeeSearchResult } from '../lib/api/checkin';
 import { useCheckinEvent } from '../hooks/useCheckinEvent';
 import { useOfflineCheckin } from '../hooks/useOfflineCheckin';
 import { isOnline, useIsOffline } from '../lib/offline/connectivity';
 import { enqueueCheckin, findEntry, offlineSearch, pullChanges, recordLiveCheckin } from '../lib/offline/checkinQueue';
-import useTopSpacing from '../hooks/useTopSpacing';
 import PersonRow from '../components/checkin/PersonRow';
 import PointChips from '../components/checkin/PointChips';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import SearchField from '../components/manage/SearchField';
+import { CosmosList } from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { GroupCell } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
 import { attendeeName } from '../utils/checkinFormat';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[5];
 const MIN_QUERY = 2;
 
 /**
@@ -28,8 +27,6 @@ const MIN_QUERY = 2;
  * line is usually also waiting.
  */
 export default function ManualCheckinScreen() {
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
   const { eventId, checkinTypeId } = useLocalSearchParams<{ eventId: string; checkinTypeId?: string }>();
   const { points, loading: pointsLoading } = useCheckinEvent(eventId);
   const offline = useOfflineCheckin(eventId);
@@ -171,27 +168,14 @@ export default function ManualCheckinScreen() {
   const header = (
     <View style={styles.header}>
       <View style={styles.search}>
-        <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-        <TextInput
+        <SearchField
           value={query}
           onChangeText={setQuery}
+          busy={searching}
           placeholder="Name, email, phone or ticket ID"
-          placeholderTextColor={tokens.textMuted}
-          style={[styles.input, { color: tokens.text }]}
           autoFocus
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
           clearButtonMode="never"
         />
-        {searching ? (
-          <ActivityIndicator size="small" color={tokens.textMuted} />
-        ) : query ? (
-          <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <XCircle size={20} color={tokens.textMuted} weight="fill" />
-          </Pressable>
-        ) : null}
       </View>
       {points.length > 1 ? (
         <View style={styles.chips}>
@@ -210,10 +194,7 @@ export default function ManualCheckinScreen() {
   );
 
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      keyboardShouldPersistTaps="handled"
+    <CosmosList
       keyboardDismissMode="on-drag"
       data={results}
       keyExtractor={rowKey}
@@ -258,33 +239,23 @@ const ResultRow = React.memo(function ResultRow({ item, busy, canUndo, onCheckIn
 });
 
 function Empty({ title, body }: { title: string; body: string }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return (
-    <View style={styles.empty}>
-      <UserFocus size={44} color={tokens.textMuted} />
-      <Text style={[styles.emptyTitle, { color: tokens.text }]}>{title}</Text>
-      <Text style={[styles.emptyBody, { color: tokens.textMuted }]}>{body}</Text>
+    <View style={[styles.empty, { backgroundColor: c.raised }]}>
+      <UserFocus size={40} color={c.muted} />
+      <Text style={[styles.emptyTitle, { color: c.text }]}>{title}</Text>
+      <Text style={[styles.emptyBody, { color: c.soft }]}>{body}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: spacing[12] },
   header: { marginBottom: spacing[4] },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    marginHorizontal: GUTTER,
-    paddingHorizontal: spacing[4],
-    height: 52,
-    borderRadius: borderRadius.full,
-  },
-  input: { flex: 1, fontSize: typography.fontSize.base, paddingVertical: 0, ...font() },
+  search: { marginHorizontal: GUTTER },
   chips: { marginTop: spacing[3] },
   cell: { marginHorizontal: GUTTER },
   divider: { marginLeft: spacing[4] + 40 + spacing[3] },
-  empty: { alignItems: 'center', paddingTop: spacing[16], paddingHorizontal: spacing[8], gap: spacing[2] },
-  emptyTitle: { fontSize: typography.fontSize.lg, marginTop: spacing[2], ...font('semibold') },
-  emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...font() },
+  empty: { alignItems: 'center', marginHorizontal: GUTTER, padding: spacing[6], borderRadius: cosmosCardRadius, gap: spacing[2] },
+  emptyTitle: { fontSize: typography.fontSize.base, marginTop: spacing[2], textAlign: 'center', ...cosmosFont.strong },
+  emptyBody: { fontSize: typography.fontSize.sm, textAlign: 'center', lineHeight: 20, ...cosmosFont.body },
 });

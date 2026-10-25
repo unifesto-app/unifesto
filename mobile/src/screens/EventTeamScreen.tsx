@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
-import { MagnifyingGlass, User } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
+import { User } from '@unifesto/unicon/react-native';
 import { useAuth } from '../context/AuthContext';
 import { useSpaceAccess } from '../context/SpaceAccessContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   addTeamMember,
   getEventTeam,
@@ -21,21 +18,22 @@ import {
 } from '../lib/api/eventTeam';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import SearchField from '../components/manage/SearchField';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { AppAlert } from '../components/ui/AppAlert';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const AVATAR = 30;
 
 function Avatar({ user }: { user: TeamUser }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   return user.avatarUrl ? (
     <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
   ) : (
-    <User size={AVATAR - 2} color={tokens.accent} weight="fill" />
+    <User size={AVATAR - 2} color={c.primary} weight="fill" />
   );
 }
 
@@ -45,8 +43,7 @@ function Avatar({ user }: { user: TeamUser }) {
  */
 export default function EventTeamScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -145,48 +142,24 @@ export default function EventTeamScreen() {
 
   if (!members) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {roleOptions.length > 0 ? (
-        <View style={styles.search}>
-          <CardBackdrop shape={styles.search} />
-          <MagnifyingGlass size={20} color={tokens.textMuted} weight="bold" />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Add someone from your space"
-            placeholderTextColor={tokens.textMuted}
-            selectionColor={tokens.accent}
-            autoCorrect={false}
-            autoCapitalize="none"
-            style={[styles.searchInput, { color: tokens.text }]}
-          />
-          {searching ? <ActivityIndicator size="small" color={tokens.accent} /> : null}
-        </View>
+        <SearchField value={query} onChangeText={setQuery} busy={searching} placeholder="Add someone from your space" />
       ) : null}
       {roleOptions.length > 0 && query.trim().length >= 2 && !searching ? (
         <SettingsGroup>
@@ -198,8 +171,8 @@ export default function EventTeamScreen() {
               label={nameOf(u)}
               value={onTeam.has(u.id) ? 'On the team' : undefined}
               trailing={
-                onTeam.has(u.id) ? <View /> : busy === u.id ? <ActivityIndicator size="small" color={tokens.accent} /> : (
-                  <Text style={[styles.link, { color: tokens.accent }]}>Add</Text>
+                onTeam.has(u.id) ? <View /> : busy === u.id ? <ActivityIndicator size="small" color={c.text} /> : (
+                  <Text style={[styles.link, { color: c.primary }]}>Add</Text>
                 )
               }
               onPress={onTeam.has(u.id) || busy ? undefined : () => add(u)}
@@ -218,35 +191,32 @@ export default function EventTeamScreen() {
             value={roleLabel(m.role?.code, m.role?.name)}
             trailing={
               busy === m.userId ? (
-                <ActivityIndicator size="small" color={tokens.danger} />
+                <ActivityIndicator size="small" color={c.danger} />
               ) : !canEdit(m) ? undefined : (
                 <Pressable onPress={() => remove(m)} hitSlop={8}>
-                  <Text style={[styles.link, { color: tokens.danger }]}>Remove</Text>
+                  <Text style={[styles.link, { color: c.danger }]}>Remove</Text>
                 </Pressable>
               )
             }
           />
         ))}
       </SettingsGroup>
-      {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
       <View style={{ marginTop: spacing[6], gap: spacing[2] }}>
         {TEAM_ROLES.map((r) => (
-          <Text key={r.code} style={[styles.note, { color: tokens.textMuted }]}>
-            <Text style={{ color: tokens.textSecondary, ...font('semibold') }}>{r.label}</Text>  {r.blurb}
+          <Text key={r.code} style={[styles.note, { color: c.muted }]}>
+            <Text style={{ color: c.soft, ...cosmosFont.strong }}>{r.label}</Text>  {r.blurb}
           </Text>
         ))}
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 48, paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...font() },
+  content: { paddingHorizontal: GUTTER },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2 },
-  link: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

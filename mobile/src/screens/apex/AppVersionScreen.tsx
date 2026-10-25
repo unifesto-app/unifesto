@@ -1,27 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AndroidLogo, AppleLogo, ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import SaveBar from '../../components/manage/SaveBar';
+import { GUTTER } from '../../components/home/Section';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { getAppVersionPolicy, updateAppVersionPolicy, type AppVersionPolicy, type StoreVersionPolicy } from '../../lib/api/apex';
 import { compareVersions } from '../../lib/appUpdate';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex "App Version" parity: per-store latest/minimum version + store URL that
  * drive the in-app update prompt. One Save bar, full-object PATCH like web.
  */
 
-const GUTTER = spacing[6];
 const ICON = 24;
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
 const URL_RE = /^https?:\/\/\S+$/i;
@@ -51,9 +48,7 @@ function validate(v: AppVersionPolicy): string {
 }
 
 export default function AppVersionScreen() {
-  const tokens = useTokens();
-  const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
 
   const [saved, setSaved] = useState<AppVersionPolicy | null>(null);
   const [draft, setDraft] = useState<AppVersionPolicy | null>(null);
@@ -77,11 +72,6 @@ export default function AppVersionScreen() {
   }, [load]);
 
   const isDirty = !!saved && !!draft && STORES.some(({ key }) => !sameStore(saved[key], draft[key]));
-
-  const barStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(isDirty ? 0 : 140, { damping: 18, stiffness: 180 }) }],
-    opacity: withTiming(isDirty ? 1 : 0, { duration: 180 }),
-  }));
 
   const set = (store: Store, field: keyof StoreVersionPolicy) => (value: string) => {
     setError('');
@@ -138,26 +128,33 @@ export default function AppVersionScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.pad}>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
-  const hint = (text: string) => <Text style={[styles.hint, { color: tokens.textMuted }]}>{text}</Text>;
+  const hint = (text: string) => <Text style={[styles.hint, { color: c.muted }]}>{text}</Text>;
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: tokens.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+    <CosmosScreen
+      keyboard
+      bottom={180}
+      contentContainerStyle={styles.pad}
+      keyboardDismissMode="interactive"
+      footer={<SaveBar visible={isDirty} label="Save changes" onPress={save} loading={saving} error={error} />}
+    >
         {STORES.map(({ key, title, Logo }) => (
           <SettingsGroup key={key} title={title}>
             <FormRow
-              icon={<ArrowCircleUp size={ICON} color={tokens.text} />}
+              icon={<ArrowCircleUp size={ICON} color={c.text} />}
               value={draft[key].latestVersion}
               onChangeText={set(key, 'latestVersion')}
               placeholder="Empty = no update prompt"
@@ -166,7 +163,7 @@ export default function AppVersionScreen() {
               trailing={hint('Latest')}
             />
             <FormRow
-              icon={<ShieldWarning size={ICON} color={tokens.text} />}
+              icon={<ShieldWarning size={ICON} color={c.text} />}
               value={draft[key].minimumVersion}
               onChangeText={set(key, 'minimumVersion')}
               placeholder="2.0.0"
@@ -175,7 +172,7 @@ export default function AppVersionScreen() {
               trailing={hint('Minimum')}
             />
             <FormRow
-              icon={<Logo size={ICON} color={tokens.text} />}
+              icon={<Logo size={ICON} color={c.text} />}
               value={draft[key].storeUrl}
               onChangeText={set(key, 'storeUrl')}
               placeholder="https://…"
@@ -186,29 +183,21 @@ export default function AppVersionScreen() {
           </SettingsGroup>
         ))}
 
-        <Text style={[styles.note, { color: tokens.textMuted }]}>
+        <Text style={[styles.note, { color: c.muted }]}>
           Below minimum forces an update; below latest shows an optional prompt. Set minimum to 0.0.0 to never force.
           The app re-reads this on every launch.
         </Text>
 
-        {error ? <Text style={[styles.message, { color: tokens.danger }]}>{error}</Text> : null}
-        {notice && !isDirty ? <Text style={[styles.message, { color: tokens.accent }]}>{notice}</Text> : null}
-      </ScrollView>
-
-      <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${tokens.bg}00`, tokens.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
-      </Animated.View>
-    </KeyboardAvoidingView>
+        {notice && !isDirty ? <Text style={[styles.message, { color: c.success }]}>{notice}</Text> : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  hint: { fontSize: typography.fontSize.sm, ...font('medium') },
-  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
-  message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...font('medium') },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  hint: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

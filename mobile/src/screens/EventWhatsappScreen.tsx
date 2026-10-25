@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PaperPlaneTilt } from '@unifesto/unicon/react-native';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getWhatsappConfig, setTicketWhatsappLink, updateEvent, type EventWhatsappConfig } from '../lib/api/eventAdmin';
 import { sendWhatsappBlast } from '../lib/api/manageEvent';
 import { FieldRow } from '../components/manage/FormFields';
@@ -12,11 +10,12 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const PLACEHOLDER = 'https://chat.whatsapp.com/…';
 
 /**
@@ -27,9 +26,8 @@ const PLACEHOLDER = 'https://chat.whatsapp.com/…';
  */
 export default function EventWhatsappScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
+  const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const [config, setConfig] = useState<EventWhatsappConfig | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -128,94 +126,91 @@ export default function EventWhatsappScreen() {
 
   if (!config) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.content}>
         {loadError ? (
-          <>
-            <Text style={[styles.muted, { color: tokens.textMuted }]}>{loadError}</Text>
-            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-          </>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+            <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
         ) : (
-          <ActivityIndicator color={tokens.accent} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         )}
-      </View>
+      </CosmosScreen>
     );
   }
 
   const usingParent = !eventUrl.trim() && !!config.parentAttendeeGroupUrl;
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.intro, { color: tokens.textSecondary }]}>
-          Create the group in WhatsApp, then paste its invite link. Attendees get it when they register, and it never shows
-          on the public event page.
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={<SaveBar visible={dirty} label="Save links" onPress={save} loading={saving} error={error} />}
+    >
+      <Text style={[styles.intro, { color: c.soft }]}>
+        Create the group in WhatsApp, then paste its invite link. Attendees get it when they register, and it never shows
+        on the public event page.
+      </Text>
+
+      <SettingsGroup title="Attendee group" plain>
+        <FieldRow
+          stacked
+          label="Group invite link"
+          value={eventUrl}
+          onChangeText={setEventUrl}
+          placeholder={PLACEHOLDER}
+          keyboardType="url"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </SettingsGroup>
+      {usingParent ? (
+        <Text style={[styles.note, { color: c.muted }]}>
+          No group of its own yet, so attendees go to the main event's group: {config.parentAttendeeGroupUrl}
         </Text>
+      ) : null}
 
-        <SettingsGroup title="Attendee group" plain>
-          <FieldRow
-            stacked
-            label="Group invite link"
-            value={eventUrl}
-            onChangeText={setEventUrl}
-            placeholder={PLACEHOLDER}
-            keyboardType="url"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </SettingsGroup>
-        {usingParent ? (
-          <Text style={[styles.note, { color: tokens.textMuted }]}>
-            No group of its own yet, so attendees go to the main event's group: {config.parentAttendeeGroupUrl}
+      {config.ticketTypes.length > 0 ? (
+        <>
+          <SettingsGroup title="Per-ticket groups" plain>
+            {config.ticketTypes.map((t) => (
+              <FieldRow
+                key={t.id}
+                stacked
+                label={t.name}
+                value={ticketUrls[t.id] ?? ''}
+                onChangeText={(v) => setTicketUrls((m) => ({ ...m, [t.id]: v }))}
+                placeholder="Blank uses the attendee group"
+                keyboardType="url"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            ))}
+          </SettingsGroup>
+          <Text style={[styles.note, { color: c.muted }]}>
+            Holders of a ticket with its own link are invited there instead.
           </Text>
-        ) : null}
+        </>
+      ) : null}
 
-        {config.ticketTypes.length > 0 ? (
-          <>
-            <SettingsGroup title="Per-ticket groups" plain>
-              {config.ticketTypes.map((t) => (
-                <FieldRow
-                  key={t.id}
-                  stacked
-                  label={t.name}
-                  value={ticketUrls[t.id] ?? ''}
-                  onChangeText={(v) => setTicketUrls((m) => ({ ...m, [t.id]: v }))}
-                  placeholder="Blank uses the attendee group"
-                  keyboardType="url"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              ))}
-            </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>
-              Holders of a ticket with its own link are invited there instead.
-            </Text>
-          </>
-        ) : null}
-
-        <SettingsGroup title="Invite">
-          <SettingsRow
-            icon={<PaperPlaneTilt size={28} color={tokens.text} />}
-            label="Send invite to attendees"
-            trailing={sending ? <ActivityIndicator size="small" color={tokens.accent} /> : undefined}
-            onPress={sending ? undefined : dirty ? () => AppAlert.alert('Save first', 'Save your link changes before sending.') : confirmBlast}
-          />
-        </SettingsGroup>
-      </ScrollView>
-
-      <SaveBar visible={dirty} label="Save links" onPress={save} loading={saving} error={error} />
-    </KeyboardAvoidingView>
+      <SettingsGroup title="Invite">
+        <SettingsRow
+          icon={<PaperPlaneTilt size={28} color={c.text} />}
+          label="Send invite to attendees"
+          trailing={sending ? <ActivityIndicator size="small" color={c.text} /> : undefined}
+          onPress={sending ? undefined : dirty ? () => AppAlert.alert('Save first', 'Save your link changes before sending.') : confirmBlast}
+        />
+      </SettingsGroup>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...font() },
-  intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, marginLeft: spacing[1], ...font() },
-  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...font() },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
+  intro: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, marginLeft: spacing[1], ...cosmosFont.body },
+  note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
 });

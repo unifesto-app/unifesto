@@ -1,11 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Export, Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   attachSponsor,
   detachSponsor,
@@ -30,11 +27,11 @@ import { SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Tab = 'sponsors' | 'leads';
 
@@ -48,8 +45,7 @@ export default function EventSponsorsScreen() {
   const params = useLocalSearchParams<{ eventId: string; spaceId?: string; title?: string }>();
   const eventId = params.eventId;
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [spaceId, setSpaceId] = useState(params.spaceId || '');
   const [title, setTitle] = useState(params.title || '');
   const [tab, setTab] = useState<Tab>('sponsors');
@@ -170,9 +166,9 @@ export default function EventSponsorsScreen() {
 
   if (!attached) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -183,31 +179,21 @@ export default function EventSponsorsScreen() {
   const tierNames = tiers.map((t) => t.name);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
-      {error ? <Text style={[styles.intro, { color: tokens.danger, marginBottom: spacing[3] }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.intro, { color: c.danger, marginBottom: spacing[3] }]}>{error}</Text> : null}
       <SegmentedTabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === 'sponsors' ? (
         <>
-          <Text style={[styles.intro, { color: tokens.textSecondary }]}>
+          <Text style={[styles.intro, { color: c.soft }]}>
             Sponsors show on the event page, grouped by tier. With lead capture on, attendees can share their details with that
             sponsor, and the sponsor's people can scan tickets at their booth.
           </Text>
@@ -256,16 +242,16 @@ export default function EventSponsorsScreen() {
                 <SelectRow label="From your roster" value="" options={unattached.map(rosterLabel)} placeholder="Choose" onChange={(v) => void attach(v)} />
               </SettingsGroup>
             ) : (
-              <Text style={[styles.intro, { color: tokens.textMuted }]}>
+              <Text style={[styles.intro, { color: c.muted }]}>
                 {roster.length ? 'Every sponsor in your roster is on this event.' : 'Your roster is empty. Add a sponsor first.'}
               </Text>
             )}
-            {busy === 'attach' ? <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[3] }} /> : null}
+            {busy === 'attach' ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[3] }} /> : null}
             <Button
               label="New sponsor"
               variant="ghost"
               fullWidth
-              icon={<Plus size={18} color={tokens.accent} weight="bold" />}
+              icon={<Plus size={18} color={c.primary} weight="bold" />}
               onPress={() => router.push({ pathname: `/manage/space/${spaceId}/sponsor`, params: { sponsorId: 'new' } })}
               style={{ marginTop: spacing[3] }}
             />
@@ -292,7 +278,7 @@ export default function EventSponsorsScreen() {
               {shownLeads.map((l) => (
                 <View key={l.id}>
                   <SettingsRow label={l.name || l.email || l.phone || 'Attendee'} value={shortDate(l.createdAt)} onPress={() => contact(l)} />
-                  <Text style={[styles.sub, { color: tokens.textMuted }]} onPress={() => contact(l)}>
+                  <Text style={[styles.sub, { color: c.muted }]} onPress={() => contact(l)}>
                     {[attached.length > 1 && !sponsorFilter ? l.sponsorName : null, SPONSOR_LEAD_SOURCE[l.source] ?? l.source, l.email]
                       .filter(Boolean)
                       .join(' · ')}
@@ -307,20 +293,19 @@ export default function EventSponsorsScreen() {
               label="Export CSV"
               variant="secondary"
               fullWidth
-              icon={<Export size={18} color={tokens.text} weight="bold" />}
+              icon={<Export size={18} color={c.text} weight="bold" />}
               onPress={() => void exportLeads()}
               style={{ marginTop: spacing[5] }}
             />
           ) : null}
         </>
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  intro: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
-  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  intro: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
+  sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

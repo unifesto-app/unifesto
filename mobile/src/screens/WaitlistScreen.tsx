@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { useTokens } from '../context/ThemeContext';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   getWaitlist,
   getWaitlistSummary,
@@ -17,14 +14,13 @@ import {
 import type { Result } from '../lib/api/manageEvent';
 import ChipPicker from '../components/manage/ChipPicker';
 import { GroupCell, SettingsGroupHeader, SettingsRow } from '../components/profile/SettingsGroup';
-import { CardBackdrop } from '../components/ui/CardSurface';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import { borderRadius, spacing } from '../theme/spacing';
+import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { font } from '../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type View_ = 'active' | 'CONVERTED' | 'EXPIRED' | 'DECLINED';
 const VIEWS: { value: View_; label: string }[] = [
@@ -45,8 +41,7 @@ const nameOf = (e: WaitlistEntry) => e.user.fullName || e.user.username || 'They
  */
 export default function WaitlistScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [summary, setSummary] = useState<WaitlistSummaryRow[] | null>(null);
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [ticketId, setTicketId] = useState('');
@@ -130,9 +125,9 @@ export default function WaitlistScreen() {
 
   if (!summary) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        <ActivityIndicator color={tokens.accent} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -140,22 +135,23 @@ export default function WaitlistScreen() {
 
   const header = (
     <>
-      {error ? <Text style={[styles.note, { color: tokens.danger }]}>{error}</Text> : null}
+      {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
 
       {enabled.length === 0 ? (
-        <Text style={[styles.empty, { color: tokens.textMuted }]}>
-          No ticket has a waiting list. Turn it on for a ticket with a capacity under Tickets.
-        </Text>
+        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+          <Text style={[styles.empty, { color: c.soft }]}>
+            No ticket has a waiting list. Turn it on for a ticket with a capacity under Tickets.
+          </Text>
+        </View>
       ) : (
         <View style={styles.cards}>
           {enabled.map((row) => (
-            <View key={row.ticketTypeId} style={styles.card}>
-              <CardBackdrop shape={styles.card} />
+            <View key={row.ticketTypeId} style={[styles.card, { backgroundColor: c.raised }]}>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.cardTitle, { color: tokens.text }]} numberOfLines={1}>
+                <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={1}>
                   {row.name}
                 </Text>
-                <Text style={[styles.cardSub, { color: tokens.textMuted }]}>
+                <Text style={[styles.cardSub, { color: c.muted }]}>
                   {row.waiting} waiting · {row.offered} offered
                   {row.seatsAvailable != null ? ` · ${row.seatsAvailable} free` : ''}
                 </Text>
@@ -192,23 +188,14 @@ export default function WaitlistScreen() {
   );
 
   return (
-    <FlatList
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={tokens.accent}
-          colors={[tokens.accent]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosList
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
       data={entries}
       keyExtractor={(e) => e.registrationId}
       ListHeaderComponent={header}
@@ -232,17 +219,17 @@ const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
   onAllow: (e: WaitlistEntry) => void;
   onRevoke: (e: WaitlistEntry) => void;
 }) {
-  const tokens = useTokens();
+  const c = useCosmos();
   const offered = e.waitlistStatus === 'OFFERED';
   const waiting = e.waitlistStatus === 'WAITING';
   return (
     <View style={styles.entry}>
-      <Text style={[styles.pos, { color: tokens.textMuted }]}>{waiting ? `#${e.position}` : ''}</Text>
+      <Text style={[styles.pos, { color: c.muted }]}>{waiting ? `#${e.position}` : ''}</Text>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.name, { color: tokens.text }]} numberOfLines={1}>
+        <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
           {nameOf(e)}
         </Text>
-        <Text style={[styles.cardSub, { color: offered ? tokens.warning : tokens.textMuted }]} numberOfLines={1}>
+        <Text style={[styles.cardSub, { color: offered ? c.warn : c.muted }]} numberOfLines={1}>
           {[
             e.ticketType?.name,
             e.seats > 1 ? `${e.seats} seats` : '',
@@ -253,14 +240,14 @@ const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
         </Text>
       </View>
       {busy ? (
-        <ActivityIndicator size="small" color={tokens.accent} />
+        <ActivityIndicator size="small" color={c.text} />
       ) : waiting ? (
         <Pressable onPress={() => onAllow(e)} hitSlop={8}>
-          <Text style={[styles.link, { color: tokens.accent }]}>Let in</Text>
+          <Text style={[styles.link, { color: c.primary }]}>Let in</Text>
         </Pressable>
       ) : offered ? (
         <Pressable onPress={() => onRevoke(e)} hitSlop={8}>
-          <Text style={[styles.link, { color: tokens.danger }]}>Revoke</Text>
+          <Text style={[styles.link, { color: c.danger }]}>Revoke</Text>
         </Pressable>
       ) : null}
     </View>
@@ -268,16 +255,16 @@ const EntryRow = React.memo(function EntryRow({ e, busy, onAllow, onRevoke }: {
 });
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  note: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
-  empty: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  note: { marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   cards: { gap: spacing[3] },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4] },
-  cardTitle: { fontSize: typography.fontSize.base, ...font('semibold') },
-  cardSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...font() },
+  card: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], borderRadius: cosmosCardRadius, padding: spacing[4] },
+  cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  cardSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
   entry: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 60 },
-  pos: { width: 28, fontSize: typography.fontSize.sm, ...font('semibold') },
-  name: { fontSize: typography.fontSize.base, ...font('medium') },
-  link: { fontSize: typography.fontSize.sm, ...font('semibold') },
+  pos: { width: 28, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
+  name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  link: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });

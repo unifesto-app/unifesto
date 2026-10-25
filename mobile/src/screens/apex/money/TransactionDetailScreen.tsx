@@ -1,10 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import CosmosScreen from '../../../components/ui/CosmosScreen';
+import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import { useTokens } from '../../../context/ThemeContext';
-import useTopSpacing from '../../../hooks/useTopSpacing';
 import {
   adminRefund,
   getTransaction,
@@ -24,9 +23,7 @@ import { payerName, txnStatus } from './TransactionsScreen';
 import { inr } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { font } from '../../../theme/fontHelpers';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 type Panel = 'refund' | 'resolve' | null;
 
@@ -44,8 +41,7 @@ const OUTCOMES: { value: 'CANCELLED' | 'FAILED'; label: string }[] = [
 export default function TransactionDetailScreen() {
   const { id, pay } = useLocalSearchParams<{ id: string; pay?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
-  const topSpacing = useTopSpacing();
+  const c = useCosmos();
   const [txn, setTxn] = useState<TransactionDetail | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -80,13 +76,20 @@ export default function TransactionDetailScreen() {
 
   if (!txn) {
     return (
-      <View style={[styles.center, { backgroundColor: tokens.bg }]}>
-        {error ? <Text style={[styles.muted, { color: tokens.textMuted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={tokens.accent} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
-  const status = txnStatus(txn.paymentStatus, tokens);
+  const status = txnStatus(txn.paymentStatus, c);
   const pending = txn.paymentStatus === 'PENDING';
   const canRefund = txn.paymentStatus === 'PAID' || txn.paymentStatus === 'PARTIALLY_REFUNDED';
   const maxBase = refundableBase(txn);
@@ -155,24 +158,19 @@ export default function TransactionDetailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: tokens.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />}
-      >
-        <Text style={[styles.amount, { color: tokens.text }]}>{inr(txn.totalAmount)}</Text>
-        <Text style={[styles.muted, { color: tokens.textMuted }]}>
+    <CosmosScreen keyboard refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content} keyboardDismissMode="interactive">
+        <Text style={[styles.amount, { color: c.text }]}>{inr(txn.totalAmount)}</Text>
+        <Text style={[styles.muted, { color: c.muted }]}>
           {[payerName(txn.user), txn.event.title, txn.ticketType?.name].filter(Boolean).join('  ·  ')}
         </Text>
-        <Text style={[styles.status, { color: status.color }]}>
-          {status.text}
-          {Number(txn.refundedAmount) > 0 ? `  ·  ${inr(txn.refundedAmount)} refunded` : ''}
-        </Text>
+        <View style={[styles.chip, { backgroundColor: `${status.color}26` }]}>
+          <Text style={[styles.status, { color: status.color }]}>
+            {status.text}
+            {Number(txn.refundedAmount) > 0 ? `  ·  ${inr(txn.refundedAmount)} refunded` : ''}
+          </Text>
+        </View>
 
-        {outcomeMsg ? <Text style={[styles.note, { color: outcomeMsg.danger ? tokens.danger : tokens.textSecondary }]}>{outcomeMsg.text}</Text> : null}
+        {outcomeMsg ? <Text style={[styles.note, { color: outcomeMsg.danger ? c.danger : c.soft }]}>{outcomeMsg.text}</Text> : null}
 
         {pending ? (
           <>
@@ -205,7 +203,7 @@ export default function TransactionDetailScreen() {
               <FieldRow label="Amount (₹)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder={String(maxBase)} />
               <FieldRow stacked multiline label="Reason" value={reason} onChangeText={setReason} placeholder="Why this is being refunded" />
             </SettingsGroup>
-            <Text style={[styles.note, { color: tokens.textMuted }]}>{`Up to ${inr(maxBase)}. The processing fee is never refunded.`}</Text>
+            <Text style={[styles.note, { color: c.muted }]}>{`Up to ${inr(maxBase)}. The processing fee is never refunded.`}</Text>
             <Button label="Refund now" variant="danger" size="lg" fullWidth loading={busy} onPress={runRefund} style={{ marginTop: spacing[4] }} />
           </>
         ) : null}
@@ -264,17 +262,17 @@ export default function TransactionDetailScreen() {
             ))}
           </SettingsGroup>
         ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  amount: { fontSize: typography.fontSize['4xl'], ...font('heading') },
-  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...font() },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...font('semibold') },
-  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...font() },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
+  muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   chips: { padding: spacing[4] },
 });

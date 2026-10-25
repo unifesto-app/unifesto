@@ -2,17 +2,15 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, SectionList, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { fetchAllRequests, orderSections, sourceDef, type RequestSource, type RequestTab, type SourceResult } from '../../lib/apexRequests';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { ApexRow } from '../../components/apex/ApexRow';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { font } from '../../theme/fontHelpers';
-import { CardBackdrop } from '../../components/ui/CardSurface';
-
-const GUTTER = spacing[6];
+import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
+import { GUTTER } from '../../components/home/Section';
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const TABS: { key: RequestTab; label: string }[] = [
   { key: 'open', label: 'Review' },
@@ -36,7 +34,7 @@ type Filter = RequestSource | 'all';
 export default function RequestsScreen() {
   const params = useLocalSearchParams<{ type?: string }>();
   const router = useRouter();
-  const tokens = useTokens();
+  const c = useCosmos();
   const topSpacing = useTopSpacing();
   const [tab, setTab] = useState<RequestTab>('open');
   const [filter, setFilter] = useState<Filter>(params.type && sourceDef(params.type) ? (params.type as RequestSource) : 'all');
@@ -84,81 +82,91 @@ export default function RequestsScreen() {
   ];
 
   return (
-    <SectionList
-      style={{ backgroundColor: tokens.bg }}
-      contentContainerStyle={styles.content}
-      sections={loading ? [] : sections}
-      keyExtractor={(r) => r.key}
-      stickySectionHeadersEnabled={false}
-      ListHeaderComponent={
-        <View style={{ paddingTop: topSpacing }}>
-          <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chips}>
-            {chips.map((c) => {
-              const on = c.key === filter;
-              return (
-                <Pressable
-                  key={c.key}
-                  onPress={() => setFilter(c.key)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  style={({ pressed }) => [
-                    styles.chip,
-                    { backgroundColor: on ? tokens.accent : undefined, transform: [{ scale: pressed ? 0.96 : 1 }] },
-                  ]}
-                >
-                  {!on ? <CardBackdrop shape={styles.chip} /> : null}
-                  <Text style={[styles.chipLabel, { color: on ? tokens.accentFg : tokens.text }]}>
-                    {c.label}
-                    {!loading && c.count > 0 ? <Text style={{ color: on ? tokens.accentFg : tokens.textMuted }}>{`  ${c.count}`}</Text> : null}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-          {failNote ? <Text style={[styles.fail, { color: tokens.danger }]}>{failNote}</Text> : null}
-        </View>
-      }
-      renderSectionHeader={({ section }) =>
-        filter === 'all' || section.error ? (
-          <View style={styles.sectionHead}>
-            {filter === 'all' ? (
-              <Text style={[styles.sectionTitle, { color: tokens.textMuted }]}>
-                {section.title}  ·  {section.data.length}
-              </Text>
-            ) : null}
-            {section.error ? <Text style={[styles.fail, { color: tokens.danger }]}>{section.error}</Text> : null}
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <SectionList
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={styles.content}
+        sections={loading ? [] : sections}
+        keyExtractor={(r) => r.key}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <View style={{ paddingTop: topSpacing }}>
+            <SegmentedTabs tabs={TABS} value={tab} onChange={setTab} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chips}>
+              {chips.map((chip) => {
+                const on = chip.key === filter;
+                return (
+                  <Pressable
+                    key={chip.key}
+                    onPress={() => setFilter(chip.key)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      { backgroundColor: on ? c.primary : c.raised, transform: [{ scale: pressed ? 0.96 : 1 }] },
+                    ]}
+                  >
+                    <Text style={[styles.chipLabel, { color: on ? c.primaryFg : c.text }]}>
+                      {chip.label}
+                      {!loading && chip.count > 0 ? <Text style={[cosmosFont.figure, { color: on ? c.primaryFg : c.muted }]}>{`  ${chip.count}`}</Text> : null}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+            {failNote ? <Text style={[styles.fail, { color: c.danger }]}>{failNote}</Text> : null}
           </View>
-        ) : null
-      }
-      ListEmptyComponent={
-        loading ? (
-          <ActivityIndicator color={tokens.accent} style={{ marginTop: spacing[10] }} />
-        ) : (
-          <Text style={[styles.empty, { color: tokens.textMuted }]}>{EMPTY[tab]}</Text>
-        )
-      }
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: tokens.border }]} />}
-      renderItem={({ item }) => (
-        <ApexRow title={item.title} meta={item.meta} value={item.value} onPress={() => router.push(item.open() as never)} />
-      )}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={tokens.accent} colors={[tokens.accent]} progressViewOffset={topSpacing} />
-      }
-    />
+        }
+        renderSectionHeader={({ section }) =>
+          filter === 'all' || section.error ? (
+            <View style={styles.sectionHead}>
+              {filter === 'all' ? (
+                <Text style={[styles.sectionTitle, { color: c.muted }]}>
+                  {section.title}  ·  {section.data.length}
+                </Text>
+              ) : null}
+              {section.error ? <Text style={[styles.fail, { color: c.danger }]}>{section.error}</Text> : null}
+            </View>
+          ) : null
+        }
+        ListEmptyComponent={
+          loading ? (
+            <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+          ) : (
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[tab]}</Text>
+            </View>
+          )
+        }
+        // Each section reads as one card.
+        renderItem={({ item, index, section }) => (
+          <View style={cardSegment(c.raised, index, section.data.length)}>
+            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+            <ApexRow title={item.title} meta={item.meta} value={item.value} onPress={() => router.push(item.open() as never)} />
+          </View>
+        )}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.text} colors={[c.text]} progressViewOffset={topSpacing} />
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
+  container: { flex: 1 },
+  content: { paddingHorizontal: GUTTER, paddingBottom: 120 },
   chipScroll: { marginTop: spacing[4], marginHorizontal: -GUTTER },
   chips: { gap: spacing[2], paddingHorizontal: GUTTER },
   chip: { paddingHorizontal: spacing[4], paddingVertical: spacing[2], borderRadius: borderRadius.full },
-  chipLabel: { fontSize: typography.fontSize.sm, ...font('medium') },
-  sectionHead: { marginTop: spacing[6], marginBottom: spacing[1] },
-  sectionTitle: { fontSize: typography.fontSize.sm, ...font('semibold') },
-  fail: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...font('medium') },
+  chipLabel: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  sectionHead: { marginTop: spacing[6], marginBottom: spacing[3] },
+  sectionTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  fail: { marginTop: spacing[3], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...font() },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

@@ -2,7 +2,6 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { CalendarBlank, CaretRight, Gavel, Handshake, Plus, QrCode } from '@unifesto/unicon/react-native';
-import { useTokens } from '../../context/ThemeContext';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
@@ -42,7 +41,6 @@ const plural = (n: number, one: string) => `${n.toLocaleString('en-IN')} ${one}$
  * events with how full they are, plus judging boards and sponsor leads.
  */
 export default function SpacePanel(p: SpacePanelProps) {
-  const tokens = useTokens();
   const c = useCosmos();
   const glyph = { size: 24, color: c.primary };
 
@@ -60,8 +58,8 @@ export default function SpacePanel(p: SpacePanelProps) {
           <QrCode {...glyph} />
           <View style={{ flex: 1 }}>
             <View style={styles.liveRow}>
-              <View style={[styles.dot, { backgroundColor: tokens.success }]} />
-              <Text style={[styles.eyebrow, { color: tokens.success }]}>Check-in live</Text>
+              <View style={[styles.dot, { backgroundColor: c.success }]} />
+              <Text style={[styles.eyebrow, { color: c.success }]}>Check-in live</Text>
             </View>
             <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>{e.title}</Text>
             <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
@@ -145,7 +143,6 @@ export default function SpacePanel(p: SpacePanelProps) {
 }
 
 function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => void }) {
-  const tokens = useTokens();
   const c = useCosmos();
   const defaults = useDefaultImages();
   const going = e.attendees?.total ?? e._count?.registrations ?? 0;
@@ -173,7 +170,7 @@ function EventRow({ event: e, onPress }: { event: HostedEvent; onPress: () => vo
         <View style={styles.fillRow}>
           {fill !== null ? (
             <View style={[styles.track, { backgroundColor: c.border }]}>
-              <View style={[styles.bar, { width: `${fill * 100}%`, backgroundColor: fill >= 1 ? tokens.warning : c.primary }]} />
+              <View style={[styles.bar, { width: `${fill * 100}%`, backgroundColor: fill >= 1 ? c.warn : c.primary }]} />
             </View>
           ) : null}
           <Text style={[styles.count, { color: c.soft }]}>
