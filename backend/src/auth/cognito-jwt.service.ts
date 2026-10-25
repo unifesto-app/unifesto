@@ -93,6 +93,11 @@ export class CognitoJwtService {
    * @throws UnauthorizedException if token is invalid or expired
    */
   async verifyCognitoToken(token: string): Promise<CognitoTokenPayload> {
+    // J17: jwt.verify skips the audience check for an empty audience. Without
+    // the full config there is nothing to check against, so refuse.
+    if (!this.region || !this.userPoolId || !this.clientId) {
+      throw new UnauthorizedException('Cognito authentication not configured');
+    }
     try {
       // Decode token without verification to get header (contains 'kid')
       const decodedToken = jwt.decode(token, { complete: true });

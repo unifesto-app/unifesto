@@ -110,6 +110,7 @@ function setup(env: Record<string, string> = {}) {
       update: jest.fn(),
       updateMany: jest.fn(),
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     userRole: { findMany: jest.fn().mockResolvedValue([]) },
     ...Object.fromEntries(
@@ -133,14 +134,15 @@ function setup(env: Record<string, string> = {}) {
     generateOtp: jest.fn(() => '123456'),
     storeOtp: jest.fn(),
     assertCanSend: jest.fn(),
+    releaseSend: jest.fn().mockResolvedValue(undefined),
     verifyOtp: jest.fn().mockResolvedValue('ok'),
   };
   const redis = fakeRedisService();
   const cognito: any = { verifyCognitoToken: jest.fn() };
-  const email: any = { sendOtpEmail: jest.fn(), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined) };
-  const whatsapp: any = { sendOtp: jest.fn() };
+  const email: any = { sendOtpEmail: jest.fn().mockResolvedValue(true), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined) };
+  const whatsapp: any = { sendOtp: jest.fn().mockResolvedValue(true) };
   const service = new AuthService(prisma, config, email, whatsapp, otp, redis as any, cognito);
-  return { service, prisma, otp, redis, cognito };
+  return { service, prisma, otp, redis, cognito, email, whatsapp };
 }
 
 const sign = (payload: object, expiresIn: any = '1h') =>
@@ -289,7 +291,7 @@ describe('S5: email auto-link needs a verified email', () => {
     (service as any).verifyAppleToken = jest
       .fn()
       .mockResolvedValue({ sub: 'apple-attacker', email: 'victim@x.com', email_verified: false });
-    prisma.userIdentity.findFirst.mockResolvedValue({ user: user({ id: 'victim' }) });
+    prisma.userIdentity.findMany.mockResolvedValue([{ email: 'victim@x.com', user: user({ id: 'victim' }) }]);
 
     const res = await service.loginWithApple({ identityToken: 't' } as any);
 
@@ -305,12 +307,14 @@ describe('S5: email auto-link needs a verified email', () => {
     (service as any).verifyAppleToken = jest
       .fn()
       .mockResolvedValue({ sub: 'apple-1', email: 'me@x.com', email_verified: 'true' });
-    prisma.userIdentity.findFirst.mockResolvedValue({ user: user({ id: 'me' }) });
+    prisma.userIdentity.findMany.mockResolvedValue([{ email: 'me@x.com', user: user({ id: 'me' }) }]);
 
     const res = await service.loginWithApple({ identityToken: 't' } as any);
 
-    expect(prisma.userIdentity.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { email: 'me@x.com', emailVerified: true } }),
+    expect(prisma.userIdentity.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { emailVerified: true, email: { equals: 'me@x.com', mode: 'insensitive' } },
+      }),
     );
     expect(prisma.userIdentity.create).toHaveBeenCalled();
     expect(res.accessToken).not.toBe('');
@@ -623,5 +627,119 @@ describe('S8/S57: App Review login is off by default', () => {
     const res = await service.verifyEmailOtp('test-user@unifesto.app', '098765');
     expect(res.user.id).toBe('review');
     expect(otp.verifyOtp).not.toHaveBeenCalled();
+  });
+});
+
+describe('J17: identifiers, OTP delivery, provider audiences', () => {
+  const temp = () => sign({ type: 'temp', provider: 'GOOGLE', providerUserId: 'g-1' }, '15m');
+
+  it('a mixed-case email signs into the same (pre-J17 mixed-case) account', async () => {
+    const { service, prisma, otp } = setup();
+    const owner = user({ id: 'owner' });
+    // Stored before J17 as typed; the exact lowercase lookup misses it.
+    prisma.userIdentity.findMany.mockImplementation(async ({ where }: any) =>
+      where.provider === 'EMAIL' ? [{ providerUserId: 'Me@X.com', user: owner }] : [],
+    );
+
+    const res = await service.verifyEmailOtp('  ME@x.COM ', '123456');
+
+    expect(otp.verifyOtp).toHaveBeenCalledWith('me@x.com', '123456', undefined);
+    expect(prisma.userIdentity.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { unique_provider_user: { provider: 'EMAIL', providerUserId: 'me@x.com' } },
+      }),
+    );
+    expect(res.user.id).toBe('owner');
+    expect(res.accessToken).not.toBe('');
+  });
+
+  it('an ILIKE wildcard hit (`_`) is not treated as the same email', async () => {
+    const { service, prisma } = setup();
+    prisma.userIdentity.findMany.mockResolvedValue([
+      { providerUserId: 'aXb@x.com', email: 'aXb@x.com', user: user({ id: 'victim' }) },
+    ]);
+    const res = await service.verifyEmailOtp('a_b@x.com', '123456');
+    expect(res.accessToken).toBe('');
+    expect(res.requiresMobileVerification).toBe(true);
+  });
+
+  it('send and verify use one lowercased OTP key', async () => {
+    const { service, otp, email } = setup();
+    await service.loginWithEmail({ email: ' Foo@Bar.com' } as any, '1.1.1.1');
+    expect(otp.assertCanSend).toHaveBeenCalledWith('foo@bar.com', '1.1.1.1');
+    expect(otp.storeOtp).toHaveBeenCalledWith('foo@bar.com', '123456');
+    expect(email.sendOtpEmail).toHaveBeenCalledWith('foo@bar.com', '123456');
+  });
+
+  it('a failed email send is a 502, not "sent", and gives the send slot back', async () => {
+    const { service, otp, email } = setup();
+    email.sendOtpEmail.mockResolvedValue(false);
+    await expect(service.loginWithEmail({ email: 'a@x.com' } as any, '1.1.1.1')).rejects.toMatchObject({
+      status: 502,
+    });
+    expect(otp.releaseSend).toHaveBeenCalledWith('a@x.com', '1.1.1.1');
+  });
+
+  it('a failed WhatsApp send is a 502 and gives the send slot back', async () => {
+    const { service, otp, whatsapp } = setup();
+    whatsapp.sendOtp.mockResolvedValue(false);
+    await expect(
+      service.sendMobileOtp({ mobileNumber: '9876543210', tempToken: temp() }, '1.1.1.1'),
+    ).rejects.toMatchObject({ status: 502 });
+    expect(whatsapp.sendOtp).toHaveBeenCalledWith('+919876543210', '123456');
+    expect(otp.releaseSend).toHaveBeenCalledWith('+919876543210', '1.1.1.1');
+  });
+
+  it('Redis down while sending still surfaces as 503', async () => {
+    const { service, otp } = setup();
+    otp.storeOtp.mockRejectedValue(new HttpException('down', 503));
+    await expect(service.loginWithEmail({ email: 'a@x.com' } as any)).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('releaseSend undoes the counters assertCanSend took', async () => {
+    const redis = fakeRedisService();
+    const otp = new OtpService(redis as any);
+    for (let i = 0; i < OtpService.DAILY_SEND_CAP + 3; i++) {
+      await otp.assertCanSend('+911', 'ip');
+      await otp.releaseSend('+911', 'ip');
+    }
+    await expect(otp.assertCanSend('+911', 'ip')).resolves.toBeUndefined();
+  });
+
+  it('refuses a WhatsApp OTP outside the allowlist before using any cap', async () => {
+    const { service, otp, whatsapp } = setup();
+    await expect(
+      service.sendMobileOtp({ mobileNumber: '+14155550123', tempToken: temp() }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(otp.assertCanSend).not.toHaveBeenCalled();
+    expect(whatsapp.sendOtp).not.toHaveBeenCalled();
+  });
+
+  it('OTP_WHATSAPP_COUNTRY_CODES widens the allowlist', async () => {
+    const { service, whatsapp } = setup({ OTP_WHATSAPP_COUNTRY_CODES: '91, +1' });
+    await service.sendMobileOtp({ mobileNumber: '+14155550123', tempToken: temp() });
+    expect(whatsapp.sendOtp).toHaveBeenCalledWith('+14155550123', '123456');
+  });
+
+  it('verify-mobile matches the account by the E.164 number', async () => {
+    const { service, prisma, otp } = setup();
+    prisma.user.findUnique.mockResolvedValue(user({ id: 'owner' }));
+    const res = await service.verifyMobile({ mobileNumber: '09999999999', otp: '123456', tempToken: temp() });
+    expect(otp.verifyOtp).toHaveBeenCalledWith('+919999999999', '123456', undefined);
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { mobileNumber: '+919999999999' } });
+    expect(res.user.id).toBe('owner');
+  });
+
+  it('Apple login fails closed without APPLE_CLIENT_ID', async () => {
+    const { service } = setup();
+    await expect((service as any).verifyAppleToken('t')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.loginWithApple({ identityToken: 't', authorizationCode: 'c' } as any)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('the unused /auth/google login is gone', () => {
+    const { service } = setup();
+    expect((service as any).loginWithGoogle).toBeUndefined();
   });
 });

@@ -28,7 +28,10 @@ function LoginForm() {
   const [error, setError] = useState("");
 
   // After sign-in, the root page routes the user to /dashboard.
-  const nextPath = searchParams.get("next") || "/";
+  // Same-origin paths only (J17): `//evil.com`, `/\evil.com`, `https://…` or a
+  // tab/newline trick would be an open redirect.
+  const next = searchParams.get("next") ?? "";
+  const nextPath = /^\/(?![/\\])[^\s\\]*$/.test(next) ? next : "/";
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();

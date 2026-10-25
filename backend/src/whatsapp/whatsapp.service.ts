@@ -362,12 +362,13 @@ export class WhatsAppService {
    * Template: otp (id: 2217845882320700)
    * Has "Copy code" button
    */
-  async sendOtp(phoneNumber: string, otp: string): Promise<void> {
+  /** True only when Meta accepted it (J17: auth says "sent" on true only). */
+  async sendOtp(phoneNumber: string, otp: string): Promise<boolean> {
     try {
       const formattedPhone = this.formatPhoneNumber(phoneNumber);
       if (!formattedPhone) {
         this.logger.warn(`Invalid phone number format: ${phoneNumber}`);
-        return;
+        return false;
       }
       const message = {
         messaging_product: 'whatsapp',
@@ -394,8 +395,10 @@ export class WhatsAppService {
       const res = await this.trackedPost(formattedPhone, TEMPLATES.OTP, message, { kind: 'otp' });
       if (res.ok) this.logger.log(`WhatsApp OTP sent to ${phoneNumber}`);
       else this.logger.error('Failed to send WhatsApp OTP');
+      return res.ok;
     } catch (error) {
       this.logger.error('Failed to send WhatsApp OTP', error);
+      return false;
     }
   }
 

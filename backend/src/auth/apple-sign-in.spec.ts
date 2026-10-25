@@ -88,6 +88,7 @@ describe('AuthService.loginWithApple stores the refresh token', () => {
       userIdentity: {
         findUnique: jest.fn().mockResolvedValue(null),
         findFirst: jest.fn().mockResolvedValue(null),
+        findMany: jest.fn().mockResolvedValue([]),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: jest.fn(),
       },
