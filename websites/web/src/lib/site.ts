@@ -476,7 +476,7 @@ export const PLANS: Plan[] = [
     forWho: "Fest teams and Spaces that run every month",
     price: 1499,
     standardPrice: 2999,
-    annualMonthly: 1199,
+    annualMonthly: 1319, // ₹15,829 a year, 12% off (decided 26 Oct)
     fee: 1.5,
     standardFee: 3,
     includes: [
