@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { buildLabel, type BuildInfo } from '../../lib/appBuild';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MagnifyingGlass } from '@unifesto/unicon/react-native';
 import { useAuth } from '../../context/AuthContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
 import { getAdminTicket, PRIORITY_LABEL, replyAsStaff, sendToSpace, triageTicket, type AdminTicket } from '../../lib/api/apexSupport';
@@ -16,16 +15,19 @@ import {
   type SupportTicketPriority,
   type SupportTicketStatus,
 } from '../../lib/api/support';
-import { CardBackdrop } from '../../components/ui/CardSurface';
+import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { Button } from '../../components/ui';
+import SearchField from '../../components/manage/SearchField';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import ChipPicker from '../../components/manage/ChipPicker';
 import { CaseMessages, Composer, GUTTER, personName, sideOf } from '../../components/support/CaseThread';
 import { longDate, shortDate } from '../../components/apex/ApexRow';
 import { DESK_LABEL } from './SupportInboxScreen';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 const STATUSES: { value: SupportTicketStatus; label: string }[] = (['OPEN', 'PENDING', 'RESOLVED', 'CLOSED'] as const).map((s) => ({
   value: s,
@@ -106,9 +108,16 @@ export default function AdminSupportThreadScreen() {
 
   if (!ticket) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.meta, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={{ paddingHorizontal: GUTTER }}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -118,6 +127,7 @@ export default function AdminSupportThreadScreen() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <CosmosBackdrop horizon={false} />
       <Stack.Screen options={{ title: `#${ticket.ticketNumber}` }} />
       <ScrollView
         ref={scroll}
@@ -251,18 +261,7 @@ function SendToOrganiser({
       ) : (
         <>
           <View style={styles.search}>
-            <CardBackdrop shape={styles.search} />
-            <MagnifyingGlass size={18} color={c.muted} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search events"
-              placeholderTextColor={c.muted}
-              style={[styles.searchInput, { color: c.text }]}
-              autoCorrect={false}
-              autoCapitalize="none"
-              accessibilityLabel="Search events"
-            />
+            <SearchField value={query} onChangeText={setQuery} placeholder="Search events" accessibilityLabel="Search events" />
           </View>
           {results.length ? (
             <SettingsGroup plain>
@@ -284,11 +283,11 @@ function SendToOrganiser({
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER, paddingBottom: spacing[6] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   subject: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   label: { marginTop: spacing[4], marginBottom: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   hint: { marginTop: spacing[6], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], marginTop: spacing[3], paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, height: 44, overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  search: { marginTop: spacing[3] },
 });

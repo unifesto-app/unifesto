@@ -1,20 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
-import { RefreshControl } from '../../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import { CosmosList } from '../../../components/ui/CosmosScreen';
+import { GUTTER } from '../../../components/home/Section';
 import * as Clipboard from 'expo-clipboard';
-import useTopSpacing from '../../../hooks/useTopSpacing';
 import { getAllBankAccounts, setBankAccountStatus, type AdminBankAccount } from '../../../lib/api/apexMoney';
 import type { BankAccountStatus } from '../../../lib/api/finance';
 import ChipPicker from '../../../components/manage/ChipPicker';
 import { shortDate } from '../../../components/apex/ApexRow';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { Button } from '../../../components/ui';
 import { AppAlert } from '../../../components/ui/AppAlert';
-import { borderRadius, spacing } from '../../../theme/spacing';
+import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { type Cosmos, cosmosFont, useCosmos } from '../../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { type Cosmos, cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../../theme/cosmos';
 
 type Filter = BankAccountStatus | 'all';
 
@@ -34,7 +31,6 @@ const statusLook = (s: BankAccountStatus, c: Cosmos) =>
  */
 export default function BankAccountsScreen() {
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [filter, setFilter] = useState<Filter>('PENDING');
   const [accounts, setAccounts] = useState<AdminBankAccount[]>([]);
   const [total, setTotal] = useState(0);
@@ -108,23 +104,27 @@ export default function BankAccountsScreen() {
   };
 
   return (
-    <FlatList
-      style={{ backgroundColor: c.bg }}
+    <CosmosList
+      refreshing={refreshing}
+      onRefresh={onRefresh}
       contentContainerStyle={styles.content}
       data={loading ? [] : accounts}
       keyExtractor={(a) => a.id}
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
-        <View style={{ paddingTop: topSpacing }}>
+        <View>
           <ChipPicker options={FILTERS} value={filter} onChange={(v) => v && setFilter(v)} />
           {!loading && total > 0 ? <Text style={[styles.count, { color: c.muted }]}>{`${total} ${total === 1 ? 'account' : 'accounts'}`}</Text> : null}
         </View>
       }
       ListEmptyComponent={
         loading ? (
-          <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
         ) : (
-          <Text style={[styles.empty, { color: error ? c.danger : c.muted }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error || (filter === 'PENDING' ? 'Nothing to review.' : 'No accounts.')}</Text>
+            {error ? <Button variant="secondary" label="Try again" onPress={() => void onRefresh()} style={{ marginTop: spacing[4] }} /> : null}
+          </View>
         )
       }
       renderItem={({ item: a }) => {
@@ -132,14 +132,15 @@ export default function BankAccountsScreen() {
         const owner = a.user?.fullName || (a.user?.username ? `@${a.user.username}` : 'Organiser');
         const upi = a.methodType === 'UPI';
         return (
-          <View style={styles.card}>
-            <CardBackdrop shape={styles.card} />
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
             <View style={styles.head}>
               <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
                 {upi ? 'UPI' : a.bankName || 'Bank account'}
                 {a.isPrimary ? <Text style={{ color: c.muted }}>{'  ·  Primary'}</Text> : null}
               </Text>
-              <Text style={[styles.status, { color: s.color }]}>{s.text}</Text>
+              <View style={[styles.chip, { backgroundColor: `${s.color}26` }]}>
+                <Text style={[styles.status, { color: s.color }]}>{s.text}</Text>
+              </View>
             </View>
             <Text style={[styles.line, { color: c.soft }]}>{a.accountHolderName}</Text>
             {upi ? (
@@ -201,23 +202,23 @@ export default function BankAccountsScreen() {
       }}
       onEndReached={() => void loadMore()}
       onEndReachedThreshold={0.4}
-      ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginVertical: spacing[4] }} /> : null}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
+      ListFooterComponent={loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
+  content: { paddingHorizontal: GUTTER },
   count: { marginTop: spacing[4], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  card: { marginTop: spacing[3], padding: spacing[4], borderRadius: borderRadius.xl, overflow: 'hidden' },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  card: { marginTop: spacing[3], padding: spacing[4], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   title: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  status: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  chip: { paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   line: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   meta: { marginTop: 4, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  input: { marginTop: spacing[3], height: 44, paddingHorizontal: spacing[3], borderRadius: borderRadius.lg, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  input: { marginTop: spacing[3], height: 44, paddingHorizontal: spacing[3], borderRadius: cosmosRadius, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   actions: { flexDirection: 'row', gap: spacing[2], marginTop: spacing[3] },
 });

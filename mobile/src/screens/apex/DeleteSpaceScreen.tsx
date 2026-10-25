@@ -1,39 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import { FieldRow } from '../../components/manage/FormFields';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { deleteSpace, getSpaceDetail, type AdminSpaceDetail } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /** Permanently delete a space. Gated on typing its slug, as on Apex web. */
 export default function DeleteSpaceScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
 
   const [space, setSpace] = useState<AdminSpaceDetail | null>(null);
   const [error, setError] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError('');
     void getSpaceDetail(id!).then((r) => (r.ok ? setSpace(r.data) : setError(r.message)));
   }, [id]);
 
+  useEffect(load, [load]);
+
   if (!space) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.body, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -47,8 +55,7 @@ export default function DeleteSpaceScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: topSpacing }]} keyboardShouldPersistTaps="handled">
+    <CosmosScreen keyboard contentContainerStyle={styles.content}>
         <Text style={[styles.title, { color: c.danger }]}>Delete {space.name}?</Text>
         <Text style={[styles.body, { color: c.soft }]}>
           This permanently deletes the space and everything under it: {space._count?.events ?? 0} events with their free registrations and tickets. It cannot
@@ -74,14 +81,14 @@ export default function DeleteSpaceScreen() {
           onPress={run}
           style={{ marginTop: spacing[8] }}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
   body: { marginTop: spacing[3], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
 });

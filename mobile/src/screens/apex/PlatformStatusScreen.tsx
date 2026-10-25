@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { RefreshControl } from '../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, TextInput, View } from 'react-native';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { Button } from '../../components/ui';
+import { GUTTER } from '../../components/home/Section';
 import { useFocusEffect } from 'expo-router';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   createStatusIncident,
   getExternalStatus,
@@ -14,16 +15,13 @@ import {
   type StatusIncident,
 } from '../../lib/api/apex';
 import ChipPicker, { MultiChipPicker } from '../../components/manage/ChipPicker';
-import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { titleCase } from '../../lib/apexQueues';
-import { CardBackdrop } from '../../components/ui/CardSurface';
 import UptimeBars from '../../components/apex/UptimeBars';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { type Cosmos, cosmosFont, useCosmos } from '../../theme/cosmos';
+import { type Cosmos, cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
-const GUTTER = spacing[6];
 type Service = PlatformStatus['services'][number];
 
 export function overallLabel(status: Pick<PlatformStatus, 'overall' | 'stale'>, c: Cosmos) {
@@ -72,14 +70,13 @@ function ServiceCard({ service }: { service: Service }) {
       : 'No data yet';
 
   return (
-    <View style={styles.card}>
-      <CardBackdrop />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <View style={styles.serviceHead}>
         <Text style={[styles.serviceName, { color: c.text }]} numberOfLines={1}>
           {service.name}
         </Text>
         {service.latencyMs != null && service.currentStatus === 'up' ? (
-          <Text style={[styles.small, { color: c.muted }]}>{service.latencyMs} ms</Text>
+          <Text style={[styles.figure, { color: c.muted }]}>{service.latencyMs} ms</Text>
         ) : null}
         <Text style={[styles.word, { color: word.color }]}>{word.text}</Text>
       </View>
@@ -155,8 +152,7 @@ function ReportIncident({ services, onDone }: { services: Service[]; onDone: () 
 
   const input = [styles.input, { color: c.text, backgroundColor: c.tint }];
   return (
-    <View style={styles.card}>
-      <CardBackdrop />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <TextInput value={title} onChangeText={setTitle} placeholder="What's wrong" placeholderTextColor={c.muted} maxLength={300} style={input} />
       <TextInput
         value={body}
@@ -216,7 +212,6 @@ function MonitorItem({ monitor: m }: { monitor: ExternalMonitor }) {
 /** Public-status-page style board: overall banner, 90-day uptime bars, incidents by day. */
 export default function PlatformStatusScreen() {
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [data, setData] = useState<PlatformStatus | null>(null);
   const [external, setExternal] = useState<ExternalStatus | null>(null);
   const [error, setError] = useState('');
@@ -258,9 +253,16 @@ export default function PlatformStatusScreen() {
 
   if (!data) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.small, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -281,13 +283,8 @@ export default function PlatformStatusScreen() {
   });
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
-    >
-      <View style={[styles.banner, { backgroundColor: `${overall.color}22` }]}>
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
+      <View style={[styles.banner, { backgroundColor: `${overall.color}26` }]}>
         <View style={[styles.dot, { backgroundColor: overall.color }]} />
         <Text style={[styles.bannerText, { color: c.text }]}>{overall.text}</Text>
         <Text style={[styles.small, { color: c.muted }]}>
@@ -303,8 +300,7 @@ export default function PlatformStatusScreen() {
       {open.length > 0 ? (
         <>
           <Text style={[styles.section, { color: c.muted }]}>Happening now</Text>
-          <View style={styles.card}>
-            <CardBackdrop />
+          <View style={[styles.card, { backgroundColor: c.raised }]}>
             {open.map((i, n) => (
               <View key={i.id}>
                 {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -339,8 +335,7 @@ export default function PlatformStatusScreen() {
           ) : (
             <>
               {external.monitors.length > 0 ? (
-                <View style={styles.card}>
-                  <CardBackdrop />
+                <View style={[styles.card, { backgroundColor: c.raised }]}>
                   {external.monitors.map((m, n) => (
                     <View key={m.id}>
                       {n > 0 ? <View style={[styles.divider, { backgroundColor: c.border }]} /> : null}
@@ -373,39 +368,40 @@ export default function PlatformStatusScreen() {
           )}
         </View>
       ))}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[4],
-    borderRadius: borderRadius.xl,
+    borderRadius: cosmosCardRadius,
   },
   bannerText: { flex: 1, fontSize: typography.fontSize.lg, ...cosmosFont.display },
   dot: { width: 10, height: 10, borderRadius: 5 },
   section: { marginTop: spacing[8], marginBottom: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   services: { gap: spacing[3] },
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], gap: spacing[3] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], gap: spacing[3] },
   serviceHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   serviceName: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   word: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   axis: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   small: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  figure: { fontSize: typography.fontSize.xs, ...cosmosFont.figure },
   incident: { gap: 4, paddingVertical: spacing[1] },
   incidentTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   divider: { height: StyleSheet.hairlineWidth, marginVertical: spacing[2] },
   day: { marginBottom: spacing[5], gap: spacing[2] },
-  dayTitle: { fontSize: typography.fontSize.base, ...cosmosFont.display },
+  dayTitle: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   rule: { height: StyleSheet.hairlineWidth },
-  input: { minHeight: 44, paddingHorizontal: spacing[3], borderRadius: borderRadius.lg, fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  input: { minHeight: 44, paddingHorizontal: spacing[3], borderRadius: cosmosRadius, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   multiline: { minHeight: 80, paddingTop: spacing[3], textAlignVertical: 'top' },
   actions: { flexDirection: 'row', gap: spacing[2] },
   hint: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },

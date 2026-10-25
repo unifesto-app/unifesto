@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { CaretRight, CheckCircle, PencilSimple, WarningCircle } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../../components/ui/RefreshControl';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { Image } from 'expo-image';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   approveSpace,
   getAdminEvent,
@@ -26,18 +26,17 @@ import { longDate, shortDate } from '../../components/apex/ApexRow';
 import ManageStats from '../../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { inr, inrShort } from '../../utils/money';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../../theme/cosmos';
 
 /*
  * Read-only detail screens for Apex lookups. Each loads one record by id and
  * links sideways (user → space, space → event, event → space / sub-event).
  */
 
-const GUTTER = spacing[6];
 const nameOf = (u?: { fullName: string | null; username: string | null } | null) =>
   u?.fullName || (u?.username ? `@${u.username}` : '—');
 
@@ -83,25 +82,24 @@ function Shell({
   children?: React.ReactNode;
 }) {
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   return (
     <>
       <Stack.Screen options={{ title }} />
       {loading ? (
-        <View style={[styles.center, { backgroundColor: c.bg }]}>
-          {error ? <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-        </View>
+        <CosmosScreen contentContainerStyle={styles.content}>
+          {error ? (
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+              <Button variant="secondary" label="Try again" onPress={onRefresh} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : (
+            <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+          )}
+        </CosmosScreen>
       ) : (
-        <ScrollView
-          style={{ backgroundColor: c.bg }}
-          contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
-          }
-        >
+        <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
           {children}
-        </ScrollView>
+        </CosmosScreen>
       )}
     </>
   );
@@ -519,7 +517,7 @@ export function SpaceDetailAdminScreen() {
           ) : null}
 
           {events === null ? (
-            <ActivityIndicator color={c.primary} style={{ marginTop: spacing[6] }} />
+            <ActivityIndicator color={c.text} style={{ marginTop: spacing[6] }} />
           ) : (
             <>
               {upcoming.length > 0 ? <SettingsGroup title="Upcoming and drafts" plain>{upcoming.map(eventRow)}</SettingsGroup> : null}
@@ -621,11 +619,12 @@ export function EventDetailAdminScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  heroImg: { width: 64, height: 64, borderRadius: borderRadius.lg },
-  banner: { width: '100%', aspectRatio: 4 / 3, borderRadius: borderRadius.xl, marginBottom: spacing[4] },
+  heroImg: { width: 64, height: 64, borderRadius: cosmosRadius },
+  banner: { width: '100%', aspectRatio: 4 / 3, borderRadius: cosmosCardRadius, marginBottom: spacing[4] },
   title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },

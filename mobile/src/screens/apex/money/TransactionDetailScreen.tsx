@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../../../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import CosmosScreen from '../../../components/ui/CosmosScreen';
+import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
-import useTopSpacing from '../../../hooks/useTopSpacing';
 import {
   adminRefund,
   getTransaction,
@@ -23,9 +23,7 @@ import { payerName, txnStatus } from './TransactionsScreen';
 import { inr } from '../../../utils/money';
 import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { cosmosFont, useCosmos } from '../../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 type Panel = 'refund' | 'resolve' | null;
 
@@ -44,7 +42,6 @@ export default function TransactionDetailScreen() {
   const { id, pay } = useLocalSearchParams<{ id: string; pay?: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [txn, setTxn] = useState<TransactionDetail | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -79,9 +76,16 @@ export default function TransactionDetailScreen() {
 
   if (!txn) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft, textAlign: 'center', marginTop: 0 }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -154,22 +158,17 @@ export default function TransactionDetailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
-      >
+    <CosmosScreen keyboard refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content} keyboardDismissMode="interactive">
         <Text style={[styles.amount, { color: c.text }]}>{inr(txn.totalAmount)}</Text>
         <Text style={[styles.muted, { color: c.muted }]}>
           {[payerName(txn.user), txn.event.title, txn.ticketType?.name].filter(Boolean).join('  ·  ')}
         </Text>
-        <Text style={[styles.status, { color: status.color }]}>
-          {status.text}
-          {Number(txn.refundedAmount) > 0 ? `  ·  ${inr(txn.refundedAmount)} refunded` : ''}
-        </Text>
+        <View style={[styles.chip, { backgroundColor: `${status.color}26` }]}>
+          <Text style={[styles.status, { color: status.color }]}>
+            {status.text}
+            {Number(txn.refundedAmount) > 0 ? `  ·  ${inr(txn.refundedAmount)} refunded` : ''}
+          </Text>
+        </View>
 
         {outcomeMsg ? <Text style={[styles.note, { color: outcomeMsg.danger ? c.danger : c.soft }]}>{outcomeMsg.text}</Text> : null}
 
@@ -263,17 +262,17 @@ export default function TransactionDetailScreen() {
             ))}
           </SettingsGroup>
         ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.display },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  amount: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  status: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  chip: { alignSelf: 'flex-start', marginTop: spacing[3], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999 },
+  status: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   chips: { padding: spacing[4] },
 });

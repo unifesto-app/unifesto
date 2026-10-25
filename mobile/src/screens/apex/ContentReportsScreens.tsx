@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import {
   listContentReports,
   moveContentReport,
@@ -18,12 +17,12 @@ import { FieldRow } from '../../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { personName } from '../../components/support/CaseThread';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 type StatusFilter = ReportStatus | 'all';
 type TypeFilter = ReportTarget | 'all';
@@ -142,20 +141,24 @@ export function ContentReportDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [report, setReport] = useState<ContentReport | null>(() => (id ? handoff.get(id) ?? null : null));
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<ReportStatus | null>(null);
 
-  useEffect(() => {
-    if (report || !id) return;
+  const load = useCallback(() => {
+    if (!id) return;
+    setError('');
     void listContentReports().then((r) => {
       const hit = r.ok ? r.data.find((x) => x.id === id) : undefined;
       if (hit) setReport(hit);
       else setError(r.ok ? 'This report is no longer in the queue.' : r.message);
     });
-  }, [id, report]);
+  }, [id]);
+
+  useEffect(() => {
+    if (!report) load();
+  }, [load, report]);
 
   useEffect(() => {
     if (report?.resolutionNote) setNote(report.resolutionNote);
@@ -176,9 +179,16 @@ export function ContentReportDetailScreen() {
 
   if (!report) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.meta, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -186,13 +196,7 @@ export function ContentReportDetailScreen() {
   const route = targetRoute(report);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-      showsVerticalScrollIndicator={false}
-    >
+    <CosmosScreen keyboard contentContainerStyle={styles.content} keyboardDismissMode="interactive">
       <Text style={[styles.title, { color: c.text }]}>{reasonLabel(report)}</Text>
       <Text style={[styles.meta, { color: c.muted }]}>
         {REPORT_STATUS_LABEL[report.status]} · reported {longDate(report.createdAt)}
@@ -245,13 +249,14 @@ export function ContentReportDetailScreen() {
           <Button label="Reopen" variant="secondary" size="lg" fullWidth loading={busy === 'OPEN'} disabled={!!busy} onPress={() => move('OPEN')} />
         )}
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   meta: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.body },
   details: { marginTop: spacing[4], fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.45, ...cosmosFont.body },

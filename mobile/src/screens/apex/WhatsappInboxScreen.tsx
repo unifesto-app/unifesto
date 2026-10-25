@@ -1,20 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { RefreshControl } from "../../components/ui/RefreshControl";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { CosmosList } from "../../components/ui/CosmosScreen";
+import SearchField from "../../components/manage/SearchField";
+import { GUTTER } from "../../components/home/Section";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
-import { MagnifyingGlass, Megaphone } from "@unifesto/unicon/react-native";
+import { Megaphone } from "@unifesto/unicon/react-native";
 import {
   HeaderActions,
   HeaderIconButton,
 } from "../../navigation/HeaderActions";
-import useTopSpacing from "../../hooks/useTopSpacing";
 import {
   conversationName,
   getWhatsappConversations,
@@ -22,19 +16,14 @@ import {
   type WhatsappConversation,
 } from "../../lib/api/apex";
 import { ApexRow, whenShort } from "../../components/apex/ApexRow";
-import { borderRadius, spacing } from "../../theme/spacing";
+import { spacing } from "../../theme/spacing";
 import { typography } from "../../theme/typography";
-import { font } from "../../theme/fontHelpers";
-import { CardBackdrop } from "../../components/ui/CardSurface";
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from "../../theme/cosmos";
 
 /** Messages sent to the Unifesto WhatsApp Business number, newest first. */
 export default function WhatsappInboxScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<WhatsappConversation[]>([]);
@@ -80,6 +69,7 @@ export default function WhatsappInboxScreen() {
   };
 
   const now = new Date();
+  const data = loading || error ? [] : rows;
 
   return (
     <>
@@ -97,49 +87,44 @@ export default function WhatsappInboxScreen() {
           ),
         }}
       />
-      <FlatList
-        style={{ backgroundColor: c.bg }}
+      <CosmosList
+        refreshing={refreshing}
+        onRefresh={onRefresh}
         contentContainerStyle={styles.content}
-        data={loading || error ? [] : rows}
+        data={data}
         keyExtractor={(c) => c.id}
-        keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
-          <View style={{ paddingTop: topSpacing }}>
-            <View style={styles.search}>
-              <CardBackdrop shape={styles.search} />
-              <MagnifyingGlass size={18} color={c.muted} />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Name or number"
-                placeholderTextColor={c.muted}
-                style={[styles.input, { color: c.text }]}
-                autoCorrect={false}
-                clearButtonMode="while-editing"
-              />
-            </View>
+          <View style={styles.search}>
+            <SearchField
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Name or number"
+            />
           </View>
         }
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator
-              color={c.primary}
+              color={c.text}
               style={{ marginTop: spacing[10] }}
             />
           ) : (
-            <Text style={[styles.empty, { color: c.muted }]}>
-              {error || (query ? "No matches." : "No messages yet.")}
-            </Text>
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>
+                {error || (query ? "No matches." : "No messages yet.")}
+              </Text>
+            </View>
           )
         }
-        ItemSeparatorComponent={() => (
-          <View style={[styles.sep, { backgroundColor: c.border }]} />
-        )}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const last = item.messages?.[0];
           const preview = `${last?.direction === "OUTBOUND" ? "You: " : ""}${messagePreview(last)}`;
           return (
-            <ApexRow
+            <View style={cardSegment(c.raised, index, data.length)}>
+              {index > 0 ? (
+                <View style={[styles.sep, { backgroundColor: c.border }]} />
+              ) : null}
+              <ApexRow
               title={conversationName(item)}
               meta={preview}
               value={whenShort(item.lastMessageAt, now)}
@@ -150,39 +135,21 @@ export default function WhatsappInboxScreen() {
                   params: { id: item.id, name: conversationName(item) },
                 })
               }
-            />
+              />
+            </View>
           );
         }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={c.primary}
-            colors={[c.primary]}
-            progressViewOffset={topSpacing}
-          />
-        }
       />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  search: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing[2],
-    paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.xl,
-    height: 44,
-    marginBottom: spacing[2],
-  },
-  input: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
+  content: { paddingHorizontal: GUTTER },
+  search: { marginBottom: spacing[4] },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: {
-    marginTop: spacing[10],
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: {
     textAlign: "center",
     fontSize: typography.fontSize.sm,
     ...cosmosFont.body,

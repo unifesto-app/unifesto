@@ -30,7 +30,9 @@ import { AppAlert } from '../../components/ui/AppAlert';
 import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { CardBackdrop } from '../../components/ui/CardSurface';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import CosmosBackdrop from '../../components/ui/CosmosBackdrop';
+import { Button } from '../../components/ui';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 // While the thread is open, check for new messages this often.
 const POLL_MS = 10_000;
@@ -129,6 +131,7 @@ export default function WhatsappThreadScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? topSpacing - 8 : 0}
     >
+      <CosmosBackdrop horizon={false} />
       <Stack.Screen
         options={{
           title,
@@ -162,7 +165,14 @@ export default function WhatsappThreadScreen() {
       />
       {!convo ? (
         <View style={styles.center}>
-          {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
+          {error ? (
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
+              <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+            </View>
+          ) : (
+            <ActivityIndicator color={c.text} />
+          )}
         </View>
       ) : (
         <FlatList
@@ -206,7 +216,7 @@ export default function WhatsappThreadScreen() {
               accessibilityLabel="Send"
               style={({ pressed }) => [styles.send, { opacity: !draft.trim() || sending ? 0.4 : pressed ? 0.6 : 1 }]}
             >
-              {sending ? <ActivityIndicator color={c.primary} /> : <PaperPlaneRight size={26} color={c.primary} weight="fill" />}
+              {sending ? <ActivityIndicator color={c.text} /> : <PaperPlaneRight size={26} color={c.primary} weight="fill" />}
             </Pressable>
           </View>
         ) : (
@@ -232,11 +242,10 @@ function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?
         onPress={onPick}
         accessibilityRole={onPick ? 'checkbox' : undefined}
         accessibilityState={onPick ? { checked: !!picked } : undefined}
-        style={[styles.bubble, mine && { backgroundColor: c.primary }, { borderColor: picked ? c.text : 'transparent' }]}
+        style={[styles.bubble, { backgroundColor: mine ? c.primary : c.raised, borderColor: picked ? c.text : 'transparent' }]}
       >
-        {!mine ? <CardBackdrop shape={styles.bubble} /> : null}
         {message.mediaUrl ? <Image source={{ uri: message.mediaUrl }} style={styles.media} contentFit="cover" /> : null}
-        {text ? <Text style={[styles.body, { color: mine ? '#fff' : c.text }]}>{text}</Text> : null}
+        {text ? <Text style={[styles.body, { color: mine ? c.primaryFg : c.text }]}>{text}</Text> : null}
       </Pressable>
       <Text style={[styles.meta, { color: failed ? c.danger : c.muted, textAlign: mine ? 'right' : 'left' }]}>
         {[whenShort(message.createdAt), tick].filter(Boolean).join('  ·  ')}
@@ -247,7 +256,8 @@ function Bubble({ message, picked, onPick }: { message: WhatsappMessage; picked?
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing[6] },
+  center: { flex: 1, justifyContent: 'center', padding: spacing[6] },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   headerAction: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },

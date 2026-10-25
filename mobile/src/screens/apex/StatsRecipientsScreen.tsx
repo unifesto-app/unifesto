@@ -1,17 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Phone, PlusCircle, WhatsappLogo, X } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import SaveBar from '../../components/manage/SaveBar';
+import { GUTTER } from '../../components/home/Section';
 import { getStatsRecipients, updateStatsRecipients } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex "Stats recipients": the WhatsApp numbers that get the Unifesto Stats
@@ -19,7 +18,6 @@ import { cosmosFont, useCosmos } from '../../theme/cosmos';
  * then one Save replaces it on the server (which re-normalises to E.164).
  */
 
-const GUTTER = spacing[6];
 const ICON = 24;
 
 /** Same rule as the server: bare 10 digits = India, else 11–15 digits with country code. */
@@ -40,8 +38,6 @@ const sameList = (a: string[], b: string[]) => a.length === b.length && a.every(
 
 export default function StatsRecipientsScreen() {
   const c = useCosmos();
-  const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const [saved, setSaved] = useState<string[] | null>(null);
   const [draft, setDraft] = useState<string[] | null>(null);
@@ -66,11 +62,6 @@ export default function StatsRecipientsScreen() {
   }, [load]);
 
   const isDirty = !!saved && !!draft && !sameList(saved, draft);
-
-  const barStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(isDirty ? 0 : 140, { damping: 18, stiffness: 180 }) }],
-    opacity: withTiming(isDirty ? 1 : 0, { duration: 180 }),
-  }));
 
   const add = () => {
     if (!input.trim()) return;
@@ -112,20 +103,27 @@ export default function StatsRecipientsScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.pad}>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+    <CosmosScreen
+      keyboard
+      bottom={180}
+      contentContainerStyle={styles.pad}
+      keyboardDismissMode="interactive"
+      footer={<SaveBar visible={isDirty} label="Save changes" onPress={save} loading={saving} />}
+    >
         <SettingsGroup title="Recipients">
           {draft.length === 0 ? (
             <SettingsRow label="No one yet" value="Stats won't be sent" />
@@ -172,22 +170,15 @@ export default function StatsRecipientsScreen() {
         </Text>
 
         {error ? <Text style={[styles.message, { color: c.danger }]}>{error}</Text> : null}
-        {notice && !isDirty ? <Text style={[styles.message, { color: c.primary }]}>{notice}</Text> : null}
-      </ScrollView>
-
-      <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
-      </Animated.View>
-    </KeyboardAvoidingView>
+        {notice && !isDirty ? <Text style={[styles.message, { color: c.success }]}>{notice}</Text> : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   note: { marginTop: spacing[4], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
 });

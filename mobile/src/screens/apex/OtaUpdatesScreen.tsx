@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import useTopSpacing from '../../hooks/useTopSpacing';
-import { RefreshControl } from '../../components/ui/RefreshControl';
-import { CardBackdrop } from '../../components/ui/CardSurface';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import SegmentedTabs from '../../components/ui/SegmentedTabs';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { Badge, Button, type BadgeTone } from '../../components/ui';
@@ -20,9 +19,9 @@ import {
   type OtaGroup,
   type OtaStaleness,
 } from '../../lib/api/apex';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex › OTA updates: what's published on each EAS Update channel, and the
@@ -32,7 +31,6 @@ import { cosmosFont, useCosmos } from '../../theme/cosmos';
  * ship as an OTA) and what active phones actually run.
  */
 
-const GUTTER = spacing[6];
 const CHANNELS: { key: OtaChannel; label: string }[] = [
   { key: 'production', label: 'Production' },
   { key: 'preview', label: 'Preview' },
@@ -67,7 +65,6 @@ const platformLabel = (p: string[]) => p.map((x) => (x === 'ios' ? 'iOS' : x ===
 
 export default function OtaUpdatesScreen() {
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const mine = buildInfo();
   const [channel, setChannel] = useState<OtaChannel>('production');
   const [groups, setGroups] = useState<OtaGroup[] | null>(null);
@@ -146,12 +143,7 @@ export default function OtaUpdatesScreen() {
           : { label: 'Past', tone: 'neutral' };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
-    >
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
       {stale ? <StaleCard s={stale} /> : null}
       {adoption ? <AdoptionCard a={adoption} groups={channel === 'production' ? groups : null} /> : null}
 
@@ -162,11 +154,18 @@ export default function OtaUpdatesScreen() {
       </Text>
 
       {!groups ? (
-        <View style={styles.center}>
-          {error ? <Text style={[styles.body, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-        </View>
+        error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load(channel)} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={styles.center} />
+        )
       ) : groups.length === 0 ? (
-        <Text style={[styles.body, styles.center, { color: c.muted }]}>Nothing published on {channel} yet.</Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.body, { color: c.soft, textAlign: 'center' }]}>Nothing published on {channel} yet.</Text>
+        </View>
       ) : (
         <View style={styles.list}>
           {groups.map((g) => {
@@ -175,8 +174,7 @@ export default function OtaUpdatesScreen() {
             const pct = g.rolloutPercentage ?? 0;
             const isMine = !!mine.updateId && g.updateIds.includes(mine.updateId);
             return (
-              <View key={g.group} style={styles.card}>
-                <CardBackdrop />
+              <View key={g.group} style={[styles.card, { backgroundColor: c.raised }]}>
                 <View style={styles.head}>
                   <Badge label={b.label} tone={b.tone} />
                   {isMine ? <Badge label="This phone" tone="accent" /> : null}
@@ -268,7 +266,7 @@ export default function OtaUpdatesScreen() {
         Publish new updates with `npm run update:production` (starts at 20%). Rolling back to the store build is CLI-only:
         `npm run update:rollback`.
       </Text>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
@@ -280,8 +278,7 @@ function StaleCard({ s }: { s: OtaStaleness }) {
   const old = s.oldestUnshippedAt ? daysAgo(s.oldestUnshippedAt) : 0;
   const tone: BadgeTone = !n ? 'success' : old >= 7 ? 'danger' : 'warning';
   return (
-    <View style={[styles.card, styles.section]}>
-      <CardBackdrop />
+    <View style={[styles.card, styles.section, { backgroundColor: c.raised }]}>
       <View style={styles.head}>
         {count != null ? <Badge label={n ? `${count} unshipped` : 'Up to date'} tone={tone} /> : null}
         {s.main ? (
@@ -330,7 +327,7 @@ function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null
         <Text style={[indent ? styles.small : styles.body, { color: indent ? c.muted : c.text, flex: 1 }]} numberOfLines={1}>
           {text}
         </Text>
-        <Text style={[styles.small, { color: c.muted }]}>
+        <Text style={[styles.figure, { color: c.muted }]}>
           {users} · {pct(users, total)}%
         </Text>
       </View>
@@ -340,8 +337,7 @@ function AdoptionCard({ a, groups }: { a: OtaAdoption; groups: OtaGroup[] | null
     </View>
   );
   return (
-    <View style={[styles.card, styles.section]}>
-      <CardBackdrop />
+    <View style={[styles.card, styles.section, { backgroundColor: c.raised }]}>
       <Text style={[styles.title, { color: c.text }]}>What phones run</Text>
       <Text style={[styles.small, { color: c.muted }]}>
         {a.total} active user{a.total === 1 ? '' : 's'} (app reported in the last {a.days} days)
@@ -363,14 +359,16 @@ const styles = StyleSheet.create({
   adoptGroup: { gap: spacing[2], marginTop: spacing[2] },
   adoptRow: { gap: spacing[1] },
   adoptHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { paddingVertical: spacing[12], alignItems: 'center' },
+  content: { paddingHorizontal: GUTTER },
+  center: { marginVertical: spacing[12] },
+  empty: { marginTop: spacing[4], borderRadius: cosmosCardRadius, padding: spacing[6] },
   list: { marginTop: spacing[4], gap: spacing[3] },
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden', padding: spacing[4], gap: spacing[2] },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden', padding: spacing[4], gap: spacing[2] },
   head: { flexDirection: 'row', gap: spacing[2] },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   body: { fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.45, ...cosmosFont.body },
   small: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
+  figure: { fontSize: typography.fontSize.xs, ...cosmosFont.figure },
   track: { height: 6, borderRadius: 3, overflow: 'hidden', marginTop: spacing[1] },
   fill: { height: 6, borderRadius: 3 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginTop: spacing[1] },

@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { openApexWeb } from '../../lib/openOnWeb';
 import { Cards, Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../../components/ui/RefreshControl';
-import useTopSpacing from '../../hooks/useTopSpacing';
+import { CosmosList } from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import usePagedList from '../../hooks/usePagedList';
 import { HeaderActions, HeaderIconButton } from '../../navigation/HeaderActions';
 import ManageStats from '../../components/manage/ManageStats';
@@ -13,9 +13,8 @@ import { campaignStatus } from '../../components/apex/campaignStatus';
 import { listEmailCampaigns, type EmailTargetType } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
-const GUTTER = spacing[6];
 const PAGE_SIZE = 20;
 
 export const EMAIL_TARGET_LABEL: Record<EmailTargetType, string> = {
@@ -34,7 +33,6 @@ export const pct = (part: number, whole: number) => (whole ? `${Math.round((part
 export default function EmailCampaignsScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [total, setTotal] = useState(0);
 
   const fetchPage = useCallback(async (page: number) => {
@@ -49,6 +47,7 @@ export default function EmailCampaignsScreen() {
   const opens = rows.reduce((s, c) => s + c.openCount, 0);
   const clicks = rows.reduce((s, c) => s + c.clickCount, 0);
   const now = new Date();
+  const data = loading || error ? [] : rows;
 
   return (
     <>
@@ -66,13 +65,14 @@ export default function EmailCampaignsScreen() {
           ),
         }}
       />
-      <FlatList
-        style={{ backgroundColor: c.bg }}
+      <CosmosList
+        refreshing={refreshing}
+        onRefresh={refresh}
         contentContainerStyle={styles.content}
-        data={loading || error ? [] : rows}
+        data={data}
         keyExtractor={(c) => c.id}
         ListHeaderComponent={
-          <View style={{ paddingTop: topSpacing, marginBottom: spacing[2], gap: spacing[3] }}>
+          <View style={{ marginBottom: spacing[4], gap: spacing[3] }}>
             <ManageStats
               loading={loading}
               stats={[
@@ -92,42 +92,43 @@ export default function EmailCampaignsScreen() {
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
+            <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
           ) : (
-            <Text style={[styles.empty, { color: c.muted }]}>{error || 'No campaigns yet. Tap + to compose one.'}</Text>
+            <View style={[styles.empty, { backgroundColor: c.raised }]}>
+              <Text style={[styles.emptyText, { color: c.soft }]}>{error || 'No campaigns yet. Tap + to compose one.'}</Text>
+            </View>
           )
         }
-        ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const s = campaignStatus(item.status, c);
           const rates = item.totalSent ? `${item.totalSent} sent · ${pct(item.openCount, item.totalSent)} opened` : null;
           return (
-            <ApexRow
-              title={`${item.subject}${item.subjectB ? '  (A/B)' : ''}`}
-              meta={[EMAIL_TARGET_LABEL[item.targetType] ?? item.targetType, rates, whenShort(item.sentAt ?? item.scheduledAt ?? item.createdAt, now)]
-                .filter(Boolean)
-                .join(' · ')}
-              value={s.label}
-              valueColor={s.color}
-              onPress={() => router.push({ pathname: '/apex/email/[id]', params: { id: item.id } })}
-            />
+            <View style={cardSegment(c.raised, index, data.length)}>
+              {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+              <ApexRow
+                title={`${item.subject}${item.subjectB ? '  (A/B)' : ''}`}
+                meta={[EMAIL_TARGET_LABEL[item.targetType] ?? item.targetType, rates, whenShort(item.sentAt ?? item.scheduledAt ?? item.createdAt, now)]
+                  .filter(Boolean)
+                  .join(' · ')}
+                value={s.label}
+                valueColor={s.color}
+                onPress={() => router.push({ pathname: '/apex/email/[id]', params: { id: item.id } })}
+              />
+            </View>
           );
         }}
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.4}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.primary} style={{ marginVertical: spacing[4] }} /> : null}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
-        }
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={c.text} style={{ marginVertical: spacing[4] }} /> : null}
       />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
+  content: { paddingHorizontal: GUTTER },
   hint: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   sep: { height: StyleSheet.hairlineWidth },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

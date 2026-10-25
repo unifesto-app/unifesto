@@ -1,8 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { RefreshControl } from '../../components/ui/RefreshControl';
-import useTopSpacing from '../../hooks/useTopSpacing';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { Button } from '../../components/ui';
+import { GUTTER } from '../../components/home/Section';
 import ManageStats from '../../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { ApexRow, longDate, shortDate } from '../../components/apex/ApexRow';
@@ -13,15 +14,12 @@ import { cancelEmailCampaign, getEmailCampaign, previewEmailBody, type EmailCamp
 import { EMAIL_TARGET_LABEL, pct } from './EmailCampaignsScreen';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /** One email campaign: delivery + engagement, A/B split, recipient log, cancel if scheduled. */
 export default function EmailCampaignDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [campaign, setCampaign] = useState<EmailCampaignDetail | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -70,10 +68,17 @@ export default function EmailCampaignDetailScreen() {
 
   if (!campaign) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
+      <CosmosScreen contentContainerStyle={styles.pad}>
         <Stack.Screen options={{ title: 'Campaign' }} />
-        {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
@@ -83,14 +88,7 @@ export default function EmailCampaignDetailScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'Campaign' }} />
-      <ScrollView
-        style={{ backgroundColor: c.bg }}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 80 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
-        }
-      >
+      <CosmosScreen refreshing={refreshing} onRefresh={refresh} contentContainerStyle={styles.pad}>
         <Text style={[styles.title, { color: c.text }]}>{campaign.subject}</Text>
         <Text style={[styles.muted, { color: c.muted }]}>
           <Text style={{ color: s.color }}>{s.label}</Text> · {EMAIL_TARGET_LABEL[campaign.targetType] ?? campaign.targetType} · {when}
@@ -138,36 +136,47 @@ export default function EmailCampaignDetailScreen() {
         ) : null}
 
         <Text style={[styles.section, { color: c.muted }]}>Recipients ({campaign.logs.length} shown)</Text>
-        {campaign.logs.length === 0 ? <Text style={[styles.muted, { color: c.muted }]}>Nobody yet.</Text> : null}
-        {campaign.logs.map((l, i) => {
-          const engaged = l.firstClickedAt ? `clicked ${shortDate(l.firstClickedAt)}` : l.openedAt ? `opened ${shortDate(l.openedAt)}` : 'not opened';
-          const statusColor = l.status === 'SENT' ? c.success : l.status === 'BOUNCED' ? c.warn : c.danger;
-          return (
-            <View key={l.id}>
-              {i > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
-              <ApexRow
-                title={l.recipientEmail}
-                meta={[l.variant ? `Variant ${l.variant}` : null, l.status === 'SENT' ? engaged : l.errorMessage].filter(Boolean).join(' · ')}
-                value={l.status === 'SENT' ? 'Sent' : l.status === 'BOUNCED' ? 'Bounced' : 'Failed'}
-                valueColor={statusColor}
-              />
-            </View>
-          );
-        })}
-      </ScrollView>
+        {campaign.logs.length === 0 ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.emptyText, { color: c.soft }]}>Nobody yet.</Text>
+          </View>
+        ) : null}
+        {campaign.logs.length > 0 ? (
+          <View style={[styles.list, { backgroundColor: c.raised }]}>
+          {campaign.logs.map((l, i) => {
+            const engaged = l.firstClickedAt ? `clicked ${shortDate(l.firstClickedAt)}` : l.openedAt ? `opened ${shortDate(l.openedAt)}` : 'not opened';
+            const statusColor = l.status === 'SENT' ? c.success : l.status === 'BOUNCED' ? c.warn : c.danger;
+            return (
+              <View key={l.id}>
+                {i > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+                <ApexRow
+                  title={l.recipientEmail}
+                  meta={[l.variant ? `Variant ${l.variant}` : null, l.status === 'SENT' ? engaged : l.errorMessage].filter(Boolean).join(' · ')}
+                  value={l.status === 'SENT' ? 'Sent' : l.status === 'BOUNCED' ? 'Bounced' : 'Failed'}
+                  valueColor={statusColor}
+                />
+              </View>
+            );
+          })}
+          </View>
+        ) : null}
+      </CosmosScreen>
       <HtmlPreviewSheet html={preview} title={campaign.subject} onClose={() => setPreview(null)} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  list: { borderRadius: cosmosCardRadius, paddingHorizontal: spacing[4] },
   title: { fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
   muted: { marginTop: 4, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   stats: { marginTop: spacing[5], gap: spacing[3] },
   variant: { paddingHorizontal: spacing[4], paddingVertical: spacing[4] },
   variantHead: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   variantRates: { marginTop: spacing[2], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  section: { marginTop: spacing[8], marginBottom: spacing[1], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  section: { marginTop: spacing[8], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth },
 });

@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, Warning, X } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow } from '../../components/manage/FormFields';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -12,6 +10,8 @@ import SaveBar from '../../components/manage/SaveBar';
 import EntityPickerRow, { type PickerItem } from '../../components/apex/EntityPickerRow';
 import { Button } from '../../components/ui';
 import { AppAlert } from '../../components/ui/AppAlert';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { titleCase } from '../../lib/apexQueues';
 import {
   countWhatsappAudience,
@@ -28,7 +28,6 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
 
-const GUTTER = spacing[6];
 const NAME_TOKEN = '{name}';
 // Typed to unlock an app-wide blast (client-side guard, like Apex web).
 const CONFIRM_PHRASE = 'send to all';
@@ -56,8 +55,6 @@ async function pickPhoneUsers(q: string): Promise<PickerItem[]> {
 export default function WhatsappBroadcastScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const [audience, setAudience] = useState<WhatsappAudience>('SPACE');
   const [spaces, setSpaces] = useState<BroadcastSpace[]>([]);
@@ -172,7 +169,7 @@ export default function WhatsappBroadcastScreen() {
 
   if (sentTo !== null) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg, paddingTop: topSpacing }]}>
+      <CosmosScreen contentContainerStyle={styles.center}>
         <CheckCircle size={56} color={c.success} weight="fill" />
         <Text style={[styles.doneTitle, { color: c.text }]}>Broadcast started</Text>
         <Text style={[styles.doneBody, { color: c.muted }]}>
@@ -191,18 +188,18 @@ export default function WhatsappBroadcastScreen() {
           />
           <Button label="Back to inbox" variant="secondary" onPress={() => router.back()} />
         </View>
-      </View>
+      </CosmosScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 160 + insets.bottom }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+    <CosmosScreen
+      keyboard
+      bottom={180}
+      contentContainerStyle={{ paddingHorizontal: GUTTER }}
+      keyboardDismissMode="interactive"
+      footer={<SaveBar visible={ready} label="Start broadcast" onPress={() => void confirmSend()} loading={sending || counting} error={error} />}
+    >
         <BlockTitle>Who receives it</BlockTitle>
         <ChipPicker options={AUDIENCES} value={audience} onChange={(v) => v && setAudience(v)} />
 
@@ -299,15 +296,12 @@ export default function WhatsappBroadcastScreen() {
             style={{ marginTop: spacing[4] }}
           />
         ) : null}
-      </ScrollView>
-
-      <SaveBar visible={ready} label="Start broadcast" onPress={() => void confirmSend()} loading={sending || counting} error={error} />
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: GUTTER, gap: spacing[3] },
+  center: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: GUTTER, gap: spacing[3] },
   doneTitle: { marginTop: spacing[2], fontSize: typography.fontSize['2xl'], ...cosmosFont.display },
   doneBody: { textAlign: 'center', fontSize: typography.fontSize.sm, lineHeight: 20, ...cosmosFont.body },
   doneActions: { marginTop: spacing[4], flexDirection: 'row', gap: spacing[3] },

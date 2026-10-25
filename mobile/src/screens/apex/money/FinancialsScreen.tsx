@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../../../components/ui/RefreshControl';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import CosmosScreen from '../../../components/ui/CosmosScreen';
+import { Button } from '../../../components/ui';
+import { GUTTER } from '../../../components/home/Section';
 import { useFocusEffect } from 'expo-router';
 import { CaretDown, CaretRight } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../../hooks/useTopSpacing';
 import {
   getPlatformFinancials,
   getPlatformFinancialsBreakdown,
@@ -16,13 +17,10 @@ import ChipPicker from '../../../components/manage/ChipPicker';
 import { BlockTitle } from '../../../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../../../components/profile/SettingsGroup';
 import { shortDate } from '../../../components/apex/ApexRow';
-import { CardBackdrop } from '../../../components/ui/CardSurface';
 import { inr, inrShort } from '../../../utils/money';
-import { borderRadius, spacing } from '../../../theme/spacing';
+import { spacing } from '../../../theme/spacing';
 import { typography } from '../../../theme/typography';
-import { cosmosFont, useCosmos } from '../../../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../../theme/cosmos';
 
 type SortKey = keyof Pick<FinancialsFigures, 'available' | 'collectedOverall' | 'netEntitlement' | 'pending' | 'refunded'>;
 
@@ -51,7 +49,6 @@ const FIGURES: { key: keyof FinancialsFigures; label: string }[] = [
  */
 export default function FinancialsScreen() {
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [totals, setTotals] = useState<PlatformFinancials | null>(null);
   const [spaces, setSpaces] = useState<SpaceFinancials[] | null>(null);
   const [error, setError] = useState('');
@@ -99,19 +96,21 @@ export default function FinancialsScreen() {
 
   if (!totals) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />}
-    >
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
       <Text style={[styles.hero, { color: c.text }]}>{inr(totals.platformEarnings)}</Text>
       <Text style={[styles.muted, { color: c.muted }]}>Platform earnings · app fees + revenue share</Text>
       {error ? <Text style={[styles.note, { color: c.danger }]}>{error}</Text> : null}
@@ -134,13 +133,17 @@ export default function FinancialsScreen() {
         <View style={{ marginTop: spacing[8] }}>
           <BlockTitle>By space</BlockTitle>
           <ChipPicker options={SORTS} value={sort} onChange={(v) => v && setSort(v)} />
-          {sorted.length === 0 ? <Text style={[styles.note, { color: c.muted }]}>No space has collected money yet.</Text> : null}
+          {sorted.length === 0 ? (
+            <View style={[styles.empty, { backgroundColor: c.raised, marginTop: spacing[3] }]}>
+              <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>No space has collected money yet.</Text>
+            </View>
+          ) : null}
           {sorted.map((s) => (
             <SpaceCard key={s.spaceId} space={s} sortKey={sort} open={open.has(s.spaceId)} onToggle={() => toggle(s.spaceId)} />
           ))}
         </View>
       ) : null}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
@@ -149,8 +152,7 @@ function SpaceCard({ space, sortKey, open, onToggle }: { space: SpaceFinancials;
   const fee = space.feePercent > 0 ? `${space.feePercent}% rev-share` : 'No rev-share';
   const Caret = open ? CaretDown : CaretRight;
   return (
-    <View style={styles.card}>
-      <CardBackdrop shape={styles.card} />
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
       <Pressable onPress={onToggle} style={({ pressed }) => [styles.cardHead, pressed && { opacity: 0.6 }]} accessibilityRole="button" accessibilityState={{ expanded: open }}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardTitle, { color: c.text }]} numberOfLines={1}>
@@ -207,22 +209,22 @@ function Figures({ f }: { f: FinancialsFigures }) {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  hero: { fontSize: typography.fontSize['4xl'], ...cosmosFont.display },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  hero: { fontSize: typography.fontSize['4xl'], ...cosmosFont.figure },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   tiles: { marginTop: spacing[5], gap: spacing[3] },
-  card: { marginTop: spacing[3], borderRadius: borderRadius.xl, overflow: 'hidden' },
+  card: { marginTop: spacing[3], borderRadius: cosmosCardRadius, overflow: 'hidden' },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4] },
   cardTitle: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
-  cardValue: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  cardValue: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   body: { paddingHorizontal: spacing[4], paddingBottom: spacing[4] },
   sub: { marginTop: spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   event: { marginTop: spacing[4], paddingTop: spacing[3], borderTopWidth: StyleSheet.hairlineWidth },
   eventTitle: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing[2] },
   cell: { width: '50%', paddingVertical: spacing[1] },
-  cellValue: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  cellValue: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   tiny: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

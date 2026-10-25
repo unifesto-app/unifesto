@@ -1,17 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { At, Camera, Trash } from '@unifesto/unicon/react-native';
 import { UnGlyph, type GlyphName } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import SaveBar from '../../components/manage/SaveBar';
+import { GUTTER } from '../../components/home/Section';
 import { AppAlert } from '../../components/ui/AppAlert';
 import {
   getAdminUser,
@@ -23,14 +23,13 @@ import {
 } from '../../lib/api/apex';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Platform admin edits someone else's profile (Apex parity). Photo changes
  * apply immediately, like on web; text fields wait for Save.
  */
 
-const GUTTER = spacing[6];
 const AVATAR = 100;
 const ICON = 28;
 
@@ -73,8 +72,6 @@ export default function AdminEditUserScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const [original, setOriginal] = useState<UserFields | null>(null);
   const [fields, setFields] = useState<UserFields | null>(null);
@@ -107,11 +104,6 @@ export default function AdminEditUserScreen() {
 
   const patch = useMemo(() => (original && fields ? buildUserPatch(original, fields) : {}), [original, fields]);
   const isDirty = Object.keys(patch).length > 0;
-
-  const barStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(isDirty ? 0 : 140, { damping: 18, stiffness: 180 }) }],
-    opacity: withTiming(isDirty ? 1 : 0, { duration: 180 }),
-  }));
 
   const save = async () => {
     if (!isDirty || saving) return;
@@ -159,22 +151,29 @@ export default function AdminEditUserScreen() {
 
   if (!fields) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.pad}>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
   const unicon = (name: GlyphName) => <UnGlyph name={name} size={ICON} color={c.text} />;
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+    <CosmosScreen
+      keyboard
+      bottom={180}
+      contentContainerStyle={styles.pad}
+      keyboardDismissMode="interactive"
+      footer={<SaveBar visible={isDirty} label="Save changes" onPress={save} loading={saving} error={error} />}
+    >
         {/* Photo: applies immediately */}
         <View style={styles.avatarWrap}>
           <Pressable onPress={pickAvatar} disabled={avatarBusy} accessibilityRole="button" accessibilityLabel="Change photo">
@@ -242,21 +241,13 @@ export default function AdminEditUserScreen() {
             />
           ))}
         </SettingsGroup>
-
-        {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
-      </ScrollView>
-
-      <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
-      </Animated.View>
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   avatarWrap: { alignSelf: 'center', alignItems: 'center' },
   ring: { width: AVATAR + 8, height: AVATAR + 8, borderRadius: (AVATAR + 8) / 2, alignItems: 'center', justifyContent: 'center' },
@@ -274,6 +265,4 @@ const styles = StyleSheet.create({
   photoActions: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
   photoAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   photoActionText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  error: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
 });

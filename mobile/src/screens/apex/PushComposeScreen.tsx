@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import { BlockTitle, FieldRow, SwitchRow } from '../../components/manage/FormFields';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -11,14 +9,14 @@ import DateTimeRow from '../../components/manage/DateTimeRow';
 import SaveBar from '../../components/manage/SaveBar';
 import EntityPickerRow, { type PickerItem } from '../../components/apex/EntityPickerRow';
 import { AppAlert } from '../../components/ui/AppAlert';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { GUTTER } from '../../components/home/Section';
 import { pickEvents, pickSpaces, pickUsers } from '../../lib/apexPickers';
 import { confirmPush } from '../../lib/pushConfirm';
 import { createPushBroadcast, MAX_PUSH_USERS, type PushCategory, type PushTargetType } from '../../lib/api/apexComms';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { cosmosFont, useCosmos } from '../../theme/cosmos';
-
-const GUTTER = spacing[6];
 
 const AUDIENCES: { value: PushTargetType; label: string }[] = [
   { value: 'users', label: 'Specific people' },
@@ -47,8 +45,6 @@ export default function PushComposeScreen() {
   const params = useLocalSearchParams<{ userId?: string; name?: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const prefilled: PickerItem[] = params.userId ? [{ id: params.userId, title: params.name || 'User' }] : [];
   const [target, setTarget] = useState<PushTargetType>('users');
@@ -118,13 +114,13 @@ export default function PushComposeScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 160 + insets.bottom }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+    <CosmosScreen
+      keyboard
+      bottom={180}
+      contentContainerStyle={{ paddingHorizontal: GUTTER }}
+      keyboardDismissMode="interactive"
+      footer={<SaveBar visible={ready} label={scheduled ? 'Schedule push' : 'Send push'} onPress={submit} loading={sending} error={error} />}
+    >
         <BlockTitle>Who gets it</BlockTitle>
         <ChipPicker options={AUDIENCES} value={target} onChange={(v) => v && setTarget(v)} />
 
@@ -178,10 +174,7 @@ export default function PushComposeScreen() {
           <SwitchRow label="Schedule for later" value={scheduled} onValueChange={setScheduled} />
           {scheduled ? <DateTimeRow label="Send at" value={at} onChange={setAt} minimumDate={new Date()} /> : null}
         </SettingsGroup>
-      </ScrollView>
-
-      <SaveBar visible={ready} label={scheduled ? 'Schedule push' : 'Send push'} onPress={submit} loading={sending} error={error} />
-    </KeyboardAvoidingView>
+    </CosmosScreen>
   );
 }
 

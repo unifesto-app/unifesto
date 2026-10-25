@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import useTopSpacing from '../../hooks/useTopSpacing';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import { Button } from '../../components/ui';
+import { GUTTER } from '../../components/home/Section';
 import { SettingsGroup, SettingsRow } from '../../components/profile/SettingsGroup';
 import ManageStats from '../../components/manage/ManageStats';
 import ChipPicker from '../../components/manage/ChipPicker';
@@ -23,11 +25,10 @@ import {
 import { inrShort } from '../../utils/money';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /* Apex Sessions (Unifesto Huddle) and API logs, both read-only like the web. */
 
-const GUTTER = spacing[6];
 const who = (u: { fullName: string | null; username: string | null }) => u.fullName || (u.username ? `@${u.username}` : 'Unnamed');
 
 // ── Sessions ─────────────────────────────────────────────────────────────────
@@ -79,25 +80,34 @@ export function SessionAdminDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [s, setS] = useState<AdminSessionDetail | null>(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setError('');
     void getAdminSession(id!).then((r) => (r.ok ? setS(r.data) : setError(r.message)));
   }, [id]);
 
+  useEffect(load, [load]);
+
   if (!s) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {error ? <Text style={[styles.muted, { color: c.muted }]}>{error}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.pad}>
+        {error ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{error}</Text>
+            <Button variant="secondary" label="Try again" onPress={load} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
   const net = s.sales.grossSales - s.sales.processingFees - s.sales.refunded;
   return (
-    <ScrollView style={{ backgroundColor: c.bg }} contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 80 }}>
+    <CosmosScreen contentContainerStyle={styles.pad}>
       <Text style={[styles.title, { color: c.text }]}>{s.title}</Text>
       <Text style={[styles.muted, { color: c.muted, textAlign: 'left', marginTop: 4 }]}>
         {titleCase(s.status)} · {longDate(s.startDateTime)} · {s.durationMinutes} min
@@ -136,7 +146,7 @@ export function SessionAdminDetailScreen() {
           <SettingsRow label="No one yet" />
         )}
       </SettingsGroup>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
@@ -224,12 +234,13 @@ export function LogsScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   log: { paddingVertical: spacing[3] },
   logHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[2] },
-  code: { width: 36, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  code: { width: 36, fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   path: { flex: 1, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   logMeta: { marginTop: 2, marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   detail: { marginLeft: 36 + spacing[2], fontSize: typography.fontSize.xs, lineHeight: 17, ...cosmosFont.body },

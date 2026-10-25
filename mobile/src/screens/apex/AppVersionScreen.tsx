@@ -1,26 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { AndroidLogo, AppleLogo, ArrowCircleUp, ShieldWarning } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../../hooks/useTopSpacing';
 import { SettingsGroup } from '../../components/profile/SettingsGroup';
 import FormRow from '../../components/profile/FormRow';
 import { Button } from '../../components/ui';
+import CosmosScreen from '../../components/ui/CosmosScreen';
+import SaveBar from '../../components/manage/SaveBar';
+import { GUTTER } from '../../components/home/Section';
 import { AppAlert } from '../../components/ui/AppAlert';
 import { getAppVersionPolicy, updateAppVersionPolicy, type AppVersionPolicy, type StoreVersionPolicy } from '../../lib/api/apex';
 import { compareVersions } from '../../lib/appUpdate';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 /*
  * Apex "App Version" parity: per-store latest/minimum version + store URL that
  * drive the in-app update prompt. One Save bar, full-object PATCH like web.
  */
 
-const GUTTER = spacing[6];
 const ICON = 24;
 const VERSION_RE = /^\d+(\.\d+){0,3}$/;
 const URL_RE = /^https?:\/\/\S+$/i;
@@ -51,8 +49,6 @@ function validate(v: AppVersionPolicy): string {
 
 export default function AppVersionScreen() {
   const c = useCosmos();
-  const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const [saved, setSaved] = useState<AppVersionPolicy | null>(null);
   const [draft, setDraft] = useState<AppVersionPolicy | null>(null);
@@ -76,11 +72,6 @@ export default function AppVersionScreen() {
   }, [load]);
 
   const isDirty = !!saved && !!draft && STORES.some(({ key }) => !sameStore(saved[key], draft[key]));
-
-  const barStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: withSpring(isDirty ? 0 : 140, { damping: 18, stiffness: 180 }) }],
-    opacity: withTiming(isDirty ? 1 : 0, { duration: 180 }),
-  }));
 
   const set = (store: Store, field: keyof StoreVersionPolicy) => (value: string) => {
     setError('');
@@ -137,22 +128,29 @@ export default function AppVersionScreen() {
 
   if (!draft) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.pad}>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+            <Button variant="secondary" label="Try again" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
   const hint = (text: string) => <Text style={[styles.hint, { color: c.muted }]}>{text}</Text>;
 
   return (
-    <KeyboardAvoidingView style={[styles.container, { backgroundColor: c.bg }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: topSpacing, paddingHorizontal: GUTTER, paddingBottom: 140 + insets.bottom }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-      >
+    <CosmosScreen
+      keyboard
+      bottom={180}
+      contentContainerStyle={styles.pad}
+      keyboardDismissMode="interactive"
+      footer={<SaveBar visible={isDirty} label="Save changes" onPress={save} loading={saving} error={error} />}
+    >
         {STORES.map(({ key, title, Logo }) => (
           <SettingsGroup key={key} title={title}>
             <FormRow
@@ -190,24 +188,16 @@ export default function AppVersionScreen() {
           The app re-reads this on every launch.
         </Text>
 
-        {error ? <Text style={[styles.message, { color: c.danger }]}>{error}</Text> : null}
-        {notice && !isDirty ? <Text style={[styles.message, { color: c.primary }]}>{notice}</Text> : null}
-      </ScrollView>
-
-      <Animated.View pointerEvents={isDirty ? 'auto' : 'none'} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, spacing[4]) }, barStyle]}>
-        <LinearGradient colors={[`${c.bg}00`, c.bg]} locations={[0, 0.45]} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <Button label="Save changes" onPress={save} loading={saving} size="lg" fullWidth />
-      </Animated.View>
-    </KeyboardAvoidingView>
+        {notice && !isDirty ? <Text style={[styles.message, { color: c.success }]}>{notice}</Text> : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  pad: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   hint: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  note: { marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
+  note: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, lineHeight: typography.fontSize.xs * 1.5, ...cosmosFont.body },
   message: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: GUTTER, paddingTop: spacing[6] },
 });
