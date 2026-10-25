@@ -505,7 +505,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | planned |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | planned |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
-| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | planned |
+| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#320) |
 
 ### K · Growth and discovery
 
@@ -877,3 +877,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · P23 UPI IDs masked in payout pickers/lists; demo space + users left out of financials, analytics and stats broadcasts; no link to a private host space (#318)
 - **2026-10-25** · E8 privacy: removed the legacy public score socket (live scores leaked to attendees) and gated participants-only brackets to attendees, panelists and operators (#319)
 - **2026-10-25** · K10 slice 1: free/RSVP registration on web (email OTP sign-in, questions, UTM), paid/group/file still hand off to the app (#321)
+- **2026-10-25** · Next 16.4.2 in web/space/apex (critical image-optimiser RCE advisory); ignoreBuildErrors removed; CI blocks critical runtime advisories; Dependabot monthly (#320)
