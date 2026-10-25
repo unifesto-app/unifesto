@@ -26,7 +26,7 @@ import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/compo
 import { registerEventInterest } from "@/lib/api/leads";
 import { registrationState, type Event, type SubEventSummary } from "@/lib/api/events";
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from "@/lib/calendar";
-import { openAppOrStore, useAppHref } from "@/lib/appLinks";
+import { openAppOrStore, useAppHref, useMobilePlatform } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
 
 interface Props {
@@ -100,6 +100,7 @@ export default function EventDetailClient({ event }: Props) {
   // Captured once so render stays pure; decides whether the event is over.
   const [now] = useState(() => Date.now());
   const appHref = useAppHref(`unifesto://event/${event.slug}`);
+  const onPhone = useMobilePlatform() !== "unknown";
 
   // ── Derived display bits (same rules as the mobile event screen) ──────────
   const isOnline = event.event_type?.toUpperCase() === "ONLINE";
@@ -145,6 +146,8 @@ export default function EventDetailClient({ event }: Props) {
   const isUmbrella = subEvents.length > 0 && (event.ticket_type_count ?? 0) === 0;
   const subCount = countLabel(subEvents.length, "sub-event");
   const reg = isUmbrella ? "open" : registrationState(event.tickets, now);
+  // Free individual tickets register on the web (K10); paid and group ones in the app.
+  const webRegister = !isUmbrella && event.is_free && !event.tickets?.some((t) => t.group);
   const bar = isUmbrella
     ? { label: "Multi-part event", value: subCount }
     : event.is_free
@@ -520,10 +523,22 @@ export default function EventDetailClient({ event }: Props) {
             <a href="#inside" className="btn btn-lg btn-primary shrink-0">
               View events
             </a>
+          ) : reg === "open" && webRegister ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {onPhone && (
+                <a href={appHref} onClick={openApp} className="text-sm font-semibold text-paper/70 hover:text-paper">
+                  Open in app
+                </a>
+              )}
+              <Link href={`/event/${event.slug}/register`} className="btn btn-lg btn-primary">
+                <Ticket weight="fill" className="h-5 w-5" aria-hidden />
+                Register
+              </Link>
+            </div>
           ) : reg === "open" ? (
             <a href={appHref} onClick={openApp} className="btn btn-lg btn-primary shrink-0">
               <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden />
-              Register
+              Register in app
             </a>
           ) : (
             <span className="shrink-0 text-sm font-semibold text-paper/70">{NOT_OPEN[reg]}</span>

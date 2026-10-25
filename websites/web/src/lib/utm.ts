@@ -27,6 +27,16 @@ export function captureUtm(): void {
   }
 }
 
+/** The remembered tags as the backend's registration attribution fields. */
+export function storedUtm(): { utmSource?: string; utmMedium?: string; utmCampaign?: string } {
+  try {
+    const t = JSON.parse(sessionStorage.getItem(KEY) || "{}") as Record<string, string>;
+    return { utmSource: t.utm_source, utmMedium: t.utm_medium, utmCampaign: t.utm_campaign };
+  } catch {
+    return {};
+  }
+}
+
 /** Append the remembered tags to an app deep link (`unifesto://event/<slug>`). */
 export function withStoredUtm(link: string): string {
   try {
