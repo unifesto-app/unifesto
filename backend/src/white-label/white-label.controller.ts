@@ -33,6 +33,7 @@ import {
   ReviewWhiteLabelRequestDto,
   UpdateBrandingDto,
 } from './dto';
+import { toPage, toLimit } from '../common/pagination';
 
 @Controller('white-label')
 export class WhiteLabelController {
@@ -81,8 +82,8 @@ export class WhiteLabelController {
   ) {
     return this.whiteLabel.getAllRequests(
       status,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
+      toPage(page),
+      toLimit(limit, 20),
     );
   }
 

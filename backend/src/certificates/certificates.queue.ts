@@ -10,6 +10,7 @@ import { ModuleRef } from '@nestjs/core';
 import { Queue, Worker, Job } from 'bullmq';
 import type Redis from 'ioredis';
 import { RedisService } from '../redis/redis.service';
+import { reportJobFailure } from '../common/observability';
 import { CertificatesService } from './certificates.service';
 // Only used at run time (moduleRef.get); reports.service imports this file
 // back and breaks the cycle with forwardRef.
@@ -131,6 +132,7 @@ export class CertificateIssuanceQueue implements OnModuleInit, OnModuleDestroy {
       this.logger.error(
         `Certificate job ${job?.id} (${job?.name}) failed: ${err.message}`,
       );
+      reportJobFailure(QUEUE_NAME, job, err);
     });
 
     this.logger.log(

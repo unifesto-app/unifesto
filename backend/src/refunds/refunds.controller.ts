@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode, RefundStatus } from '@prisma/client';
+import { toPage, toLimit } from '../common/pagination';
 
 @ApiTags('Refunds')
 @ApiBearerAuth()
@@ -42,7 +43,7 @@ export class RefundsController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.refundsService.getMyRequests(req.user.id, Number(page), Number(limit));
+    return this.refundsService.getMyRequests(req.user.id, toPage(page), toLimit(limit));
   }
 
   @Get(':id')
@@ -64,8 +65,8 @@ export class RefundsController {
     return this.refundsService.getOrganiserRequests(
       req.user.id,
       status,
-      Number(page),
-      Number(limit),
+      toPage(page),
+      toLimit(limit),
       spaceId,
       eventId,
     );
@@ -90,7 +91,7 @@ export class RefundsController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.refundsService.getAllRequests(status, Number(page), Number(limit));
+    return this.refundsService.getAllRequests(status, toPage(page), toLimit(limit));
   }
 
   @Patch(':id/admin-decision')

@@ -52,6 +52,7 @@ import { RolesGuard } from '../auth/guards';
 import { Roles } from '../auth/decorators';
 import { RoleCode } from '@prisma/client';
 import { Can, CanGuard, Action } from '../auth/authorization';
+import { toPage, toLimit } from '../common/pagination';
 
 @ApiTags('Registrations')
 @Controller()
@@ -215,8 +216,8 @@ export class RegistrationsController {
     return this.registrationsService.getEventRegistrations(
       req.user.id,
       id,
-      +page,
-      +limit,
+      toPage(page),
+      toLimit(limit),
       search,
       status as any,
       paymentStatus as any,
@@ -633,8 +634,8 @@ export class RegistrationsController {
   ) {
     return this.registrationsService.getAllTransferRequests(
       status,
-      page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
+      toPage(page),
+      toLimit(limit, 20),
     );
   }
 
@@ -672,8 +673,8 @@ export class RegistrationsController {
   ) {
     return this.registrationsService.getMyRegistrations(
       req.user.id,
-      +page,
-      +limit,
+      toPage(page),
+      toLimit(limit),
       scope === 'cancelled' ? 'cancelled' : 'active',
     );
   }
@@ -774,8 +775,8 @@ export class RegistrationsController {
       ticketTypeId,
       status: status as any,
       search,
-      page: +page,
-      limit: +limit,
+      page: toPage(page),
+      limit: toLimit(limit),
     });
   }
 

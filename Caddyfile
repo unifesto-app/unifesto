@@ -20,13 +20,22 @@
 
 (cf_origin) {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
-	# Access logs, kept 180 days for CERT-In. Written under /data (the
-	# caddy_data volume) so they survive redeploys; deploy.sh's rsync --delete
-	# would wipe a bind-mounted ./logs. Caddy redacts Authorization and Cookie
-	# by default; the real client IP is the Cf-Connecting-Ip request header.
+	# Access logs: the CERT-In request record (every request to every site,
+	# unsampled), kept 180 days. Written under /data (the caddy_data volume) so
+	# they survive redeploys; deploy.sh's rsync --delete would wipe a
+	# bind-mounted ./logs. Each JSON line has ts, request.client_ip (the real
+	# visitor, from Cf-Connecting-Ip via trusted_proxies), method, host, uri,
+	# proto, headers (User-Agent etc.; Authorization and Cookie redacted by
+	# Caddy), status, size and duration.
+	# Age is the only limit that should bite: roll_keep defaults to 10 files,
+	# which silently capped history at ~1 GB, so it is raised far past what
+	# 180 days needs (10000 x 100 MiB raw). Rolled files are gzipped (default),
+	# roughly 10x smaller. Check usage with `du -sh /data/logs` in the caddy
+	# container.
 	log {
 		output file /data/logs/access.log {
 			roll_size 100MiB
+			roll_keep 10000
 			roll_keep_for 4320h
 		}
 	}
@@ -57,16 +66,15 @@ api.unifesto.app {
 		lb_try_duration 5s
 		lb_try_interval 250ms
 
-		# Passively eject a replica for 30s after it errors, and actively probe
-		# `GET /` so a wedged or recovering replica is only returned to rotation
-		# once it answers again. Together with the Docker healthcheck (which keeps
-		# unhealthy replicas out of DNS entirely) this stops traffic reaching a
-		# replica that can't serve it.
+		# Passively eject a replica for 30s after a failed request (a refused or
+		# timed-out dial: restarting, OOM-killed, not yet booted). Active checks
+		# (health_uri) were configured here but Caddy never runs them for
+		# `dynamic` upstreams, and the replica set must stay dynamic because
+		# deploy.sh rolls replicas with `--scale`, which renames containers.
+		# A replica that stays up but stops answering is caught by its Docker
+		# healthcheck and restarted by `autoheal` (docker-compose.yml); its
+		# dials then fail and this check ejects it until it is back.
 		fail_duration 30s
-		health_uri /
-		health_interval 10s
-		health_timeout 5s
-		health_status 2xx
 	}
 }
 
@@ -106,6 +114,7 @@ unifesto.app, www.unifesto.app {
 			header_up X-Forwarded-For {client_ip}
 			lb_try_duration 5s
 			lb_try_interval 250ms
+			fail_duration 30s
 		}
 	}
 	# One web container: while a deploy recreates it, hold requests and retry

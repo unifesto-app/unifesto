@@ -40,30 +40,6 @@ export interface BillingArrangement {
   amount: string | number;
 }
 
-export interface Subscription extends BillingArrangement {
-  id: string | null;
-  userId: string;
-  currency: string;
-  isActive: boolean;
-  startedAt: string;
-  expiresAt: string | null;
-  cancelledAt: string | null;
-  lastPaymentAt: string | null;
-  nextPaymentAt: string | null;
-  eventsThisMonth: number;
-  usageResetAt: string;
-  createdAt: string;
-  updatedAt: string;
-  user?: SubscriptionUser;
-  history?: {
-    id: string;
-    fromPlan: OrgPlan;
-    toPlan: OrgPlan;
-    reason: string | null;
-    changedAt: string;
-  }[];
-}
-
 /** The space a billing arrangement is attached to. */
 export interface SubscriptionSpace {
   id: string;
@@ -155,14 +131,6 @@ export interface BillingStats {
   notConfigured: number;
   active: number;
   mrr: number;
-}
-
-export interface SubscriptionsResponse {
-  data: Subscription[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
 }
 
 export interface SpaceSubscriptionsResponse {
@@ -361,44 +329,6 @@ export async function updateModel(
   );
 }
 
-/** `POST /subscription/cancel` — cancel and drop to STARTER. */
-export async function cancelSubscription(): Promise<Result<Subscription>> {
-  return apiCall<Subscription>(backendClient.post("/subscription/cancel"));
-}
-
-/* --------------------------------- Admin --------------------------------- */
-
-/** `GET /subscription/admin/all` — every organiser's arrangement (filterable). */
-export async function listSubscriptions(
-  params: ListSubscriptionsParams = {}
-): Promise<Result<SubscriptionsResponse>> {
-  const query = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      query.set(key, String(value));
-    }
-  });
-  const qs = query.toString();
-  return apiCall<SubscriptionsResponse>(
-    backendClient.get(`/subscription/admin/all${qs ? `?${qs}` : ""}`)
-  );
-}
-
-/** `GET /subscription/admin/stats` — billing overview counts + MRR. */
-export async function getBillingStats(): Promise<Result<BillingStats>> {
-  return apiCall<BillingStats>(backendClient.get("/subscription/admin/stats"));
-}
-
-/** `PATCH /subscription/admin/:userId` — set an organiser's arrangement. */
-export async function adminUpdateSubscription(
-  userId: string,
-  input: AdminUpdateSubscriptionInput
-): Promise<Result<Subscription>> {
-  return apiCall<Subscription>(
-    backendClient.patch(`/subscription/admin/${userId}`, input)
-  );
-}
-
 /* ---------------------------- Admin (per space) --------------------------- */
 
 /** `GET /subscription/admin/spaces` — every space's arrangement (filterable). */
@@ -480,14 +410,6 @@ export const BILLING_CYCLE_LABEL: Record<BillingCycle, string> = {
   MONTHLY: "Monthly",
   ANNUAL: "Annual",
 };
-
-export function subscriberName(s: Subscription): string {
-  return s.user?.fullName || s.user?.username || "Unknown organiser";
-}
-
-export function subscriberEmail(s: Subscription): string | null {
-  return s.user?.identities?.[0]?.email || null;
-}
 
 /** A space's display name for the billing list. */
 export function spaceSubName(s: SpaceSubscription): string {

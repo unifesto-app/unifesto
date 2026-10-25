@@ -29,16 +29,13 @@ export async function getHelpArticles(): Promise<HelpArticleSummary[]> {
   }
 }
 
-/** One published article by slug, or null when not found. */
+/** One published article by slug, or null on a real 404; other failures throw (see getPost). */
 export async function getHelpArticle(slug: string): Promise<HelpArticle | null> {
-  try {
-    const res = await fetch(
-      `${API_URL}/help/${encodeURIComponent(slug)}`,
-      withInternal({ next: { revalidate: 60 } }),
-    );
-    if (!res.ok) return null;
-    return (await res.json()) as HelpArticle;
-  } catch {
-    return null;
-  }
+  const res = await fetch(
+    `${API_URL}/help/${encodeURIComponent(slug)}`,
+    withInternal({ next: { revalidate: 60 } }),
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Error fetching help article: ${res.status}`);
+  return (await res.json()) as HelpArticle;
 }

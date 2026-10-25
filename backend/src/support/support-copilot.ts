@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent } from '../common/on-event';
 import { SupportDesk, SupportMessageSide } from '@prisma/client';
 import { AiService, type AiResult, type AiRunInput } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';

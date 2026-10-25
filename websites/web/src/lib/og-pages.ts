@@ -22,7 +22,7 @@ export type OgPage = { kind: string; title: string; subtitle: string; cta?: stri
 export const OG_PAGES: Record<string, OgPage> = {
   // Product
   "/organisers": { kind: "For organisers", title: "Run every event from one Space", subtitle: "Tickets, QR check-in, payouts, certificates and sponsors, with your whole team on board.", cta: "Request a Space", icon: SquaresFour },
-  "/pricing": { kind: "Pricing", title: "Free RSVP events on every plan", subtitle: "Paid tickets at launch pricing, below the 4% to 6% typical in India.", cta: "See pricing", icon: CurrencyInr },
+  "/pricing": { kind: "Pricing", title: "Free RSVP events on every plan", subtitle: "See what students pay and what you keep on every paid ticket.", cta: "See pricing", icon: CurrencyInr },
   "/huddle": { kind: "Unifesto Huddle", title: "Online sessions for your community", subtitle: "Registration, payment, an in-app room and recordings, run from your Space.", cta: "Host a session", icon: VideoCamera },
   "/sprint": { kind: "Unifesto Sprint", title: "Hackathons, judged properly", subtitle: "Teams, rubrics, judge panels, a help desk and a live leaderboard, in one Space.", cta: "Run a hackathon", icon: Trophy },
   "/stay": { kind: "Unifesto Stay", title: "Rooms for your event's guests", subtitle: "Requests, approvals, payment and a Stay Pass at arrival.", cta: "Add Stay", icon: Bed },

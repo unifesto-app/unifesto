@@ -29,6 +29,7 @@ import {
 import type { User } from '@prisma/client';
 import { UserProfileDto } from '../auth/dto';
 import { RoleCode } from '@prisma/client';
+import { toPage } from '../common/pagination';
 
 @Controller('users')
 export class UsersController {
@@ -220,7 +221,7 @@ export class UsersController {
     @Query('limit') limit?: string,
     @Query('search') search?: string,
   ) {
-    const pageNum = page ? parseInt(page, 10) : 1;
+    const pageNum = toPage(page);
     // Clamp (S29): an unbounded `limit` is a full-table read.
     const limitNum = Math.min(Math.max(parseInt(limit ?? '', 10) || 10, 1), 100);
 

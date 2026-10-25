@@ -1,5 +1,5 @@
 import { IncidentImpact, IncidentStatus } from '@prisma/client';
-import { StatusService } from './status.service';
+import { incidentDownMs, StatusService } from './status.service';
 
 /**
  * In-memory stand-in for the three tables the status service touches, so the
@@ -11,12 +11,27 @@ function makeHarness() {
   let nextId = 1;
 
   const prisma: any = {
+    // The summary's GROUP BY (service, UTC day), computed over the in-memory rows.
+    $queryRaw: jest.fn(async (_sql: TemplateStringsArray, since: Date) => {
+      const cells = new Map<string, { service: string; day: string; total: number; up: number }>();
+      for (const r of checks.filter((c) => c.checkedAt >= since)) {
+        const day = r.checkedAt.toISOString().slice(0, 10);
+        const cell = cells.get(`${r.service}|${day}`) ?? { service: r.service, day, total: 0, up: 0 };
+        cell.total += 1;
+        if (r.up) cell.up += 1;
+        cells.set(`${r.service}|${day}`, cell);
+      }
+      return [...cells.values()];
+    }),
     healthCheck: {
       createMany: jest.fn(async ({ data }) => {
         checks.push(...data);
       }),
-      findFirst: jest.fn(async () => {
-        const last = [...checks].sort((a, b) => +b.checkedAt - +a.checkedAt)[0];
+      findFirst: jest.fn(async ({ where } = {} as any) => {
+        const last = checks
+          .filter((r) => !where?.service || r.service === where.service)
+          .filter((r) => !where?.checkedAt?.gte || r.checkedAt >= where.checkedAt.gte)
+          .sort((a, b) => +b.checkedAt - +a.checkedAt)[0];
         return last ? { checkedAt: last.checkedAt } : null;
       }),
       findMany: jest.fn(async ({ where, take, orderBy }) => {
@@ -34,11 +49,12 @@ function makeHarness() {
         incidents.filter((i) => {
           if (where?.createdBy === null && i.createdBy !== null) return false;
           if (where?.resolvedAt === null && i.resolvedAt !== null) return false;
+          if (where?.impact?.not && i.impact === where.impact.not) return false;
           return true;
         }),
       ),
       create: jest.fn(async ({ data }) => {
-        const row = { id: String(nextId++), resolvedAt: null, startedAt: new Date(), ...data };
+        const row = { id: String(nextId++), resolvedAt: null, startedAt: new Date(), affectedServices: [], ...data };
         incidents.push(row);
         return row;
       }),
@@ -82,7 +98,7 @@ function makeHarness() {
       checks = c;
     },
     setIncidents(i: any[]) {
-      incidents = i;
+      incidents = i.map((x) => ({ affectedServices: [], ...x }));
     },
   };
 }
@@ -196,5 +212,70 @@ describe('StatusService', () => {
     await h.service.sample();
     const rows = await h.prisma.healthCheck.findMany({ where: { service: 'api' } });
     expect(rows[0].up).toBe(false);
+  });
+});
+
+describe('incidentDownMs', () => {
+  const H = 60 * 60 * 1000;
+  const day = '2026-09-10';
+  const at = (h: number) => new Date(Date.parse(`${day}T00:00:00Z`) + h * H);
+  const now = Date.parse('2026-10-01T00:00:00Z');
+  const inc = (from: number, to: number | null, extra: object = {}) => ({
+    impact: IncidentImpact.MAJOR,
+    affectedServices: ['api'],
+    startedAt: at(from),
+    resolvedAt: to === null ? null : at(to),
+    ...extra,
+  });
+
+  it('merges overlapping incidents instead of double counting', () => {
+    expect(incidentDownMs([inc(1, 3), inc(2, 4)], 'api', day, now)).toBe(3 * H);
+  });
+
+  it('clips to the day, and an open incident runs to now', () => {
+    expect(incidentDownMs([inc(-5, 2)], 'api', day, now)).toBe(2 * H);
+    expect(incidentDownMs([inc(20, null)], 'api', day, now)).toBe(4 * H);
+  });
+
+  it('ignores maintenance and other services; no services listed means the API', () => {
+    expect(incidentDownMs([inc(1, 2, { impact: IncidentImpact.NONE })], 'api', day, now)).toBe(0);
+    expect(incidentDownMs([inc(1, 2)], 'database', day, now)).toBe(0);
+    expect(incidentDownMs([inc(1, 2, { affectedServices: [] })], 'api', day, now)).toBe(H);
+    expect(incidentDownMs([inc(1, 2, { affectedServices: [] })], 'redis', day, now)).toBe(0);
+  });
+});
+
+describe('StatusService uptime with incidents', () => {
+  it('a reported outage lowers uptime even when every self-check was green', async () => {
+    const h = makeHarness();
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    yesterday.setUTCHours(0, 0, 0, 0);
+    const checks: { service: string; up: boolean; latencyMs: number; checkedAt: Date }[] = [];
+    for (let m = 0; m < 24 * 60; m += 5) {
+      for (const service of ['api', 'database', 'redis', 'storage']) {
+        checks.push({ service, up: true, latencyMs: 1, checkedAt: new Date(+yesterday + m * 60_000) });
+      }
+    }
+    h.setChecks(checks);
+    h.setIncidents([
+      {
+        id: 'sept',
+        impact: IncidentImpact.MAJOR,
+        affectedServices: ['api'],
+        createdBy: 'u1',
+        startedAt: new Date(+yesterday + 6 * 3600_000),
+        resolvedAt: new Date(+yesterday + 12 * 3600_000),
+      },
+    ]);
+    const s = await h.service.getSummary();
+    const api = s.services.find((x) => x.key === 'api')!;
+    const day = api.days[api.days.length - 2];
+    expect(day).toMatchObject({ status: 'partial', uptime: 75 });
+    expect(api.uptimePercent).toBeLessThan(100);
+    expect(s.services.find((x) => x.key === 'database')!.days.at(-2)).toMatchObject({ status: 'up', uptime: 100 });
+    // J3: aggregated in SQL, never ~100k raw rows per poll.
+    expect(h.prisma.healthCheck.findMany).not.toHaveBeenCalled();
+    expect(h.prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 });

@@ -25,6 +25,7 @@ import {
   TestCampaignDto,
 } from './dto/campaign.dto';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/template.dto';
+import { toPage, toLimit } from '../common/pagination';
 
 /**
  * Space-scoped email: campaigns to a space's own audiences and a per-space
@@ -66,8 +67,8 @@ export class SpaceEmailController {
   ) {
     return this.campaigns.listCampaigns(
       { spaceId },
-      parseInt(page, 10),
-      parseInt(limit, 10),
+      toPage(page),
+      toLimit(limit),
       search,
     );
   }

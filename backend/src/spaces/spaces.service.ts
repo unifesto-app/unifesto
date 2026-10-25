@@ -295,7 +295,15 @@ export class SpacesService {
             type: true,
           },
         },
+        // Only what the response uses: the admin team and my own role. Loading
+        // every membership with its user made a big space's page O(members).
         userRoles: {
+          where: {
+            OR: [
+              { role: { code: { in: [...SPACE_ADMIN_ROLE_CODES] } } },
+              ...(userId ? [{ userId }] : []),
+            ],
+          },
           include: {
             user: {
               select: {

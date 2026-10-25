@@ -72,6 +72,7 @@ export interface PlanInfo {
   hasSessions: boolean;
   hasLeaderboard: boolean;
   hasCertificates: boolean;
+  hasSponsors: boolean;
   /** Organiser platform fee % per paid ticket on this plan (A9). */
   platformFeePercent: number;
   monthlyPrice: number | null;
@@ -211,11 +212,6 @@ export const PLAN_LABEL: Record<OrgPlan, string> = {
 
 /** High → low, for ordering the catalogue and deciding upgrade vs downgrade. */
 export const PLAN_ORDER: OrgPlan[] = ["STARTER", "GROWTH", "PRO", "ENTERPRISE"];
-
-export const BILLING_CYCLE_LABEL: Record<BillingCycle, string> = {
-  MONTHLY: "Monthly",
-  ANNUAL: "Annual",
-};
 
 /** Rank of a plan (index in {@link PLAN_ORDER}); -1 if unknown. */
 export function planRank(plan: OrgPlan | null | undefined): number {

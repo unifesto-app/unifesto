@@ -44,6 +44,7 @@ import {
 } from './dto/sub-space-request.dto';
 import { RoleCode, SpaceStatus, SpaceVisibility } from '@prisma/client';
 import type { User } from '@prisma/client';
+import { toPage, toLimit } from '../common/pagination';
 
 @Controller('spaces')
 export class SpacesController {
@@ -84,10 +85,11 @@ export class SpacesController {
   ) {
     return this.spacesService.getAllSpaces({
       parentId,
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 10,
-      status,
-      visibility,
+      page: toPage(page),
+      limit: toLimit(limit, 10, 50),
+      // An unknown enum value reached Prisma as a 500; ignore it instead.
+      status: status && status in SpaceStatus ? status : undefined,
+      visibility: visibility && visibility in SpaceVisibility ? visibility : undefined,
       search,
       viewerId: req.user?.id,
     });
@@ -230,7 +232,7 @@ export class SpacesController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.spacesService.getAllSpaceStatusRequests(status, +page, +limit);
+    return this.spacesService.getAllSpaceStatusRequests(status, toPage(page), toLimit(limit));
   }
 
   /**
@@ -289,8 +291,8 @@ export class SpacesController {
   ) {
     return this.spacesService.getAllSpaceOwnershipRequests(
       status,
-      +page,
-      +limit,
+      toPage(page),
+      toLimit(limit),
     );
   }
 
@@ -344,7 +346,7 @@ export class SpacesController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.spacesService.getAllSubSpaceRequests(status, +page, +limit);
+    return this.spacesService.getAllSubSpaceRequests(status, toPage(page), toLimit(limit));
   }
 
   /**
@@ -565,8 +567,8 @@ export class SpacesController {
     @Query('role') role?: RoleCode,
   ) {
     return this.spacesService.getSpaceMembers(id, {
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: toPage(page),
+      limit: toLimit(limit, 20),
       search,
       roleCode: role,
     });

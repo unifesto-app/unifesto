@@ -67,6 +67,8 @@ export function formatFrom(name: string, address: string): string {
   return `${encoded} <${address}>`;
 }
 
+const BRAND_TTL_MS = 60_000;
+
 /**
  * Sends Unifesto's email. What each mail says lives in ./templates (built on
  * the ./layout shell); this class only picks the channel and delivers.
@@ -89,6 +91,12 @@ export class EmailService {
   // space swap the display name in front of this same verified address.
   private readonly transactionalAddress: string;
   private readonly bulkAddress: string;
+  /**
+   * J3: brandFor() ran one event+space query per recipient, so a publish or
+   * cancel fan-out to N attendees made N identical lookups. Memoised per event
+   * for a minute (the promise, so concurrent sends share one query).
+   */
+  private readonly brandCache = new Map<string, { at: number; value: Promise<{ brand: EmailBrand | null; sender?: Sender }> }>();
 
   constructor(
     private readonly configService: ConfigService,
@@ -311,8 +319,19 @@ export class EmailService {
    * Same gate as the public pages (on + plan perk + not suspended). Never
    * throws: a lookup problem just sends the mail unbranded.
    */
-  private async brandFor(eventId?: string): Promise<{ brand: EmailBrand | null; sender?: Sender }> {
-    if (!eventId || !this.prisma || !this.planConfig) return { brand: null };
+  private brandFor(eventId?: string): Promise<{ brand: EmailBrand | null; sender?: Sender }> {
+    if (!eventId || !this.prisma || !this.planConfig) return Promise.resolve({ brand: null });
+    const hit = this.brandCache.get(eventId);
+    if (hit && Date.now() - hit.at < BRAND_TTL_MS) return hit.value;
+    // ponytail: whole-map reset at 500 events; an LRU if that ever churns.
+    if (this.brandCache.size >= 500) this.brandCache.clear();
+    const value = this.lookupBrand(eventId);
+    this.brandCache.set(eventId, { at: Date.now(), value });
+    return value;
+  }
+
+  private async lookupBrand(eventId: string): Promise<{ brand: EmailBrand | null; sender?: Sender }> {
+    if (!this.prisma || !this.planConfig) return { brand: null };
     try {
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },

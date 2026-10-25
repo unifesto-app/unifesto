@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent } from '../common/on-event';
 import { DomainKind, Prisma, SpaceDomain } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { Resolver } from 'dns/promises';

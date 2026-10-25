@@ -11,6 +11,7 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { BillingCycle, BillingModel, OrgPlan } from '@prisma/client';
 
@@ -222,7 +223,8 @@ export class UpdatePlanConfigDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasCertificates?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsBoolean() hasSponsors?: boolean;
   @ApiPropertyOptional({ example: 2.5, description: 'Organiser platform fee per paid ticket (%), new sales only' })
-  @IsOptional()
+  // Not @IsOptional: that lets null through, and the column is NOT NULL (500).
+  @ValidateIf((_, v) => v !== undefined)
   @IsNumber()
   @Min(0)
   @Max(100)

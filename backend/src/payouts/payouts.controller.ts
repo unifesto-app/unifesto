@@ -9,6 +9,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RoleCode } from '@prisma/client';
+import { toPage, toLimit } from '../common/pagination';
 
 @ApiTags('Payouts')
 @ApiBearerAuth()
@@ -40,7 +41,7 @@ export class PayoutsController {
 
   @Get('my')
   async getMyPayouts(@Request() req, @Query('page') page = 1, @Query('limit') limit = 20) {
-    return this.payoutsService.getPayoutsForOrganiser(req.user.id, +page, +limit);
+    return this.payoutsService.getPayoutsForOrganiser(req.user.id, toPage(page), toLimit(limit));
   }
 
   @Get('event/:eventId/summary')
@@ -107,7 +108,7 @@ export class PayoutsController {
   @UseGuards(RolesGuard)
   @Roles(RoleCode.ADMIN)
   async getAllBankAccounts(@Query('page') page = 1, @Query('limit') limit = 20, @Query('status') status?: string) {
-    return this.payoutsService.getAllBankAccounts(+page, +limit, status);
+    return this.payoutsService.getAllBankAccounts(toPage(page), toLimit(limit), status);
   }
 
   @Patch('admin/bank-accounts/:id/status')
@@ -129,7 +130,7 @@ export class PayoutsController {
   @UseGuards(RolesGuard)
   @Roles(RoleCode.ADMIN)
   async getAllPayouts(@Query('page') page = 1, @Query('limit') limit = 20, @Query('status') status?: string) {
-    return this.payoutsService.getAllPayouts(+page, +limit, status);
+    return this.payoutsService.getAllPayouts(toPage(page), toLimit(limit), status);
   }
 
   /** Platform-wide financials roll-up across every space (platform admin). */

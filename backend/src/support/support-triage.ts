@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { Injectable, Logger } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent } from '../common/on-event';
 import {
   Prisma,
   SupportCaseKind,

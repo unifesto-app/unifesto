@@ -84,6 +84,18 @@ describe('EmailService brandFor', () => {
     expect(await build(false).brandFor('e1')).toEqual({ brand: null, sender: undefined });
     expect(await build(true).brandFor()).toEqual({ brand: null });
   });
+
+  it('looks an event up once for a whole fan-out (J3)', async () => {
+    const findUnique = jest.fn(async () => ({ whiteLabelEnabled: false, brandColor: null, space }));
+    const svc = new EmailService(
+      config,
+      { event: { findUnique } } as any,
+      { getEffectiveLimits: () => ({ hasRemoveBranding: true }) } as any,
+    ) as unknown as { brandFor: (id?: string) => Promise<any> };
+    await Promise.all(Array.from({ length: 50 }, () => svc.brandFor('e1')));
+    await svc.brandFor('e2');
+    expect(findUnique).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('EmailService confirmation .ics', () => {

@@ -8,34 +8,28 @@ import FaqList from "@/components/site/FaqList";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { LAUNCH_OFFER_ENDS, PLANS, SITE, buyerFeeText, inr, pricingFaq } from "@/lib/site";
+import { EXAMPLE_PASS, LAUNCH_OFFER_ENDS, SITE, type Plan, buyerFeeOn, buyerFeeText, inr, passExample, planFeesText, pricingFaq, rupees } from "@/lib/site";
 import { getRateCard } from "@/lib/api/rate-card";
 
 /* Fees come from the live rate card, refreshed every 5 minutes. */
 export const revalidate = 300;
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { plans, buyerFee, buyerFeeCap } = await getRateCard();
-  const lowest = Math.min(...plans.map((p) => p.fee));
+  const { plans, buyerFee, buyerFeeCap, feeFrom } = await getRateCard();
   return withSocial({
-    title: `Pricing: free RSVP events, from ${lowest}% per paid ticket`,
-    description: `Free RSVP events on every plan. Paid tickets from ${plans.map((p) => `${p.fee}% on ${p.name}`).join(", ")} at launch pricing, below the 4% to 6% typical in India. At checkout, buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}. Launch prices locked for Spaces that join before ${LAUNCH_OFFER_ENDS}.`,
+    title: "Pricing: free RSVP events, clear fees on paid tickets",
+    description: `Free RSVP events on every plan. Buyers pay a ${buyerFeeText(buyerFee, buyerFeeCap)}, or you include it in your price. Organiser platform fee per paid ticket${feeFrom ? ` from ${feeFrom}` : ""}: ${planFeesText(plans)}. ${passExample(plans[0], buyerFee, buyerFeeCap, feeFrom)}`,
     alternates: { canonical: "/pricing" },
-  }, { title: "Unifesto pricing", description: `Free RSVP events. Paid tickets from ${lowest}%. Launch pricing, locked in.` });
+  }, { title: "Unifesto pricing", description: "Free RSVP events. See what students pay and what you keep." });
 }
 
-/* What one ₹500 ticket costs the organiser in platform fees. The market
-   band is the 4% to 6% typical of Indian ticketing platforms. */
-const TICKET = 500;
-
-const productLd = {
+const productLd = (plans: Plan[]) => ({
   "@context": "https://schema.org",
   "@type": "Product",
   name: "Unifesto event platform",
   brand: { "@type": "Brand", name: SITE.name },
   description: SITE.description,
-  // Prices only (no fees), so the static plan list is enough here.
-  offers: PLANS.filter((p) => p.price !== null).map((p) => ({
+  offers: plans.filter((p) => p.price !== null).map((p) => ({
     "@type": "Offer",
     name: `${p.name} plan`,
     price: p.price,
@@ -43,19 +37,14 @@ const productLd = {
     url: `${SITE.url}/pricing`,
     availability: "https://schema.org/InStock",
   })),
-};
+});
 
 export default async function PricingPage() {
-  const { plans, buyerFee, buyerFeeCap } = await getRateCard();
-  const COMPARE = [
-    { label: "Typical platform, 6%", fee: 0.06 },
-    { label: "Typical platform, 4%", fee: 0.04 },
-    ...plans.map((p) => ({ label: `Unifesto ${p.name}, ${p.fee}%`, fee: p.fee / 100, ours: true })),
-  ];
-  const MAX = Math.max(...COMPARE.map((c) => c.fee));
+  const { plans, buyerFee, buyerFeeCap, feeFrom } = await getRateCard();
+  const studentPays = rupees(EXAMPLE_PASS + buyerFeeOn(EXAMPLE_PASS, buyerFee, buyerFeeCap));
   return (
     <main className="min-h-screen overflow-x-hidden bg-canvas">
-      <JsonLd data={[productLd, breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
+      <JsonLd data={[productLd(plans), breadcrumbLd([{ name: "Home", path: "/" }, { name: "Pricing", path: "/pricing" }])]} />
       <Navbar />
 
       <PageHero
@@ -96,7 +85,7 @@ export default async function PricingPage() {
                 <p className="mt-5 flex items-baseline gap-2 rounded-md bg-paper/[0.06] px-3 py-2.5 text-sm text-paper">
                   <span className="tabular font-display">{plan.fee}%</span>
                   <s className="tabular text-xs text-paper/45">{plan.standardFee}%</s>
-                  <span className="text-paper/70">per paid ticket</span>
+                  <span className="text-paper/70">per paid ticket{feeFrom ? ` from ${feeFrom}` : ""}</span>
                 </p>
 
                 <Link href={plan.cta.href} className={`btn mt-6 w-full ${featured ? "btn-ink" : "btn-secondary"}`}>
@@ -117,7 +106,8 @@ export default async function PricingPage() {
           })}
         </div>
         <p className="mt-8 text-center text-sm text-paper/55">
-          Prices exclude 18% GST. At checkout, buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan. Razorpay payment gateway charges are separate. Free RSVP events carry no fees on any plan.
+          {/* TODO(A6): GST wording waits for GST registration and the CA. */}
+          Prices exclude GST. Buyers pay a {buyerFeeText(buyerFee, buyerFeeCap)} on paid tickets, on every plan, or you include it in your ticket price. Razorpay&apos;s charges come out of that fee. Free RSVP events carry no fees on any plan.
         </p>
       </Section>
 
@@ -125,24 +115,24 @@ export default async function PricingPage() {
         <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
           <div>
             <h2 id="compare-heading" data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-ink [text-wrap:balance]">
-              What a {inr(TICKET)} ticket costs you.
+              What a {inr(EXAMPLE_PASS)} pass pays you.
             </h2>
             <p data-reveal="blur" className="mt-4 max-w-[46ch] text-[15px] font-light leading-relaxed text-ink/70">
-              Platform fees on one {inr(TICKET)} ticket. Indian ticketing platforms typically charge 4% to 6%. On Unifesto the same ticket costs you a fraction of that, and free events cost nothing.
+              Students pay {studentPays}, or {inr(EXAMPLE_PASS)} if you include the fee in your price. Razorpay&apos;s charges come out of the buyer fee, so this is what reaches you{feeFrom ? ` from ${feeFrom}` : ""}. Free events cost nothing.
             </p>
           </div>
           <table className="w-full text-sm">
-            <caption className="sr-only">Platform fee on a {inr(TICKET)} ticket</caption>
+            <caption className="sr-only">What you keep from a {inr(EXAMPLE_PASS)} pass, by plan</caption>
             <tbody>
-              {COMPARE.map((c) => (
-                <tr key={c.label}>
-                  <th scope="row" className={`w-44 py-2.5 pr-4 text-left font-normal ${"ours" in c ? "text-ink" : "text-ink/55"}`}>{c.label}</th>
+              {plans.map((p) => (
+                <tr key={p.id}>
+                  <th scope="row" className="w-44 py-2.5 pr-4 text-left font-normal text-ink">{p.name}, {p.fee}% fee</th>
                   <td className="py-2.5">
                     <div className="h-2 rounded-full bg-white/[0.05]">
-                      <div data-reveal="fill" className={`h-full origin-left rounded-full ${"ours" in c ? "bg-primary" : "bg-paper/25"}`} style={{ transform: `scaleX(${c.fee / MAX})` }} />
+                      <div data-reveal="fill" className="h-full origin-left rounded-full bg-primary" style={{ transform: `scaleX(${1 - p.fee / 100})` }} />
                     </div>
                   </td>
-                  <td className={`tabular w-20 py-2.5 pl-4 text-right ${"ours" in c ? "text-ink" : "text-ink/55"}`}>₹{(TICKET * c.fee).toFixed(2).replace(/\.00$/, "")}</td>
+                  <td className="tabular w-20 py-2.5 pl-4 text-right text-ink">{rupees(EXAMPLE_PASS * (1 - p.fee / 100))}</td>
                 </tr>
               ))}
             </tbody>
@@ -150,7 +140,7 @@ export default async function PricingPage() {
         </div>
       </Section>
 
-      <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap)} />
+      <FaqList faqs={pricingFaq(plans, buyerFee, buyerFeeCap, feeFrom)} />
 
       <Section width="text" innerClassName="text-center">
         <h2 data-reveal="clip" className="font-display text-[clamp(1.5rem,3vw,2.25rem)] leading-[1.15] text-paper [text-wrap:balance]">

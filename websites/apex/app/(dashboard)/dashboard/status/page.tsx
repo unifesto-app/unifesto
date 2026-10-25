@@ -197,6 +197,14 @@ export default function StatusPage() {
           </Card>
 
           {/* Services with 90-day uptime bars */}
+          <div>
+            <h2 className="mb-1 text-base font-semibold text-foreground">From inside</h2>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Not an outside probe. The API checks itself every 5 minutes, so it can&apos;t see a dead
+              server, proxy errors or rate limiting. Incidents count against uptime too, so report
+              any outage it missed.
+            </p>
+          </div>
           <Card>
             <CardContent className="divide-y divide-border p-0">
               {(summary?.services ?? []).map((s) => (
