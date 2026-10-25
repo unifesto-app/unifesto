@@ -40,6 +40,7 @@ jobs:
             backend:
               - *ci
               - 'backend/**'
+              - 'scripts/any-guard.sh'
             mobile:
               - *ci
               - 'mobile/**'
@@ -241,6 +242,7 @@ jobs:
           npm ci
           npx prisma generate
           echo "::group::Type-check"; npx tsc --noEmit -p tsconfig.json; echo "::endgroup::"
+          bash ../scripts/any-guard.sh
           echo "::group::Unit tests"; npm test -- --ci; echo "::endgroup::"
           echo "::group::Runtime deps: no critical advisories"; npm audit --omit=dev --audit-level=critical; echo "::endgroup::"
       - name: Backend · migrations replay, no schema drift
