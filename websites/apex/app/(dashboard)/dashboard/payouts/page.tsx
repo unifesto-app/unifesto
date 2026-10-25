@@ -128,7 +128,7 @@ export default function PayoutsPage() {
     return payouts.filter((p) => {
       if (statusFilter !== "all" && p.status !== statusFilter) return false;
       if (!q) return true;
-      return [p.event?.title, orgName(p), p.utr, p.bankAccount?.bankName]
+      return [p.event?.title ?? p.session?.title, orgName(p), p.utr, p.bankAccount?.bankName]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -143,7 +143,7 @@ export default function PayoutsPage() {
       ["Created", "Event", "Organiser", "Gross (INR)", "Platform Fee %", "Platform Fee (INR)", "Net (INR)", "Status", "Account", "UTR", "Paid At", "Failure Reason", "Notes"],
       filtered.map((p) => [
         p.createdAt,
-        p.event?.title,
+        p.event?.title ?? p.session?.title,
         orgName(p),
         Number(p.grossRevenue).toFixed(2),
         p.platformFeePercent,
@@ -268,7 +268,7 @@ export default function PayoutsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-medium">
-                          {p.event?.title ?? "Event"}
+                          {p.event?.title ?? p.session?.title ?? "Event"}
                         </p>
                         <Badge variant={badge.variant}>{badge.label}</Badge>
                       </div>
@@ -553,7 +553,7 @@ function MarkPaidDialog({
         <DialogHeader>
           <DialogTitle>Mark payout paid</DialogTitle>
           <DialogDescription>
-            {payout.event?.title} · {money(payout.netAmount)} to {orgName(payout)}
+            {payout.event?.title ?? payout.session?.title} · {money(payout.netAmount)} to {orgName(payout)}
           </DialogDescription>
         </DialogHeader>
 

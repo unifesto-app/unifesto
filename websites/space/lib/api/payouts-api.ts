@@ -15,7 +15,9 @@ export type PayoutStatus =
 
 export interface Payout {
   id: string;
-  eventId: string;
+  /** Exactly one of eventId / sessionId is set (T6). */
+  eventId: string | null;
+  sessionId?: string | null;
   userId: string;
   grossRevenue: string;
   platformFeePercent: string;
@@ -30,7 +32,8 @@ export interface Payout {
   utr: string | null;
   notes: string | null;
   createdAt: string;
-  event?: { id: string; title: string; slug: string; startDateTime?: string };
+  event?: { id: string; title: string; slug: string; startDateTime?: string } | null;
+  session?: { id: string; title: string; slug: string; startDateTime?: string } | null;
   user?: { id: string; fullName: string | null; username: string | null };
   bankAccount?: {
     methodType?: PayoutMethodType;
@@ -129,8 +132,16 @@ export async function deleteBankAccount(
 
 // ── Payout creation / request ──────────────────────────────────────────────
 
+/** What a payout draws from (T6): an event or a Huddle session. */
+export interface PayoutTarget {
+  kind: "event" | "session";
+  id: string;
+  title: string;
+}
+
 export interface EventPayoutSummary {
-  eventId: string;
+  eventId?: string;
+  sessionId?: string;
   registrationCount: number;
   grossRevenue: number;
   defaultPlatformFeePercent: number;
@@ -146,12 +157,12 @@ export interface EventPayoutSummary {
   existingPayout: Payout | null;
 }
 
-/** Organiser: net owed + any existing payout for one of my events. `GET /payouts/event/:id/summary`. */
-export async function getEventPayoutSummary(
-  eventId: string
+/** Net owed + any existing payout for an event or session. `GET /payouts/:kind/:id/summary`. */
+export async function getPayoutSummary(
+  target: Pick<PayoutTarget, "kind" | "id">
 ): Promise<{ data: EventPayoutSummary | null; error: ApiError | null }> {
   return apiCall<EventPayoutSummary>(
-    backendClient.get(`/payouts/event/${eventId}/summary`)
+    backendClient.get(`/payouts/${target.kind}/${target.id}/summary`)
   );
 }
 
@@ -184,9 +195,9 @@ export async function getEventTransactions(
   );
 }
 
-/** Organiser: request a payout for my own ended event. `POST /payouts/request`. */
+/** Request a payout for an event or session. `POST /payouts/request`. */
 export async function requestPayout(
-  eventId: string,
+  target: Pick<PayoutTarget, "kind" | "id">,
   /** Custom net amount to request; omit to request the whole available balance. */
   amount?: number,
   /** Route this payout to a specific eligible account; omit to use the event
@@ -195,7 +206,7 @@ export async function requestPayout(
 ): Promise<{ data: Payout | null; error: ApiError | null }> {
   return apiCall<Payout>(
     backendClient.post("/payouts/request", {
-      eventId,
+      [target.kind === "session" ? "sessionId" : "eventId"]: target.id,
       ...(amount != null ? { amount } : {}),
       ...(bankAccountId ? { bankAccountId } : {}),
     })
@@ -227,12 +238,13 @@ export interface EligibleAccountsResponse {
   accounts: EligibleAccount[];
 }
 
-/** Accounts an event's payout may be routed to. `GET /payouts/event/:id/eligible-accounts`. */
+/** Accounts an event's (or session's) payout may be routed to. `GET /payouts/:kind/:id/eligible-accounts`. */
 export async function getEventEligibleAccounts(
-  eventId: string
+  id: string,
+  kind: PayoutTarget["kind"] = "event"
 ): Promise<{ data: EligibleAccountsResponse | null; error: ApiError | null }> {
   return apiCall<EligibleAccountsResponse>(
-    backendClient.get(`/payouts/event/${eventId}/eligible-accounts`)
+    backendClient.get(`/payouts/${kind}/${id}/eligible-accounts`)
   );
 }
 

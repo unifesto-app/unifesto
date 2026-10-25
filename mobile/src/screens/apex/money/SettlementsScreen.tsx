@@ -136,7 +136,7 @@ export default function SettlementsScreen() {
         const to = p.bankAccount ? describeAccount(p.bankAccount) : null;
         return (
           <ApexRow
-            title={p.event?.title ?? 'Event'}
+            title={p.event?.title ?? p.session?.title ?? 'Event'}
             meta={[organiserName(p), shortDate(p.completedAt ?? p.createdAt), p.utr ? `UTR ${p.utr}` : to, p.status === 'COMPLETED' ? null : s.text]
               .filter(Boolean)
               .join('  ·  ')}

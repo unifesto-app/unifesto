@@ -45,7 +45,7 @@ import {
 import { button, details, esc, greet, h1, p, small, strong } from '../email/layout';
 import { buildEventIcs } from '../events/calendar/ics.util';
 import { RedisService } from '../redis/redis.service';
-import { TermsService } from '../subscription/terms.service';
+import { dealColumns, TermsService } from '../subscription/terms.service';
 import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 import { findIdentityByEmail } from '../auth/identifiers';
 
@@ -1029,12 +1029,11 @@ export class SessionsService {
     }
 
     // Paid session — priced like events under the space's terms (T5),
-    // Razorpay-only. Sessions carry no organiser platform fee column, so only
-    // the deal id is kept.
+    // Razorpay-only. A deal's own organiser fee is frozen here; otherwise the
+    // session_registrations trigger stamps today's rate when it is paid (T6).
     const terms = await this.terms.resolve(session.spaceId);
     const processingFee = this.payments.computeProcessingFee(basePrice, 1, terms);
     const totalAmount = basePrice + processingFee;
-    const dealId = terms.dealId;
 
     const registration = await this.prisma.sessionRegistration.upsert({
       where: { sessionId_userId: { sessionId, userId } },
@@ -1044,7 +1043,7 @@ export class SessionsService {
         totalAmount: new Prisma.Decimal(totalAmount),
         razorpayAmount: new Prisma.Decimal(totalAmount),
         processingFee: new Prisma.Decimal(processingFee),
-        dealId,
+        ...dealColumns(terms),
         paymentStatus: PaymentStatus.PENDING,
       },
       update: {
@@ -1052,7 +1051,7 @@ export class SessionsService {
         totalAmount: new Prisma.Decimal(totalAmount),
         razorpayAmount: new Prisma.Decimal(totalAmount),
         processingFee: new Prisma.Decimal(processingFee),
-        dealId,
+        ...dealColumns(terms, true),
         paymentStatus: PaymentStatus.PENDING,
         cancelledAt: null,
       },

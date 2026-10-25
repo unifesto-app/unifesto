@@ -100,7 +100,7 @@ export default function AdminPayoutDetailScreen() {
       >
         <Text style={[styles.amount, { color: tokens.text }]}>{inr(payout.netAmount)}</Text>
         <Text style={[styles.muted, { color: tokens.textMuted }]}>
-          {[payout.event?.title, organiserName(payout)].filter(Boolean).join('  ·  ')}
+          {[payout.event?.title ?? payout.session?.title, organiserName(payout)].filter(Boolean).join('  ·  ')}
         </Text>
         <Text style={[styles.status, { color: status.color }]}>{status.text}</Text>
 

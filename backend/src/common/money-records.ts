@@ -33,9 +33,13 @@ export async function eventMoneyRecords(db: Db, event: Prisma.EventWhereInput): 
   return counts.reduce((a, b) => a + b, 0);
 }
 
-/** Count of paid registrations under the sessions matching `session`. */
-export function sessionMoneyRecords(db: Db, session: Prisma.SessionWhereInput): Promise<number> {
-  return db.sessionRegistration.count({ where: { session, ...PAID } });
+/** Count of paid registrations and payouts under the sessions matching `session`. */
+export async function sessionMoneyRecords(db: Db, session: Prisma.SessionWhereInput): Promise<number> {
+  const counts = await Promise.all([
+    db.sessionRegistration.count({ where: { session, ...PAID } }),
+    db.payout.count({ where: { session } }),
+  ]);
+  return counts.reduce((a, b) => a + b, 0);
 }
 
 /**

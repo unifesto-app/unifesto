@@ -79,7 +79,7 @@ export function PayoutRow({
     >
       <View style={styles.body}>
         <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
-          {payout.event?.title ?? 'Event'}
+          {payout.event?.title ?? payout.session?.title ?? 'Event'}
         </Text>
         <Text style={[styles.sub, { color: c.muted }]} numberOfLines={1}>
           {[shortDate(payout.completedAt ?? payout.createdAt), to].filter(Boolean).join('  ·  ')}

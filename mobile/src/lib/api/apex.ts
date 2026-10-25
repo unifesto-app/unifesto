@@ -242,6 +242,8 @@ export interface AdminPayout {
   utr: string | null;
   notes: string | null;
   event?: { id: string; title: string; slug: string } | null;
+  /** A Huddle session payout has this instead of an event (T6). */
+  session?: { id: string; title: string; slug: string } | null;
   user?: { id: string; fullName: string | null; username: string | null } | null;
   bankAccount?: {
     methodType?: 'BANK' | 'UPI';

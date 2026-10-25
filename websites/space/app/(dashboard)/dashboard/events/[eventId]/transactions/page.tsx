@@ -218,7 +218,7 @@ export default function EventTransactionsPage() {
           </div>
         }
       />
-      <RequestPayoutDialog event={payoutOpen ? event : null} onClose={() => setPayoutOpen(false)} onDone={() => setPayoutOpen(false)} />
+      <RequestPayoutDialog target={payoutOpen && event ? { kind: "event", id: event.id, title: event.title } : null} onClose={() => setPayoutOpen(false)} onDone={() => setPayoutOpen(false)} />
 
       {error && <ErrorNotice message={error} />}
 
