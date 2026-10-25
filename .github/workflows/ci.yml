@@ -54,7 +54,7 @@ jobs:
               - 'websites/apex/**'
 
       # ── mobile (Node 22) ────────────────────────────────────────────────
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.mobile == 'true' }}
         with:
           node-version: 22
@@ -120,7 +120,7 @@ jobs:
           node scripts/ota-ci-check.js ../.ota-base/mobile
 
       # ── websites (Node 22) ──────────────────────────────────────────────
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
@@ -131,7 +131,7 @@ jobs:
         working-directory: websites/web
         run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
@@ -142,7 +142,7 @@ jobs:
         working-directory: websites/space
         run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
@@ -167,7 +167,7 @@ jobs:
           [ -z "$added" ] && { echo "No new migrations."; exit 0; }
           echo "New migrations:"; echo "$added"
           bash scripts/migration-guard.sh $added
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 24
