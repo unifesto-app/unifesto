@@ -58,6 +58,7 @@ import {
 } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
+import { toPage } from '../common/pagination';
 
 @ApiTags('Events')
 @Controller('events')
@@ -103,7 +104,7 @@ export class EventsController {
   ) {
     return this.eventsService.getSpaceEvents(
       spaceId,
-      page ? parseInt(page, 10) : 1,
+      toPage(page),
       Math.min(Math.max(parseInt(limit ?? '', 10) || 20, 1), 100),
       status as EventStatus | undefined,
       // Anything other than the two explicit opt-ins means the normal list, so

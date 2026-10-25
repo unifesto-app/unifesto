@@ -27,6 +27,7 @@ import {
   CreateTemplateDto,
   UpdateTemplateDto,
 } from '../email-campaigns/dto/template.dto';
+import { toPage, toLimit } from '../common/pagination';
 
 /**
  * Platform email console (apex). Full target set — all users, organisers,
@@ -60,8 +61,8 @@ export class AdminEmailController {
   ) {
     return this.campaigns.listCampaigns(
       this.scope,
-      parseInt(page, 10),
-      parseInt(limit, 10),
+      toPage(page),
+      toLimit(limit),
     );
   }
 
