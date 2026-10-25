@@ -899,3 +899,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · J17 refresh-token reuse revokes all sessions, 365-day absolute cap, POST /auth/logout-all (#355)
 - **2026-10-25** · J17 Apex/Space login limiter keyed on Caddy's client_ip, expired entries pruned (#356)
 - **2026-10-25** · J17 account gets an email when a new sign-in method is linked (#358)
+- **2026-10-25** · K12 web registration records Terms/Privacy acceptance (LegalAcceptance, client web) (#353)
