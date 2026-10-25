@@ -14,6 +14,7 @@ import {
   getQuote,
   INDIAN_STATES,
   myRegistrations,
+  resendTicket,
   saveName,
   sendEmailCode,
   sendPhoneCode,
@@ -113,6 +114,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
   const [coupon, setCoupon] = useState<{ code: string; discountPaise: number | null } | null>(null);
   const [couponMsg, setCouponMsg] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
+  const [resent, setResent] = useState("");
 
   const ticket = individual.find((t) => t.id === ticketId);
   const paid = !!ticket && ticket.price > 0;
@@ -360,7 +362,29 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
         >
           Open My tickets in the app
         </button>
-        <a href={storeUrlFor()} className="link-draw mt-5 inline-block text-sm text-paper/65">
+        {done.kind === "already" && done.registrationId && session && (
+          <div className="mt-5">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() =>
+                run(async () => {
+                  const r = await resendTicket(done.registrationId!, session.token);
+                  setResent(r.email ? `Sent to ${r.email}.` : "Sent.");
+                })()
+              }
+              className="btn btn-secondary w-full"
+            >
+              {busy ? "Sending…" : "Resend my ticket"}
+            </button>
+            {(resent || error) && <p className={`mt-2 text-sm ${error ? "text-red-400" : "text-paper/65"}`}>{error || resent}</p>}
+          </div>
+        )}
+        <Link href="/tickets" className="link-draw mt-5 inline-block text-sm text-paper/65">
+          See My tickets on the web
+        </Link>
+        <br />
+        <a href={storeUrlFor()} className="link-draw mt-3 inline-block text-sm text-paper/65">
           No app yet? Get it free
         </a>
         <div className="mt-3">{back}</div>
