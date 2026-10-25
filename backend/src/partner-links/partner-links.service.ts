@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { CreatePartnerLinkDto } from './dto';
+import { findIdentityByEmail } from '../auth/identifiers';
 
 /** utm_medium every partner tracking link carries. */
 export const PARTNER_MEDIUM = 'partner';
@@ -69,10 +70,8 @@ export class PartnerLinksService {
     const source = partnerSource(name);
     if (!source) throw new BadRequestException('Give the partner a name with letters or numbers');
 
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: { email: { equals: dto.email.trim(), mode: 'insensitive' } },
+    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, dto.email, {
       select: { userId: true },
-      orderBy: { isPrimary: 'desc' },
     });
     if (!identity) {
       throw new BadRequestException(

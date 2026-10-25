@@ -14,6 +14,7 @@ import { APEX, button, esc, h1, p, strong } from '../email/layout';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
 import { ORBIT_GOALS, ORBIT_PROBATION_DAYS, ORBIT_TIERS, orbitClock, orbitTier } from './orbit-tier';
 import { aggregateOrbitMap, ORBIT_MAP_STATUSES, type OrbitMap } from './orbit-map';
+import { findIdentityByEmail } from '../auth/identifiers';
 
 const LIVE_EVENT = [EventStatus.PUBLISHED, EventStatus.ONGOING, EventStatus.COMPLETED];
 /** Registrations that ever brought real money in (same set as Financials). */
@@ -191,12 +192,9 @@ export class OrbitService {
 
   /** Appoint an Orbit Lead (made Space Admin of the campus) or Crew (no admin access) by email. */
   async appoint(spaceId: string, email: string, actorId: string, role: OrbitRole = 'LEAD') {
-    const user = await this.prisma.user.findFirst({
-      where: { identities: { some: { email: { equals: email.trim(), mode: 'insensitive' } } } },
-      select: { id: true },
-    });
-    if (!user) throw new NotFoundException('No Unifesto account with that email. Ask them to sign up first.');
-    return this.appointUser(spaceId, user.id, actorId, role);
+    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, email, { select: { userId: true } });
+    if (!identity) throw new NotFoundException('No Unifesto account with that email. Ask them to sign up first.');
+    return this.appointUser(spaceId, identity.userId, actorId, role);
   }
 
   private async appointUser(spaceId: string, userId: string, actorId: string, role: OrbitRole = 'LEAD') {

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { EventStatus, GroupSeatStatus, Prisma, RegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { idsByEmail } from '../auth/identifiers';
 import { CacheService } from '../cache/cache.service';
 import { enforceFormAnswers } from './form-answers.policy';
 
@@ -332,7 +333,7 @@ export class AttendeeDetailsService {
         const email = typeof memberDetails.email === 'string' ? memberDetails.email : null;
         if (newName && email) {
           await tx.eventTicket.updateMany({
-            where: { registrationId: reg.id, attendeeEmail: { equals: email, mode: 'insensitive' } },
+            where: { id: { in: await idsByEmail(tx.eventTicket, { registrationId: reg.id }, 'attendeeEmail', [email]) } },
             data: { attendeeName: newName },
           });
         }

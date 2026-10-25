@@ -28,6 +28,7 @@ describe('space access (T3)', () => {
           { id: 'event-b', spaceId: 'space-b' },
         ]),
       },
+      eventCoHost: { findMany: jest.fn().mockResolvedValue([{ spaceId: 'space-co' }]) },
       roleCapability: { findMany: jest.fn().mockResolvedValue([]) },
       spaceRoleCapability: { findMany: jest.fn().mockResolvedValue(overrides) },
     };
@@ -75,6 +76,16 @@ describe('space access (T3)', () => {
 
     const platform = await authz([{ code: RoleCode.ADMIN, scope: RoleScope.PLATFORM }]);
     expect((await platform.accessIn(user, SPACE, EVENT)).capabilities).toContain(Action.EVENT_MANAGE_MONEY);
+  });
+
+  it('co-host Space Admin gets event:edit only (the canManageEvent fallback), never publish/cancel/team/money', async () => {
+    const coAdmin = await authz([{ code: RoleCode.SPACE_ADMIN, scope: RoleScope.SPACE, spaceId: 'space-co' }]);
+    const a = await coAdmin.accessIn(user, 'space-co', EVENT);
+    expect(a.capabilities.filter((c) => c.startsWith('event:'))).toEqual([Action.EVENT_EDIT]);
+
+    // A co-host Curator (not a Space Admin) gets nothing on the event.
+    const coCurator = await authz([{ code: RoleCode.CURATOR, scope: RoleScope.SPACE, spaceId: 'space-co' }]);
+    expect((await coCurator.accessIn(user, 'space-co', EVENT)).capabilities).not.toContain(Action.EVENT_EDIT);
   });
 
   it('plan features reflect an expired plan (Starter limits)', async () => {

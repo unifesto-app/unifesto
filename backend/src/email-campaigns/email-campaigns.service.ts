@@ -38,6 +38,7 @@ import {
 } from './dto/campaign.dto';
 import { EmailCampaignQueue } from './email-campaigns.queue';
 import { PLATFORM_STAFF_WHERE } from '../common/platform-staff';
+import { findIdentityByEmail } from '../auth/identifiers';
 
 /** A SENDING campaign with no progress for this long is treated as stranded. */
 export const STALE_SENDING_MS = 15 * 60 * 1000;
@@ -972,8 +973,7 @@ export class EmailCampaignsService {
   ): Promise<boolean> {
     const claim = verifyUnsubscribeToken(this.unsubscribeSecret, token);
     if (!claim) return false;
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: { email: { equals: claim.email, mode: 'insensitive' } },
+    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, claim.email, {
       select: { userId: true },
     });
     await recordMarketingOptOut(this.prisma, {

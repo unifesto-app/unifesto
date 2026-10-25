@@ -9,6 +9,7 @@ import { GroupSeatsService } from './group-seats.service';
 import { generateQRCode, generateTicketCode } from './registration.util';
 import { assertEventCan } from '../events/event-access';
 import { Action, AuthorizationService } from '../auth/authorization';
+import { findIdentityByEmail } from '../auth/identifiers';
 
 /** Moving a registration to another account: admin-direct, or a curator request an admin reviews. */
 @Injectable()
@@ -56,9 +57,7 @@ export class RegistrationTransfersService {
     // Resolve the target account from its email identity. Case-insensitive, and
     // preferring the account's primary identity when an email appears more than
     // once (e.g. linked via both email and Google).
-    const identity = await db.userIdentity.findFirst({
-      where: { email: { equals: normalizedEmail, mode: 'insensitive' } },
-      orderBy: { isPrimary: 'desc' },
+    const identity = await findIdentityByEmail<{ userId: string }>(db, normalizedEmail, {
       select: { userId: true },
     });
     if (!identity) {

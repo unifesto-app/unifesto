@@ -52,6 +52,7 @@ import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace, isSpaceLive, visibleSpacesWhere } from './space-access';
 import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { emailFilter, sameEmail } from '../auth/identifiers';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
 /** Deepest sub-space level the analytics walk follows (J10 cycle bound). */
@@ -777,6 +778,20 @@ export class SpacesService {
       select: { userId: true },
     });
     const excludeIds = existing.map((e) => e.userId);
+    // Email only by exact match: substring search let any space admin harvest
+    // platform users' addresses (S24). ILIKE treats `_`/`%` as wildcards, so
+    // `%%` would still match every address: resolve exact hits first.
+    const emailUserIds = term.includes('@')
+      ? (
+          await this.prisma.userIdentity.findMany({
+            where: { email: emailFilter(term) },
+            select: { userId: true, email: true },
+            take: 50,
+          })
+        )
+          .filter((i) => sameEmail(i.email, term))
+          .map((i) => i.userId)
+      : [];
 
     const users = await this.prisma.user.findMany({
       where: {
@@ -784,13 +799,7 @@ export class SpacesService {
         OR: [
           { fullName: { contains: term, mode: 'insensitive' } },
           { username: { contains: term, mode: 'insensitive' } },
-          // Email only by exact match: substring search let any space
-          // admin harvest platform users' addresses (S24).
-          {
-            identities: {
-              some: { email: { equals: term, mode: 'insensitive' } },
-            },
-          },
+          ...(emailUserIds.length ? [{ id: { in: emailUserIds } }] : []),
         ],
       },
       select: {

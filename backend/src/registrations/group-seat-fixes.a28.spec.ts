@@ -75,6 +75,7 @@ describe('A28 admin transfer of a group moves seat 1', () => {
     const db: any = {
       userIdentity: {
         findFirst: jest.fn(async ({ where }: any) => (where.userId === 'old' ? { email: 'old@x.com' } : { userId: 'new' })),
+        findMany: jest.fn(async () => [{ userId: 'new', email: 'new@x.com' }]),
       },
       eventRegistration: {
         findFirst: jest.fn(async ({ where }: any) => (where.id ? { id: 'r-1', eventId: 'e-1', userId: 'old', ticketTypeId: 't-1' } : null)),
@@ -235,7 +236,7 @@ describe('A28 typed-in teammates get their own revocable ticket', () => {
     const created: any[] = [];
     const prisma: any = {
       eventTicket: {
-        findFirst: jest.fn(async () => null),
+        findMany: jest.fn(async () => []),
         create: jest.fn(async ({ data }: any) => {
           created.push(data);
           return { qrCode: data.qrCode, ticketCode: data.ticketCode };
@@ -278,7 +279,9 @@ describe('A28 claims', () => {
   it('an unverified identity email cannot claim', async () => {
     const prisma: any = {
       groupSeat: { findUnique: jest.fn(async () => seatRow()) },
-      userIdentity: { findFirst: jest.fn(async ({ where }: any) => (where.emailVerified === true ? null : { userId: 'me' })) },
+      userIdentity: {
+        findMany: jest.fn(async ({ where }: any) => (where.emailVerified === true ? [] : [{ userId: 'me', email: 'me@x.com' }])),
+      },
     };
     const svc = new GroupSeatsService(prisma, {} as any, {} as any);
     await expect(svc.claim('tok', 'me')).rejects.toThrow(/different account/);
@@ -304,9 +307,10 @@ describe('A28 claims', () => {
         }),
       },
       eventRegistration: { findFirst: jest.fn(async () => null), findUnique: jest.fn(async () => null) },
-      userIdentity: { findFirst: jest.fn(async () => ({ userId: 'me' })), findMany: jest.fn(async () => [{ email: 'me@x.com', isPrimary: true }]) },
+      userIdentity: { findMany: jest.fn(async () => [{ userId: 'me', email: 'me@x.com', isPrimary: true }]) },
       eventFormField: { findMany: jest.fn(async () => []) },
       eventTicket: {
+        findMany: jest.fn(async () => []),
         deleteMany: jest.fn(async () => ({ count: 0 })),
         create: jest.fn(async ({ data }: any) => {
           writes.push(`ticket:${inTx}`);

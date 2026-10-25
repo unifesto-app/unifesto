@@ -433,7 +433,7 @@ describe('EmailCampaignsService', () => {
 
     it('a tampered token is rejected and records nothing', async () => {
       const prisma: any = {
-        userIdentity: { findFirst: jest.fn() },
+        userIdentity: { findMany: jest.fn().mockResolvedValue([]) },
         marketingOptOut: { findFirst: jest.fn(), create: jest.fn() },
       };
       const svc = build(prisma);
@@ -447,7 +447,7 @@ describe('EmailCampaignsService', () => {
 
     it('one-click opts out of the space only; "all" widens to every space', async () => {
       const prisma: any = {
-        userIdentity: { findFirst: jest.fn().mockResolvedValue({ userId: 'u1' }) },
+        userIdentity: { findMany: jest.fn().mockResolvedValue([{ userId: 'u1', email: 'A@x.com' }]) },
         marketingOptOut: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
       };
       const svc = build(prisma);
@@ -462,7 +462,7 @@ describe('EmailCampaignsService', () => {
 
     it('repeating an opt-out is a no-op', async () => {
       const prisma: any = {
-        userIdentity: { findFirst: jest.fn().mockResolvedValue(null) },
+        userIdentity: { findMany: jest.fn().mockResolvedValue([]) },
         marketingOptOut: { findFirst: jest.fn().mockResolvedValue({ id: 'x' }), create: jest.fn() },
       };
       const svc = build(prisma);

@@ -52,6 +52,8 @@ export default function EventSettingsPage() {
   const { can } = useAccess(eventId);
   // Publish, cancel, hide, restore and delete belong to the event's owners (T1).
   const canPublish = can("event:publish");
+  // Cancel, hide/restore and delete all need event:cancel on the backend.
+  const canCancel = can("event:cancel");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -310,7 +312,7 @@ export default function EventSettingsPage() {
       )}
 
       {/* Danger Zone */}
-      {canPublish && (
+      {canCancel && (
         <Card className="border-destructive/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base text-destructive">
