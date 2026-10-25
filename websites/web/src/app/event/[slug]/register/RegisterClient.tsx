@@ -8,12 +8,14 @@ import Footer from "@/components/Footer";
 import { BrandTheme, brandStyle } from "@/components/BrandedChrome";
 import { registrationState, type Event } from "@/lib/api/events";
 import {
+  acceptLegal,
   ApiError,
   confirmAge,
   createOrder,
   getQuote,
   INDIAN_STATES,
   myRegistrations,
+  pendingLegal,
   saveName,
   sendEmailCode,
   sendPhoneCode,
@@ -195,6 +197,8 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
       }
       // Z11: the 18+ box is required on the form; record it before registering.
       await confirmAge(s.token);
+      // K12: so is the Terms box. Record it the way the app does (I2).
+      for (const d of await pendingLegal(s.token)) await acceptLegal(d.slug, d.version, s.token);
       const formResponses = Object.fromEntries(Object.entries(answers).filter(([id]) => visible.has(id)));
       const res = await createOrder(event.id, s.token, {
         ticketTypeId: ticketId,
@@ -547,6 +551,28 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
           </p>
         </div>
 
+        <label className="flex cursor-pointer items-start gap-3 text-sm text-paper/80">
+          <input type="checkbox" required className="mt-0.5 h-4 w-4 accent-primary" />
+          <span>
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="underline">
+              Terms
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" target="_blank" className="underline">
+              Privacy Policy
+            </Link>
+            {paid && (
+              <>
+                , and the{" "}
+                <Link href="/refund" target="_blank" className="underline">
+                  Refund Policy
+                </Link>
+              </>
+            )}
+          </span>
+        </label>
+
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button type="submit" disabled={busy} className="btn btn-lg btn-primary w-full">
           {busy
@@ -559,25 +585,6 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
                   ? `Pay ${inr(shown.totalPaise)}`
                   : "Pay"}
         </button>
-        <p className="text-center text-xs text-paper/50">
-          By registering you agree to the{" "}
-          <Link href="/terms" className="underline">
-            Terms
-          </Link>{" "}
-          and{" "}
-          <Link href="/privacy" className="underline">
-            Privacy Policy
-          </Link>
-          {paid && (
-            <>
-              , and the{" "}
-              <Link href="/refund" className="underline">
-                Refund Policy
-              </Link>
-            </>
-          )}
-          .
-        </p>
       </form>
     );
   }

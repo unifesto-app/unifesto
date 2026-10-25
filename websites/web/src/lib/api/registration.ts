@@ -129,6 +129,12 @@ export const saveName = (fullName: string, token: string) => call("PATCH", "/use
 /** Z11: record "I am 18 or older" (stamped once server-side). */
 export const confirmAge = (token: string) => call("PATCH", "/users/me", { ageConfirmed: true }, token);
 
+/** I2/K12: legal documents this account still owes an acceptance for. */
+export const pendingLegal = (token: string) =>
+  call<{ slug: string; version: number }[]>("GET", "/legal/pending", undefined, token);
+export const acceptLegal = (slug: string, version: number, token: string) =>
+  call("POST", `/legal/${encodeURIComponent(slug)}/accept`, { version, client: "web" }, token);
+
 /** My live registrations for this event (empty when I have none). */
 export const myRegistrations = (eventId: string, token: string) =>
   call<{ id: string }[]>("GET", `/events/${eventId}/my-registrations`, undefined, token);
