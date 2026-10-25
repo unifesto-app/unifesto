@@ -22,8 +22,11 @@ set -euo pipefail
 # Gates (J13), checked before anything reaches the server:
 #   - clean working tree, HEAD = origin/main after a fetch, CI green on HEAD.
 #     FORCE=1 deploys anyway with a loud warning (a dirty tree tags :<sha>-dirty).
-#   - backend/.env has every REQUIRED_BACKEND_ENV key and websites/web/.env.local
-#     has the same INTERNAL_API_KEY. Keys only, values are never printed. No override.
+#   - env files (J14): deploy.sh never syncs .env files; the SERVER's copies are
+#     the only prod secrets. Before a deploy the server must have ./.env,
+#     backend/.env (every REQUIRED_BACKEND_ENV key), websites/{apex,space}/.env and
+#     websites/web/.env.local (same INTERNAL_API_KEY as backend/.env). Checked over
+#     ssh; keys only, values are never printed. No override. --check skips it.
 #   - backend deploys: no DROP TABLE/COLUMN, column type change or TRUNCATE in
 #     migrations the server's backend image doesn't have yet
 #     (scripts/migration-guard.sh, same check as CI). ALLOW_DESTRUCTIVE=1 ships
@@ -53,7 +56,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # catches. Unquoted at call sites on purpose, so the flags word-split into args.
 SSH_OPTS="-o ServerAliveInterval=15 -o ServerAliveCountMax=4 -o ConnectTimeout=20"
 
-# Keys the backend needs in backend/.env, the file rsync puts on the server.
+# Keys the backend needs in the server's backend/.env (edited on the server only).
 # INTERNAL_API_KEY must also be in websites/web/.env.local with the same value
 # (SSR skips the shared throttle bucket); SENTRY_DSN + LOG_FORMAT=json turn on
 # S35's error reporting and structured logs.
@@ -114,7 +117,7 @@ env_val() {
 
 # Local gates: git state, CI, env keys. Sets SHA (the image tag + Sentry release).
 run_gates() {
-  local head origin dirty ci ci_note runs key missing="" web_key
+  local head origin dirty ci ci_note runs
   echo "==> Gates"
   head="$(git -C "${HERE}" rev-parse HEAD)"
   SHA="$(git -C "${HERE}" rev-parse --short HEAD)"
@@ -154,22 +157,38 @@ run_gates() {
     *) soft "CI not green on ${ci_note}: ${runs}" ;;
   esac
 
-  for key in ${REQUIRED_BACKEND_ENV}; do
-    [ -n "$(env_val "${HERE}/backend/.env" "${key}")" ] || missing="${missing} ${key}"
-  done
-  if [ -z "${missing}" ]; then
-    ok "backend/.env has ${REQUIRED_BACKEND_ENV}"
+  if [ "${MODE}" = check ]; then
+    echo "  skip   server env files: checked over ssh at deploy time"
   else
-    fail "backend/.env is missing:${missing}"
+    server_env_gate || FAILED=1
   fi
-  web_key="$(env_val "${HERE}/websites/web/.env.local" INTERNAL_API_KEY)"
-  if [ -z "${web_key}" ]; then
-    fail "websites/web/.env.local is missing: INTERNAL_API_KEY"
-  elif [ "${web_key}" != "$(env_val "${HERE}/backend/.env" INTERNAL_API_KEY)" ]; then
-    fail "INTERNAL_API_KEY in websites/web/.env.local differs from backend/.env"
-  else
-    ok "websites/web/.env.local has the backend's INTERNAL_API_KEY"
-  fi
+}
+
+# J14: the env files live only on the server (rsync excludes them), so check
+# them there. Prints key names only; a missing file or key fails the deploy
+# before anything is synced, so the stack can't come up without its secrets.
+server_env_gate() {
+  { declare -f ok fail env_val; cat <<'ENVGATE'; } | ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" bash -s -- "${REMOTE_DIR}" ${REQUIRED_BACKEND_ENV}
+set -uo pipefail
+cd "$1" || exit 1
+shift
+FAILED=0
+for f in .env backend/.env websites/apex/.env websites/space/.env websites/web/.env.local; do
+  if [ -f "${f}" ]; then ok "server has ${f}"; else fail "server is missing ${f}: deploy.sh no longer syncs env files, put it there by hand"; fi
+done
+missing=""
+for key; do [ -n "$(env_val backend/.env "${key}")" ] || missing="${missing} ${key}"; done
+if [ -z "${missing}" ]; then ok "server backend/.env has $*"; else fail "server backend/.env is missing:${missing}"; fi
+web_key="$(env_val websites/web/.env.local INTERNAL_API_KEY)"
+if [ -z "${web_key}" ]; then
+  fail "server websites/web/.env.local is missing: INTERNAL_API_KEY"
+elif [ "${web_key}" != "$(env_val backend/.env INTERNAL_API_KEY)" ]; then
+  fail "INTERNAL_API_KEY in the server's websites/web/.env.local differs from backend/.env"
+else
+  ok "server websites/web/.env.local has the backend's INTERNAL_API_KEY"
+fi
+exit "${FAILED}"
+ENVGATE
 }
 
 # S37 DROP check on the migrations in this checkout that $1 (one migration
@@ -390,6 +409,8 @@ CADDY_LOCAL="$(shasum "${HERE}/Caddyfile" | cut -d' ' -f1)"
 CADDY_REMOTE="$(ssh ${SSH_OPTS} -i "${KEY}" "${SERVER}" "sha1sum ${REMOTE_DIR}/Caddyfile 2>/dev/null | cut -d' ' -f1" || true)"
 
 echo "==> Syncing source to ${SERVER}:${REMOTE_DIR}"
+# J14: no .env file is ever synced (the laptop's hold dev values). Excluded paths
+# are also safe from --delete, so the server keeps its own copies.
 rsync -az --delete \
   -e "ssh ${SSH_OPTS} -i ${KEY}" \
   --exclude '.git' \
@@ -404,7 +425,9 @@ rsync -az --delete \
   --exclude '/.claude/settings.local.json' \
   --exclude '/.claude/worktrees' \
   --exclude '/backend/coverage' \
-  --exclude '/backend/.env.local' \
+  --exclude '/.env*' \
+  --exclude '/backend/.env*' \
+  --exclude '/websites/*/.env*' \
   --exclude '/backend/prisma/manual' \
   --exclude '/DEPLOYED_SHA' \
   --exclude '/DEPLOY_LOG' \

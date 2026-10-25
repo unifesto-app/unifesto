@@ -33,8 +33,12 @@ export class ConfigValidationService implements OnModuleInit {
     }
 
     // Validate DATABASE_URL contains sslmode=require parameter
+    // J14: the local docker-compose.dev.yml Postgres has no TLS, so outside
+    // production an explicit sslmode=disable is allowed.
     const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl?.includes('sslmode=require')) {
+    const localNoSsl =
+      process.env.NODE_ENV !== 'production' && databaseUrl?.includes('sslmode=disable');
+    if (!databaseUrl?.includes('sslmode=require') && !localNoSsl) {
       const errorMessage =
         'DATABASE_URL must include sslmode=require parameter for secure RDS connection';
       this.logger.error(errorMessage);

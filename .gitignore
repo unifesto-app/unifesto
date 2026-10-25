@@ -28,6 +28,7 @@ expo-env.d.ts
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # ── Editor / OS ───────────────────────────────────────────
 .DS_Store
