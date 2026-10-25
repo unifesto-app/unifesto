@@ -164,7 +164,7 @@ describe('LeaderboardGateway display join', () => {
       },
     };
     const authz = { can: jest.fn().mockResolvedValue(false) };
-    const gw = new LeaderboardGateway({} as never, {} as never, {} as never, prisma as never, authz as never);
+    const gw = new LeaderboardGateway({} as never, {} as never, prisma as never, authz as never);
     const client = { userId: null, data: {} as Record<string, unknown>, join: jest.fn() };
     return { gw, client };
   };
