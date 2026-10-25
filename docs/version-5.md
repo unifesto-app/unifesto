@@ -505,7 +505,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | in progress (#347) |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
-| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#320) |
+| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#346) |
 
 ### K · Growth and discovery
 
@@ -890,3 +890,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · Dependabot skips major versions (Prisma 7 / TypeScript 7 bot PRs closed) (#343)
 - **2026-10-25** · mobile follow-ups J2 resend FAILED push, J17 drop dead loginWithGoogle, J16 space-unavailable state; Z11 copy checked (no change) (#345)
 - **2026-10-25** · J17 ILIKE wildcard re-check on all email equality lookups; T3 co-host Space Admin gets event:edit in access; J16 suspended-space gate on curator attendee adds; space Danger zone on event:cancel (#347)
+- **2026-10-25** · J19 CI: next build for web/space/apex + backend migration replay & pinned drift check (backfill migration for 4 untracked tables) (#346)
