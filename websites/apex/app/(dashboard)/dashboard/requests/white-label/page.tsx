@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { PaintBrush, WarningCircle } from "@unifesto/unicon/react";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { FlagCard } from "@/components/shared/FlagCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ErrorNotice } from "@/components/shared/ErrorNotice";
 import { Badge } from "@/components/ui/badge";
@@ -106,6 +107,12 @@ export default function WhiteLabelRequestsPage() {
         title="White-label requests"
         subtitle="Approve accent colours for spaces and events"
       />
+
+      <FlagCard field="customSendingDomainsEnabled" title="Custom sending domains" risky>
+        Lets spaces send attendee email from their own domain. Resend&apos;s Free plan allows one domain and
+        notify.unifesto.app uses it, so keep this off until the Resend plan is upgraded. While off, the Space
+        studio shows &quot;coming soon&quot;; domains already added keep working.
+      </FlagCard>
 
       <Card>
         <CardHeader className="gap-3">

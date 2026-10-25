@@ -250,6 +250,8 @@ export interface PlatformConfig {
   appReviewLoginEnabled: boolean;
   /** Z11: self-registration needs an 18+ confirmation. */
   requireAgeConfirmation: boolean;
+  /** H20: spaces may add their own email sending domain. */
+  customSendingDomainsEnabled: boolean;
 }
 
 /** `GET /admin/platform-config` — read app-wide settings (admin). */

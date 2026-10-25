@@ -2683,6 +2683,10 @@ model PlatformConfig {
   // 5.0.0 adoption is high. Organiser manual add/import is never gated.
   requireAgeConfirmation Boolean @default(false) @map("require_age_confirmation")
 
+  // H20: spaces may add their own email sending domain. Off until the Resend
+  // plan is upgraded (Free allows one domain, used by notify.unifesto.app).
+  customSendingDomainsEnabled Boolean @default(false) @map("custom_sending_domains_enabled")
+
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("platform_config")
