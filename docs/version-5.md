@@ -887,3 +887,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · Z11 18+ self-registration confirmation (User.ageConfirmedAt, requireAgeConfirmation flag off, mobile gate + web RSVP + Apex toggle), breach runbook in PR body (#340)
 - **2026-10-25** · A32 manual payouts: required unique UTR + paidBy/paidAt, transfer details with copy in Apex, payout emails, revoke verification, UPI + make primary in Space (#341)
 - **2026-10-25** · T3 GET /spaces/:id/access (effective caps + enforced plan); Space nav/pages and mobile event hub gate on it, rbac.ts matrix and /usage features call dropped (#342)
+- **2026-10-25** · Dependabot skips major versions (Prisma 7 / TypeScript 7 bot PRs closed) (#343)
