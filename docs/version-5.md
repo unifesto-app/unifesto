@@ -911,3 +911,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J17 Apex and Space send a nonce-based CSP script-src with strict-dynamic (#367)
 - **2026-10-26** · J19 lint gate: web/space/apex lint clean (errors) and run in CI (#362)
 - **2026-10-26** · J19 reconciliation migration pays down the db-push drift; known-drift.sql is down to 2 deliberate diffs (#357)
+- **2026-10-26** · K16 web dates formatted in IST (server UTC vs browser IST caused React #418); Cloudflare Web Analytics auto-injection turned off (#368)
