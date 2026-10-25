@@ -443,6 +443,13 @@ export class CreateHackathonPanelDto extends UpdateHackathonPanelDto {}
 
 // ── Queue ────────────────────────────────────────────────────────────────────
 
+/** Finishing a slot nobody marked needs it said out loud: the team didn't turn up. */
+export class ForceCompleteDto {
+  @ApiPropertyOptional({ description: 'Close a slot with no marks as a no-show (the team can queue again)' })
+  @IsOptional() @IsBoolean()
+  noShow?: boolean;
+}
+
 /** A judge (SINGLE / MULTI rounds) or a panel (PANEL rounds). */
 export class PickEvaluatorDto {
   @ApiPropertyOptional()

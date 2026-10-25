@@ -220,6 +220,7 @@ export class HackathonRoundsService {
       // Opening is refused until these are decided (only matters while PENDING/CLOSED).
       blockers: round.status === 'ACTIVE' ? [] : this.blockers(ctx, roundId),
       openRequests: requests.filter((r) => (OPEN_EVAL_STATUSES as readonly string[]).includes(r.status)).length,
+      criteriaLocked: await this.marksGiven(roundId),
     };
   }
 
@@ -474,7 +475,12 @@ export class HackathonRoundsService {
     const outside = [...decisions.keys()].find((id) => !inRound.has(id));
     if (outside) throw new BadRequestException('One of those teams isn’t in this round.');
 
-    const changed = [...decisions].filter(([id, status]) => ctx.standing(id, roundId) !== status);
+    // The "top N" helper: only once marks are final, and only for teams nobody
+    // has decided yet. A curator's own call on a team always stands.
+    if (round.status === 'ACTIVE') {
+      throw new BadRequestException(`Close ${round.name} before advancing the top teams: marks are still coming in.`);
+    }
+    const changed = [...decisions].filter(([id, status]) => ctx.standing(id, roundId) === 'PENDING' && status !== 'PENDING');
     if (!changed.length) return this.getRound(userId, eventId, roundId);
     const now = new Date();
     const eliminated = changed.filter(([, s]) => s === 'ELIMINATED').map(([id]) => id);
@@ -522,8 +528,9 @@ export class HackathonRoundsService {
   // ── Curator: criteria ─────────────────────────────────────────────────────
 
   /**
-   * Add a criterion to the round, or change one. Marks already given are kept,
-   * so a new maximum can't go below the highest mark given against it.
+   * Add a criterion to the round, or change one. Once a judge has marked the
+   * round its criteria are locked: a rename is fine, but adding one or moving a
+   * top mark or weight would rescore teams already marked.
    */
   async upsertCriterion(userId: string, eventId: string, roundId: string, metricId: string | null, dto: UpsertCriterionDto) {
     await this.leaderboard.assertCanManage(userId, eventId);
@@ -536,16 +543,16 @@ export class HackathonRoundsService {
       const metric = await this.prisma.leaderboardMetric.findFirst({ where: { id: metricId, leaderboardId: board.id } });
       if (!metric) throw new NotFoundException('Criterion not found');
       if (metric.roundId !== null && metric.roundId !== roundId) throw new BadRequestException('That criterion belongs to another round.');
-      const top = await this.prisma.leaderboardScore.aggregate({ where: { metricId }, _max: { value: true } });
-      const highest = top._max.value != null ? Number(top._max.value) : null;
-      if (highest != null && dto.maxValue < highest) {
-        throw new BadRequestException(`A judge already gave ${highest} for ${metric.label}. The maximum can't go below that.`);
+      const rescores = dto.maxValue !== Number(metric.maxValue) || (dto.weight !== undefined && dto.weight !== Number(metric.weight));
+      if (rescores && (await this.marksGiven(roundId, metricId))) {
+        throw new BadRequestException(`Judges have already given marks, so ${metric.label}'s top mark and weight are locked. You can still rename it.`);
       }
       await this.prisma.leaderboardMetric.update({
         where: { id: metricId },
         data: { label, maxValue: dto.maxValue, ...(dto.weight !== undefined ? { weight: dto.weight } : {}) },
       });
     } else {
+      if (await this.marksGiven(roundId)) throw new BadRequestException('Judges have started marking this round, so no criteria can be added.');
       const existing = await this.prisma.leaderboardMetric.findMany({
         where: { leaderboardId: board.id },
         select: { key: true, displayOrder: true },
@@ -588,10 +595,21 @@ export class HackathonRoundsService {
       select: { id: true, label: true, _count: { select: { scores: true } } },
     });
     if (!metric) throw new NotFoundException('Criterion not found');
-    if (metric._count.scores) throw new BadRequestException(`Judges already gave marks for ${metric.label}, so it stays.`);
+    if (metric._count.scores || (await this.marksGiven(roundId))) {
+      throw new BadRequestException(`Judges have started marking this round, so ${metric.label} stays.`);
+    }
     await this.prisma.leaderboardMetric.delete({ where: { id: metricId } });
     await this.leaderboard.recomputeAndBroadcast(board.id);
     return this.getRound(userId, eventId, roundId);
+  }
+
+  /** Any mark in the round (or, for an all-rounds criterion, against it anywhere). */
+  private async marksGiven(roundId: string, metricId?: string) {
+    const mark = await this.prisma.leaderboardScore.findFirst({
+      where: metricId ? { OR: [{ roundId }, { metricId }] } : { roundId },
+      select: { id: true },
+    });
+    return !!mark;
   }
 
   async findRoundOrThrow(leaderboardId: string, roundId: string) {

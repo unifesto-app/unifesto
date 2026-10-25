@@ -248,6 +248,19 @@ describe('HackathonStatementsService', () => {
       expect(notify).toHaveBeenCalledWith(EVENT, expect.any(Array), 'STATEMENT_UNLOCKED');
     });
 
+    it('flags a change after evaluation when it reopens an evaluated team (E8)', async () => {
+      const { svc, prisma } = build({ team: { statementId: PS, statementLockedAt: new Date() } });
+      prisma.leaderboardJudgment.count.mockResolvedValue(2);
+      await svc.unlockStatement(CURATOR, EVENT, TEAM);
+      expect(prisma.leaderboardEntrant.update.mock.calls[0][0].data.statementChangedAfterEvalAt).toEqual(expect.any(Date));
+    });
+
+    it('doesn’t flag a team nobody evaluated yet', async () => {
+      const { svc, prisma } = build({ team: { statementId: PS, statementLockedAt: new Date() } });
+      await svc.unlockStatement(CURATOR, EVENT, TEAM);
+      expect(prisma.leaderboardEntrant.update.mock.calls[0][0].data.statementChangedAfterEvalAt).toBeUndefined();
+    });
+
     it('won’t delete a statement an active team has', async () => {
       const { svc, prisma } = build();
       prisma.leaderboardEntrant.count.mockResolvedValue(1);

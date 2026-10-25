@@ -33,7 +33,7 @@ import {
   teamStage,
   type EvalStatus,
 } from './hackathon.shared';
-import type { CallNextDto, PickEvaluatorDto } from './dto/hackathon.dto';
+import type { CallNextDto, ForceCompleteDto, PickEvaluatorDto } from './dto/hackathon.dto';
 
 const OPEN = [...OPEN_EVAL_STATUSES] as HackathonEvalStatus[];
 const SLOT = [...SLOT_EVAL_STATUSES] as HackathonEvalStatus[];
@@ -754,13 +754,27 @@ export class HackathonQueueService {
 
   /**
    * Finish a slot that can't finish by itself, e.g. a panel judge who left.
-   * Marks already submitted count; nobody else can add theirs afterwards.
+   * Marks already submitted count; nobody else can add theirs afterwards. A
+   * slot with no marks would lock the team out with nothing, so it only closes
+   * as a no-show (the team can queue again).
    */
-  async forceComplete(userId: string, eventId: string, requestId: string) {
+  async forceComplete(userId: string, eventId: string, requestId: string, dto: ForceCompleteDto = {}) {
     await this.leaderboard.assertCanManage(userId, eventId);
     const board = await this.teams.getBoardOrThrow(eventId);
     const req = await this.requestOnBoardOrThrow(board.id, requestId);
     if (!SLOT.includes(req.status)) throw new BadRequestException('Only a called or running slot can be completed.');
+    const marked = await this.prisma.leaderboardJudgment.count({ where: { requestId: req.id, submittedAt: { not: null } } });
+    if (!marked) {
+      if (!dto.noShow) {
+        throw new BadRequestException({
+          statusCode: 400,
+          code: 'NO_MARKS',
+          message: 'No judge has submitted marks for this team yet. Finish it only as a no-show, so the team can queue again.',
+        });
+      }
+      await this.closeRequest(eventId, board.id, req, 'NO_SHOW', { by: userId, from: SLOT, reason: 'FORCED', notify: 'QUEUE_NO_SHOW' });
+      return this.getQueues(userId, eventId);
+    }
     await this.closeRequest(eventId, board.id, req, 'COMPLETED', { by: userId, from: SLOT, reason: 'FORCED' });
     return this.getQueues(userId, eventId);
   }
@@ -1167,6 +1181,8 @@ export class HackathonQueueService {
       calledAt: r.calledAt,
       startedAt: r.startedAt,
       slotEndsAt: r.slotEndsAt,
+      // Submitted marks: none means finishing it can only be a no-show.
+      marked: await this.prisma.leaderboardJudgment.count({ where: { requestId: r.id, submittedAt: { not: null } } }),
     };
   }
 

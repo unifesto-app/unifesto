@@ -67,7 +67,8 @@ export default function HackathonWinnersScreen() {
           text: 'Publish',
           onPress: async () => {
             setBusy(true);
-            const res = await publishAwards(eventId!);
+            // Only the awards shown in the confirm, not any another curator added since.
+            const res = await publishAwards(eventId!, unpublished.map((a) => a.id));
             setBusy(false);
             if (!res.ok) return AppAlert.alert("Couldn't publish", res.message);
             setData(res.data);

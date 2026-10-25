@@ -152,7 +152,8 @@ export default function JudgingEntrantScreen() {
       .map((c) => ({
         metricId: c.metricId,
         value: Number(c.raw),
-        comment: comments[c.metricId]?.trim() || undefined,
+        // Empty clears a comment the judge wrote earlier.
+        comment: comments[c.metricId]?.trim(),
       }));
 
   const handleSave = async (submit: boolean) => {
@@ -174,7 +175,7 @@ export default function JudgingEntrantScreen() {
     const result = await submitJudgment(entrantId!, {
       roundId: roundId!,
       scores: isMentor ? undefined : buildScoreCells(),
-      overallReview: overallReview.trim() || undefined,
+      overallReview: overallReview.trim(),
       submit,
     });
     setSaving(false);

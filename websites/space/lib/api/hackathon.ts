@@ -386,6 +386,8 @@ export interface RoundDetail extends RoundSettings {
   /** Undecided teams in earlier rounds, which block opening this one. */
   blockers: { roundId: string; roundName: string; teams: { id: string; teamCode: string | null; name: string }[] }[];
   openRequests: number;
+  /** A judge has given a mark in this round: criteria can be renamed, nothing else. */
+  criteriaLocked: boolean;
 }
 
 export type RoundInput = Partial<Omit<RoundSettings, 'id' | 'order' | 'status'>>;
@@ -514,6 +516,8 @@ export interface MonitorQueue {
     calledAt: string | null;
     startedAt: string | null;
     slotEndsAt: string | null;
+    /** Submitted marks; 0 means finishing the slot closes it as a no-show. */
+    marked: number;
   } | null;
   waiting: WaitingEntry[];
 }
@@ -538,8 +542,8 @@ export const removeFromQueue = (eventId: string, requestId: string) =>
   call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/remove`, json('POST'));
 export const reassignRequest = (eventId: string, requestId: string, to: { judgeUserId?: string; panelId?: string }) =>
   call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/reassign`, json('POST', to));
-export const forceComplete = (eventId: string, requestId: string) =>
-  call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/force-complete`, json('POST'));
+export const forceComplete = (eventId: string, requestId: string, noShow = false) =>
+  call<QueueMonitor>(`${base(eventId)}/queue/${requestId}/force-complete`, json('POST', noShow ? { noShow } : {}));
 export const reopenJudgment = (eventId: string, judgmentId: string) =>
   call<QueueMonitor>(`${base(eventId)}/judgments/${judgmentId}/reopen`, json('POST'));
 

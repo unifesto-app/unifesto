@@ -79,12 +79,18 @@ export default function HackathonResultsPage() {
       roundTeams.map(({ t, p }) => ({ id: t.id, score: p.score })),
       n
     );
-    const unscored = roundTeams.filter(({ p }) => p.score == null).length;
+    // Teams already decided keep their decision; the server only decides the rest.
+    const undecided = new Set(roundTeams.filter(({ p }) => p.standing === "PENDING").map(({ t }) => t.id));
+    const kept = roundTeams.length - undecided.size;
+    split.advance = split.advance.filter((id) => undecided.has(id));
+    split.eliminate = split.eliminate.filter((id) => undecided.has(id));
+    const unscored = roundTeams.filter(({ t, p }) => p.score == null && undecided.has(t.id)).length;
     const msg = [
       `Advance ${split.advance.length} team${split.advance.length === 1 ? "" : "s"}?`,
       `${split.advance.length} advance and ${split.eliminate.length} ${split.eliminate.length === 1 ? "is" : "are"} eliminated in ${round.name}.`,
       split.tiedAtCut ? `${split.tiedAtCut} more than ${n} because of a tie at the cut.` : "",
       unscored ? `${unscored} team${unscored === 1 ? " wasn't" : "s weren't"} evaluated and ${unscored === 1 ? "is" : "are"} eliminated.` : "",
+      kept ? `${kept} team${kept === 1 ? "" : "s"} you already decided keep${kept === 1 ? "s" : ""} ${kept === 1 ? "its" : "their"} decision.` : "",
       "Every team is told. You can still change any team afterwards.",
     ]
       .filter(Boolean)
@@ -206,7 +212,7 @@ export default function HackathonResultsPage() {
               />
             ))}
           </ListGroup>
-          {round.eliminationEnabled && roundTeams.length > 0 && round.status !== "PENDING" ? (
+          {round.eliminationEnabled && roundTeams.length > 0 && round.status === "CLOSED" ? (
             <FormCard title="Advance the top teams" description="Teams tied at the cut all go through. Change any single team from the round's page.">
               <div className="flex gap-2">
                 <Input inputMode="numeric" placeholder="How many go through, e.g. 10" value={topN} onChange={(e) => setTopN(e.target.value)} />

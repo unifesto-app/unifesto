@@ -37,6 +37,7 @@ describe('LeaderboardService (privacy rules)', () => {
       leaderboardScore: { findMany: jest.fn().mockResolvedValue([]) },
       leaderboardJudgment: { findFirst: jest.fn().mockResolvedValue(null) },
       groupSeat: { findMany: jest.fn().mockResolvedValue([]) },
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn().mockImplementation(async (arg: any) =>
         typeof arg === 'function' ? arg(prisma) : Promise.all(arg),
       ),
@@ -315,6 +316,149 @@ describe('LeaderboardService (privacy rules)', () => {
     await expect(svc.getMyJudgment('stranger', ENTRANT, ROUND)).rejects.toBeInstanceOf(
       ForbiddenException,
     );
+  });
+
+  describe('E8 judging integrity', () => {
+    const METRIC = { id: 'm1', label: 'Innovation', roundId: ROUND, minValue: 0, maxValue: 10 };
+    const hackTeam = (over: Record<string, unknown> = {}) => ({
+      findUnique: jest.fn().mockResolvedValue({
+        id: ENTRANT,
+        leaderboardId: BOARD,
+        registrationId: 'reg-1',
+        cancelledAt: null,
+        statementLockedAt: new Date(),
+        leaderboard: { id: BOARD, eventId: EVENT, mode: 'RUBRIC', metrics: [METRIC], isHackathon: true, enabled: true },
+        ...over,
+      }),
+    });
+    const base = (over: Record<string, any> = {}) => ({
+      leaderboardEntrant: hackTeam(),
+      leaderboardPanelist: { findMany: jest.fn(), count: jest.fn().mockResolvedValue(1) },
+      leaderboardScore: { upsert: jest.fn(), findMany: jest.fn() },
+      leaderboard: { findUnique: jest.fn().mockResolvedValue(null) },
+      eventRegistration: { count: jest.fn().mockResolvedValue(0) },
+      leaderboardJudgment: {
+        upsert: jest.fn().mockResolvedValue({ submittedAt: new Date(), reopenedAt: null, requestId: 'req-1' }),
+        findUnique: jest.fn().mockResolvedValue(null),
+        count: jest.fn().mockResolvedValue(2),
+      },
+      hackathonEvalRequest: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'req-1', panelId: null }),
+        count: jest.fn().mockResolvedValue(0),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      ...over,
+    });
+    const mark = { roundId: ROUND, scores: [{ metricId: 'm1', value: 7 }], submit: true };
+
+    it('a judge can’t mark a team they’re on (conflict of interest)', async () => {
+      const { svc, prisma } = build(base({ eventRegistration: { count: jest.fn().mockResolvedValue(1) } }));
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, mark)).rejects.toThrow(/on this team/);
+      expect(prisma.leaderboardJudgment.upsert).not.toHaveBeenCalled();
+    });
+
+    it('a judge scoped to another round can still mark for the panel they sit on', async () => {
+      const { svc, prisma } = build(
+        base({
+          leaderboardPanelist: { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) },
+          hackathonEvalRequest: {
+            findFirst: jest.fn().mockResolvedValue({ id: 'req-1', panelId: null }),
+            count: jest.fn().mockResolvedValue(1), // seated on the panel's slot
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+        }),
+      );
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, mark)).resolves.toMatchObject({ ok: true });
+      expect(prisma.leaderboardJudgment.upsert).toHaveBeenCalled();
+    });
+
+    it('a judge with no scope and no panel seat is still refused', async () => {
+      const { svc } = build(base({ leaderboardPanelist: { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) } }));
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, mark)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('a PANEL slot locks its row before counting, so the last two submits can’t both miss each other', async () => {
+      const order: string[] = [];
+      const { svc, prisma } = build(
+        base({
+          hackathonEvalRequest: {
+            findFirst: jest.fn().mockResolvedValue({ id: 'req-1', panelId: 'panel-1' }),
+            count: jest.fn().mockResolvedValue(0),
+            updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+          },
+          hackathonPanelMember: { findMany: jest.fn().mockResolvedValue([{ userId: JUDGE }, { userId: 'judge-2' }]) },
+        }),
+      );
+      prisma.$queryRaw.mockImplementation(async (sql: TemplateStringsArray) => {
+        order.push(sql.join('?').includes('FOR UPDATE') ? 'lock' : 'sql');
+        return [];
+      });
+      prisma.leaderboardJudgment.count.mockImplementation(async () => {
+        order.push('count');
+        return 2;
+      });
+      await expect(svc.submitJudgment(JUDGE, ENTRANT, mark)).resolves.toMatchObject({ slotCompleted: true });
+      expect(order).toEqual(['lock', 'count']);
+    });
+
+    it('an empty review clears the one written before', async () => {
+      const { svc, prisma } = build(
+        base({
+          leaderboardJudgment: {
+            upsert: jest.fn().mockResolvedValue({ submittedAt: new Date(), reopenedAt: null, requestId: 'req-1' }),
+            findUnique: jest.fn().mockResolvedValue({ submittedAt: new Date(), reopenedAt: null, requestId: 'req-1', overallReview: 'old' }),
+          },
+        }),
+      );
+      await svc.submitJudgment(JUDGE, ENTRANT, { roundId: ROUND, scores: [{ metricId: 'm1', value: 7, comment: ' ' }], overallReview: '  ' });
+      expect(prisma.leaderboardJudgment.upsert.mock.calls[0][0].update.overallReview).toBeNull();
+      expect(prisma.leaderboardScore.upsert.mock.calls[0][0].update.comment).toBeNull();
+    });
+  });
+
+  describe('PARTICIPANT VIEW: rounds that don’t eliminate (E8)', () => {
+    const R1 = 'r1';
+    const R2 = 'r2';
+    const view = (r1: { eliminationEnabled: boolean; status: string }, standings: { entrantId: string; roundId: string; status: string }[]) =>
+      build({
+        leaderboard: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: BOARD,
+            eventId: EVENT,
+            enabled: true,
+            isHackathon: true,
+            visibility: 'PUBLIC',
+            title: 'Hack',
+            mode: 'RUBRIC',
+            revealReviews: false,
+            rounds: [
+              { id: R1, name: 'Round 1', order: 1, ...r1 },
+              { id: R2, name: 'Finals', order: 2, status: 'PENDING', eliminationEnabled: true },
+            ],
+            entrants: [
+              { id: 'a', name: 'A', userId: 'me', registrationId: null, cancelledAt: null, statementLockedAt: new Date() },
+              { id: 'b', name: 'B', userId: 'x', registrationId: null, cancelledAt: null, statementLockedAt: new Date() },
+            ],
+          }),
+        },
+        eventRegistration: { findMany: jest.fn().mockResolvedValue([]) },
+        leaderboardEntrantRound: { findMany: jest.fn().mockResolvedValue(standings) },
+        leaderboardAward: { findMany: jest.fn().mockResolvedValue([]) },
+      }).svc.getParticipantView(EVENT, 'me');
+
+    it('a closed round that doesn’t eliminate shows every team as through, not pending', async () => {
+      const v = await view({ eliminationEnabled: false, status: 'CLOSED' }, []);
+      expect(v!.rounds[0].entrants.map((e) => e.status)).toEqual(['ADVANCED', 'ADVANCED']);
+      expect(v!.rounds[1].entrants.map((e) => e.id)).toEqual(['a', 'b']);
+    });
+
+    it('a later round lists only the teams in it', async () => {
+      const v = await view({ eliminationEnabled: true, status: 'CLOSED' }, [
+        { entrantId: 'a', roundId: R1, status: 'ADVANCED' },
+        { entrantId: 'b', roundId: R1, status: 'ELIMINATED' },
+      ]);
+      expect(v!.rounds[1].entrants.map((e) => e.id)).toEqual(['a']);
+    });
   });
 
   describe('PARTICIPANT VIEW never leaks marks', () => {

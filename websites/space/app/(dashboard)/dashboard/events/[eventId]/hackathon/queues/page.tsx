@@ -83,10 +83,12 @@ export default function HackathonQueuesPage() {
     }
   };
 
-  const finish = (requestId: string) => {
-    if (window.confirm("Finish this slot? Marks already submitted count. Judges who haven't submitted can't add theirs afterwards.")) {
-      void run(forceComplete(eventId, requestId));
-    }
+  const finish = (requestId: string, marked: number, team: QueueTeam | null) => {
+    // With no marks, finishing would end the team's turn with nothing: it can only be a no-show.
+    const copy = marked
+      ? "Finish this slot? Marks already submitted count. Judges who haven't submitted can't add theirs afterwards."
+      : `No judge has marked ${team?.teamCode ?? "this team"} yet. Close the slot as a no-show? The team is told and can join a queue again.`;
+    if (window.confirm(copy)) void run(forceComplete(eventId, requestId, !marked));
   };
 
   const reopen = (judgmentId: string, judgeName: string, team: QueueTeam | null) => {
@@ -105,7 +107,7 @@ export default function HackathonQueuesPage() {
         value=""
         onChange={(e) => {
           const o = others.find((x) => x.id === e.target.value);
-          if (o) void run(reassignRequest(eventId, requestId, o.kind === "PANEL" ? { panelId: o.id } : { judgeUserId: o.id }));
+          if (o && window.confirm(`Move this team to ${o.name}? It keeps its place in time, and the team is told.`)) void run(reassignRequest(eventId, requestId, o.kind === "PANEL" ? { panelId: o.id } : { judgeUserId: o.id }));
         }}
         className="h-8 rounded-md border border-input bg-card px-2 text-xs text-foreground"
       >
@@ -158,8 +160,8 @@ export default function HackathonQueuesPage() {
                   />
                 </div>
                 {q.current.status === "CALLED" && moveSelect(q, q.current.requestId)}
-                <Button size="sm" variant="ghost" onClick={() => finish(q.current!.requestId)}>
-                  Finish
+                <Button size="sm" variant="ghost" onClick={() => finish(q.current!.requestId, q.current!.marked, q.current!.team)}>
+                  {q.current.marked ? "Finish" : "No-show"}
                 </Button>
                 <Button size="sm" variant="ghost" className="text-destructive" onClick={() => remove(q.current!.requestId, q.current!.team)}>
                   Remove

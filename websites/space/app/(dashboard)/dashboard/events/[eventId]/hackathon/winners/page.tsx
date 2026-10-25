@@ -33,7 +33,8 @@ export default function HackathonWinnersPage() {
     )
       return;
     setBusy(true);
-    const res = await publishAwards(eventId);
+    // Only the awards shown in the confirm, not any another curator added since.
+    const res = await publishAwards(eventId, unpublished.map((a) => a.id));
     setBusy(false);
     if (!res.ok) return setError(res.message);
     setData(res.data);

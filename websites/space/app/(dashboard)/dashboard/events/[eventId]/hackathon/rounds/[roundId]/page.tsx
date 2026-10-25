@@ -75,11 +75,14 @@ function CriterionForm({
   eventId,
   roundId,
   criterion,
+  locked,
   onDone,
 }: {
   eventId: string;
   roundId: string;
   criterion: Criterion | null;
+  /** Marks are in: only the name can change. */
+  locked: boolean;
   onDone: (r?: RoundDetail) => void;
 }) {
   const [label, setLabel] = useState(criterion?.label ?? "");
@@ -115,12 +118,12 @@ function CriterionForm({
     <div className="space-y-3 bg-muted/40 p-4">
       <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
         <Input value={label} placeholder="Innovation" onChange={(e) => setLabel(e.target.value)} aria-label="Name" />
-        <Input inputMode="numeric" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} aria-label="Top mark" placeholder="Top mark" />
-        <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} aria-label="Weight" placeholder="Weight" />
+        <Input inputMode="numeric" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} aria-label="Top mark" placeholder="Top mark" disabled={locked} />
+        <Input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} aria-label="Weight" placeholder="Weight" disabled={locked} />
       </div>
       <p className="text-xs text-muted-foreground">
         Name, top mark, weight. Judges give 0 to the top mark; weight 2 counts twice as much as weight 1.
-        {criterion?.marked ? " Marks were already given, so the top mark can't go below the highest one." : ""}
+        {locked ? " Judges have started marking this round, so the top mark and weight are locked." : ""}
         {criterion?.allRounds ? " This criterion applies to every round." : ""}
       </p>
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -131,7 +134,7 @@ function CriterionForm({
         <Button size="sm" variant="ghost" onClick={() => onDone()}>
           Cancel
         </Button>
-        {criterion && !criterion.marked && (
+        {criterion && !locked && !criterion.marked && (
           <Button size="sm" variant="ghost" className="text-destructive" onClick={remove} disabled={busy}>
             <Trash className="h-4 w-4" /> Delete
           </Button>
@@ -254,6 +257,10 @@ export default function HackathonRoundPage() {
   };
 
   const decide = async (teamId: string, status: Standing) => {
+    const team = round?.teams.find((t) => t.id === teamId);
+    const verb = { ADVANCED: "Advance", ELIMINATED: "Eliminate", PENDING: "Undo the decision for" }[status];
+    const told = status === "PENDING" ? "" : " The team is told straight away.";
+    if (!window.confirm(`${verb} ${team?.teamCode ?? ""} ${team?.name ?? "this team"}?${told}`)) return;
     const res = await setTeamDecision(eventId, roundId, teamId, status);
     if (!res.ok) return setError(res.message);
     apply(res.data, false);
@@ -418,6 +425,7 @@ export default function HackathonRoundPage() {
                   eventId={eventId}
                   roundId={roundId}
                   criterion={c}
+                  locked={round.criteriaLocked}
                   onDone={(r) => {
                     setEditingCrit(null);
                     if (r) apply(r, false);
@@ -437,12 +445,13 @@ export default function HackathonRoundPage() {
                 eventId={eventId}
                 roundId={roundId}
                 criterion={null}
+                locked={round.criteriaLocked}
                 onDone={(r) => {
                   setEditingCrit(null);
                   if (r) apply(r, false);
                 }}
               />
-            ) : (
+            ) : round.criteriaLocked ? null : (
               <ListRow icon={<Plus className="h-5 w-5" weight="bold" />} label="Add a criterion" onClick={() => setEditingCrit("new")} />
             )}
           </ListGroup>
