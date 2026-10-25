@@ -24,7 +24,7 @@ export default function DownloadPage() {
 
   useEffect(() => {
     // Detect platform
-    const userAgent = navigator.userAgent || navigator.vendor || (window as Window & { opera?: string }).opera;
+    const userAgent = navigator.userAgent || navigator.vendor || (window as Window & { opera?: string }).opera || '';
 
     let detectedPlatform: 'ios' | 'android' | 'unknown' = 'unknown';
 
