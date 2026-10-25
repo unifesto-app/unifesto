@@ -3139,7 +3139,7 @@ model Incident {
   status IncidentStatus @default(INVESTIGATING)
   impact IncidentImpact @default(MINOR)
 
-  affectedServices String[] @map("affected_services")
+  affectedServices String[] @default([]) @map("affected_services")
 
   startedAt  DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
   resolvedAt DateTime? @map("resolved_at") @db.Timestamptz(6)

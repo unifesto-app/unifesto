@@ -249,11 +249,13 @@ jobs:
         # Postgres runs via `docker run` here, not as a job `services:` entry:
         # a service starts on every run (docs-only, push to main) and services
         # can't read the paths filter.
-        # The history has always differed from schema.prisma (db-push era
-        # leftovers: FK actions, index names, admin_devices, users.gender, ...).
-        # prisma/known-drift.sql pins that diff; any other diff fails. Fixing
-        # old drift = add the migration, then regenerate the file with the
-        # last command below (`--script > prisma/known-drift.sql`).
+        # prisma/known-drift.sql pins the diff that can't be fixed by a
+        # migration: Prisma can't introspect the raw text_pattern_ops opclass
+        # on api_logs_path_prefix_idx, so it always proposes drop + recreate.
+        # Any other diff fails. The db-push era drift was paid down by
+        # 20261114120000_reconcile_schema_drift. To change the pinned diff,
+        # regenerate the file with the last command below
+        # (`--script > prisma/known-drift.sql`).
         if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         working-directory: backend
         env:
