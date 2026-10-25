@@ -5,6 +5,8 @@ import { EmailService } from '../email/email.service';
 import { CacheService } from '../cache/cache.service';
 import { RedisService } from '../redis/redis.service';
 import { OrgPlan, Prisma } from '@prisma/client';
+import { addBillingCycle, lockSubscription } from './subscription.service';
+import { subscriptionStatus } from './plan-config.service';
 
 const emailIdentity = {
   identities: {
@@ -93,32 +95,72 @@ export class SubscriptionSchedulerService {
       include: RECIPIENT_INCLUDE,
     });
 
+    let downgraded = 0;
     for (const sub of expired) {
-      const oldPlan = sub.plan;
+      const outcome = await this.prisma.$transaction(async (tx) => {
+        // Re-read under the row lock: a payment that landed since the scan has
+        // moved expiresAt, and must not be downgraded.
+        const fresh = await lockSubscription(tx, sub.id);
+        if (fresh.plan === OrgPlan.STARTER || !fresh.expiresAt || fresh.expiresAt > now) {
+          return null;
+        }
 
-      // Period over (renewal lapsed, or a cancel-at-period-end came due): drop
-      // to STARTER and log it, since cancel no longer writes the STARTER row.
-      await this.prisma.$transaction([
-        this.prisma.subscriptionHistory.create({
+        // A paid downgrade starts now, for one cycle from the old end.
+        if (fresh.pendingPlan) {
+          const cycle = fresh.pendingBillingCycle ?? fresh.billingCycle;
+          const expiresAt = addBillingCycle(fresh.expiresAt, cycle);
+          await tx.subscriptionHistory.create({
+            data: {
+              subscriptionId: fresh.id,
+              fromPlan: fresh.plan,
+              toPlan: fresh.pendingPlan,
+              reason: 'Scheduled plan change started',
+            },
+          });
+          await tx.orgSubscription.update({
+            where: { id: fresh.id },
+            data: {
+              plan: fresh.pendingPlan,
+              billingCycle: cycle,
+              expiresAt,
+              nextPaymentAt: fresh.cancelledAt ? null : expiresAt,
+              pendingPlan: null,
+              pendingBillingCycle: null,
+            },
+          });
+          return 'switched' as const;
+        }
+
+        // Still in its 7-day grace: keeps the plan until it lapses.
+        if (subscriptionStatus(fresh, now) !== 'EXPIRED') return null;
+
+        // Period over (grace lapsed, or a cancel-at-period-end came due): drop
+        // to STARTER and log it, since cancel no longer writes the STARTER row.
+        await tx.subscriptionHistory.create({
           data: {
-            subscriptionId: sub.id,
-            fromPlan: oldPlan,
+            subscriptionId: fresh.id,
+            fromPlan: fresh.plan,
             toPlan: OrgPlan.STARTER,
-            reason: sub.cancelledAt ? 'Cancelled plan ended' : 'Plan expired',
+            reason: fresh.cancelledAt ? 'Cancelled plan ended' : 'Plan expired',
           },
-        }),
-        this.prisma.orgSubscription.update({
-          where: { id: sub.id },
+        });
+        await tx.orgSubscription.update({
+          where: { id: fresh.id },
           data: {
             plan: OrgPlan.STARTER,
             isActive: false,
-            cancelledAt: sub.cancelledAt ?? now,
+            cancelledAt: fresh.cancelledAt ?? now,
           },
-        }),
-      ]);
+        });
+        return 'expired' as const;
+      });
+      if (!outcome) continue;
 
       // Invalidate whichever plan cache this row feeds
       await this.invalidatePlan(sub);
+      if (outcome === 'switched') continue;
+      downgraded += 1;
+      const oldPlan = sub.plan;
 
       const { email, name } = this.resolveRecipient(sub);
       if (email) {
@@ -153,7 +195,7 @@ export class SubscriptionSchedulerService {
     }
 
     this.logger.log(
-      `Expired subscriptions job completed. Downgraded ${expired.length} subscriptions`,
+      `Expired subscriptions job completed. Downgraded ${downgraded} subscriptions`,
     );
   }
 

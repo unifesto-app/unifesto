@@ -14,6 +14,33 @@ import { PLAN_LIMITS, PlanLimits } from './plan-limits.config';
  */
 export const SELLABLE_PLANS: OrgPlan[] = [OrgPlan.STARTER, OrgPlan.PRO, OrgPlan.ENTERPRISE];
 
+export type SubscriptionStatus = 'ACTIVE' | 'GRACE' | 'EXPIRED';
+export const GRACE_DAYS = 7;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A plan's standing from its dates (T8): ACTIVE until expiresAt, then GRACE
+ * for 7 days (an unpaid renewal keeps its limits), then EXPIRED (Starter
+ * limits, data kept). A cancelled plan ends at expiresAt with no grace; a paid
+ * downgrade waiting to start counts as ACTIVE. Starter and undated plans never
+ * expire.
+ */
+export function subscriptionStatus(
+  sub: {
+    plan: OrgPlan;
+    expiresAt?: Date | null;
+    cancelledAt?: Date | null;
+    pendingPlan?: OrgPlan | null;
+  },
+  now = new Date(),
+): SubscriptionStatus {
+  if (sub.plan === OrgPlan.STARTER || !sub.expiresAt || sub.pendingPlan) return 'ACTIVE';
+  const end = sub.expiresAt.getTime();
+  if (now.getTime() < end) return 'ACTIVE';
+  if (!sub.cancelledAt && now.getTime() < end + GRACE_DAYS * DAY_MS) return 'GRACE';
+  return 'EXPIRED';
+}
+
 /** Public shape of a billing-model config (Free / Revenue-share). */
 export interface ModelConfig extends Omit<
   PlanLimits,
@@ -176,6 +203,9 @@ export class PlanConfigService implements OnModuleInit {
     billingModel: BillingModel;
     plan: OrgPlan;
     revenueSharePercent?: number | { toString(): string } | null;
+    expiresAt?: Date | null;
+    cancelledAt?: Date | null;
+    pendingPlan?: OrgPlan | null;
   }): PlanLimits {
     if (
       sub.billingModel === BillingModel.FREE ||
@@ -205,7 +235,8 @@ export class PlanConfigService implements OnModuleInit {
         annualPrice: null,
       };
     }
-    return this.getLimits(sub.plan);
+    // A lapsed plan keeps its data but gets Starter's limits (T8).
+    return this.getLimits(subscriptionStatus(sub) === 'EXPIRED' ? OrgPlan.STARTER : sub.plan);
   }
 
   /**

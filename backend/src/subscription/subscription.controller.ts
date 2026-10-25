@@ -18,6 +18,7 @@ import {
 import { SubscriptionService } from './subscription.service';
 import {
   AdminUpdateSubscriptionDto,
+  RecordOfflinePaymentDto,
   SubscriptionResponseDto,
   SubscriptionUsageDto,
   UpdateBillingModelConfigDto,
@@ -163,5 +164,16 @@ export class SubscriptionController {
     @Body() dto: AdminUpdateSubscriptionDto,
   ) {
     return this.subscriptionService.adminUpdateSubscriptionForSpace(spaceId, dto);
+  }
+
+  @Post('admin/space/:spaceId/offline-payment')
+  @Roles(RoleCode.ADMIN)
+  @ApiOperation({ summary: "Record an offline payment for a space's plan (admin only)" })
+  @ApiResponse({ status: 201 })
+  async recordOfflinePayment(
+    @Param('spaceId') spaceId: string,
+    @Body() dto: RecordOfflinePaymentDto,
+  ) {
+    return this.subscriptionService.recordOfflinePaymentForSpace(spaceId, dto);
   }
 }

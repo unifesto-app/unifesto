@@ -8,6 +8,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 import { BillingCycle, BillingModel, OrgPlan } from '@prisma/client';
@@ -34,6 +35,34 @@ export class VerifyUpgradeDto {
   @ApiProperty({ example: 'signature_hash' })
   @IsString()
   signature: string;
+}
+
+/** Platform admin: a plan payment made outside Razorpay. */
+export class RecordOfflinePaymentDto {
+  @ApiProperty({ enum: OrgPlan, example: OrgPlan.PRO })
+  @IsEnum(OrgPlan)
+  plan: OrgPlan;
+
+  @ApiProperty({ enum: BillingCycle, example: BillingCycle.ANNUAL })
+  @IsEnum(BillingCycle)
+  billingCycle: BillingCycle;
+
+  @ApiProperty({ example: 4499, description: 'Amount received (₹)' })
+  @IsNumber()
+  @Min(1)
+  amount: number;
+
+  @ApiPropertyOptional({ example: 'UTR 4021XXXX', description: 'Bank / cheque reference; recorded once' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reference?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(250)
+  note?: string;
 }
 
 export class AdminUpdateSubscriptionDto {
