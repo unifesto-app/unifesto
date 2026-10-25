@@ -503,7 +503,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J14 | **Move production secrets off the dev laptop.** backend/.env and backend/.env.local are identical, set NODE_ENV=production and point at the prod RDS. | in progress (#317) |
 | J15 | **Move personal files and recordings to private storage.** - Event report PDFs (full roster with emails and revenue) are uploaded to the public bucket at non-expiring URLs and survive 'delete' (backend/src/reports/reports.service.ts:236), contradicting the Privacy Policy. | planned |
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | done (#332) |
-| J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | in progress (#347) |
+| J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | in progress (#355) |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
 | J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#346) |
 
@@ -896,3 +896,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · demo-space.ts slugs match prod (no -demo suffix), so --remove finds the space (#350)
 - **2026-10-25** · P23 demo exclusion now matches the prod demo Space slug (aurora-tech-club); the script shares the constant (#351)
 - **2026-10-25** · Web events copy no longer names Malla Reddy University as the only campus (#352)
+- **2026-10-25** · J17 refresh-token reuse revokes all sessions, 365-day absolute cap, POST /auth/logout-all (#355)
