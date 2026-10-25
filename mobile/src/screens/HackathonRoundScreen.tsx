@@ -158,15 +158,20 @@ export default function HackathonRoundScreen() {
       </Text>
 
       {round.kind === 'EVALUATION' ? (
-        <SettingsGroup title="Criteria">
-          {round.criteria.map((c) => (
-            <SettingsRow
-              key={c.id}
-              label={c.label}
-              value={`out of ${c.maxValue}${c.weight !== 1 ? ` · ×${c.weight}` : ''}${c.allRounds ? ' · all rounds' : ''}`}
-            />
-          ))}
-        </SettingsGroup>
+        <>
+          <SettingsGroup title="Criteria">
+            {round.criteria.map((crit) => (
+              <SettingsRow
+                key={crit.id}
+                label={crit.label}
+                value={`out of ${crit.maxValue}${crit.weight !== 1 ? ` · ×${crit.weight}` : ''}${crit.allRounds ? ' · all rounds' : ''}`}
+              />
+            ))}
+          </SettingsGroup>
+          {round.criteriaLocked ? (
+            <Text style={[styles.note, { color: c.muted }]}>Marks are in, so criteria, top marks and weights are locked.</Text>
+          ) : null}
+        </>
       ) : null}
       <SettingsGroup>
         <SettingsRow
