@@ -1,3 +1,4 @@
+import { inChunks } from '../common/batching';
 import {
   Injectable,
   BadRequestException,
@@ -455,6 +456,7 @@ export class RegistrationImportService {
     // matches whatever the curator reviewed.
     const state = { remaining, seen: new Set<string>(), ...(await this.freeSeatState(eventId, ticketType)) };
 
+    const toConfirm: string[] = [];
     for (const row of parsed) {
       const verdict = await this.classifyImportRow(
         eventId,
@@ -485,12 +487,7 @@ export class RegistrationImportService {
           },
         );
         if (state.remaining != null) state.remaining -= verdict.seats;
-        if (sendEmails) {
-          // Fire-and-forget: a slow SMTP hop must not stall a large import.
-          void this.confirmations.sendRegistrationConfirmations(registrationId).catch((err) =>
-            this.logger.error(`sendRegistrationConfirmations(${registrationId}) failed: ${err instanceof Error ? err.message : String(err)}`),
-          );
-        }
+        if (sendEmails) toConfirm.push(registrationId);
         report.push({ ...this.rowHead(row), status: 'created' });
       } catch (err) {
         this.logger.error(
@@ -507,6 +504,17 @@ export class RegistrationImportService {
               : 'Could not create the registration.',
         });
       }
+    }
+
+    // Confirmations after the rows, a few at a time in the background (J5): one
+    // detached send per row used to fire hundreds of mails in the same tick.
+    if (toConfirm.length) {
+      void inChunks(toConfirm, (id) =>
+        this.confirmations.sendRegistrationConfirmations(id).catch((err) =>
+          this.logger.error(`sendRegistrationConfirmations(${id}) failed: ${err instanceof Error ? err.message : String(err)}`),
+        ),
+        5,
+      );
     }
 
     return {
