@@ -122,7 +122,8 @@ jobs:
       # ── websites (Node 22) ──────────────────────────────────────────────
       # Each app also runs the production `next build` (J19): with
       # ignoreBuildErrors gone (#320) it is the same build the Dockerfile runs.
-      # Env is dummy only: API URLs point at a closed local port (never prod),
+      # Env is dummy only: API URLs point at a local port (never prod; web's
+      # fallback when unset is the prod API),
       # no Sentry DSN, and no SENTRY_AUTH_TOKEN, so withSentryConfig skips the
       # source-map upload. .next/cache is restored per lockfile, so a PR's
       # later pushes rebuild incrementally.
@@ -142,12 +143,16 @@ jobs:
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/web
         env:
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4999
           NEXT_PUBLIC_WEB_URL: http://127.0.0.1:3000
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
         run: |
           npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
+          # Legal pages prerender from the API and throw when it's unreachable
+          # (on purpose: keep the cached page). A stub that 404s everything
+          # builds them as not-found instead.
+          node -e "require('http').createServer((q,r)=>{r.writeHead(404,{'content-type':'application/json'});r.end('{}')}).listen(4999,'127.0.0.1')" &
           echo "::group::Build"; npm run build; echo "::endgroup::"
 
       - uses: actions/setup-node@v7
@@ -166,8 +171,8 @@ jobs:
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/space
         env:
-          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:9
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:4999
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4999
           NEXT_PUBLIC_WEB_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_APEX_URL: http://127.0.0.1:3002
           DEPLOYMENT_ID: ci
@@ -192,8 +197,8 @@ jobs:
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         working-directory: websites/apex
         env:
-          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:9
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+          NEXT_PUBLIC_BACKEND_URL: http://127.0.0.1:4999
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:4999
           NEXT_PUBLIC_SPACE_URL: http://127.0.0.1:3001
           DEPLOYMENT_ID: ci
           NEXT_TELEMETRY_DISABLED: 1
