@@ -124,15 +124,13 @@ function makeDb(seed: Seat[] = []) {
     },
     // Linked emails per account; claims must come from the invited email.
     userIdentity: {
-      findFirst: async ({ where }: any) => {
+      findMany: async ({ where }: any) => {
         const want = String(where?.email?.equals ?? '').toLowerCase();
-        return (
-          IDENTITIES.find(
-            (i) =>
-              i.userId === where?.userId &&
-              i.email.toLowerCase() === want &&
-              (where?.emailVerified === undefined || i.emailVerified === where.emailVerified),
-          ) ?? null
+        return IDENTITIES.filter(
+          (i) =>
+            i.userId === where?.userId &&
+            i.email.toLowerCase() === want &&
+            (where?.emailVerified === undefined || i.emailVerified === where.emailVerified),
         );
       },
     },
@@ -143,6 +141,7 @@ function makeDb(seed: Seat[] = []) {
         ticketCode: data.ticketCode,
         qrCode: data.qrCode,
       }),
+      findMany: async () => [],
       deleteMany: async () => ({ count: 0 }),
     },
     $transaction: async (fn: any) => fn(prisma),

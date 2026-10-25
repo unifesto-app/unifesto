@@ -187,7 +187,7 @@ function EventDetailView({ id, d, hue }: { id?: string; d: EventDetail; hue: str
       <View style={[styles.flex, styles.center, { backgroundColor: c.bg }]}>
         <CosmosBackdrop horizon={false} />
         <XCircle size={48} color={c.muted} />
-        <Text style={[styles.emptyTitle, { color: c.text }]}>{id ? 'Event not found' : 'No event selected'}</Text>
+        <Text style={[styles.emptyTitle, { color: c.text }]}>{d.spaceUnavailable ? 'This space is temporarily unavailable' : id ? 'Event not found' : 'No event selected'}</Text>
         <AuthButton label="Go back" variant="secondary" onPress={() => router.back()} style={{ marginTop: spacing[6], minWidth: 160 }} />
       </View>
     );

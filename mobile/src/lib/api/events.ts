@@ -1,4 +1,4 @@
-import { expectOk, makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
+import { errorFrom, expectOk, isSpaceUnavailable, makeAuthenticatedRequest, makeOptionalAuthRequest, makePublicRequest } from './helpers';
 
 /**
  * Organiser white-label theme (backend `branding.util`). Set only when the
@@ -243,11 +243,18 @@ export const getEvents = async (params?: {
   return expectOk(await makePublicRequest(`/events?${query.toString()}`), "Couldn't load events");
 };
 
-export const getEventBySlug = async (slug: string) => {
-  const response = await makeOptionalAuthRequest(`/events/${slug}`);
-  if (!response?.ok) return null;
-  return response.json() as Promise<Event>;
-};
+/** The event, or null when it can't be loaded; throws only the 403 for a suspended space (J16). */
+async function eventOrNull(key: string): Promise<Event | null> {
+  const response = await makeOptionalAuthRequest(`/events/${key}`);
+  if (response?.ok) return response.json() as Promise<Event>;
+  if (response?.status === 403) {
+    const error = await errorFrom(response, 'Event unavailable');
+    if (isSpaceUnavailable(error)) throw error;
+  }
+  return null;
+}
+
+export const getEventBySlug = (slug: string) => eventOrNull(slug);
 
 export interface PaletteColor {
   hex: string;
@@ -263,11 +270,7 @@ export const getEventPalette = async (slugOrId: string): Promise<PaletteColor[]>
   return Array.isArray(body?.colors) ? body.colors : [];
 };
 
-export const getEventById = async (id: string) => {
-  const response = await makeOptionalAuthRequest(`/events/${id}`);
-  if (!response?.ok) return null;
-  return response.json() as Promise<Event>;
-};
+export const getEventById = (id: string) => eventOrNull(id);
 
 export const getMyRegistration = async (eventId: string) => {
   const response = await makeAuthenticatedRequest(`/events/${eventId}/my-registration`);

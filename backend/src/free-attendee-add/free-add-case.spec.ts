@@ -11,6 +11,7 @@ describe('free-add request ↔ Assist case (D5)', () => {
     const prisma: any = {
       event: { findUnique: jest.fn(async () => ({ id: 'ev', spaceId: 'sp', title: 'Hack Day' })) },
       eventTicketType: { findFirst: jest.fn() },
+      space: { findFirst: jest.fn(async () => ({ status: 'ACTIVE' })) },
       freeAttendeeAddRequest: {
         findFirst: jest.fn(async () => null),
         create: jest.fn(async () => ({ id: 'r1' })),

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { idsByEmail } from '../auth/identifiers';
 import { EmailService } from '../email/email.service';
 import { WhatsAppService } from '../whatsapp/whatsapp.service';
 import { RedisService } from '../redis/redis.service';
@@ -339,10 +340,8 @@ export class RegistrationConfirmationsService {
   /** A typed-in member's own seat ticket, stamped with their email: found, or made once. */
   private async memberTicket(registrationId: string, email: string, name?: string | null) {
     const select = { qrCode: true, ticketCode: true } as const;
-    const found = await this.prisma.eventTicket.findFirst({
-      where: { registrationId, attendeeEmail: { equals: email, mode: 'insensitive' } },
-      select,
-    });
+    const [id] = await idsByEmail(this.prisma.eventTicket, { registrationId }, 'attendeeEmail', [email]);
+    const found = id ? await this.prisma.eventTicket.findUnique({ where: { id }, select }) : null;
     return (
       found ??
       this.prisma.eventTicket.create({

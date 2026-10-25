@@ -98,18 +98,12 @@ function formatDate(isoDate: string): string {
 
 export default function SpaceMembersPage() {
   const spaceId = useSpaceId();
-  const { spaces, user, can } = useSession();
-  const currentSpace = spaces.find((s) => s.id === spaceId);
-  const userRole = currentSpace?.userRole?.code;
+  const { user, can } = useSession();
 
-  // Determine what roles the current user can assign/manage.
+  // Flat admin model: whoever manages members (Space Admins, platform admins)
+  // can grant/revoke both admin and member.
   const canManageMembers = can("space:manage-members");
-  // Flat admin model: a Space Admin can grant/revoke admin and member.
-  const isFullAdmin = userRole === "SPACE_ADMIN";
-
-  const assignable: SpaceMemberRoleCode[] = isFullAdmin
-    ? ["SPACE_ADMIN", "MEMBER"]
-    : ["MEMBER"];
+  const assignable: SpaceMemberRoleCode[] = canManageMembers ? ["SPACE_ADMIN", "MEMBER"] : [];
 
   // The whole roster is fetched once and everything below (search, role filter,
   // pagination, the stat split) is derived from it in the client. A space

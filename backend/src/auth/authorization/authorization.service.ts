@@ -119,6 +119,7 @@ export class AuthorizationService {
    * would grant, per-space overrides and inheritance included. EVENT actions are
    * checked on `eventId` when given; without it they mean "on at least one event
    * of this space" (space-level nav, e.g. the Assist inbox for event-only crew).
+   * A Space Admin of a space co-hosting `eventId` also gets EVENT_EDIT (below).
    */
   async accessIn(
     user: Pick<User, 'id'>,
@@ -153,6 +154,22 @@ export class AuthorizationService {
           : this.grants(a, action, scope, {}, spaceId),
       );
     });
+    // Co-host rule: mirror EventsService.canManageEvent's fallback, which lets a
+    // Space Admin (SPACE_CREATE_EVENT) of a co-hosting space manage the event,
+    // i.e. EVENT_EDIT and nothing more. Publish/cancel/delete and team changes
+    // stay with the owners (T1); money never flows to co-hosts (D9).
+    if (eventId && !capabilities.includes(Action.EVENT_EDIT)) {
+      const coHosts = await this.prisma.eventCoHost.findMany({ where: { eventId }, select: { spaceId: true } });
+      if (
+        coHosts.some((c) =>
+          assignments.some((a) =>
+            this.grants(a, Action.SPACE_CREATE_EVENT, RoleScope.SPACE, { spaceId: c.spaceId }, null),
+          ),
+        )
+      ) {
+        capabilities.push(Action.EVENT_EDIT);
+      }
+    }
     const highest = (match: (a: Assignment) => boolean) =>
       ROLE_RANK.find((code) => assignments.some((a) => a.code === code && match(a))) ?? null;
     return {

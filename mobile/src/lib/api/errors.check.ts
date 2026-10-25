@@ -3,7 +3,7 @@
  * this app). Run:
  *   npx tsc src/lib/api/errors.check.ts --ignoreConfig --noCheck --outDir /tmp/apierr --module commonjs --target es2020 --skipLibCheck && node /tmp/apierr/errors.check.js
  */
-import { ApiError, OFFLINE_MESSAGE, errorFrom, expectOk, refreshEndsSession } from './errors';
+import { ApiError, OFFLINE_MESSAGE, errorFrom, expectOk, isSpaceUnavailable, refreshEndsSession } from './errors';
 
 function check(ok: unknown, msg: string) {
   if (!ok) throw new Error(msg);
@@ -27,6 +27,11 @@ async function main() {
   check(e.message === 'Could not save' && e.status === 502 && !e.offline, 'html body');
   e = await errorFrom(res(500, ''), 'Could not save');
   check(e.message === 'Could not save', 'empty body');
+
+  // The server's error code rides along (J16: suspended space).
+  e = await errorFrom(res(403, '{"message":"This space is temporarily unavailable","code":"SPACE_UNAVAILABLE"}'), 'x');
+  check(e.code === 'SPACE_UNAVAILABLE' && isSpaceUnavailable(e), 'space unavailable code');
+  check(!isSpaceUnavailable(await errorFrom(res(403, '{"message":"Forbidden"}'), 'x')), 'plain 403');
 
   // No response at all = never reached the server.
   e = await errorFrom(null, 'x');

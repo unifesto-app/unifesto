@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
+import { idsByEmail } from '../auth/identifiers';
 import { assertSpaceLive } from '../spaces/space-access';
 import { PaymentsService, capturedAmountMatches } from '../payments/payments.service';
 import { EmailService } from '../email/email.service';
@@ -298,7 +299,7 @@ export class TeamChangesService {
       if (gone.count !== 1) throw new BadRequestException('This seat just changed. Refresh and try again.');
       const own = memberEmail
         ? await tx.eventTicket.deleteMany({
-            where: { registrationId, attendeeEmail: { equals: memberEmail, mode: 'insensitive' } },
+            where: { id: { in: await idsByEmail(tx.eventTicket, { registrationId }, 'attendeeEmail', [memberEmail]) } },
           })
         : { count: 0 };
       await this.closeGap(tx, registrationId, seatIndex);
@@ -747,7 +748,7 @@ export class TeamChangesService {
         await tx.eventRegistration.update({ where: { id: reg.id }, data: { userId: newLeadId } });
         if (newEmail) {
           await tx.eventTicket.deleteMany({
-            where: { registrationId: reg.id, attendeeEmail: { equals: newEmail, mode: 'insensitive' } },
+            where: { id: { in: await idsByEmail(tx.eventTicket, { registrationId: reg.id }, 'attendeeEmail', [newEmail]) } },
           });
         }
         await tx.eventTicket.create({

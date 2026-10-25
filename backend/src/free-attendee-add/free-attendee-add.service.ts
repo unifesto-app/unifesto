@@ -7,6 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SupportCaseKind, SupportDesk } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { assertSpaceLive } from '../spaces/space-access';
 import { decideSubjectCase, openSubjectCase, updateSubjectCase } from '../support/subject-cases';
 import { CreateFreeAddRequestDto, ReviewFreeAddRequestDto, RevokeFreeAddRequestDto } from './dto';
 
@@ -50,6 +51,7 @@ export class FreeAttendeeAddService {
       select: { id: true, spaceId: true, title: true },
     });
     if (!event) throw new NotFoundException('Event not found');
+    await assertSpaceLive(this.prisma, { id: event.spaceId });
     if (dto.ticketTypeId) {
       const tt = await this.prisma.eventTicketType.findFirst({
         where: { id: dto.ticketTypeId, eventId: dto.eventId },

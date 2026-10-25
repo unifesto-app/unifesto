@@ -47,6 +47,7 @@ import { buildEventIcs } from '../events/calendar/ics.util';
 import { RedisService } from '../redis/redis.service';
 import { TermsService } from '../subscription/terms.service';
 import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
+import { findIdentityByEmail } from '../auth/identifiers';
 
 @Injectable()
 export class SessionsService {
@@ -856,8 +857,7 @@ export class SessionsService {
   /** Add a co-host by email. The target must be an existing Unifesto user. */
   async addCoHost(userId: string, sessionId: string, email: string) {
     const session = await this.loadManagedSession(userId, sessionId);
-    const identity = await this.prisma.userIdentity.findFirst({
-      where: { email: { equals: email, mode: 'insensitive' } },
+    const identity = await findIdentityByEmail<{ userId: string }>(this.prisma, email, {
       select: { userId: true },
     });
     if (!identity) {

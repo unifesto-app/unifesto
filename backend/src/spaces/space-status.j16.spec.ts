@@ -2,6 +2,8 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { SpaceStatus } from '@prisma/client';
 import { EventsService } from '../events/events.service';
 import { buildRegistrationsService } from '../registrations/registrations.testing';
+import { RegistrationImportService } from '../registrations/registration-import.service';
+import { FreeAttendeeAddService } from '../free-attendee-add/free-attendee-add.service';
 import { canViewSpace, isSpaceLive, PUBLIC_LIVE_SPACE_WHERE, visibleSpacesWhere } from './space-access';
 
 /**
@@ -109,5 +111,33 @@ describe('events of a space that is not publicly live (J16)', () => {
       'This space is temporarily unavailable',
     );
     expect(payments.createOrder).not.toHaveBeenCalled();
+  });
+});
+
+describe('curator attendee adds in a suspended space (J16)', () => {
+  const suspended = () => ({
+    event: { findUnique: jest.fn(async () => ({ id: 'ev-1', spaceId: 'sp-1', title: 'Fest' })) },
+    eventTicketType: { findFirst: jest.fn(async () => ({ id: 'tt-1', formFields: [] })) },
+    space: { findFirst: jest.fn(async () => ({ status: SpaceStatus.SUSPENDED })) },
+    $transaction: jest.fn(),
+    freeAttendeeAddRequest: { findFirst: jest.fn(), create: jest.fn() },
+  });
+  const UNAVAILABLE = 'This space is temporarily unavailable';
+
+  it('manual add and CSV import are refused before any write', async () => {
+    const prisma: any = suspended();
+    const svc = new RegistrationImportService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+    await expect(
+      svc.manualAddAttendee('ev-1', { ticketTypeId: 'tt-1', name: 'A', email: 'a@x.com', gender: 'M' }),
+    ).rejects.toThrow(UNAVAILABLE);
+    await expect(svc.importAttendees('ev-1', 'tt-1', 'name,email\nA,a@x.com', false)).rejects.toThrow(UNAVAILABLE);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('a free-add request is refused', async () => {
+    const prisma: any = suspended();
+    const svc = new FreeAttendeeAddService(prisma);
+    await expect(svc.createRequest('curator', { eventId: 'ev-1' } as any)).rejects.toThrow(UNAVAILABLE);
+    expect(prisma.freeAttendeeAddRequest.create).not.toHaveBeenCalled();
   });
 });

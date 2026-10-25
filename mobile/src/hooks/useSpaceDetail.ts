@@ -16,6 +16,7 @@ import {
   leaveSpace,
   type Space,
 } from '../lib/api/spaces';
+import { isSpaceUnavailable } from '../lib/api/errors';
 import { AppAlert } from '../components/ui/AppAlert';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -45,6 +46,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
   const [parent, setParent] = useState<Space | null>(null);
   const [subSpaces, setSubSpaces] = useState<Space[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unavailable, setUnavailable] = useState(false);
   const [membershipBusy, setMembershipBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -58,6 +60,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
         ? await getSpaceById(idOrSlug)
         : await getSpaceBySlug(idOrSlug);
       setSpace(data);
+      setUnavailable(false);
       if (!data) return;
 
       const parentId = data.parentSpaceId || data.parent_org_id;
@@ -73,6 +76,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     } catch (error) {
       if (__DEV__) console.error('Error loading space:', error);
       setSpace(null);
+      setUnavailable(isSpaceUnavailable(error));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -197,6 +201,7 @@ export function useSpaceDetail(idOrSlug: string | undefined) {
     user,
     space,
     loading,
+    unavailable,
     refreshing,
     refresh,
     brandColor,
