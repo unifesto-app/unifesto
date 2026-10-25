@@ -20,13 +20,22 @@
 
 (cf_origin) {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
-	# Access logs, kept 180 days for CERT-In. Written under /data (the
-	# caddy_data volume) so they survive redeploys; deploy.sh's rsync --delete
-	# would wipe a bind-mounted ./logs. Caddy redacts Authorization and Cookie
-	# by default; the real client IP is the Cf-Connecting-Ip request header.
+	# Access logs: the CERT-In request record (every request to every site,
+	# unsampled), kept 180 days. Written under /data (the caddy_data volume) so
+	# they survive redeploys; deploy.sh's rsync --delete would wipe a
+	# bind-mounted ./logs. Each JSON line has ts, request.client_ip (the real
+	# visitor, from Cf-Connecting-Ip via trusted_proxies), method, host, uri,
+	# proto, headers (User-Agent etc.; Authorization and Cookie redacted by
+	# Caddy), status, size and duration.
+	# Age is the only limit that should bite: roll_keep defaults to 10 files,
+	# which silently capped history at ~1 GB, so it is raised far past what
+	# 180 days needs (10000 x 100 MiB raw). Rolled files are gzipped (default),
+	# roughly 10x smaller. Check usage with `du -sh /data/logs` in the caddy
+	# container.
 	log {
 		output file /data/logs/access.log {
 			roll_size 100MiB
+			roll_keep 10000
 			roll_keep_for 4320h
 		}
 	}

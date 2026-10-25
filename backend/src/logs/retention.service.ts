@@ -19,6 +19,8 @@ export const RETENTION: ReadonlyArray<{
   days: number;
 }> = [
   // CERT-In Directions (Apr 2022) require at least 180 days of request logs.
+  // api_logs samples 2xx GETs, so the complete record is Caddy's access log
+  // (Caddyfile, also 180 days); this table is the API-side view of it.
   { table: 'api_logs', column: 'created_at', days: 180 },
   { table: 'page_views', column: 'created_at', days: 400 },
   { table: 'short_link_clicks', column: 'created_at', days: 400 },
