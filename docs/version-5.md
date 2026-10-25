@@ -653,7 +653,7 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 | P10 | **Post-launch review and 5.x plan.** Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
 | P21 | Wikidata item for Unifesto, once P18 brings independent coverage to cite (items without sources get deleted); then add it to `SOCIAL`/`sameAs` | planned |
 | P22 | Google Business Profile: verifiable address (Malla Reddy University R&D Center) or a service-area business; category Software company | planned |
-| P23 | **Keep the demo Space out of metrics and mask payout details.** 1. The demo Space's Event Settings payout dropdown shows a real SBI account holder's name and a team member's full UPI ID. | planned |
+| P23 | **Keep the demo Space out of metrics and mask payout details.** 1. The demo Space's Event Settings payout dropdown shows a real SBI account holder's name and a team member's full UPI ID. | done (#318) |
 
 ### T · Deals, billing and access (2026-10-16)
 
@@ -874,3 +874,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · 5.0.0 launch prep: Play submit uploads a draft (never auto-live), OTA.md store-launch runbook (beta, phased release, pause rule) (#315)
 - **2026-10-25** · J12 Redis client reconnects forever (OTP 503 when down) and IAM/plan/platform config caches sync across replicas via a Redis stamp (~2s, 30s floor) (#316)
 - **2026-10-25** · J14 deploy.sh stops syncing .env files (server-side env gate), local dev compose + .env.development.example, backend/prisma refuse RDS unless NODE_ENV=production (#317)
+- **2026-10-25** · P23 UPI IDs masked in payout pickers/lists; demo space + users left out of financials, analytics and stats broadcasts; no link to a private host space (#318)
