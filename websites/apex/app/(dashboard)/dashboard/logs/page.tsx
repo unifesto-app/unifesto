@@ -166,8 +166,8 @@ export default function LogsPage() {
       },
       {
         title: "Retained",
-        value: "14 days",
-        hint: "Auto-pruned",
+        value: "180 days",
+        hint: "Full access log in Caddy, also 180 days",
         icon: Database,
         tone: "neutral" as const,
       },
@@ -179,7 +179,7 @@ export default function LogsPage() {
     <div className="space-y-6">
       <PageHeader
         title="API logs"
-        subtitle="Every request handled by api.unifesto.app"
+        subtitle="Requests to api.unifesto.app. Errors and writes are all kept. Successful GETs are sampled, and counts are weighted to match."
         actions={
           <Button variant="outline" size="sm" onClick={refresh}>
             <ArrowClockwise className="h-4 w-4" /> Refresh
