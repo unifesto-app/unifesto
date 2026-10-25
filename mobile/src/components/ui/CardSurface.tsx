@@ -5,7 +5,7 @@ import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius } from '../../theme/spacing';
-import { useCosmos, useWashActive } from '../../theme/cosmos';
+import { cosmosCardRadius, useCosmos, useWashActive } from '../../theme/cosmos';
 
 /** iOS 26+ renders Apple's Liquid Glass; everything else gets solid / frosted. */
 export const LIQUID_GLASS = isLiquidGlassAvailable();
@@ -77,7 +77,7 @@ export function CardBackdrop({ shape, style, opaque = false }: {
   const { tokens, isDark } = useTheme();
   const c = useCosmos();
   const washed = useWashActive();
-  const fill = [StyleSheet.absoluteFill, { borderRadius: borderRadius.xl }, shape ? radiiOf(shape) : null, style];
+  const fill = [StyleSheet.absoluteFill, { borderRadius: cosmosCardRadius }, shape ? radiiOf(shape) : null, style];
 
   if (kind === 'solid') {
     // On a banner-lit page the card stays translucent so the light shows through.

@@ -212,7 +212,7 @@ const cardStyles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.62)',
     alignItems: 'center',
   },
-  dateDay: { fontSize: 18, lineHeight: 20, color: INK, ...cosmosFont.display },
+  dateDay: { fontSize: 18, lineHeight: 20, color: INK, ...cosmosFont.figure },
   dateMonth: { fontSize: 10, color: SOFT, ...cosmosFont.strong },
   logo: {
     position: 'absolute',

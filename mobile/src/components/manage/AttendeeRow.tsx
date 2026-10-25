@@ -36,7 +36,7 @@ export default function AttendeeRow({ row, onPress }: { row: Row; onPress: () =>
       {row.user.avatarUrl ? (
         <Image source={{ uri: row.user.avatarUrl }} style={styles.avatar} />
       ) : (
-        <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: c.raised }]}>
+        <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: c.tint }]}>
           <User size={20} color={c.muted} />
         </View>
       )}

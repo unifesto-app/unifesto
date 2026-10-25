@@ -113,7 +113,7 @@ export function Composer({
         </View>
         <Pressable onPress={onSend} disabled={sending || !value.trim()} hitSlop={8} accessibilityLabel={note?.on ? 'Save note' : 'Send reply'}>
           {sending ? (
-            <ActivityIndicator color={c.primary} />
+            <ActivityIndicator color={c.text} />
           ) : (
             <PaperPlaneRight size={28} color={value.trim() ? c.primary : c.muted} weight="fill" />
           )}

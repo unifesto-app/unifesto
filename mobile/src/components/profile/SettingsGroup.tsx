@@ -2,9 +2,9 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ArrowUpRight, CaretRight } from '@unifesto/unicon/react-native';
 import { CardBackdrop } from '../ui/CardSurface';
-import { borderRadius, spacing } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { cosmosFont, useCosmos } from '../../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../../theme/cosmos';
 
 export interface SettingsRowProps {
   /** Omit for a plain label/value row (no leading glyph, no indent). */
@@ -94,8 +94,8 @@ export function GroupCell({ index, count, plain, divider, style, children }: {
   children: React.ReactNode;
 }) {
   const c = useCosmos();
-  const top = index === 0 ? borderRadius.xl : 0;
-  const bottom = index === count - 1 ? borderRadius.xl : 0;
+  const top = index === 0 ? cosmosCardRadius : 0;
+  const bottom = index === count - 1 ? cosmosCardRadius : 0;
   const shape = { borderTopLeftRadius: top, borderTopRightRadius: top, borderBottomLeftRadius: bottom, borderBottomRightRadius: bottom };
   return (
     <View style={[shape, styles.cell, style]}>
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   action: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
-  card: { borderRadius: borderRadius.xl, overflow: 'hidden' },
+  card: { borderRadius: cosmosCardRadius, overflow: 'hidden' },
   cell: { overflow: 'hidden' },
   row: {
     flexDirection: 'row',

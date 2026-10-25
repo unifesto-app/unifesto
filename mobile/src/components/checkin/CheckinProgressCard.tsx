@@ -80,11 +80,11 @@ function Figure({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   card: { borderRadius: borderRadius['2xl'], padding: spacing[5], gap: spacing[4] },
   headline: { flexDirection: 'row', alignItems: 'baseline', gap: spacing[2], flexWrap: 'wrap' },
-  big: { fontSize: 44, lineHeight: 50, ...cosmosFont.display },
+  big: { fontSize: 44, lineHeight: 50, ...cosmosFont.figure },
   of: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   track: { height: 10, borderRadius: borderRadius.full, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: borderRadius.full, overflow: 'hidden' },
   split: { flexDirection: 'row', gap: spacing[4] },
-  figure: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  figure: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   figureLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },
 });
