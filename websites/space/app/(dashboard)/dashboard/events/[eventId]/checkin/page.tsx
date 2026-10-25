@@ -483,6 +483,7 @@ function CheckinAccessCard({ eventId }: { eventId: string }) {
                     </div>
                   </div>
                   <Button
+                    aria-pressed={m.allPoints}
                     variant={m.allPoints ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleAll(m)}

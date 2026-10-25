@@ -74,6 +74,7 @@ export default function OtpCodeInput({
       </View>
 
       <TextInput
+        accessibilityLabel="Verification code"
         ref={inputRef}
         value={value}
         onChangeText={handleChange}

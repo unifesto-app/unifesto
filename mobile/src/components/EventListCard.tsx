@@ -24,14 +24,16 @@ export default function EventListCard({ event, past = false, onPress }: { event:
   const cover = coverOr(defaults, event.id, event.coverImageUrl);
   const meta = [relativeWhen(event.startDateTime), placeOf(event)].filter(Boolean).join(' · ');
 
+  // The heart is a sibling of the card's pressable, not inside it: VoiceOver
+  // reads a pressable as one element, so a nested button can't be reached.
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={[event.title, event.space?.name, meta, past ? null : shortPrice(event)].filter(Boolean).join(', ')}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.raised, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
-    >
-      <View style={[styles.main, past && { opacity: 0.62 }]}>
+    <View style={[styles.card, { backgroundColor: c.raised }]}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={[event.title, event.space?.name, meta, past ? null : shortPrice(event)].filter(Boolean).join(', ')}
+        style={({ pressed }) => [styles.main, past && { opacity: 0.62 }, { transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      >
         <View style={[styles.thumb, { backgroundColor: c.card }]}>
           {cover ? (
             <Image source={{ uri: cover }} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -47,9 +49,9 @@ export default function EventListCard({ event, past = false, onPress }: { event:
           <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>{meta}</Text>
           {past ? null : <Text style={[styles.price, { color: c.text }]}>{shortPrice(event)}</Text>}
         </View>
-      </View>
+      </Pressable>
       <FavoriteButton eventId={event.id} size={20} color={c.soft} style={styles.heart} />
-    </Pressable>
+    </View>
   );
 }
 

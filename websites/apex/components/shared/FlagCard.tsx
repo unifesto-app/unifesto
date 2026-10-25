@@ -63,6 +63,7 @@ export function FlagCard({
           </p>
         )}
         <Button
+          aria-pressed={!!enabled}
           variant={enabled ? "default" : "outline"}
           onClick={toggle}
           disabled={busy || enabled === null}

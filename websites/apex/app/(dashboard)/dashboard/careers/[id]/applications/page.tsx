@@ -218,7 +218,7 @@ export default function CareerApplicationsPage() {
                       </a>
                     </Button>
                   )}
-                  <Button
+                  <Button aria-label="Delete"
                     variant="ghost"
                     size="sm"
                     className="ml-auto"

@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
   value: { flex: 1, textAlign: 'right', fontSize: typography.fontSize.base, ...cosmosFont.body },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: cosmosCardRadius, borderTopRightRadius: cosmosCardRadius, paddingTop: spacing[5] },
   title: { paddingHorizontal: spacing[6], fontSize: 17, lineHeight: 24, ...cosmosFont.display },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], height: 44, paddingHorizontal: spacing[4], borderRadius: cosmosRadius },
+  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], marginHorizontal: spacing[6], marginTop: spacing[4], marginBottom: spacing[2], minHeight: 44, paddingHorizontal: spacing[4], borderRadius: cosmosRadius },
   searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
   option: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing[6], minHeight: 52 },
   optionText: { fontSize: typography.fontSize.base, ...cosmosFont.body },

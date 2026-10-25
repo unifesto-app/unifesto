@@ -578,12 +578,12 @@ export default function EventCertificatesPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>Template</Label>
+                  <Label htmlFor="certificates-template">Template</Label>
                   <Select
                     value={issueTemplateId}
                     onValueChange={setIssueTemplateId}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="certificates-template">
                       <SelectValue placeholder="Choose a template" />
                     </SelectTrigger>
                     <SelectContent>
@@ -596,14 +596,14 @@ export default function EventCertificatesPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Recipients</Label>
+                  <Label htmlFor="certificates-recipients">Recipients</Label>
                   <Select
                     value={audience}
                     onValueChange={(v) =>
                       setAudience(v as CertificateAudience)
                     }
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="certificates-recipients">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

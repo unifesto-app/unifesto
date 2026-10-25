@@ -288,9 +288,9 @@ function BoothScanPanel({
         <div className="flex flex-wrap items-end gap-2">
           {scannable.length > 1 && (
             <div className="space-y-1.5">
-              <Label>Event</Label>
+              <Label htmlFor="sponsor-event">Event</Label>
               <Select value={eventSponsorId} onValueChange={setEventSponsorId}>
-                <SelectTrigger className="w-56">
+                <SelectTrigger id="sponsor-event" className="w-56">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -304,8 +304,8 @@ function BoothScanPanel({
             </div>
           )}
           <div className="flex-1 space-y-1.5">
-            <Label>Ticket code</Label>
-            <Input
+            <Label htmlFor="sponsor-ticket-code">Ticket code</Label>
+            <Input id="sponsor-ticket-code"
               value={qr}
               onChange={(e) => setQr(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && scan()}

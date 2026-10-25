@@ -366,22 +366,22 @@ function AddLeadDialog({
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+            <Label htmlFor="leads-name">Name</Label>
+            <Input id="leads-name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Label htmlFor="leads-email">Email</Label>
+              <Input id="leads-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label>Phone</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Label htmlFor="leads-phone">Phone</Label>
+              <Input id="leads-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label>Note</Label>
-            <Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} />
+            <Label htmlFor="leads-note">Note</Label>
+            <Textarea id="leads-note" value={message} onChange={(e) => setMessage(e.target.value)} rows={2} />
           </div>
           <p className="text-xs text-muted-foreground">Provide at least an email or a phone number.</p>
         </div>

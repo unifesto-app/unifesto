@@ -215,7 +215,7 @@ export default function EmailCampaignsPage() {
             >
               Next
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => void load()}>
+            <Button aria-label="Refresh" variant="ghost" size="sm" onClick={() => void load()}>
               <ArrowsClockwise className="h-4 w-4" />
             </Button>
           </div>

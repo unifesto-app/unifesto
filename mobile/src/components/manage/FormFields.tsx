@@ -29,6 +29,7 @@ export function FieldRow({ label, stacked, multiline, error, ...input }: FieldRo
       <View style={styles.stacked}>
         <Text style={[styles.caption, { color: error ? c.danger : c.muted }]}>{label}</Text>
         <TextInput
+          accessibilityLabel={label}
           {...input}
           multiline={multiline}
           placeholderTextColor={c.muted}
@@ -46,6 +47,7 @@ export function FieldRow({ label, stacked, multiline, error, ...input }: FieldRo
           {label}
         </Text>
         <TextInput
+          accessibilityLabel={label}
           {...input}
           placeholderTextColor={c.muted}
           selectionColor={c.primary}

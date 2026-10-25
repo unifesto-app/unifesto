@@ -90,8 +90,8 @@ export function SponsorUsersDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Invite by email</Label>
-            <div className="flex gap-2">
+            <Label id="sponsorusersdialog-invite-by-email-label">Invite by email</Label>
+            <div role="group" aria-labelledby="sponsorusersdialog-invite-by-email-label" className="flex gap-2">
               <Input
                 type="email"
                 placeholder="person@company.com"

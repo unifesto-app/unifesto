@@ -84,12 +84,12 @@ export function NewTicketForm({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Category</Label>
+            <Label htmlFor="newticketform-category">Category</Label>
             <Select
               value={category}
               onValueChange={(v) => setCategory(v as SupportTicketCategory)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="newticketform-category">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -102,12 +102,12 @@ export function NewTicketForm({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Priority</Label>
+            <Label htmlFor="newticketform-priority">Priority</Label>
             <Select
               value={priority}
               onValueChange={(v) => setPriority(v as SupportTicketPriority)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="newticketform-priority">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

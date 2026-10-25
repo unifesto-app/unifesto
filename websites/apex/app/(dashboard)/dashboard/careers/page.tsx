@@ -159,7 +159,7 @@ export default function CareersPage() {
                   >
                     <PencilSimple className="h-4 w-4" /> Edit
                   </Button>
-                  <Button
+                  <Button aria-label="Delete"
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(c)}
@@ -258,8 +258,8 @@ function CareerDialog({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input
+            <Label htmlFor="careers-title">Title</Label>
+            <Input id="careers-title"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
               placeholder="e.g. Senior Frontend Engineer"
@@ -268,32 +268,32 @@ function CareerDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Department</Label>
-              <Input
+              <Label htmlFor="careers-department">Department</Label>
+              <Input id="careers-department"
                 value={form.department}
                 onChange={(e) => set("department", e.target.value)}
                 placeholder="Engineering"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Location</Label>
-              <Input
+              <Label htmlFor="careers-location">Location</Label>
+              <Input id="careers-location"
                 value={form.location}
                 onChange={(e) => set("location", e.target.value)}
                 placeholder="Remote · India"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Employment type</Label>
-              <Input
+              <Label htmlFor="careers-employment-type">Employment type</Label>
+              <Input id="careers-employment-type"
                 value={form.type}
                 onChange={(e) => set("type", e.target.value)}
                 placeholder="Full-time"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Experience level</Label>
-              <Input
+              <Label htmlFor="careers-experience-level">Experience level</Label>
+              <Input id="careers-experience-level"
                 value={form.experienceLevel}
                 onChange={(e) => set("experienceLevel", e.target.value)}
                 placeholder="Mid–Senior"
@@ -302,8 +302,8 @@ function CareerDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Textarea
+            <Label htmlFor="careers-description">Description</Label>
+            <Textarea id="careers-description"
               rows={4}
               value={form.description}
               onChange={(e) => set("description", e.target.value)}
@@ -319,8 +319,9 @@ function CareerDialog({
             ] as const
           ).map(([key, label]) => (
             <div key={key} className="space-y-1.5">
-              <Label>{label}</Label>
+              <Label htmlFor={`career-${key}`}>{label}</Label>
               <Textarea
+                id={`career-${key}`}
                 rows={4}
                 value={form[key]}
                 onChange={(e) => set(key, e.target.value)}
@@ -332,20 +333,20 @@ function CareerDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Salary range (optional)</Label>
-              <Input
+              <Label htmlFor="careers-salary-range-optional">Salary range (optional)</Label>
+              <Input id="careers-salary-range-optional"
                 value={form.salaryRange}
                 onChange={(e) => set("salaryRange", e.target.value)}
                 placeholder="₹12–18 LPA"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label htmlFor="careers-status">Status</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) => set("status", v as CareerStatus)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="careers-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

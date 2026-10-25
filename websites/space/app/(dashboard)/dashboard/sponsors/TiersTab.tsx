@@ -172,10 +172,10 @@ export function TiersTab({ spaceId }: { spaceId: string }) {
 
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label>
+              <Label htmlFor="tierstab-name">
                 Name <span className="text-destructive">*</span>
               </Label>
-              <Input
+              <Input id="tierstab-name"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="Platinum"
@@ -183,8 +183,8 @@ export function TiersTab({ spaceId }: { spaceId: string }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label>Rank</Label>
-                <Input
+                <Label htmlFor="tierstab-rank">Rank</Label>
+                <Input id="tierstab-rank"
                   type="number"
                   min={0}
                   value={form.rank ?? 0}
@@ -192,8 +192,8 @@ export function TiersTab({ spaceId }: { spaceId: string }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Colour</Label>
-                <div className="flex items-center gap-2">
+                <Label id="tierstab-colour-label">Colour</Label>
+                <div role="group" aria-labelledby="tierstab-colour-label" className="flex items-center gap-2">
                   <input
                     type="color"
                     value={form.color || "#888888"}

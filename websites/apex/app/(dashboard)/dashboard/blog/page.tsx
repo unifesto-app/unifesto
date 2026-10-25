@@ -144,7 +144,7 @@ export default function BlogPage() {
                 <Button variant="outline" size="sm" onClick={() => setEditing(p)}>
                   <PencilSimple className="h-4 w-4" /> Edit
                 </Button>
-                <Button
+                <Button aria-label="Delete"
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(p)}
@@ -233,8 +233,8 @@ function PostDialog({
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Title</Label>
-            <Input
+            <Label htmlFor="blog-title">Title</Label>
+            <Input id="blog-title"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
               placeholder="A great headline"
@@ -242,8 +242,8 @@ function PostDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Slug (optional)</Label>
-            <Input
+            <Label htmlFor="blog-slug-optional">Slug (optional)</Label>
+            <Input id="blog-slug-optional"
               value={form.slug}
               onChange={(e) => set("slug", e.target.value)}
               placeholder="auto-generated-from-title"
@@ -264,8 +264,8 @@ function PostDialog({
           />
 
           <div className="space-y-1.5">
-            <Label>Excerpt</Label>
-            <Textarea
+            <Label htmlFor="blog-excerpt">Excerpt</Label>
+            <Textarea id="blog-excerpt"
               rows={2}
               value={form.excerpt}
               onChange={(e) => set("excerpt", e.target.value)}
@@ -274,8 +274,8 @@ function PostDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label>Content (Markdown)</Label>
-            <Textarea
+            <Label htmlFor="blog-content-markdown">Content (Markdown)</Label>
+            <Textarea id="blog-content-markdown"
               rows={12}
               value={form.content}
               onChange={(e) => set("content", e.target.value)}
@@ -290,24 +290,24 @@ function PostDialog({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Category</Label>
-              <Input
+              <Label htmlFor="blog-category">Category</Label>
+              <Input id="blog-category"
                 value={form.category}
                 onChange={(e) => set("category", e.target.value)}
                 placeholder="Product Updates"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Author</Label>
-              <Input
+              <Label htmlFor="blog-author">Author</Label>
+              <Input id="blog-author"
                 value={form.author}
                 onChange={(e) => set("author", e.target.value)}
                 placeholder="Unifesto Team"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Read time (minutes)</Label>
-              <Input
+              <Label htmlFor="blog-read-time-minutes">Read time (minutes)</Label>
+              <Input id="blog-read-time-minutes"
                 type="number"
                 value={form.readMinutes}
                 onChange={(e) => set("readMinutes", e.target.value)}
@@ -315,12 +315,12 @@ function PostDialog({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Status</Label>
+              <Label htmlFor="blog-status">Status</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) => set("status", v as BlogStatus)}
               >
-                <SelectTrigger>
+                <SelectTrigger id="blog-status">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

@@ -283,9 +283,9 @@ export default function ComposeCampaignPage() {
         <CardContent className="space-y-4">
           {templates.length > 0 && (
             <div>
-              <Label>Start from a template</Label>
+              <Label htmlFor="new-start-from-a-template">Start from a template</Label>
               <Select onValueChange={applyTemplate}>
-                <SelectTrigger>
+                <SelectTrigger id="new-start-from-a-template">
                   <SelectValue placeholder="Choose a global template…" />
                 </SelectTrigger>
                 <SelectContent>

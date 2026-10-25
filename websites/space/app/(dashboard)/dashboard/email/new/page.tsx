@@ -235,9 +235,9 @@ export default function SpaceComposeCampaignPage() {
 
               {targetDef.needs === "event" && (
                 <div className="space-y-1.5">
-                  <Label>Event</Label>
+                  <Label htmlFor="new-event">Event</Label>
                   <Select value={targetId} onValueChange={setTargetId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="new-event">
                       <SelectValue placeholder="Choose an event…" />
                     </SelectTrigger>
                     <SelectContent>
@@ -253,9 +253,9 @@ export default function SpaceComposeCampaignPage() {
 
               {targetDef.needs === "member" && (
                 <div className="space-y-1.5">
-                  <Label>Member</Label>
+                  <Label htmlFor="new-member">Member</Label>
                   <Select value={targetId} onValueChange={setTargetId}>
-                    <SelectTrigger>
+                    <SelectTrigger id="new-member">
                       <SelectValue placeholder="Choose a member…" />
                     </SelectTrigger>
                     <SelectContent>
@@ -281,9 +281,9 @@ export default function SpaceComposeCampaignPage() {
             <CardContent className="space-y-4">
               {templates.length > 0 && (
                 <div className="space-y-1.5">
-                  <Label>Start from a template</Label>
+                  <Label htmlFor="new-start-from-a-template">Start from a template</Label>
                   <Select onValueChange={applyTemplate}>
-                    <SelectTrigger>
+                    <SelectTrigger id="new-start-from-a-template">
                       <SelectValue placeholder="Choose a template…" />
                     </SelectTrigger>
                     <SelectContent>

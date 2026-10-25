@@ -173,9 +173,9 @@ export function EventSponsorsTab({ spaceId }: { spaceId: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1.5">
-          <Label>Event</Label>
+          <Label htmlFor="eventsponsorstab-event">Event</Label>
           <Select value={eventId} onValueChange={setEventId}>
-            <SelectTrigger className="w-72">
+            <SelectTrigger id="eventsponsorstab-event" className="w-72">
               <SelectValue placeholder="Choose an event" />
             </SelectTrigger>
             <SelectContent>
@@ -398,9 +398,9 @@ function AttachDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
-            <Label>Sponsor</Label>
+            <Label htmlFor="eventsponsorstab-sponsor">Sponsor</Label>
             <Select value={sponsorId} onValueChange={setSponsorId}>
-              <SelectTrigger>
+              <SelectTrigger id="eventsponsorstab-sponsor">
                 <SelectValue placeholder="Choose from your roster" />
               </SelectTrigger>
               <SelectContent>
@@ -413,9 +413,9 @@ function AttachDialog({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Tier (optional)</Label>
+            <Label htmlFor="eventsponsorstab-tier-optional">Tier (optional)</Label>
             <Select value={tierId} onValueChange={setTierId}>
-              <SelectTrigger>
+              <SelectTrigger id="eventsponsorstab-tier-optional">
                 <SelectValue placeholder="No tier" />
               </SelectTrigger>
               <SelectContent>

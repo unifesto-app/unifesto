@@ -18,6 +18,7 @@ export default function SearchField({ value, onChangeText, busy, ...input }: Pro
     <View style={[styles.field, { borderColor: c.input, backgroundColor: c.card }]}>
       <MagnifyingGlass size={18} color={c.muted} />
       <TextInput
+        accessibilityLabel={input.placeholder}
         returnKeyType="search"
         autoCorrect={false}
         autoCapitalize="none"
@@ -45,10 +46,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    height: 52,
+    minHeight: 52,
     paddingHorizontal: 16,
     borderRadius: cosmosRadius,
     borderWidth: 1,
   },
-  input: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
+  input: { flex: 1, alignSelf: 'stretch', fontSize: typography.fontSize.base, ...cosmosFont.body },
 });

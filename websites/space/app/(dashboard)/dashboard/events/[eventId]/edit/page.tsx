@@ -633,7 +633,7 @@ export default function EditEventPage() {
                     }}
                     placeholder="Add a tag and press Enter"
                   />
-                  <Button type="button" variant="secondary" onClick={addTag}>
+                  <Button aria-label="Add tag" type="button" variant="secondary" onClick={addTag}>
                     <Tag className="h-4 w-4" />
                   </Button>
                 </div>

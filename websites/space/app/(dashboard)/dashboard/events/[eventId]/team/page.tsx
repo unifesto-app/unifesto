@@ -311,7 +311,7 @@ export default function EventTeamPage() {
                       {roleLabel(m.role?.code, m.role?.name)}
                     </Badge>
                     {canAssign && m.userId !== user?.id && outranks(myRole, m.role?.code) && (
-                      <Button
+                      <Button aria-label="Delete"
                         variant="ghost"
                         size="sm"
                         onClick={() =>

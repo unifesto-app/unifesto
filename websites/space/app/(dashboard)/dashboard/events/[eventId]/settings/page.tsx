@@ -362,6 +362,7 @@ export default function EventSettingsPage() {
                 </p>
               </div>
               <Button
+                aria-pressed={isHidden}
                 variant={isHidden ? "default" : "outline"}
                 onClick={() => {
                   setError("");

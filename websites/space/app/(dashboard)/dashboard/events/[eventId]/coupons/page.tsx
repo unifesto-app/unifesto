@@ -4,6 +4,7 @@ import { inr } from "@/lib/utils/money";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Percent, Plus, Trash, PencilSimple, Tag } from "@unifesto/unicon/react";
+import { Field } from "@/components/hackathon/HackParts";
 import {
   getEventCoupons,
   createCoupon,
@@ -282,24 +283,6 @@ export default function EventCouponsPage() {
 }
 
 // ---------------------------------------------------------------------------
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
-}
 
 function CouponForm({
   draft,

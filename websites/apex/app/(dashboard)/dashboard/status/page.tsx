@@ -146,7 +146,7 @@ export default function StatusPage() {
             <Button variant="outline" size="sm" onClick={() => setReporting(true)}>
               <Megaphone className="h-4 w-4" /> Report incident
             </Button>
-            <Button variant="ghost" size="sm" onClick={load}>
+            <Button aria-label="Refresh" variant="ghost" size="sm" onClick={load}>
               <ArrowsClockwise className="h-4 w-4" />
             </Button>
           </div>
@@ -544,12 +544,12 @@ function IncidentForm({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Impact</Label>
+            <Label htmlFor="status-impact">Impact</Label>
             <Select
               value={impact}
               onValueChange={(v) => setImpact(v as IncidentImpact)}
             >
-              <SelectTrigger>
+              <SelectTrigger id="status-impact">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -562,8 +562,8 @@ function IncidentForm({
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Affected services</Label>
-            <div className="flex flex-wrap gap-1.5">
+            <Label id="status-affected-services-label">Affected services</Label>
+            <div role="group" aria-labelledby="status-affected-services-label" className="flex flex-wrap gap-1.5">
               {services.map((s) => (
                 <button
                   key={s.key}

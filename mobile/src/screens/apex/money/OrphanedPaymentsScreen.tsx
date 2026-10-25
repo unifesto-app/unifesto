@@ -148,6 +148,7 @@ export default function OrphanedPaymentsScreen() {
                   </Text>
                 ) : (
                   <TextInput
+                    accessibilityLabel="Target registration id"
                     value={st.manualTarget ?? ''}
                     onChangeText={(v) => patchRow(row.paymentId, { manualTarget: v, err: undefined, mismatch: false })}
                     placeholder="Target registration id"
