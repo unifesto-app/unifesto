@@ -4,6 +4,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { verifyCertificate } from "@/lib/api/certificates";
+import { IST } from "@/lib/site";
 
 interface VerifyPageProps {
   params: Promise<{ code: string }>;
@@ -41,6 +42,7 @@ function formatDate(dateString: string): string {
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: IST,
   });
 }
 

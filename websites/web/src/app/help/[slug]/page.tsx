@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import Markdown from "@/components/site/Markdown";
 import JsonLd, { breadcrumbLd } from "@/components/site/JsonLd";
 import { getHelpArticle } from "@/lib/api/help";
+import { IST } from "@/lib/site";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -52,6 +53,7 @@ export default async function HelpArticlePage({ params }: Props) {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: IST,
   });
 
   return (

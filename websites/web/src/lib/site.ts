@@ -495,6 +495,9 @@ export const PLANS: Plan[] = [
 ];
 
 export const inr = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+
+/** Format dates in one fixed zone: the server renders in UTC, browsers in their own (K16). */
+export const IST = "Asia/Kolkata";
 /** Rupees to the paise, dropping a trailing .00 (₹12.50, ₹0). */
 const rupees = (n: number) => `₹${n.toFixed(2).replace(/\.00$/, "")}`;
 
