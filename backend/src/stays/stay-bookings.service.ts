@@ -1,4 +1,5 @@
 import { RedisService } from '../redis/redis.service';
+import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 import {
   BadRequestException,
   ConflictException,
@@ -819,6 +820,7 @@ export class StayBookingsService {
       this.logger.error(
         `CRITICAL: stay ${b.id}: late payment ${b.paymentId} could not be refunded, retrying later: ${err}`,
       );
+      await noteRefundFailure(this.redis, `auto:stay:${b.id}`, err);
       return false;
     }
     await this.prisma.stayBooking.update({
@@ -836,12 +838,14 @@ export class StayBookingsService {
   /** Retry late-payment refunds that didn't go through the first time. */
   @Cron('*/15 * * * *', { timeZone: 'Asia/Kolkata' })
   async retryDueRefunds(): Promise<void> {
-    const due = await this.prisma.stayBooking.findMany({
-      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
-      select: { id: true },
-      take: 100,
+    await runRefundRetry(this.redis, 'stay', async () => {
+      const due = await this.prisma.stayBooking.findMany({
+        where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+        select: { id: true },
+        take: 100,
+      });
+      for (const b of due) await this.refundDue(b.id);
     });
-    for (const b of due) await this.refundDue(b.id);
   }
 
   /** Release beds whose payment window closed. */

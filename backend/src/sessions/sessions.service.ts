@@ -44,6 +44,8 @@ import {
 } from './dto';
 import { button, details, esc, greet, h1, p, small, strong } from '../email/layout';
 import { buildEventIcs } from '../events/calendar/ics.util';
+import { RedisService } from '../redis/redis.service';
+import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 
 @Injectable()
 export class SessionsService {
@@ -57,6 +59,7 @@ export class SessionsService {
     private readonly planConfig: PlanConfigService,
     private readonly authz: AuthorizationService,
     private readonly events?: EventEmitter2,
+    private readonly redis?: RedisService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -525,6 +528,7 @@ export class SessionsService {
       this.logger.error(
         `CRITICAL: refund of session registration ${registrationId} failed, retrying later: ${(err as Error).message}`,
       );
+      await noteRefundFailure(this.redis, `auto:session:${registrationId}`, err);
       return null;
     }
     await this.prisma.sessionRegistration.update({
@@ -563,12 +567,14 @@ export class SessionsService {
   /** Retry session refunds that didn't go through the first time. */
   @Cron('*/15 * * * *')
   async retryDueRefunds(): Promise<void> {
-    const due = await this.prisma.sessionRegistration.findMany({
-      where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
-      select: { id: true },
-      take: 100,
+    await runRefundRetry(this.redis, 'session', async () => {
+      const due = await this.prisma.sessionRegistration.findMany({
+        where: { refundDueAt: { lte: new Date() }, paymentStatus: PaymentStatus.PAID },
+        select: { id: true },
+        take: 100,
+      });
+      for (const r of due) await this.refundDue(r.id);
     });
-    for (const r of due) await this.refundDue(r.id);
   }
 
   /** Page link, local start time and a calendar-invite attachment for a session. */
