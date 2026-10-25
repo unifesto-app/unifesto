@@ -490,7 +490,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J1 | **Endpoint guard audit, input validation and rate limits.** Endpoint guard audit (all routes vs `@Can`/guards), input validation, per-route rate limits | planned |
 | J2 | **Fix boot failures, stranded push campaigns and cron gaps.** Silent catches, cron jobs safe with multiple replicas (single-runner locks), graceful shutdown | done (#339) |
 | J3 | **Cap public list queries and fix hot-path N+1s.** Missing indexes, N+1s, unbounded `findMany` | in progress (#377) |
-| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | done (#375) |
+| J4 | **Turn on Sentry and JSON logs, keep 180-day logs.** Structured logs + request ids + error alerting; deeper `/health` | in progress (#371) |
 | J5 | **Queue publish emails, bulk import and blasts.** Queue heavy work (email, push fan-out, PDF/cert rendering) off the request path | planned |
 | J6 | **Drill a backup restore on a staging copy, then run k6.** k6 scripts for real peaks (event page, OTP login, checkout, check-in, leaderboard); baseline on a staging copy | planned |
 | J7 | **Autoscaling on EKS with managed infra and CI/CD.** Autoscaling (EKS + ALB, Terraform + Helm, Secrets Manager, PgBouncer, Redis, CI/CD replacing `deploy.sh`) | parked: only when J6 shows the current host can't take the peak |
@@ -920,3 +920,4 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-26** · J3 slice 1: page/limit parsed safely and capped on every hand-parsed list endpoint (public /spaces max 50); public space page no longer loads every member (#377)
 - **2026-10-26** · T10 part 1: /config/plan-fees serves the whole plan_configs row, PLAN_LIMITS pinned to the seed by a spec, blank platform fee is a 400 not a 500, dead Apex user-keyed subscription API removed; columns kept for a later contract migration (#374)
 - **2026-10-26** · J4 slice 5 + J3 status load: status uptime counts incidents and says it isn't an outside probe; mobile Apex can report and resolve incidents (#375)
+- **2026-10-26** · J4 slice 2: autoheal restarts unhealthy backend/cert-worker, container logs capped at 5x10 MB, no-op Caddy active health check removed (#371)
