@@ -228,6 +228,15 @@ describe('ConfigValidationService', () => {
       );
     });
 
+    it('accepts sslmode=disable outside production only (J14 local dev DB)', async () => {
+      setupValidEnvironment();
+      process.env.DATABASE_URL = 'postgresql://user:pass@localhost:5432/db?sslmode=disable';
+      process.env.NODE_ENV = 'development';
+      await expect(new ConfigValidationService().onModuleInit()).resolves.toBeUndefined();
+      process.env.NODE_ENV = 'production';
+      await expect(new ConfigValidationService().onModuleInit()).rejects.toThrow('sslmode=require');
+    });
+
     it('should accept DATABASE_URL with sslmode=require among other parameters', async () => {
       setupValidEnvironment();
       process.env.DATABASE_URL =

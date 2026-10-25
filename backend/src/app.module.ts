@@ -87,10 +87,11 @@ import { jsonLogsEnabled, requestIdFor } from './common/observability';
         ]
       : []),
     CategoriesModule,
-    // Load environment variables from .env file
+    // Load environment variables: .env.local (laptop dev values) wins over .env.
+    // src/env.ts already loaded both into process.env; this keeps ConfigService in step.
     NestConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: ['.env.local', '.env'],
     }),
     // Enable scheduled jobs and cron tasks. The cert-worker container
     // (CERT_WORKER=true) runs the same image only to drain the render queue, so
