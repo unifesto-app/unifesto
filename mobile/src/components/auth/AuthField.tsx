@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 54,
+    minHeight: 54,
     borderWidth: 1,
     borderRadius: cosmosRadius,
     paddingHorizontal: 16,
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   prefixText: { fontSize: 16, ...cosmosFont.strong },
-  fieldMultiline: { height: undefined, minHeight: 110, alignItems: 'flex-start', paddingVertical: 14 },
-  input: { flex: 1, height: '100%', fontSize: 16, ...cosmosFont.body },
-  inputMultiline: { height: undefined, minHeight: 82, paddingTop: 0, textAlignVertical: 'top', lineHeight: 22 },
+  fieldMultiline: { minHeight: 110, alignItems: 'flex-start', paddingVertical: 14 },
+  input: { flex: 1, alignSelf: 'stretch', fontSize: 16, ...cosmosFont.body },
+  inputMultiline: { minHeight: 82, paddingTop: 0, textAlignVertical: 'top', lineHeight: 22 },
 });

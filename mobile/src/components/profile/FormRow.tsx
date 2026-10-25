@@ -27,6 +27,7 @@ const FormRow = forwardRef<TextInput, FormRowProps>(function FormRow(
       {prefix ? <Text style={[styles.prefix, { color: c.muted }]}>{prefix}</Text> : null}
       <TextInput
         ref={ref}
+        accessibilityLabel={rest.placeholder}
         placeholderTextColor={c.muted}
         selectionColor={c.primary}
         multiline={multiline}

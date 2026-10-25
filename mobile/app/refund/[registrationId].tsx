@@ -235,6 +235,7 @@ export default function RefundRoute() {
                 </View>
 
                 <TextInput
+                  accessibilityLabel="Reason for the refund"
                   value={reason}
                   onChangeText={(v) => {
                     setReason(v);

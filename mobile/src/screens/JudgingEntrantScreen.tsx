@@ -281,6 +281,7 @@ export default function JudgingEntrantScreen() {
               <View style={styles.metricTopRow}>
                 <Text style={[styles.metricLabel, { color: c.text }]}>{m.label}</Text>
                 <TextInput
+                  accessibilityLabel={`${m.label} score`}
                   style={[styles.scoreInput, { color: c.text, backgroundColor: c.tint, borderColor: c.border }]}
                   keyboardType="decimal-pad"
                   placeholder="—"
@@ -297,6 +298,7 @@ export default function JudgingEntrantScreen() {
                 {m.weight !== 1 ? `  ·  weight ${m.weight}` : ''}
               </Text>
               <TextInput
+                accessibilityLabel={`Note for ${m.label}`}
                 style={[styles.commentInput, { color: c.text, backgroundColor: c.tint }]}
                 placeholder="Add a note for this criterion (optional)"
                 placeholderTextColor={c.muted}
@@ -316,6 +318,7 @@ export default function JudgingEntrantScreen() {
       <View style={styles.reviewWrap}>
         <CardBackdrop shape={styles.reviewWrap} />
         <TextInput
+          accessibilityLabel="Overall review"
           style={[styles.reviewInput, { color: c.text }]}
           placeholder={
             isMentor

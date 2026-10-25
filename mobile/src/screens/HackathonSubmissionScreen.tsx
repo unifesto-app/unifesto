@@ -145,6 +145,7 @@ export default function HackathonSubmissionScreen() {
                   <CardBackdrop shape={styles.linkCard} />
                   <View style={styles.linkRow}>
                     <TextInput
+                      accessibilityLabel="Link name"
                       value={l.label}
                       onChangeText={(v) => setLink(i, { label: v })}
                       placeholder="Label (e.g. GitHub)"
@@ -163,6 +164,7 @@ export default function HackathonSubmissionScreen() {
                     </Pressable>
                   </View>
                   <TextInput
+                    accessibilityLabel="Link address"
                     value={l.url}
                     onChangeText={(v) => setLink(i, { url: v })}
                     placeholder="https://"
@@ -187,6 +189,7 @@ export default function HackathonSubmissionScreen() {
               <View style={[styles.linkCard, { marginTop: spacing[4] }]}>
                 <CardBackdrop shape={styles.linkCard} />
                 <TextInput
+                  accessibilityLabel="Notes for the judges"
                   value={notes}
                   onChangeText={(v) => (setNotes(v), setError(''))}
                   placeholder="Notes for the judges (optional), e.g. demo login"

@@ -161,6 +161,7 @@ export default function BankAccountsScreen() {
               rejecting === a.id ? (
                 <>
                   <TextInput
+                    accessibilityLabel="Reason for rejecting"
                     value={reason}
                     onChangeText={setReason}
                     placeholder="Why (the organiser sees this)"

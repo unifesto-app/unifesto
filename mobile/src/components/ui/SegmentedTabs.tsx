@@ -72,6 +72,6 @@ export default function SegmentedTabs<K extends string>({ tabs, value, onChange,
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', padding: PAD, borderRadius: borderRadius.full, borderWidth: 1 },
   pill: { position: 'absolute', top: PAD, bottom: PAD, left: PAD, borderRadius: borderRadius.full },
-  segment: { flex: 1, height: 44, alignItems: 'center', justifyContent: 'center' },
+  segment: { flex: 1, minHeight: 44, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   label: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
 });
