@@ -95,6 +95,7 @@ import {
 } from './dto';
 import slugify from 'slugify';
 import { resolveCategories } from './event-categories';
+import { settle } from '../payouts/settle';
 import {
   checkFieldDefinition,
   sanitizeConfig,
@@ -3476,12 +3477,16 @@ export class EventsService {
           },
           _count: { _all: true },
         }),
-        // Same "current gross" definition as the financials page: PAID rows,
-        // ticket amount net of the platform processing fee.
+        // The financials page's "current gross" through settle() (T6): money
+        // still held, net of the buyer fee and of refunds.
         this.prisma.eventRegistration.groupBy({
-          by: ['ticketTypeId'],
-          where: { eventId, paymentStatus: PaymentStatus.PAID },
-          _sum: { totalAmount: true, processingFee: true },
+          by: ['ticketTypeId', 'paymentStatus', 'platformFeePercent'],
+          where: {
+            eventId,
+            paymentStatus: { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] },
+            refundDueAt: null,
+          },
+          _sum: { totalAmount: true, processingFee: true, refundedAmount: true },
         }),
       ]);
 
@@ -3492,7 +3497,7 @@ export class EventsService {
 
     return types.map((t) => {
       const wl = waitlist.filter((w) => w.ticketTypeId === t.id);
-      const rev = paid.find((p) => p.ticketTypeId === t.id);
+      const rev = paid.filter((p) => p.ticketTypeId === t.id).map((p) => ({ ...p, ...p._sum }));
       return {
         ...t,
         stats: {
@@ -3502,10 +3507,7 @@ export class EventsService {
             wl.find((w) => w.waitlistStatus === 'WAITING')?._count._all ?? 0,
           waitlistOffered:
             wl.find((w) => w.waitlistStatus === 'OFFERED')?._count._all ?? 0,
-          revenue: canSeeMoney
-            ? Number(rev?._sum.totalAmount ?? 0) -
-              Number(rev?._sum.processingFee ?? 0)
-            : null,
+          revenue: canSeeMoney ? settle(rev, 0).gross : null,
         },
       };
     });

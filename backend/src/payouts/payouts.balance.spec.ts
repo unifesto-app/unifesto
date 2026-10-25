@@ -1,5 +1,6 @@
 import { BillingModel, PaymentStatus } from '@prisma/client';
-import { PayoutsService, feeAtFrozenRates } from './payouts.service';
+import { PayoutsService } from './payouts.service';
+import { feeAtFrozenRates } from './settle';
 
 /**
  * S15 / S16: a partly refunded ticket still counts (net of the refund), a row
@@ -40,14 +41,13 @@ describe('PayoutsService event balance', () => {
     expect(summary.defaultPlatformFeePercent).toBe(5);
   });
 
-  it('feeAtFrozenRates rounds per rate and lets an admin override win', () => {
+  it('feeAtFrozenRates rounds per rate', () => {
     const sales = [
       { net: 100, percent: 2 },
       { net: 50, percent: 2 },
       { net: 33.33, percent: null }, // no frozen rate: fallback
     ];
     expect(feeAtFrozenRates(sales, 10)).toBe(6.33); // 150 x 2% + 33.33 x 10%
-    expect(feeAtFrozenRates(sales, 10, 0)).toBe(0);
   });
 
   it('a cancelled event with paid rows has nothing to withdraw (A24)', async () => {

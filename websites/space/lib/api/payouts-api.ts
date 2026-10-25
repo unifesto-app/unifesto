@@ -155,6 +155,35 @@ export async function getEventPayoutSummary(
   );
 }
 
+/** An event's money, settled on the server at each sale's own fee (T6). */
+export interface EventTransactions {
+  /** Ever captured, buyer fee included. */
+  collected: number;
+  /** Buyer fees the platform kept. */
+  buyerFees: number;
+  refunded: number;
+  /** Still held, before the organiser's platform fee. */
+  gross: number;
+  platformFee: number;
+  /** What the organiser keeps. */
+  net: number;
+  pending: number;
+  paidCount: number;
+  count: number;
+}
+
+/** Transactions tiles, optionally for one ticket type. `GET /payouts/event/:id/transactions`. */
+export async function getEventTransactions(
+  eventId: string,
+  ticketTypeId?: string
+): Promise<{ data: EventTransactions | null; error: ApiError | null }> {
+  return apiCall<EventTransactions>(
+    backendClient.get(`/payouts/event/${eventId}/transactions`, {
+      params: ticketTypeId ? { ticketTypeId } : undefined,
+    })
+  );
+}
+
 /** Organiser: request a payout for my own ended event. `POST /payouts/request`. */
 export async function requestPayout(
   eventId: string,

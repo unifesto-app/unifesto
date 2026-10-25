@@ -48,6 +48,16 @@ export class PayoutsController {
     return this.payoutsService.getEventPayoutSummary(eventId, req.user.id);
   }
 
+  /** Transactions page tiles for an event (optionally one ticket type). */
+  @Get('event/:eventId/transactions')
+  async getEventTransactions(
+    @Request() req,
+    @Param('eventId') eventId: string,
+    @Query('ticketTypeId') ticketTypeId?: string,
+  ) {
+    return this.payoutsService.getEventTransactions(req.user.id, eventId, ticketTypeId);
+  }
+
   /** Every payout for a space's events (space admins only, not just own). */
   @Get('space/:spaceId')
   async getSpacePayouts(@Request() req, @Param('spaceId') spaceId: string) {

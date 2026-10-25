@@ -53,6 +53,28 @@ export async function getTransactions(eventId: string) {
   return { ok: true as const, data: rows.filter(isTransaction) };
 }
 
+/** The money tiles, settled on the server at each sale's own fee (T6). */
+export interface TransactionSummary {
+  /** Ever captured, buyer fee included. */
+  collected: number;
+  /** Buyer fees the platform kept. */
+  buyerFees: number;
+  refunded: number;
+  /** Still held, before the organiser's platform fee. */
+  gross: number;
+  platformFee: number;
+  /** What the organiser keeps. */
+  net: number;
+  pending: number;
+  paidCount: number;
+}
+
+/** Tiles for the event, or one ticket type of it. */
+export function getTransactionSummary(eventId: string, ticketTypeId?: string) {
+  const q = ticketTypeId ? `?ticketTypeId=${encodeURIComponent(ticketTypeId)}` : '';
+  return call<TransactionSummary>(`/payouts/event/${eventId}/transactions${q}`);
+}
+
 export type ExportFormat = 'csv' | 'xlsx' | 'pdf';
 const EXT: Record<ExportFormat, string> = { csv: 'csv', xlsx: 'xls', pdf: 'pdf' };
 

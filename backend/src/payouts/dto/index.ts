@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsIn, IsUUID, IsBoolean, IsNumber, IsPositive, Min, Max, IsEnum, ValidateIf, Matches, Length } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsUUID, IsBoolean, IsNumber, IsPositive, Min, IsEnum, ValidateIf, Matches, Length } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /** A32: payout-method formats, shared with the service so a bypassed DTO can't skip them. */
@@ -98,12 +98,6 @@ export class CreatePayoutDto {
 
   @IsUUID()
   bankAccountId: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  @Max(100)
-  platformFeePercent?: number;
 
   /**
    * Custom payout amount (the exact net to transfer). Omit to pay out the whole

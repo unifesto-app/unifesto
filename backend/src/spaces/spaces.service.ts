@@ -38,6 +38,7 @@ import {
   BillingCycle,
   OrgPlan,
   PaymentStatus,
+  StayPaymentMode,
   EventStatus,
   Prisma,
   RoleCode,
@@ -52,6 +53,7 @@ import { idForOldSlug, rememberOldSlug } from '../common/slug-history';
 import { assertCanViewSpace, isSpaceLive, visibleSpacesWhere } from './space-access';
 import { isPlatformAdmin } from '../events/event-access';
 import { SPACE_ADMIN_ROLE_CODES } from '../auth/authorization';
+import { settle, SettleRow } from '../payouts/settle';
 import { emailFilter, sameEmail } from '../auth/identifiers';
 import { button, esc, greet, h1, note, p, SPACE_APP, strong } from '../email/layout';
 
@@ -2626,33 +2628,41 @@ export class SpacesService {
       upcomingEventGroups.map((g) => [g.spaceId, g._count._all]),
     );
 
-    // Net revenue per space = PAID ticket revenue minus the app processing fee.
-    // Refunds are excluded automatically (refunded registrations are no longer
-    // PAID), matching the Finance page's net basis. Registrations are keyed by
-    // event, so we map each event back to its space and accumulate.
+    // Revenue per space = Space Financials' "current gross" through settle()
+    // (T6): money still held across tickets, online stays and add-on seats,
+    // net of the buyer fee and refunds. Rows are keyed by event, so each event
+    // maps back to its space.
     const revenueEvents = await this.prisma.event.findMany({
       where: { spaceId: { in: descendantIds } },
       select: { id: true, spaceId: true },
     });
     const eventToSpace = new Map(revenueEvents.map((e) => [e.id, e.spaceId]));
+    const heldPayment = { in: [PaymentStatus.PAID, PaymentStatus.PARTIALLY_REFUNDED] };
+    const held = { eventId: { in: revenueEvents.map((e) => e.id) }, paymentStatus: heldPayment };
+    const by: ['eventId', 'paymentStatus', 'platformFeePercent'] = ['eventId', 'paymentStatus', 'platformFeePercent'];
+    const _sum = { totalAmount: true, processingFee: true, refundedAmount: true } as const;
     const revenueGroups = revenueEvents.length
-      ? await this.prisma.eventRegistration.groupBy({
-          by: ['eventId'],
-          where: {
-            eventId: { in: revenueEvents.map((e) => e.id) },
-            paymentStatus: PaymentStatus.PAID,
-          },
-          _sum: { totalAmount: true, processingFee: true },
-        })
+      ? (
+          await Promise.all([
+            this.prisma.eventRegistration.groupBy({ by, where: { ...held, refundDueAt: null }, _sum }),
+            this.prisma.stayBooking.groupBy({
+              by,
+              where: { ...held, refundDueAt: null, paymentMode: StayPaymentMode.ONLINE },
+              _sum,
+            }),
+            this.prisma.groupSeatPurchase.groupBy({ by, where: { ...held, seatsAddedAt: { not: null } }, _sum }),
+          ])
+        ).flat()
       : [];
-    const revenueBySpace = new Map<string, number>();
+    const rowsBySpace = new Map<string, SettleRow[]>();
     for (const g of revenueGroups) {
       const sid = eventToSpace.get(g.eventId);
       if (!sid) continue;
-      const net =
-        Number(g._sum.totalAmount ?? 0) - Number(g._sum.processingFee ?? 0);
-      revenueBySpace.set(sid, (revenueBySpace.get(sid) ?? 0) + net);
+      rowsBySpace.set(sid, [...(rowsBySpace.get(sid) ?? []), { ...g, ...g._sum }]);
     }
+    const revenueBySpace = new Map(
+      [...rowsBySpace].map(([sid, rows]) => [sid, settle(rows, 0).gross]),
+    );
 
     const subSpaces = descendants
       .map((d) => ({
