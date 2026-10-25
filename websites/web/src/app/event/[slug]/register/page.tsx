@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getRegistrationForm as fetchForm } from "@/lib/api/registration";
 import { getTenant } from "@/lib/tenant";
@@ -33,5 +34,5 @@ export default async function RegisterPage({ params }: Props) {
   if (!form || form.event.status === "DRAFT" || form.event.visibility === "SPACE_ONLY") notFound();
   const tenant = await getTenant();
   if (tenant && (form.event.space?.slug ?? form.event.organization?.slug) !== tenant.spaceSlug) notFound();
-  return <RegisterClient {...form} />;
+  return <RegisterClient {...form} nonce={(await headers()).get("x-nonce") ?? undefined} />;
 }

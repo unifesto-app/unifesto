@@ -9,6 +9,50 @@ const API = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || '
 // host -> space slug (null = not a live custom domain), kept for a minute so a
 // page load doesn't ask the API on every request.
 // ponytail: per-process cache; a suspension or removal takes up to 60s to bite.
+const origin = (url: string | undefined) => {
+  try {
+    return url ? new URL(url).origin : '';
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * K14: strict CSP. Scripts run only with this request's nonce (Next stamps it
+ * on its own scripts and inline runtime; the root layout on the theme script)
+ * or when loaded by such a script ('strict-dynamic', which covers Razorpay's
+ * checkout.js and what it pulls in). Hosts in script-src are the fallback for
+ * browsers without CSP3. Styles stay 'unsafe-inline': React style attributes
+ * need it, and a style can't read localStorage.
+ */
+function csp(nonce: string): string {
+  const dev = process.env.NODE_ENV === 'development';
+  const razorpay = 'https://checkout.razorpay.com https://api.razorpay.com';
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://checkout.razorpay.com${dev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    // Event banners, space logos and avatars come from S3 and elsewhere.
+    "img-src 'self' data: blob: https:",
+    [
+      "connect-src 'self'",
+      origin(process.env.NEXT_PUBLIC_API_URL) || 'https://api.unifesto.app',
+      origin(process.env.NEXT_PUBLIC_SENTRY_DSN),
+      'https://api.bigdatacloud.net', // events near me (EventsGrid)
+      'https://lumberjack.razorpay.com',
+      razorpay,
+      dev ? 'ws:' : '',
+    ].filter(Boolean).join(' '),
+    `frame-src ${razorpay} https://maps.google.com https://www.google.com`,
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+}
+
 const tenants = new Map<string, { slug: string | null; until: number }>();
 
 async function tenantSlug(host: string): Promise<string | null> {
@@ -38,28 +82,38 @@ async function tenantSlug(host: string): Promise<string | null> {
  *    pass, and every other path goes to the main site.
  */
 export async function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const policy = csp(nonce);
+  // Next reads the nonce from the request's CSP header while rendering.
+  const headers = new Headers(request.headers);
+  headers.set('x-nonce', nonce);
+  headers.set('content-security-policy', policy);
+  const res = await route(request, headers);
+  res.headers.set('Content-Security-Policy', policy);
+  return res;
+}
+
+async function route(request: NextRequest, reqHeaders: Headers): Promise<NextResponse> {
   const { pathname, search } = request.nextUrl;
   // Standalone Next reports its bind address (0.0.0.0) in nextUrl, not the
   // visitor's host; Caddy passes the real one through in Host.
   const hostname = (request.headers.get('host') ?? request.nextUrl.hostname).toLowerCase().replace(/:\d+$/, '');
 
-  if (pathname.startsWith('/.well-known/')) return NextResponse.next();
+  if (pathname.startsWith('/.well-known/')) return NextResponse.next({ request: { headers: reqHeaders } });
 
   if (hostname === 'unifesto.app') return NextResponse.redirect(`${MAIN}${pathname}${search}`, 308);
 
   if (isOwnHost(hostname)) {
     // Only this proxy may set the tenant headers; drop any a client sent.
-    if (!request.headers.has('x-tenant-host') && !request.headers.has('x-tenant-space')) return NextResponse.next();
-    const clean = new Headers(request.headers);
-    clean.delete('x-tenant-host');
-    clean.delete('x-tenant-space');
-    return NextResponse.next({ request: { headers: clean } });
+    reqHeaders.delete('x-tenant-host');
+    reqHeaders.delete('x-tenant-space');
+    return NextResponse.next({ request: { headers: reqHeaders } });
   }
 
   const slug = await tenantSlug(hostname);
   if (!slug) return new NextResponse('Not found', { status: 404 });
 
-  const headers = new Headers(request.headers);
+  const headers = reqHeaders;
   headers.set('x-tenant-host', hostname);
   headers.set('x-tenant-space', slug);
 

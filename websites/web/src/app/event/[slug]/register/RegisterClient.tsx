@@ -63,9 +63,11 @@ interface Props {
   event: Event;
   tickets: RegTicket[];
   fields: FormField[];
+  /** K14: this request's CSP nonce, for Razorpay's checkout.js. */
+  nonce?: string;
 }
 
-export default function RegisterClient({ event, tickets, fields }: Props) {
+export default function RegisterClient({ event, tickets, fields, nonce }: Props) {
   const [now] = useState(() => Date.now());
   const appLink = `unifesto://event/${event.slug}`;
 
@@ -633,7 +635,7 @@ export default function RegisterClient({ event, tickets, fields }: Props) {
     <main className="min-h-screen overflow-x-hidden bg-canvas" style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
       {individual.some((t) => t.price > 0) && (
-        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" />
+        <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="afterInteractive" nonce={nonce} />
       )}
       <Navbar />
       <section className="px-5 pb-24 pt-28 sm:px-8 md:pt-32">
