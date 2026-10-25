@@ -44,6 +44,7 @@ import {
   ticketsIn,
 } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { TermsService, dealColumns } from '../subscription/terms.service';
 
 /**
  * Starting a registration: free RSVP, paid checkout (Razorpay order + coupon
@@ -64,6 +65,7 @@ export class RegistrationCheckoutService {
     private readonly groupSeats: GroupSeatsService,
     private readonly coupons: CouponsService,
     private readonly confirmations: RegistrationConfirmationsService,
+    private readonly terms: TermsService,
   ) {}
 
   /**
@@ -479,12 +481,15 @@ export class RegistrationCheckoutService {
       baseAmount = Math.max(0, baseAmount - couponDiscount);
     }
 
-    // The organiser may absorb the buyer fee (A33): then the buyer pays the
-    // listed price and the fee comes out of it.
+    // Priced under the space's terms (T4/T5): the event's or space's deal,
+    // else the rate card. The organiser may absorb the buyer fee (A33): then
+    // the buyer pays the listed price and the fee comes out of it.
+    const terms = await this.terms.resolve(event.spaceId, eventId);
     const sale = this.payments.priceSale(
       baseAmount,
       ticketsIn(ticketType, { quantity: dto.quantity, groupSize }),
       event.absorbProcessingFee,
+      terms,
     );
     const processingFee = sale.fee;
     const totalAmount = sale.total;
@@ -506,6 +511,7 @@ export class RegistrationCheckoutService {
             totalAmount: new Prisma.Decimal(totalAmount),
             razorpayAmount: new Prisma.Decimal(0),
             processingFee: new Prisma.Decimal(processingFee),
+            ...dealColumns(terms),
             couponId: couponCtx?.coupon.id ?? null,
             couponDiscount: new Prisma.Decimal(couponDiscount),
             paymentStatus: PaymentStatus.PAID,
@@ -607,6 +613,7 @@ export class RegistrationCheckoutService {
             totalAmount: new Prisma.Decimal(totalAmount),
             razorpayAmount: new Prisma.Decimal(razorpayAmount),
             processingFee: new Prisma.Decimal(processingFee),
+            ...dealColumns(terms),
             couponId: couponCtx?.coupon.id ?? null,
             couponDiscount: new Prisma.Decimal(couponDiscount),
             paymentStatus: PaymentStatus.PENDING,

@@ -7,11 +7,66 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
 import { BillingCycle, BillingModel, OrgPlan } from '@prisma/client';
+
+/** Platform admin: negotiated terms for a space or one of its events (T4). Null = rate card. */
+export class CreateDealDto {
+  @ApiPropertyOptional({ description: 'Limit the deal to one event of the space' })
+  @IsOptional()
+  @IsUUID()
+  eventId?: string;
+
+  @ApiPropertyOptional({ enum: OrgPlan })
+  @IsOptional()
+  @IsEnum(OrgPlan)
+  plan?: OrgPlan;
+
+  @ApiPropertyOptional({ example: 0, description: 'Plan price in paise; 0 = comp, omit = rate card' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  planPricePaise?: number;
+
+  @ApiPropertyOptional({ enum: BillingCycle })
+  @IsOptional()
+  @IsEnum(BillingCycle)
+  billingCycle?: BillingCycle;
+
+  @ApiPropertyOptional({ example: 300, description: 'Buyer fee in basis points (500 = 5%)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  buyerFeeBps?: number;
+
+  @ApiPropertyOptional({ example: 100, description: 'Organiser platform fee in basis points (150 = 1.5%)' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(10000)
+  organiserFeeBps?: number;
+
+  @ApiPropertyOptional({ description: 'ISO start; default now' })
+  @IsOptional()
+  @IsISO8601()
+  validFrom?: string;
+
+  @ApiPropertyOptional({ description: 'ISO end; omit = open-ended' })
+  @IsOptional()
+  @IsISO8601()
+  validUntil?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  note?: string;
+}
 
 export class UpgradeSubscriptionDto {
   @ApiProperty({ enum: OrgPlan, example: OrgPlan.PRO })

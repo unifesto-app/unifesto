@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PlatformConfigService } from '../subscription/platform-config.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
+import { FeeTerms, quote, rateCardFees, toPaise } from './quote';
 
 /**
  * A refund under this key already went out, for a different amount. Money has
@@ -142,40 +143,31 @@ export class PaymentsService {
   }
 
   /**
-   * The app-wide buyer processing fee for a base price covering `tickets`
-   * tickets: the percent of the base, capped per ticket (A34: min(5%, ₹99)).
-   * Applied to every paid transaction regardless of the organiser's plan, so
-   * events, sessions, stays and extra seats charge it identically. A ticket is
-   * one priced unit: each of a quantity, each seat of a per-person group, a
-   * flat-priced group as one, a session seat, a stay guest.
+   * What a sale costs, in rupees (A33), via quote(). `listed` is the ticket
+   * price × tickets (after any coupon). Fee on top (default): base = listed,
+   * total = listed + fee. Absorbed by the organiser: the buyer pays exactly
+   * `listed` and the fee is carved out of it at the same rate and per-ticket
+   * cap, so base = listed − fee. `terms` is the sale's resolved terms (T4);
+   * without them the rate card applies. Refunds and payouts read total − fee.
    */
-  /**
-   * What a sale costs (A33). `listed` is the ticket price × tickets (after any
-   * coupon). Fee on top (default): base = listed, total = listed + fee.
-   * Absorbed by the organiser: the buyer pays exactly `listed` and the fee is
-   * carved out of it, at the same rate (5% of the base) and per-ticket cap, so
-   * base = listed − fee. Refunds and payouts read total − fee either way.
-   */
-  priceSale(listed: number, tickets = 1, absorb = false): { base: number; fee: number; total: number } {
-    const paise = (n: number) => Math.round(n * 100 + 1e-9) / 100;
-    if (!absorb) {
-      const fee = this.computeProcessingFee(listed, tickets);
-      return { base: listed, fee, total: paise(listed + fee) };
-    }
-    const percent = this.platformConfig.getProcessingFeePercent();
-    const included = paise(listed - listed / (1 + percent / 100));
-    const cap = this.platformConfig.getProcessingFeeCapPerTicket() * Math.max(1, Math.trunc(tickets));
-    const fee = Math.min(included, cap);
-    return { base: paise(listed - fee), fee, total: listed };
+  priceSale(
+    listed: number,
+    tickets = 1,
+    absorb = false,
+    terms: FeeTerms = rateCardFees(this.platformConfig),
+  ): { base: number; fee: number; total: number } {
+    const q = quote(toPaise(listed), terms, { tickets, absorb });
+    return { base: q.basePaise / 100, fee: q.buyerFeePaise / 100, total: q.totalPaise / 100 };
   }
 
-  computeProcessingFee(basePrice: number, tickets = 1): number {
-    const percent = this.platformConfig.getProcessingFeePercent();
-    // Rounded to the paise: an unrounded fee (₹12.345) drifts from what
-    // Razorpay charges (createOrder rounds to paise) and trips reconcile.
-    const fee = Math.round(basePrice * percent + 1e-9) / 100;
-    const cap = this.platformConfig.getProcessingFeeCapPerTicket() * Math.max(1, Math.trunc(tickets));
-    return Math.min(fee, cap);
+  /**
+   * The buyer fee on `basePrice` covering `tickets` tickets: the percent of the
+   * base, capped per ticket (A34: min(5%, ₹99)). A ticket is one priced unit:
+   * each of a quantity, each seat of a per-person group, a flat-priced group as
+   * one, a session seat, a stay guest.
+   */
+  computeProcessingFee(basePrice: number, tickets = 1, terms?: FeeTerms): number {
+    return this.priceSale(basePrice, tickets, false, terms).fee;
   }
 
   /**

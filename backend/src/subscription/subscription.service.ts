@@ -14,6 +14,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PlanConfigService, SELLABLE_PLANS, subscriptionStatus } from './plan-config.service';
+import { TermsService } from './terms.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 import {
@@ -121,6 +122,7 @@ export class SubscriptionService {
     private readonly cache: CacheService,
     private readonly emailService: EmailService,
     private readonly planConfig: PlanConfigService,
+    private readonly terms: TermsService,
   ) {
     this.razorpay = new Razorpay({
       key_id: process.env.RAZORPAY_KEY_ID,
@@ -263,7 +265,15 @@ export class SubscriptionService {
       throw new BadRequestException('That plan is no longer available');
     }
     const subscription = await this.getSpaceSubscription(spaceId);
-    assertSelfServeBilling(subscription.billingModel);
+    // A space deal naming this plan (and cycle, if it sets one) prices it, and
+    // is the only way a FREE or REVENUE_SHARE space may buy a plan (T4); paying
+    // moves such a space onto SUBSCRIPTION. Without one they stay blocked.
+    const active = await this.terms.activeDeal(spaceId);
+    const deal =
+      active?.plan === dto.plan && (!active.billingCycle || active.billingCycle === dto.billingCycle)
+        ? active
+        : null;
+    if (!deal) assertSelfServeBilling(subscription.billingModel);
     if (subscription.pendingPlan) {
       throw new BadRequestException(
         'A plan change is already scheduled for the end of this period. Contact support to change it.',
@@ -271,17 +281,20 @@ export class SubscriptionService {
     }
 
     const planLimits = this.planConfig.getLimits(dto.plan);
-    const price =
+    const rateCard =
       dto.billingCycle === BillingCycle.MONTHLY
         ? planLimits.monthlyPrice
         : planLimits.annualPrice;
+    const pricePaise =
+      deal?.planPricePaise != null ? deal.planPricePaise : rateCard === null ? null : rateCard * 100;
 
-    if (price === null || price === 0) {
+    // A comped deal (0) is applied by an admin, never paid for.
+    if (pricePaise === null || pricePaise === 0) {
       throw new BadRequestException('Cannot upgrade to this plan via payment');
     }
 
     const { kind, creditPaise } = this.quoteChange(subscription, dto.plan, dto.billingCycle);
-    const amountPaise = price * 100 - creditPaise;
+    const amountPaise = pricePaise - creditPaise;
     if (amountPaise < 100) {
       throw new BadRequestException(
         'Your unused time already covers this plan. Contact support to switch.',
@@ -299,6 +312,7 @@ export class SubscriptionService {
         billingCycle: dto.billingCycle,
         kind,
         creditPaise: String(creditPaise),
+        ...(deal ? { dealId: deal.id, listPaise: String(pricePaise) } : {}),
       },
     });
 
@@ -393,8 +407,12 @@ export class SubscriptionService {
     // Orders made before T8 carry no kind: they extended, like a renewal.
     let kind = (n.kind as PlanChangeKind) ?? 'renew';
     const amountPaise = Math.round(Number(order.amount));
-    const listPrice =
-      billingCycle === BillingCycle.MONTHLY
+    // A deal-priced order (T4) records the deal's price and moves the space
+    // onto SUBSCRIPTION billing, so a FREE / REVENUE_SHARE space gets its plan.
+    const viaDeal = typeof n.dealId === 'string';
+    const listPrice = viaDeal
+      ? Number(n.listPaise) / 100
+      : billingCycle === BillingCycle.MONTHLY
         ? this.planConfig.getLimits(plan).monthlyPrice
         : this.planConfig.getLimits(plan).annualPrice;
 
@@ -438,7 +456,13 @@ export class SubscriptionService {
       });
       if (claimed.count === 0) return { subscription: sub, applied: false };
 
-      const paid = { cancelledAt: null, isActive: true, lastPaymentAt: now, nextPaymentAt: expiresAt };
+      const paid = {
+        cancelledAt: null,
+        isActive: true,
+        lastPaymentAt: now,
+        nextPaymentAt: expiresAt,
+        ...(viaDeal ? { billingModel: BillingModel.SUBSCRIPTION } : {}),
+      };
       const subscription = await tx.orgSubscription.update({
         where: { id: sub.id },
         data:

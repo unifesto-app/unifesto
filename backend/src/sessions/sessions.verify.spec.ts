@@ -1,5 +1,6 @@
 import { PaymentStatus, RegistrationStatus } from '@prisma/client';
 import { SessionsService } from './sessions.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** S2: PAID unlocks the LiveKit join token, so a receipt must match this row's order. */
 describe('SessionsService.verifyPayment replay guards', () => {
@@ -13,7 +14,7 @@ describe('SessionsService.verifyPayment replay guards', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { verifyPaymentSignature: jest.fn(() => true) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any);
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any, rateCardTerms());
     return { svc, prisma };
   };
   const row = (over: Record<string, unknown> = {}) => ({

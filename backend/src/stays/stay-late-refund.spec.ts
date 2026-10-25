@@ -1,5 +1,6 @@
 import { PaymentStatus, StayBookingStatus } from '@prisma/client';
 import { StayBookingsService } from './stay-bookings.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * S15: a late payment on a closed stay goes back in full. A refund that fails
@@ -28,7 +29,7 @@ describe('StayBookingsService late-payment refund', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, rateCardTerms());
     jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
     jest.spyOn(svc as any, 'fits').mockResolvedValue('No beds left'); // truthy = doesn't fit
     return { svc, prisma, payments };
@@ -80,7 +81,7 @@ describe('StayBookingsService.cancel claim', () => {
     };
     const prisma: any = { stayBooking: { updateMany: jest.fn(async () => ({ count: 0 })) } };
     const payments = { refund: jest.fn() };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, rateCardTerms());
     jest.spyOn(svc as any, 'loadForEvent').mockResolvedValue(b);
     await expect(svc.cancel('ev-1', 'b-1', 'u-1', { refund: true } as any)).rejects.toThrow(/just changed/);
     expect(prisma.stayBooking.updateMany).toHaveBeenCalledWith(
@@ -95,7 +96,7 @@ describe('StayBookingsService.cancel claim', () => {
 describe('stay notices go through notify() (C2)', () => {
   const build = () => {
     const notify = { notify: jest.fn(async () => ({})) };
-    const svc = new StayBookingsService({} as any, {} as any, {} as any, notify as any, {} as any, {} as any);
+    const svc = new StayBookingsService({} as any, {} as any, {} as any, notify as any, {} as any, {} as any, rateCardTerms());
     const b = {
       id: 'b-1', userId: 'u-1', eventId: 'ev-1',
       stay: { name: 'Hostel' }, user: { fullName: null, username: 'asha' },
@@ -124,7 +125,7 @@ describe('stay notices go through notify() (C2)', () => {
     };
     const notify = { notify: jest.fn(async () => ({})) };
     const payments = { refund: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, notify as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, notify as any, {} as any, {} as any, rateCardTerms());
     await svc.refundDue('b-1');
     expect(notify.notify).toHaveBeenCalledWith(
       'u-1',

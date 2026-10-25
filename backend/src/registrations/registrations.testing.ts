@@ -10,6 +10,7 @@ import { RegistrationCancellationService } from './registration-cancellation.ser
 import { RegistrationPaymentsService } from './registration-payments.service';
 import { RegistrationCheckoutService } from './registration-checkout.service';
 import { MyRegistrationsService } from './my-registrations.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 export function buildRegistrationsService(
   prisma: any,
@@ -54,6 +55,7 @@ export function buildRegistrationsService(
     payments,
     groupSeats,
     confirmations,
+    rateCardTerms(),
   );
   const cancellation = new RegistrationCancellationService(
     prisma,
@@ -91,6 +93,7 @@ export function buildRegistrationsService(
     groupSeats,
     coupons,
     confirmations,
+    rateCardTerms(),
   );
   const mine = new MyRegistrationsService(prisma, groupSeats, confirmations);
   return new RegistrationsService(

@@ -4,6 +4,7 @@ import { buildRegistrationsService } from '../registrations/registrations.testin
 import { StayBookingsService } from '../stays/stay-bookings.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { TeamChangesService } from '../registrations/team-changes.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 jest.mock('../registrations/form-answers.policy', () => ({
   enforceFormAnswers: jest.fn(async () => undefined),
@@ -171,7 +172,7 @@ describe('stays refund a duplicate capture (A22)', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refundIfDuplicate: jest.fn(async () => undefined) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, {} as any, {} as any, rateCardTerms());
     jest.spyOn(svc as any, 'notify').mockImplementation(() => undefined);
     return { svc, prisma, payments };
   };
@@ -206,7 +207,7 @@ describe('sessions refund a duplicate capture (A22)', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { verifyPaymentSignature: jest.fn(() => true), refundIfDuplicate: jest.fn(async () => undefined) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms());
     return { svc, payments };
   };
 
@@ -240,7 +241,7 @@ describe('seat add-ons refund a duplicate capture (A22)', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { refundIfDuplicate: jest.fn(async () => undefined) };
-    const svc = new TeamChangesService(prisma, {} as any, payments as any, {} as any, {} as any);
+    const svc = new TeamChangesService(prisma, {} as any, payments as any, {} as any, {} as any, rateCardTerms());
     await expect((svc as any).settle('gp-1', 'pay_2')).resolves.toMatchObject({ outcome: 'already' });
     expect(payments.refundIfDuplicate).toHaveBeenCalledWith('pay_1', 'pay_2', 'seat purchase gp-1');
   });

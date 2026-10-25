@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { RegistrationStatus, WaitlistStatus } from '@prisma/client';
 import { RegistrationCheckoutService } from './registration-checkout.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * A19: a new checkout clears the user's abandoned same-type attempt, but never
@@ -15,7 +16,7 @@ function build() {
   const payments: any = { cancelPaymentLink: jest.fn(async () => undefined) };
   const coupons: any = { releaseByRegistration: jest.fn(async () => undefined) };
   const svc = new RegistrationCheckoutService(
-    prisma, {} as any, {} as any, {} as any, payments, {} as any, {} as any, coupons, {} as any,
+    prisma, {} as any, {} as any, {} as any, payments, {} as any, {} as any, coupons, {} as any, rateCardTerms(),
   );
   const clear = (stale: any) =>
     (svc as any).clearAbandonedAttempt(

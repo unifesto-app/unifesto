@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import { SubscriptionService } from './subscription.service';
 import { PlanConfigService } from './plan-config.service';
+import { rateCardTerms } from './terms.testing';
 
 /** S3: an upgrade receipt is good for one space, one paid order, once. */
 describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
@@ -29,7 +30,7 @@ describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const cache = { setSpacePlan: jest.fn(), invalidateSpacePlanCache: jest.fn() };
-    const svc = new SubscriptionService(prisma, cache as any, {} as any, new PlanConfigService({} as any));
+    const svc = new SubscriptionService(prisma, cache as any, {} as any, new PlanConfigService({} as any), rateCardTerms());
     (svc as any).razorpay = { orders: { fetch: jest.fn(async () => order) } };
     (svc as any).resolveSpaceBillingRecipient = jest.fn(async () => ({}));
     return { svc, prisma };

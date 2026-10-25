@@ -1,5 +1,6 @@
 import { PaymentStatus, RegistrationStatus, SessionStatus } from '@prisma/client';
 import { SessionsService } from './sessions.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** S15/S51: cancelling a session refunds the base only (fee kept), once, through a claimed refundDueAt. */
 describe('SessionsService.cancelSession', () => {
@@ -32,7 +33,7 @@ describe('SessionsService.cancelSession', () => {
     };
     const payments = { refund: jest.fn(async () => undefined) };
     const events = { emit: jest.fn() };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any, events as any);
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any, rateCardTerms(), events as any);
     jest.spyOn(svc as any, 'assertCanManageSpace').mockResolvedValue(undefined);
     jest.spyOn(svc as any, 'getPrimaryEmail').mockResolvedValue(null);
     return { svc, prisma, payments, calls, events };

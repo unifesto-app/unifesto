@@ -2,6 +2,7 @@ import * as crypto from 'crypto';
 import { addBillingCycle, prorationCreditPaise, SubscriptionService } from './subscription.service';
 import { PlanConfigService, subscriptionStatus } from './plan-config.service';
 import { SubscriptionSchedulerService } from './subscription-scheduler.service';
+import { rateCardTerms } from './terms.testing';
 
 const DAY = 86400000;
 
@@ -129,6 +130,7 @@ describe('SubscriptionService lifecycle', () => {
       cache as any,
       email as any,
       new PlanConfigService({} as any),
+      rateCardTerms(),
     );
     (svc as any).razorpay = {
       orders: {
@@ -163,6 +165,33 @@ describe('SubscriptionService lifecycle', () => {
     ).rejects.toThrow(/arranged by Unifesto/);
     expect((svc as any).razorpay.orders.create).not.toHaveBeenCalled();
     expect(prisma.orgSubscription.update).not.toHaveBeenCalled();
+  });
+
+  it('a space deal naming the plan unblocks a FREE space at the deal price and moves it to SUBSCRIPTION (T4)', async () => {
+    const { svc, prisma } = build({ plan: 'STARTER', billingModel: 'FREE', billingCycle: 'MONTHLY' });
+    const deal = { id: 'deal-1', plan: 'PRO', billingCycle: null, planPricePaise: 50_000 };
+    (svc as any).terms = { activeDeal: jest.fn(async () => deal) };
+
+    // Another plan than the deal's stays blocked.
+    await expect(
+      svc.createUpgradeOrderForSpace('space-A', { plan: 'ENTERPRISE', billingCycle: 'MONTHLY' } as any),
+    ).rejects.toThrow(/arranged by Unifesto/);
+
+    const quote = await svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any);
+    expect(quote).toMatchObject({ amount: 500 });
+    const notes = (svc as any).razorpay.orders.create.mock.calls[0][0].notes;
+    expect(notes).toMatchObject({ dealId: 'deal-1', listPaise: '50000' });
+
+    await svc.completeFromWebhook('o', 'p', { id: 'o', status: 'paid', amount: 50_000, notes });
+    const data = prisma.orgSubscription.update.mock.calls[0][0].data;
+    expect(data).toMatchObject({ plan: 'PRO', billingModel: 'SUBSCRIPTION' });
+    expect(Number(data.amount)).toBe(500);
+
+    // A comped deal (0) is never sold through checkout.
+    deal.planPricePaise = 0;
+    await expect(
+      svc.createUpgradeOrderForSpace('space-A', { plan: 'PRO', billingCycle: 'MONTHLY' } as any),
+    ).rejects.toThrow(/via payment/);
   });
 
   it('a paid upgrade extends from the current expiresAt and clears cancelledAt', async () => {

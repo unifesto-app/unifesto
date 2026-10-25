@@ -1,6 +1,7 @@
 import { PaymentStatus, StayBookingStatus } from '@prisma/client';
 import { StayBookingsService } from './stay-bookings.service';
 import { SUBJECT_CASE_OPEN, SUBJECT_CASE_UPDATE } from '../support/subject-cases';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * D23: a paid stay's cancellation runs through Assist (D6 flow). The guest's
@@ -32,7 +33,7 @@ describe('stay cancellations in Assist (D23)', () => {
     const events = { emit: jest.fn() };
     const payments = { refund: jest.fn(async () => undefined) };
     const authz = { can: jest.fn(async () => true) };
-    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, authz as any, {} as any, events as any);
+    const svc = new StayBookingsService(prisma, {} as any, payments as any, {} as any, authz as any, {} as any, rateCardTerms(), events as any);
     const s = svc as any;
     jest.spyOn(s, 'loadMine').mockResolvedValue(paid);
     jest.spyOn(s, 'loadForEvent').mockResolvedValue(paid);

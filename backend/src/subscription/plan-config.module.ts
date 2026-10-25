@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { PlanConfigService } from './plan-config.service';
 import { PlatformConfigService } from './platform-config.service';
+import { TermsService } from './terms.service';
 
 /**
  * Global so any service (events, registrations, subscription) can inject
@@ -10,7 +11,7 @@ import { PlatformConfigService } from './platform-config.service';
  */
 @Global()
 @Module({
-  providers: [PlanConfigService, PlatformConfigService],
-  exports: [PlanConfigService, PlatformConfigService],
+  providers: [PlanConfigService, PlatformConfigService, TermsService],
+  exports: [PlanConfigService, PlatformConfigService, TermsService],
 })
 export class PlanConfigModule {}

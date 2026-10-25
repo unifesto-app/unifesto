@@ -1,4 +1,5 @@
 import { SubscriptionService } from './subscription.service';
+import { rateCardTerms } from './terms.testing';
 
 /**
  * getEffectiveSubscriptionForSpace resolves a space's governing subscription
@@ -21,6 +22,7 @@ describe('SubscriptionService.getEffectiveSubscriptionForSpace', () => {
       {} as any,
       {} as any,
       {} as any,
+      rateCardTerms(),
     );
     return { svc, prisma };
   };

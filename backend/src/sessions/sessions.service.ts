@@ -45,6 +45,7 @@ import {
 import { button, details, esc, greet, h1, p, small, strong } from '../email/layout';
 import { buildEventIcs } from '../events/calendar/ics.util';
 import { RedisService } from '../redis/redis.service';
+import { TermsService } from '../subscription/terms.service';
 import { noteRefundFailure, runRefundRetry } from '../common/refund-alert';
 
 @Injectable()
@@ -58,6 +59,7 @@ export class SessionsService {
     private readonly livekit: LivekitService,
     private readonly planConfig: PlanConfigService,
     private readonly authz: AuthorizationService,
+    private readonly terms: TermsService,
     private readonly events?: EventEmitter2,
     private readonly redis?: RedisService,
   ) {}
@@ -1026,9 +1028,13 @@ export class SessionsService {
       return { registrationId: registration.id, needsPayment: false };
     }
 
-    // Paid session — fee identical to events, Razorpay-only.
-    const processingFee = this.payments.computeProcessingFee(basePrice);
+    // Paid session — priced like events under the space's terms (T5),
+    // Razorpay-only. Sessions carry no organiser platform fee column, so only
+    // the deal id is kept.
+    const terms = await this.terms.resolve(session.spaceId);
+    const processingFee = this.payments.computeProcessingFee(basePrice, 1, terms);
     const totalAmount = basePrice + processingFee;
+    const dealId = terms.dealId;
 
     const registration = await this.prisma.sessionRegistration.upsert({
       where: { sessionId_userId: { sessionId, userId } },
@@ -1038,6 +1044,7 @@ export class SessionsService {
         totalAmount: new Prisma.Decimal(totalAmount),
         razorpayAmount: new Prisma.Decimal(totalAmount),
         processingFee: new Prisma.Decimal(processingFee),
+        dealId,
         paymentStatus: PaymentStatus.PENDING,
       },
       update: {
@@ -1045,6 +1052,7 @@ export class SessionsService {
         totalAmount: new Prisma.Decimal(totalAmount),
         razorpayAmount: new Prisma.Decimal(totalAmount),
         processingFee: new Prisma.Decimal(processingFee),
+        dealId,
         paymentStatus: PaymentStatus.PENDING,
         cancelledAt: null,
       },

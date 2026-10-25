@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
+import { QuoteController } from './quote.controller';
 
 /**
  * Shared Razorpay boundary. Deliberately NOT @Global(): a module must import
@@ -8,6 +9,7 @@ import { PaymentsService } from './payments.service';
  * already global, so no imports are needed here.
  */
 @Module({
+  controllers: [QuoteController],
   providers: [PaymentsService],
   exports: [PaymentsService],
 })

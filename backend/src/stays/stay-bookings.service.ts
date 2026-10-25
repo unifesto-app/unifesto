@@ -52,6 +52,7 @@ import {
   priceBooking,
 } from './stay-rules';
 import { StaysService, stayIdProofSlot } from './stays.service';
+import { TermsService, dealColumns } from '../subscription/terms.service';
 
 const num = (d: Prisma.Decimal | number | null | undefined) =>
   d == null ? 0 : Number(d);
@@ -151,6 +152,7 @@ export class StayBookingsService {
     private readonly notifyService: NotifyService,
     private readonly authz: AuthorizationService,
     private readonly redis: RedisService,
+    private readonly terms: TermsService,
     private readonly events?: EventEmitter2,
   ) {}
 
@@ -488,6 +490,7 @@ export class StayBookingsService {
         `Not enough beds left on the night of ${full}. Try other dates or another option.`,
       );
 
+    const terms = await this.terms.forEvent(stay.eventId);
     const price = priceBooking({
       price: num(option.price),
       pricing: option.pricing,
@@ -495,7 +498,7 @@ export class StayBookingsService {
       guests: guests.length,
       nights,
       // Each guest gets a stay pass: one ticket each for the fee cap (A34).
-      feeFor: (base) => this.payments.computeProcessingFee(base, guests.length),
+      feeFor: (base) => this.payments.computeProcessingFee(base, guests.length, terms),
     });
 
     let arrivalAt: Date | null = null;
@@ -526,6 +529,7 @@ export class StayBookingsService {
             baseAmount: price.baseAmount,
             processingFee: price.processingFee,
             totalAmount: price.totalAmount,
+            ...dealColumns(terms),
             paymentStatus:
               price.paymentMode === StayPaymentMode.FREE
                 ? null

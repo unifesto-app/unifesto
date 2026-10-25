@@ -16,8 +16,10 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { SubscriptionService } from './subscription.service';
+import { TermsService } from './terms.service';
 import {
   AdminUpdateSubscriptionDto,
+  CreateDealDto,
   RecordOfflinePaymentDto,
   SubscriptionResponseDto,
   SubscriptionUsageDto,
@@ -37,7 +39,10 @@ import { RoleCode, BillingModel, OrgPlan } from '@prisma/client';
 @UseGuards(JwtAuthGuard, RolesGuard, CanGuard)
 @Controller('subscription')
 export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
+  constructor(
+    private readonly subscriptionService: SubscriptionService,
+    private readonly terms: TermsService,
+  ) {}
 
   // ---- Space-scoped billing (P0.2) — the Space is the billing subject ----
   // Gated by can(space:manage-billing); CanGuard reads :spaceId from the route.
@@ -175,5 +180,32 @@ export class SubscriptionController {
     @Body() dto: RecordOfflinePaymentDto,
   ) {
     return this.subscriptionService.recordOfflinePaymentForSpace(spaceId, dto);
+  }
+
+  // ---- Deals (T4): negotiated terms per space or event ----
+
+  @Get('admin/space/:spaceId/deals')
+  @Roles(RoleCode.ADMIN)
+  @ApiOperation({ summary: "A space's deals, newest first, plus the terms in force (admin only)" })
+  async listDeals(@Param('spaceId') spaceId: string) {
+    const [deals, current] = await Promise.all([
+      this.terms.listDeals(spaceId),
+      this.terms.resolve(spaceId),
+    ]);
+    return { deals, current };
+  }
+
+  @Post('admin/space/:spaceId/deals')
+  @Roles(RoleCode.ADMIN)
+  @ApiOperation({ summary: 'Create a deal for a space or one of its events (admin only)' })
+  async createDeal(@Request() req, @Param('spaceId') spaceId: string, @Body() dto: CreateDealDto) {
+    return this.terms.createDeal(spaceId, dto, req.user.id);
+  }
+
+  @Post('admin/deals/:dealId/end')
+  @Roles(RoleCode.ADMIN)
+  @ApiOperation({ summary: 'End a deal now (admin only); it is kept for the sales it priced' })
+  async endDeal(@Param('dealId') dealId: string) {
+    return this.terms.endDeal(dealId);
   }
 }

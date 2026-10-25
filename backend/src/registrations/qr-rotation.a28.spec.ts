@@ -2,6 +2,7 @@ import { GroupSeatStatus, PaymentStatus, RegistrationStatus } from '@prisma/clie
 import { RegistrationTransfersService } from './registration-transfers.service';
 import { TeamChangesService } from './team-changes.service';
 import { GroupSeatsService } from './group-seats.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** A28 follow-up: the QR ceilings. A pass someone no longer holds stops scanning. */
 
@@ -120,7 +121,7 @@ describe('A28 a teammate on the shared QR leaving rotates it', () => {
 
   it('remove: a teammate with no ticket of their own held the group QR, so it rotates and the rest get passes', async () => {
     const { db, seats, created, sendRotated } = build(0);
-    const team = new TeamChangesService(db, seats, {} as any, { sendRawEmail: jest.fn(async () => undefined) } as any, {} as any);
+    const team = new TeamChangesService(db, seats, {} as any, { sendRawEmail: jest.fn(async () => undefined) } as any, {} as any, rateCardTerms());
     await team.removeSeat('r-1', 2, { by: 'curator', eventId: 'e-1' });
     expect(rotatedTo(db)).toMatch(/^[0-9a-f]{32}$/);
     // Only the typed-in teammate still on the group QR gets a seat ticket.
@@ -130,7 +131,7 @@ describe('A28 a teammate on the shared QR leaving rotates it', () => {
 
   it('remove: a teammate who had their own ticket never saw the group QR, so it stays', async () => {
     const { db, seats, created, sendRotated } = build(1);
-    const team = new TeamChangesService(db, seats, {} as any, { sendRawEmail: jest.fn(async () => undefined) } as any, {} as any);
+    const team = new TeamChangesService(db, seats, {} as any, { sendRawEmail: jest.fn(async () => undefined) } as any, {} as any, rateCardTerms());
     await team.removeSeat('r-1', 2, { by: 'curator', eventId: 'e-1' });
     expect(rotatedTo(db)).toBeUndefined();
     expect(created).toEqual([]);

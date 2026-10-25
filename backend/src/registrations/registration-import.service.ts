@@ -26,6 +26,7 @@ import { GroupSeatsService } from './group-seats.service';
 import * as crypto from 'crypto';
 import { generateQRCode, generateTicketCode, resolveGroupSize, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { TermsService, dealColumns } from '../subscription/terms.service';
 import { findIdentityByEmail, normalizeEmail } from '../auth/identifiers';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
 
@@ -52,6 +53,7 @@ export class RegistrationImportService {
     private readonly payments: PaymentsService,
     private readonly groupSeats: GroupSeatsService,
     private readonly confirmations: RegistrationConfirmationsService,
+    private readonly terms: TermsService,
   ) {}
 
   /**
@@ -774,10 +776,12 @@ export class RegistrationImportService {
       ticketType.kind === 'GROUP' && ticketType.groupPricingMode === 'PER_PERSON'
         ? price * (groupSize ?? 1)
         : price;
+    const terms = await this.terms.resolve(event.spaceId, eventId);
     const sale = this.payments.priceSale(
       basePrice,
       ticketsIn(ticketType, { quantity: 1, groupSize }),
       event.absorbProcessingFee,
+      terms,
     );
     const processingFee = sale.fee;
     const totalAmount = sale.total;
@@ -795,6 +799,7 @@ export class RegistrationImportService {
           totalAmount: new Prisma.Decimal(totalAmount),
           razorpayAmount: new Prisma.Decimal(totalAmount),
           processingFee: new Prisma.Decimal(processingFee),
+          ...dealColumns(terms),
           paymentStatus: PaymentStatus.PENDING,
           qrCode: generateQRCode(),
           formResponses: formResponses as Prisma.InputJsonValue,

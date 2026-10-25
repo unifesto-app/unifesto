@@ -1,5 +1,6 @@
 import { PaymentStatus, StayBookingStatus } from '@prisma/client';
 import { StayBookingsService } from './stay-bookings.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * G12: crew can't mark a stay paid on its own (S30), so at the property desk
@@ -15,7 +16,7 @@ describe('stay desk check-in with money collected (G12)', () => {
   };
   const build = () => {
     const prisma: any = { stayBooking: { updateMany: jest.fn(async () => ({ count: 1 })) } };
-    const svc = new StayBookingsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
+    const svc = new StayBookingsService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, rateCardTerms(), {} as any);
     jest.spyOn(svc as any, 'loadForEvent').mockResolvedValue(unpaid);
     jest.spyOn(svc as any, 'getForEvent').mockResolvedValue({ id: 'b-1' });
     return { svc, prisma };

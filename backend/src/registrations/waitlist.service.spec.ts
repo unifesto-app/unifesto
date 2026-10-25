@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { GroupSeatsService } from './group-seats.service';
 import { WaitlistService } from './waitlist.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * Pins the seat-holding invariant across a waiting-list conversion:
@@ -205,7 +206,7 @@ function build(db: ReturnType<typeof makeDb>) {
   };
   const groupSeats = new GroupSeatsService(db.prisma, email, whatsapp);
   const confirmations: any = { sendRegistrationConfirmations: jest.fn().mockResolvedValue(undefined) };
-  const svc = new WaitlistService(db.prisma, email, payments, notify, groupSeats, { can: jest.fn().mockResolvedValue(true) } as any, confirmations);
+  const svc = new WaitlistService(db.prisma, email, payments, notify, groupSeats, { can: jest.fn().mockResolvedValue(true) } as any, confirmations, rateCardTerms());
   return { svc, email, notify, groupSeats, confirmations };
 }
 

@@ -1,5 +1,6 @@
 import { SessionPlatform, SessionStatus } from '@prisma/client';
 import { SessionsService } from './sessions.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /** B18: Huddle sessions dead-ends. */
 describe('SessionsService (B18)', () => {
@@ -26,7 +27,7 @@ describe('SessionsService (B18)', () => {
     const livekit = { stopRecording: jest.fn(), endRoom: jest.fn(), roomName: (id: string) => `sess_${id}`, removeParticipant: jest.fn() };
     const svc = new SessionsService(
       prisma, {} as any, {} as any, livekit as any,
-      { getEffectiveLimits: () => plan } as any, { can: jest.fn().mockResolvedValue(true) } as any,
+      { getEffectiveLimits: () => plan } as any, { can: jest.fn().mockResolvedValue(true) } as any, rateCardTerms(),
     );
     return { svc, prisma, livekit };
   };

@@ -1,5 +1,6 @@
 import { PaymentStatus, Prisma, RegistrationStatus, SessionStatus } from '@prisma/client';
 import { SessionsService } from './sessions.service';
+import { rateCardTerms } from '../subscription/terms.testing';
 
 /**
  * S50: a session seat is taken atomically (conditional UPDATE) on register and
@@ -45,7 +46,7 @@ describe('SessionsService session capacity', () => {
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const payments = { verifyPaymentSignature: jest.fn(() => true), refund: jest.fn(async () => undefined) };
-    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any);
+    const svc = new SessionsService(prisma, payments as any, {} as any, {} as any, {} as any, { can: jest.fn().mockResolvedValue(true) } as any, rateCardTerms());
     jest.spyOn(svc as any, 'isSessionHost').mockResolvedValue(false);
     return { svc, prisma, payments };
   };
