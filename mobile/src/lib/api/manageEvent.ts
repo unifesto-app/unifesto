@@ -150,6 +150,13 @@ export interface WhatsappBlastResult {
 export const sendWhatsappBlast = (eventId: string) =>
   call<WhatsappBlastResult>(`/events/${eventId}/whatsapp-group-invite`, { method: 'POST' });
 
+/**
+ * POST /events/:id/announcements — push + in-app inbox to everyone attending
+ * (event:edit). The server allows 3 per event per rolling 24h; the 4th is a 403.
+ */
+export const announceToAttendees = (eventId: string, input: { title: string; body: string }) =>
+  call<unknown>(`/events/${eventId}/announcements`, { method: 'POST', body: JSON.stringify(input) });
+
 // ── Attendee actions ─────────────────────────────────────────────────────────
 
 /**

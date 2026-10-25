@@ -108,6 +108,10 @@ export default function ManageEventScreen() {
   const checkinTotal = h.checkin?.total ?? 0;
   const progress = checkinTotal > 0 && checkedIn !== null ? Math.min(1, checkedIn / checkinTotal) : 0;
   const scanParams = { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' };
+  // Event day: from midnight on the start date until it ends (each day of a multi-day event).
+  const dayStart = new Date(e.startDateTime);
+  dayStart.setHours(0, 0, 0, 0);
+  const eventDay = e.status !== 'DRAFT' && e.status !== 'CANCELLED' && now >= dayStart && now <= new Date(e.endDateTime);
   const web = (path = '') => () => openSpaceWeb(`/dashboard/events/${e.id}${path}`, e.spaceId);
   const ticketTypes = (e as unknown as { ticketTypes?: { kind: string }[] }).ticketTypes ?? [];
   const rsvpCount = ticketTypes.filter((t) => t.kind === 'RSVP').length;
@@ -136,6 +140,16 @@ export default function ManageEventScreen() {
           ) : null}
         </View>
       </View>
+
+      {eventDay ? (
+        <Button
+          label="Open event day"
+          size="lg"
+          fullWidth
+          onPress={() => router.push(`/manage/event/${e.id}/day`)}
+          style={{ marginTop: spacing[6] }}
+        />
+      ) : null}
 
       {e.status === 'DRAFT' && h.access.canPublish ? (
         <Button
