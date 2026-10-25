@@ -251,7 +251,10 @@ jobs:
         # can't read the paths filter.
         # prisma/known-drift.sql pins the diff that can't be fixed by a
         # migration: Prisma can't introspect the raw text_pattern_ops opclass
-        # on api_logs_path_prefix_idx, so it always proposes drop + recreate.
+        # on api_logs_path_prefix_idx, so it always proposes drop + recreate;
+        # and user_roles_user_id_role_id_space_id_key is kept on purpose (event_id
+        # is NULL for space-level roles and NULLs are distinct, so the 4-column
+        # unique_user_role_scope can't stop duplicate space-level roles).
         # Any other diff fails. The db-push era drift was paid down by
         # 20261114120000_reconcile_schema_drift. To change the pinned diff,
         # regenerate the file with the last command below

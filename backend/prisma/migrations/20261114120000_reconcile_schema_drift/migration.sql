@@ -15,8 +15,9 @@
 --   * Indexes are renamed to Prisma's names only when the old name exists and
 --     the new one doesn't.
 --   * updated_at loses its DEFAULT now() (Prisma always sets @updatedAt).
---   * The old 3-column user_roles unique index from init is dropped if present:
---     the 4-column unique_user_role_scope replaced it on 2026-07-03.
+--   * Kept on purpose (stays in known-drift.sql): the 3-column user_roles
+--     unique index from init. event_id is NULL for space-level roles and NULLs
+--     are distinct, so it is the only guard against duplicate space-level roles.
 
 ALTER TYPE "registration_type" ADD VALUE IF NOT EXISTS 'MIXED';
 
@@ -37,8 +38,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS "admin_devices_fcmToken_key" ON "admin_devices
 CREATE INDEX IF NOT EXISTS "event_checkin_records_checked_in_by_idx" ON "event_checkin_records"("checked_in_by");
 CREATE INDEX IF NOT EXISTS "event_registrations_checked_in_by_idx" ON "event_registrations"("checked_in_by");
 CREATE INDEX IF NOT EXISTS "leaderboard_scores_round_id_idx" ON "leaderboard_scores"("round_id");
-
-DROP INDEX IF EXISTS "user_roles_user_id_role_id_space_id_key";
 
 ALTER TABLE "billing_model_configs" ALTER COLUMN "updated_at" DROP DEFAULT;
 ALTER TABLE "incidents" ALTER COLUMN "updated_at" DROP DEFAULT;
