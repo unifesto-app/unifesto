@@ -1,10 +1,22 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useFocusEffect } from 'expo-router';
 import { useTokens } from '../../context/ThemeContext';
 import useTopSpacing from '../../hooks/useTopSpacing';
-import { getExternalStatus, getPlatformStatus, type ExternalMonitor, type ExternalStatus, type PlatformStatus, type StatusIncident } from '../../lib/api/apex';
+import {
+  createStatusIncident,
+  getExternalStatus,
+  getPlatformStatus,
+  updateStatusIncident,
+  type ExternalMonitor,
+  type ExternalStatus,
+  type PlatformStatus,
+  type StatusIncident,
+} from '../../lib/api/apex';
+import ChipPicker, { MultiChipPicker } from '../../components/manage/ChipPicker';
+import { Button } from '../../components/ui';
+import { AppAlert } from '../../components/ui/AppAlert';
 import { titleCase } from '../../lib/apexQueues';
 import { CardBackdrop } from '../../components/ui/CardSurface';
 import UptimeBars from '../../components/apex/UptimeBars';
@@ -85,7 +97,7 @@ function ServiceCard({ service }: { service: Service }) {
   );
 }
 
-function IncidentItem({ incident }: { incident: StatusIncident }) {
+function IncidentItem({ incident, onResolve }: { incident: StatusIncident; onResolve?: () => void }) {
   const tokens = useTokens();
   const resolved = incident.status === 'RESOLVED';
   const when = resolved && incident.resolvedAt
@@ -105,6 +117,65 @@ function IncidentItem({ incident }: { incident: StatusIncident }) {
         {when}
         {incident.impact !== 'NONE' ? ` · ${titleCase(incident.impact)} impact` : ''}
       </Text>
+      {onResolve ? (
+        <Button label="Mark resolved" variant="ghost" size="sm" onPress={onResolve} style={{ alignSelf: 'flex-start', marginTop: spacing[1] }} />
+      ) : null}
+    </View>
+  );
+}
+
+const IMPACTS: { value: StatusIncident['impact']; label: string }[] = [
+  { value: 'MINOR', label: 'Minor' },
+  { value: 'MAJOR', label: 'Major' },
+  { value: 'CRITICAL', label: 'Critical' },
+  { value: 'NONE', label: 'Maintenance' },
+];
+
+/** Report an incident by hand: what the self-checks can't see (proxy errors, rate limiting). */
+function ReportIncident({ services, onDone }: { services: Service[]; onDone: () => void }) {
+  const tokens = useTokens();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [impact, setImpact] = useState<StatusIncident['impact']>('MINOR');
+  const [affected, setAffected] = useState<string[]>(['api']);
+  const [busy, setBusy] = useState(false);
+
+  if (!open) return <Button label="Report an incident" variant="secondary" size="md" onPress={() => setOpen(true)} />;
+
+  const submit = async () => {
+    if (!title.trim()) return AppAlert.alert('Add a title', 'Say what is broken, for example "Checkout failing".');
+    setBusy(true);
+    const res = await createStatusIncident({ title: title.trim(), body: body.trim() || undefined, impact, affectedServices: affected });
+    setBusy(false);
+    if (!res.ok) return AppAlert.alert("Couldn't post it", res.message);
+    setOpen(false);
+    setTitle('');
+    setBody('');
+    onDone();
+  };
+
+  const input = [styles.input, { color: tokens.text, backgroundColor: tokens.pressed }];
+  return (
+    <View style={styles.card}>
+      <CardBackdrop />
+      <TextInput value={title} onChangeText={setTitle} placeholder="What's wrong" placeholderTextColor={tokens.textMuted} maxLength={300} style={input} />
+      <TextInput
+        value={body}
+        onChangeText={setBody}
+        placeholder="Details (optional)"
+        placeholderTextColor={tokens.textMuted}
+        multiline
+        style={[input, styles.multiline]}
+      />
+      <Text style={[styles.small, { color: tokens.textMuted }]}>Impact</Text>
+      <ChipPicker options={IMPACTS} value={impact} onChange={(v) => v && setImpact(v)} />
+      <Text style={[styles.small, { color: tokens.textMuted }]}>Affected</Text>
+      <MultiChipPicker options={services.map((s) => ({ value: s.key, label: s.name }))} value={affected} onChange={setAffected} />
+      <View style={styles.actions}>
+        <Button label="Cancel" variant="ghost" size="md" onPress={() => setOpen(false)} style={{ flex: 1 }} />
+        <Button label="Post" size="md" loading={busy} onPress={() => void submit()} style={{ flex: 1 }} />
+      </View>
     </View>
   );
 }
@@ -168,6 +239,19 @@ export default function PlatformStatusScreen() {
     }, [load]),
   );
 
+  const resolve = (i: StatusIncident) =>
+    AppAlert.alert('Mark resolved?', i.title, [
+      { text: 'Back', style: 'cancel' },
+      {
+        text: 'Resolve',
+        onPress: async () => {
+          const res = await updateStatusIncident(i.id, { status: 'RESOLVED' });
+          if (!res.ok) return AppAlert.alert("Couldn't resolve it", res.message);
+          void load();
+        },
+      },
+    ]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
@@ -226,12 +310,15 @@ export default function PlatformStatusScreen() {
             {open.map((i, n) => (
               <View key={i.id}>
                 {n > 0 ? <View style={[styles.divider, { backgroundColor: tokens.border }]} /> : null}
-                <IncidentItem incident={i} />
+                <IncidentItem incident={i} onResolve={() => resolve(i)} />
               </View>
             ))}
           </View>
         </>
       ) : null}
+      <View style={{ marginTop: open.length > 0 ? spacing[3] : spacing[6] }}>
+        <ReportIncident services={data.services} onDone={() => void load()} />
+      </View>
 
       <Text style={[styles.section, { color: tokens.textMuted }]}>Services</Text>
       <View style={styles.services}>
@@ -239,7 +326,10 @@ export default function PlatformStatusScreen() {
           <ServiceCard key={s.key} service={s} />
         ))}
       </View>
-      <Text style={[styles.hint, { color: tokens.textMuted }]}>Drag across a bar strip to see a single day.</Text>
+      <Text style={[styles.hint, { color: tokens.textMuted }]}>
+        Not an outside probe. The API checks itself every 5 minutes, so it can't see a dead server, proxy errors or
+        rate limiting. Incidents count against uptime too. Drag across a bar strip to see a single day.
+      </Text>
 
       {external ? (
         <>
@@ -285,8 +375,6 @@ export default function PlatformStatusScreen() {
           )}
         </View>
       ))}
-
-      <Text style={[styles.hint, { color: tokens.textMuted }]}>Post or update incidents from Apex on the web.</Text>
     </ScrollView>
   );
 }
@@ -319,5 +407,8 @@ const styles = StyleSheet.create({
   day: { marginBottom: spacing[5], gap: spacing[2] },
   dayTitle: { fontSize: typography.fontSize.base, ...font('heading') },
   rule: { height: StyleSheet.hairlineWidth },
+  input: { minHeight: 44, paddingHorizontal: spacing[3], borderRadius: borderRadius.lg, fontSize: typography.fontSize.sm, ...font() },
+  multiline: { minHeight: 80, paddingTop: spacing[3], textAlignVertical: 'top' },
+  actions: { flexDirection: 'row', gap: spacing[2] },
   hint: { marginTop: spacing[3], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...font() },
 });
