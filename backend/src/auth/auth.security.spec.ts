@@ -389,9 +389,42 @@ describe('S6: token types, tokenVersion and refresh revocation', () => {
     // A client retrying a rotate whose response it lost is not logged out.
     await expect(service.refreshSession(rt)).resolves.toHaveProperty('accessToken');
 
+    expect(prisma.user.update).not.toHaveBeenCalled();
+
+    // Reuse after the grace window = a copied token: revoke the whole family.
     spentAgo(redis, 'j1', 5 * 60 * 1000);
     await expect(service.refreshSession(rt)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  });
+
+  it('a logged-out refresh token is refused without revoking other devices', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const rt = sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j6' });
+
+    await service.logout('user-1', { refreshToken: rt });
+    await expect(service.refreshSession(rt)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rotation keeps the sign-in time; past the absolute cap refresh fails', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const now = Math.floor(Date.now() / 1000);
+    const at = now - 10 * 86400;
+    const next = await service.refreshSession(
+      sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j7', at }),
+    );
+    expect(jwt.decode(next.refreshToken)).toMatchObject({ at });
+
+    await expect(
+      service.refreshSession(
+        sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j8', at: now - 400 * 86400 }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('keeps a 4.0.5 refresh token (no jti/tv) working once, then it is spent', async () => {
