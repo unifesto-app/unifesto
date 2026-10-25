@@ -146,8 +146,8 @@ export default function EventDetailClient({ event }: Props) {
   const isUmbrella = subEvents.length > 0 && (event.ticket_type_count ?? 0) === 0;
   const subCount = countLabel(subEvents.length, "sub-event");
   const reg = isUmbrella ? "open" : registrationState(event.tickets, now);
-  // Free individual tickets register on the web (K10); paid and group ones in the app.
-  const webRegister = !isUmbrella && event.is_free && !event.tickets?.some((t) => t.group);
+  // Individual tickets, free or paid, register on the web (K10); group ones in the app.
+  const webRegister = !isUmbrella && (event.tickets?.some((t) => !t.group) ?? true);
   const bar = isUmbrella
     ? { label: "Multi-part event", value: subCount }
     : event.is_free

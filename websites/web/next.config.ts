@@ -69,6 +69,15 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // Razorpay Checkout opens bank / 3-D Secure pages in a popup that
+        // reports back to this tab; `same-origin` would cut that link. Last
+        // match wins in Next, so this overrides the header above here only.
+        // The event page too: COOP is fixed at document load, and "Register"
+        // is a client-side navigation from there.
+        source: '/event/:path*',
+        headers: [{ key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' }],
+      },
+      {
         // Serve apple-app-site-association with correct content type for iOS Universal Links
         source: '/.well-known/apple-app-site-association',
         headers: [
