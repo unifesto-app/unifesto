@@ -182,6 +182,13 @@ export class SubscriptionController {
     return this.subscriptionService.recordOfflinePaymentForSpace(spaceId, dto);
   }
 
+  @Get('admin/space/:spaceId/plan-prices')
+  @Roles(RoleCode.ADMIN)
+  @ApiOperation({ summary: 'What each paid plan and cycle costs a space now, deal or rate card (admin only)' })
+  async getPlanPrices(@Param('spaceId') spaceId: string) {
+    return this.subscriptionService.getPlanPricesForSpace(spaceId);
+  }
+
   // ---- Deals (T4): negotiated terms per space or event ----
 
   @Get('admin/space/:spaceId/deals')

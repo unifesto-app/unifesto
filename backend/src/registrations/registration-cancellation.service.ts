@@ -54,7 +54,7 @@ export class RegistrationCancellationService {
     userId: string,
     ticketTypeId?: string | null,
     reason?: string | null,
-  ): Promise<any> {
+  ) {
     const registration = await this.prisma.eventRegistration.findFirst({
       where: {
         eventId,
@@ -78,7 +78,7 @@ export class RegistrationCancellationService {
     registrationId: string,
     userId: string,
     reason?: string | null,
-  ): Promise<any> {
+  ) {
     const registration = await this.prisma.eventRegistration.findUnique({
       where: { id: registrationId },
       include: { event: true, user: true },
@@ -101,7 +101,7 @@ export class RegistrationCancellationService {
     eventId: string,
     registrationId: string,
     reason?: string | null,
-  ): Promise<any> {
+  ) {
     const registration = await this.prisma.eventRegistration.findFirst({
       where: { id: registrationId, eventId },
       include: { event: true, user: true },
@@ -135,7 +135,7 @@ export class RegistrationCancellationService {
     userId: string,
     reason?: string | null,
     opts: { defaultReason?: string; byOrganiser?: boolean; actorId?: string } = {},
-  ): Promise<any> {
+  ) {
     const eventId = registration.eventId;
     const defaultReason = opts.defaultReason ?? 'Cancelled by attendee';
 

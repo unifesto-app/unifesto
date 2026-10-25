@@ -139,7 +139,7 @@ function setup(env: Record<string, string> = {}) {
   };
   const redis = fakeRedisService();
   const cognito: any = { verifyCognitoToken: jest.fn() };
-  const email: any = { sendOtpEmail: jest.fn().mockResolvedValue(true), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined) };
+  const email: any = { sendOtpEmail: jest.fn().mockResolvedValue(true), sendWelcomeEmail: jest.fn().mockResolvedValue(undefined), sendSignInMethodAdded: jest.fn().mockResolvedValue(undefined) };
   const whatsapp: any = { sendOtp: jest.fn().mockResolvedValue(true) };
   const service = new AuthService(prisma, config, email, whatsapp, otp, redis as any, cognito);
   return { service, prisma, otp, redis, cognito, email, whatsapp };
@@ -320,6 +320,21 @@ describe('S5: email auto-link needs a verified email', () => {
     expect(res.accessToken).not.toBe('');
   });
 
+  it('J17: emails the account when a new sign-in method is linked, not on a re-link', async () => {
+    const { service, prisma, email } = setup();
+    prisma.userIdentity.findMany.mockResolvedValue([{ email: 'Me@x.com' }, { email: 'me@x.com' }]);
+    await (service as any).linkIdentityToUser('me', 'GOOGLE', 'g-1', 'me@x.com', true);
+    await new Promise((r) => setImmediate(r));
+    expect(email.sendSignInMethodAdded).toHaveBeenCalledTimes(1);
+    expect(email.sendSignInMethodAdded).toHaveBeenCalledWith('me@x.com', 'Google');
+
+    email.sendSignInMethodAdded.mockClear();
+    prisma.userIdentity.create.mockRejectedValueOnce(new Error('P2002'));
+    await (service as any).linkIdentityToUser('me', 'GOOGLE', 'g-1', 'me@x.com', true);
+    await new Promise((r) => setImmediate(r));
+    expect(email.sendSignInMethodAdded).not.toHaveBeenCalled();
+  });
+
   it('Cognito: unverified email creates a placeholder instead of linking', async () => {
     const { service, prisma, cognito } = setup();
     cognito.verifyCognitoToken.mockResolvedValue({
@@ -389,9 +404,42 @@ describe('S6: token types, tokenVersion and refresh revocation', () => {
     // A client retrying a rotate whose response it lost is not logged out.
     await expect(service.refreshSession(rt)).resolves.toHaveProperty('accessToken');
 
+    expect(prisma.user.update).not.toHaveBeenCalled();
+
+    // Reuse after the grace window = a copied token: revoke the whole family.
     spentAgo(redis, 'j1', 5 * 60 * 1000);
     await expect(service.refreshSession(rt)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  });
+
+  it('a logged-out refresh token is refused without revoking other devices', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const rt = sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j6' });
+
+    await service.logout('user-1', { refreshToken: rt });
+    await expect(service.refreshSession(rt)).rejects.toBeInstanceOf(UnauthorizedException);
     expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('rotation keeps the sign-in time; past the absolute cap refresh fails', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const now = Math.floor(Date.now() / 1000);
+    const at = now - 10 * 86400;
+    const next = await service.refreshSession(
+      sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j7', at }),
+    );
+    expect(jwt.decode(next.refreshToken)).toMatchObject({ at });
+
+    await expect(
+      service.refreshSession(
+        sign({ userId: 'user-1', type: 'refresh', tv: 0, jti: 'j8', at: now - 400 * 86400 }),
+      ),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
   it('keeps a 4.0.5 refresh token (no jti/tv) working once, then it is spent', async () => {
@@ -423,6 +471,26 @@ describe('S6: token types, tokenVersion and refresh revocation', () => {
     await service.refreshSession(rt);
     await service.logout('user-1', { refreshToken: rt });
     await expect(service.refreshSession(rt)).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('J17: logout revokes the access token it was called with', async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user());
+    const at = sign({ userId: 'user-1', type: 'access', tv: 0 });
+    const other = sign({ userId: 'user-1', type: 'access', tv: 0, n: 2 });
+
+    await service.logout('user-1', { accessToken: at });
+    await expect(service.validateAccessToken(at)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(service.validateAccessToken(other)).resolves.toMatchObject({ id: 'user-1' });
+  });
+
+  it("logout can't revoke someone else's access token", async () => {
+    const { service, prisma } = setup();
+    prisma.user.findUnique.mockResolvedValue(user({ id: 'victim' }));
+    const at = sign({ userId: 'victim', type: 'access', tv: 0 });
+
+    await service.logout('attacker', { accessToken: at });
+    await expect(service.validateAccessToken(at)).resolves.toMatchObject({ id: 'victim' });
   });
 
   it("logout can't revoke someone else's refresh token", async () => {

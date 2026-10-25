@@ -534,7 +534,7 @@ export class WaitlistService {
       const sale = this.payments.priceSale(
         baseAmount,
         ticketsIn(ticketType, { quantity: reg.quantity, groupSize: seats }),
-        Boolean((event as any)?.absorbProcessingFee),
+        Boolean(event.absorbProcessingFee),
         terms,
       );
       const processingFee = sale.fee;

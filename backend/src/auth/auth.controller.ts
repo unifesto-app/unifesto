@@ -146,6 +146,18 @@ export class AuthController {
     return this.authService.logout(req.user.id, {
       refreshToken: body?.refreshToken,
       allDevices: body?.allDevices,
+      accessToken: req.headers?.authorization?.replace(/^Bearer\s+/i, ''),
     });
+  }
+
+  /**
+   * Sign out everywhere: revokes every access and refresh token of the caller.
+   * POST /auth/logout-all
+   */
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(@Request() req): Promise<{ message: string }> {
+    return this.authService.logout(req.user.id, { allDevices: true });
   }
 }

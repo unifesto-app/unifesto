@@ -10,10 +10,7 @@ const securityHeaders = [
   // subdomain and are hard to undo; add them once all subdomains are audited.
   { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
   { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-  {
-    key: 'Content-Security-Policy',
-    value: "frame-ancestors 'none';",
-  },
+  // Content-Security-Policy is set per request in src/proxy.ts (nonce, K14).
 ];
 
 const nextConfig: NextConfig = {
