@@ -1,20 +1,20 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { CaretLeft, CaretRight, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import { CaretLeft, CaretRight } from '@unifesto/unicon/react-native';
+import CosmosBackdrop from '../components/ui/CosmosBackdrop';
+import SearchField from '../components/manage/SearchField';
+import { GUTTER } from '../components/home/Section';
 import { useEventAttendees } from '../hooks/useEventAttendees';
 import useTopSpacing from '../hooks/useTopSpacing';
 import AttendeeRow from '../components/manage/AttendeeRow';
 import type { AttendeeRow as AttendeeRowData } from '../lib/api/manageEvent';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import type { AttendeeFilter } from '../lib/api/manageEvent';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 const TABS: { key: AttendeeFilter; label: string }[] = [
   { key: 'attending', label: 'Attending' },
@@ -39,26 +39,7 @@ export default function EventAttendeesScreen() {
 
   const header = (
     <View style={{ paddingTop: topSpacing }}>
-      <View style={styles.search}>
-        <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={c.muted} weight="bold" />
-        <TextInput
-          value={a.query}
-          onChangeText={a.setQuery}
-          placeholder="Name, phone, email or username"
-          placeholderTextColor={c.muted}
-          style={[styles.searchInput, { color: c.text }]}
-          returnKeyType="search"
-          autoCorrect={false}
-          autoCapitalize="none"
-          clearButtonMode="never"
-        />
-        {a.query.length > 0 ? (
-          <Pressable onPress={() => a.setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <X size={18} color={c.soft} weight="bold" />
-          </Pressable>
-        ) : null}
-      </View>
+      <SearchField value={a.query} onChangeText={a.setQuery} placeholder="Name, phone, email or username" />
       <View style={{ marginTop: spacing[4] }}>
         <SegmentedTabs tabs={TABS} value={a.filter} onChange={a.setFilter} />
       </View>
@@ -74,13 +55,15 @@ export default function EventAttendeesScreen() {
   );
 
   const empty = a.loading ? (
-    <ActivityIndicator color={c.primary} style={{ marginTop: spacing[10] }} />
+    <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
   ) : (
-    <Text style={[styles.empty, { color: c.muted }]}>
-      {a.denied
-        ? 'The attendee list is only open to Space admins right now.'
-        : a.error || (a.query ? 'No one matches that search.' : 'No one here yet.')}
-    </Text>
+    <View style={[styles.empty, { backgroundColor: c.raised }]}>
+      <Text style={[styles.emptyText, { color: c.soft }]}>
+        {a.denied
+          ? 'The attendee list is only open to Space admins right now.'
+          : a.error || (a.query ? 'No one matches that search.' : 'No one here yet.')}
+      </Text>
+    </View>
   );
 
   const canBack = a.page > 1 && !a.paging;
@@ -100,7 +83,7 @@ export default function EventAttendeesScreen() {
           <Text style={[styles.pageBtnText, { color: c.primary }]}>Previous</Text>
         </Pressable>
         {a.paging ? (
-          <ActivityIndicator color={c.primary} />
+          <ActivityIndicator color={c.text} />
         ) : (
           <Text style={[styles.pageLabel, { color: c.soft }]}>
             Page {a.page} of {a.pageCount}
@@ -120,53 +103,56 @@ export default function EventAttendeesScreen() {
       </View>
     ) : null;
 
+  const data = a.loading || a.error ? [] : a.rows;
+
+  // A View + backdrop rather than CosmosList: the pager needs the FlatList ref.
   return (
-    <FlatList
-      ref={list}
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={styles.content}
-      data={a.loading || a.error ? [] : a.rows}
-      keyExtractor={(r) => r.id}
-      ListHeaderComponent={header}
-      ListEmptyComponent={empty}
-      ItemSeparatorComponent={() => <View style={[styles.sep, { backgroundColor: c.border }]} />}
-      renderItem={({ item }) => (
-        <AttendeeRow
-          row={item}
-          onPress={() => router.push(`/manage/event/${eventId}/attendee/${item.id}`)}
-        />
-      )}
-      ListFooterComponent={pager}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={a.refreshing}
-          onRefresh={a.refresh}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    />
+    <View style={[styles.container, { backgroundColor: c.bg }]}>
+      <CosmosBackdrop horizon={false} />
+      <FlatList
+        ref={list}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={styles.content}
+        data={data}
+        keyExtractor={(r) => r.id}
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
+        // One card for the page: each booking is a segment of it.
+        renderItem={({ item, index }) => (
+          <View style={cardSegment(c.raised, index, data.length)}>
+            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+            <AttendeeRow
+              row={item}
+              onPress={() => router.push(`/manage/event/${eventId}/attendee/${item.id}`)}
+            />
+          </View>
+        )}
+        ListFooterComponent={pager}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={a.refreshing}
+            onRefresh={a.refresh}
+            tintColor={c.text}
+            colors={[c.text]}
+            progressViewOffset={topSpacing}
+          />
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    height: 50,
-    paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
-  },
-  searchInput: { flex: 1, height: '100%', fontSize: typography.fontSize.base, ...cosmosFont.body },
-  count: { marginTop: spacing[4], marginBottom: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.strong },
+  container: { flex: 1 },
+  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
+  count: { marginTop: spacing[6], marginBottom: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   pager: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing[6], minHeight: 44 },
   pageBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing[1], paddingVertical: spacing[2] },
   pageBtnText: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },

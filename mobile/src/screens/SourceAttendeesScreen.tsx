@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { UserCircle } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getSourceAttendees, sourceLabel, type SourceAttendee } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 
 /** Route params carry the tags as strings; '' means untagged (the Direct row). */
@@ -24,7 +24,6 @@ export default function SourceAttendeesScreen() {
   const params = useLocalSearchParams<{ eventId: string; source?: string; medium?: string; campaign?: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [rows, setRows] = useState<SourceAttendee[] | null>(null);
   const [error, setError] = useState('');
 
@@ -46,9 +45,9 @@ export default function SourceAttendeesScreen() {
 
   if (!rows && !error) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -56,21 +55,20 @@ export default function SourceAttendeesScreen() {
   const headcount = (rows ?? []).reduce((n, r) => n + people(r), 0);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      contentInsetAdjustmentBehavior="never"
-      showsVerticalScrollIndicator={false}
-    >
+    <CosmosScreen contentContainerStyle={styles.content}>
       <Text style={[styles.title, { color: c.text }]}>{sourceLabel(tags)}</Text>
       <Text style={[styles.muted, { color: c.muted }]}>
         {[tags.medium, tags.campaign].filter(Boolean).join(' · ') || 'No tags'}
       </Text>
 
       {error ? (
-        <Text style={[styles.empty, { color: c.muted }]}>{error}</Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{error}</Text>
+        </View>
       ) : rows!.length === 0 ? (
-        <Text style={[styles.empty, { color: c.muted }]}>No confirmed registrations from this source.</Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>No confirmed registrations from this source.</Text>
+        </View>
       ) : (
         <View style={{ marginTop: spacing[6] }}>
           <SettingsGroup
@@ -101,16 +99,16 @@ export default function SourceAttendeesScreen() {
           ) : null}
         </View>
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
   title: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { marginTop: spacing[6], borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
   avatar: { width: ICON, height: ICON, borderRadius: ICON / 2 },
 });

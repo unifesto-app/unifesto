@@ -1,10 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Export, Plus } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   attachSponsor,
   detachSponsor,
@@ -29,11 +27,11 @@ import { SwitchRow } from '../components/manage/FormFields';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
 
 type Tab = 'sponsors' | 'leads';
 
@@ -48,7 +46,6 @@ export default function EventSponsorsScreen() {
   const eventId = params.eventId;
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [spaceId, setSpaceId] = useState(params.spaceId || '');
   const [title, setTitle] = useState(params.title || '');
   const [tab, setTab] = useState<Tab>('sponsors');
@@ -169,9 +166,9 @@ export default function EventSponsorsScreen() {
 
   if (!attached) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -182,24 +179,14 @@ export default function EventSponsorsScreen() {
   const tierNames = tiers.map((t) => t.name);
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {error ? <Text style={[styles.intro, { color: c.danger, marginBottom: spacing[3] }]}>{error}</Text> : null}
       <SegmentedTabs tabs={tabs} value={tab} onChange={setTab} />
@@ -259,7 +246,7 @@ export default function EventSponsorsScreen() {
                 {roster.length ? 'Every sponsor in your roster is on this event.' : 'Your roster is empty. Add a sponsor first.'}
               </Text>
             )}
-            {busy === 'attach' ? <ActivityIndicator color={c.primary} style={{ marginTop: spacing[3] }} /> : null}
+            {busy === 'attach' ? <ActivityIndicator color={c.text} style={{ marginTop: spacing[3] }} /> : null}
             <Button
               label="New sponsor"
               variant="ghost"
@@ -313,13 +300,12 @@ export default function EventSponsorsScreen() {
           ) : null}
         </>
       )}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: GUTTER },
   intro: { marginTop: spacing[4], marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
   sub: { marginTop: -spacing[2], paddingHorizontal: spacing[4], paddingBottom: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

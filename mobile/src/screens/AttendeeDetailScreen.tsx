@@ -1,11 +1,9 @@
 import { isEmail } from '../lib/constants';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowCounterClockwise, ArrowsLeftRight, EnvelopeSimple, PencilSimple, Phone, Receipt, User, XCircle } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getAttendee, releaseGroupSeat, reopenGroupSeat, restoreAttendee, type AttendeeDetail, type GroupSeatRow } from '../lib/api/manageEvent';
 import { attendeeBadge } from '../components/manage/AttendeeRow';
 import SeatRow, { seatPerson } from '../components/manage/SeatRow';
@@ -17,11 +15,12 @@ import { FieldRow } from '../components/manage/FormFields';
 import { addSeatsAsCurator, makeLeadAsCurator, removeSeatAsCurator, replaceMemberAsCurator } from '../lib/api/attendeeControls';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const AVATAR = 72;
 const ICON = 24;
 
@@ -45,7 +44,6 @@ export default function AttendeeDetailScreen() {
   const { eventId, registrationId } = useLocalSearchParams<{ eventId: string; registrationId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [seatBusy, setSeatBusy] = useState<number | null>(null);
   const [fields, setFields] = useState<CustomField[]>([]);
   // Replacing a member: which seat, and who (optionally) takes it over.
@@ -222,18 +220,20 @@ export default function AttendeeDetailScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   if (error || !reg) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error || 'Not found'}</Text>
-        <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error || 'Not found'}</Text>
+          <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
@@ -257,14 +257,7 @@ export default function AttendeeDetailScreen() {
   const paid = Number(reg.totalAmount) > 0 && (reg.paymentStatus === 'PAID' || reg.paymentStatus === 'PARTIALLY_REFUNDED');
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.primary} colors={[c.primary]} progressViewOffset={topSpacing} />
-      }
-    >
+    <CosmosScreen refreshing={refreshing} onRefresh={onRefresh} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         {reg.user.avatarUrl ? (
           <Image source={{ uri: reg.user.avatarUrl }} style={styles.avatar} />
@@ -275,7 +268,7 @@ export default function AttendeeDetailScreen() {
         )}
         <Text style={[styles.name, { color: c.text }]}>{name}</Text>
         {reg.user.username ? <Text style={[styles.muted, { color: c.muted }]}>@{reg.user.username}</Text> : null}
-        <Text style={[styles.badge, { color: badge.color }]}>{badge.text}</Text>
+        <Text style={[styles.badge, { color: badge.color, backgroundColor: `${badge.color}26` }]}>{badge.text}</Text>
       </View>
 
       {reg.user.mobileNumber || reg.user.email ? (
@@ -433,18 +426,18 @@ export default function AttendeeDetailScreen() {
           style={{ marginTop: spacing[6] }}
         />
       ) : null}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   hero: { alignItems: 'center', gap: 4, marginBottom: spacing[6] },
   avatar: { width: AVATAR, height: AVATAR, borderRadius: AVATAR / 2, marginBottom: spacing[2] },
   avatarEmpty: { alignItems: 'center', justifyContent: 'center' },
   name: { fontSize: typography.fontSize['2xl'], textAlign: 'center', ...cosmosFont.display },
-  badge: { marginTop: spacing[1], fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  badge: { marginTop: spacing[2], paddingHorizontal: spacing[3], paddingVertical: 4, borderRadius: 999, overflow: 'hidden', fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   answer: { paddingHorizontal: spacing[4], paddingVertical: spacing[3], gap: 2 },
   answerLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.strong },

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle, CircleIcon } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   describeAccount,
   getEligibleAccounts,
@@ -16,12 +15,12 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { inr } from '../utils/money';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Mode = 'full' | 'custom';
 const MODES: { key: Mode; label: string }[] = [
@@ -38,7 +37,6 @@ export default function RequestPayoutScreen() {
   const { eventId, title } = useLocalSearchParams<{ eventId: string; title?: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [summary, setSummary] = useState<EventPayoutSummary | null>(null);
   const [accounts, setAccounts] = useState<EligibleAccount[]>([]);
   const [accountId, setAccountId] = useState('');
@@ -76,17 +74,19 @@ export default function RequestPayoutScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   if (!summary) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>{error || 'Could not load this event’s balance.'}</Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
@@ -140,96 +140,91 @@ export default function RequestPayoutScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
+    <CosmosScreen keyboard keyboardDismissMode="interactive" contentContainerStyle={styles.content}>
         {title ? <Text style={[styles.event, { color: c.text }]} numberOfLines={2}>{title}</Text> : null}
 
-        <SettingsGroup title="Balance" plain>
-          <SettingsRow label="Event earnings" value={inr(summary.eventNet)} />
-          <SettingsRow label="Paid out or queued" value={summary.committed > 0 ? `− ${inr(summary.committed)}` : inr(0)} />
-          <SettingsRow label="Available" value={inr(available)} />
-        </SettingsGroup>
-        <Text style={[styles.note, { color: c.muted }]}>
-          Earnings are after the {summary.defaultPlatformFeePercent}% platform fee and any refunds.
-        </Text>
+      <SettingsGroup title="Balance" plain>
+        <SettingsRow label="Event earnings" value={inr(summary.eventNet)} />
+        <SettingsRow label="Paid out or queued" value={summary.committed > 0 ? `− ${inr(summary.committed)}` : inr(0)} />
+        <SettingsRow label="Available" value={inr(available)} />
+      </SettingsGroup>
+      <Text style={[styles.note, { color: c.muted }]}>
+        Earnings are after the {summary.defaultPlatformFeePercent}% platform fee and any refunds.
+      </Text>
 
-        {available <= 0 ? (
-          <Text style={[styles.empty, { color: c.muted }]}>Nothing left to pay out for this event.</Text>
-        ) : (
-          <>
-            <View style={{ marginTop: spacing[8] }}>
-              <SegmentedTabs tabs={MODES} value={mode} onChange={(m) => { setMode(m); setError(''); }} />
-            </View>
-            {mode === 'custom' ? (
-              <SettingsGroup plain>
-                <FieldRow
-                  label="Amount (₹)"
-                  value={amount}
-                  onChangeText={(v) => { setAmount(v); setError(''); }}
-                  placeholder={`Up to ${inr(available)}`}
-                  keyboardType="decimal-pad"
-                  autoFocus
-                />
-              </SettingsGroup>
-            ) : null}
-
-            <SettingsGroup title="Pay to">
-              {accounts.length === 0 ? (
-                <SettingsRow label="No verified payout account" value="Add on web" />
-              ) : (
-                accounts.map((a) => {
-                  const selected = a.id === accountId;
-                  return (
-                    <Pressable key={a.id} onPress={() => setAccountId(a.id)} accessibilityRole="radio" accessibilityState={{ selected }} style={styles.account}>
-                      {selected ? (
-                        <CheckCircle size={24} color={c.primary} weight="fill" />
-                      ) : (
-                        <CircleIcon size={24} color={c.muted} />
-                      )}
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.accountName, { color: c.text }]} numberOfLines={1}>
-                          {describeAccount(a)}
-                        </Text>
-                        <Text style={[styles.accountSub, { color: c.muted }]} numberOfLines={1}>
-                          {a.isOwn ? a.accountHolderName : `${a.ownerName} · ${a.accountHolderName}`}
-                          {a.isPrimary ? '  ·  Primary' : ''}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                })
-              )}
+      {available <= 0 ? (
+        <View style={[styles.emptyCard, { marginTop: spacing[8], backgroundColor: c.raised }]}>
+          <Text style={[styles.empty, { color: c.soft }]}>Nothing left to pay out for this event.</Text>
+        </View>
+      ) : (
+        <>
+          <View style={{ marginTop: spacing[8] }}>
+            <SegmentedTabs tabs={MODES} value={mode} onChange={(m) => { setMode(m); setError(''); }} />
+          </View>
+          {mode === 'custom' ? (
+            <SettingsGroup plain>
+              <FieldRow
+                label="Amount (₹)"
+                value={amount}
+                onChangeText={(v) => { setAmount(v); setError(''); }}
+                placeholder={`Up to ${inr(available)}`}
+                keyboardType="decimal-pad"
+                autoFocus
+              />
             </SettingsGroup>
+          ) : null}
 
-            {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
+          <SettingsGroup title="Pay to">
+            {accounts.length === 0 ? (
+              <SettingsRow label="No verified payout account" value="Add on web" />
+            ) : (
+              accounts.map((a) => {
+                const selected = a.id === accountId;
+                return (
+                  <Pressable key={a.id} onPress={() => setAccountId(a.id)} accessibilityRole="radio" accessibilityState={{ selected }} style={styles.account}>
+                    {selected ? (
+                      <CheckCircle size={24} color={c.primary} weight="fill" />
+                    ) : (
+                      <CircleIcon size={24} color={c.muted} />
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.accountName, { color: c.text }]} numberOfLines={1}>
+                        {describeAccount(a)}
+                      </Text>
+                      <Text style={[styles.accountSub, { color: c.muted }]} numberOfLines={1}>
+                        {a.isOwn ? a.accountHolderName : `${a.ownerName} · ${a.accountHolderName}`}
+                        {a.isPrimary ? '  ·  Primary' : ''}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })
+            )}
+          </SettingsGroup>
 
-            <Button
-              label={`Request ${mode === 'full' || !amountProblem ? inr(payAmount) : 'payout'}`}
-              size="lg"
-              fullWidth
-              loading={submitting}
-              onPress={submit}
-              style={{ marginTop: spacing[6] }}
-            />
-          </>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {error ? <Text style={[styles.error, { color: c.danger }]}>{error}</Text> : null}
+
+          <Button
+            label={`Request ${mode === 'full' || !amountProblem ? inr(payAmount) : 'payout'}`}
+            size="lg"
+            fullWidth
+            loading={submitting}
+            onPress={submit}
+            style={{ marginTop: spacing[6] }}
+          />
+        </>
+      )}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
   event: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   note: { marginTop: spacing[2], marginHorizontal: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  empty: { marginTop: spacing[8], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   account: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingHorizontal: spacing[4], paddingVertical: spacing[3], minHeight: 56 },
   accountName: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   accountSub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },

@@ -1,9 +1,8 @@
 import { EMAIL_RE } from '../lib/constants';
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useTopSpacing from '../hooks/useTopSpacing';
 import {
   cancelAttendee,
   getTransferRequestFor,
@@ -15,11 +14,11 @@ import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
 
 export type AttendeeAction = 'cancel' | 'refund' | 'transfer';
 
@@ -60,7 +59,6 @@ export default function AttendeeActionScreen() {
   const router = useRouter();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
   const [email, setEmail] = useState('');
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -101,58 +99,55 @@ export default function AttendeeActionScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <CosmosScreen
+      keyboard
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={!pendingTransfer ? <SaveBar visible label={copy.button} onPress={submit} loading={busy} error={error} /> : null}
+    >
       <Stack.Screen options={{ title: copy.title }} />
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={[styles.intro, { color: c.soft }]}>{copy.intro}</Text>
+      <Text style={[styles.intro, { color: c.soft }]}>{copy.intro}</Text>
 
-        {existing && action === 'transfer' ? (
-          <Text style={[styles.note, { color: existing.status === 'REJECTED' ? c.danger : c.soft }]}>
-            {existing.status === 'PENDING'
-              ? `Transfer to ${existing.targetEmail} is waiting for review.`
-              : existing.status === 'APPROVED'
-                ? `Last transfer to ${existing.targetEmail} was approved.`
-                : `Last request was declined${existing.reviewNote ? `: ${existing.reviewNote}` : '.'}`}
-          </Text>
-        ) : null}
+      {existing && action === 'transfer' ? (
+        <Text style={[styles.note, { color: existing.status === 'REJECTED' ? c.danger : c.soft }]}>
+          {existing.status === 'PENDING'
+            ? `Transfer to ${existing.targetEmail} is waiting for review.`
+            : existing.status === 'APPROVED'
+              ? `Last transfer to ${existing.targetEmail} was approved.`
+              : `Last request was declined${existing.reviewNote ? `: ${existing.reviewNote}` : '.'}`}
+        </Text>
+      ) : null}
 
-        {!pendingTransfer ? (
-          <SettingsGroup plain>
-            {action === 'transfer' ? (
-              <FieldRow
-                stacked
-                label="New holder's email"
-                value={email}
-                onChangeText={(v) => {
-                  setError('');
-                  setEmail(v);
-                }}
-                placeholder="name@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            ) : null}
+      {!pendingTransfer ? (
+        <SettingsGroup plain>
+          {action === 'transfer' ? (
             <FieldRow
               stacked
-              multiline
-              label={copy.reasonLabel}
-              value={reason}
+              label="New holder's email"
+              value={email}
               onChangeText={(v) => {
                 setError('');
-                setReason(v);
+                setEmail(v);
               }}
+              placeholder="name@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
             />
-          </SettingsGroup>
-        ) : null}
-      </ScrollView>
-
-      {!pendingTransfer ? <SaveBar visible label={copy.button} onPress={submit} loading={busy} error={error} /> : null}
-    </KeyboardAvoidingView>
+          ) : null}
+          <FieldRow
+            stacked
+            multiline
+            label={copy.reasonLabel}
+            value={reason}
+            onChangeText={(v) => {
+              setError('');
+              setReason(v);
+            }}
+          />
+        </SettingsGroup>
+      ) : null}
+    </CosmosScreen>
   );
 }
 

@@ -1,9 +1,8 @@
 import { EMAIL_RE } from '../lib/constants';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { splitFields } from '../hooks/useEventRegistration';
 import { getManagedEvent } from '../lib/api/eventAdmin';
 import { getEventCustomFields, getFieldsForTicket, type CustomField } from '../lib/api/tickets';
@@ -22,11 +21,12 @@ import SaveBar from '../components/manage/SaveBar';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const PHONE = /^[0-9]{10}$/;
 const GENDERS = ATTENDEE_GENDER_OPTIONS.map((g) => ({ value: g, label: g }));
 
@@ -64,7 +64,6 @@ export default function AddAttendeeScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
   const insets = useSafeAreaInsets();
-  const topSpacing = useTopSpacing();
 
   const [tickets, setTickets] = useState<TicketOption[] | null>(null);
   const [fields, setFields] = useState<CustomField[]>([]);
@@ -240,17 +239,25 @@ export default function AddAttendeeScreen() {
 
   if (!tickets) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        {loadError ? <Text style={[styles.muted, { color: c.muted }]}>{loadError}</Text> : <ActivityIndicator color={c.primary} />}
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        {loadError ? (
+          <View style={[styles.empty, { backgroundColor: c.raised }]}>
+            <Text style={[styles.muted, { color: c.soft }]}>{loadError}</Text>
+          </View>
+        ) : (
+          <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+        )}
+      </CosmosScreen>
     );
   }
 
   if (tickets.length === 0) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.muted, { color: c.muted }]}>Add a ticket or RSVP option to this event first.</Text>
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.muted, { color: c.soft }]}>Add a ticket or RSVP option to this event first.</Text>
+        </View>
+      </CosmosScreen>
     );
   }
 
@@ -292,91 +299,88 @@ export default function AddAttendeeScreen() {
   );
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing, paddingBottom: 140 + insets.bottom }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
-        <BlockTitle>Ticket</BlockTitle>
-        <ChipPicker
-          options={tickets.map((t) => ({ value: t.id, label: t.price > 0 ? `${t.name} · ₹${t.price.toLocaleString('en-IN')}` : t.name }))}
-          value={ticketId}
-          onChange={(v) => v && setTicketId(v)}
-        />
+    <CosmosScreen
+      keyboard
+      keyboardDismissMode="interactive"
+      bottom={140 + insets.bottom}
+      contentContainerStyle={styles.content}
+      footer={<SaveBar visible label={payNow ? 'Send payment link' : 'Add attendee'} onPress={confirmAdd} loading={saving} error={error} />}
+    >
+      <BlockTitle>Ticket</BlockTitle>
+      <ChipPicker
+        options={tickets.map((t) => ({ value: t.id, label: t.price > 0 ? `${t.name} · ₹${t.price.toLocaleString('en-IN')}` : t.name }))}
+        value={ticketId}
+        onChange={(v) => v && setTicketId(v)}
+      />
 
-        {isGroup ? (
-          <SettingsGroup title="Group" plain>
-            <FieldRow
-              label={`Group size (${minSize}${Number.isFinite(maxSize) ? `–${maxSize}` : '+'})`}
-              value={groupSize}
-              onChangeText={(v) => setGroupSize(v.replace(/\D/g, ''))}
-              keyboardType="number-pad"
+      {isGroup ? (
+        <SettingsGroup title="Group" plain>
+          <FieldRow
+            label={`Group size (${minSize}${Number.isFinite(maxSize) ? `–${maxSize}` : '+'})`}
+            value={groupSize}
+            onChangeText={(v) => setGroupSize(v.replace(/\D/g, ''))}
+            keyboardType="number-pad"
+          />
+        </SettingsGroup>
+      ) : null}
+
+      {personBlock(lead, (patch) => setLead((l) => ({ ...l, ...patch })), isGroup ? 'Member 1 (lead)' : 'Person')}
+
+      {isGroup && teamFields.length > 0 ? (
+        <>
+          <Text style={[styles.heading, { color: c.text }]}>About the team</Text>
+          {visibleFields(teamFields, team).map((f) => (
+            <View key={f.id} style={styles.block}>
+              <CustomFieldInput field={f} value={team[f.id]} onChange={(v) => setTeam((t) => ({ ...t, [f.id]: v }))} />
+            </View>
+          ))}
+        </>
+      ) : null}
+
+      {Array.from({ length: extra }, (_, i) => (
+        <View key={i}>{personBlock(members[i] ?? blank(), (patch) => setMember(i, patch), `Member ${i + 2}`)}</View>
+      ))}
+
+      {isPaid ? (
+        allowFree ? (
+          <SettingsGroup title="Payment" plain>
+            <SwitchRow
+              label="Collect payment"
+              hint={collectPayment ? 'They get a payment link and are registered once they pay.' : 'Added free, ticket emailed now.'}
+              value={collectPayment}
+              onValueChange={setCollectPayment}
             />
           </SettingsGroup>
-        ) : null}
-
-        {personBlock(lead, (patch) => setLead((l) => ({ ...l, ...patch })), isGroup ? 'Member 1 (lead)' : 'Person')}
-
-        {isGroup && teamFields.length > 0 ? (
+        ) : (
           <>
-            <Text style={[styles.heading, { color: c.text }]}>About the team</Text>
-            {visibleFields(teamFields, team).map((f) => (
-              <View key={f.id} style={styles.block}>
-                <CustomFieldInput field={f} value={team[f.id]} onChange={(v) => setTeam((t) => ({ ...t, [f.id]: v }))} />
-              </View>
-            ))}
+            <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
+              They'll get a payment link. Adding people free to a paid ticket needs approval from Unifesto.
+            </Text>
+            {freeReq === 'PENDING' ? (
+              <Text style={[styles.note, { color: c.warn }]}>Your free-add request is waiting for review.</Text>
+            ) : (
+              <>
+                {freeReq === 'REJECTED' ? (
+                  <Text style={[styles.note, { color: c.danger }]}>Your last free-add request was declined.</Text>
+                ) : null}
+                <SettingsGroup plain>
+                  <FieldRow stacked multiline label="Why add people free? (optional request)" value={freeReason} onChangeText={setFreeReason} />
+                </SettingsGroup>
+                {freeReason.trim() ? (
+                  <Button label="Ask to allow free adds" variant="secondary" fullWidth loading={freeBusy} onPress={sendFreeRequest} style={{ marginTop: spacing[3] }} />
+                ) : null}
+              </>
+            )}
           </>
-        ) : null}
-
-        {Array.from({ length: extra }, (_, i) => (
-          <View key={i}>{personBlock(members[i] ?? blank(), (patch) => setMember(i, patch), `Member ${i + 2}`)}</View>
-        ))}
-
-        {isPaid ? (
-          allowFree ? (
-            <SettingsGroup title="Payment" plain>
-              <SwitchRow
-                label="Collect payment"
-                hint={collectPayment ? 'They get a payment link and are registered once they pay.' : 'Added free, ticket emailed now.'}
-                value={collectPayment}
-                onValueChange={setCollectPayment}
-              />
-            </SettingsGroup>
-          ) : (
-            <>
-              <Text style={[styles.note, { color: c.muted, marginTop: spacing[6] }]}>
-                They'll get a payment link. Adding people free to a paid ticket needs approval from Unifesto.
-              </Text>
-              {freeReq === 'PENDING' ? (
-                <Text style={[styles.note, { color: c.warn }]}>Your free-add request is waiting for review.</Text>
-              ) : (
-                <>
-                  {freeReq === 'REJECTED' ? (
-                    <Text style={[styles.note, { color: c.danger }]}>Your last free-add request was declined.</Text>
-                  ) : null}
-                  <SettingsGroup plain>
-                    <FieldRow stacked multiline label="Why add people free? (optional request)" value={freeReason} onChangeText={setFreeReason} />
-                  </SettingsGroup>
-                  {freeReason.trim() ? (
-                    <Button label="Ask to allow free adds" variant="secondary" fullWidth loading={freeBusy} onPress={sendFreeRequest} style={{ marginTop: spacing[3] }} />
-                  ) : null}
-                </>
-              )}
-            </>
-          )
-        ) : null}
-      </ScrollView>
-
-      <SaveBar visible label={payNow ? 'Send payment link' : 'Add attendee'} onPress={confirmAdd} loading={saving} error={error} />
-    </KeyboardAvoidingView>
+        )
+      ) : null}
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
   content: { paddingHorizontal: GUTTER },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   muted: { fontSize: typography.fontSize.sm, textAlign: 'center', ...cosmosFont.body },
   block: { marginTop: spacing[4] },
   heading: { marginTop: spacing[8], marginLeft: spacing[1], fontSize: typography.fontSize.base, ...cosmosFont.strong },

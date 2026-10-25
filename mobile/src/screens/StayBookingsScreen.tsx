@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { FileCsv, MagnifyingGlass } from '@unifesto/unicon/react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { FileCsv } from '@unifesto/unicon/react-native';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
-import useTopSpacing from '../hooks/useTopSpacing';
+import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
+import SearchField from '../components/manage/SearchField';
+import { GUTTER } from '../components/home/Section';
 import { shareCsv } from '../lib/csvShare';
 import {
   dayLabel,
@@ -17,11 +18,9 @@ import {
   type StayBookingStatus,
   type TeamStayBooking,
 } from '../lib/api/stays';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type Tab = 'requests' | 'pay' | 'guests' | 'all';
 const TABS: { key: Tab; label: string }[] = [
@@ -45,7 +44,6 @@ export default function StayBookingsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [rows, setRows] = useState<TeamStayBooking[] | null>(null);
   const [tab, setTab] = useState<Tab>('requests');
   const [search, setSearch] = useState('');
@@ -114,55 +112,36 @@ export default function StayBookingsScreen() {
 
   if (!rows) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   return (
-    <FlatList
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
+    <CosmosList
+      contentContainerStyle={styles.content}
       data={shown}
       keyExtractor={(b) => b.id}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
       ListHeaderComponent={
         <View style={{ gap: spacing[4], marginBottom: spacing[4] }}>
-          <View style={[styles.search, { backgroundColor: c.tint }]}>
-            <MagnifyingGlass size={18} color={c.muted} />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Name, phone, pass or room"
-              placeholderTextColor={c.muted}
-              selectionColor={c.primary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={[styles.searchInput, { color: c.text }]}
-            />
-          </View>
+          <SearchField value={search} onChangeText={setSearch} placeholder="Name, phone, pass or room" />
           <SegmentedTabs tabs={TABS.map((t) => ({ ...t, label: `${t.label}${countFor(t.key) ? ` ${countFor(t.key)}` : ''}` }))} value={tab} onChange={setTab} />
           {error ? <Text style={[styles.meta, { color: c.danger }]}>{error}</Text> : null}
         </View>
       }
       ListEmptyComponent={
-        <Text style={[styles.empty, { color: c.muted }]}>
-          {tab === 'requests' ? 'No new requests.' : tab === 'pay' ? 'Nobody is waiting to pay.' : 'Nothing here yet.'}
-        </Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>
+            {tab === 'requests' ? 'No new requests.' : tab === 'pay' ? 'Nobody is waiting to pay.' : 'Nothing here yet.'}
+          </Text>
+        </View>
       }
       ListFooterComponent={
         tab === 'guests' && shown.length ? (
@@ -176,7 +155,8 @@ export default function StayBookingsScreen() {
           />
         ) : null
       }
-      renderItem={({ item: b }) => {
+      // One card for the list: each booking is a segment of it.
+      renderItem={({ item: b, index }) => {
         const booker = b.guests.find((g) => g.isBooker) ?? b.guests[0];
         const tone =
           b.status === 'PENDING' || b.status === 'AWAITING_PAYMENT'
@@ -185,41 +165,42 @@ export default function StayBookingsScreen() {
               ? c.danger
               : c.success;
         return (
-          <Pressable
-            onPress={() => router.push(`/manage/event/${eventId}/stay-booking/${b.id}`)}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.row, { backgroundColor: pressed ? c.tint : c.card }]}
-          >
-            <View style={{ flex: 1, gap: 3 }}>
-              <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
-                {booker?.name || b.user.fullName || 'Guest'}
-                {b.guestCount > 1 ? ` +${b.guestCount - 1}` : ''}
-              </Text>
-              <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
-                {b.stay.name} · {b.option.name}
-              </Text>
-              <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
-                {dayLabel(b.checkInDate)} → {dayLabel(b.checkOutDate)}
-                {b.allocation ? ` · ${b.allocation}` : ''}
-              </Text>
-            </View>
-            <Text style={[styles.status, { color: tone }]}>{STATUS_LABELS[b.status]}</Text>
-          </Pressable>
+          <View style={cardSegment(c.raised, index, shown.length)}>
+            {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
+            <Pressable
+              onPress={() => router.push(`/manage/event/${eventId}/stay-booking/${b.id}`)}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
+            >
+              <View style={{ flex: 1, gap: 3 }}>
+                <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
+                  {booker?.name || b.user.fullName || 'Guest'}
+                  {b.guestCount > 1 ? ` +${b.guestCount - 1}` : ''}
+                </Text>
+                <Text style={[styles.meta, { color: c.soft }]} numberOfLines={1}>
+                  {b.stay.name} · {b.option.name}
+                </Text>
+                <Text style={[styles.meta, { color: c.muted }]} numberOfLines={1}>
+                  {dayLabel(b.checkInDate)} → {dayLabel(b.checkOutDate)}
+                  {b.allocation ? ` · ${b.allocation}` : ''}
+                </Text>
+              </View>
+              <Text style={[styles.status, { color: tone }]}>{STATUS_LABELS[b.status]}</Text>
+            </Pressable>
+          </View>
         );
       }}
-      ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 100 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[2], paddingHorizontal: spacing[4], borderRadius: borderRadius.full, height: 44 },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: borderRadius.lg },
+  content: { paddingHorizontal: GUTTER },
+  sep: { height: StyleSheet.hairlineWidth },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[4] },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
   status: { fontSize: typography.fontSize.xs, maxWidth: 110, textAlign: 'right', ...cosmosFont.strong },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });

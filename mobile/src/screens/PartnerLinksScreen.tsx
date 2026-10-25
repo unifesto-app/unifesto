@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getMyPartnerLinks, type MyPartnerLink } from '../lib/api/tracking';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const THUMB_W = 88;
 const THUMB_H = 66; // 4:3
 
@@ -21,7 +20,6 @@ const when = (iso: string) =>
 export default function PartnerLinksScreen() {
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [links, setLinks] = useState<MyPartnerLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -41,35 +39,29 @@ export default function PartnerLinksScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      contentInsetAdjustmentBehavior="never"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       {error ? <Text style={[styles.muted, { color: c.danger }]}>{error}</Text> : null}
       {!error && links.length === 0 ? (
-        <Text style={[styles.empty, { color: c.muted }]}>
-          When an event curator adds you as a partner, its registrations show up here.
-        </Text>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>
+            When an event curator adds you as a partner, its registrations show up here.
+          </Text>
+        </View>
       ) : null}
 
       {links.map((l) => (
@@ -98,19 +90,19 @@ export default function PartnerLinksScreen() {
           </View>
         </Pressable>
       ))}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80, gap: spacing[3] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3], borderRadius: borderRadius.xl },
-  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: borderRadius.lg },
+  content: { paddingHorizontal: GUTTER, gap: spacing[3] },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[3], borderRadius: cosmosCardRadius },
+  thumb: { width: THUMB_W, height: THUMB_H, borderRadius: cosmosRadius },
   title: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   muted: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  empty: { marginTop: spacing[10], textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   count: { alignItems: 'flex-end' },
-  countNum: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
+  countNum: { fontSize: typography.fontSize.xl, ...cosmosFont.figure },
   countLabel: { fontSize: typography.fontSize.xs, ...cosmosFont.body },
 });

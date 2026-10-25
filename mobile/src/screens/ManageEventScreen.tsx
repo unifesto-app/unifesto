@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -36,18 +35,18 @@ import {
 } from '@unifesto/unicon/react-native';
 import { useManageEvent } from '../hooks/useManageEvent';
 import { getTeamStays } from '../lib/api/stays';
-import useTopSpacing from '../hooks/useTopSpacing';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { openSpaceWeb } from '../lib/openOnWeb';
 import { relativeWhen } from '../utils/eventFormat';
 import { useEventCover } from '../lib/defaultImages';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 const COVER_W = 120;
 const COVER_H = 90; // 4:3
@@ -69,7 +68,6 @@ export default function ManageEventScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const h = useManageEvent(eventId);
   // Crew don't get the Stay hub; they get the property desk (scan a Stay Pass,
   // take payment, check in) when the event has a published stay.
@@ -85,18 +83,20 @@ export default function ManageEventScreen() {
 
   if (h.loading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   if (h.error || !h.event) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.muted, { color: c.muted }]}>{h.error || 'Event not found'}</Text>
-        <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[3] }} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{h.error || 'Event not found'}</Text>
+          <Button label="Try again" variant="secondary" onPress={() => void h.retry()} style={{ marginTop: spacing[4] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
@@ -115,20 +115,7 @@ export default function ManageEventScreen() {
   const icon = (I: typeof QrCode) => <I size={ICON} color={c.text} />;
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={h.refreshing}
-          onRefresh={h.refresh}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
-    >
+    <CosmosScreen refreshing={h.refreshing} onRefresh={h.refresh} contentContainerStyle={styles.content}>
       {/* Identity */}
       <View style={styles.hero}>
         {cover ? <Image source={{ uri: cover }} style={styles.cover} /> : null}
@@ -371,15 +358,16 @@ export default function ManageEventScreen() {
           />
         </SettingsGroup>
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   hero: { flexDirection: 'row', gap: spacing[4], alignItems: 'center' },
-  cover: { width: COVER_W, height: COVER_H, borderRadius: borderRadius.lg },
+  cover: { width: COVER_W, height: COVER_H, borderRadius: cosmosRadius },
   title: { fontSize: typography.fontSize.xl, lineHeight: typography.fontSize.xl * 1.2, ...cosmosFont.display },
   state: { marginTop: 6, fontSize: typography.fontSize.sm, ...cosmosFont.strong },
   muted: { fontSize: typography.fontSize.sm, ...cosmosFont.body },
@@ -387,5 +375,5 @@ const styles = StyleSheet.create({
   track: { height: 8, borderRadius: 4, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 4 },
   note: { marginTop: spacing[3], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  count: { width: ICON, textAlign: 'center', fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  count: { width: ICON, textAlign: 'center', fontSize: typography.fontSize.base, ...cosmosFont.figure },
 });

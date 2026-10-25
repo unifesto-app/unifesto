@@ -1,19 +1,19 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { useEngagementSocket } from '../hooks/useHackathonSocket';
 import { getQaBoard, moderateQuestion, setQaPremoderated, type QaBoard, type Question, type QuestionStatus } from '../lib/api/questions';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { SettingsGroup } from '../components/profile/SettingsGroup';
+import { SwitchRow } from '../components/manage/FormFields';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const TABS: { key: QuestionStatus; label: string }[] = [
   { key: 'PENDING', label: 'Waiting' },
   { key: 'APPROVED', label: 'Live' },
@@ -31,7 +31,6 @@ const EMPTY: Record<QuestionStatus, string> = {
 export default function QuestionsScreen() {
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [board, setBoard] = useState<QaBoard | null>(null);
   const [tab, setTab] = useState<QuestionStatus>('PENDING');
   const [error, setError] = useState('');
@@ -67,9 +66,9 @@ export default function QuestionsScreen() {
 
   if (!board) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -78,24 +77,15 @@ export default function QuestionsScreen() {
   const shown = board.questions.filter((q) => q.status === tab);
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      contentInsetAdjustmentBehavior="never"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-          colors={[c.primary]}
-          progressViewOffset={topSpacing}
-        />
-      }
+    <CosmosScreen
+      bottom={140}
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       <Text style={[styles.intro, { color: c.soft }]}>
         Attendees ask and upvote from their ticket while the event is on.
@@ -103,20 +93,21 @@ export default function QuestionsScreen() {
       {error ? <Text style={[styles.intro, { color: c.danger }]}>{error}</Text> : null}
 
       <SettingsGroup plain>
-        <View style={styles.toggle}>
-          <Text style={[styles.toggleLabel, { color: c.text }]}>Approve questions first</Text>
-          <Switch
-            value={board.premoderated}
-            disabled={busy === 'mode'}
-            onValueChange={(v) => void run('mode', () => setQaPremoderated(eventId!, v))}
-            accessibilityLabel="Approve questions before attendees see them"
-          />
-        </View>
+        <SwitchRow
+          label="Approve questions first"
+          value={board.premoderated}
+          disabled={busy === 'mode'}
+          onValueChange={(v) => void run('mode', () => setQaPremoderated(eventId!, v))}
+        />
       </SettingsGroup>
 
       <SegmentedTabs tabs={TABS.map((t) => ({ key: t.key, label: `${t.label} ${count(t.key)}` }))} value={tab} onChange={setTab} />
 
-      {shown.length === 0 ? <Text style={[styles.intro, { color: c.muted }]}>{EMPTY[tab]}</Text> : null}
+      {shown.length === 0 ? (
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.emptyText, { color: c.soft }]}>{EMPTY[tab]}</Text>
+        </View>
+      ) : null}
       {shown.map((q) => (
         <SettingsGroup key={q.id} title={`${q.votes} upvote${q.votes === 1 ? '' : 's'}${q.pinned ? ' · Pinned' : ''}`}>
           <View style={styles.question}>
@@ -142,16 +133,15 @@ export default function QuestionsScreen() {
           </View>
         </SettingsGroup>
       ))}
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 140, gap: spacing[4] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: GUTTER, gap: spacing[4] },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  emptyText: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
   intro: { marginLeft: spacing[1], fontSize: typography.fontSize.sm, lineHeight: typography.fontSize.sm * 1.5, ...cosmosFont.body },
-  toggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing[4], gap: spacing[3] },
-  toggleLabel: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.strong },
   question: { padding: spacing[4], gap: spacing[2] },
   text: { fontSize: typography.fontSize.base, lineHeight: typography.fontSize.base * 1.4, ...cosmosFont.body },
   meta: { fontSize: typography.fontSize.xs, ...cosmosFont.body },

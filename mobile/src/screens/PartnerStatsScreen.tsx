@@ -1,22 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { CopySimple, Eye, ShareNetwork } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../hooks/useTopSpacing';
 import { getPartnerStats, type PartnerStats } from '../lib/api/tracking';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { shareLink } from '../lib/share';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { CardBackdrop } from '../components/ui/CardSurface';
-import { cosmosFont, useCosmos } from '../theme/cosmos';
+import CosmosScreen from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
+import { cosmosCardRadius, cosmosFont, cosmosRadius, useCosmos } from '../theme/cosmos';
 
-const GUTTER = spacing[6];
 const ICON = 28;
 const DAYS = 14;
 const BAR_MAX_H = 96;
@@ -34,7 +33,6 @@ export default function PartnerStatsScreen() {
   const { linkId } = useLocalSearchParams<{ linkId: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,20 +64,22 @@ export default function PartnerStatsScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
   if (!stats) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <Text style={[styles.muted, { color: c.muted, textAlign: 'center' }]}>
-          {error || 'These stats are no longer available.'}
-        </Text>
-        <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[3] }} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <View style={[styles.empty, { backgroundColor: c.raised }]}>
+          <Text style={[styles.muted, { color: c.soft, textAlign: 'center' }]}>
+            {error || 'These stats are no longer available.'}
+          </Text>
+          <Button label="Try again" variant="secondary" onPress={() => void load()} style={{ marginTop: spacing[4] }} />
+        </View>
+      </CosmosScreen>
     );
   }
 
@@ -96,22 +96,14 @@ export default function PartnerStatsScreen() {
   };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: c.bg }}
-      contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-      contentInsetAdjustmentBehavior="never"
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={async () => {
-            setRefreshing(true);
-            await load();
-            setRefreshing(false);
-          }}
-          tintColor={c.primary}
-        />
-      }
+    <CosmosScreen
+      contentContainerStyle={styles.content}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await load();
+        setRefreshing(false);
+      }}
     >
       <View style={styles.header}>
         {e.coverImageUrl ? <Image source={{ uri: e.coverImageUrl }} style={styles.cover} /> : null}
@@ -175,21 +167,21 @@ export default function PartnerStatsScreen() {
           <SettingsRow icon={icon(Eye)} label="View event" onPress={() => router.push(`/event/${e.slug || e.id}`)} />
         </SettingsGroup>
       </View>
-    </ScrollView>
+    </CosmosScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: GUTTER },
+  content: { paddingHorizontal: GUTTER },
+  empty: { borderRadius: cosmosCardRadius, padding: spacing[6] },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  cover: { width: 96, height: 72, borderRadius: borderRadius.lg }, // 4:3
+  cover: { width: 96, height: 72, borderRadius: cosmosRadius }, // 4:3
   event: { fontSize: typography.fontSize.xl, ...cosmosFont.display },
   muted: { marginTop: 2, fontSize: typography.fontSize.sm, ...cosmosFont.body },
-  hero: { marginTop: spacing[6], padding: spacing[5], borderRadius: borderRadius.xl },
-  big: { fontSize: 48, lineHeight: 56, ...cosmosFont.display },
+  hero: { marginTop: spacing[6], padding: spacing[5], borderRadius: cosmosCardRadius },
+  big: { fontSize: 48, lineHeight: 56, ...cosmosFont.figure },
   subStats: { flexDirection: 'row', gap: spacing[5], marginTop: spacing[3] },
-  sub: { fontSize: typography.fontSize.sm, ...cosmosFont.strong },
+  sub: { fontSize: typography.fontSize.sm, ...cosmosFont.figure },
   chart: { flexDirection: 'row', alignItems: 'flex-end', height: BAR_MAX_H, gap: 4, marginTop: spacing[5] },
   barSlot: { flex: 1, justifyContent: 'flex-end' },
   bar: { borderRadius: 3 },

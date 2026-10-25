@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { RefreshControl } from '../components/ui/RefreshControl';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { Export, MagnifyingGlass, X } from '@unifesto/unicon/react-native';
-import useTopSpacing from '../hooks/useTopSpacing';
+import { Export } from '@unifesto/unicon/react-native';
 import {
   downloadTransactionsExport,
   getTransactions,
@@ -16,15 +14,15 @@ import {
 import { getUsage } from '../lib/api/billing';
 import ManageStats from '../components/manage/ManageStats';
 import ChipPicker from '../components/manage/ChipPicker';
-import { CardBackdrop } from '../components/ui/CardSurface';
+import SearchField from '../components/manage/SearchField';
+import CosmosScreen, { CosmosList } from '../components/ui/CosmosScreen';
+import { GUTTER } from '../components/home/Section';
 import { Button } from '../components/ui';
 import { AppAlert } from '../components/ui/AppAlert';
 import { inr, inrShort } from '../utils/money';
-import { borderRadius, spacing } from '../theme/spacing';
+import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
-import { type Cosmos, cosmosFont, useCosmos } from '../theme/cosmos';
-
-const GUTTER = spacing[6];
+import { type Cosmos, cardSegment, cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 
 type StatusFilter = 'all' | 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED';
 const STATUS: { value: Exclude<StatusFilter, 'all'>; label: string }[] = [
@@ -50,7 +48,6 @@ export default function TransactionsScreen() {
   const { eventId, slug, spaceId } = useLocalSearchParams<{ eventId: string; slug?: string; spaceId?: string }>();
   const router = useRouter();
   const c = useCosmos();
-  const topSpacing = useTopSpacing();
 
   const [rows, setRows] = useState<TransactionRow[] | null>(null);
   const [error, setError] = useState('');
@@ -137,9 +134,9 @@ export default function TransactionsScreen() {
 
   if (!rows) {
     return (
-      <View style={[styles.center, { backgroundColor: c.bg }]}>
-        <ActivityIndicator color={c.primary} />
-      </View>
+      <CosmosScreen contentContainerStyle={styles.content}>
+        <ActivityIndicator color={c.text} style={{ marginTop: spacing[10] }} />
+      </CosmosScreen>
     );
   }
 
@@ -159,24 +156,8 @@ export default function TransactionsScreen() {
           : ' '}
       </Text>
 
-      <View style={[styles.search, { marginTop: spacing[6] }]}>
-        <CardBackdrop shape={styles.search} />
-        <MagnifyingGlass size={20} color={c.muted} weight="bold" />
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Name or email"
-          placeholderTextColor={c.muted}
-          selectionColor={c.primary}
-          autoCorrect={false}
-          autoCapitalize="none"
-          style={[styles.searchInput, { color: c.text }]}
-        />
-        {query ? (
-          <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityLabel="Clear search">
-            <X size={18} color={c.muted} weight="bold" />
-          </Pressable>
-        ) : null}
+      <View style={{ marginTop: spacing[6] }}>
+        <SearchField value={query} onChangeText={setQuery} placeholder="Name or email" />
       </View>
 
       <View style={{ marginTop: spacing[4] }}>
@@ -192,55 +173,48 @@ export default function TransactionsScreen() {
   );
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.bg }}>
-      <FlatList
-        data={list}
-        keyExtractor={(r) => r.id}
-        contentContainerStyle={[styles.content, { paddingTop: topSpacing }]}
-        ListHeaderComponent={header}
-        ItemSeparatorComponent={() => <View style={{ height: spacing[2] }} />}
-        ListHeaderComponentStyle={{ marginBottom: spacing[5] }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={async () => {
-              setRefreshing(true);
-              await Promise.all([load(), loadSummary()]);
-              setRefreshing(false);
-            }}
-            tintColor={c.primary}
-            colors={[c.primary]}
-            progressViewOffset={topSpacing}
-          />
-        }
-        ListEmptyComponent={
-          error ? null : (
-            <Text style={[styles.empty, { color: c.muted }]}>
+    <CosmosList
+      data={list}
+      keyExtractor={(r) => r.id}
+      contentContainerStyle={styles.content}
+      ListHeaderComponent={header}
+      ListHeaderComponentStyle={{ marginBottom: spacing[5] }}
+      refreshing={refreshing}
+      onRefresh={async () => {
+        setRefreshing(true);
+        await Promise.all([load(), loadSummary()]);
+        setRefreshing(false);
+      }}
+      ListEmptyComponent={
+        error ? null : (
+          <View style={[styles.emptyCard, { backgroundColor: c.raised }]}>
+            <Text style={[styles.empty, { color: c.soft }]}>
               {rows.length === 0 ? 'Paid registrations show up here once tickets sell.' : 'Nothing matches these filters.'}
             </Text>
-          )
-        }
-        ListFooterComponent={
-          rows.length > 0 ? (
-            <Button
-              label="Export"
-              variant="secondary"
-              fullWidth
-              loading={exporting}
-              icon={<Export size={18} color={c.text} weight="bold" />}
-              onPress={exportMenu}
-              style={{ marginTop: spacing[8] }}
-            />
-          ) : null
-        }
-        renderItem={({ item: r }) => (
+          </View>
+        )
+      }
+      ListFooterComponent={
+        rows.length > 0 ? (
+          <Button
+            label="Export"
+            variant="secondary"
+            fullWidth
+            loading={exporting}
+            icon={<Export size={18} color={c.text} weight="bold" />}
+            onPress={exportMenu}
+            style={{ marginTop: spacing[8] }}
+          />
+        ) : null
+      }
+      // One card for the list: each payment is a segment of it.
+      renderItem={({ item: r, index }) => (
+        <View style={cardSegment(c.raised, index, list.length)}>
+          {index > 0 ? <View style={[styles.sep, { backgroundColor: c.border }]} /> : null}
           <Pressable
             onPress={() => router.push(`/manage/event/${eventId}/attendee/${r.id}`)}
-            style={({ pressed }) => [styles.row, { transform: [{ scale: pressed ? 0.98 : 1 }] }]}
+            style={({ pressed }) => [styles.row, { opacity: pressed ? 0.7 : 1 }]}
           >
-            <CardBackdrop shape={styles.row} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.name, { color: c.text }]} numberOfLines={1}>
                 {r.user.fullName || r.user.username || 'Unknown'}
@@ -254,22 +228,21 @@ export default function TransactionsScreen() {
               <Text style={[styles.status, { color: statusColor(r.paymentStatus, c) }]}>{statusLabel(r.paymentStatus)}</Text>
             </View>
           </Pressable>
-        )}
-      />
-    </View>
+        </View>
+      )}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  content: { paddingHorizontal: GUTTER, paddingBottom: 80 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingHorizontal: GUTTER },
   meta: { marginTop: spacing[3], marginLeft: spacing[1], fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  search: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], height: 48, paddingHorizontal: spacing[4], borderRadius: borderRadius.xl, overflow: 'hidden' },
-  searchInput: { flex: 1, fontSize: typography.fontSize.base, ...cosmosFont.body },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], padding: spacing[4], borderRadius: borderRadius.xl, overflow: 'hidden' },
+  sep: { height: StyleSheet.hairlineWidth },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], paddingVertical: spacing[4] },
   name: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
   sub: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.body },
-  amount: { fontSize: typography.fontSize.base, ...cosmosFont.strong },
+  amount: { fontSize: typography.fontSize.base, ...cosmosFont.figure },
   status: { marginTop: 2, fontSize: typography.fontSize.xs, ...cosmosFont.strong },
-  empty: { textAlign: 'center', paddingVertical: spacing[10], fontSize: typography.fontSize.sm, ...cosmosFont.body },
+  emptyCard: { borderRadius: cosmosCardRadius, padding: spacing[6] },
+  empty: { textAlign: 'center', fontSize: typography.fontSize.sm, ...cosmosFont.body },
 });
