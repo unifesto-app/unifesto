@@ -740,7 +740,7 @@ export class RegistrationPaymentsService {
             : n.sessionRegistrationId
               ? await this.prisma.sessionRegistration.findUnique({ where: { id: n.sessionRegistrationId }, select: { userId: true, session: { select: { title: true } } } })
               : null;
-      const title = (owner as any)?.event?.title ?? (owner as any)?.session?.title ?? 'your booking';
+      const title = (owner && 'session' in owner ? owner.session?.title : owner?.event?.title) ?? 'your booking';
       const identity = owner?.userId
         ? await this.prisma.userIdentity.findFirst({
             where: { userId: owner.userId, email: { not: null }, isPrimary: true },

@@ -378,7 +378,7 @@ export class SubscriptionService {
   async completeFromWebhook(
     orderId: string,
     paymentId: string,
-    order?: { id: string; status?: string; amount: number | string; notes?: any },
+    order?: { id: string; status?: string; amount: number | string; notes?: Record<string, string | number | null> },
   ): Promise<boolean> {
     const o = order ?? (await this.razorpay.orders.fetch(orderId).catch(() => null));
     const n = o?.notes;
@@ -398,7 +398,7 @@ export class SubscriptionService {
    */
   private async applyPaidOrder(
     spaceId: string,
-    order: { id: string; amount: number | string; notes?: any },
+    order: { id: string; amount: number | string; notes?: Record<string, string | number | null> },
     paymentId: string,
   ) {
     const n = order.notes ?? {};
