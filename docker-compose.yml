@@ -20,10 +20,20 @@ name: unifesto
 # the image it replaced :previous; `./deploy.sh rollback` puts :previous back
 # on :latest (J13). The deployed SHA is in DEPLOYED_SHA next to this file.
 
+# Every container's stdout goes to Docker's json-file driver, which never
+# rotated: one chatty replica could fill the disk. 5 x 10 MB per container.
+# The CERT-In access record is Caddy's own file log (see Caddyfile), not this.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"
@@ -50,6 +60,7 @@ services:
         SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     image: unifesto-backend:latest
     restart: "no"
+    logging: *logging
     volumes:
       - ./backend/.env:/app/.env:ro
     entrypoint: ["npx", "prisma", "migrate", "deploy"]
@@ -58,6 +69,7 @@ services:
     build: *backend-build
     image: unifesto-backend:latest
     restart: unless-stopped
+    logging: *logging
     # NOTE: we mount .env instead of using `env_file:` — the app (NestJS
     # ConfigModule) and `prisma.config.ts` load it with the tolerant dotenv
     # parser. Compose's env_file parser rejects the multi-line PRIVATE KEY.
@@ -75,12 +87,15 @@ services:
       CERT_WORKER: "false"
     expose:
       - "8080"
-    # Health-gate the replica so Docker's embedded DNS (which Caddy's `dynamic a`
-    # resolves) only advertises replicas that have finished booting and are still
-    # answering — a replica that is starting, wedged, or OOM-restarting is left
-    # out of rotation instead of receiving traffic it can't serve. `node -e` is
-    # used because the slim image ships no curl/wget. `start_period` covers Nest
-    # boot (Prisma + Redis connect); a 5xx or connect error counts as unhealthy.
+    # Healthcheck: deploy.sh waits for `healthy` before draining an old replica,
+    # and `autoheal` (below) restarts a replica that turns `unhealthy` (wedged
+    # event loop). Docker's embedded DNS does NOT drop unhealthy
+    # containers outside swarm mode, so this alone keeps nothing out of Caddy's
+    # rotation; Caddy's passive check ejects a replica whose dials fail. `node -e`
+    # because the slim image ships no curl/wget. `start_period` covers Nest boot
+    # (Prisma + Redis connect); a 5xx or connect error counts as unhealthy.
+    labels:
+      autoheal: "true"
     healthcheck:
       test:
         - "CMD"
@@ -127,6 +142,9 @@ services:
   cert-worker:
     image: unifesto-backend:latest
     restart: unless-stopped
+    logging: *logging
+    labels:
+      autoheal: "true"
     volumes:
       - ./backend/.env:/app/.env:ro
     environment:
@@ -153,6 +171,29 @@ services:
         limits:
           memory: 1536M
 
+  # Restarts any container labelled `autoheal: "true"` once its healthcheck
+  # reports `unhealthy` (3 failed probes). Docker itself never acts on health
+  # outside swarm: `restart: unless-stopped` only fires when the process exits,
+  # and a wedged Node process doesn't exit. A healthcheck that kills PID 1 can't
+  # do it either (PID 1 ignores signals it has no handler for, and a wedged loop
+  # never runs its SIGTERM handler). The docker.sock mount is root-equivalent on
+  # the host; the image is a ~50-line shell script, pinned.
+  autoheal:
+    image: willfarrell/autoheal:1.2.0
+    restart: unless-stopped
+    logging: *logging
+    environment:
+      AUTOHEAL_CONTAINER_LABEL: autoheal
+      AUTOHEAL_INTERVAL: "10"
+      # Matches the services' stop_grace_period, so a restart still drains.
+      AUTOHEAL_DEFAULT_STOP_TIMEOUT: "60"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+
   apex:
     build:
       context: ./websites/apex
@@ -165,6 +206,7 @@ services:
         - sentry_auth_token
     image: unifesto-apex:latest
     restart: unless-stopped
+    logging: *logging
     env_file: ./websites/apex/.env
     expose:
       - "3000"
@@ -190,6 +232,7 @@ services:
         - sentry_auth_token
     image: unifesto-space:latest
     restart: unless-stopped
+    logging: *logging
     env_file: ./websites/space/.env
     expose:
       - "3000"
@@ -212,6 +255,7 @@ services:
         - sentry_auth_token
     image: unifesto-web:latest
     restart: unless-stopped
+    logging: *logging
     env_file: ./websites/web/.env.local
     environment:
       # SSR calls the API over the Docker network (skips Cloudflare + Caddy).
