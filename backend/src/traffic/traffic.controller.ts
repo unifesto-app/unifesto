@@ -24,6 +24,7 @@ import {
   CreateShortLinkDto,
   CreateSpaceShortLinkDto,
   RecordViewDto,
+  RecordWebViewDto,
   TrafficRangeQuery,
 } from './dto';
 
@@ -39,6 +40,13 @@ export class TrafficController {
   @HttpCode(200)
   recordView(@Body() dto: RecordViewDto) {
     return this.traffic.recordView(dto);
+  }
+
+  /** Page-view beacon from the website (any public page). Anonymous, cookieless. */
+  @Post('traffic/web-views')
+  @HttpCode(200)
+  recordWebView(@Body() dto: RecordWebViewDto, @Req() req: Request) {
+    return this.traffic.recordWebView(dto, { ip: req.ip, ua: req.get('user-agent') });
   }
 
   /** Short link redirect: https://unifesto.app/l/<code> (also on api.unifesto.app). */

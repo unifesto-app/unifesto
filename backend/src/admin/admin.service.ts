@@ -443,9 +443,9 @@ export class AdminService {
         buckets.push({ key: keyOf(t, gran), label: labelOf(t, gran) });
       }
       earliestMs = dayStart;
-    } else if (range === '7d' || range === '1m') {
+    } else if (range === '7d' || range === '14d' || range === '1m') {
       gran = 'day';
-      const span = range === '7d' ? 7 : 30;
+      const span = range === '7d' ? 7 : range === '14d' ? 14 : 30;
       const todayStart = istToUtc(y, mo, d, 0);
       earliestMs = todayStart - (span - 1) * DAY;
       for (let i = span - 1; i >= 0; i--) {

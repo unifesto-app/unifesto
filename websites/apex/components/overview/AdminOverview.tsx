@@ -18,6 +18,7 @@ import {
 import { StatCard } from "@/components/shared/StatCard";
 import { FinancialGraphs } from "@/components/analytics/FinancialGraphs";
 import { GrowthGraphs } from "@/components/analytics/GrowthGraphs";
+import { WeeklyScorecard } from "@/components/analytics/WeeklyScorecard";
 import {
   Card,
   CardContent,
@@ -154,6 +155,8 @@ export function AdminOverview() {
           loading={loading}
         />
       </div>
+
+      <WeeklyScorecard />
 
       <GrowthGraphs />
 
