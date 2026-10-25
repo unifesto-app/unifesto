@@ -4,7 +4,7 @@ import { createHmac, randomInt } from 'crypto';
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../prisma/prisma.service';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
-import { CreateAdminShortLinkDto, CreateShortLinkDto, RecordViewDto } from './dto';
+import { CreateAdminShortLinkDto, CreateShortLinkDto, RecordViewDto, RecordWebViewDto } from './dto';
 import { hmacSecret } from '../common/secrets';
 
 /** utm_medium every short link destination carries; utm_campaign is the code. */
@@ -83,6 +83,18 @@ export function referrerDomain(referer: string | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+/** referrerDomain, minus our own sites: moving between unifesto.app pages is not a referral. */
+export function externalReferrerDomain(referer: string | undefined): string | null {
+  const domain = referrerDomain(referer);
+  return domain && domain !== 'unifesto.app' && !domain.endsWith('.unifesto.app') ? domain : null;
+}
+
+/** "/event/x?utm_source=a#top" → "/event/x"; null unless it is a site path. */
+export function pagePath(path: string): string | null {
+  const p = path.split(/[?#]/)[0].slice(0, 300);
+  return p.startsWith('/') && !p.startsWith('//') ? p : null;
 }
 
 /** Cloudflare's Cf-Ipcountry → "IN"; null for unknown (XX), Tor (T1) or junk. */
@@ -185,6 +197,45 @@ export class TrafficService {
         spaceId,
         visitorId: dto.visitorId,
         platform: dto.platform,
+        source: dto.source?.trim() || null,
+        medium: dto.medium?.trim() || null,
+        campaign: dto.campaign?.trim() || null,
+      },
+    });
+    return { recorded: true };
+  }
+
+  /**
+   * Website page load (K6). No cookie or stored id: the visitor is an HMAC of
+   * the IST day + IP + user agent, so it rotates daily and the IP is never
+   * stored. Bots are dropped; repeat loads of one path within 30 min count once.
+   */
+  async recordWebView(dto: RecordWebViewDto, visitor: Visitor): Promise<{ recorded: boolean }> {
+    const path = pagePath(dto.path);
+    if (!path || isBot(visitor.ua)) return { recorded: false };
+
+    const visitorId = createHmac('sha256', hmacSecret('TRAFFIC_HASH_SECRET', 'traffic'))
+      .update(`${istDay(new Date())}|${visitor.ip ?? ''}|${visitor.ua ?? ''}`)
+      .digest('hex');
+
+    const recent = await this.prisma.pageView.findFirst({
+      where: {
+        target: TrafficTarget.PAGE,
+        visitorId,
+        path,
+        createdAt: { gte: new Date(Date.now() - VIEW_DEDUPE_MS) },
+      },
+      select: { id: true },
+    });
+    if (recent) return { recorded: false };
+
+    await this.prisma.pageView.create({
+      data: {
+        target: TrafficTarget.PAGE,
+        visitorId,
+        platform: 'web',
+        path,
+        referrerDomain: externalReferrerDomain(dto.referrer),
         source: dto.source?.trim() || null,
         medium: dto.medium?.trim() || null,
         campaign: dto.campaign?.trim() || null,

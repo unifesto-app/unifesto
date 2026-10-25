@@ -1265,6 +1265,11 @@ model OrgSubscription {
   lastPaymentAt DateTime? @map("last_payment_at") @db.Timestamptz(6)
   nextPaymentAt DateTime? @map("next_payment_at") @db.Timestamptz(6)
 
+  // A paid downgrade waits for the current period to end; the expiry cron
+  // switches to it at expiresAt and extends by one pending cycle.
+  pendingPlan         OrgPlan?      @map("pending_plan")
+  pendingBillingCycle BillingCycle? @map("pending_billing_cycle")
+
   eventsThisMonth Int      @default(0) @map("events_this_month")
   usageResetAt    DateTime @default(now()) @map("usage_reset_at") @db.Timestamptz(6)
 
@@ -1288,6 +1293,10 @@ model SubscriptionHistory {
   changedAt DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
   // Razorpay payment that paid for this change; unique so one receipt upgrades once.
   paymentId String?  @unique @map("payment_id") @db.VarChar(255)
+  // Razorpay order it paid; unique so verify + webhook activate an order once.
+  orderId     String? @unique @map("order_id") @db.VarChar(255)
+  // What was actually paid (paise), Razorpay or offline. MRR reads this.
+  amountPaise Int?    @map("amount_paise")
 
   @@map("subscription_history")
 }
@@ -5355,20 +5364,28 @@ enum TrafficTarget {
   EVENT
   SPACE
   URL
+  PAGE // any public website page (K6): path + referrer domain, no event/space
 }
 
 /// One view of an event or space page. `visitorId` is an anonymous id per app
 /// install, so "visitors" counts devices, not people; no user id is stored.
 /// Event views also carry the host space, so space totals include its events.
 /// Repeat views from one visitor within 30 minutes are dropped at ingest.
+/// PAGE rows are website page loads (K6): no space, and `visitorId` is a daily
+/// rotating hash of IP + user agent (the raw IP is never stored), so a
+/// "visitor" there is one device on one day.
 model PageView {
   id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
   target  TrafficTarget
   eventId String?       @map("event_id") @db.Uuid
   event   Event?        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  spaceId String        @map("space_id") @db.Uuid
-  space   Space         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  spaceId String?       @map("space_id") @db.Uuid
+  space   Space?        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  // PAGE only: the page path (no query string) and the referring site's domain.
+  path           String? @db.VarChar(300)
+  referrerDomain String? @map("referrer_domain") @db.VarChar(255)
 
   visitorId String  @map("visitor_id") @db.VarChar(64)
   // ios | android | web
@@ -5383,6 +5400,7 @@ model PageView {
   @@index([eventId, createdAt])
   @@index([spaceId, createdAt])
   @@index([createdAt])
+  @@index([target, createdAt])
   @@map("page_views")
 }
 

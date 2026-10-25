@@ -37,6 +37,7 @@ import {
   listSpaceSubscriptions,
   getSpaceBillingStats,
   adminUpdateSpaceSubscription,
+  recordOfflinePayment,
   spaceSubName,
   spaceAdminEmail,
   spaceAdminName,
@@ -270,6 +271,12 @@ export default function SubscriptionsPage() {
                         )}
                         {s.configured && !s.isActive && (
                           <Badge variant="destructive">Inactive</Badge>
+                        )}
+                        {s.status === "GRACE" && (
+                          <Badge variant="warning">Grace</Badge>
+                        )}
+                        {s.status === "EXPIRED" && (
+                          <Badge variant="destructive">Expired</Badge>
                         )}
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -531,6 +538,141 @@ function EditArrangement({
           </div>
         </CardContent>
       </Card>
+
+      <OfflinePayment
+        sub={sub}
+        onSaved={(data) => onSaved({ ...sub, ...data, space: sub.space, admin: sub.admin })}
+      />
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Record a payment made outside Razorpay                                     */
+/* -------------------------------------------------------------------------- */
+
+function OfflinePayment({
+  sub,
+  onSaved,
+}: {
+  sub: SpaceSubscription;
+  onSaved: (updated: SpaceSubscription) => void;
+}) {
+  const paidPlans: OrgPlan[] = SELLABLE_PLANS.filter((p) => p !== "STARTER");
+  const [plan, setPlan] = useState<OrgPlan>(
+    sub.plan && paidPlans.includes(sub.plan) ? sub.plan : "PRO"
+  );
+  const [cycle, setCycle] = useState<BillingCycle>(sub.billingCycle);
+  const [amount, setAmount] = useState("");
+  const [reference, setReference] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const save = async () => {
+    if (!(Number(amount) >= 1)) {
+      setError("Enter the amount received.");
+      return;
+    }
+    const sameRun = plan === sub.plan && sub.expiresAt && new Date(sub.expiresAt) > new Date();
+    if (
+      !window.confirm(
+        `Record ₹${amount} for ${PLAN_LABEL[plan]} (${BILLING_CYCLE_LABEL[cycle].toLowerCase()})? ` +
+          (sameRun ? "It extends the current period." : "The new period starts today.")
+      )
+    )
+      return;
+    setSaving(true);
+    setError("");
+    const { data, error } = await recordOfflinePayment(sub.spaceId, {
+      plan,
+      billingCycle: cycle,
+      amount: Number(amount),
+      reference: reference.trim() || undefined,
+    });
+    setSaving(false);
+    if (error || !data) {
+      setError(error?.message || "Could not record the payment.");
+      return;
+    }
+    setAmount("");
+    setReference("");
+    onSaved(data);
+  };
+
+  return (
+    <Card className="max-w-2xl">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Record offline payment</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {error && <ErrorNotice message={error} />}
+        <p className="text-xs text-muted-foreground">
+          Bank transfer or cheque. Extends the plan by one cycle and logs it in
+          history. Current period ends{" "}
+          {sub.expiresAt ? new Date(sub.expiresAt).toLocaleDateString("en-IN") : "—"}.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Plan</Label>
+            <Select value={plan} onValueChange={(v) => setPlan(v as OrgPlan)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {paidPlans.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {PLAN_LABEL[p]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cycle</Label>
+            <Select value={cycle} onValueChange={(v) => setCycle(v as BillingCycle)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CYCLES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {BILLING_CYCLE_LABEL[c]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="offline-amt">Amount received (₹)</Label>
+            <Input
+              id="offline-amt"
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="13999"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="offline-ref">Reference (UTR / cheque no.)</Label>
+            <Input
+              id="offline-ref"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="Recorded once"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end border-t border-border pt-4">
+          <Button onClick={save} disabled={saving}>
+            {saving ? "Recording…" : (
+              <>
+                <CurrencyInr className="h-4 w-4" /> Record payment
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

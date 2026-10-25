@@ -120,3 +120,38 @@ export async function getGrowthTimeseries(
     })
   );
 }
+
+/** This week vs the week before. */
+export interface WoW {
+  current: number;
+  previous: number;
+}
+export interface WoWRow extends WoW {
+  /** Referrer domain / campaign / utm_source; null = direct or untagged. */
+  key: string | null;
+}
+
+/** Z7 weekly scorecard: last 7 IST days (today included) vs the 7 before. */
+export interface WeeklyScorecard {
+  generatedAt: string;
+  weeks: {
+    current: { from: string; to: string };
+    previous: { from: string; to: string };
+  };
+  web: { pageViews: WoW; visits: WoW; referrers: WoWRow[]; campaigns: WoWRow[] };
+  upcomingEvents: WoW;
+  activeOrganisers: WoW;
+  registrations: { total: WoW; bySource: WoWRow[] };
+  money: { gmv: WoW; platformFees: WoW };
+  support: { open: number; pending: number; oldestOpenDays: number | null };
+}
+
+/** `GET /admin/analytics/weekly-scorecard`. */
+export async function getWeeklyScorecard(): Promise<{
+  data: WeeklyScorecard | null;
+  error: ApiError | null;
+}> {
+  return apiCall<WeeklyScorecard>(
+    backendClient.get("/admin/analytics/weekly-scorecard")
+  );
+}

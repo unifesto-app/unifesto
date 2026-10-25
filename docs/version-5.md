@@ -395,7 +395,7 @@ One support system for everything a person needs help with. Every item is an **A
 | E5 | **Finish hackathon submissions: curator overview, lock after judging.** Hackathon submissions (title, repo, demo, deck) with per-round deadline; judges see them while scoring | planned |
 | E6 | Hackathon certificates from awards | done |
 | E7 | **Add an offline queue to BoothScan.** Offline queue for BoothScan + StayScan, reusing `src/lib/offline/checkinQueue.ts` | planned |
-| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | planned |
+| E8 | **Fix hackathon judging integrity and score privacy.** Privacy first (small, confirmed): the retired public-leaderboard 'subscribe' socket leaks every team's live score and rank to any registered attendee (backend/src/leaderboard/leaderboard.gateway.ts:131, an S36 regression). | in progress (#319) |
 | E9 | **Add consent and anti-abuse to lead capture and fix notify-me.** - Public lead capture is unauthenticated and unthrottled, accepts private or suspended spaces and draft events, and lets anyone overwrite an existing lead by email (backend/src/sponsors/leads.service.ts:30, :76, public-leads.contr | planned |
 
 ### F · Feedback and user IAM (from 4.4.0)
@@ -505,7 +505,7 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | J16 | **Enforce space status and event visibility everywhere.** Setting a space to SUSPENDED, ARCHIVED, REJECTED or INACTIVE only updates the status column (backend/src/admin/admin.service.ts:830-846, spaces.service.ts:513-575). | planned |
 | J17 | **Harden auth and operator sessions.** Identifiers: emails are never normalised, so case variants create separate identities and bypass per-identifier OTP limits (backend/src/auth/auth.service.ts:192); | planned |
 | J18 | **Make the schema rebuildable and harden the production host.** - Migration history can't rebuild the schema. | planned |
-| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | planned |
+| J19 | **Add CI gates: builds, lint, dependency scan and tests.** - All three Next apps ship with typescript.ignoreBuildErrors although they now typecheck clean (websites/web/next.config.ts:31, websites/space/next.config.ts:17), and the web proxy self-check script is broken. | in progress (#320) |
 
 ### K · Growth and discovery
 
@@ -516,11 +516,11 @@ This was cut down from the v4 EKS plan. Do the cheap wins first, and only move t
 | K3 | **Harden the blog and careers editors: draft guard, scheduling, slugs.** Blog: authors, tags, scheduled publish, OG image, reading time, related posts | planned |
 | K4 | **Careers: application form and applicant pipeline.** Careers: application form with private resume upload + applicant pipeline in Apex | done |
 | K5 | **Tracked short links with QR and click country.** Tracked short links on the apex domain + QR; country in click tracking (from W10) | in progress |
-| K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | planned |
+| K6 | **Count web visits and referrers by domain.** Web referrer capture rolled up by domain; Search Console backlink import, weekly | done (#322) |
 | K7 | **Legal pages managed in Apex.** Help articles moved to D17 (Assist knowledge base) | parked (2026-10-18): legal pages change rarely and need lawyer sign-off; |
 | K8 | **Show past and live events in public lists.** getEvents hard-filters status PUBLISHED (backend/src/events/events.service.ts:1481-1488), and GET /events/space/:id does the same for outsiders. | done, not deployed (#243) |
 | K9 | **Fix the public event page and remove fake web pages.** 1. On phones /event/[slug] renders 499px wide in a 375px viewport and is clipped (title, venue and Directions cut off) on the main conversion page. | done (#251) |
-| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | next |
+| K10 | **Let attendees register and pay on the web.** Registration is app-only: websites/web/src/app/event/[slug]/register/page.tsx redirects ('Registration is mobile-only') and the CTA is an intent:// deep link, so desktop visitors go to /download. | in progress (#321) |
 | K11 | **Polish the public web from the visual audit.** Low items from the visual audit. | planned |
 
 ### L · Live engagement (new)
@@ -653,7 +653,7 @@ Not in the weeks yet: **Unstop** shows up in hackathon searches ("how to host a 
 | P10 | **Post-launch review and 5.x plan.** Week after: "what we learned launching 5", thank-you post to organisers, review numbers against P3 and set the 5.x plan | planned |
 | P21 | Wikidata item for Unifesto, once P18 brings independent coverage to cite (items without sources get deleted); then add it to `SOCIAL`/`sameAs` | planned |
 | P22 | Google Business Profile: verifiable address (Malla Reddy University R&D Center) or a service-area business; category Software company | planned |
-| P23 | **Keep the demo Space out of metrics and mask payout details.** 1. The demo Space's Event Settings payout dropdown shows a real SBI account holder's name and a team member's full UPI ID. | planned |
+| P23 | **Keep the demo Space out of metrics and mask payout details.** 1. The demo Space's Event Settings payout dropdown shows a real SBI account holder's name and a team member's full UPI ID. | done (#318) |
 
 ### T · Deals, billing and access (2026-10-16)
 
@@ -670,7 +670,7 @@ Terms resolve in this order: **active event deal → active space deal → rate 
 | T5 | **Quote every checkout path from one function.** `quote(basePaise, terms)` in integer paise, used by main checkout, legacy register, manual-add link, waitlist, group seat add-on, sessions, stays. `POST /quote` for web and mobile (mobile stops computing `base × 1.05`). Each paid row stores `dealId`, `buyerFeePaise`, `organiserFeeBps`. Old 4.0.5 app still shows a 5% estimate (Razorpay charges the right amount): Apex warns when a deal's buyer fee is not 5% until 2 Dec. `quote()` takes an optional coupon so every buyer-paid path can accept one; turn it on for waitlist claims and sessions (main checkout only today) | planned |
 | T6 | **Settle money from per-row snapshots, sessions included.** One `settle(rows)` feeds payouts, financials, Space Transactions page and CSV export, using each row's stored terms (deal changes never rewrite the past). `Payout` gets `sessionId` (exactly one of event/session) so Huddle revenue can be paid out. Forced reconcile books what was actually captured: short lowers `totalAmount`; over goes to the organiser's base, not to our fee (today the platform keeps it). Event and space dashboard revenue (`events.service.ts:3221`, `spaces.service.ts:2340`: PAID only, refunds ignored) reads `settle()` too. Drop the per-payout `platformFeePercent` override (`payouts/dto`): the deal is the only rate | planned |
 | T7 | **Build the Apex Deals page.** Per space: current terms, deal history, new version (space or one event), live quote preview, required end date on comp plans. Every change goes to the audit trail (F5) | planned |
-| T8 | **Fix the subscription lifecycle.** Status from dates, not `isActive`: ACTIVE → GRACE (7 days) → EXPIRED (STARTER entitlements, data kept). Period end = max(now, current end) + cycle (fixes calendar-boundary expiry). Cancel at period end. Razorpay `order.paid` webhook activates (receipt ≤ 40 chars). Price from the deal. Apex records offline payments (bank transfer). MRR from payments, not typed amounts. Plan changes: upgrade now, pay the difference for the rest of the period; downgrade at period end (no refund). Expiry, renewal and every plan change run in one transaction with a `SubscriptionHistory` row (expiry writes none today). Includes A1 checkout UI | IN_PROGRESS (#312) |
+| T8 | **Fix the subscription lifecycle.** Status from dates, not `isActive`: ACTIVE → GRACE (7 days) → EXPIRED (STARTER entitlements, data kept). Period end = max(now, current end) + cycle (fixes calendar-boundary expiry). Cancel at period end. Razorpay `order.paid` webhook activates (receipt ≤ 40 chars). Price from the deal. Apex records offline payments (bank transfer). MRR from payments, not typed amounts. Plan changes: upgrade now, pay the difference for the rest of the period; downgrade at period end (no refund). Expiry, renewal and every plan change run in one transaction with a `SubscriptionHistory` row (expiry writes none today). Includes A1 checkout UI | done (#323) |
 | T9 | **Enforce every plan limit with one entitlement check.** `assertFeature`/`assertLimit` read `TermsService` plan + subscription status. Missing subscription row is created as STARTER (no fail-open/closed/500 mix). Enforce attendees per event, co-curators, spaces, waitlist, WhatsApp blast, recurring events | planned |
 | T10 | **Remove dead pricing config.** Drop `platform_config.processing_fee_percent`, `razorpaySubId` and stale Apex subscription API fns. `PlanConfig.processingFeePercent` stays as A9's `platformFeePercent` (D10), with its Apex/mobile edit screens. `/pricing` reading `/subscription/plans` lands with A9 | planned |
 | T11 | **Store tax and gateway fees on each sale.** `gstPaise` + place of supply on the snapshot, GSTIN on the space; 0 until the CA check. Store `gatewayFeePaise` + `gatewayTaxPaise` from reconcile (Razorpay's ~2% + GST comes out of our fee) so A5/A7 report true take rate. Invoices and GSTR export stay in A6 | planned |
@@ -874,3 +874,9 @@ Decisions (20 Oct): one `EMPLOYEE` role; finance, bank and shareholding items si
 - **2026-10-25** · 5.0.0 launch prep: Play submit uploads a draft (never auto-live), OTA.md store-launch runbook (beta, phased release, pause rule) (#315)
 - **2026-10-25** · J12 Redis client reconnects forever (OTP 503 when down) and IAM/plan/platform config caches sync across replicas via a Redis stamp (~2s, 30s floor) (#316)
 - **2026-10-25** · J14 deploy.sh stops syncing .env files (server-side env gate), local dev compose + .env.development.example, backend/prisma refuse RDS unless NODE_ENV=production (#317)
+- **2026-10-25** · P23 UPI IDs masked in payout pickers/lists; demo space + users left out of financials, analytics and stats broadcasts; no link to a private host space (#318)
+- **2026-10-25** · E8 privacy: removed the legacy public score socket (live scores leaked to attendees) and gated participants-only brackets to attendees, panelists and operators (#319)
+- **2026-10-25** · K10 slice 1: free/RSVP registration on web (email OTP sign-in, questions, UTM), paid/group/file still hand off to the app (#321)
+- **2026-10-25** · Next 16.4.2 in web/space/apex (critical image-optimiser RCE advisory); ignoreBuildErrors removed; CI blocks critical runtime advisories; Dependabot monthly (#320)
+- **2026-10-25** · K6 web visits + referrer domains via first-party cookieless PageView beacon; Z7 weekly scorecard on Apex Overview (#322)
+- **2026-10-25** · T8 subscription lifecycle: grace/expiry status drives entitlements, webhook+verify idempotent activation, renew, prorated upgrade, period-end downgrade, cron re-check, payment-based MRR, Apex offline payments (#323)

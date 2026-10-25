@@ -26,7 +26,7 @@ import { ActionBar, Avatar, Block, Card, FactRow, Rail, ReadMore } from "@/compo
 import { registerEventInterest } from "@/lib/api/leads";
 import { registrationState, type Event, type SubEventSummary } from "@/lib/api/events";
 import { googleCalendarUrl, outlookCalendarUrl, icsDownloadUrl } from "@/lib/calendar";
-import { openAppOrStore, useAppHref } from "@/lib/appLinks";
+import { openAppOrStore, useAppHref, useMobilePlatform } from "@/lib/appLinks";
 import { withStoredUtm } from "@/lib/utm";
 
 interface Props {
@@ -100,6 +100,7 @@ export default function EventDetailClient({ event }: Props) {
   // Captured once so render stays pure; decides whether the event is over.
   const [now] = useState(() => Date.now());
   const appHref = useAppHref(`unifesto://event/${event.slug}`);
+  const onPhone = useMobilePlatform() !== "unknown";
 
   // ── Derived display bits (same rules as the mobile event screen) ──────────
   const isOnline = event.event_type?.toUpperCase() === "ONLINE";
@@ -145,6 +146,8 @@ export default function EventDetailClient({ event }: Props) {
   const isUmbrella = subEvents.length > 0 && (event.ticket_type_count ?? 0) === 0;
   const subCount = countLabel(subEvents.length, "sub-event");
   const reg = isUmbrella ? "open" : registrationState(event.tickets, now);
+  // Free individual tickets register on the web (K10); paid and group ones in the app.
+  const webRegister = !isUmbrella && event.is_free && !event.tickets?.some((t) => t.group);
   const bar = isUmbrella
     ? { label: "Multi-part event", value: subCount }
     : event.is_free
@@ -166,7 +169,7 @@ export default function EventDetailClient({ event }: Props) {
   const branded = hasBrandedChrome(event.branding) ? event.branding : null;
 
   const hostedBy = [
-    ...(eventSpace ? [{ id: eventSpace.id, name: eventSpace.name, slug: eventSpace.slug, logo_url: eventSpace.logo_url }] : []),
+    ...(eventSpace ? [{ id: eventSpace.id, name: eventSpace.name, slug: eventSpace.slug, logo_url: eventSpace.logo_url, visibility: eventSpace.visibility }] : []),
     ...coHosts,
   ];
 
@@ -174,7 +177,7 @@ export default function EventDetailClient({ event }: Props) {
     <main className={`min-h-screen overflow-x-hidden bg-canvas ${isOver ? "" : "pb-24"}`} style={brandStyle(event.branding)}>
       <BrandTheme branding={event.branding} />
       {branded ? (
-        <BrandHeader branding={branded} href={eventSpace?.slug ? `/space/${eventSpace.slug}` : `/event/${event.slug}`} />
+        <BrandHeader branding={branded} href={eventSpace?.slug && eventSpace.visibility !== "PRIVATE" ? `/space/${eventSpace.slug}` : `/event/${event.slug}`} />
       ) : (
         <Navbar />
       )}
@@ -465,17 +468,25 @@ export default function EventDetailClient({ event }: Props) {
         {(hostedBy.length > 0 || contacts.length > 0) && (
           <Block title="Hosted by">
             <Card>
-              {hostedBy.map((h) => (
-                <Link
-                  key={h.id}
-                  href={`/space/${h.slug || h.id}`}
-                  className="flex items-center gap-4 border-t border-paper/10 p-4 transition-colors first:border-t-0 hover:bg-paper/[0.04]"
-                >
-                  <Avatar src={h.logo_url} name={h.name} size={44} />
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
-                  <CaretRight className="h-4 w-4 shrink-0 text-paper/45" aria-hidden />
-                </Link>
-              ))}
+              {hostedBy.map((h) =>
+                // A PRIVATE space has no public page (it would 404), so no link.
+                h.visibility === "PRIVATE" ? (
+                  <div key={h.id} className="flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0">
+                    <Avatar src={h.logo_url} name={h.name} size={44} />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
+                  </div>
+                ) : (
+                  <Link
+                    key={h.id}
+                    href={`/space/${h.slug || h.id}`}
+                    className="flex items-center gap-4 border-t border-paper/10 p-4 transition-colors first:border-t-0 hover:bg-paper/[0.04]"
+                  >
+                    <Avatar src={h.logo_url} name={h.name} size={44} />
+                    <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-paper">{h.name}</span>
+                    <CaretRight className="h-4 w-4 shrink-0 text-paper/45" aria-hidden />
+                  </Link>
+                ),
+              )}
               {contacts.map((ct) => (
                 <div key={ct.id} className="flex items-center gap-4 border-t border-paper/10 p-4 first:border-t-0">
                   <div className="min-w-0 flex-1">
@@ -520,10 +531,22 @@ export default function EventDetailClient({ event }: Props) {
             <a href="#inside" className="btn btn-lg btn-primary shrink-0">
               View events
             </a>
+          ) : reg === "open" && webRegister ? (
+            <div className="flex shrink-0 items-center gap-4">
+              {onPhone && (
+                <a href={appHref} onClick={openApp} className="text-sm font-semibold text-paper/70 hover:text-paper">
+                  Open in app
+                </a>
+              )}
+              <Link href={`/event/${event.slug}/register`} className="btn btn-lg btn-primary">
+                <Ticket weight="fill" className="h-5 w-5" aria-hidden />
+                Register
+              </Link>
+            </div>
           ) : reg === "open" ? (
             <a href={appHref} onClick={openApp} className="btn btn-lg btn-primary shrink-0">
               <DeviceMobile weight="fill" className="h-5 w-5" aria-hidden />
-              Register
+              Register in app
             </a>
           ) : (
             <span className="shrink-0 text-sm font-semibold text-paper/70">{NOT_OPEN[reg]}</span>

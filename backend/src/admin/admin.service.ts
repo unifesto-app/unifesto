@@ -16,6 +16,7 @@ import { SpaceStatus, PaymentStatus, Prisma, RoleCode } from '@prisma/client';
 import { deletedWhere, type DeletedFilter } from '../common/soft-delete';
 import { COUNTS_AS_ATTENDING } from '../common/attendance';
 import { AWS_HTTP_TIMEOUTS } from '../common/http/outbound-timeouts';
+import { NOT_DEMO_EVENT, NOT_DEMO_SPACE, NOT_DEMO_SPACE_SQL, NOT_DEMO_USER, NOT_DEMO_USER_SQL, notDemoEventSql } from '../common/demo-data';
 
 export interface ServiceStatus {
   status: 'connected' | 'disconnected';
@@ -331,18 +332,19 @@ export class AdminService {
       pushSent30d,
       pushFailed30d,
     ] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
-      this.prisma.space.count(),
-      this.prisma.space.count({ where: LIVE_SPACE_WHERE }),
+      // The screen-recording demo space + users are left out (P23).
+      this.prisma.user.count({ where: NOT_DEMO_USER }),
+      this.prisma.user.count({ where: { ...NOT_DEMO_USER, createdAt: { gte: thirtyDaysAgo } } }),
+      this.prisma.space.count({ where: NOT_DEMO_SPACE }),
+      this.prisma.space.count({ where: { ...NOT_DEMO_SPACE, ...LIVE_SPACE_WHERE } }),
       this.prisma.spaceRequest.count({ where: { status: 'PENDING' } }),
       // Hidden events are left out, like the Events page's default list (B14).
-      this.prisma.event.count({ where: { deletedAt: null } }),
-      this.prisma.event.count({ where: { status: 'PUBLISHED', deletedAt: null } }),
-      this.prisma.eventRegistration.count(),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, deletedAt: null } }),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, status: 'PUBLISHED', deletedAt: null } }),
+      this.prisma.eventRegistration.count({ where: { event: NOT_DEMO_EVENT } }),
       this.prisma.eventRegistration.aggregate({
         _sum: { totalAmount: true },
-        where: { paymentStatus: 'PAID' },
+        where: { paymentStatus: 'PAID', event: NOT_DEMO_EVENT },
       }),
       // Push delivery over the last 30d (SENT vs FAILED; skips aren't failures).
       this.prisma.pushLog.count({
@@ -442,9 +444,9 @@ export class AdminService {
         buckets.push({ key: keyOf(t, gran), label: labelOf(t, gran) });
       }
       earliestMs = dayStart;
-    } else if (range === '7d' || range === '1m') {
+    } else if (range === '7d' || range === '14d' || range === '1m') {
       gran = 'day';
-      const span = range === '7d' ? 7 : 30;
+      const span = range === '7d' ? 7 : range === '14d' ? 14 : 30;
       const todayStart = istToUtc(y, mo, d, 0);
       earliestMs = todayStart - (span - 1) * DAY;
       for (let i = span - 1; i >= 0; i--) {
@@ -505,6 +507,7 @@ export class AdminService {
         FROM event_registrations
         WHERE payment_status::text IN ('PAID', 'PARTIALLY_REFUNDED', 'REFUNDED')
           AND registered_at >= ${windowStart}
+          AND ${notDemoEventSql('event_id')}
         GROUP BY 1
       `),
       this.prisma.$queryRaw<Array<{ period: string; refunded: string }>>(Prisma.sql`
@@ -514,6 +517,7 @@ export class AdminService {
         JOIN event_registrations er ON er.id = rr.registration_id
         WHERE rr.status::text = 'APPROVED'
           AND er.registered_at >= ${windowStart}
+          AND ${notDemoEventSql('er.event_id')}
         GROUP BY 1
       `),
       this.prisma.$queryRaw<Array<{ period: string; settled: string }>>(Prisma.sql`
@@ -522,6 +526,7 @@ export class AdminService {
         FROM payouts
         WHERE status::text = 'COMPLETED'
           AND COALESCE(completed_at, created_at) >= ${windowStart}
+          AND ${notDemoEventSql('event_id')}
         GROUP BY 1
       `),
     ]);
@@ -589,14 +594,14 @@ export class AdminService {
         SELECT ${bucketExpr('created_at')} AS period,
                COUNT(*)::int AS count
         FROM users
-        WHERE created_at >= ${windowStart}
+        WHERE created_at >= ${windowStart} AND ${NOT_DEMO_USER_SQL}
         GROUP BY 1
       `),
       this.prisma.$queryRaw<Array<{ period: string; count: number }>>(Prisma.sql`
         SELECT ${bucketExpr('created_at')} AS period,
                COUNT(*)::int AS count
         FROM spaces
-        WHERE created_at >= ${windowStart}
+        WHERE created_at >= ${windowStart} AND ${NOT_DEMO_SPACE_SQL}
         GROUP BY 1
       `),
       this.prisma.$queryRaw<
@@ -606,23 +611,23 @@ export class AdminService {
                COUNT(*)::int AS count,
                COUNT(*) FILTER (WHERE status::text = 'PUBLISHED')::int AS published
         FROM events
-        WHERE created_at >= ${windowStart}
+        WHERE created_at >= ${windowStart} AND ${notDemoEventSql('id')}
         GROUP BY 1
       `),
       this.prisma.$queryRaw<Array<{ period: string; count: number }>>(Prisma.sql`
         SELECT ${bucketExpr('registered_at')} AS period,
                COUNT(*)::int AS count
         FROM event_registrations
-        WHERE registered_at >= ${windowStart}
+        WHERE registered_at >= ${windowStart} AND ${notDemoEventSql('event_id')}
         GROUP BY 1
       `),
       // Baselines: rows that already existed before the earliest bucket.
-      this.prisma.user.count({ where: { createdAt: { lt: earliest } } }),
-      this.prisma.space.count({ where: { createdAt: { lt: earliest } } }),
-      this.prisma.event.count({ where: { createdAt: { lt: earliest } } }),
+      this.prisma.user.count({ where: { ...NOT_DEMO_USER, createdAt: { lt: earliest } } }),
+      this.prisma.space.count({ where: { ...NOT_DEMO_SPACE, createdAt: { lt: earliest } } }),
+      this.prisma.event.count({ where: { ...NOT_DEMO_EVENT, createdAt: { lt: earliest } } }),
       // Point-in-time status snapshots for the breakdown donuts.
-      this.prisma.event.groupBy({ by: ['status'], _count: { _all: true } }),
-      this.prisma.space.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.event.groupBy({ by: ['status'], where: NOT_DEMO_EVENT, _count: { _all: true } }),
+      this.prisma.space.groupBy({ by: ['status'], where: NOT_DEMO_SPACE, _count: { _all: true } }),
     ]);
 
     const toMap = (rows: Array<{ period: string; count: number }>) =>

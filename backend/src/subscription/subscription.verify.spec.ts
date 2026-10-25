@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import { SubscriptionService } from './subscription.service';
+import { PlanConfigService } from './plan-config.service';
 
 /** S3: an upgrade receipt is good for one space, one paid order, once. */
 describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
@@ -11,17 +12,24 @@ describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
   const sign = (o: string, p: string) =>
     crypto.createHmac('sha256', SECRET).update(`${o}|${p}`).digest('hex');
 
-  const build = (order: any, historyCreate: jest.Mock = jest.fn(async () => ({}))) => {
+  const build = (
+    order: any,
+    claim: jest.Mock = jest.fn(async () => ({ count: 1 })),
+    prior: any = null,
+  ) => {
+    const row = { id: 'sub-1', plan: 'STARTER', billingCycle: 'MONTHLY', expiresAt: null, history: [] };
     const prisma: any = {
       orgSubscription: {
-        findUnique: jest.fn(async () => ({ id: 'sub-1', plan: 'STARTER', history: [] })),
+        findUnique: jest.fn(async () => row),
+        findUniqueOrThrow: jest.fn(async () => row),
         update: jest.fn(async () => ({ amount: 999 })),
       },
-      subscriptionHistory: { create: historyCreate },
+      subscriptionHistory: { createMany: claim, findFirst: jest.fn(async () => prior) },
+      $queryRaw: jest.fn(async () => []),
     };
     prisma.$transaction = jest.fn(async (fn: any) => fn(prisma));
     const cache = { setSpacePlan: jest.fn(), invalidateSpacePlanCache: jest.fn() };
-    const svc = new SubscriptionService(prisma, cache as any, {} as any, {} as any);
+    const svc = new SubscriptionService(prisma, cache as any, {} as any, new PlanConfigService({} as any));
     (svc as any).razorpay = { orders: { fetch: jest.fn(async () => order) } };
     (svc as any).resolveSpaceBillingRecipient = jest.fn(async () => ({}));
     return { svc, prisma };
@@ -32,6 +40,7 @@ describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
     signature,
   });
   const paidOrder = (spaceId = 'space-A') => ({
+    id: 'order_1',
     status: 'paid',
     amount: 99900,
     notes: { spaceId, plan: 'PRO', billingCycle: 'MONTHLY' },
@@ -53,21 +62,22 @@ describe('SubscriptionService.verifyAndActivateForSpace replay guards', () => {
     await expect(svc.verifyAndActivateForSpace('space-A', dto())).rejects.toThrow(/not been paid/);
   });
 
-  it('rejects a payment id already used (unique on subscription_history)', async () => {
-    const dup = jest.fn(async () => {
-      throw Object.assign(new Error('unique'), { code: 'P2002' });
-    });
-    const { svc, prisma } = build(paidOrder(), dup);
+  it('rejects a payment id already used on another subscription', async () => {
+    const taken = jest.fn(async () => ({ count: 0 }));
+    const { svc, prisma } = build(paidOrder(), taken, { subscriptionId: 'sub-OTHER' });
     await expect(svc.verifyAndActivateForSpace('space-A', dto())).rejects.toThrow(/already been used/);
     expect(prisma.orgSubscription.update).not.toHaveBeenCalled();
   });
 
-  it('records the payment id on a valid upgrade', async () => {
-    const create = jest.fn(async () => ({}));
-    const { svc } = build(paidOrder(), create);
+  it('records the payment and order ids on a valid upgrade', async () => {
+    const claim = jest.fn(async () => ({ count: 1 }));
+    const { svc } = build(paidOrder(), claim);
     await svc.verifyAndActivateForSpace('space-A', dto());
-    expect(create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ paymentId: 'pay_1', toPlan: 'PRO' }),
+    expect(claim).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ paymentId: 'pay_1', orderId: 'order_1', toPlan: 'PRO', amountPaise: 99900 }),
+      ],
+      skipDuplicates: true,
     });
   });
 });

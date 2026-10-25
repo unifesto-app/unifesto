@@ -103,8 +103,8 @@ export class LeaderboardService {
   }
 
   /**
-   * May this user act as a panelist (or manager) for viewing purposes? Used only
-   * by the public `canView` gate to let assigned judges/mentors see a DRAFT board.
+   * May this user act as a panelist (or manager) for viewing purposes? Lets
+   * judges/mentors and operators read a participants-only bracket.
    */
   private async isEventPanelistOrManager(
     userId: string,
@@ -921,68 +921,9 @@ export class LeaderboardService {
     }
 
     if (updates.length) await this.prisma.$transaction(updates);
-
-    if (board.status !== 'FROZEN' && board.status !== 'DRAFT') {
-      this.gateway.broadcast(board.eventId, await this.getPublicSnapshot(board.eventId));
-    }
   }
 
   // ── Read models ─────────────────────────────────────────────────────────
-
-  /** Public read model: ranked entrants + totals only, no raw judge cells. */
-  async getPublicSnapshot(eventId: string) {
-    const board = await this.prisma.leaderboard.findUnique({
-      where: { eventId },
-      include: {
-        metrics: { orderBy: { displayOrder: 'asc' }, select: { id: true, key: true, label: true } },
-        entrants: {
-          orderBy: [{ rank: 'asc' }, { name: 'asc' }],
-          select: { id: true, name: true, rank: true, totalScore: true, meta: true },
-        },
-      },
-    });
-    if (!board) return null;
-    return {
-      id: board.id,
-      eventId: board.eventId,
-      title: board.title,
-      description: board.description,
-      mode: board.mode,
-      status: board.status,
-      visibility: board.visibility,
-      metrics: board.metrics,
-      entrants: board.entrants.map((e) => ({
-        id: e.id,
-        name: e.name,
-        rank: e.rank,
-        totalScore: Number(e.totalScore),
-        meta: e.meta,
-      })),
-    };
-  }
-
-  /**
-   * Whether a (possibly anonymous) viewer may see this board — used by both the
-   * public HTTP endpoint and the socket subscribe handler.
-   */
-  async canView(eventId: string, userId: string | null): Promise<boolean> {
-    const board = await this.prisma.leaderboard.findUnique({
-      where: { eventId },
-      select: { visibility: true, status: true, enabled: true },
-    });
-    if (!board || !board.enabled) return false;
-
-    const privileged = userId
-      ? await this.isEventPanelistOrManager(userId, eventId)
-      : false;
-    if (board.status === 'DRAFT') return privileged;
-    if (board.visibility === 'PUBLIC') return true;
-    // PARTICIPANTS_ONLY: managers/panelists, or a registered attendee.
-    if (privileged) return true;
-    if (!userId) return false;
-    const reg = await this.prisma.eventRegistration.count({ where: { eventId, userId } });
-    return reg > 0;
-  }
 
   // ── Panelist reads (round-close read-lock) ────────────────────────────────
 
@@ -1339,6 +1280,16 @@ export class LeaderboardService {
         .filter((e) => e.userId === userId || (e.registrationId && myRegIds.has(e.registrationId)))
         .map((e) => e.id),
     );
+
+    // E8: a participants-only bracket is for attendees, panelists and operators.
+    if (
+      board.visibility !== 'PUBLIC' &&
+      myRegIds.size === 0 &&
+      myEntrantIds.size === 0 &&
+      !(await this.isEventPanelistOrManager(userId, eventId))
+    ) {
+      return null;
+    }
 
     // Standings drive the bracket — read ONLY from entrant_rounds (never scores).
     const standings = await this.prisma.leaderboardEntrantRound.findMany({

@@ -13,9 +13,6 @@ const nextConfig: NextConfig = {
   // reconciliation errors (e.g. on leave). This only affects dev behaviour,
   // not production. Re-enable if you want StrictMode's other checks back.
   reactStrictMode: false,
-  // Ship despite pre-existing type/lint debt (dev never type-checked these).
-  // TODO: clean up the type errors and remove these.
-  typescript: { ignoreBuildErrors: true },
   // D8: the Assist inbox replaced the Support page.
   async redirects() {
     return [{ source: "/dashboard/support", destination: "/dashboard/assist", permanent: false }];

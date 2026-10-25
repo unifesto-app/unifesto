@@ -52,6 +52,7 @@ export interface Event {
     logo_url?: string;
     slug?: string;
     type?: string;
+    visibility?: string;
   };
   organization_id?: string;
   organization?: {
@@ -60,6 +61,7 @@ export interface Event {
     logo_url?: string;
     slug?: string;
     type?: string;
+    visibility?: string;
   };
   created_at: string;
   updated_at: string;
@@ -69,7 +71,7 @@ export interface Event {
    */
   branding?: Branding | null;
   /** Spaces co-hosting alongside `space` ("by Host & Co-host"). */
-  co_hosts?: { id: string; name: string; slug?: string; logo_url?: string }[];
+  co_hosts?: { id: string; name: string; slug?: string; logo_url?: string; visibility?: string }[];
   /**
    * The parent "big event" this event is a sub-event of, or null/undefined for
    * a top-level event. Present on the event-detail response.
@@ -96,6 +98,8 @@ export interface Event {
 export interface TicketSale {
   sold_out: boolean;
   waitlist: boolean;
+  /** GROUP ticket: registered in the app for now (K10). */
+  group?: boolean;
   sale_start?: string;
   sale_end?: string;
 }
@@ -247,6 +251,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
         logo_url: (rawSpace.logoUrl ?? rawSpace.logo_url) as string | undefined,
         slug: rawSpace.slug as string | undefined,
         type: rawSpace.type as string | undefined,
+        visibility: rawSpace.visibility as string | undefined,
       }
     : undefined;
 
@@ -327,6 +332,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
       name: h.name as string,
       slug: h.slug as string | undefined,
       logo_url: (h.logoUrl ?? undefined) as string | undefined,
+      visibility: h.visibility as string | undefined,
     })),
     parent_event: mapSubEvent(
       (r.parentEvent ?? r.parent_event) as Record<string, unknown> | null,
@@ -354,6 +360,7 @@ export function mapEvent(raw: Record<string, unknown> | null | undefined): Event
     tickets: ownTicketTypes.map((t) => ({
       sold_out: t.totalQuantity != null && Number(t.soldCount ?? 0) >= Number(t.totalQuantity),
       waitlist: Boolean(t.waitlistEnabled),
+      group: t.kind === "GROUP",
       sale_start: (t.saleStartsAt ?? undefined) as string | undefined,
       sale_end: (t.saleEndsAt ?? undefined) as string | undefined,
     })),

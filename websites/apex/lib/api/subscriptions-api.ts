@@ -86,6 +86,10 @@ export interface SpaceSubscription extends BillingArrangement {
   inherited?: boolean;
   currency: string;
   isActive: boolean;
+  /** From the dates: GRACE = 7 days after expiry, EXPIRED = Starter limits. */
+  status?: "ACTIVE" | "GRACE" | "EXPIRED" | null;
+  pendingPlan?: OrgPlan | null;
+  lastPaymentAt?: string | null;
   startedAt: string | null;
   expiresAt: string | null;
   nextPaymentAt: string | null;
@@ -339,6 +343,26 @@ export async function adminUpdateSpaceSubscription(
 ): Promise<Result<SpaceSubscription>> {
   return apiCall<SpaceSubscription>(
     backendClient.patch(`/subscription/admin/space/${spaceId}`, input)
+  );
+}
+
+export interface OfflinePaymentInput {
+  plan: OrgPlan;
+  billingCycle: BillingCycle;
+  /** ₹ received. */
+  amount: number;
+  /** Bank / cheque reference; a reference is recorded once. */
+  reference?: string;
+  note?: string;
+}
+
+/** `POST /subscription/admin/space/:spaceId/offline-payment` — extends the period. */
+export async function recordOfflinePayment(
+  spaceId: string,
+  input: OfflinePaymentInput
+): Promise<Result<SpaceSubscription>> {
+  return apiCall<SpaceSubscription>(
+    backendClient.post(`/subscription/admin/space/${spaceId}/offline-payment`, input)
   );
 }
 

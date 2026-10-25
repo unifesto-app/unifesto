@@ -38,7 +38,7 @@ import { RangeSwitcher } from "./RangeSwitcher";
  * resolve CSS `var()`, so we read the computed values from :root once on mount.
  * Re-read when <html data-theme> flips light/dark (System, Light or Dark).
  */
-function useTokenColors() {
+export function useTokenColors() {
   const [colors, setColors] = useState({
     primary: "hsl(221 83% 53%)",
     success: "hsl(142 71% 45%)",

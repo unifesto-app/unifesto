@@ -262,8 +262,8 @@ export function FaqSection({ items }: { items: Faq[] }) {
  * and the organiser contacts with bare mail / call actions.
  */
 export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpace }: {
-  space?: { id: string; name: string; logoUrl: string | null } | null;
-  coHosts?: { id: string; name: string; logoUrl: string | null }[];
+  space?: { id: string; name: string; logoUrl: string | null; visibility?: string } | null;
+  coHosts?: { id: string; name: string; logoUrl: string | null; visibility?: string }[];
   curators?: EventCurator[];
   contacts: Contact[];
   onOpenSpace: (id: string) => void;
@@ -279,13 +279,15 @@ export function HostedBySection({ space, coHosts, curators, contacts, onOpenSpac
           {spaces.map((s) => (
             <Pressable
               key={s.id}
+              // A PRIVATE space has no public page, so it isn't a link.
+              disabled={s.visibility === 'PRIVATE'}
               onPress={() => onOpenSpace(s.id)}
-              accessibilityRole="link"
+              accessibilityRole={s.visibility === 'PRIVATE' ? undefined : 'link'}
               style={({ pressed }) => [styles.row, styles.center, pressed && { backgroundColor: c.tint }]}
             >
               <Avatar uri={s.logoUrl} name={s.name} size={44} square />
               <Text style={[styles.itemTitle, styles.flex, { color: c.text }]} numberOfLines={1}>{s.name}</Text>
-              <CaretRight size={15} color={c.muted} />
+              {s.visibility === 'PRIVATE' ? null : <CaretRight size={15} color={c.muted} />}
             </Pressable>
           ))}
           {people.map((p) => (

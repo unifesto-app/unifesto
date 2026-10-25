@@ -21,6 +21,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { uploadLimit } from '../common/upload-limits';
 import { AdminService } from './admin.service';
+import { ScorecardService } from './scorecard.service';
 import { UsersService } from '../users/users.service';
 import { RegistrationsService } from '../registrations/registrations.service';
 import { EventsService } from '../events/events.service';
@@ -49,6 +50,7 @@ export class AdminController {
     private readonly registrationsService: RegistrationsService,
     private readonly eventsService: EventsService,
     private readonly platformConfig: PlatformConfigService,
+    private readonly scorecard: ScorecardService,
   ) {}
 
   @Get('health')
@@ -286,13 +288,23 @@ export class AdminController {
 
   /**
    * Financial time-series for the analytics graphs (ADMIN only).
-   * `range` ∈ today | 7d | 1m | 6m | 12m | 24m (default 12m).
+   * `range` ∈ today | 7d | 14d | 1m | 6m | 12m | 24m (default 12m).
    * GET /admin/analytics/financial-timeseries?range=12m
    */
   @Get('analytics/financial-timeseries')
   @Roles(RoleCode.ADMIN)
   async getFinancialTimeseries(@Query('range') range?: string) {
     return this.adminService.getFinancialTimeseries(range || '12m');
+  }
+
+  /**
+   * Z7 weekly scorecard: last 7 IST days vs the 7 before (ADMIN only).
+   * GET /admin/analytics/weekly-scorecard
+   */
+  @Get('analytics/weekly-scorecard')
+  @Roles(RoleCode.ADMIN)
+  async getWeeklyScorecard(@CurrentUser() user: User) {
+    return this.scorecard.weekly(user.id);
   }
 
   /**

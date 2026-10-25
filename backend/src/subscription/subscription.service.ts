@@ -13,11 +13,12 @@ import {
   OrgPlan,
   Prisma,
 } from '@prisma/client';
-import { PlanConfigService, SELLABLE_PLANS } from './plan-config.service';
+import { PlanConfigService, SELLABLE_PLANS, subscriptionStatus } from './plan-config.service';
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 import {
   AdminUpdateSubscriptionDto,
+  RecordOfflinePaymentDto,
   SubscriptionUsageDto,
   UpgradeSubscriptionDto,
   VerifyUpgradeDto,
@@ -54,16 +55,51 @@ const IST_OFFSET_MS = 330 * 60 * 1000;
  * ponytail: no anchor day stored, so 31 Jan -> 28 Feb -> 28 Mar drifts; store
  * the anchor if renewals need to snap back to the 31st.
  */
-export function addBillingCycle(from: Date, cycle: BillingCycle): Date {
+export function addBillingCycle(from: Date, cycle: BillingCycle, n = 1): Date {
   const ist = new Date(from.getTime() + IST_OFFSET_MS);
   const y = ist.getUTCFullYear();
-  const m = ist.getUTCMonth() + (cycle === BillingCycle.ANNUAL ? 12 : 1);
+  const m = ist.getUTCMonth() + (cycle === BillingCycle.ANNUAL ? 12 : 1) * n;
   const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
   const day = Math.min(ist.getUTCDate(), lastDay);
   return new Date(
     Date.UTC(y, m, day, ist.getUTCHours(), ist.getUTCMinutes(), ist.getUTCSeconds(), ist.getUTCMilliseconds()) -
       IST_OFFSET_MS,
   );
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Credit (paise) for the unused whole days of the current paid period, priced
+ * at the current plan's list price. The period is the cycle ending at
+ * expiresAt, or from the last payment when that is later (bought 31 Jan, ends
+ * 28 Feb: a 28-day period). Time stacked by early renewals is credited too.
+ */
+export function prorationCreditPaise(
+  pricePaise: number,
+  cycle: BillingCycle,
+  expiresAt: Date,
+  now: Date,
+  lastPaymentAt?: Date | null,
+): number {
+  const daysLeft = Math.floor((expiresAt.getTime() - now.getTime()) / DAY_MS);
+  if (daysLeft <= 0) return 0;
+  let start = addBillingCycle(expiresAt, cycle, -1);
+  if (lastPaymentAt && lastPaymentAt > start && lastPaymentAt < expiresAt) start = lastPaymentAt;
+  const cycleDays = Math.max(1, Math.round((expiresAt.getTime() - start.getTime()) / DAY_MS));
+  return Math.floor((pricePaise * daysLeft) / cycleDays);
+}
+
+const PLAN_RANK: Record<OrgPlan, number> = { STARTER: 0, GROWTH: 1, PRO: 2, ENTERPRISE: 3 };
+const CYCLE_RANK: Record<BillingCycle, number> = { MONTHLY: 0, ANNUAL: 1 };
+
+/** renew = same plan+cycle (extends); upgrade = starts now; downgrade = starts at period end. */
+export type PlanChangeKind = 'renew' | 'upgrade' | 'downgrade';
+
+/** Lock a subscription row for the rest of the transaction and read it fresh. */
+export async function lockSubscription(tx: Prisma.TransactionClient, id: string) {
+  await tx.$queryRaw`SELECT id FROM org_subscriptions WHERE id = ${id}::uuid FOR UPDATE`;
+  return tx.orgSubscription.findUniqueOrThrow({ where: { id } });
 }
 
 /** Plans are only sold to spaces billed by subscription; FREE and REVENUE_SHARE are set by Unifesto. */
@@ -153,7 +189,7 @@ export class SubscriptionService {
       throw new NotFoundException('This space has no subscription');
     }
     await this.cache.setSpacePlan(spaceId, subscription.plan);
-    return subscription;
+    return { ...subscription, status: subscriptionStatus(subscription) };
   }
 
   async getSpaceUsage(spaceId: string): Promise<SubscriptionUsageDto> {
@@ -187,52 +223,100 @@ export class SubscriptionService {
     };
   }
 
+  /**
+   * What buying `plan`/`cycle` does to this subscription, and the credit owed.
+   * Same plan and cycle renews (extends). With paid time left, a higher plan or
+   * cycle starts now with the unused days credited; a lower one is paid now and
+   * starts when the current period ends. Without paid time left it starts now.
+   */
+  quoteChange(
+    sub: {
+      plan: OrgPlan;
+      billingCycle: BillingCycle;
+      expiresAt: Date | null;
+      cancelledAt: Date | null;
+      lastPaymentAt: Date | null;
+    },
+    plan: OrgPlan,
+    cycle: BillingCycle,
+    now = new Date(),
+  ): { kind: PlanChangeKind; creditPaise: number } {
+    const diff =
+      PLAN_RANK[plan] - PLAN_RANK[sub.plan] || CYCLE_RANK[cycle] - CYCLE_RANK[sub.billingCycle];
+    if (diff === 0) return { kind: 'renew', creditPaise: 0 };
+    const paidLeft = sub.plan !== OrgPlan.STARTER && !!sub.expiresAt && sub.expiresAt > now;
+    if (!paidLeft) return { kind: 'upgrade', creditPaise: 0 };
+    if (diff < 0) return { kind: 'downgrade', creditPaise: 0 };
+    const limits = this.planConfig.getLimits(sub.plan);
+    const price =
+      sub.billingCycle === BillingCycle.MONTHLY ? limits.monthlyPrice : limits.annualPrice;
+    return {
+      kind: 'upgrade',
+      creditPaise: price
+        ? prorationCreditPaise(price * 100, sub.billingCycle, sub.expiresAt!, now, sub.lastPaymentAt)
+        : 0,
+    };
+  }
+
   async createUpgradeOrderForSpace(spaceId: string, dto: UpgradeSubscriptionDto) {
     if (!SELLABLE_PLANS.includes(dto.plan)) {
       throw new BadRequestException('That plan is no longer available');
     }
     const subscription = await this.getSpaceSubscription(spaceId);
     assertSelfServeBilling(subscription.billingModel);
-
-    if (
-      subscription.plan === dto.plan &&
-      subscription.billingCycle === dto.billingCycle
-    ) {
-      throw new BadRequestException('Already on this plan');
+    if (subscription.pendingPlan) {
+      throw new BadRequestException(
+        'A plan change is already scheduled for the end of this period. Contact support to change it.',
+      );
     }
 
     const planLimits = this.planConfig.getLimits(dto.plan);
-    const amount =
+    const price =
       dto.billingCycle === BillingCycle.MONTHLY
         ? planLimits.monthlyPrice
         : planLimits.annualPrice;
 
-    if (amount === null || amount === 0) {
+    if (price === null || price === 0) {
       throw new BadRequestException('Cannot upgrade to this plan via payment');
     }
 
+    const { kind, creditPaise } = this.quoteChange(subscription, dto.plan, dto.billingCycle);
+    const amountPaise = price * 100 - creditPaise;
+    if (amountPaise < 100) {
+      throw new BadRequestException(
+        'Your unused time already covers this plan. Contact support to switch.',
+      );
+    }
+
     const order = await this.razorpay.orders.create({
-      amount: amount * 100,
+      amount: amountPaise,
       currency: 'INR',
-      receipt: `sub_${spaceId}_${Date.now()}`,
-      notes: { spaceId, plan: dto.plan, billingCycle: dto.billingCycle },
+      // Razorpay caps receipts at 40 chars; a UUID alone is 36.
+      receipt: `sub_${Date.now()}_${spaceId.slice(0, 8)}`,
+      notes: {
+        spaceId,
+        plan: dto.plan,
+        billingCycle: dto.billingCycle,
+        kind,
+        creditPaise: String(creditPaise),
+      },
     });
 
-    this.logger.log(`Created Razorpay order ${order.id} for space ${spaceId}`);
+    this.logger.log(`Created Razorpay order ${order.id} (${kind}) for space ${spaceId}`);
 
     return {
       orderId: order.id,
-      amount,
+      amount: amountPaise / 100,
       currency: 'INR',
       plan: dto.plan,
       billingCycle: dto.billingCycle,
+      kind,
+      credit: creditPaise / 100,
       razorpayKeyId: process.env.RAZORPAY_KEY_ID!,
     };
   }
 
   async verifyAndActivateForSpace(spaceId: string, dto: VerifyUpgradeDto) {
-    const subscription = await this.getSpaceSubscription(spaceId);
-
     const expected = Buffer.from(
       crypto
         .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
@@ -248,9 +332,7 @@ export class SubscriptionService {
     }
 
     // The signature proves a genuine payment, not that it paid for THIS space's
-    // upgrade: the order must be this space's and actually paid. The payment id
-    // is recorded once (unique on subscription_history), so a receipt can't be
-    // replayed onto another space or re-used next month.
+    // upgrade: the order must be this space's and actually paid.
     const order = await this.razorpay.orders.fetch(dto.orderId);
     if (order.notes?.spaceId !== spaceId) {
       throw new BadRequestException('That payment is for a different space.');
@@ -258,77 +340,150 @@ export class SubscriptionService {
     if (order.status !== 'paid') {
       throw new BadRequestException('That order has not been paid.');
     }
-    const plan = order.notes?.plan as OrgPlan;
-    const billingCycle = order.notes?.billingCycle as BillingCycle;
 
-    // Time left on the current period carries over; a lapsed one starts now.
-    const now = new Date();
-    const periodStart =
-      subscription.expiresAt && subscription.expiresAt > now ? subscription.expiresAt : now;
-    const expiresAt = addBillingCycle(periodStart, billingCycle);
-
-    const oldPlan = subscription.plan;
-
-    const updated = await this.prisma.$transaction(async (tx) => {
-      // Claim the payment first: a replayed id hits the unique index and the
-      // whole upgrade rolls back.
-      await tx.subscriptionHistory
-        .create({
-          data: {
-            subscriptionId: subscription.id,
-            fromPlan: subscription.plan,
-            toPlan: plan,
-            reason: 'Paid upgrade',
-            paymentId: dto.paymentId,
-          },
-        })
-        .catch((e) => {
-          if (e?.code === 'P2002') {
-            throw new BadRequestException('This payment has already been used.');
-          }
-          throw e;
-        });
-
-      return tx.orgSubscription.update({
-        where: { id: subscription.id },
-        data: {
-          plan,
-          billingCycle,
-          amount: new Prisma.Decimal(Number(order.amount) / 100),
-          isActive: true,
-          expiresAt,
-          cancelledAt: null,
-          lastPaymentAt: now,
-          nextPaymentAt: expiresAt,
-        },
+    const { subscription, applied } = await this.applyPaidOrder(spaceId, order, dto.paymentId);
+    if (!applied) {
+      // The webhook (or an earlier verify) already applied this payment: fine
+      // when it was for this subscription, a replay otherwise.
+      const prior = await this.prisma.subscriptionHistory.findFirst({
+        where: { OR: [{ paymentId: dto.paymentId }, { orderId: dto.orderId }] },
+        select: { subscriptionId: true },
       });
+      if (prior?.subscriptionId !== subscription.id) {
+        throw new BadRequestException('This payment has already been used.');
+      }
+    }
+    return subscription;
+  }
+
+  /**
+   * Razorpay webhook (`order.paid`, or a `payment.captured` no other product
+   * claimed): activate a plan order the browser never verified. Returns false
+   * when the order isn't a plan order. Idempotent with verify (S28 + claim).
+   */
+  async completeFromWebhook(
+    orderId: string,
+    paymentId: string,
+    order?: { id: string; status?: string; amount: number | string; notes?: any },
+  ): Promise<boolean> {
+    const o = order ?? (await this.razorpay.orders.fetch(orderId).catch(() => null));
+    const n = o?.notes;
+    if (!o || !n?.spaceId || !n.plan || !n.billingCycle) return false;
+    if (o.status && o.status !== 'paid') {
+      this.logger.warn(`Plan order ${orderId} is ${o.status}, not paid; not activating`);
+      return true;
+    }
+    await this.applyPaidOrder(String(n.spaceId), { ...o, id: orderId }, paymentId);
+    return true;
+  }
+
+  /**
+   * Apply a paid plan order once. The payment and order ids are claimed on a
+   * history row (both unique) under a row lock, so verify, the webhook and the
+   * expiry cron serialise: whoever claims first applies it, the rest no-op.
+   */
+  private async applyPaidOrder(
+    spaceId: string,
+    order: { id: string; amount: number | string; notes?: any },
+    paymentId: string,
+  ) {
+    const n = order.notes ?? {};
+    const plan = n.plan as OrgPlan;
+    const billingCycle = n.billingCycle as BillingCycle;
+    // Orders made before T8 carry no kind: they extended, like a renewal.
+    let kind = (n.kind as PlanChangeKind) ?? 'renew';
+    const amountPaise = Math.round(Number(order.amount));
+    const listPrice =
+      billingCycle === BillingCycle.MONTHLY
+        ? this.planConfig.getLimits(plan).monthlyPrice
+        : this.planConfig.getLimits(plan).annualPrice;
+
+    const row = await this.prisma.orgSubscription.findUnique({
+      where: { spaceId },
+      select: { id: true },
+    });
+    if (!row) throw new NotFoundException('This space has no subscription');
+
+    const now = new Date();
+    let fromPlan: OrgPlan = OrgPlan.STARTER;
+    let expiresAt: Date | null = null;
+    const result = await this.prisma.$transaction(async (tx) => {
+      const sub = await lockSubscription(tx, row.id);
+      fromPlan = sub.plan;
+      const hasTimeLeft = !!sub.expiresAt && sub.expiresAt > now;
+      // A downgrade whose current period already ran out just starts now.
+      if (kind === 'downgrade' && !hasTimeLeft) kind = 'upgrade';
+
+      const start = kind === 'upgrade' || !hasTimeLeft ? now : sub.expiresAt!;
+      expiresAt = addBillingCycle(start, billingCycle);
+
+      const claimed = await tx.subscriptionHistory.createMany({
+        data: [
+          {
+            subscriptionId: sub.id,
+            fromPlan: sub.plan,
+            toPlan: plan,
+            reason:
+              kind === 'renew'
+                ? 'Paid renewal'
+                : kind === 'downgrade'
+                  ? `Paid downgrade (starts ${this.formatDate(sub.expiresAt!)})`
+                  : 'Paid upgrade',
+            paymentId,
+            orderId: order.id,
+            amountPaise,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      if (claimed.count === 0) return { subscription: sub, applied: false };
+
+      const paid = { cancelledAt: null, isActive: true, lastPaymentAt: now, nextPaymentAt: expiresAt };
+      const subscription = await tx.orgSubscription.update({
+        where: { id: sub.id },
+        data:
+          kind === 'downgrade'
+            ? { ...paid, pendingPlan: plan, pendingBillingCycle: billingCycle }
+            : {
+                ...paid,
+                plan,
+                billingCycle,
+                amount: new Prisma.Decimal(listPrice ?? amountPaise / 100),
+                expiresAt,
+                pendingPlan: null,
+                pendingBillingCycle: null,
+              },
+      });
+      return { subscription, applied: true };
     });
 
+    if (!result.applied) return result;
+
     await this.cache.invalidateSpacePlanCache(spaceId);
-    this.logger.log(`Activated ${plan} plan for space ${spaceId}`);
+    this.logger.log(`Applied ${kind} to ${plan} for space ${spaceId} (payment ${paymentId})`);
 
     const recipient = await this.resolveSpaceBillingRecipient(spaceId);
-    if (recipient.email) {
-      if (oldPlan === OrgPlan.STARTER) {
+    if (recipient.email && kind !== 'downgrade') {
+      if (fromPlan === OrgPlan.STARTER) {
         this.emailService
           .sendSubscriptionActivated({
             email: recipient.email,
             userName: recipient.name,
             plan,
             billingCycle,
-            amount: Number(updated.amount),
-            expiresAt: this.formatDate(expiresAt),
+            amount: amountPaise / 100,
+            expiresAt: this.formatDate(expiresAt!),
             features: SUBSCRIPTION_PLAN_FEATURES[plan] || [],
           })
           .catch((err) =>
             this.logger.error('Failed to send subscription activated email', err),
           );
-      } else {
+      } else if (fromPlan !== plan) {
         this.emailService
           .sendSubscriptionUpgraded({
             email: recipient.email,
             userName: recipient.name,
-            fromPlan: oldPlan,
+            fromPlan,
             toPlan: plan,
             newFeatures: SUBSCRIPTION_PLAN_FEATURES[plan] || [],
           })
@@ -338,7 +493,7 @@ export class SubscriptionService {
       }
     }
 
-    return updated;
+    return result;
   }
 
   /**
@@ -461,25 +616,83 @@ export class SubscriptionService {
     }
     if (dto.plan !== undefined) data.plan = dto.plan;
 
-    // A plan change is always logged; any other change is logged when the admin
-    // left a note, so the note isn't dropped (from = to plan for those).
-    const planChanged = !!dto.plan && dto.plan !== subscription.plan;
-    const note = dto.reason?.trim();
-    if (planChanged || note) {
-      await this.prisma.subscriptionHistory.create({
+    // Every admin change is logged with it, in one transaction (from = to plan
+    // when only the arrangement changed).
+    const sub = subscription;
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.subscriptionHistory.create({
         data: {
-          subscriptionId: subscription.id,
-          fromPlan: subscription.plan,
-          toPlan: dto.plan ?? subscription.plan,
-          reason: note || 'Admin updated',
+          subscriptionId: sub.id,
+          fromPlan: sub.plan,
+          toPlan: dto.plan ?? sub.plan,
+          reason: dto.reason?.trim() || 'Admin updated',
         },
       });
-    }
+      return tx.orgSubscription.update({
+        where: { id: sub.id },
+        data,
+        include: { space: { select: { id: true, name: true, slug: true } } },
+      });
+    });
 
-    const updated = await this.prisma.orgSubscription.update({
-      where: { id: subscription.id },
-      data,
-      include: { space: { select: { id: true, name: true, slug: true } } },
+    await this.cache.invalidateSpacePlanCache(spaceId);
+    return updated;
+  }
+
+  /**
+   * Platform admin: record a payment made outside Razorpay (bank transfer,
+   * cheque). Same plan extends from the current end; another plan starts now.
+   * A reference is recorded once (as `offline:<ref>` on the history row).
+   */
+  async recordOfflinePaymentForSpace(spaceId: string, dto: RecordOfflinePaymentDto) {
+    if (dto.plan === OrgPlan.STARTER || !SELLABLE_PLANS.includes(dto.plan)) {
+      throw new BadRequestException('Pick a paid plan (Pro or Enterprise)');
+    }
+    const row =
+      (await this.prisma.orgSubscription.findUnique({ where: { spaceId }, select: { id: true } })) ??
+      (await this.createStarterForSpace(spaceId));
+    const ref = dto.reference?.trim();
+    const now = new Date();
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const sub = await lockSubscription(tx, row.id);
+      const start =
+        sub.plan === dto.plan && sub.expiresAt && sub.expiresAt > now ? sub.expiresAt : now;
+      const expiresAt = addBillingCycle(start, dto.billingCycle);
+      await tx.subscriptionHistory
+        .create({
+          data: {
+            subscriptionId: sub.id,
+            fromPlan: sub.plan,
+            toPlan: dto.plan,
+            reason: ['Offline payment', ref, dto.note?.trim()].filter(Boolean).join(' · ').slice(0, 500),
+            paymentId: ref ? `offline:${ref}` : null,
+            amountPaise: Math.round(dto.amount * 100),
+          },
+        })
+        .catch((e) => {
+          if (e?.code === 'P2002') {
+            throw new BadRequestException('A payment with this reference is already recorded.');
+          }
+          throw e;
+        });
+      return tx.orgSubscription.update({
+        where: { id: sub.id },
+        data: {
+          billingModel: BillingModel.SUBSCRIPTION,
+          plan: dto.plan,
+          billingCycle: dto.billingCycle,
+          amount: new Prisma.Decimal(dto.amount),
+          isActive: true,
+          expiresAt,
+          cancelledAt: null,
+          pendingPlan: null,
+          pendingBillingCycle: null,
+          lastPaymentAt: now,
+          nextPaymentAt: expiresAt,
+        },
+        include: { space: { select: { id: true, name: true, slug: true } } },
+      });
     });
 
     await this.cache.invalidateSpacePlanCache(spaceId);
@@ -576,6 +789,10 @@ export class SubscriptionService {
         amount: eff?.amount ?? 0,
         currency: eff?.currency ?? 'INR',
         isActive: eff?.isActive ?? false,
+        status: eff ? subscriptionStatus(eff) : null,
+        pendingPlan: eff?.pendingPlan ?? null,
+        lastPaymentAt: eff?.lastPaymentAt ?? null,
+        cancelledAt: eff?.cancelledAt ?? null,
         startedAt: eff?.startedAt ?? null,
         expiresAt: eff?.expiresAt ?? null,
         nextPaymentAt: eff?.nextPaymentAt ?? null,
@@ -606,8 +823,6 @@ export class SubscriptionService {
           select: {
             billingModel: true,
             isActive: true,
-            amount: true,
-            billingCycle: true,
           },
         },
       },
@@ -618,8 +833,6 @@ export class SubscriptionService {
     let subscription = 0;
     let notConfigured = 0;
     let active = 0;
-    let mrr = 0;
-
     for (const sp of spaces) {
       const s = sp.subscription;
       if (!s) {
@@ -629,14 +842,42 @@ export class SubscriptionService {
       if (s.isActive) active += 1;
       if (s.billingModel === BillingModel.FREE) free += 1;
       else if (s.billingModel === BillingModel.REVENUE_SHARE) revenueShare += 1;
-      else if (s.billingModel === BillingModel.SUBSCRIPTION) {
-        subscription += 1;
-        if (s.isActive) {
-          const amt = Number(s.amount) || 0;
-          mrr += s.billingCycle === BillingCycle.ANNUAL ? amt / 12 : amt;
-        }
-      }
+      else if (s.billingModel === BillingModel.SUBSCRIPTION) subscription += 1;
     }
+
+    // MRR from what was actually paid: each live, uncancelled subscription's
+    // latest payment spread over its cycle. Comp plans (never paid) add nothing.
+    // ponytail: an upgrade's first payment is net of its proration credit, so
+    // MRR reads low for one period after an upgrade.
+    const payments = await this.prisma.subscriptionHistory.findMany({
+      where: {
+        amountPaise: { gt: 0 },
+        subscription: { billingModel: BillingModel.SUBSCRIPTION, cancelledAt: null },
+      },
+      orderBy: { changedAt: 'desc' },
+      distinct: ['subscriptionId'],
+      select: {
+        amountPaise: true,
+        subscription: {
+          select: {
+            plan: true,
+            billingCycle: true,
+            expiresAt: true,
+            cancelledAt: true,
+            pendingPlan: true,
+            pendingBillingCycle: true,
+          },
+        },
+      },
+    });
+    let mrrPaise = 0;
+    for (const p of payments) {
+      const s = p.subscription;
+      if (s.plan === OrgPlan.STARTER || subscriptionStatus(s) === 'EXPIRED') continue;
+      const cycle = s.pendingBillingCycle ?? s.billingCycle;
+      mrrPaise += (p.amountPaise ?? 0) / (cycle === BillingCycle.ANNUAL ? 12 : 1);
+    }
+    const mrr = mrrPaise / 100;
 
     return {
       total: spaces.length,

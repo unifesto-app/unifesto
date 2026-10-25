@@ -1,5 +1,6 @@
 import { BillingModel, Prisma } from '@prisma/client';
-import { PayoutsService } from './payouts.service';
+import { maskUpiId, PayoutsService } from './payouts.service';
+import { NOT_DEMO_EVENT, NOT_DEMO_SPACE } from '../common/demo-data';
 import { PlanConfigService } from '../subscription/plan-config.service';
 
 /**
@@ -75,6 +76,15 @@ describe('PayoutsService.getPlatformFinancials (platform fee)', () => {
     const res = await svc.getPlatformFinancials();
     expect(res.platformFee).toBe(70);
   });
+
+  it('leaves the demo space out of every aggregate (P23)', async () => {
+    const { svc, prisma } = build();
+    await svc.getPlatformFinancials();
+    expect(prisma.space.findMany.mock.calls[0][0].where).toBe(NOT_DEMO_SPACE);
+    expect(prisma.event.findMany.mock.calls[0][0].where).toBe(NOT_DEMO_EVENT);
+    // Money sums are scoped to the non-demo events, never platform-wide.
+    expect(prisma.eventRegistration.aggregate.mock.calls[0][0].where.eventId).toEqual({ in: ['e1', 'e2', 'e3'] });
+  });
 });
 
 /** S52: automatic (sold-out) refunds have no refund request but are still money that went back. */
@@ -94,14 +104,23 @@ describe('PayoutsService refunded total', () => {
       payout: { aggregate: agg({}) },
       refundRequest: { aggregate: agg({ cashRefunded: d(50) }) },
       space: { findMany: jest.fn().mockResolvedValue([]) },
-      event: { findMany: jest.fn().mockResolvedValue([]) },
+      event: { findMany: jest.fn().mockResolvedValue([{ id: 'e1', spaceId: 's1' }]) },
     };
     const svc = new PayoutsService(prisma, {} as any, {} as any, new PlanConfigService({} as any));
     const res = await svc.getPlatformFinancials();
     expect(res.refunded).toBe(370);
     expect(prisma.eventRegistration.aggregate).toHaveBeenCalledWith({
-      where: { refundedAmount: { gt: 0 }, refundRequests: { none: { status: 'APPROVED' } } },
+      where: { eventId: { in: ['e1'] }, refundedAmount: { gt: 0 }, refundRequests: { none: { status: 'APPROVED' } } },
       _sum: { refundedAmount: true },
     });
+  });
+});
+
+describe('maskUpiId (P23)', () => {
+  it('keeps 2 chars of the handle and the full @provider', () => {
+    expect(maskUpiId('abhinav.tej@okhdfc')).toBe('ab***@okhdfc');
+    expect(maskUpiId('a@ybl')).toBe('a***@ybl');
+    expect(maskUpiId('nohandle')).toBe('no***');
+    expect(maskUpiId(null)).toBeNull();
   });
 });
