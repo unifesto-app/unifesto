@@ -14,7 +14,6 @@ import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import {
-  GoogleLoginDto,
   AppleLoginDto,
   EmailLoginDto,
   SendMobileOtpDto,
@@ -28,18 +27,6 @@ import {
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  /**
-   * Login with Google
-   * POST /auth/google
-   */
-  @Post('google')
-  @HttpCode(HttpStatus.OK)
-  async loginWithGoogle(
-    @Body() dto: GoogleLoginDto,
-  ): Promise<AuthResponseDto> {
-    return this.authService.loginWithGoogle(dto);
-  }
 
   /**
    * Login with Apple

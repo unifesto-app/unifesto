@@ -26,6 +26,7 @@ import { GroupSeatsService } from './group-seats.service';
 import * as crypto from 'crypto';
 import { generateQRCode, generateTicketCode, resolveGroupSize, ticketsIn } from './registration.util';
 import { RegistrationConfirmationsService } from './registration-confirmations.service';
+import { findIdentityByEmail, normalizeEmail } from '../auth/identifiers';
 import { freeAddSeatsLeft, takeFreeAddSeats, NO_FREE_ADD_SEATS } from '../free-attendee-add/free-add-quota';
 
 /**
@@ -183,11 +184,12 @@ export class RegistrationImportService {
     email: string,
     name: string,
   ): Promise<string> {
-    const normalized = email.trim().toLowerCase();
-    const existing = await this.prisma.userIdentity.findFirst({
-      where: { email: normalized },
-      select: { userId: true, user: { select: { fullName: true } } },
-    });
+    const normalized = normalizeEmail(email);
+    const existing = await findIdentityByEmail<{ userId: string; user: { fullName: string | null } | null }>(
+      this.prisma,
+      normalized,
+      { select: { userId: true, user: { select: { fullName: true } } } },
+    );
     if (existing) {
       // Backfill a display name if the account never had one (e.g. a bare
       // placeholder created by an earlier import).
@@ -225,8 +227,7 @@ export class RegistrationImportService {
         return user.id;
       } catch (err) {
         // A concurrent create may have won the email identity race — re-resolve.
-        const raced = await this.prisma.userIdentity.findFirst({
-          where: { email: normalized },
+        const raced = await findIdentityByEmail<{ userId: string }>(this.prisma, normalized, {
           select: { userId: true },
         });
         if (raced) return raced.userId;
@@ -245,9 +246,7 @@ export class RegistrationImportService {
    * create a brand-new account".
    */
   private async resolveUserIdByEmail(email: string): Promise<string | null> {
-    const normalized = email.trim().toLowerCase();
-    const existing = await this.prisma.userIdentity.findFirst({
-      where: { email: normalized },
+    const existing = await findIdentityByEmail<{ userId: string }>(this.prisma, email, {
       select: { userId: true },
     });
     return existing?.userId ?? null;

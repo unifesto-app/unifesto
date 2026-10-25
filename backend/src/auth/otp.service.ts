@@ -22,6 +22,12 @@ export type OtpVerifyResult = 'ok' | 'invalid' | 'blocked';
  * its own limits and is locked out alone; the victim (on another IP) keeps
  * working until several IPs gang up on the same identifier, where the
  * identifier-wide caps still bound brute force and spend.
+ *
+ * J17: the identifier-wide guess cap was 15, so 3 IPs x 5 guesses locked any
+ * user out (and deleted their live code). It is now 40 (8 IPs), well above
+ * anything one person does, so the per-IP buckets are the real defence and
+ * the identifier cap is only a botnet backstop: 40 guesses per 15 min against
+ * a 6-digit code is still only ~0.4% a day for an attacker with 8+ IPs.
  */
 @Injectable()
 export class OtpService {
@@ -29,8 +35,8 @@ export class OtpService {
   static readonly OTP_EXPIRY_SECONDS = 10 * 60;
   /** Wrong guesses per identifier from one IP, per window. */
   static readonly MAX_ATTEMPTS = 5;
-  /** Wrong guesses per identifier from all IPs, per window. */
-  static readonly MAX_ATTEMPTS_TOTAL = 15;
+  /** Wrong guesses per identifier from all IPs, per window (botnet backstop). */
+  static readonly MAX_ATTEMPTS_TOTAL = 40;
   /** Wrong guesses from one IP across all identifiers (campus NATs share one). */
   static readonly IP_MAX_ATTEMPTS = 50;
   static readonly ATTEMPT_WINDOW_SECONDS = 15 * 60;
@@ -77,6 +83,19 @@ export class OtpService {
     ) {
       throw tooMany('Too many codes requested today. Please try again tomorrow.');
     }
+  }
+
+  /**
+   * Undo assertCanSend after a failed delivery (J17): the user didn't get a
+   * code, so it mustn't count against their caps or hold the cooldown.
+   */
+  async releaseSend(identifier: string, ip = 'unknown'): Promise<void> {
+    const client = this.redisService.getClient();
+    if (!client) return;
+    await client.del(`otp-limit:cooldown:${identifier}:${ip}`);
+    await client.decr(`otp-limit:ip-sends:${ip}`);
+    await client.decr(`otp-limit:daily:${identifier}:${ip}`);
+    await client.decr(`otp-limit:daily:${identifier}`);
   }
 
   async storeOtp(identifier: string, otp: string): Promise<void> {

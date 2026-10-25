@@ -4,6 +4,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SupportCaseKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OtpService } from '../auth/otp.service';
+import { normalizeEmail } from '../auth/identifiers';
 import { SupportService } from './support.service';
 import { CreateGrievanceDto } from './dto';
 
@@ -27,7 +28,8 @@ export class GrievanceController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Raise a grievance (public, email code)' })
   async create(@Body() dto: CreateGrievanceDto, @Ip() ip: string) {
-    const result = await this.otp.verifyOtp(dto.email, dto.otp, ip);
+    // /auth/email stores the code under the lowercased address (J17).
+    const result = await this.otp.verifyOtp(normalizeEmail(dto.email), dto.otp, ip);
     if (result === 'blocked') throw new UnauthorizedException('Too many failed attempts. Please try again in 15 minutes.');
     if (result !== 'ok') throw new UnauthorizedException('That code is wrong or has expired.');
 

@@ -27,11 +27,11 @@ jobs:
     name: CI passed
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The OTA status report counts mobile commits on main: needs history.
           fetch-depth: ${{ github.event_name == 'push' && 0 || 1 }}
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -54,7 +54,7 @@ jobs:
               - 'websites/apex/**'
 
       # ── mobile (Node 22) ────────────────────────────────────────────────
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.mobile == 'true' }}
         with:
           node-version: 22
@@ -105,7 +105,7 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: ${{ !cancelled() && steps.ota.outputs.ok == 'true' }}
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -120,7 +120,7 @@ jobs:
           node scripts/ota-ci-check.js ../.ota-base/mobile
 
       # ── websites (Node 22) ──────────────────────────────────────────────
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.web == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
@@ -131,7 +131,7 @@ jobs:
         working-directory: websites/web
         run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.space == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
@@ -142,7 +142,7 @@ jobs:
         working-directory: websites/space
         run: npm ci && npx next typegen && npx tsc --noEmit -p . && npm audit --omit=dev --audit-level=critical
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.apex == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 22
@@ -167,7 +167,7 @@ jobs:
           [ -z "$added" ] && { echo "No new migrations."; exit 0; }
           echo "New migrations:"; echo "$added"
           bash scripts/migration-guard.sh $added
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: ${{ !cancelled() && steps.filter.outputs.backend == 'true' && github.event_name == 'pull_request' }}
         with:
           node-version: 24

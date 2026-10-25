@@ -113,6 +113,10 @@ describe('CognitoJwtService', () => {
       );
       expect(serviceIncomplete).toBeDefined();
       // Service should still be created but log a warning
+      // J17: ...and refuse every token instead of skipping the audience check.
+      await expect(serviceIncomplete.verifyCognitoToken('any')).rejects.toThrow(
+        'Cognito authentication not configured',
+      );
     });
   });
 });
