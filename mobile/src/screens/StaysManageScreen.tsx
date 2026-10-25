@@ -8,6 +8,7 @@ import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup'
 import { Button } from '../components/ui';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { dayLabel, getTeamStays, PROPERTY_LABELS, type TeamStay } from '../lib/api/stays';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
@@ -20,7 +21,7 @@ const GUTTER = spacing[6];
  * queue, and the property desk (scan Stay Passes at check-in).
  */
 export default function StaysManageScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
@@ -62,7 +63,8 @@ export default function StaysManageScreen() {
     }),
     { beds: 0, guests: 0, checkedIn: 0 },
   );
-  const openStay = (stayId: string) => router.push({ pathname: `/manage/event/${eventId}/stay`, params: { stayId } });
+  // Setting up a stay is desk work on Unifesto Space (D3); bookings and the door stay here.
+  const openStay = (stayId?: string) => openSpaceWeb(`/dashboard/events/${eventId}/stays${stayId ? `/${stayId}` : ''}`, spaceId);
 
   return (
     <ScrollView
@@ -127,6 +129,7 @@ export default function StaysManageScreen() {
                 icon={<Bed size={24} color={s.isPublished ? tokens.accent : tokens.textMuted} weight="fill" />}
                 label={s.name}
                 value={s.isPublished ? (s.counts.pending ? `${s.counts.pending} new` : 'Live') : 'Hidden'}
+                external
                 onPress={() => openStay(s.id)}
               />
               <Text style={[styles.sub, { color: tokens.textMuted }]} onPress={() => openStay(s.id)}>
@@ -139,11 +142,11 @@ export default function StaysManageScreen() {
       </SettingsGroup>
 
       <Button
-        label="Add a stay"
+        label="Add a stay on the web"
         variant="secondary"
         fullWidth
         icon={<Plus size={18} color={tokens.text} weight="bold" />}
-        onPress={() => openStay('new')}
+        onPress={() => openStay()}
         style={{ marginTop: spacing[5] }}
       />
       {totals.beds === 0 && data.stays.length ? (

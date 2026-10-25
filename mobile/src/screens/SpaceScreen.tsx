@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -23,8 +23,8 @@ import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
 import { AppAlert } from '../components/ui/AppAlert';
+import { openSpaceWeb } from '../lib/openOnWeb';
 
-const SPACE_WEB_URL = 'https://space.unifesto.app';
 const TILE_W = 156;
 const TILE_LOGO = 48;
 
@@ -75,9 +75,9 @@ export default function SpaceScreen() {
       params: { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' },
     });
 
-  // New event goes straight to the form; with several spaces, ask which one.
+  // Creating an event is desk work, so it opens on Unifesto Space (D3); with several spaces, ask which one.
   const newEvent = () => {
-    const open = (id: string) => router.push(`/manage/space/${id}/new-event`);
+    const open = (id: string) => openSpaceWeb('/dashboard/events/new', id);
     if (creatable.length === 1) return open(creatable[0].id);
     AppAlert.alert('New event in…', undefined, [
       ...creatable.map((s) => ({ text: s.name, onPress: () => open(s.id) })),
@@ -85,8 +85,7 @@ export default function SpaceScreen() {
     ]);
   };
 
-  const openWeb = () =>
-    Linking.openURL(SPACE_WEB_URL).catch(() => AppAlert.alert('Error', 'Unable to open Unifesto Space'));
+  const openWeb = () => openSpaceWeb();
 
   const glyph = { size: 24, color: c.primary };
   const hosting = sections.includes('hosting');

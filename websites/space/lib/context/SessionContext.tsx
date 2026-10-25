@@ -142,7 +142,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         /* ignore */
       }
       const saved = ops.find((s) => s.id === savedId);
-      setCurrentSpaceState(saved || ops[0] || null);
+      // The mobile app's "Open on web" links name the space (?space=) so the
+      // page opens in it rather than whichever space was last picked here.
+      const linked = ops.find(
+        (s) => s.id === new URLSearchParams(window.location.search).get("space")
+      );
+      if (linked) setCurrentSpace(linked);
+      else setCurrentSpaceState(saved || ops[0] || null);
     } catch {
       setUser(null);
       setSpaces([]);
@@ -150,7 +156,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setCurrentSpace]);
 
   useEffect(() => {
     void load();

@@ -264,14 +264,6 @@ export interface StatementList {
   statements: Statement[];
 }
 
-export interface StatementInput {
-  code?: string | null;
-  title: string;
-  description: string;
-  themeId?: string | null;
-  maxTeams?: number | null;
-}
-
 /** One from the list, or the team's own (title + description); plus a theme when needed. */
 export interface SetStatementInput {
   statementId?: string;
@@ -282,20 +274,8 @@ export interface SetStatementInput {
 }
 
 export const getThemes = (eventId: string) => call<Theme[]>(`${base(eventId)}/themes`);
-export const createTheme = (eventId: string, name: string) =>
-  call<Theme>(`${base(eventId)}/themes`, json('POST', { name }));
-export const updateTheme = (eventId: string, themeId: string, name: string) =>
-  call<Theme>(`${base(eventId)}/themes/${themeId}`, json('PATCH', { name }));
-export const deleteTheme = (eventId: string, themeId: string) =>
-  call<{ ok: true }>(`${base(eventId)}/themes/${themeId}`, json('DELETE'));
 
 export const getStatements = (eventId: string) => call<StatementList>(`${base(eventId)}/statements`);
-export const createStatement = (eventId: string, input: StatementInput) =>
-  call<Statement>(`${base(eventId)}/statements`, json('POST', input));
-export const updateStatement = (eventId: string, statementId: string, input: Partial<StatementInput>) =>
-  call<Statement>(`${base(eventId)}/statements/${statementId}`, json('PATCH', input));
-export const deleteStatement = (eventId: string, statementId: string) =>
-  call<{ ok: true }>(`${base(eventId)}/statements/${statementId}`, json('DELETE'));
 
 /** Assign or change a team's statement (locks it for the team). */
 export const assignTeamStatement = (eventId: string, teamId: string, input: SetStatementInput) =>
@@ -491,30 +471,12 @@ export interface RoundDetail extends RoundSettings {
   criteriaLocked: boolean;
 }
 
-export type RoundInput = Partial<Omit<RoundSettings, 'id' | 'order' | 'status'>>;
-
 export const getRounds = (eventId: string) => call<RoundRow[]>(`${base(eventId)}/rounds`);
 export const getRound = (eventId: string, roundId: string) => call<RoundDetail>(`${base(eventId)}/rounds/${roundId}`);
-export const createRound = (eventId: string, input: RoundInput & { name: string }) =>
-  call<RoundDetail>(`${base(eventId)}/rounds`, json('POST', input));
-export const updateRound = (eventId: string, roundId: string, input: RoundInput) =>
-  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}`, json('PATCH', input));
-export const deleteRound = (eventId: string, roundId: string) =>
-  call<{ ok: true }>(`${base(eventId)}/rounds/${roundId}`, json('DELETE'));
 export const setRoundStatus = (eventId: string, roundId: string, status: RoundStatus) =>
   call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/status`, json('POST', { status }));
 export const setTeamDecision = (eventId: string, roundId: string, teamId: string, status: Standing) =>
   call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/teams/${teamId}/decision`, json('PUT', { status }));
-export const addCriterion = (eventId: string, roundId: string, input: { label: string; maxValue: number; weight?: number }) =>
-  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/criteria`, json('POST', input));
-export const updateCriterion = (
-  eventId: string,
-  roundId: string,
-  metricId: string,
-  input: { label: string; maxValue: number; weight?: number },
-) => call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/criteria/${metricId}`, json('PATCH', input));
-export const deleteCriterion = (eventId: string, roundId: string, metricId: string) =>
-  call<RoundDetail>(`${base(eventId)}/rounds/${roundId}/criteria/${metricId}`, json('DELETE'));
 
 export interface Judge {
   /** Profile id (used in routes). */
@@ -564,23 +526,10 @@ export interface PanelInput {
   memberUserIds?: string[];
   isAvailable?: boolean;
 }
-
-export const getJudges = (eventId: string) => call<Judge[]>(`${base(eventId)}/judges`);
-export const getJudge = (eventId: string, judgeId: string) => call<Judge>(`${base(eventId)}/judges/${judgeId}`);
-export const addJudge = (eventId: string, input: JudgeInput & { mobile?: string; email?: string; name?: string; kind?: PanelistRole }) =>
-  call<Judge>(`${base(eventId)}/judges`, json('POST', input));
 export const updateJudge = (eventId: string, judgeId: string, input: JudgeInput) =>
   call<Judge>(`${base(eventId)}/judges/${judgeId}`, json('PATCH', input));
-export const removeJudge = (eventId: string, judgeId: string) =>
-  call<{ ok: true }>(`${base(eventId)}/judges/${judgeId}`, json('DELETE'));
-
-export const getPanels = (eventId: string) => call<Panel[]>(`${base(eventId)}/panels`);
-export const createPanel = (eventId: string, input: PanelInput & { name: string }) =>
-  call<Panel>(`${base(eventId)}/panels`, json('POST', input));
 export const updatePanel = (eventId: string, panelId: string, input: PanelInput) =>
   call<Panel>(`${base(eventId)}/panels/${panelId}`, json('PATCH', input));
-export const deletePanel = (eventId: string, panelId: string) =>
-  call<{ ok: true }>(`${base(eventId)}/panels/${panelId}`, json('DELETE'));
 
 /** A team in a queue list. */
 export interface QueueTeam {
@@ -904,24 +853,10 @@ export interface AwardsList {
   teams: { id: string; teamCode: string | null; name: string }[];
 }
 
-export interface AwardInput {
-  title?: string;
-  entrantId?: string;
-  notes?: string | null;
-}
-
 export const getAwards = (eventId: string) => call<AwardsList>(`${base(eventId)}/awards`);
-export const createAward = (eventId: string, input: AwardInput & { title: string; entrantId: string }) =>
-  call<AwardsList>(`${base(eventId)}/awards`, json('POST', input));
-export const updateAward = (eventId: string, awardId: string, input: AwardInput) =>
-  call<AwardsList>(`${base(eventId)}/awards/${awardId}`, json('PATCH', input));
-export const deleteAward = (eventId: string, awardId: string) =>
-  call<AwardsList>(`${base(eventId)}/awards/${awardId}`, json('DELETE'));
 /** Publish every unpublished award (or the given ones); winners and everyone else are told. */
 export const publishAwards = (eventId: string, awardIds?: string[]) =>
   call<AwardsList>(`${base(eventId)}/awards/publish`, json('POST', awardIds?.length ? { awardIds } : {}));
-export const unpublishAward = (eventId: string, awardId: string) =>
-  call<AwardsList>(`${base(eventId)}/awards/${awardId}/unpublish`, json('POST'));
 
 /** The results CSV as text (the caller saves and shares it). */
 export async function getResultsCsv(eventId: string): Promise<Result<string>> {
@@ -1060,37 +995,3 @@ export const escalateHelpQuery = (eventId: string, queryId: string) =>
 
 export const HELP_STATUS_LABEL: Record<HelpQueryStatus, string> = { OPEN: 'Waiting', ACKNOWLEDGED: 'On it', RESOLVED: 'Resolved' };
 export const staffName = (u: { fullName: string | null; username: string | null }) => u.fullName || u.username || 'Team member';
-
-// ── Certificates (Phase 6) ───────────────────────────────────────────────────
-
-export type CertificateBatchStatus = 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
-
-export interface CertificateBatch {
-  id: string;
-  status: CertificateBatchStatus;
-  total: number;
-  issued: number;
-  reactivated: number;
-  skipped: number;
-  failed: number;
-  error: string | null;
-}
-
-export interface HackathonCertificates {
-  /** Curator / Space Admin (Co-Curators see this read-only). */
-  canIssue: boolean;
-  /** The space's plan includes certificates. */
-  planAllowed: boolean;
-  /** New certificates can be issued until the post-event window closes. */
-  window: { closesAt: string; isOpen: boolean };
-  templates: { id: string; name: string; backgroundUrl: string; usesTeam: boolean; usesAward: boolean }[];
-  participants: { teams: number; people: number };
-  winners: { awardId: string; title: string; team: { teamCode: string | null; name: string } }[];
-  batches: (CertificateBatch & { label: string; kind: 'WINNERS' | 'PARTICIPANTS'; createdAt: string; finishedAt: string | null })[];
-}
-
-export const getHackathonCertificates = (eventId: string) => call<HackathonCertificates>(`${base(eventId)}/certificates`);
-export const issueHackathonCertificates = (eventId: string, templateId: string, audience: 'PARTICIPANTS' | 'WINNERS') =>
-  call<HackathonCertificates & { batchIds: string[] }>(`${base(eventId)}/certificates/issue`, json('POST', { templateId, audience }));
-export const getCertificateBatch = (eventId: string, batchId: string) =>
-  call<CertificateBatch>(`${base(eventId)}/certificates/batches/${batchId}`);

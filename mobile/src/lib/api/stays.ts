@@ -174,49 +174,6 @@ export interface EventStays {
   stays: Stay[];
 }
 
-export interface StayInput {
-  name: string;
-  propertyType?: StayPropertyType;
-  description?: string | null;
-  address?: string | null;
-  city?: string | null;
-  mapUrl?: string | null;
-  amenities?: string[];
-  houseRules?: string | null;
-  contactName?: string | null;
-  contactPhone?: string | null;
-  checkInFrom: string;
-  checkOutUntil: string;
-  checkInTime?: string | null;
-  checkOutTime?: string | null;
-  requireIdProof?: boolean;
-  paymentWindowHours?: number;
-  isPublished?: boolean;
-}
-
-export interface StayOptionInput {
-  name: string;
-  description?: string | null;
-  gender?: StayGender;
-  totalBeds: number;
-  price?: number;
-  pricing?: StayPricing;
-  paymentMode?: StayPaymentMode;
-  maxGuests?: number;
-  isActive?: boolean;
-}
-
-export interface StayQuestionInput {
-  label: string;
-  type: FormFieldType;
-  options?: string[];
-  isRequired?: boolean;
-  order?: number;
-  helpText?: string | null;
-  config?: FormFieldConfig | null;
-  showIf?: { fieldId: string; anyOf: string[] } | null;
-}
-
 export interface StayBookingInput {
   optionId: string;
   checkInDate: string;
@@ -250,8 +207,6 @@ const json = (method: string, body?: unknown): RequestInit => ({
 export const getEventStays = (eventId: string) => call<EventStays>(`/events/${eventId}/stays`);
 export const requestStay = (stayId: string, body: StayBookingInput) =>
   call<StayBooking>(`/stays/${stayId}/bookings`, json('POST', body));
-export const getMyStays = (eventId?: string) =>
-  call<StayBooking[]>(`/stays/bookings/mine${eventId ? `?eventId=${encodeURIComponent(eventId)}` : ''}`);
 export const getMyStay = (bookingId: string) => call<StayBooking>(`/stays/bookings/${bookingId}`);
 export const cancelMyStay = (bookingId: string, reason?: string) =>
   call<StayBooking>(`/stays/bookings/${bookingId}/cancel`, json('POST', { reason }));
@@ -282,40 +237,8 @@ export async function uploadStayFile(
 
 export const getTeamStays = (eventId: string) =>
   call<{ pendingRequests: number; stays: TeamStay[] }>(`/events/${eventId}/stays/manage`);
-export const getTeamStay = (eventId: string, stayId: string) => call<Stay>(`/events/${eventId}/stays/manage/${stayId}`);
-export const createStay = (eventId: string, body: StayInput) => call<Stay>(`/events/${eventId}/stays`, json('POST', body));
-export const updateStay = (eventId: string, stayId: string, body: Partial<StayInput>) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}`, json('PATCH', body));
-export const deleteStay = (eventId: string, stayId: string) =>
-  call<{ deleted: boolean }>(`/events/${eventId}/stays/${stayId}`, { method: 'DELETE' });
-const imagePart = (uri: string) => {
-  const name = uri.split('/').pop() || 'photo.jpg';
-  const ext = /\.(\w+)$/.exec(name)?.[1]?.toLowerCase();
-  const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  return { field: 'file', uri, name, type };
-};
-export const uploadStayCover = (eventId: string, stayId: string, uri: string) =>
-  postMultipart<{ coverImageUrl: string }>(`/events/${eventId}/stays/${stayId}/cover`, imagePart(uri));
-export const addStayGalleryPhoto = (eventId: string, stayId: string, uri: string) =>
-  postMultipart<{ galleryUrls: string[] }>(`/events/${eventId}/stays/${stayId}/gallery`, imagePart(uri));
-export const removeStayGalleryPhoto = (eventId: string, stayId: string, url: string) =>
-  call<{ galleryUrls: string[] }>(`/events/${eventId}/stays/${stayId}/gallery/remove`, json('POST', { url }));
 /** Same cap as the backend's STAY_GALLERY_MAX. */
 export const STAY_GALLERY_MAX = 12;
-
-export const createStayOption = (eventId: string, stayId: string, body: StayOptionInput) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}/options`, json('POST', body));
-export const updateStayOption = (eventId: string, stayId: string, optionId: string, body: Partial<StayOptionInput>) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}/options/${optionId}`, json('PATCH', body));
-export const deleteStayOption = (eventId: string, stayId: string, optionId: string) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}/options/${optionId}`, { method: 'DELETE' });
-
-export const createStayQuestion = (eventId: string, stayId: string, body: StayQuestionInput) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}/questions`, json('POST', body));
-export const updateStayQuestion = (eventId: string, stayId: string, questionId: string, body: Partial<StayQuestionInput>) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}/questions/${questionId}`, json('PATCH', body));
-export const deleteStayQuestion = (eventId: string, stayId: string, questionId: string) =>
-  call<Stay>(`/events/${eventId}/stays/${stayId}/questions/${questionId}`, { method: 'DELETE' });
 
 // ── Team: bookings & property desk ──────────────────────────────────────────
 
@@ -377,9 +300,6 @@ export const STATUS_LABELS: Record<StayBookingStatus, string> = {
   CANCELLED: 'Cancelled',
   EXPIRED: 'Payment window closed',
 };
-
-/** Statuses a guest still "has" (one per event). */
-export const OPEN_STAY_STATUSES: StayBookingStatus[] = ['PENDING', 'AWAITING_PAYMENT', 'CONFIRMED', 'CHECKED_IN'];
 
 export const rupees = (n: number) => `₹${n.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 

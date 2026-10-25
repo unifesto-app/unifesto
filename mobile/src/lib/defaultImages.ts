@@ -1,8 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './constants';
-import { call } from './api/manageEvent';
-import { postMultipart } from './api/upload';
 
 /**
  * Stand-in banners (4:3) and logos (1:1) for events and spaces without their
@@ -78,23 +76,3 @@ export const coverOr = (set: DefaultImageSet, id: string | null | undefined, url
   url || pickDefault(set.banners, id);
 export const logoOr = (set: DefaultImageSet, id: string | null | undefined, url: string | null | undefined) =>
   url || pickDefault(set.logos, id);
-
-// ── Apex ─────────────────────────────────────────────────────────────────────
-
-export interface DefaultImageRow {
-  id: string;
-  kind: 'BANNER' | 'LOGO';
-  url: string;
-  createdAt: string;
-}
-
-export const getAllDefaultImages = () => call<DefaultImageRow[]>('/admin/default-images');
-
-export function addDefaultImage(kind: 'BANNER' | 'LOGO', uri: string) {
-  const name = uri.split('/').pop() || 'image.jpg';
-  const ext = /\.(\w+)$/.exec(name)?.[1]?.toLowerCase();
-  const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  return postMultipart<DefaultImageRow>('/admin/default-images', { field: 'file', uri, name, type }, { kind });
-}
-
-export const deleteDefaultImage = (id: string) => call<{ success: boolean }>(`/admin/default-images/${id}`, { method: 'DELETE' });

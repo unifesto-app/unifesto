@@ -186,74 +186,7 @@ export interface ReconRange {
   to?: string;
 }
 
-export interface ReconSummary {
-  window: { from: string; to: string };
-  razorpay: { capturedCount: number; captured: number; refunded: number; fees: number; net: number; settledToBank: number; settlementCount: number };
-  platform: { paidCount: number; captured: number; refunded: number; processingFees: number };
-  diff: { captured: number; refunded: number };
-}
-
-export interface ReconBalance {
-  asOf: string;
-  balance: number;
-  captured: number;
-  fees: number;
-  refunded: number;
-  settled: number;
-  approximate: boolean;
-}
-
-export type ReconPaymentStatus = 'MATCHED' | 'MISSING_IN_PLATFORM' | 'MISSING_IN_RAZORPAY' | 'RAZORPAY_UNCAPTURED';
-
-export interface ReconPaymentRow {
-  paymentId: string;
-  orderId: string | null;
-  razorpayStatus: string | null;
-  razorpayAmount: number | null;
-  razorpayRefunded: number | null;
-  method: string | null;
-  contact: string | null;
-  createdAt: string | null;
-  platform: { source: 'EVENT' | 'SESSION' | 'STAY'; registrationId: string; title: string; paymentStatus: string; amount: number } | null;
-  status: ReconPaymentStatus;
-  amountMismatch: boolean;
-  reconcileRegistrationId: string | null;
-}
-
-export interface ReconPayments {
-  window: { from: string; to: string };
-  counts: { total: number; matched: number; missingInPlatform: number; missingInRazorpay: number; amountMismatch: number };
-  rows: ReconPaymentRow[];
-}
-
-export interface ReconRefunds {
-  window: { from: string; to: string };
-  counts: { total: number; matched: number; missingInPlatform: number };
-  rows: {
-    refundId: string;
-    paymentId: string | null;
-    razorpayAmount: number;
-    razorpayStatus: string | null;
-    createdAt: string;
-    platform: { refundRequestId: string; approvedAmount: number | null; status: string; title: string } | null;
-    status: 'MATCHED' | 'MISSING_IN_PLATFORM';
-  }[];
-}
-
-export interface ReconSettlements {
-  window: { from: string; to: string };
-  totalSettled: number;
-  count: number;
-  rows: { id: string; status: string | null; amount: number; fees: number; tax: number; utr: string | null; settledAt: string }[];
-}
-
 const range = (r?: ReconRange) => qs({ from: r?.from, to: r?.to });
-
-export const getReconSummary = (r?: ReconRange) => call<ReconSummary>(`/admin/reconciliation/summary${range(r)}`);
-export const getReconBalance = () => call<ReconBalance>('/admin/reconciliation/balance');
-export const getReconPayments = (r?: ReconRange) => call<ReconPayments>(`/admin/reconciliation/payments${range(r)}`);
-export const getReconRefunds = (r?: ReconRange) => call<ReconRefunds>(`/admin/reconciliation/refunds${range(r)}`);
-export const getReconSettlements = (r?: ReconRange) => call<ReconSettlements>(`/admin/reconciliation/settlements${range(r)}`);
 
 // ── Orphaned / unsettled captures ────────────────────────────────────────────
 

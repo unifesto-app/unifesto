@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -41,7 +41,7 @@ import useTopSpacing from '../hooks/useTopSpacing';
 import ManageStats from '../components/manage/ManageStats';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { Button } from '../components/ui';
-import { AppAlert } from '../components/ui/AppAlert';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { relativeWhen } from '../utils/eventFormat';
 import { useEventCover } from '../lib/defaultImages';
 import { borderRadius, spacing } from '../theme/spacing';
@@ -52,7 +52,6 @@ const GUTTER = spacing[6];
 const ICON = 28;
 const COVER_W = 120;
 const COVER_H = 90; // 4:3
-const SPACE_WEB_URL = 'https://space.unifesto.app';
 
 function eventState(e: { status: string; startDateTime: string; endDateTime: string }, now: Date) {
   if (e.status === 'CANCELLED') return 'Cancelled';
@@ -110,6 +109,7 @@ export default function ManageEventScreen() {
   const checkinTotal = h.checkin?.total ?? 0;
   const progress = checkinTotal > 0 && checkedIn !== null ? Math.min(1, checkedIn / checkinTotal) : 0;
   const scanParams = { title: e.title, startDateTime: e.startDateTime, venueName: e.venueName || e.city || '' };
+  const web = (path = '') => () => openSpaceWeb(`/dashboard/events/${e.id}${path}`, e.spaceId);
   const ticketTypes = (e as unknown as { ticketTypes?: { kind: string }[] }).ticketTypes ?? [];
   const rsvpCount = ticketTypes.filter((t) => t.kind === 'RSVP').length;
   const ticketCount = ticketTypes.length - rsvpCount;
@@ -206,7 +206,7 @@ export default function ManageEventScreen() {
             <SettingsRow icon={icon(UserPlus)} label="Add attendee" onPress={() => router.push(`/manage/event/${e.id}/add-attendee`)} />
           ) : null}
           {h.access.hosts && !e.isRecurring ? (
-            <SettingsRow icon={icon(FileCsv)} label="Import from CSV" onPress={() => router.push(`/manage/event/${e.id}/import-attendees`)} />
+            <SettingsRow icon={icon(FileCsv)} label="Import from CSV" external onPress={web('/attendees/import')} />
           ) : null}
           {h.access.hosts && !e.isRecurring ? (
             <SettingsRow icon={icon(HourglassMedium)} label="Waiting list" onPress={() => router.push(`/manage/event/${e.id}/waitlist`)} />
@@ -224,7 +224,7 @@ export default function ManageEventScreen() {
             <SettingsRow
               icon={icon(Bed)}
               label="Unifesto Stay"
-              onPress={() => router.push(`/manage/event/${e.id}/stays`)}
+              onPress={() => router.push({ pathname: `/manage/event/${e.id}/stays`, params: { spaceId: e.spaceId } })}
             />
           ) : deskOnly && hasStays ? (
             <SettingsRow
@@ -270,7 +270,7 @@ export default function ManageEventScreen() {
             <SettingsRow
               icon={icon(Trophy)}
               label="Unifesto Sprint"
-              onPress={() => router.push(`/manage/event/${e.id}/hackathon`)}
+              onPress={() => router.push({ pathname: `/manage/event/${e.id}/hackathon`, params: { spaceId: e.spaceId } })}
             />
           ) : null}
           {h.access.canJudge ? (
@@ -283,33 +283,37 @@ export default function ManageEventScreen() {
         </SettingsGroup>
       </View>
 
-      {/* Setup — needs event:edit (Curator, Co-Curator, Space Admin); the server re-checks. */}
+      {/* Setup — needs event:edit (Curator, Co-Curator, Space Admin); the server re-checks.
+          Editors are desk work, so most of these open the page on Unifesto Space (D3). */}
       {h.access.hosts ? (
         <View style={{ marginTop: spacing[6] }}>
           <SettingsGroup title="Set up">
-            <SettingsRow icon={icon(PencilSimple)} label="Details" onPress={() => router.push(`/manage/event/${e.id}/edit`)} />
+            <SettingsRow icon={icon(PencilSimple)} label="Details" external onPress={web('/edit')} />
             <SettingsRow
               icon={icon(ListBullets)}
               label="Agenda, speakers and FAQs"
-              onPress={() => router.push(`/manage/event/${e.id}/content`)}
+              external
+              onPress={web('/content')}
             />
             <SettingsRow
               icon={icon(Ticket)}
               label="Tickets"
               value={ticketCount ? String(ticketCount) : undefined}
-              onPress={() => router.push(`/manage/event/${e.id}/tickets`)}
+              external
+              onPress={web('/tickets')}
             />
             <SettingsRow
               icon={icon(Lightning)}
               label="RSVPs"
               value={rsvpCount ? String(rsvpCount) : undefined}
-              onPress={() => router.push(`/manage/event/${e.id}/rsvps`)}
+              external
+              onPress={web('/rsvps')}
             />
             {ticketCount > 0 ? (
-              <SettingsRow icon={icon(SealPercent)} label="Discount codes" onPress={() => router.push(`/manage/event/${e.id}/coupons`)} />
+              <SettingsRow icon={icon(SealPercent)} label="Discount codes" external onPress={web('/coupons')} />
             ) : null}
             <SettingsRow icon={icon(UsersFour)} label="Team" onPress={() => router.push(`/manage/event/${e.id}/team`)} />
-            <SettingsRow icon={icon(ShareNetwork)} label="Co-hosts" onPress={() => router.push(`/manage/event/${e.id}/co-hosting`)} />
+            <SettingsRow icon={icon(ShareNetwork)} label="Co-hosts" external onPress={web('/co-hosting')} />
             {h.access.canSponsors ? (
               <SettingsRow
                 icon={icon(Medal)}
@@ -319,9 +323,9 @@ export default function ManageEventScreen() {
             ) : null}
             {/* A series parent has dates; anything else can group sub-events (a series can't be both). */}
             {e.isRecurring ? (
-              <SettingsRow icon={icon(CalendarDots)} label="Series dates" onPress={() => router.push(`/manage/event/${e.id}/series-dates`)} />
+              <SettingsRow icon={icon(CalendarDots)} label="Series dates" external onPress={web('/occurrences')} />
             ) : !e.seriesParentId ? (
-              <SettingsRow icon={icon(TreeStructure)} label="Sub-events" onPress={() => router.push(`/manage/event/${e.id}/sub-events`)} />
+              <SettingsRow icon={icon(TreeStructure)} label="Sub-events" external onPress={web('/sub-events')} />
             ) : null}
             {h.access.canPayout ? (
               <SettingsRow
@@ -364,11 +368,7 @@ export default function ManageEventScreen() {
             icon={icon(Globe)}
             label="Open in Unifesto Space"
             external
-            onPress={() =>
-              Linking.openURL(`${SPACE_WEB_URL}/dashboard/events/${e.id}`).catch(() =>
-                AppAlert.alert('Error', 'Unable to open Unifesto Space'),
-              )
-            }
+            onPress={web()}
           />
         </SettingsGroup>
       </View>

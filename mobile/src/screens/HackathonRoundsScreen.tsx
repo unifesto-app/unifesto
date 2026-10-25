@@ -7,6 +7,7 @@ import { Button } from '../components/ui';
 import { SettingsGroup, SettingsRow } from '../components/profile/SettingsGroup';
 import { useTokens } from '../context/ThemeContext';
 import useTopSpacing from '../hooks/useTopSpacing';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { getRounds, type RoundRow } from '../lib/api/hackathon';
 import { JUDGING_MODE_OPTIONS, roundStatusLabel } from '../lib/hackathon';
 import { spacing } from '../theme/spacing';
@@ -27,7 +28,7 @@ function roundSummary(r: RoundRow): string {
 
 /** The hackathon's rounds in order: status and progress, and a way to add one. */
 export default function HackathonRoundsScreen() {
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, spaceId } = useLocalSearchParams<{ eventId: string; spaceId?: string }>();
   const router = useRouter();
   const tokens = useTokens();
   const topSpacing = useTopSpacing();
@@ -58,7 +59,7 @@ export default function HackathonRoundsScreen() {
     );
   }
 
-  const open = (id: string) => router.push({ pathname: `/manage/event/${eventId}/hackathon/round`, params: { roundId: id } });
+  const open = (id: string) => router.push({ pathname: `/manage/event/${eventId}/hackathon/round`, params: { roundId: id, spaceId } });
 
   return (
     <ScrollView
@@ -102,12 +103,12 @@ export default function HackathonRoundsScreen() {
         the next round can open.
       </Text>
       <Button
-        label="Add a round"
+        label="Add a round on the web"
         variant="secondary"
         size="lg"
         fullWidth
         icon={<Plus size={18} color={tokens.text} weight="bold" />}
-        onPress={() => open('new')}
+        onPress={() => openSpaceWeb(`/dashboard/events/${eventId}/hackathon/rounds`, spaceId)}
         style={{ marginTop: spacing[6] }}
       />
     </ScrollView>

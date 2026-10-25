@@ -29,13 +29,6 @@ export interface Usage {
   limits: { spaces: number | null; eventsPerMonth: number | null; attendeesPerEvent: number | null };
   features: { hasBulkExport: boolean; hasRemoveBranding: boolean } & Record<string, boolean>;
 }
-
-export const getSubscription = (spaceId: string) => call<Subscription>(`/subscription/space/${spaceId}`);
 export const getUsage = (spaceId: string) => call<Usage>(`/subscription/space/${spaceId}/usage`);
-export const cancelSubscription = (spaceId: string) =>
-  call<unknown>(`/subscription/space/${spaceId}/cancel`, { method: 'POST' });
 
 export const PLAN_LABEL: Record<OrgPlan, string> = { STARTER: 'Starter', GROWTH: 'Growth', PRO: 'Pro', ENTERPRISE: 'Enterprise' };
-export const PLAN_ORDER: OrgPlan[] = ['STARTER', 'GROWTH', 'PRO', 'ENTERPRISE'];
-
-export const limitLabel = (n: number | null | undefined) => (n == null ? 'Unlimited' : n.toLocaleString('en-IN'));

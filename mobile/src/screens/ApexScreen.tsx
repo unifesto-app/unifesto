@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { RefreshControl } from '../components/ui/RefreshControl';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import {
@@ -50,7 +50,7 @@ import StatusBarScrim from '../components/ui/StatusBarScrim';
 import { CardBackdrop, GlassFill, LIQUID_GLASS } from '../components/ui/CardSurface';
 import Skeleton from '../components/Skeleton';
 import PressableScale from '../components/ui/PressableScale';
-import { AppAlert } from '../components/ui/AppAlert';
+import { openApexWeb } from '../lib/openOnWeb';
 import { AreaChart, BarChart, BarList, Meter, Ring } from '../components/apex/MiniCharts';
 import SegmentedTabs from '../components/ui/SegmentedTabs';
 import { titleCase } from '../lib/apexQueues';
@@ -84,7 +84,6 @@ const GAP = spacing[3];
 /** One inner padding for every card and tile, so edges line up across the page. */
 const PAD = spacing[4];
 const ICON = 20;
-const APEX_WEB_URL = 'https://apex.unifesto.app';
 
 /** Things that can be waiting on me; each maps to a tool below. */
 type CountKey = 'requests' | 'reports' | 'support' | 'whatsapp' | 'payouts' | 'refunds' | 'bankAccounts';
@@ -94,7 +93,9 @@ const NO_COUNTS: Counts = { requests: null, reports: null, support: null, whatsa
 interface Tool {
   label: string;
   icon: Icon;
-  to: Href;
+  /** A mobile screen, or `web` for desk work that opens on Apex web (D3). */
+  to?: Href;
+  web?: string;
   /** Extra search words admins might type ("approve", "money"). */
   keywords?: string;
   count?: CountKey;
@@ -123,9 +124,9 @@ const SECTIONS: { title: string; tools: Tool[] }[] = [
       { label: 'Refunds', icon: ArrowsClockwise, to: '/apex/money/refunds', count: 'refunds' },
       { label: 'Payout accounts', icon: Bank, to: '/apex/money/bank-accounts', count: 'bankAccounts', short: 'Bank accounts', keywords: 'bank verify' },
       { label: 'Financials', icon: Wallet, to: '/apex/money/financials', keywords: 'revenue earnings' },
-      { label: 'Subscriptions', icon: CreditCard, to: '/apex/subscriptions', keywords: 'billing plan mrr revenue share' },
+      { label: 'Subscriptions', icon: CreditCard, web: '/dashboard/subscriptions', keywords: 'billing plan mrr revenue share' },
       { label: 'Transactions', icon: Receipt, to: '/apex/money/transactions', keywords: 'payments razorpay' },
-      { label: 'Reconciliation', icon: ArrowsLeftRight, to: '/apex/money/reconciliation' },
+      { label: 'Reconciliation', icon: ArrowsLeftRight, web: '/dashboard/reconciliation' },
       { label: 'Orphaned payments', icon: LinkBreak, to: '/apex/money/orphaned-payments' },
     ],
   },
@@ -150,10 +151,10 @@ const SECTIONS: { title: string; tools: Tool[] }[] = [
   {
     title: 'Configure',
     tools: [
-      { label: 'Plans', icon: Stack, to: '/apex/plans', keywords: 'features limits pricing billing gate' },
-      { label: 'Roles & access', icon: ShieldCheck, to: '/apex/iam', keywords: 'iam permissions capabilities' },
-      { label: 'Categories', icon: Tag, to: '/apex/categories' },
-      { label: 'Default images', icon: ImageSquare, to: '/apex/default-images' },
+      { label: 'Plans', icon: Stack, web: '/dashboard/plans', keywords: 'features limits pricing billing gate' },
+      { label: 'Roles & access', icon: ShieldCheck, web: '/dashboard/iam', keywords: 'iam permissions capabilities' },
+      { label: 'Categories', icon: Tag, web: '/dashboard/categories' },
+      { label: 'Default images', icon: ImageSquare, web: '/dashboard/default-images' },
       { label: 'App version', icon: DeviceMobile, to: '/apex/app-version', keywords: 'force update' },
       { label: 'OTA updates', icon: CloudArrowDown, to: '/apex/ota', keywords: 'release rollout expo' },
     ],
@@ -163,14 +164,14 @@ const SECTIONS: { title: string; tools: Tool[] }[] = [
     tools: [
       { label: 'Status', icon: Pulse, to: '/apex/status', keywords: 'uptime outage' },
       { label: 'Traffic', icon: ChartBar, to: '/apex/traffic', keywords: 'analytics' },
-      { label: 'Logs', icon: Terminal, to: '/apex/logs', keywords: 'errors api requests debug 500' },
+      { label: 'Logs', icon: Terminal, web: '/dashboard/logs', keywords: 'errors api requests debug 500' },
     ],
   },
   {
     title: 'Publish',
     tools: [
-      { label: 'Blog', icon: Article, to: '/apex/blog', keywords: 'posts articles markdown' },
-      { label: 'Careers', icon: Briefcase, to: '/apex/careers', keywords: 'jobs hiring applications' },
+      { label: 'Blog', icon: Article, web: '/dashboard/blog', keywords: 'posts articles markdown' },
+      { label: 'Careers', icon: Briefcase, web: '/dashboard/careers', keywords: 'jobs hiring applications' },
     ],
   },
 ];
@@ -323,6 +324,7 @@ export default function ApexScreen() {
   );
 
   const open = (to: Href) => router.push(to);
+  const openTool = (t: Tool) => (t.web ? openApexWeb(t.web) : t.to && open(t.to));
   // Three tiles per row, two once large text would truncate the labels; half-width chart cards.
   const cols = fontScale > 1.3 ? 2 : 3;
   const tileW = (width - GUTTER * 2 - GAP * (cols - 1)) / cols;
@@ -347,9 +349,9 @@ export default function ApexScreen() {
     return (
       <PressableScale
         key={t.label}
-        onPress={() => open(t.to)}
-        accessibilityRole="button"
-        accessibilityLabel={n ? `${t.label}, ${n} waiting` : isStatus && sys ? `${t.label}, ${sys.text}` : t.label}
+        onPress={() => openTool(t)}
+        accessibilityRole={t.web ? 'link' : 'button'}
+        accessibilityLabel={n ? `${t.label}, ${n} waiting` : isStatus && sys ? `${t.label}, ${sys.text}` : t.web ? `${t.label}, opens on the web` : t.label}
         style={[styles.tile, { width: tileW }]}
       >
         <CardBackdrop shape={styles.tile} />
@@ -359,6 +361,8 @@ export default function ApexScreen() {
             <View style={[styles.count, { backgroundColor: `${tokens.warning}26` }]}>
               <Text style={[styles.countText, { color: c.warn }]}>{fmt(n)}</Text>
             </View>
+          ) : t.web ? (
+            <ArrowUpRight size={14} color={c.muted} />
           ) : null}
         </View>
         <Text style={[styles.tileLabel, { color: c.text }]} numberOfLines={2}>
@@ -518,7 +522,7 @@ export default function ApexScreen() {
                   return (
                     <PressableScale
                       key={t.label}
-                      onPress={() => open(t.to)}
+                      onPress={() => openTool(t)}
                       accessibilityRole="button"
                       accessibilityLabel={`${name}, ${n} waiting`}
                       style={styles.need}
@@ -749,7 +753,7 @@ export default function ApexScreen() {
             ))}
 
             <Pressable
-              onPress={() => Linking.openURL(APEX_WEB_URL).catch(() => AppAlert.alert('Error', 'Unable to open Apex'))}
+              onPress={() => openApexWeb()}
               accessibilityRole="link"
               accessibilityLabel="Open Apex on the web"
               hitSlop={8}

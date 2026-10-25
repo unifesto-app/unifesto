@@ -18,6 +18,7 @@ import AuthButton from '../components/auth/AuthButton';
 import Skeleton from '../components/Skeleton';
 import { GUTTER, Section } from '../components/home/Section';
 import { inr } from '../utils/money';
+import { openSpaceWeb } from '../lib/openOnWeb';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
@@ -182,7 +183,8 @@ export default function FinanceScreen() {
             icon={icon(Bank)}
             label="My payout accounts"
             value={accounts ? String(accounts.length) : undefined}
-            onPress={() => router.push(`/manage/space/${spaceId}/accounts`)}
+            external
+            onPress={() => openSpaceWeb('/dashboard/financials', spaceId)}
           />
         </SettingsGroup>
       </Section>

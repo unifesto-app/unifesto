@@ -15,7 +15,6 @@ import {
   type SpaceProfile,
   type SpaceProfilePatch,
 } from '../lib/api/spaceSettings';
-import { sanitizeSlug } from '../lib/eventDraft';
 import { FieldRow } from '../components/manage/FormFields';
 import SaveBar from '../components/manage/SaveBar';
 import SelectRow from '../components/manage/SelectRow';
@@ -30,6 +29,9 @@ import { AppAlert } from '../components/ui/AppAlert';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { cosmosCardRadius, cosmosFont, useCosmos } from '../theme/cosmos';
+
+const sanitizeSlug = (raw: string) =>
+  raw.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-{2,}/g, '-').replace(/^-+/, '');
 
 const IMG_H = 96;
 const VIS_TABS = [

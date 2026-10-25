@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import { openApexWeb } from '../../lib/openOnWeb';
 import { Cards, Plus } from '@unifesto/unicon/react-native';
 import { RefreshControl } from '../../components/ui/RefreshControl';
 import { useTokens } from '../../context/ThemeContext';
@@ -56,10 +57,10 @@ export default function EmailCampaignsScreen() {
         options={{
           headerRight: () => (
             <HeaderActions>
-              <HeaderIconButton onPress={() => router.push('/apex/email/templates')} label="Templates">
+              <HeaderIconButton onPress={() => openApexWeb('/dashboard/email/templates')} label="Templates on the web">
                 <Cards size={24} color={tokens.text} />
               </HeaderIconButton>
-              <HeaderIconButton onPress={() => router.push('/apex/email/new')} label="New campaign">
+              <HeaderIconButton onPress={() => openApexWeb('/dashboard/email/new')} label="New campaign on the web">
                 <Plus size={24} color={tokens.text} />
               </HeaderIconButton>
             </HeaderActions>

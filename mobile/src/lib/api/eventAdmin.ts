@@ -1,5 +1,4 @@
 import { call } from './manageEvent';
-import { uploadImage } from './upload';
 import type { Event } from './events';
 
 /*
@@ -56,16 +55,9 @@ export const getManagedEvent = (eventId: string) =>
     `/events/${eventId}`,
   );
 
-/** POST /events — needs space:create-event in `spaceId` (Space Admin). */
-export const createEvent = (body: EventDetailsPayload & { spaceId: string }) => call<Event>('/events', json('POST', body));
-
 /** PATCH /events/:id */
 export const updateEvent = (eventId: string, body: Partial<EventDetailsPayload> & { whatsappAttendeeGroupUrl?: string }) =>
   call<Event>(`/events/${eventId}`, json('PATCH', body));
-
-/** POST /events/:id/cover — multipart field `file`, 10 MB cap. */
-export const uploadEventCover = (eventId: string, uri: string) =>
-  uploadImage<{ coverImageUrl: string }>(`/events/${eventId}/cover`, 'file', uri);
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 

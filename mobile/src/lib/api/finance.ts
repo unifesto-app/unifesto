@@ -127,30 +127,6 @@ export interface BankAccount {
 /** GET /payouts/bank-accounts — the signed-in user's own payout methods. */
 export const getMyBankAccounts = () => call<BankAccount[]>('/payouts/bank-accounts');
 
-export interface NewBankAccount {
-  accountHolderName: string;
-  mobileNumber: string;
-  accountNumber: string;
-  ifscCode: string;
-  bankName: string;
-  accountType: 'savings' | 'current';
-  isPrimary: boolean;
-}
-
-/**
- * POST /payouts/bank-accounts — bank transfer only (the server rejects UPI).
- * Starts as PENDING until a Unifesto admin verifies it. There is no edit: a
- * wrong account is removed and added again.
- */
-export const addBankAccount = (body: NewBankAccount) =>
-  call<BankAccount>('/payouts/bank-accounts', {
-    method: 'POST',
-    body: JSON.stringify({ methodType: 'BANK', ...body }),
-  });
-
-/** DELETE /payouts/bank-accounts/:id */
-export const deleteBankAccount = (id: string) => call<unknown>(`/payouts/bank-accounts/${id}`, { method: 'DELETE' });
-
 /** "HDFC Bank ••4821" or "name@upi". Never shows a full account number. */
 export function describeAccount(a: {
   methodType?: PayoutMethodType;
